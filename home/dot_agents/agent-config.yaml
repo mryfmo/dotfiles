@@ -7,7 +7,7 @@
 #
 # Best-practice rules encoded here:
 # - Define one shared capability catalog and render native adapters for every agent.
-# - Keep shared skills in ~/.agents/skills and expose the same skill set to every agent.
+# - Keep shared skills in ~/.agents/skills and give each skill to the agents its skills.audience names.
 # - Keep MCP servers disabled by default; enable only after checking scope and credentials.
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
@@ -42,7 +42,7 @@ standing_rules:
     gpu: [claude]
     latex: [claude]
   # pstack's per-role models in Claude Code: ~/.claude/rules/pstack-models.md, the file the pstack Claude
-  # Code adapter (~/.agents/docs/harness/claude-code.md "Models") reads in place of Cursor's
+  # Code adapter (~/.agents/pstack/docs/harness/claude-code.md "Models") reads in place of Cursor's
   # ~/.cursor/rules/pstack-models.mdc. A role names a model_profiles entry, rendered as `<alias> <effort>`
   # from its claude model and effort, or inherit-parent / auto (the parent chat model); a list is a panel.
   # setup-pstack's own write to that file is replaced at the next chezmoi apply: change the roles here.
@@ -66,6 +66,58 @@ standing_rules:
       swarm workers: inherit-parent
       architect runners: [standard, inherit-parent]
       interrogate reviewers: [standard, inherit-parent]
+
+# Skills: which agents list each skill. An audience names claude, codex, omp (the plain `omp` launch) or
+# omp-<role> (each omp.roles seat); an unknown name, an empty list or a repeat is refused, and a seat role
+# no skill names (the audit) gets `skills.enabled: false`, no skill at all. Every directory under
+# home/dot_agents/skills is declared here; the other names are the installer-owned skills under
+# ~/.agents/skills (crit, understand-*, terminal-browser). The generator renders, from this one map:
+# - claude: a ~/.claude/skills link only for a home/dot_agents/skills skill that names claude; a link a skill
+#   no longer gets is retired through .chezmoiremove. Claude Code reads no other root of ours.
+# - codex: a `[[skills.config]]` entry with `enabled = false` for each ~/.agents/skills skill that does not
+#   name codex (Codex 0.163.0 disables by the SKILL.md path; the directory path is ignored, measured).
+# - omp and omp-<role>: `skills.ignoredSkills` with every declared name the consumer is not given.
+# make doctor reports a deployed skill an agent can list outside its audience as an ERROR.
+skills:
+  audience:
+    convert-to-transformers: [claude, codex, omp, omp-orchestrator, omp-worker]
+    gh-comment-attach-files: [claude, codex, omp, omp-orchestrator, omp-worker]
+    gh-first-workflow: [claude, codex, omp, omp-orchestrator, omp-worker]
+    humanizer-ja: [claude, codex, omp, omp-orchestrator, omp-worker]
+    python-uv-workflow: [claude, codex, omp, omp-orchestrator, omp-worker]
+    shdoc-shell-docs: [claude, codex, omp, omp-orchestrator, omp-worker]
+    # The hcom seat skills drive one seat each through hcom-seat; no other session has the bus.
+    hcom-orchestration: [omp-orchestrator]
+    hcom-worker: [omp-worker]
+    # MEMORY.md, the PostToolUse reload hook and the project-map subagent are Claude Code's.
+    project-map: [claude]
+    # `crit install codex-plugin` writes these beside its Codex plugin; Codex lists the plugin's own copy
+    # (crit:crit, ...), and Claude Code its crit plugin, so only omp reads this one.
+    crit: [omp, omp-orchestrator, omp-worker]
+    crit-cli: [omp, omp-orchestrator, omp-worker]
+    crit-story: [omp, omp-orchestrator, omp-worker]
+    # The Understand-Anything installer links these for Codex; Claude Code has its own plugin.
+    understand: [codex, omp, omp-orchestrator, omp-worker]
+    understand-chat: [codex, omp, omp-orchestrator, omp-worker]
+    understand-dashboard: [codex, omp, omp-orchestrator, omp-worker]
+    understand-diff: [codex, omp, omp-orchestrator, omp-worker]
+    understand-domain: [codex, omp, omp-orchestrator, omp-worker]
+    understand-explain: [codex, omp, omp-orchestrator, omp-worker]
+    understand-figma: [codex, omp, omp-orchestrator, omp-worker]
+    understand-knowledge: [codex, omp, omp-orchestrator, omp-worker]
+    understand-onboard: [codex, omp, omp-orchestrator, omp-worker]
+    terminal-browser: [claude, codex, omp, omp-orchestrator, omp-worker]
+  # The pstack skills (assets.pstack) land in their own root, ~/.agents/pstack/skills, which no agent scans
+  # by default: only the omp consumers named here get it as a skills.customDirectories entry. Their names
+  # come from the pinned archive at chezmoi apply time, never from a list kept here. Claude Code has the
+  # pstack plugin itself. Codex gets none: pstack has no Codex adapter for its Claude Code tool names, and
+  # Codex ignores disable-model-invocation, so the 56 manual-only skills would spend its listing budget.
+  # exclude: pstack skills no agent lists; every omp consumer renders them in skills.ignoredSkills.
+  # setup-pstack writes Cursor's ~/.cursor/rules/pstack-models.mdc, which no agent here reads;
+  # standing_rules.pstack_models renders Claude Code's ~/.claude/rules/pstack-models.md instead.
+  pstack:
+    audience: [omp, omp-orchestrator, omp-worker]
+    exclude: [setup-pstack]
 
 # omp seats load skills from these roots through skills.customDirectories in
 # ~/.omp/agent/config.yml (docs/omp-skills.md). omp 18.11.3 also scans
@@ -922,26 +974,13 @@ plugins:
   marketplace:
     name: mryfmo-personal-plugins
     displayName: mryfmo Personal Plugins
+  # Each plugin ships its own .codex-plugin/plugin.json at install time (crit: `crit install codex-plugin`);
+  # a local source path resolves against the home directory, the marketplace root of
+  # ~/.agents/plugins/marketplace.json (codex plugin list, measured on Codex 0.163.0). Codex already lists
+  # ~/.agents/skills itself, so a plugin that re-exported that tree would only list each skill twice.
   codex_plugins:
-    - name: mryfmo-dev-workflows
-      version: 0.1.0
-      description: Reusable personal development workflows backed by the shared ~/.agents/skills tree.
-      author: mryfmo
-      license: MIT
-      skills: ../../skills
-      source_path: ./plugins/mryfmo-dev-workflows
-      category: Productivity
-      authentication: ON_INSTALL
-      installation: AVAILABLE
-      interface:
-        displayName: mryfmo Dev Workflows
-        shortDescription: Shared workflows for GitHub, shell docs, uv, Japanese writing, transformers, and review tasks.
-        capabilities:
-          - Read
-          - Write
     - name: crit
       source_path: ./.codex/plugins/crit
-      managed_manifest: false
       category: Developer Tools
       authentication: ON_INSTALL
       installation: INSTALLED_BY_DEFAULT
@@ -1150,16 +1189,18 @@ assets:
       ~/.claude/plugins/cache/cursor-plugins/pstack/0.15.30 byte for byte (diff -r,
       2026-10-23). sha256 is GitHub's source archive of the commit
       (https://github.com/cursor/plugins/archive/<pin>.tar.gz). No installer step: the
-      two chezmoi externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
-      read pin and sha256 from this entry (include + fromYaml) and place that tree's
-      skills/* under ~/.agents/skills and docs/** under ~/.agents/docs at every chezmoi
-      apply, so every omp seat's agents provider loads the skills (docs/omp-skills.md);
-      check_pstack in scripts/update-agent-assets.sh proves it for make doctor.
+      chezmoi external in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl reads
+      pin and sha256 from this entry (include + fromYaml) and places that tree's skills/*,
+      less skills.pstack.exclude, under ~/.agents/pstack/skills and docs/** under
+      ~/.agents/pstack/docs at every chezmoi apply, exact, so a skill upstream drops goes
+      too; the omp consumers skills.pstack.audience names load the skills from there
+      (docs/omp-skills.md). check_pstack in scripts/update-agent-assets.sh proves it for
+      make doctor.
       pstack/LICENSE MIT (Lauren Tan); the repository root declares no licence, so only
       the pstack tree is taken. Bump pin and sha256 together after reviewing the upstream
       diff; chezmoi downloads the archive again only when the URL changes.
     reason: the monorepo publishes no per-plugin tag, release, checksum or signature; the commit and the archive hash are the only check.
-    install_path: ~/.agents/skills/<skill> and ~/.agents/docs
+    install_path: ~/.agents/pstack/skills/<skill> and ~/.agents/pstack/docs
     installer: home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
   crit:
     source: github-release

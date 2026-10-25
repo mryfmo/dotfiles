@@ -416,6 +416,12 @@ def render_codex(manifest: dict[str, Any]) -> str:
         }
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
+    # Codex lists every skill under ~/.agents/skills; one whose skills.audience leaves out Codex is disabled by its
+    # SKILL.md path (Codex 0.163.0, measured: the directory path disables nothing). The managed baseline owns the
+    # array, so the merge replaces every [[skills.config]] entry the live file held.
+    for name in codex_disabled_skills(manifest):
+        path = f"{{{{ .chezmoi.homeDir }}}}/{SHARED_SKILLS_ROOT.removeprefix('~/')}/{name}/SKILL.md"
+        lines.extend(["", "[[skills.config]]", f"path = {quote_toml(path)}", "enabled = false"])
     hooks = codex.get("hooks", {})
     if hooks.get("permission_request"):
         lines.extend(codex_command_hook_lines("PermissionRequest", hooks["permission_request"]))
@@ -898,27 +904,6 @@ def render_marketplace(manifest: dict[str, Any]) -> str:
     return json_dumps(data)
 
 
-def render_codex_plugin(plugin: dict[str, Any]) -> str:
-    for key in ("version", "description", "author", "license", "skills", "interface"):
-        if key not in plugin:
-            fail(f"managed Codex plugin {plugin['name']} is missing {key}")
-    data = {
-        "name": plugin["name"],
-        "version": plugin["version"],
-        "description": plugin["description"],
-        "author": {"name": plugin["author"]},
-        "license": plugin["license"],
-        "skills": plugin["skills"],
-        "interface": {
-            "displayName": plugin["interface"]["displayName"],
-            "shortDescription": plugin["interface"]["shortDescription"],
-            "category": plugin["category"],
-            "capabilities": plugin["interface"]["capabilities"],
-        },
-    }
-    return json_dumps(data)
-
-
 def render_claude_skill_symlink(source_file: Path) -> str:
     rel = source_file.relative_to(ROOT / "home")
     return "{{ .chezmoi.sourceDir }}/" + str(rel) + "\n"
@@ -928,20 +913,40 @@ def chezmoi_target_name(source_name: str) -> str:
     return source_name.removeprefix("executable_")
 
 
-def claude_skill_symlink_outputs() -> dict[Path, str]:
+def claude_skill_symlink_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
+    """One ~/.claude/skills link per file of each home/dot_agents/skills skill whose audience names Claude Code."""
     outputs: dict[Path, str] = {}
-    skills_root = ROOT / "home/dot_agents/skills"
+    skills_root = ROOT / SKILLS_SOURCE_DIR
     claude_root = ROOT / "home/dot_claude/skills"
     if not skills_root.exists():
         return outputs
+    declared, _, _ = skill_audiences(manifest)
     for source_file in sorted(path for path in skills_root.rglob("*") if path.is_file()):
         if source_file.name.startswith("."):
             continue
         rel = source_file.relative_to(skills_root)
+        if "claude" not in declared.get(rel.parts[0], []):
+            continue
         target_path = rel.with_name(chezmoi_target_name(rel.name))
         target_dir = claude_root / target_path.parent
         outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = render_claude_skill_symlink(source_file)
     return outputs
+
+
+def skill_removals(manifest: dict[str, Any], current: str) -> list[str]:
+    """Every Claude skill link target no skill gets now, so chezmoi apply removes the link a host still holds.
+
+    A skill under home/dot_agents/skills whose audience leaves out Claude Code has its ~/.claude/skills directory
+    listed; the block's earlier entries stay, so a skill deleted from the source keeps its removal, and a skill
+    linked again leaves the block.
+    """
+    declared, _, _ = skill_audiences(manifest)
+    root = ROOT / SKILLS_SOURCE_DIR
+    sources = sorted(path.name for path in root.iterdir() if path.is_dir()) if root.is_dir() else []
+    linked = {f".claude/skills/{name}" for name in sources if "claude" in declared[name]}
+    retired = {f".claude/skills/{name}" for name in sources if "claude" not in declared[name]}
+    earlier = removal_block_entries(current, SKILL_REMOVALS_BEGIN, SKILL_REMOVALS_END)
+    return sorted((retired | earlier) - linked)
 
 
 def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
@@ -1862,9 +1867,115 @@ def omp_extensions(manifest: dict[str, Any]) -> list[str]:
     return extensions
 
 
-def omp_config_yaml(model: str, directories: list[str]) -> str:
-    entries = "".join(f"    - {directory}\n" for directory in directories)
-    return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SKILLS_SOURCE_DIR = "home/dot_agents/skills"
+# The shared root Codex (its user skill root) and omp's agents provider read; every skills.audience skill lives here.
+SHARED_SKILLS_ROOT = "~/.agents/skills"
+# The pstack external's own root (home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl): no agent scans it by
+# default, so only an omp consumer whose skills.customDirectories names it lists the pstack skills.
+PSTACK_SKILLS_ROOT = "~/.agents/pstack/skills"
+
+
+def skill_consumers(manifest: dict[str, Any]) -> list[str]:
+    """Every audience a skill may name: Claude Code, Codex, the plain omp launch and each omp seat role."""
+    return ["claude", "codex", "omp", *(f"omp-{role}" for role in omp_roles(manifest))]
+
+
+def skill_audience_list(manifest: dict[str, Any], label: str, audience: Any) -> list[str]:
+    allowed = skill_consumers(manifest)
+    if not isinstance(audience, list) or not audience or len(set(audience)) != len(audience):
+        fail(f"{label} needs a non-empty audience list without repeats")
+    unknown = [agent for agent in audience if agent not in allowed]
+    if unknown:
+        fail(f"{label} names unknown audience {unknown}; expected some of {allowed}")
+    return audience
+
+
+def skill_audiences(manifest: dict[str, Any]) -> tuple[dict[str, list[str]], list[str], list[str]]:
+    """Skill name -> audience, the pstack audience and the pstack skills no agent lists.
+
+    Every directory under home/dot_agents/skills must be declared, and a pstack audience naming Claude Code or Codex is
+    refused: neither reads the pstack root, so the declaration would claim a listing that never happens.
+    """
+    section = manifest.get("skills")
+    if not isinstance(section, dict) or sorted(section) != ["audience", "pstack"]:
+        fail("skills must be a mapping of exactly audience and pstack")
+    declared = section["audience"]
+    if not isinstance(declared, dict) or not declared:
+        fail("skills.audience must be a non-empty mapping of skill name to audience")
+    for name, audience in declared.items():
+        if not isinstance(name, str) or not SKILL_NAME_RE.fullmatch(name):
+            fail(f"skill name must match {SKILL_NAME_RE.pattern}: {name!r}")
+        skill_audience_list(manifest, f"skill {name}", audience)
+    source_root = ROOT / SKILLS_SOURCE_DIR
+    sources = {path.name for path in source_root.iterdir() if path.is_dir()} if source_root.is_dir() else set()
+    undeclared = sorted(sources - set(declared))
+    if undeclared:
+        fail(f"directories in {SKILLS_SOURCE_DIR} are not declared in skills.audience: {undeclared}")
+    pstack = section["pstack"]
+    if not isinstance(pstack, dict) or not set(pstack) <= {"audience", "exclude"} or "audience" not in pstack:
+        fail("skills.pstack must be a mapping of audience and an optional exclude list")
+    pstack_audience = skill_audience_list(manifest, "skills.pstack", pstack["audience"])
+    outside = [agent for agent in pstack_audience if agent in ("claude", "codex")]
+    if outside:
+        fail(f"skills.pstack cannot name {outside}: only omp consumers read {PSTACK_SKILLS_ROOT}")
+    exclude = pstack.get("exclude", [])
+    if not isinstance(exclude, list) or len(set(exclude)) != len(exclude):
+        fail("skills.pstack.exclude must be a list of skill names without repeats")
+    for name in exclude:
+        if not isinstance(name, str) or not SKILL_NAME_RE.fullmatch(name):
+            fail(f"skills.pstack.exclude entries must match {SKILL_NAME_RE.pattern}: {name!r}")
+        if name in declared:
+            fail(f"skills.pstack.exclude names {name}, which skills.audience declares under {SHARED_SKILLS_ROOT}")
+    return declared, pstack_audience, exclude
+
+
+def codex_disabled_skills(manifest: dict[str, Any]) -> list[str]:
+    """The shared-root skills whose audience leaves out Codex, each disabled by a `[[skills.config]]` entry."""
+    declared, _, _ = skill_audiences(manifest)
+    return sorted(name for name, audience in declared.items() if "codex" not in audience)
+
+
+def omp_skill_settings(manifest: dict[str, Any], consumer: str) -> dict[str, Any]:
+    """One omp consumer's skills: off when no skill names it, else its roots and the declared names it is not given.
+
+    omp matches `skills.ignoredSkills` against the raw name of every skill from every source, custom directories
+    included (omp 18.11.3 src/extensibility/skills.ts:354-375, :495-496), and `skills.enabled: false` returns no skill
+    at all (:307-310).
+    """
+    declared, pstack_audience, exclude = skill_audiences(manifest)
+    has_pstack = consumer in pstack_audience
+    if not has_pstack and not any(consumer in audience for audience in declared.values()):
+        return {"enabled": False, "pstack": False}
+    directories = list(omp_skills_directories(manifest)) + ([PSTACK_SKILLS_ROOT] if has_pstack else [])
+    ignored = [name for name, audience in declared.items() if consumer not in audience]
+    return {
+        "enabled": True,
+        "pstack": has_pstack,
+        "customDirectories": directories,
+        "ignoredSkills": sorted(ignored + (exclude if has_pstack else [])),
+    }
+
+
+def omp_skills_yaml(settings: dict[str, Any], home: str) -> str:
+    """The `skills:` block; `home` replaces a leading ~/ of each directory (the overlays carry the absolute home).
+
+    `enabled` is always written, true or false: the plain-launch merge sets only the keys this block carries, so a
+    `false` an earlier audience wrote would otherwise outlive an audience that gives the plain launch skills again.
+    """
+    if not settings["enabled"]:
+        return "skills:\n  enabled: false\n"
+    entries = "".join(f"    - {re.sub(r'^~/', home, directory)}\n" for directory in settings["customDirectories"])
+    ignored = "".join(f"    - {name}\n" for name in settings["ignoredSkills"])
+    return (
+        "skills:\n  enabled: true\n  customDirectories:\n"
+        + entries
+        + ("  ignoredSkills:\n" + ignored if ignored else "  ignoredSkills: []\n")
+    )
+
+
+def omp_config_yaml(model: str, skills: str) -> str:
+    return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\n{skills}"
 
 
 OMP_TOOL_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
@@ -1893,7 +2004,8 @@ def omp_interactive_policy(manifest: dict[str, Any]) -> str:
 
 
 def render_omp_config(manifest: dict[str, Any]) -> str:
-    config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
+    skills = omp_skills_yaml(omp_skill_settings(manifest, "omp"), "~/")
+    config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], skills)
     return (
         config
         + omp_list_yaml("extensions", omp_extensions(manifest))
@@ -1913,11 +2025,9 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     # A session expands ~ in skills.customDirectories (src/extensibility/skills.ts:471-473) but
     # `omp skill list` resolves a non-absolute entry against cwd (src/cli/skill-list.ts:58-64),
     # so the deployed overlay carries the absolute home through the chezmoi template.
-    directories = [
-        re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", directory) for directory in omp_skills_directories(manifest)
-    ]
+    skills = omp_skills_yaml(omp_skill_settings(manifest, f"omp-{role}"), "{{ .chezmoi.homeDir }}/")
     omp = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]
-    overlay = omp_config_yaml(omp["model"], directories)
+    overlay = omp_config_yaml(omp["model"], skills)
     # A `modelRoles.default` without a `:<level>` suffix starts at the `defaultThinkingLevel` setting (omp 18.11.3
     # src/config/model-presets.ts:232-244), whose default is high (src/session/settings.ts:196-201); a `--config`
     # overlay is a settings layer above the profile's own config.yml (src/config/settings.ts:879).
@@ -1994,6 +2104,10 @@ REMOVALS_BEGIN = (
     "# >>> retired standing-rule targets (generated by scripts/generate-agent-configs.py; edit standing_rules) >>>\n"
 )
 REMOVALS_END = "# <<< retired standing-rule targets <<<\n"
+SKILL_REMOVALS_BEGIN = (
+    "# >>> retired skill link targets (generated by scripts/generate-agent-configs.py; edit skills.audience) >>>\n"
+)
+SKILL_REMOVALS_END = "# <<< retired skill link targets <<<\n"
 PSTACK_ALIASES = ("opus", "sonnet", "haiku", "fable")
 PSTACK_PARENT_VALUES = ("inherit-parent", "auto")
 
@@ -2124,18 +2238,20 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
-    for plugin in manifest["plugins"].get("codex_plugins", []):
-        if not plugin.get("managed_manifest", True):
-            continue
-        source_path = plugin["source_path"].removeprefix("./")
-        outputs[ROOT / "home/dot_agents" / source_path / CODEX_PLUGIN_MANIFEST] = render_codex_plugin(plugin)
     outputs[ROOT / CODEX_COMMAND_RULES] = render_codex_command_rules(manifest)
     outputs.update(render_omp_policies(manifest))
-    outputs.update(claude_skill_symlink_outputs())
+    outputs.update(claude_skill_symlink_outputs(manifest))
     outputs.update(render_asset_constants(manifest))
     outputs.update(render_lever_installs(manifest))
     outputs.update(render_standing_rule_outputs(manifest, outputs))
-    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, lever_pins(manifest))
+    remove_path = ROOT / CHEZMOIREMOVE
+    current = outputs.get(remove_path)
+    if current is None:
+        current = read_exact(remove_path) if remove_path.exists() else ""
+    outputs[remove_path] = render_chezmoiremove(
+        current, skill_removals(manifest, current), SKILL_REMOVALS_BEGIN, SKILL_REMOVALS_END
+    )
+    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, lever_pins(manifest), skill_index(manifest))
     return outputs
 
 
@@ -2181,10 +2297,10 @@ def generated_rule_target(source: Path) -> str | None:
     return None
 
 
-def removal_block_entries(text: str) -> set[str]:
-    if REMOVALS_BEGIN not in text:
+def removal_block_entries(text: str, begin: str = REMOVALS_BEGIN, end: str = REMOVALS_END) -> set[str]:
+    if begin not in text:
         return set()
-    block = text.split(REMOVALS_BEGIN, 1)[1].split(REMOVALS_END, 1)[0]
+    block = text.split(begin, 1)[1].split(end, 1)[0]
     return {line for line in block.splitlines() if line and not line.startswith("#")}
 
 
@@ -2209,12 +2325,12 @@ def standing_rule_removals(
     return sorted(retired - rendered)
 
 
-def render_chezmoiremove(text: str, removals: list[str]) -> str:
-    block = REMOVALS_BEGIN + "".join(f"{target}\n" for target in removals) + REMOVALS_END
-    if REMOVALS_BEGIN not in text:
+def render_chezmoiremove(text: str, removals: list[str], begin: str = REMOVALS_BEGIN, end: str = REMOVALS_END) -> str:
+    block = begin + "".join(f"{target}\n" for target in removals) + end
+    if begin not in text:
         return text + ("" if not text or text.endswith("\n") else "\n") + block
-    head, rest = text.split(REMOVALS_BEGIN, 1)
-    return head + block + rest.split(REMOVALS_END, 1)[1]
+    head, rest = text.split(begin, 1)
+    return head + block + rest.split(end, 1)[1]
 
 
 def stale_standing_rule_outputs(outputs: dict[Path, str]) -> list[Path]:
@@ -2250,9 +2366,6 @@ def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
                 path.rmdir()
 
 
-# Codex reads a plugin's manifest at <plugin>/.codex-plugin/plugin.json; chezmoi ignores every source entry whose name
-# starts with a dot (except .chezmoi*), so the source names the directory dot_codex-plugin (F054).
-CODEX_PLUGIN_MANIFEST = "dot_codex-plugin/plugin.json"
 # The expected output set rendered for consumers that cannot load the manifest: make doctor runs
 # scripts/check-agent-runtime.py on the system python3, without PyYAML. It lives outside home/, so chezmoi never
 # deploys it.
@@ -2312,12 +2425,40 @@ def chezmoi_target(source: Path) -> dict[str, Any] | None:
     return {"target": "/".join(parts), "kind": kind, "executable": executable}
 
 
-def render_output_index(outputs: dict[Path, str], pins: dict[Path, str] | None = None) -> str:
+def skill_index(manifest: dict[str, Any]) -> dict[str, Any]:
+    """What make doctor needs to name a skill an agent lists outside its audience, without loading the manifest.
+
+    The roots are HOME-relative; `codex_disabled` is the managed `[[skills.config]]` set and `omp` each consumer's
+    rendered settings. The doctor reads the pstack names from the deployed pstack root, the pinned archive's own.
+    """
+    declared, pstack_audience, exclude = skill_audiences(manifest)
+    consumers = [consumer for consumer in skill_consumers(manifest) if consumer.startswith("omp")]
+    omp = {}
+    for consumer in consumers:
+        settings = omp_skill_settings(manifest, consumer)
+        omp[consumer] = {
+            "enabled": settings["enabled"],
+            "pstack": settings["pstack"],
+            "ignored": settings.get("ignoredSkills", []),
+        }
+    return {
+        "shared_root": SHARED_SKILLS_ROOT.removeprefix("~/"),
+        "pstack_root": PSTACK_SKILLS_ROOT.removeprefix("~/"),
+        "audience": {name: declared[name] for name in sorted(declared)},
+        "pstack": {"audience": pstack_audience, "exclude": exclude},
+        "codex_disabled": codex_disabled_skills(manifest),
+        "omp": omp,
+    }
+
+
+def render_output_index(
+    outputs: dict[Path, str], pins: dict[Path, str] | None = None, skills: dict[str, Any] | None = None
+) -> str:
     """The deployed side of the expected output set, for make doctor.
 
     `outputs` lists every generated file with its deployed target (none for one chezmoi does not deploy by itself),
     and a lever copy also with the sha256 it is pinned to; `scopes` lists each generated directory's deployed
-    directory and glob, where a file no output deploys is an orphan on the host.
+    directory and glob, where a file no output deploys is an orphan on the host; `skills` is skill_index's.
     """
     pins = pins or {}
     entries = []
@@ -2341,7 +2482,10 @@ def render_output_index(outputs: dict[Path, str], pins: dict[Path, str] | None =
         scopes.append(
             {"source": directory, "target": host_root, "glob": target["target"].removeprefix(host_root + "/")}
         )
-    return json_dumps({"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes})
+    index: dict[str, Any] = {"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes}
+    if skills is not None:
+        index["skills"] = skills
+    return json_dumps(index)
 
 
 def generated_scopes() -> list[tuple[str, str]]:

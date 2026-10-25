@@ -78,12 +78,6 @@
       "executable": false
     },
     {
-      "source": "home/dot_agents/plugins/mryfmo-dev-workflows/dot_codex-plugin/plugin.json",
-      "target": ".agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json",
-      "kind": "file",
-      "executable": false
-    },
-    {
       "source": "home/dot_claude/agents/express-explorer.md",
       "target": ".claude/agents/express-explorer.md",
       "kind": "file",
@@ -212,18 +206,6 @@
     {
       "source": "home/dot_claude/skills/gh-first-workflow/symlink_SKILL.md.tmpl",
       "target": ".claude/skills/gh-first-workflow/SKILL.md",
-      "kind": "symlink",
-      "executable": false
-    },
-    {
-      "source": "home/dot_claude/skills/hcom-orchestration/symlink_SKILL.md.tmpl",
-      "target": ".claude/skills/hcom-orchestration/SKILL.md",
-      "kind": "symlink",
-      "executable": false
-    },
-    {
-      "source": "home/dot_claude/skills/hcom-worker/symlink_SKILL.md.tmpl",
-      "target": ".claude/skills/hcom-worker/SKILL.md",
       "kind": "symlink",
       "executable": false
     },
@@ -633,5 +615,191 @@
       "target": ".local/bin/common",
       "glob": "worktree-gc.sh"
     }
-  ]
+  ],
+  "skills": {
+    "shared_root": ".agents/skills",
+    "pstack_root": ".agents/pstack/skills",
+    "audience": {
+      "convert-to-transformers": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "crit": [
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "crit-cli": [
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "crit-story": [
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "gh-comment-attach-files": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "gh-first-workflow": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "hcom-orchestration": [
+        "omp-orchestrator"
+      ],
+      "hcom-worker": [
+        "omp-worker"
+      ],
+      "humanizer-ja": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "project-map": [
+        "claude"
+      ],
+      "python-uv-workflow": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "shdoc-shell-docs": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "terminal-browser": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-chat": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-dashboard": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-diff": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-domain": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-explain": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-figma": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-knowledge": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "understand-onboard": [
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ]
+    },
+    "pstack": {
+      "audience": [
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "exclude": [
+        "setup-pstack"
+      ]
+    },
+    "codex_disabled": [
+      "crit",
+      "crit-cli",
+      "crit-story",
+      "hcom-orchestration",
+      "hcom-worker",
+      "project-map"
+    ],
+    "omp": {
+      "omp": {
+        "enabled": true,
+        "pstack": true,
+        "ignored": [
+          "hcom-orchestration",
+          "hcom-worker",
+          "project-map",
+          "setup-pstack"
+        ]
+      },
+      "omp-orchestrator": {
+        "enabled": true,
+        "pstack": true,
+        "ignored": [
+          "hcom-worker",
+          "project-map",
+          "setup-pstack"
+        ]
+      },
+      "omp-worker": {
+        "enabled": true,
+        "pstack": true,
+        "ignored": [
+          "hcom-orchestration",
+          "project-map",
+          "setup-pstack"
+        ]
+      },
+      "omp-audit": {
+        "enabled": false,
+        "pstack": false,
+        "ignored": []
+      }
+    }
+  }
 }

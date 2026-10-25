@@ -5,18 +5,6 @@
   "name": "mryfmo-personal-plugins",
   "plugins": [
     {
-      "category": "Productivity",
-      "name": "mryfmo-dev-workflows",
-      "policy": {
-        "authentication": "ON_INSTALL",
-        "installation": "AVAILABLE"
-      },
-      "source": {
-        "path": "./plugins/mryfmo-dev-workflows",
-        "source": "local"
-      }
-    },
-    {
       "category": "Developer Tools",
       "name": "crit",
       "policy": {

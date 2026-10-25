@@ -143,7 +143,9 @@ function check_homebrew() {
 }
 
 #
-# @description Check the key git signs commits with. With commit.gpgsign=true a missing
+# @description Check the key git signs commits with. The managed git config renders
+#   commit.gpgsign only when ~/.ssh/id_ed25519.pub exists at apply time, so signing that is off
+#   is an optional notice. With commit.gpgsign=true (now only through a hand edit) a missing
 #   user.signingkey file makes every commit fail, so it is a required failure; a git config
 #   read that fails (other than "unset") is one too.
 #
@@ -151,8 +153,12 @@ function check_git_signing_key() {
     local gpgsign key status=0
 
     gpgsign="$(git config --get --type=bool commit.gpgsign 2> /dev/null)" || status=$?
-    if [ "${status}" -eq 1 ] || { [ "${status}" -eq 0 ] && [ "${gpgsign}" != "true" ]; }; then
-        printf 'not applicable: commit signing key (commit.gpgsign is not true)\n'
+    if [ "${status}" -eq 1 ]; then
+        warn_optional "commit signing is off (no signing key when the git config was applied); run provision-machine-key, register the key, then chezmoi apply"
+        return 0
+    fi
+    if [ "${status}" -eq 0 ] && [ "${gpgsign}" != "true" ]; then
+        printf 'not applicable: commit signing key (commit.gpgsign is false)\n'
         return 0
     fi
     if [ "${status}" -ne 0 ]; then

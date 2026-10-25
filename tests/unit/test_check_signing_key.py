@@ -46,8 +46,14 @@ class CheckSigningKeyTest(unittest.TestCase):
         self.assertIn("failures=0", result.stdout)
         self.assertIn("found:   commit signing key", result.stdout)
 
-    def test_signing_off_is_not_applicable(self):
-        result = self.check("[user]\n\tsigningkey = /nonexistent.pub\n")
+    def test_signing_unset_is_an_optional_notice(self):
+        result = self.check("[user]\n\tname = t\n")
+        self.assertIn("failures=0", result.stdout)
+        self.assertIn("optional warning: commit signing is off", result.stderr)
+        self.assertIn("provision-machine-key", result.stderr)
+
+    def test_signing_false_is_not_applicable(self):
+        result = self.check("[commit]\n\tgpgsign = false\n")
         self.assertIn("failures=0", result.stdout)
         self.assertIn("not applicable: commit signing key", result.stdout)
 
@@ -59,6 +65,53 @@ class CheckSigningKeyTest(unittest.TestCase):
 
     def test_doctor_runs_the_signing_key_check(self):
         self.assertRegex(SCRIPT.read_text(), r"\n    check_git_signing_key\n")
+
+
+@unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+class GitConfigSigningTemplateTest(unittest.TestCase):
+    """The managed git config signs commits only when the signing key exists at apply time."""
+
+    def render(self, with_key: bool) -> str:
+        with tempfile.TemporaryDirectory(prefix="git-config-template-") as temporary:
+            home = Path(temporary)
+            if with_key:
+                (home / ".ssh").mkdir()
+                (home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA fixture\n")
+            config = home / "chezmoi.toml"
+            config.write_text('[data]\nemail = "t@example.invalid"\n')
+            result = subprocess.run(
+                [
+                    str(shutil.which("chezmoi")),
+                    "--config",
+                    str(config),
+                    "--source",
+                    str(ROOT / "home"),
+                    "--destination",
+                    str(home),
+                    "execute-template",
+                ],
+                input=(ROOT / "home/dot_config/git/config.tmpl").read_text(),
+                env={"PATH": "/usr/bin:/bin", "HOME": str(home)},
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=60,
+            )
+            rendered = result.stdout
+            self.home = str(home)
+        return rendered
+
+    def test_without_the_key_nothing_signing_is_rendered(self):
+        rendered = self.render(with_key=False)
+        for token in ("gpgsign", "signingkey", "format = ssh"):
+            self.assertNotIn(token, rendered)
+        self.assertIn("[user]", rendered)
+
+    def test_with_the_key_signing_is_rendered(self):
+        rendered = self.render(with_key=True)
+        self.assertIn("\tgpgsign = true\n", rendered)
+        self.assertIn("\tformat = ssh\n", rendered)
+        self.assertIn(f"\tsigningkey = {self.home}/.ssh/id_ed25519.pub\n", rendered)
 
 
 if __name__ == "__main__":

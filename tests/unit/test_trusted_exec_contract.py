@@ -1,12 +1,18 @@
 """Exercise tests/unit/trusted_exec_contract.py: each probe fails for the intended reason on a noncompliant consumer stub
 (so an inert attack or a no-op assertion fails the test), then passes a compliant one; fixtures are temporary."""
 
+import errno
+import functools
 import hashlib
 import os
 import pwd
+import shutil
+import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -27,8 +33,65 @@ REDIRECTED, HOOK = "attacker root .*; attacker content", "attacker hook ran"  # 
 ATTACKS = (("environment", f"{REDIRECTED}; {HOOK}"), ("local-worktree", REDIRECTED), ("local-include", HOOK))
 
 
-def run(argv, env, **kw):
-    return subprocess.run(argv, env=env, capture_output=True, check=False, stdin=subprocess.DEVNULL, **kw)
+def run(argv, env, timeout=60, **kw):
+    """A subprocess in a session of its own, with a deadline: one that hangs fails the test, and its whole process
+    group (every descendant) is stopped first, TERM and then KILL, and waited for, so nothing is left running."""
+    proc = subprocess.Popen(
+        argv,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+        **kw,
+    )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out, err = kill_group(proc)
+        raise subprocess.TimeoutExpired(argv, timeout, output=out, stderr=err) from None
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+def kill_group(proc, grace=2):
+    """Stop PROC's process group and return what PROC wrote: TERM, a GRACE-second wait, then KILL to the group in
+    every case (a descendant may ignore TERM and have closed its output, so PROC finishing proves nothing about
+    it), then wait. ESRCH (ProcessLookupError) means the group is already gone. macOS answers EPERM when the
+    group is vanishing, its last members zombies being reaped (measured: 42 of 200 parallel runs, 1 of 40 serial,
+    with ps then showing no member); that EPERM is accepted only after ps shows no live member of the group. Any
+    other errno, or EPERM with a live member, is raised."""
+    out = err = None
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass  # the whole group is gone already
+    try:
+        out, err = proc.communicate(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass  # PROC itself ignores TERM: KILL below
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass  # nothing of the group is left
+    except PermissionError:
+        if live_group_members(proc.pid):
+            raise
+    if out is None:
+        out, err = proc.communicate()
+    return out, err
+
+
+def live_group_members(pgid):
+    """The pids in process group PGID that are not zombies, read from ps (state Z is a zombie)."""
+    listing = subprocess.run(
+        ["/bin/ps", "-axo", "pid=,pgid=,stat="],
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    rows = (line.split() for line in listing.splitlines() if line.strip())
+    return [int(pid) for pid, group, state in rows if int(group) == pgid and not state.startswith("Z")]
 
 
 def naive_git(root, env):
@@ -45,6 +108,51 @@ def careful_git(root, env):
     run([*git, "status", "--porcelain"], env)
     top = run([*git, "rev-parse", "--show-toplevel"], env).stdout.decode().strip()
     return top, Path(root, "probe.txt").read_text()
+
+
+def in_thread(target, timeout=30):
+    """Run TARGET in another thread and return its result; a consumer that hangs (a blocking FIFO open nobody
+    serves) fails the test after TIMEOUT instead of hanging the suite, and its exception is raised here."""
+    import threading
+
+    outcome = {}
+
+    def body():
+        try:
+            outcome["value"] = target()
+        except BaseException as error:  # noqa: BLE001 - handed to the test thread
+            outcome["error"] = error
+
+    thread = threading.Thread(target=body, name="consumer", daemon=True)
+    thread.start()
+    thread.join(timeout)
+    if thread.is_alive():
+        raise AssertionError(f"consumer still running after {timeout}s: it hung")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("value")
+
+
+def read_relative(path):
+    """Read PATH by its bare name from its own directory (the working directory is put back)."""
+    here = os.getcwd()
+    os.chdir(Path(path).parent)
+    try:
+        return Path(Path(path).name).read_bytes()
+    finally:
+        os.chdir(here)
+
+
+def swap_and_restore(probe, swap_in):
+    """Move the input FIFO aside, put SWAP_IN's file in its place until the probe made two attempts, put it back."""
+    aside = probe.base / "aside"
+    os.rename(probe.input, aside)
+    swap_in(probe.input)
+    seen = probe.attempts
+    while probe.attempts < seen + 2:
+        time.sleep(0.001)
+    os.unlink(probe.input)
+    os.rename(aside, probe.input)
 
 
 def naive_io(probe):
@@ -135,12 +243,12 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def case_worker_root(self):
         probe = self.worker_root_probe()
-        naive_io(probe)
+        probe.consume(lambda: naive_io(probe))
         with self.assertRaisesRegex(AssertionError, "worker root: read .*; wrote .*; created ") as red:
             probe.assert_untouched()
         clean = self.worker_root_probe()
         with self.assertRaises(PermissionError):
-            guarded_io(clean)
+            clean.consume(lambda: guarded_io(clean))
         for _ in range(2):  # twice: the probe's own content read must not count as a read
             clean.assert_untouched()
         return str(red.exception)
@@ -228,9 +336,23 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         shell = lambda line: lambda p: run(["/bin/sh", "-c", line, str(p.input)], ALLOWED_ENV)  # a subprocess consumer
         for name, act, reason in (
             ("read", lambda p: Path(p.input).read_text(), "read "),
+            ("read with os.open", lambda p: os.close(os.open(p.input, os.O_RDONLY)), "read "),
+            ("read by a subprocess", shell('cat "$0" > /dev/null'), "read "),
+            ("read by a relative path after chdir", lambda p: read_relative(p.input), "read "),
+            ("read by another thread", lambda p: in_thread(lambda: Path(p.input).read_bytes()), "read "),
+            (
+                "read through a symlink",
+                lambda p: (p.base / "alias").symlink_to(p.input) or (p.base / "alias").read_text(),
+                "read ",
+            ),
+            (
+                "read through a hard link",
+                lambda p: os.link(p.input, p.base / "hard") or (p.base / "hard").read_text(),
+                "read ",
+            ),
             ("wrote", lambda p: Path(p.output).write_text("x"), "wrote "),
             ("created", lambda p: (Path(p.new_output).parent.mkdir(), Path(p.new_output).write_text("x")), "created "),
-            ("appended", shell('echo x >> "$0"'), "wrote "),
+            ("appended", lambda p: run(["/bin/sh", "-c", 'echo x >> "$0"', str(p.output)], ALLOWED_ENV), "wrote "),
             ("replaced", shell('echo x > "$0.t"; mv "$0.t" "$0"'), "wrote "),
             ("removed", lambda p: os.unlink(p.input), "removed "),
         ):
@@ -238,7 +360,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 probe = self.worker_root_probe()
                 self.assertIn("/.claude/worktrees/", str(probe.input))
                 self.assertFalse(Path(probe.new_output).exists())
-                act(probe)
+                probe.consume(functools.partial(act, probe))
                 with self.assertRaisesRegex(AssertionError, reason):
                     probe.assert_untouched()
 
@@ -296,13 +418,230 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
+    def assert_stat_ran(self, result, path):
+        """/usr/bin/stat exited 0 and described PATH: the metadata look really happened."""
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(os.fsencode(path.name), result.stdout)
+
+    def test_metadata_reads_and_other_files_are_not_reads_of_the_input(self):
+        # U92 root cause: the probe saw a read as the input's access time leaving 0, and any process that opens a fresh
+        # regular file sets it as well (on the macOS host a scanner read new temporary files within a second), so the
+        # compliant consumer failed about once in 64 runs. The input is now a FIFO: only an open for reading counts.
+        probe = self.worker_root_probe()
+        self.assertTrue(stat.S_ISFIFO(os.lstat(probe.input).st_mode))
+
+        def looks_only():
+            os.stat(probe.input), os.path.realpath(probe.input), os.access(probe.input, os.R_OK)
+            os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
+            Path(probe.base / "elsewhere").read_text()
+            return run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking, not opening
+
+        self.assert_stat_ran(probe.consume(looks_only), probe.input)
+        # Injected: a stat that fails, or exits 0 without describing the input, fails that check.
+        for line, why in (('/usr/bin/stat "$0"; exit 4', "exit"), (': "$0"', "output")):
+            with self.subTest(injected=why):
+                result = probe.consume(functools.partial(run, ["/bin/sh", "-c", line, str(probe.input)], ALLOWED_ENV))
+                with self.assertRaises(AssertionError):
+                    self.assert_stat_ran(result, probe.input)
+        with self.assertRaises(PermissionError):
+            probe.consume(lambda: guarded_io(probe))
+        probe.assert_untouched()
+        probe.assert_untouched()
+
+    def assert_eof(self, result):
+        """A reader of the sentinel exits 0 and reads nothing: EOF, never content."""
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(b"", result.stdout)
+
+    def test_a_blocking_reader_never_hangs_and_gets_eof(self):
+        probe = self.worker_root_probe()
+        self.assert_eof(probe.consume(lambda: run(["/bin/cat", str(probe.input)], ALLOWED_ENV)))
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+        probe = self.worker_root_probe()
+        self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+        # Injected: a reader that gets EOF and still exits non-zero, or exits 0 with output, fails the EOF check.
+        for line, why in (('cat "$0"; exit 7', "exit"), ('cat "$0"; echo leaked', "output")):
+            with self.subTest(injected=why):
+                probe = self.worker_root_probe()
+                result = probe.consume(functools.partial(run, ["/bin/sh", "-c", line, str(probe.input)], ALLOWED_ENV))
+                with self.assertRaises(AssertionError):
+                    self.assert_eof(result)
+
+    def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
+        # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
+        # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is
+        # in scope; one swapped and restored between two polls is not (see WorkerRoot's docstring).
+        for name, swap_in in (
+            ("regular file", lambda path: path.write_text(tec.LEGIT)),
+            ("another FIFO", lambda path: os.mkfifo(path)),
+            ("symlink", lambda path: path.symlink_to("/dev/null")),
+        ):
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+                probe.consume(functools.partial(swap_and_restore, probe, swap_in))
+                self.assertEqual(probe._identity[probe.input][0], os.lstat(probe.input).st_ino)  # restored
+                with self.assertRaisesRegex(AssertionError, r"wrote .* \(replaced\)"):
+                    probe.assert_untouched()
+
+    def test_a_writer_to_the_input_never_hangs(self):
+        # A writer blocked on the open is released by the probe's next attempt (its write then fails or is dropped).
+        probe = self.worker_root_probe()
+        probe.consume(lambda: run(["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], ALLOWED_ENV))
+        probe.consume(lambda: open(probe.input, "wb").close())
+
+    def test_a_consumer_past_its_deadline_fails_instead_of_hanging(self):
+        import threading
+
+        probe, forever = self.worker_root_probe(), threading.Event()
+        self.addCleanup(forever.set)
+        started = time.monotonic()
+        with self.assertRaisesRegex(AssertionError, "consumer thread still running after the deadline"):
+            probe.consume(forever.wait, deadline=1)
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual({}, tec._CONSUMER_ERRORS)  # the timed-out worker is not left registered
+
+    def test_a_reader_blocked_past_the_deadline_is_released_and_recorded(self):
+        # No attempt runs until the deadline (one long join), so the reader is still blocked on the sentinel then:
+        # the deadline's attempt releases it, the grace lets it finish, and its read is recorded.
+        probe = self.worker_root_probe()
+        with mock.patch.object(tec.WorkerRoot, "POLL_S", 3.0):
+            started = time.monotonic()
+            late_reader = lambda: (time.sleep(0.2), Path(probe.input).read_bytes())[1]  # opens after the first attempt
+            self.assertEqual(b"", probe.consume(late_reader, deadline=1))
+            self.assertGreaterEqual(time.monotonic() - started, 1)  # released at the deadline, not before
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+
+    def assert_gone(self, pid, timeout=10):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        self.fail(f"process {pid} is still running after its group was stopped")
+
+    def test_a_descendant_that_ignores_term_and_closed_its_output_is_killed(self):
+        # Audit round 10 of 8ae07078: after TERM the shell exits and the pipes close, so a group stop that returned
+        # then skipped KILL for a descendant that ignores TERM and had closed its output.
+        inner = 'trap "" TERM; echo $$; exec >/dev/null 2>&1; sleep 1000'
+        with self.assertRaises(subprocess.TimeoutExpired) as expired:
+            run(["/bin/sh", "-c", 'sh -c "$0" & wait', inner], ALLOWED_ENV, timeout=1)
+        self.assert_gone(int(expired.exception.output.split()[0]))
+
+    def test_kill_group_accepts_eperm_only_for_a_successful_empty_ps_listing(self):
+        # Failure injection for the EPERM decision: KILL to the group answers EPERM, and ps answers (a) a failure,
+        # (b) output that cannot be parsed, (c) a live member of the group, or (d) a successful listing with no
+        # member of the group (none at all, or zombies only). Only (d) accepts the EPERM; the others raise.
+        pgid = 424242
+
+        class Proc:
+            pid = pgid
+
+            def communicate(self, timeout=None):
+                return b"out", b""
+
+        def killpg(group, sig):
+            if sig == signal.SIGKILL:
+                raise PermissionError(errno.EPERM, "Operation not permitted")
+
+        def ps(stdout="", returncode=0):
+            def fake(argv, **kwargs):
+                self.assertEqual("/bin/ps", argv[0])
+                if returncode:
+                    raise subprocess.CalledProcessError(returncode, argv)
+                return subprocess.CompletedProcess(argv, returncode, stdout, "")
+
+            return fake
+
+        cases = (
+            ("ps fails", ps(returncode=1), subprocess.CalledProcessError),
+            ("ps unparsable", ps(stdout="not a listing\n"), ValueError),
+            ("live member", ps(stdout=f"  77 {pgid} S+\n 1 1 Ss\n"), PermissionError),
+            ("empty listing", ps(stdout="  1 1 Ss\n"), None),
+            ("zombies only", ps(stdout=f"  1 1 Ss\n 78 {pgid} Z\n"), None),
+        )
+        for name, fake_ps, raised in cases:
+            with (
+                self.subTest(name),
+                mock.patch.object(os, "killpg", killpg),
+                mock.patch.object(subprocess, "run", fake_ps),
+            ):
+                if raised is None:
+                    self.assertEqual((b"out", b""), kill_group(Proc()))
+                else:
+                    with self.assertRaises(raised):
+                        kill_group(Proc())
+
+    def test_a_timed_out_subprocess_consumer_leaves_no_descendant(self):
+        # A shell whose child blocks on a FIFO nobody serves: at the timeout the whole process group is stopped.
+        fifo = self.scratch("trusted-exec-group-") / "fifo"
+        os.mkfifo(fifo)
+        with self.assertRaises(subprocess.TimeoutExpired) as expired:
+            run(["/bin/sh", "-c", 'cat "$0" & echo "$!"; wait', str(fifo)], ALLOWED_ENV, timeout=1)
+        self.assert_gone(int(expired.exception.output.split()[0]))
+
+    def test_an_errno_other_than_enxio_fails_the_probe(self):
+        # No except-all: the only answers the probe reads are ENXIO (no reader) and ENOENT/ELOOP (removed, replaced).
+        probe, real = self.worker_root_probe(), os.open
+
+        def eio(path, flags, *args, **kwargs):
+            if os.fspath(path) == os.fspath(probe.input) and flags & os.O_ACCMODE == os.O_WRONLY:
+                raise OSError(errno.EIO, "injected I/O error", os.fspath(path))
+            return real(path, flags, *args, **kwargs)
+
+        with mock.patch.object(tec.os, "open", eio):
+            probe.consume(lambda: None)
+        with self.assertRaisesRegex(AssertionError, r"cannot tell whether .* is being read: .*EIO|injected I/O error"):
+            probe.assert_untouched()
+
+    def test_a_consumer_exception_is_raised_to_the_caller_and_no_thread_is_left(self):
+        import threading
+
+        probe = self.worker_root_probe()
+        before = threading.active_count()
+        with self.assertRaisesRegex(ValueError, "from the consumer"):
+            probe.consume(lambda: (_ for _ in ()).throw(ValueError("from the consumer")))
+        self.assertEqual(7, probe.consume(lambda: 7))
+        self.assertEqual(before, threading.active_count())
+        self.assertEqual({}, tec._CONSUMER_ERRORS)
+
+    def scratch(self, prefix):
+        base = Path(tempfile.mkdtemp(prefix=prefix)).resolve()
+        self.addCleanup(shutil.rmtree, base, True)
+        return base
+
+    def test_the_self_test_refuses_a_probe_whose_reads_would_not_be_seen(self):
+        # Synchronous: ENXIO without a reader, success with the probe's own reader, ENXIO again after it closes.
+        for name, fake in (
+            ("writer never succeeds", lambda self: None),
+            ("writer always succeeds", lambda self: os.open(os.devnull, os.O_WRONLY)),
+        ):
+            with (
+                self.subTest(name),
+                mock.patch.object(tec.WorkerRoot, "_open_writer", fake),
+                self.assertRaises(RuntimeError),
+            ):
+                tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
+        with (
+            mock.patch.object(tec.WorkerRoot, "_open_writer", side_effect=OSError(errno.EIO, "injected")),
+            self.assertRaisesRegex(OSError, "injected"),
+        ):
+            tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
+
     def test_worker_root_probe_detects_a_same_length_overwrite(self):
         identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)
-        for name in ("input", "output"):  # in place, same length, the mtime put back: what a coarse clock leaves behind
+        for name in ("output",):  # in place, same length, the mtime put back: what a coarse clock leaves behind
             with self.subTest(name):
                 probe = self.worker_root_probe()
                 path, st = getattr(probe, name), os.stat(getattr(probe, name))
-                with open(path, "r+b") as handle:  # opened to write only; nothing is read
+                with os.fdopen(
+                    os.open(path, os.O_WRONLY), "wb"
+                ) as handle:  # write-only, no truncation: nothing is read
                     handle.write(tec.LEGIT.upper().encode())
                 os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
                 self.assertEqual(identity(st), identity(os.stat(path)), "precondition: inode, size, mtime unchanged")

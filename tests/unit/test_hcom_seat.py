@@ -705,7 +705,9 @@ class HcomSeatTest(unittest.TestCase):
         signing = Path(self.temp.name) / "signing.gitconfig"
         signing.write_text("[commit]\n\tgpgsign = true\n[tag]\n\tgpgsign = true\n[gpg]\n\tprogram = /usr/bin/false\n")
         clone = Path(self.seats, "worker")
-        host = {**self.env, "GIT_CONFIG_GLOBAL": str(signing)}
+        # The caller's own GIT_CONFIG_COUNT/_KEY_n/_VALUE_n (a test run that turns signing off) outrank the file.
+        inherited = ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")
+        host = {k: v for k, v in self.env.items() if not k.startswith(inherited)} | {"GIT_CONFIG_GLOBAL": str(signing)}
 
         def commit(env, message):
             argv = ["git", "-C", str(clone), "commit", "-q", "--allow-empty", "-m", message]

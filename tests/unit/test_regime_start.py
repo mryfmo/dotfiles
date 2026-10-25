@@ -119,11 +119,15 @@ class RegimeStartTest(unittest.TestCase):
         )  # fmt: skip
         self.addCleanup(lambda: process.poll() is None and process.kill())
         started = Path(f"{pause}.started")
-        for _ in range(300):
-            if started.exists():
+        # hcom-seat's checks before it launches (U85) take seconds, more under a loaded parallel run: wait up to 120 s,
+        # and stop at once with the pass's stderr if it ends without reaching the launch.
+        for _ in range(1200):
+            if started.exists() or process.poll() is not None:
                 break
             time.sleep(0.1)
-        self.assertTrue(started.exists(), "the pass reached its launch")
+        self.assertTrue(
+            started.exists(), f"the pass reached its launch: {'' if process.poll() is None else process.stderr.read()}"
+        )
         return process, pause
 
     def background(self, lever, *args, **extra):

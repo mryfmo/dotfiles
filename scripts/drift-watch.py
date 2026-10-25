@@ -14,19 +14,22 @@ The checks, all pure reads (no installs, no host state):
   release at least minimum_release_age old (the window the same file sets, 72h today).
 - manifest-pin: every `pin` and `fallback.pin` in home/dot_agents/agent-config.yaml assets, with the same window;
   a git-commit pin is drift when the default branch has commits past it older than the window.
-- plugin-pin: every Claude and Codex plugin pin in that manifest against the plugin.json version its marketplace
-  serves now (a marketplace serves its default branch, so there is no release date to apply the window to).
+- plugin-pin: every Claude and Codex plugin pin in that manifest against each version its marketplace serves now: the
+  catalog entry's `version` when it has one and, always, the plugin.json its source points at (a marketplace serves
+  its default branch, so there is no release date to apply the window to).
 - unrecorded: a `pin: unknown`.
 - retired-term: the retired-term lint (RETIRED_TERM_LINT, owned by U72) when this tree has it; each line it prints
   is a finding.
 A pin whose upstream the watch cannot read, and the retired-term lint while it is absent, are listed under "Not
-watched": they are known gaps, not findings. --upstream replaces the network with a JSON object mapping each URL to
-its decoded response (a URL missing from it is a read failure); --now fixes the clock. The GitHub token in
+watched": they are known gaps, not findings. Every upstream payload goes through its source's parse function, and one
+that is not exactly the expected shape is a read failure. --upstream replaces the network with a JSON object mapping
+each URL to its decoded response (a URL missing from it is a read failure); --now fixes the clock. The GitHub token in
 GITHUB_TOKEN, when set, is sent to api.github.com only.
 """
 
 import argparse
 import datetime
+import http.client
 import json
 import os
 import posixpath
@@ -68,8 +71,6 @@ PLUGIN_FILES = {
     "claude-plugin": (".claude-plugin/marketplace.json", ".claude-plugin/plugin.json"),
     "codex-plugin": (".agents/plugins/marketplace.json", ".codex-plugin/plugin.json"),
 }
-# What a response of an unexpected shape raises while it is read: a read failure, never "no drift".
-SHAPE_ERRORS = (KeyError, TypeError, ValueError, AttributeError)
 
 
 class ReadError(Exception):
@@ -78,6 +79,41 @@ class ReadError(Exception):
     def __init__(self, url: str, reason: str, status: int | None = None) -> None:
         super().__init__(f"{url}: {reason}")
         self.status = status
+
+
+MISSING = object()
+
+
+class Shape:
+    """Checks one upstream payload against the shape its parser expects; any mismatch is a ReadError for its URL."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+    def fail(self, what: str) -> ReadError:
+        return ReadError(self.url, f"unexpected response: {what}")
+
+    def of(self, value, kind, what: str):
+        if not isinstance(value, kind) or (isinstance(value, bool) and kind is int):
+            raise self.fail(f"{what} is {type(value).__name__}")
+        return value
+
+    def key(self, obj, name: str, kind, what: str = "the response", default=MISSING):
+        obj = self.of(obj, dict, what)
+        if name not in obj:
+            if default is not MISSING:
+                return default
+            raise self.fail(f"{what} has no {name}")
+        return self.of(obj[name], kind, f"{what}.{name}")
+
+    def time(self, text: str, what: str) -> datetime.datetime:
+        try:
+            value = parse_time(text)
+        except ValueError:
+            raise self.fail(f"{what} {text!r} is no ISO time") from None
+        if value.tzinfo is None:
+            raise self.fail(f"{what} {text!r} has no time zone")
+        return value
 
 
 @dataclass(frozen=True)
@@ -139,8 +175,10 @@ class Upstream:
                 return json.loads(response.read())
         except urllib.error.HTTPError as error:
             raise ReadError(url, f"HTTP {error.code}", error.code) from None
-        except (urllib.error.URLError, TimeoutError, ValueError) as error:
-            raise ReadError(url, str(error)) from None
+        # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
+        # IncompleteRead; ValueError covers a body that is no UTF-8 JSON.
+        except (OSError, http.client.HTTPException, ValueError) as error:
+            raise ReadError(url, f"{type(error).__name__}: {error}") from None
 
 
 def parse_time(text: str) -> datetime.datetime:
@@ -175,50 +213,123 @@ def github_repo(text: str) -> str | None:
     return match[1] if match else None
 
 
-def releases_of(upstream: Upstream, kind: str, name: str) -> list[Release]:
-    if kind == "github":
-        items = upstream.get(f"{GITHUB_API}/repos/{name}/releases?per_page=100")
-        return [
+def release_url(kind: str, name: str) -> str:
+    return {
+        "github": f"{GITHUB_API}/repos/{name}/releases?per_page=100",
+        "npm": f"https://registry.npmjs.org/{urllib.parse.quote(name, safe='@')}",
+        "pypi": f"https://pypi.org/pypi/{name}/json",
+        "python": "https://www.python.org/api/v2/downloads/release/?is_published=true",
+        "node": "https://nodejs.org/dist/index.json",
+        "gcloud": "https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json",
+    }[kind]
+
+
+def parse_github_releases(doc, shape: Shape) -> list[Release]:
+    releases = []
+    for item in shape.of(doc, list, "the release list"):
+        published = shape.key(item, "published_at", (str, type(None)), "a release")
+        stable = not shape.key(item, "draft", bool, "a release") and not shape.key(
+            item, "prerelease", bool, "a release"
+        )
+        releases.append(
             Release(
-                i["tag_name"],
-                i["published_at"] and parse_time(i["published_at"]),
-                not i["draft"] and not i["prerelease"],
+                shape.key(item, "tag_name", str, "a release"),
+                published and shape.time(published, "published_at"),
+                stable,
             )
-            for i in items
-        ]
-    if kind == "npm":
-        doc = upstream.get(f"https://registry.npmjs.org/{urllib.parse.quote(name, safe='@')}")
-        times = doc["time"]
-        return [
-            Release(v, parse_time(times[v]), not meta.get("deprecated"))
-            for v, meta in doc["versions"].items()
-            if v in times
-        ]
-    if kind == "pypi":
-        doc = upstream.get(f"https://pypi.org/pypi/{name}/json")
-        found = []
-        for version, files in doc["releases"].items():
-            if files:
-                published = min(parse_time(f["upload_time_iso_8601"]) for f in files)
-                found.append(Release(version, published, not all(f["yanked"] for f in files)))
-        return found
-    if kind == "python":
-        # The feed also lists other products ("Python install manager 26.4"); CPython's are "Python X.Y.Z".
-        items = upstream.get("https://www.python.org/api/v2/downloads/release/?is_published=true")
-        return [
-            Release(match[1], parse_time(i["release_date"]), not i["pre_release"])
-            for i in items
-            if (match := re.fullmatch(r"Python (\d+\.\d+\.\d+\S*)", i["name"]))
-        ]
-    if kind == "node":
-        # index.json dates a release by day only; the end of that day never makes a release look older than it is.
-        items = upstream.get("https://nodejs.org/dist/index.json")
-        return [Release(i["version"], parse_time(f"{i['date']}T23:59:59Z"), True) for i in items]
-    if kind == "gcloud":
-        doc = upstream.get("https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json")
-        revision = datetime.datetime.strptime(str(doc["revision"]), "%Y%m%d%H%M%S").replace(tzinfo=datetime.UTC)
-        return [Release(doc["version"], revision, True)]
-    raise ValueError(kind)
+        )
+    return releases
+
+
+def parse_npm(doc, shape: Shape) -> list[Release]:
+    times = shape.key(doc, "time", dict)
+    releases = []
+    for version, meta in shape.key(doc, "versions", dict).items():
+        deprecated = shape.key(meta, "deprecated", (str, bool), f"versions.{version}", default=False)
+        published = shape.time(shape.key(times, version, str, "time"), f"time.{version}")
+        releases.append(Release(version, published, not deprecated))
+    return releases
+
+
+def parse_pypi(doc, shape: Shape) -> list[Release]:
+    # A yanked file is no release: a version's age is its earliest non-yanked upload, and a version whose files are
+    # all yanked (or that has none) is skipped.
+    releases = []
+    for version, files in shape.key(doc, "releases", dict).items():
+        uploads = []
+        for file in shape.of(files, list, f"releases.{version}"):
+            uploaded = shape.key(file, "upload_time_iso_8601", str, f"a {version} file")
+            if not shape.key(file, "yanked", bool, f"a {version} file"):
+                uploads.append(shape.time(uploaded, "upload_time_iso_8601"))
+        if uploads:
+            releases.append(Release(version, min(uploads), True))
+    return releases
+
+
+def parse_python(doc, shape: Shape) -> list[Release]:
+    # The feed also lists other products ("Python install manager 26.4"); CPython's are "Python X.Y.Z".
+    releases = []
+    for item in shape.of(doc, list, "the release list"):
+        name = shape.key(item, "name", str, "a release")
+        if match := re.fullmatch(r"Python (\d+\.\d+\.\d+\S*)", name):
+            published = shape.time(shape.key(item, "release_date", str, name), "release_date")
+            releases.append(Release(match[1], published, not shape.key(item, "pre_release", bool, name)))
+    return releases
+
+
+def parse_node(doc, shape: Shape) -> list[Release]:
+    # index.json dates a release by day only; the end of that day never makes a release look older than it is.
+    releases = []
+    for item in shape.of(doc, list, "index.json"):
+        date = shape.key(item, "date", str, "a release")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            raise shape.fail(f"date {date!r} is no YYYY-MM-DD")
+        releases.append(Release(shape.key(item, "version", str, "a release"), parse_time(f"{date}T23:59:59Z"), True))
+    return releases
+
+
+def parse_gcloud(doc, shape: Shape) -> list[Release]:
+    revision = str(shape.key(doc, "revision", int))
+    try:
+        published = datetime.datetime.strptime(revision, "%Y%m%d%H%M%S").replace(tzinfo=datetime.UTC)
+    except ValueError:
+        raise shape.fail(f"revision {revision} is no timestamp") from None
+    return [Release(shape.key(doc, "version", str), published, True)]
+
+
+RELEASE_PARSERS = {
+    "github": parse_github_releases,
+    "npm": parse_npm,
+    "pypi": parse_pypi,
+    "python": parse_python,
+    "node": parse_node,
+    "gcloud": parse_gcloud,
+}
+
+
+def releases_of(upstream: Upstream, kind: str, name: str) -> list[Release]:
+    url = release_url(kind, name)
+    return RELEASE_PARSERS[kind](upstream.get(url), Shape(url))
+
+
+def parse_announcements(doc, shape: Shape) -> list[tuple[int, str, str]]:
+    announcements = []
+    for item in shape.of(doc, list, "the issue list"):
+        if "pull_request" not in shape.of(item, dict, "an issue"):
+            number = shape.key(item, "number", int, "an issue")
+            announcements.append(
+                (number, shape.key(item, "state", str, "an issue"), shape.key(item, "title", str, "an issue"))
+            )
+    return announcements
+
+
+def parse_compare(doc, shape: Shape) -> tuple[str, int, list[tuple[str, datetime.datetime]]]:
+    commits = []
+    for item in shape.key(doc, "commits", list):
+        committer = shape.key(shape.key(item, "commit", dict, "a commit"), "committer", dict, "commit")
+        date = shape.time(shape.key(committer, "date", str, "committer"), "committer.date")
+        commits.append((shape.key(item, "sha", str, "a commit"), date))
+    return shape.key(doc, "status", str), shape.key(doc, "ahead_by", int), commits
 
 
 def line_of(root: Path, path: str, pattern: str, after: str = "") -> str:
@@ -259,9 +370,6 @@ class Watch:
         except ReadError as error:
             self.failures.append(f"{check} {subject}: {error}")
             return
-        except SHAPE_ERRORS as error:
-            self.failures.append(f"{check} {subject}: unexpected {kind} response ({error!r})")
-            return
         if not releases:
             self.unwatched.append(f"{check} {subject} {pin} ({where}): {kind} {name} lists no release")
             return
@@ -280,16 +388,9 @@ class Watch:
             return
         url = f"{GITHUB_API}/repos/{RUNNER_IMAGES}/issues?labels=Announcement&state=all&per_page=100"
         try:
-            announcements = [
-                (int(i["number"]), str(i["state"]), str(i["title"]))
-                for i in self.upstream.get(url)
-                if "pull_request" not in i
-            ]
+            announcements = parse_announcements(self.upstream.get(url), Shape(url))
         except ReadError as error:
             self.failures.append(f"runner-image: {error}")
-            return
-        except SHAPE_ERRORS as error:
-            self.failures.append(f"runner-image: unexpected issues response ({error!r})")
             return
         for label, files in sorted(used.items()):
             image = re.match(r"(ubuntu|macos|windows)-(\d+)", label)
@@ -353,12 +454,11 @@ class Watch:
                     self.compare_release("manifest-pin", subject, str(pin), *source, where)
 
     def compare_commit(self, subject: str, pin: str, repo: str, where: str) -> None:
+        repo_url = f"{GITHUB_API}/repos/{repo}"
         try:
-            branch = self.upstream.get(f"{GITHUB_API}/repos/{repo}")["default_branch"]
-            compare = self.upstream.get(f"{GITHUB_API}/repos/{repo}/compare/{pin}...{branch}")
-            status, ahead = str(compare["status"]), int(compare["ahead_by"])
-            dated = [(c["sha"], c["commit"]["committer"]["date"]) for c in compare["commits"]]
-            eligible = [(sha, date) for sha, date in dated if parse_time(date) <= self.cutoff]
+            branch = Shape(repo_url).key(self.upstream.get(repo_url), "default_branch", str)
+            compare_url = f"{GITHUB_API}/repos/{repo}/compare/{pin}...{branch}"
+            status, ahead, commits = parse_compare(self.upstream.get(compare_url), Shape(compare_url))
         except ReadError as error:
             if error.status == 404:
                 self.findings.append(
@@ -367,16 +467,14 @@ class Watch:
             else:
                 self.failures.append(f"manifest-pin {subject}: {error}")
             return
-        except SHAPE_ERRORS as error:
-            self.failures.append(f"manifest-pin {subject}: unexpected compare response ({error!r})")
-            return
+        eligible = [(sha, date) for sha, date in commits if date <= self.cutoff]
         if status in ("diverged", "behind"):
             self.findings.append(
                 Finding("manifest-pin", subject, pin[:12], f"not on {repo}@{branch} ({status})", where)
             )
         elif eligible:
             sha, date = eligible[-1]
-            upstream = f"{branch} is {ahead} commits ahead; newest past the window {sha[:12]} ({date[:10]})"
+            upstream = f"{branch} is {ahead} commits ahead; newest past the window {sha[:12]} ({date:%Y-%m-%d})"
             self.findings.append(Finding("manifest-pin", subject, pin[:12], upstream, where))
 
     def plugin_pins(self, asset_name: str, asset: dict) -> None:
@@ -395,37 +493,50 @@ class Watch:
                 )
                 continue
             try:
-                version = self.plugin_version(repo, plugin, marketplace_file, manifest_file)
+                served, readable = self.plugin_versions(repo, plugin, marketplace_file, manifest_file)
             except ReadError as error:
                 self.failures.append(f"plugin-pin {subject}: {error}")
                 continue
-            except SHAPE_ERRORS as error:
-                self.failures.append(f"plugin-pin {subject}: unexpected marketplace response ({error!r})")
-                continue
-            if version is None:
-                self.unwatched.append(f"{subject} {pin} ({where}): {repo} lists no readable source for {plugin}")
-            elif version != pin:
-                self.findings.append(Finding("plugin-pin", subject, pin, f"{version} (marketplace {repo})", where))
+            if not readable:
+                self.unwatched.append(
+                    f"{subject} {pin} ({where}): {repo} serves {plugin} from a source the watch cannot read"
+                )
+            differing = [f"{version} ({place})" for place, version in served if version != pin]
+            if differing:
+                self.findings.append(Finding("plugin-pin", subject, pin, ", ".join(differing), where))
 
-    def plugin_version(self, repo: str, plugin: str, marketplace_file: str, manifest_file: str) -> str | None:
-        catalog = self.upstream.get(f"{GITHUB_API}/repos/{repo}/contents/{marketplace_file}", raw=True)
-        item = next((p for p in catalog.get("plugins", []) if p.get("name") == plugin), None)
+    def plugin_versions(
+        self, repo: str, plugin: str, marketplace_file: str, manifest_file: str
+    ) -> tuple[list[tuple[str, str]], bool]:
+        """Every version the marketplace serves for plugin (its catalog entry's and its plugin.json's, each with where
+        it was read), and whether the plugin.json was readable. A catalog version never stands in for plugin.json."""
+        url = f"{GITHUB_API}/repos/{repo}/contents/{marketplace_file}"
+        shape = Shape(url)
+        items = shape.key(self.upstream.get(url, raw=True), "plugins", list)
+        item = next((p for p in items if shape.key(p, "name", str, "a plugin") == plugin), None)
         if item is None:
-            return f"absent from {marketplace_file}"
-        if item.get("version"):
-            return str(item["version"])
-        source, ref = item.get("source"), ""
+            return [(f"{repo}/{marketplace_file}", "absent")], True
+        served = []
+        if (version := shape.key(item, "version", str, plugin, default=None)) is not None:
+            served.append((f"{repo}/{marketplace_file}", version))
+        source, ref = shape.key(item, "source", (str, dict), plugin), ""
         if isinstance(source, str):
             path = posixpath.normpath(posixpath.join(source, manifest_file))
-        elif isinstance(source, dict) and source.get("source") in ("url", "github"):
-            repo = github_repo(str(source.get("url") or source.get("repo") or ""))
-            path, ref = manifest_file, str(source.get("sha") or source.get("ref") or "")
-            if repo is None:
-                return None
         else:
-            return None
-        query = f"?ref={urllib.parse.quote(ref)}" if ref else ""
-        return str(self.upstream.get(f"{GITHUB_API}/repos/{repo}/contents/{path}{query}", raw=True)["version"])
+            kind = shape.key(source, "source", str, f"{plugin}.source")
+            location = shape.key(source, "url" if kind == "url" else "repo", str, f"{plugin}.source", default="")
+            repo = github_repo(location) if kind in ("url", "github") else None
+            if repo is None:
+                return served, False
+            path = manifest_file
+            ref = shape.key(source, "sha", str, f"{plugin}.source", default="") or shape.key(
+                source, "ref", str, f"{plugin}.source", default=""
+            )
+        manifest_url = f"{GITHUB_API}/repos/{repo}/contents/{path}" + (f"?ref={urllib.parse.quote(ref)}" if ref else "")
+        served.append(
+            (f"{repo}/{path}", Shape(manifest_url).key(self.upstream.get(manifest_url, raw=True), "version", str))
+        )
+        return served, True
 
     def retired_terms(self) -> None:
         lint = self.root / RETIRED_TERM_LINT

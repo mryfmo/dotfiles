@@ -7,6 +7,7 @@ reaches api.github.com only. The watch runs as a subprocess (`python -I`), excep
 """
 
 import copy
+import http.client
 import importlib.util
 import json
 import os
@@ -296,6 +297,62 @@ class DriftWatchTest(unittest.TestCase):
                 self.assertEqual(4, status, report)
                 self.assertIn("## Read failures (1)", report)
 
+    def test_a_payload_that_is_not_exactly_the_expected_shape_is_a_read_failure(self):
+        starship = f"{GH}/starship/starship/releases?per_page=100"
+        bats = f"{GH}/bats-core/bats-core/releases?per_page=100"
+        python = "https://www.python.org/api/v2/downloads/release/?is_published=true"
+        catalog = f"{GH}/DietrichGebert/ponytail/contents/.claude-plugin/marketplace.json"
+        for name, change in (
+            ("a release list that is an object", lambda upstream: upstream.update({starship: {}})),
+            ("a draft flag that is a string", lambda upstream: upstream[bats][2].update({"draft": "no"})),
+            (
+                "an issue number that is a string",
+                lambda upstream: upstream[RUNNER_ISSUES][0].update({"number": "13518"}),
+            ),
+            (
+                "an npm version without a time",
+                lambda upstream: upstream["https://registry.npmjs.org/ccusage"]["versions"].update({"20.0.50": {}}),
+            ),
+            (
+                "a release date that is no time",
+                lambda upstream: upstream[python][0].update({"release_date": "yesterday"}),
+            ),
+            ("compare commits that are no list", lambda upstream: upstream[BREW_COMPARE].update({"commits": {}})),
+            (
+                "a catalog version that is a number",
+                lambda upstream: upstream[catalog]["plugins"][0].update({"version": 5}),
+            ),
+        ):
+            with self.subTest(name):
+                upstream = copy.deepcopy(CURRENT_UPSTREAM)
+                change(upstream)
+                status, report = self.watch(["ubuntu-24.04", "macos-15"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+                self.assertEqual(4, status, report)
+                self.assertIn("## Read failures (1)", report)
+                self.assertIn("unexpected response", report)
+
+    def test_a_catalog_version_never_hides_an_advanced_plugin_json(self):
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[f"{GH}/DietrichGebert/ponytail/contents/.claude-plugin/marketplace.json"]["plugins"][0]["version"] = (
+            "5.3.2"
+        )
+        upstream[f"{GH}/DietrichGebert/ponytail/contents/.claude-plugin/plugin.json"] = {"version": "5.4.0"}
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(3, status, report)
+        self.assertEqual({("plugin-pin", "claude-plugins.ponytail@ponytail")}, self.findings(report))
+        self.assertIn("5.4.0 (DietrichGebert/ponytail/.claude-plugin/plugin.json)", report)
+
+    def test_a_yanked_file_does_not_age_a_pypi_release(self):
+        # 0.7.33's only installable file is 12 hours old; its old yanked file must not put it past the window.
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream["https://pypi.org/pypi/hcom/json"]["releases"]["0.7.33"] = [
+            {"upload_time_iso_8601": "2026-10-01T00:00:00.000000Z", "yanked": True},
+            {"upload_time_iso_8601": "2026-10-24T12:00:00.000000Z", "yanked": False},
+        ]
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(0, status, report)
+        self.assertEqual(set(), self.findings(report))
+
     def test_a_commit_pin_upstream_no_longer_has_is_drift(self):
         upstream = copy.deepcopy(CURRENT_UPSTREAM)
         upstream[BREW_COMPARE] = {"http_status": 404}
@@ -388,6 +445,23 @@ class UpstreamTokenTest(unittest.TestCase):
         ):
             self.module.Upstream(None, "").get("https://api.github.com/x")
         self.assertEqual(500, raised.exception.status)
+
+    def test_an_error_while_the_body_is_read_is_a_read_failure(self):
+        for name, read in (
+            ("connection reset", mock.Mock(side_effect=ConnectionResetError(54, "Connection reset by peer"))),
+            ("incomplete read", mock.Mock(side_effect=http.client.IncompleteRead(b"{", 10))),
+            ("timeout", mock.Mock(side_effect=TimeoutError("timed out"))),
+            ("truncated JSON", mock.Mock(return_value=b'{"tag_name": ')),
+            ("not UTF-8", mock.Mock(return_value=b"\xff\xfe")),
+        ):
+            response = mock.MagicMock()
+            response.__enter__.return_value.read = read
+            with (
+                self.subTest(name),
+                mock.patch.object(self.module.OPENER, "open", return_value=response),
+                self.assertRaises(self.module.ReadError),
+            ):
+                self.module.Upstream(None, "").get("https://api.github.com/x")
 
 
 WORKFLOW = ROOT / ".github/workflows/drift-watch.yml"

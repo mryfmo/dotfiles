@@ -140,7 +140,10 @@ if [[ ${role} == audit ]]; then
     scratch_real=$(realpath "${scratch}") || refuse "cannot resolve the scratch directory ${scratch}"
     run_dir=${scratch_real}/cwd
     # Every discovery walk stops at TMPDIR; a scratch directory inside the reviewed tree would put the head above it.
-    case "${scratch_real}/" in "${work_tree%/}/"*) refuse "the scratch directory ${scratch_real} is inside the reviewed worktree ${work_tree}" ;; esac
+    # Both operands are canonical: scratch_real comes from realpath, and git resolves symlinks in --show-toplevel.
+    case "${scratch_real}/" in # lint-comparisons: allow both paths are already canonical (see above)
+    "${work_tree%/}/"*) refuse "the scratch directory ${scratch_real} is inside the reviewed worktree ${work_tree}" ;;
+    esac
     mkdir "${run_dir}" || refuse "cannot create ${run_dir}"
     # Every provider the registry holds, then each overlay entry it lacks (a model provider, a path-scoped object), so
     # this last overlay replaces the earlier lists without dropping one. bun runs in the scratch directory, never the

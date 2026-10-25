@@ -42,7 +42,7 @@ function mise_artifact() {
     local os arch
     os="$(uname -s)"
     arch="$(uname -m)"
-    case "${os}/${arch}" in
+    case "${os}/${arch}" in # lint-comparisons: allow the uname OS/arch pair, not a path
     Darwin/x86_64) printf 'mise-%s-macos-x64.tar.gz\n' "$1" ;;
     Darwin/arm64) printf 'mise-%s-macos-arm64.tar.gz\n' "$1" ;;
     Linux/x86_64) printf 'mise-%s-linux-x64.tar.gz\n' "$1" ;;

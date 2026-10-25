@@ -12,8 +12,11 @@ writing it the plain way, never by teaching the guard a new spelling.
   shfmt keeps a substitution inside `${x:-<(...)}` as text. Redirection targets are no arguments.
 - shell /tmp: a literal `/tmp` path, single-quoted text included, is refused unless it is the operand of a
   `${TMPDIR...}` expansion or its word expands TMPDIR outside single quotes.
-- The sandbox's own directory is no `/tmp` path in this sense: `/tmp/claude` and `/private/tmp/claude` (and what lies
-  under them) are the TMPDIR srt hands the sandboxed child and keeps writable whatever the policy says
+- The sandbox's own directory is no `/tmp` path in this sense: exactly `/tmp/claude` or `/private/tmp/claude`, or
+  either followed by `/` and components of `[A-Za-z0-9._-]` (no `.` or `..` component), standing as a whole path
+  (start, whitespace, a quote, `=`, `:` or a bracket before it; end, whitespace, a quote, `:`, `;`, `,` or a bracket
+  after it). Anything else after `claude` (`@`, `+`, a glob character, `$`) is refused. These paths are the TMPDIR srt
+  hands the sandboxed child and keeps writable whatever the policy says
   (`SANDBOX_OWN_WRITE_PATHS` and `generateProxyEnvVars` in @anthropic-ai/sandbox-runtime 0.0.81
   dist/sandbox/sandbox-utils.js:499-508, 687-691), so a script naming them (hcom-seat lists them as srt's implicit
   write roots) runs inside the sandbox too. Nothing else under `/tmp` is.
@@ -42,7 +45,11 @@ SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
 PYTHON = re.compile(r"#!.*python")
 TMP = re.compile(r"/tmp(/|\b)")
 # srt's own TMPDIR, writable in the sandbox; a `..` component may follow nowhere in the path.
-SANDBOX_TMP = re.compile(r"(?:/private)?/tmp/claude(?![\w.-])(?![^\s\"')]*/\.\.(?:/|[\s\"')]|$))")
+# srt's own TMPDIR as a whole path: a path boundary before, `/claude` or components under it, a path boundary after.
+SANDBOX_TMP = re.compile(
+    r"(?:(?<=^)|(?<=[\s\"'=:(\[{]))(?:/private)?/tmp/claude(?:/(?!\.\.?(?:/|$|[\s\"':;,)\]}]))[A-Za-z0-9._-]+)*"
+    r"(?=$|[\s\"':;,)\]}])"
+)
 
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 ENV_READS = ("os.environ.get", "os.getenv")
@@ -320,6 +327,16 @@ TMP_REFUSED = {
     ("bad.sh", SH + "out=/tmp/claude/../x\n"): [2],
     ("bad.sh", SH + "out=/tmp/claude/a/.. /tmp/y\n"): [2],
     ("bad.py", 'out = "/private/tmp/claudes"\n'): [1],
+    ("bad.sh", SH + "out=/tmp/claude@escape\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude+escape\n"): [2],
+    ("bad.sh", SH + "rm -rf /tmp/claude*\n"): [2],
+    ("bad.sh", SH + "rm -rf /tmp/claude/*\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude/./x\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude/x/\n"): [2],
+    ("bad.sh", SH + "out=/x/tmp/claude\n"): [2],
+    ("bad.py", 'out = "/tmp/claude@escape"\n'): [1],
+    ("bad.py", 'out = "/tmp/claude+escape"\n'): [1],
+    ("bad.py", 'out = "/tmp/claude*"\n'): [1],
 }
 TMP_ACCEPTED = (
     ("ok.sh", SH + 't="${TMPDIR:-/tmp}/x"\nx=1 # a comment may name /tmp\n'),
@@ -333,6 +350,7 @@ TMP_ACCEPTED = (
     ("ok.py", 'x = os.environ["TMPDIR"] or "/tmp"\n'),
     ("ok.sh", SH + 'roots=("${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)\nout=/tmp/claude/x\n'),
     ("ok.py", 'roots = ["/tmp/claude", "/private/tmp/claude/x"]\n'),
+    ("ok.sh", SH + 'printf "%s\\n" /tmp/claude:/private/tmp/claude/a.b/c-d_1\n'),
 )
 
 

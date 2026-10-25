@@ -138,6 +138,51 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertFalse(Path(self.seats, "worker").exists())
 
+    def test_a_remote_siwc_seat_reads_its_registration_with_the_resolved_jq(self):
+        """U85 round 22: seat-login-preflight reads the openai-siwc registration with jq, and macOS 14 has no
+        /usr/bin/jq, so hcom-seat resolves jq like every tool (checked, linked into its private tool directory). With
+        the system jq unusable, a jq on the caller's PATH validates the login and the seat launches; with no usable jq
+        the preflight refuses the record as unreadable."""
+        if sys.platform != "darwin" or not Path("/usr/bin/sandbox-exec").exists():
+            self.skipTest("hiding the system jq needs sandbox-exec (macOS); Linux always has /usr/bin/jq")
+        real_jq = next((Path(p).resolve() for p in (shutil.which("jq"), "/usr/bin/jq") if p and Path(p).exists()), None)
+        if real_jq is None:
+            self.skipTest("no jq binary to copy")
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
+        agent = self.home / ".omp/profiles/worker/agent"
+        (agent / "openai-siwc").mkdir(parents=True)
+        host = "urn:uuid:12345678-1234-4123-8123-123456789abc"
+        (agent / "openai-siwc/registration.json").write_text(json.dumps({"hostId": host, "clientId": "oaiapp_fake"}))
+        (agent / "agent.db").write_text("never read")
+        fakes = Path(self.temp.name).resolve() / "siwc-bin"
+        fakes.mkdir()
+        (fakes / "bun").write_text("#!/bin/sh\nprintf '1\\n'\n")  # src/credentials.ts: one openai-siwc login
+        (fakes / "bun").chmod(0o755)
+        no_system_jq = '(version 1)(allow default)(deny process-exec (literal "/usr/bin/jq"))'
+        # The caller's PATH without any directory holding a jq (a mise shims directory included).
+        bare = ":".join(d for d in self.env["PATH"].split(":") if d and not Path(d, "jq").exists())
+
+        def launch(path, name):
+            env = {**self.env, "PATH": path, "SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}
+            argv = ["/usr/bin/sandbox-exec", "-p", no_system_jq, str(SEAT), "worker", "--name", name]
+            return subprocess.run(
+                [*argv, "--seats-root", self.seats], cwd=self.repo, env=env, capture_output=True, text=True, check=False
+            )
+
+        run = launch(f"{fakes}:{bare}", "worker")
+        # The preflight's refusal of an unreadable record (exit 1): `no jq on PATH` where no system jq exists (macOS
+        # 14), a jq that cannot run where it exists but is hidden here.
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertRegex(
+            run.stderr, r"worker openai-siwc: unreadable \((no jq on PATH to read )?\S+registration\.json\)"
+        )
+        self.assertEqual(self.calls_of("hcom"), [])
+        shutil.copy(real_jq, fakes / "jq")
+        run = launch(f"{fakes}:{bare}", "worker")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((self.tools / "jq").resolve(), (fakes / "jq").resolve())
+        self.assertEqual(len(self.calls_of("hcom")), 1)
+
     def test_the_worker_launch_reaches_omp_in_a_worktree_of_origin_main(self):
         clone = f"{self.seats}/worker"
         run = self.seat("worker", "--seats-root", self.seats)

@@ -348,7 +348,7 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "39142c0a9f1631c849b07a9c6d2551c737cef4828e58a3eb0a4ce92ffe3e85da"
+      "sha256": "6c7e0e40247481fc6dccc090bcebf6fe1ea35f2bb303f33be3fd74312cf61cd2"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -446,7 +446,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "5aa82ac3df2434cb3b2e888949d79039712dd42ed1d7cdd663916b648b4983ce"
+      "sha256": "9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",

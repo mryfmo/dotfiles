@@ -772,13 +772,13 @@ claude:
   # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: 39142c0a9f1631c849b07a9c6d2551c737cef4828e58a3eb0a4ce92ffe3e85da
+      hcom-seat: 6c7e0e40247481fc6dccc090bcebf6fe1ea35f2bb303f33be3fd74312cf61cd2
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
-      seat-login-preflight: 5aa82ac3df2434cb3b2e888949d79039712dd42ed1d7cdd663916b648b4983ce
+      seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037

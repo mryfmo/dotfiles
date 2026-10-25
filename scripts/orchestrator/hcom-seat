@@ -54,7 +54,7 @@
 #   '..' component and no trailing '/', since srt reads a settings path as a pattern. The settings are
 #   written by the shell (no JSON tool) and read back by /usr/bin/plutil on macOS, /usr/bin/jq on Linux.
 #   No caller PATH entry runs anything: the first statement sets PATH to the system directories, the complete protected set is built by (device, inode) identity before mise or any other
-#   tool runs, and the tools beyond them (git, hcom, herdr, omp, srt, node, bun, claude; bwrap, socat and
+#   tool runs, and the tools beyond them (git, hcom, herdr, omp, srt, node, bun, claude, jq; bwrap, socat and
 #   rg on Linux) are resolved through `mise which` under `env -i` from `/`, else `command -v` on the
 #   caller's PATH, checked (absolute, no control character, an executable regular file, no shim, neither
 #   it nor a directory above it with the identity of a seat write root) and linked into
@@ -659,11 +659,11 @@ if [[ -n ${mise_real} ]]; then
     pin_exec mise "${mise_real}"
     mise_cmd=("${pinned[@]}")
 fi
-# jq is no resolved tool (the settings are read by plutil or /usr/bin/jq), so a stale link of an earlier launch is dropped.
-/bin/rm -f "${tools_dir}/jq" || refuse "cannot clear ${tools_dir}/jq"
 required_tools=(git hcom herdr omp srt)
-# claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37).
-optional_tools=(node bun claude python3 regime-open-url)
+# claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37); jq reads the
+# openai-siwc registration there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked
+# like every tool). hcom-seat itself never runs it: the settings are read by plutil or /usr/bin/jq.
+optional_tools=(node bun claude python3 regime-open-url jq)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac

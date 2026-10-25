@@ -2,6 +2,7 @@
 modelRoles:
   default: claude-bridge/claude-fable-5-1
 skills:
+  enabled: true
   customDirectories:
     - ~/.agents/skills
     - ~/.agents/pstack/skills

@@ -856,6 +856,17 @@ class CodexConfigMergeTest(unittest.TestCase):
                 if form != "array of tables":
                     self.assertEqual(500, data["skills"]["max_context_tokens"], "the other skills settings stay")
 
+    def test_skills_config_is_owned_even_when_the_managed_list_is_empty(self) -> None:
+        """A manifest that disables no skill for Codex still owns skills.config: no operator entry outlives it."""
+        for form in (
+            '[[skills.config]]\npath = "/operator/SKILL.md"\nenabled = false\n',
+            '[skills]\nconfig = [{ path = "/operator/SKILL.md", enabled = false }]\n',
+        ):
+            with self.subTest(form=form):
+                data = tomllib.loads(self.merge('model = "managed"\n', f'{form}\n[tui]\ntheme = "night"\n'))
+                self.assertNotIn("config", data.get("skills", {}))
+                self.assertEqual({"theme": "night"}, data["tui"])
+
     def test_a_skills_table_that_cannot_be_rewritten_refuses_the_apply(self) -> None:
         self.baseline_path.write_text('model = "managed"\n')
         env = {**os.environ, "CHEZMOI_SOURCE_DIR": str(self.source_dir)}

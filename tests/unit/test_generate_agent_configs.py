@@ -2003,7 +2003,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = sample_manifest()
         path = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
         header = f"# {self.module.GENERATED_HEADER}\n"
-        skills = "skills:\n  customDirectories:\n    - ~/.agents/skills\n"
+        skills = "skills:\n  enabled: true\n  customDirectories:\n    - ~/.agents/skills\n"
         pstack = "    - ~/.agents/pstack/skills\n  ignoredSkills: []\n"
 
         self.assertEqual(
@@ -2099,7 +2099,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         plain = outputs[self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"]
         self.assertIn(
-            "skills:\n  customDirectories:\n    - ~/.agents/skills\n  ignoredSkills:\n    - claude-only\n    - seat-only\n",
+            "skills:\n  enabled: true\n  customDirectories:\n    - ~/.agents/skills\n  ignoredSkills:\n    - claude-only\n    - seat-only\n",
             plain,
         )
         worker = outputs[self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"]
@@ -2157,7 +2157,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         profiles = self.temp_dir / "home/dot_agents/omp/profiles"
         header = f"# {self.module.GENERATED_HEADER}\n"
         skills = (
-            "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
+            "skills:\n  enabled: true\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
             "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
         )
         wizard = "setupVersion: 2\nstartup:\n  setupWizard: false\n"
@@ -2198,7 +2198,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             overlay,
             f"# {self.module.GENERATED_HEADER}\n"
             "modelRoles:\n  default: anthropic/sonnet\n"
-            "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
+            "skills:\n  enabled: true\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
             "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
             "defaultThinkingLevel: high\n"
             "disabledProviders:\n  - agent-plugins\n"

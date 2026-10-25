@@ -1361,6 +1361,78 @@ function retire_shared_pstack_copies() {
 }
 
 #
+# @description Remove the retired mryfmo-dev-workflows entry from the live ~/.agents/plugins/marketplace.json.
+# @description
+#   The marketplace is a create_ seed: chezmoi writes it once and never again, so a host that has it keeps the entry
+#   U87 retired while .chezmoiremove deletes the plugin directory it points at. The step parses the file strictly
+#   (JSON only, no duplicate keys, no NaN or Infinity, a top-level object whose plugins is a list), removes exactly the
+#   entry named mryfmo-dev-workflows whose source is the local ./plugins/mryfmo-dev-workflows, keeps every other
+#   entry and key in its order, and replaces the file atomically with its mode kept. A file without that entry is
+#   not rewritten, so a second run changes nothing. An entry with that name and another source is kept and named.
+#   A missing file is nothing to do.
+# @exitcode 1 The file is a symlink, is not valid JSON of that shape, or cannot be rewritten; it is left unchanged.
+#
+function retire_marketplace_dev_workflows() {
+    local marketplace="${HOME}/.agents/plugins/marketplace.json"
+    [ -e "${marketplace}" ] || [ -L "${marketplace}" ] || return 0
+    if [ -L "${marketplace}" ]; then
+        printf 'marketplace: %s is a symlink; left unchanged.\n' "${marketplace}" >&2
+        return 1
+    fi
+    python3 - "${marketplace}" << 'PY'
+import json
+import os
+import shutil
+import sys
+import tempfile
+
+path = sys.argv[1]
+RETIRED = {"name": "mryfmo-dev-workflows", "source": {"path": "./plugins/mryfmo-dev-workflows", "source": "local"}}
+
+
+def unique_keys(pairs):
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"duplicate key in {keys}")
+    return dict(pairs)
+
+
+def no_constant(name):
+    raise ValueError(f"{name} is not JSON")
+
+
+try:
+    with open(path, encoding="utf-8") as handle:
+        data = json.loads(handle.read(), object_pairs_hook=unique_keys, parse_constant=no_constant)
+except (OSError, UnicodeDecodeError, ValueError) as error:
+    sys.exit(f"marketplace: cannot read {path} ({error}); left unchanged.")
+if not isinstance(data, dict) or not isinstance(data.get("plugins"), list):
+    sys.exit(f"marketplace: {path} is not an object with a plugins list; left unchanged.")
+kept = []
+for entry in data["plugins"]:
+    if isinstance(entry, dict) and entry.get("name") == RETIRED["name"]:
+        if entry.get("source") == RETIRED["source"]:
+            continue
+        print(f"marketplace: kept {RETIRED['name']} in {path}: its source is not {RETIRED['source']}", file=sys.stderr)
+    kept.append(entry)
+if len(kept) == len(data["plugins"]):
+    sys.exit(0)
+data["plugins"] = kept
+handle = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=os.path.dirname(path), delete=False)
+try:
+    with handle:
+        handle.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    shutil.copymode(path, handle.name)
+    os.replace(handle.name, path)
+except OSError as error:
+    if os.path.exists(handle.name):
+        os.unlink(handle.name)
+    sys.exit(f"marketplace: cannot rewrite {path} ({error}); left unchanged.")
+print(f"marketplace: removed the retired {RETIRED['name']} entry from {path}.")
+PY
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1376,24 +1448,25 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack or retire_shared_pstack_copies.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n' >&2
         exit 2
     fi
 
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
     retire_shared_pstack_copies
+    retire_marketplace_dev_workflows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions

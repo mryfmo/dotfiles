@@ -263,6 +263,56 @@ class PstackAssetTest(unittest.TestCase):
                 self.assertIn(f"{home / link} is a symlink", failed.stderr)
                 self.assertTrue(copy.is_dir(), "nothing in the referent is removed")
 
+    def retire_marketplace(self, home: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-c", f"source {UPDATER}; retire_marketplace_dev_workflows"],
+            cwd=ROOT,
+            env={**os.environ, "HOME": str(home)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_the_retired_marketplace_entry_leaves_an_existing_host_marketplace(self) -> None:
+        """U87 F127: chezmoi never rewrites the create_ seed, so make update drops exactly the retired entry."""
+        home = self.temp_dir / "existing-host"
+        marketplace = home / ".agents/plugins/marketplace.json"
+        marketplace.parent.mkdir(parents=True)
+        crit = {"name": "crit", "source": {"path": "./.codex/plugins/crit", "source": "local"}}
+        mine = {"name": "mine", "source": {"path": "./plugins/mine", "source": "local"}}
+        retired = {
+            "name": "mryfmo-dev-workflows",
+            "source": {"path": "./plugins/mryfmo-dev-workflows", "source": "local"},
+        }
+        marketplace.write_text(json.dumps({"name": "m", "plugins": [retired, crit, mine]}, indent=2) + "\n")
+        marketplace.chmod(0o600)
+
+        first = self.retire_marketplace(home)
+        self.assertEqual(0, first.returncode, first.stderr)
+        self.assertEqual({"name": "m", "plugins": [crit, mine]}, json.loads(marketplace.read_text()))
+        self.assertEqual(0o600, stat.S_IMODE(marketplace.stat().st_mode))
+        before = marketplace.read_bytes()
+        again = self.retire_marketplace(home)
+        self.assertEqual((0, "", ""), (again.returncode, again.stdout, again.stderr), "a second run changes nothing")
+        self.assertEqual(before, marketplace.read_bytes())
+
+        # Same name, another source: not ours, kept and named.
+        other = {"name": "mryfmo-dev-workflows", "source": {"path": "./elsewhere", "source": "local"}}
+        marketplace.write_text(json.dumps({"name": "m", "plugins": [other]}) + "\n")
+        kept = self.retire_marketplace(home)
+        self.assertEqual(0, kept.returncode, kept.stderr)
+        self.assertIn("kept mryfmo-dev-workflows", kept.stderr)
+        self.assertEqual([other], json.loads(marketplace.read_text())["plugins"])
+
+        for broken in ('{"plugins": [], "plugins": []}', '{"plugins": [NaN]}', '{"plugins": [', '{"plugins": {}}'):
+            with self.subTest(broken=broken):
+                marketplace.write_text(broken)
+                failed = self.retire_marketplace(home)
+                self.assertNotEqual(0, failed.returncode)
+                self.assertIn("left unchanged", failed.stderr)
+                self.assertEqual(broken, marketplace.read_text())
+        self.assertEqual(0, self.retire_marketplace(self.temp_dir / "fresh-host").returncode, "no marketplace yet")
+
     def check_pstack(self, home: Path, omp_listing: str | None) -> subprocess.CompletedProcess[str]:
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir(exist_ok=True)

@@ -1665,13 +1665,17 @@ def omp_skill_settings(manifest: dict[str, Any], consumer: str) -> dict[str, Any
 
 
 def omp_skills_yaml(settings: dict[str, Any], home: str) -> str:
-    """The `skills:` block; `home` replaces a leading ~/ of each directory (the overlays carry the absolute home)."""
+    """The `skills:` block; `home` replaces a leading ~/ of each directory (the overlays carry the absolute home).
+
+    `enabled` is always written, true or false: the plain-launch merge sets only the keys this block carries, so a
+    `false` an earlier audience wrote would otherwise outlive an audience that gives the plain launch skills again.
+    """
     if not settings["enabled"]:
         return "skills:\n  enabled: false\n"
     entries = "".join(f"    - {re.sub(r'^~/', home, directory)}\n" for directory in settings["customDirectories"])
     ignored = "".join(f"    - {name}\n" for name in settings["ignoredSkills"])
     return (
-        "skills:\n  customDirectories:\n"
+        "skills:\n  enabled: true\n  customDirectories:\n"
         + entries
         + ("  ignoredSkills:\n" + ignored if ignored else "  ignoredSkills: []\n")
     )

@@ -277,6 +277,7 @@ def validate_skill_audience(manifest: dict[str, Any]) -> None:
             # The overlays carry the absolute home through the chezmoi template; the plain config keeps ~/.
             prefix = "~/" if consumer == "omp" else f"{home}/"
             want = {
+                "enabled": True,
                 "customDirectories": [re.sub(r"^~/", prefix, d) for d in settings["customDirectories"]],
                 "ignoredSkills": settings["ignoredSkills"],
             }

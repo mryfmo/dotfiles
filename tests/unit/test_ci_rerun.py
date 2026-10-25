@@ -11,9 +11,11 @@ checked-in .github/flakes.yaml with the script's own YAML loader and matches wit
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -23,6 +25,8 @@ import json, os, subprocess, sys, time
 from pathlib import Path
 args, runs = sys.argv[1:], json.load(open(os.environ["GH_RUNS"]))
 entry = {"argv": args}
+if os.environ.get("GH_RECORD_PATH"):
+    entry["path0"] = os.environ["PATH"].split(os.pathsep)[0]
 if args[:2] == ["run", "rerun"]:
     validation = Path(os.environ["GH_REPO_ROOT"]) / ".orchestration/validation"
     ledger = validation / "ci-reruns.tsv"
@@ -101,6 +105,19 @@ def egrep(pattern, text):
     return subprocess.run(["grep", "-Eq", "--", pattern], input=text, text=True, check=False).returncode
 
 
+def real_tool(tool):
+    """The tool outside any shims directory: the first such PATH entry, else what the host's mise answers."""
+    for entry in os.environ["PATH"].split(os.pathsep):
+        if entry.startswith("/") and "/shims/" not in os.path.realpath(entry) + "/":
+            found = shutil.which(tool, path=entry)
+            if found:
+                return found
+    answer = subprocess.run(["mise", "which", tool], capture_output=True, text=True, check=False)
+    if answer.returncode == 0 and answer.stdout.strip().startswith("/"):
+        return answer.stdout.strip()
+    raise AssertionError(f"no {tool} outside a shims directory on this host")
+
+
 def registry(path):
     """The flake file through the script's loader: PyYAML under uv, the offline cache first."""
     script = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])) or []))"
@@ -129,6 +146,24 @@ class CiRerunTest(unittest.TestCase):
         gh = self.t / "bin/gh"
         gh.write_text(STUB.replace("@PYTHON@", sys.executable))
         gh.chmod(0o755)
+        # The script's resolver: a stub mise that answers `mise which <tool>` from mise.json, so every test pins the
+        # same real tools whatever shims lead the host's PATH; a tool missing from the map falls back to PATH.
+        self.answers = self.t / "mise.json"
+        mise = self.t / "bin/mise"
+        mise.write_text(
+            f"#!{sys.executable}\nimport json, sys\nanswers = json.load(open({str(self.answers)!r}))\n"
+            "if sys.argv[1:2] != ['which'] or sys.argv[2] not in answers:\n    sys.exit(1)\nprint(answers[sys.argv[2]])\n"
+        )
+        mise.chmod(0o755)
+        self.real = {tool: real_tool(tool) for tool in ("python3", "uv", "jq", "git", "mkdir")} | {"gh": str(gh)}
+        self.answer()
+        # The same real tools behind wrappers, for the no-answer fallback under a PATH the test controls.
+        self.tools = self.t / "tools"
+        self.tools.mkdir()
+        for tool, real in self.real.items():
+            if tool != "gh":
+                (self.tools / tool).write_text(f'#!/bin/sh\nexec "{real}" "$@"\n')
+                (self.tools / tool).chmod(0o755)
         self.log = self.t / "gh.log"
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
         self.runs = {
@@ -154,6 +189,10 @@ class CiRerunTest(unittest.TestCase):
     def reservation(self, run_id):
         return self.ledger.with_name("ci-reruns.lock.d") / run_id
 
+    def answer(self, **answers):
+        """What the stub mise answers: the real tools, overridden by name."""
+        self.answers.write_text(json.dumps(self.real | answers))
+
     def reset(self):
         self.ledger.unlink(missing_ok=True)
         shutil.rmtree(self.ledger.with_name("ci-reruns.lock.d"), ignore_errors=True)
@@ -162,9 +201,10 @@ class CiRerunTest(unittest.TestCase):
             turn.unlink()
         (self.t / "runs.json").write_text(json.dumps(self.runs))
 
-    def start(self, run_id, **env):
+    def start(self, run_id, cwd=None, **env):
         return subprocess.Popen(
             ["bash", str(self.repo / "scripts/orchestrator/ci-rerun.sh"), run_id],
+            cwd=cwd,
             env=os.environ
             | {
                 "PATH": str(self.t / "bin") + os.pathsep + os.environ["PATH"],
@@ -260,10 +300,11 @@ class CiRerunTest(unittest.TestCase):
         (fake / "mkdir").write_text('#!/usr/bin/env bash\n/bin/mkdir "$@" 2> /dev/null || [ -d "${!#}" ]\n')
         (fake / "mkdir").chmod(0o755)
         self.reset()
-        path = f"{fake}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
-        racing = [self.start("101", GH_LOG_DELAY="1", PATH=path) for _ in range(2)]
+        self.answer(mkdir=str(fake / "mkdir"))  # the resolver pins what mise answers, so the fake goes in there
+        racing = [self.start("101", GH_LOG_DELAY="1") for _ in range(2)]
         self.assertEqual([0, 4], sorted(self.finish(process).returncode for process in racing))
         self.assertEqual(1, len(self.reruns()))
+        self.answer()
         self.reset()
         distinct = [self.start(run_id, GH_LOG_DELAY="1") for run_id in ("101", "303")]
         self.assertEqual([0, 0], [self.finish(process).returncode for process in distinct])
@@ -275,6 +316,250 @@ class CiRerunTest(unittest.TestCase):
         self.assertEqual([], calls)
         result, _ = self.run_script("303")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment(self):
+        # security:4fe2438:1: run from a PR checkout, uv took its .python-version (or .venv, UV_PYTHON, VIRTUAL_ENV).
+        checkout, marker = self.t / "checkout", self.t / "planted.log"
+        python = checkout / ".venv/bin/python"
+        python.parent.mkdir(parents=True)
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{sys.executable}" "$@"\n')  # works, leaves a mark
+        python.chmod(0o755)
+        (checkout / ".venv/pyvenv.cfg").write_text(f"home = {Path(sys.executable).parent}\n")
+        (checkout / ".python-version").write_text(f"{python}\n")
+        for tool in ("mktemp", "ln"):  # the checkout's own, reached through the empty PATH entry below
+            (checkout / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexit 1\n')
+            (checkout / tool).chmod(0o755)
+        self.reset()
+        selectors = {"UV_PYTHON": str(python), "VIRTUAL_ENV": str(checkout / ".venv")}
+        selectors["PATH"] = os.pathsep + str(self.t / "bin") + os.pathsep + os.environ["PATH"]
+        result = self.finish(self.start("101", cwd=checkout, **selectors))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(1, len(self.reruns()))
+        self.assertFalse(marker.exists(), "a checkout or inherited selector ran the planted interpreter")
+
+    def test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path(self):
+        # Worker review P1: CPython reads pyvenv.cfg beside, and one directory above, the path it was started by, so a
+        # link under a shared TMPDIR would let ${TMPDIR}/pyvenv.cfg choose its standard library.
+        python, seen = self.t / "py/python3", self.t / "started.log"
+        python.parent.mkdir()
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{seen}"\nexec "{sys.executable}" "$@"\n')
+        python.chmod(0o755)
+        self.reset()
+        self.answer(python3=str(python))
+        path = f"{python.parent}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        result = self.finish(self.start("101", PATH=path))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual({str(python)}, set(seen.read_text().split()))
+
+    def test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin(self):
+        # Revise 1 (the chain's P1 on 7329f0e): before PATH is pinned, the EXIT trap's rm and the env around mise ran
+        # whatever the caller's PATH named. mise is the resolver the design names; setUp's stub stands in for it, and
+        # here it answers nothing (or a shim), so every tool falls back to a PATH this test controls.
+        planted, shims, marker = self.t / "planted", self.t / "shims", self.t / "planted.log"
+        for tool, real in (("rm", "/bin/rm"), ("env", "/usr/bin/env")):  # each works, and leaves a mark
+            (planted / tool).parent.mkdir(exist_ok=True)
+            (planted / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexec {real} "$@"\n')
+            (planted / tool).chmod(0o755)
+        shims.mkdir()
+        (shims / "jq").write_text("#!/bin/sh\nexit 1\n")
+        (shims / "jq").chmod(0o755)
+        base = os.pathsep.join(map(str, (planted, self.t / "bin", self.tools, "/usr/bin", "/bin")))
+        (self.t / "linked").symlink_to(shims)  # a PATH entry that links to a shims directory is a shims directory
+        cases = [
+            ("refused before the pin", shims, {}, 1),
+            ("refused through a link", self.t / "linked", {}, 1),
+            ("refused as mise's answer", "", {"jq": str(shims / "jq")}, 1),
+            ("a full run", "", {}, 0),
+        ]
+        for name, first, answers, code in cases:
+            path = f"{first}{os.pathsep}{base}" if first else base
+            with self.subTest(name):
+                self.reset()
+                self.answers.write_text(json.dumps(answers))
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", PATH=path))
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(bool(code), "no jq outside a shims directory" in result.stderr, result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_refuses_a_shim_or_a_missing_tool_by_what_the_file_is(self):
+        # Audit on e7720d8b: the shims test read the directory's spelling (ShImS passed on case-insensitive APFS and
+        # ran a cwd-sensitive mise shim), and a missing or non-executable answer was skipped by PATH lookup, so the
+        # script silently ran /usr/bin's tool instead.
+        marker = self.t / "planted.log"
+        mark = f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n'  # works, and leaves a mark
+        mixed, lower = self.t / "ShImS/jq", self.t / "lower/shims/jq"
+        for shimmed in (mixed, lower):
+            shimmed.parent.mkdir(parents=True)
+            shimmed.write_text(mark)
+            shimmed.chmod(0o755)
+        (self.t / "links").mkdir()
+        (self.t / "links/jq").symlink_to(self.t / "bin/mise")  # what `mise reshim` makes, here outside any shims dir
+        (self.t / "links/dangling").symlink_to(self.t / "nowhere/jq")
+        (self.t / "plain").mkdir()
+        (self.t / "plain/jq").write_text(mark)  # not executable
+        shim, missing = "no jq outside a shims directory", "jq is not an executable file"
+        cases = [
+            ("a shims directory in mixed case", mixed, shim),
+            ("a link to the mise binary", self.t / "links/jq", shim),
+            ("a missing file", self.t / "nowhere/jq", missing),
+            ("a dangling link", self.t / "links/dangling", missing),
+            ("a file that is not executable", self.t / "plain/jq", missing),
+            ("a directory", self.t / "plain", missing),
+        ]
+        alias = self.t / "lower/ShImS/jq"
+        if alias.exists():  # a case-insensitive file system: the lower-case directory under another spelling
+            cases.append(("a lower-case shims directory spelled ShImS", alias, shim))
+        for name, answer, message in cases:
+            with self.subTest(name):
+                self.reset()
+                self.answer(jq=str(answer))
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101"))
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertEqual([], self.entries())
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_refuses_a_link_to_a_mise_binary_when_mise_itself_is_not_found(self):
+        # Audit on 7f1776fc: with no mise on PATH the inode check had nothing to compare against, so a link to a mise
+        # binary outside any shims directory passed, and mise started as `jq` is a cwd-sensitive shim.
+        marker, vendor, decoy, gh_only = self.t / "planted.log", self.t / "vendor", self.t / "decoy", self.t / "gh-only"
+        for directory in (vendor, decoy, gh_only):
+            directory.mkdir()
+        (gh_only / "gh").symlink_to(self.t / "bin/gh")
+        path = os.pathsep.join(map(str, (decoy, gh_only, self.tools, "/usr/bin", "/bin")))
+        self.assertIsNone(shutil.which("mise", path=path))
+        for name in ("mise", "MiSe"):
+            with self.subTest(name):
+                binary = vendor / name
+                binary.write_text(f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n')
+                binary.chmod(0o755)
+                (decoy / "jq").unlink(missing_ok=True)
+                (decoy / "jq").symlink_to(binary)
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", PATH=path))
+                binary.unlink()
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("no jq outside a shims directory", result.stderr)
+                self.assertEqual([], self.entries())
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_runs_only_the_file_it_checked_when_a_path_holds_a_newline(self):
+        # Audit on 7f1776fc: command substitution strips trailing newlines, so `<dir>\n/jq` was checked as `<dir>/jq`
+        # (and a link to `jq\n` as `jq`) while the answer itself, another file, was linked and ran. Audit on 7ba82b63:
+        # the resolver's own answer `jq\n` (then mise's delimiter) was captured as `jq` and accepted.
+        marker = self.t / "planted.log"
+        planted = f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n'
+        checked = f'#!/bin/sh\nexec "{self.real["jq"]}" "$@"\n'
+        for file, text in (
+            (self.t / "tools\n/jq", planted),
+            (self.t / "nl/jq\n", planted),
+            (self.t / "nl/jq", checked),
+        ):
+            file.parent.mkdir(exist_ok=True)
+            file.write_text(text)
+            file.chmod(0o755)
+        (self.t / "nl-link").mkdir()
+        (self.t / "nl-link/jq").symlink_to(self.t / "nl/jq\n")
+        cases = [
+            ("a directory name ending in a newline", self.t / "tools\n/jq"),
+            ("a link to a file name ending in a newline", self.t / "nl-link/jq"),
+            ("an answer ending in a newline", self.t / "nl/jq\n"),
+        ]
+        for name, answer in cases:
+            with self.subTest(name):
+                self.reset()
+                self.answer(jq=str(answer))
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101"))
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("jq is not an executable file", result.stderr)
+                self.assertEqual([], self.entries())
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_uses_its_private_directory_by_the_physical_path(self):
+        # Audit on 7ba82b63: ${bin} kept the caller's TMPDIR spelling, so retargeting a link in it after mktemp moved
+        # PATH (and the cleanup) to a directory the caller prepared under the same name.
+        marker, real, planted, link = (self.t / name for name in ("planted.log", "real", "planted", "tmplink"))
+        real.mkdir()
+        planted.mkdir()
+        link.symlink_to(real)
+        self.reset()
+        process = self.start("101", TMPDIR=str(link), GH_LOG_DELAY="1", GH_RECORD_PATH="1")
+        deadline = time.monotonic() + 60
+        while "--job" not in self.log.read_text():  # inside the first log read, after the pin
+            self.assertLess(time.monotonic(), deadline, "the script never reached its log reads")
+            time.sleep(0.05)
+        (private,) = real.glob("ci-rerun-bin.*")
+        (planted / private.name).mkdir()
+        for tool in ("gh", "jq", "git", "awk", "grep", "date", "mkdir"):  # each leaves a mark
+            (planted / private.name / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexit 1\n')
+            (planted / private.name / tool).chmod(0o755)
+        link.unlink()
+        link.symlink_to(planted)
+        result = self.finish(process)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertEqual({str(private)}, {entry["path0"] for entry in self.entries()})
+        self.assertEqual([], list(real.iterdir()))
+        self.assertTrue((planted / private.name / "gh").exists(), "the cleanup followed the retargeted link")
+
+    def test_ci_rerun_keeps_a_caller_tmpdir_out_of_its_pinned_path(self):
+        # Audit P2 on d6521941: the private directory heads PATH, so a TMPDIR with a ':' split it into entries the
+        # caller chose (a relative one, or an empty one: the cwd), and their commands ran after the pin.
+        marker, checkout = self.t / "planted.log", self.t / "checkout"
+        planted = self.t / "planted"
+        for directory in (planted, checkout):
+            directory.mkdir()
+            for tool in ("dirname", "git", "jq", "gh", "awk", "grep", "date", "mkdir"):  # each leaves a mark
+                (directory / tool).write_text(f'#!/bin/sh\necho "{directory.name} {tool}" >> "{marker}"\nexit 1\n')
+                (directory / tool).chmod(0o755)
+        Path(f"{planted}:").mkdir()  # mktemp creates only the last component, so the split parent must exist
+        (checkout / ":x").mkdir()
+        Path(f"{planted}\n").mkdir()
+        cases = (("a named directory", f"{planted}:"), ("the cwd", ":x"), ("a control character", f"{planted}\n"))
+        for name, tmpdir in cases:  # each is dropped for mktemp's own default, which the run then uses
+            with self.subTest(name):
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", cwd=checkout, TMPDIR=tmpdir))
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+                self.assertEqual(1, len(self.reruns()))
+        # Audit on 04cb7e2b: a colon-free TMPDIR that is a link can resolve to a physical path with '::', which split
+        # PATH into the planted directory and the cwd once the private directory was used by its physical path.
+        resolved = Path(f"{planted}::x")
+        resolved.mkdir()
+        (self.t / "tmplink").symlink_to(resolved)
+        self.reset()
+        marker.unlink(missing_ok=True)
+        result = self.finish(self.start("101", cwd=checkout, TMPDIR=str(self.t / "tmplink")))
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("has no physical path that is absolute, without ':'", result.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertEqual([], self.entries())
+        self.assertEqual([], list(resolved.iterdir()))
+
+    def test_ci_rerun_removes_its_private_directory_when_signalled(self):
+        # Audit P3 on d6521941: an EXIT-only trap is skipped when the shell dies of a signal.
+        tmp = self.t / "tmp"
+        tmp.mkdir()
+        for signum, code in ((signal.SIGHUP, 129), (signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(signal=signum.name):
+                self.reset()
+                process = self.start("101", TMPDIR=str(tmp), GH_LOG_DELAY="1")
+                deadline = time.monotonic() + 60
+                while "--job" not in self.log.read_text():  # inside the first log read, after the pin
+                    self.assertLess(time.monotonic(), deadline, "the script never reached its log reads")
+                    time.sleep(0.05)
+                self.assertEqual(1, len(list(tmp.glob("ci-rerun-bin.*"))))
+                process.send_signal(signum)
+                result = self.finish(process)
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual([], list(tmp.glob("ci-rerun-bin.*")))
+                self.assertEqual([], self.reruns())
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.

@@ -51,11 +51,11 @@ PRE_AUDIT_GATE = (
 GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap before any audit"
 
 # A merge error is not a merge failure (U30 ADDENDUM 3, ACCEPTANCE 8; measured on PR #484).
+# U71: the merge lever does the re-read and the orchestrator never runs it twice.
 MERGE_ERROR = (
-    "After any error from the merge command, re-read `gh pr view <n> --json state,mergeCommit` before anything "
-    "else; `MERGED` means the merge happened and its `mergeCommit` is the sha to record, so never run the merge "
-    "command twice for one head; the ledger row names the commit that carries the diff (verify with "
-    "`git diff <parent> <sha> --stat` non-empty)."
+    "After a merge error the lever re-reads `gh pr view <n> --json state,mergeCommit`; `MERGED` means the merge "
+    "happened and its `mergeCommit` is the sha to record, so never run the lever twice for one head; the ledger row "
+    "names the commit that carries the diff (verify with `git diff <parent> <sha> --stat` non-empty)."
 )
 
 

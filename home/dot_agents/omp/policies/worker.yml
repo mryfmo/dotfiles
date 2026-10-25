@@ -35,6 +35,10 @@ bash:
       approval: deny
     - match: "*pr-close.sh *"
       approval: deny
+    - match: "*pr-merge.sh *"
+      approval: deny
+    - match: "*pr-audit.sh *"
+      approval: deny
     - match: "*records-sync.sh *"
       approval: deny
     # records-sync.sh acts with no arguments too (U28b F3), so its bare name is denied as well; a worker that edits

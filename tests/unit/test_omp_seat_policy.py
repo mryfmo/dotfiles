@@ -87,6 +87,9 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}pr-close.sh --from-table t.md --only 378",
     f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
+    # U71: the merge lever (a `correct` ledger row for the head and green CI) and the audit round.
+    f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
+    f"{LEVER}pr-audit.sh 480 --unit U71 --records .orchestration/orchestrate/regime-cutover --context /tmp/ctx.md",
 ]
 BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
 # A verdict line, the text the audit seat once sent on the bus; the audit run now has no bus reply in any form (U58).
@@ -123,9 +126,14 @@ EVERY_SEAT = [
 TABLE = {
     "orchestrator": [
         *EVERY_SEAT,
-        ("bash", MERGE, "allow"),
+        # U71 (F010): no raw merge in any form; the seat merges only through pr-merge.sh.
+        ("bash", MERGE, "deny"),
         ("bash", f"{MERGE} && echo", "deny"),
         ("bash", "gh pr merge 1 --squash --match-head-commit abc --admin", "deny"),
+        ("bash", "gh pr merge 1 --squash --auto", "deny"),
+        ("bash", f"{LEVER}pr-merge.sh 480 --records r && gh pr merge 1", "deny"),
+        ("bash", "scripts/orchestrator/pr-merge.sh 480 --records r", "deny"),
+        ("bash", "/Users/u/.local/bin/common/pr-audit.sh 480 --unit U1", "deny"),
         ("bash", f"{PUSH_RECIPE} b", "deny"),
         ("bash", "git push origin b", "deny"),
         ("bash", "gh pr create --title t --body b", "deny"),
@@ -382,15 +390,15 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 denies = [rule["match"] for rule in policy["bash"]["patterns"] if rule["approval"] == "deny"]
                 self.assertEqual([match for match in denies if match in COMMON_DENIES], COMMON_DENIES)
 
-    def test_the_orchestrator_allow_follows_the_admin_deny(self):
+    def test_the_orchestrator_allows_only_its_levers_and_no_raw_merge(self):
+        # U71 (F010): the raw `gh pr merge` allow is gone; merges go through pr-merge.sh alone.
         rules = self.policies["orchestrator"]["bash"]["patterns"]
-        self.assertEqual(rules[0], {"match": "*gh pr merge*--admin*", "approval": "deny"})
-        self.assertEqual(rules[1], {"match": "gh pr merge * --squash --match-head-commit *", "approval": "allow"})
         allows = [rule["match"] for rule in rules if rule["approval"] == "allow"]
         self.assertEqual(
             allows,
             [
-                rules[1]["match"],
+                "~/.local/bin/common/pr-merge.sh *",
+                "~/.local/bin/common/pr-audit.sh *",
                 "~/.local/bin/common/pr-thread-reply.sh *",
                 "~/.local/bin/common/pr-thread-resolve.sh *",
                 "~/.local/bin/common/pr-update-branch.sh *",
@@ -408,7 +416,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
             rules = self.policies[role]["bash"]["patterns"]
             first_common = next(index for index, rule in enumerate(rules) if rule["match"] in COMMON_DENIES)
             for index, rule in enumerate(rules):
-                if rule["approval"] != "allow" or rule["match"] == rules[1]["match"] and role == "orchestrator":
+                if rule["approval"] != "allow":
                     continue
                 with self.subTest(role=role, rule=rule["match"]):
                     lever = rule["match"].removeprefix("~/.local/bin/common/").split(" ", 1)[0]

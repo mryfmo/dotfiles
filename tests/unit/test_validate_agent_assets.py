@@ -1172,31 +1172,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         merge = "gh pr merge * --squash --match-head-commit *"
         installed = "~/.local/bin/common/pr-close.sh --from-table *"
-        self.module.validate_omp_policy_allow(policy(merge, installed), "orchestrator.yml", pinned, merge=True)
+        self.module.validate_omp_policy_allow(policy(installed), "orchestrator.yml", pinned)
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh *"), "worker.yml", pinned)
         # U28b F3: the exact bare form of a lever that acts without arguments.
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh"), "orchestrator.yml", pinned)
         cases = {
-            (merge, False): "is not ~/.local/bin/common/<lever>",
-            ("gh pr close *", True): "is not 'gh pr merge",
-            ("gh api *", True): "is not 'gh pr merge",
-            ("*", True): "is not 'gh pr merge",
-            ("bash *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh x", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh*", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh --from-table x *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh * && *", True): "is not 'gh pr merge",
-            ("/Users/x/.local/bin/common/pr-close.sh *", True): "is not 'gh pr merge",
-            ("scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("./scripts/orchestrator/pr-close.sh --from-table *", True): "names a lever inside the rewritable checkout",
-            ("*scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("~/.local/bin/common/absent.sh *", True): "absent.sh is not a regular file",
-            ("~/.local/bin/common/python3 *", True): "python3 is named as an interpreter",
+            merge: "is not ~/.local/bin/common/<lever>",  # U71: no raw merge allow, even for the orchestrator
+            "gh pr close *": "is not ~/.local/bin/common/<lever>",
+            "gh api *": "is not ~/.local/bin/common/<lever>",
+            "*": "is not ~/.local/bin/common/<lever>",
+            "bash *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh x": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh*": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh --from-table x *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh * && *": "is not ~/.local/bin/common/<lever>",
+            "/Users/x/.local/bin/common/pr-close.sh *": "is not ~/.local/bin/common/<lever>",
+            "scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "./scripts/orchestrator/pr-close.sh --from-table *": "names a lever inside the rewritable checkout",
+            "*scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "~/.local/bin/common/absent.sh *": "absent.sh is not a regular file",
+            "~/.local/bin/common/python3 *": "python3 is named as an interpreter",
         }
-        for (match, merge_allowed), message in cases.items():
-            with self.subTest(rejects=match, merge=merge_allowed):
+        for match, message in cases.items():
+            with self.subTest(rejects=match):
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned, merge=merge_allowed)
+                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned)
                 self.assertIn(message, stderr.getvalue())
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_omp_policy_allow(policy(installed), "seat.yml", {})

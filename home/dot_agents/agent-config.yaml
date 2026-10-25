@@ -316,7 +316,9 @@ claude:
   # regime-init reads its templates from ~/.agents/regime beside this manifest.
   # The pr-*.sh and records-sync.sh pins are the omp seats' GitHub-write levers
   # (U28): the same install and self-check, allowed by the seat policies under
-  # ~/.agents/omp/policies, never by a claude.permissions rule.
+  # ~/.agents/omp/policies, never by a claude.permissions rule. pr-merge.sh is
+  # the orchestrator's only merge path (a `correct` ledger row for the exact head
+  # and green CI) and pr-audit.sh its audit round with a scratch CODEX_HOME (U71).
   levers:
     sha256:
       hcom-seat: 213f9f5bbe782f51cf74137024c1793533e11fc14223eac45d5fbe98aec4a2f3
@@ -332,9 +334,11 @@ claude:
       pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
       pr-update-branch.sh: 7892eecf70f1ffacc8045f8b016f7d0efde68ab44fa734ba0ca0f606bdac075f
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf
+      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
+      pr-merge.sh: 5d686e729a956dd0e8e3ba11702d5e5b6163e49202b586d5570785c18e53d3eb
+      pr-audit.sh: d5fcb0122dd0f5fad0241ee59875b0b963451f9585367b884d400fe1833fb975
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
     # gate's directory, which every launch loads (regime-cutover U33c).

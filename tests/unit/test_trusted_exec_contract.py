@@ -4,6 +4,7 @@
 import hashlib
 import os
 import pwd
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -330,6 +331,88 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             path = probe.input
         self.assertEqual({}, tec._WATCHED)
         self.assertFalse(path.exists())
+
+    def scratch(self, prefix):
+        base = Path(tempfile.mkdtemp(prefix=prefix)).resolve()
+        self.addCleanup(shutil.rmtree, base, True)
+        return base
+
+    def test_a_consumer_thread_reading_during_the_probe_check_is_recorded(self):
+        # The probe's own content read is excluded for its thread and that read only: a consumer thread opening the
+        # input while the check runs is a read.
+        import threading
+
+        probe = self.worker_root_probe()
+        real = Path.read_bytes
+
+        def read_bytes_with_a_consumer_thread(path):
+            if path == probe.input:
+                consumer = threading.Thread(target=lambda: Path(probe.input).read_text(), name="consumer")
+                consumer.start()
+                consumer.join()
+            return real(path)
+
+        with mock.patch.object(Path, "read_bytes", read_bytes_with_a_consumer_thread):
+            with self.assertRaisesRegex(AssertionError, r"worker root: read .* in thread consumer"):
+                probe.assert_untouched()
+        probe.reads.clear()
+        probe.assert_untouched()  # and the check's own reads, in its own thread, are not reads
+
+    def test_an_open_that_cannot_be_classified_fails_the_probe(self):
+        # Only a missing path means "not the input" (a create); any other stat failure is not a pass.
+        probe = self.worker_root_probe()
+        real = tec.os.stat
+
+        def refusing_stat(path, *args, **kwargs):
+            if os.fspath(path) == os.fspath(probe.input):
+                raise PermissionError(13, "denied", os.fspath(path))
+            return real(path, *args, **kwargs)
+
+        with mock.patch.object(tec.os, "stat", refusing_stat):
+            Path(probe.input).read_text()
+        with self.assertRaisesRegex(
+            AssertionError, r"cannot tell whether an open of .* read the input: os.stat failed"
+        ):
+            probe.assert_untouched()
+        clean = self.worker_root_probe()
+        Path(clean.base / "created-now").write_text("x")  # a create: FileNotFoundError before the open, not an error
+        clean.assert_untouched()
+
+    def test_a_probe_refuses_when_its_audit_hook_does_not_record(self):
+        # The hook's self-test: a hook that records nothing (here: it never finds the input) refuses the setup.
+        class Blind(dict):
+            def get(self, key, default=None):
+                return default
+
+        with mock.patch.object(tec, "_WATCHED", Blind()), self.assertRaisesRegex(RuntimeError, "self-test read"):
+            tec.WorkerRoot(self.scratch("trusted-exec-blind-"))
+        with (
+            mock.patch.object(tec, "_HOOK_ERROR", PermissionError("refused")),
+            self.assertRaisesRegex(RuntimeError, "could not be added"),
+        ):
+            tec.WorkerRoot(self.scratch("trusted-exec-refused-"))
+        # And an existing hook policy that refuses new hooks: CPython drops the new hook without raising, so only the
+        # self-test can tell, and every probe then refuses.
+        expected = b"refused: the open audit hook did not record the probe's self-test read ([])"
+        for error in ("RuntimeError", "PermissionError"):
+            script = (
+                "import sys\n"
+                "def deny(event, args):\n"
+                "    if event == 'sys.addaudithook':\n"
+                f"        raise {error}('no more hooks')\n"
+                "sys.addaudithook(deny)\n"
+                f"sys.path.insert(0, {str(ROOT / 'tests/unit')!r})\n"
+                "import trusted_exec_contract as tec\n"
+                "try:\n"
+                "    with tec.worker_root():\n"
+                "        print('probe ran')\n"
+                "except RuntimeError as error:\n"
+                "    print('refused:', error)\n"
+            )
+            with self.subTest(refusal=error):
+                result = run([sys.executable, "-I", "-c", script], {"PATH": "/usr/bin:/bin"})
+                self.assertIn(expected, result.stdout, result.stderr)
+                self.assertNotIn(b"probe ran", result.stdout)
 
     def test_worker_root_probe_detects_a_same_length_overwrite(self):
         identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)

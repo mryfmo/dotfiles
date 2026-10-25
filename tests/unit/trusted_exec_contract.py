@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 SHIMS = ("uv", "python3", "gh", "git", "bash")
@@ -18,6 +19,7 @@ SAFE_PATH = "/usr/bin:/bin"
 LEGIT, ATTACKER = "legitimate\n", "attacker\n"
 BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
 _WATCHED = {}  # (st_dev, st_ino) -> the WorkerRoot whose input it is, while that probe is alive
+_OWN = threading.local()  # .probe: the WorkerRoot whose own content read this thread is making, for that read only
 QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
 HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
@@ -113,14 +115,28 @@ def _open_audit(event, args):
         return  # an already open descriptor, or write-only: not a read of a path
     try:
         st = os.stat(path)
-    except (OSError, TypeError, ValueError):
-        return  # nothing there yet (a create), or not a path
+    except FileNotFoundError:
+        return  # nothing there yet: a create, never the input
+    except ValueError:
+        return  # an embedded NUL: the open itself fails the same way, so nothing is read
+    except Exception as error:  # noqa: BLE001 - any other failure means the open cannot be classified
+        for probe in list(_WATCHED.values()):
+            probe.errors.append(f"cannot tell whether an open of {path!r} read the input: os.stat failed: {error!r}")
+        return
     probe = _WATCHED.get((st.st_dev, st.st_ino))
-    if probe is not None and not probe._own_io:
-        probe.reads.append(os.fsdecode(path))
+    if probe is not None and getattr(_OWN, "probe", None) is not probe:
+        probe.reads.append(f"{os.fsdecode(path)} in thread {threading.current_thread().name}")
 
 
-sys.addaudithook(_open_audit)  # an audit hook cannot be removed; it does nothing while no WorkerRoot is alive
+# An audit hook cannot be removed; it does nothing while no WorkerRoot is alive. An existing hook can refuse it, and
+# CPython then drops the new hook silently (measured on 3.13 and 3.15 for RuntimeError, PermissionError and
+# ValueError; only a BaseException such as KeyboardInterrupt propagates), so a successful call proves nothing: every
+# probe's setup checks the hook with a self-test read. A refusal that is raised makes every probe refuse too.
+try:
+    sys.addaudithook(_open_audit)
+    _HOOK_ERROR = None
+except Exception as error:  # noqa: BLE001 - any refusal: probes then refuse instead of passing vacuously
+    _HOOK_ERROR = error
 
 
 class WorkerRoot:
@@ -138,7 +154,9 @@ class WorkerRoot:
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.reads, self._own_io = [], True
+        self.reads, self.errors = [], []
+        if _HOOK_ERROR is not None:
+            raise RuntimeError(f"the open audit hook could not be added ({_HOOK_ERROR!r}), so reads are not observable")
         for path in (self.input, self.output):
             path.write_text(LEGIT)
             os.utime(path, ns=(BASELINE_NS, BASELINE_NS))
@@ -146,7 +164,13 @@ class WorkerRoot:
         st = os.stat(self.input)
         self._key = (st.st_dev, st.st_ino)
         _WATCHED[self._key] = self
-        self._own_io = False
+        # Self-test: the hook must record a read of the input made here, or no read is observable at all.
+        with open(self.input, "rb"):
+            pass
+        recorded, self.reads[:] = list(self.reads), []
+        if len(recorded) != 1:
+            self.close()
+            raise RuntimeError(f"the open audit hook did not record the probe's self-test read ({recorded!r})")
 
     def close(self):
         if _WATCHED.get(self._key) is self:
@@ -155,23 +179,25 @@ class WorkerRoot:
     def assert_untouched(self):
         """Nothing in this process opened the input for reading; nothing wrote, replaced or removed either file, or
         created the new output's directory. The content is compared too, since a write in place can keep the inode,
-        the size and a coarse clock's mtime."""
-        found = [f"read {self.input} (opened as {path})" for path in self.reads]
-        self._own_io = True  # the probe's own content read below is not the consumer's
-        try:
-            for path, identity in self._identity.items():
-                if not os.path.lexists(path):
-                    found.append(f"removed {path}")
-                    continue
-                st = os.lstat(path)
-                content = (
-                    path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""
-                )  # the same regular file only
-                if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
-                    found.append(f"wrote {path}")
-        finally:
-            self._own_io = False
+        the size and a coarse clock's mtime. Reads are collected last, so one another thread makes during this check
+        is reported; only this thread's own content read is excluded, and only while it is being made."""
+        found = []
+        for path, identity in self._identity.items():
+            if not os.path.lexists(path):
+                found.append(f"removed {path}")
+                continue
+            st = os.lstat(path)
+            content = b""
+            if (st.st_ino, st.st_mode) == identity:  # the same regular file only
+                _OWN.probe = self
+                try:
+                    content = path.read_bytes()
+                finally:
+                    _OWN.probe = None
+            if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
+                found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
+        found = [f"read {self.input} (opened as {path})" for path in self.reads] + found + self.errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
 

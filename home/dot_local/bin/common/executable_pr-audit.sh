@@ -590,8 +590,9 @@ status=0
 codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${read_probe}" sh \
     --control "${controls[@]}" --read "${probes[@]}" --write "${writes[@]}" || status=$?
 probe_out=$(cat -- "${work}/probe.out") || fail "cannot read ${work}/probe.out"
-((status == 0)) && [[ ${probe_out} == "${probe_done}" ]] ||
+if ((status != 0)) || [[ ${probe_out} != "${probe_done}" ]]; then
     refuse "the sandbox read and write probe did not pass (exit ${status}): ${probe_out:-no output}"
+fi
 rm -f -- "${run}/canary" || fail "cannot remove the canary ${run}/canary"
 # Only curl's own resolve or connect failures show the network denied: 6 (could not resolve host, measured with the
 # profile on macOS) and 7 (could not connect). Anything else refuses: 0 reached the network, 28 is a timeout that

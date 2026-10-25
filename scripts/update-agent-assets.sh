@@ -397,6 +397,21 @@ function claude_user_install() {
 }
 
 #
+# @description Print what the user-scope installation of a Claude Code plugin is compared with its pin by
+#   (pin_records.claude_observed): its version for a version pin, the content hash of its installPath
+#   (pin_records.content_sha256) for a content pin, whatever commit its version names.
+# @arg $1 string The JSON list claude_plugin_installs prints, holding a user-scope installation.
+# @arg $2 string The pin.
+# @exitcode 1 When the installation cannot be read or hashed (a symlink or special file in it included).
+#
+function claude_user_observed() {
+    local version install_path
+    version="$(claude_user_install "$1")" || return 1
+    install_path="$(jq -er 'first(.[] | select(.scope == "user") | .installPath)' <<< "$1")" || return 1
+    pin_record claude-observed "$2" "${version}" "${install_path}"
+}
+
+#
 # @description Print the user-scope installed version of a Claude Code plugin for the asset manifest, or
 #   `unknown` when installed_plugins.json does not record one.
 # @arg $1 string Fully qualified Claude Code plugin ID.
@@ -509,7 +524,7 @@ function judge_installed_version() {
 #
 function move_claude_plugin_to_pin() {
     local plugin_id="$1"
-    local pin installs version marketplace enabled fresh=0
+    local pin installs version observed marketplace enabled fresh=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -545,7 +560,7 @@ function move_claude_plugin_to_pin() {
             printf 'ERROR: claude plugin install %s failed; the pinned plugin is not installed.\n' "${plugin_id}" >&2
             return 1
         fi
-    elif [ "${version}" != "${pin}" ]; then
+    elif ! observed="$(claude_user_observed "${installs}" "${pin}")" || [ "${observed}" != "${pin}" ]; then
         claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true
     fi
     if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
@@ -557,7 +572,11 @@ function move_claude_plugin_to_pin() {
         printf 'ERROR: %s has no user-scope installation after claude plugin install.\n' "${plugin_id}" >&2
         return 1
     fi
-    judge_installed_version claude "${plugin_id}" "${version}" "${pin}" "${fresh}"
+    if ! observed="$(claude_user_observed "${installs}" "${pin}")"; then
+        printf 'ERROR: cannot read the installed content of %s to compare it with its pin.\n' "${plugin_id}" >&2
+        return 1
+    fi
+    judge_installed_version claude "${plugin_id}" "${observed}" "${pin}" "${fresh}"
 }
 
 #

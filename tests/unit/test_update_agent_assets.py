@@ -55,6 +55,7 @@ with open(os.environ["CALLS"], "a") as log:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+from claude_plugin_fixture import CONTENT_VERSION, REVIEWED
 
 
 def setUpModule() -> None:
@@ -566,6 +567,10 @@ claude() {
             '.plugins[$id] += [{scope: "user", version: $version, installPath: "\($home)/.claude/plugins/cache/\($id | split("@")[1])/\($id | split("@")[0])/\($version)"}]' \
             "${record}" > "${WORK}/next" && mv "${WORK}/next" "${record}"
         jq --arg id "$3" '.enabledPlugins[$id] = true' "${user}" > "${WORK}/next" && mv "${WORK}/next" "${user}"
+        if [ -n "${INSTALL_CONTENT}" ]; then
+            mkdir -p "${HOME}/.claude/plugins/cache/${3#*@}/${3%@*}"
+            cp -R "${INSTALL_CONTENT}" "${HOME}/.claude/plugins/cache/${3#*@}/${3%@*}/${INSTALL_VERSION}"
+        fi
         [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
     "plugin update "*) [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS}" ] || return 1; [ -z "${DISABLE_NOOP}" ] || return 0
@@ -594,6 +599,9 @@ claude() {
                 entry.setdefault(
                     "installPath", f"{home}/.claude/plugins/cache/{marketplace}/{plugin}/{entry['version']}"
                 )
+                # The reviewed copy (claude_plugin_fixture) for a plugin pinned by content.
+                if entry.pop("reviewed", False):
+                    shutil.copytree(REVIEWED / plugin, entry["installPath"])
                 if entry.get("projectPath") == "PROJECT":
                     entry["projectPath"] = str(project_dir)
         record = home / ".claude/plugins/installed_plugins.json"
@@ -614,6 +622,7 @@ claude() {
             "DISABLE_NOOP",
             "CORRUPT_AFTER",
             "LIST_FAILS",
+            "INSTALL_CONTENT",
         )
         result = subprocess.run(
             [
@@ -976,6 +985,70 @@ claude() {
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("failures=1", result.stdout)
 
+    def content_fixture(self, text: str) -> Path:
+        """A plugin tree like frontend-design's (prompt-only skill) whose content is TEXT."""
+        root = Path(tempfile.mkdtemp(prefix="content-pin-")) / "plugin"
+        self.addCleanup(shutil.rmtree, root.parent)
+        (root / ".claude-plugin").mkdir(parents=True)
+        (root / ".claude-plugin/plugin.json").write_text('{"name": "frontend-design"}\n')
+        (root / "skills/frontend-design").mkdir(parents=True)
+        (root / "skills/frontend-design/SKILL.md").write_text(text)
+        return root
+
+    @staticmethod
+    def content_hash(root: Path) -> str:
+        return subprocess.run(
+            ["python3", "-I", str(ROOT / "scripts/pin_records.py"), "content-sha256", str(root)],
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+
+    def content_step(self, pin: str) -> str:
+        # The pin under test replaces the recorded one; every other field still comes from plugin-pins.json. make
+        # doctor's own pin check reads the recorded pins file, so here it repeats the comparison with this pin
+        # (the doctor's side has its own test in test_check_agent_runtime).
+        return (
+            f'plugin_pin() {{ if [ "$3" = pin ]; then printf "%s\\n" "{pin}"; '
+            'else pin_record plugin-pin "${AGENT_PLUGIN_PINS}" "$@"; fi; }; '
+            'doctor_pin_check() { local installs observed; installs="$(claude_plugin_installs "$2")" && '
+            f'observed="$(claude_user_observed "${{installs}}" "{pin}")" && [ "${{observed}}" = "{pin}" ]; }}; '
+            "converge_claude_step frontend-design@claude-plugins-official || true; "
+            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+        )
+
+    def test_a_content_pin_follows_the_files_not_the_commit_version(self):
+        # U91: frontend-design's version is the marketplace commit, which moves with unrelated commits.
+        plugin_id = "frontend-design@claude-plugins-official"
+        reviewed = self.content_fixture("# Frontend Design\nreviewed\n")
+        pin = self.content_hash(reviewed)
+        self.assertRegex(pin, r"^sha256:[0-9a-f]{64}$")
+        # Same content under a commit-version never seen before: installed fresh, left enabled.
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(reviewed)
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual([f"plugin install {plugin_id} --scope user @neutral"], calls)
+        self.assertIs(True, state["user"][plugin_id])
+        # One changed byte under that version: the existing off-pin path disables it and names both hashes.
+        changed = self.content_fixture("# Frontend Design\nreviewes\n")
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(changed)
+        )
+        self.assertEqual(0, result.returncode, result.stderr)  # a fresh install off its pin warns, as for versions
+        self.assertEqual(f"plugin disable {plugin_id} --scope user @neutral", calls[-1])
+        self.assertIs(False, state["user"][plugin_id])
+        self.assertIn(f"is at {self.content_hash(changed)}, not its pin {pin}", result.stderr)
+        # A symlink inside the installed copy cannot be hashed: the step fails and the plugin is disabled.
+        (changed / "skills/link").symlink_to("/etc/hosts")
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(changed)
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("is a symlink or special file", result.stderr)
+        self.assertIs(False, state["user"][plugin_id])
+
     def test_a_fresh_codex_install_that_lands_off_its_pin_is_removed_and_warned_not_failed(self):
         # Audit round 28: the round-27 rule covered Claude only. A fresh Codex copy off its pin is removed
         # (Codex has no disable) and proven gone, through the same converge_or_disable decision.
@@ -1160,7 +1233,11 @@ claude() {
     def test_every_pinned_claude_plugin_is_checked_from_the_manifest_list(self):
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
         installs = {
-            plugin_id: [{"scope": "user", "version": "999.0.0" if plugin_id.startswith("pstack@") else pin["pin"]}]
+            plugin_id: [
+                {"scope": "user", "version": CONTENT_VERSION, "reviewed": True}
+                if pin["pin"].startswith("sha256:")
+                else {"scope": "user", "version": "999.0.0" if plugin_id.startswith("pstack@") else pin["pin"]}
+            ]
             for plugin_id, pin in pins.items()
         }
         enabled = dict.fromkeys(pins, True)

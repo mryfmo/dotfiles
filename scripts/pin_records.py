@@ -18,6 +18,7 @@ tomllib (Python 3.11+).
 from __future__ import annotations
 
 import functools
+import hashlib
 import io
 import json
 import os
@@ -35,6 +36,13 @@ COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
 PLUGIN_ID = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)@([A-Za-z0-9][A-Za-z0-9._-]*)$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
+# A Claude Code plugin whose listing and manifest give no version gets the marketplace commit as its version, which
+# moves with every commit to the marketplace; its pin is then the content it was reviewed at (content_sha256).
+CONTENT_PIN = re.compile(r"^sha256:[0-9a-f]{64}$")
+# Claude Code's own bookkeeping at the top of a cache version directory, not plugin content: the cleanup marker
+# written into a superseded version (plugins loading reference, "Cleanup of previous versions") and the lock
+# directory a running session keeps there.
+CLAUDE_CACHE_MARKERS = (".orphaned_at", ".in_use")
 CLAUDE_SCOPES = ("user", "project", "local", "managed")
 
 
@@ -247,7 +255,7 @@ def load_plugin_pins(path: Path) -> PluginPins:
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
             agents[agent][plugin_id] = Pin(
                 field(path, entry, "marketplace", str, where, ascii=True),
-                field(path, entry, "pin", str, where, ascii=True),
+                content_pin(path, entry, where, agent),
                 ref,
             )
     extensions = field(path, data, "gh_extensions", dict)
@@ -258,6 +266,72 @@ def load_plugin_pins(path: Path) -> PluginPins:
             raise RecordError(path, f"gh_extensions.{repository}", "must be one tag string")
         clean(path, f"gh_extensions.{repository}", tag, ascii=True)
     return PluginPins(agents["claude"], agents["codex"], dict(extensions))
+
+
+def content_pin(path: Path, entry: Any, where: str, agent: str) -> str:
+    """A plugin's recorded pin; one in the content form (CONTENT_PIN) is valid only for Claude Code."""
+    pin = field(path, entry, "pin", str, where, ascii=True)
+    if pin.startswith("sha256:") and (agent != "claude" or not CONTENT_PIN.fullmatch(pin)):
+        raise RecordError(path, f"{where}pin", "a content pin is sha256:<64 lowercase hex>, for Claude Code only")
+    return pin
+
+
+def content_sha256(root: Path) -> str:
+    """The content pin of a plugin directory: `sha256:` and the hex SHA-256 over its regular files.
+
+    The files are taken in the byte order of their relative POSIX paths, and each one adds
+    `<relative path> NUL <size> NUL <bytes>`, so file order on disk, mtimes, modes and empty directories do not
+    count. CLAUDE_CACHE_MARKERS at the top level are left out. A symlink, or anything that is neither a regular
+    file nor a directory, anywhere below the root (the root included) refuses: it is not reviewable content.
+    """
+    files: List[Tuple[bytes, Path]] = []
+
+    def walk(directory: Path, prefix: str) -> None:
+        try:
+            entries = list(os.scandir(directory))
+        except OSError as error:
+            raise RecordError(root, prefix or ".", f"cannot list ({error})") from None
+        for entry in entries:
+            relative = f"{prefix}{entry.name}"
+            if not prefix and entry.name in CLAUDE_CACHE_MARKERS:
+                continue
+            try:
+                mode = entry.stat(follow_symlinks=False).st_mode
+            except OSError as error:
+                raise RecordError(root, relative, f"cannot lstat ({error})") from None
+            if stat.S_ISDIR(mode):
+                walk(Path(entry.path), relative + "/")
+            elif stat.S_ISREG(mode):
+                files.append((os.fsencode(relative), Path(entry.path)))
+            else:
+                raise RecordError(
+                    root, relative, "is a symlink or special file; a content pin covers regular files only"
+                )
+
+    try:
+        root_mode = os.lstat(root).st_mode
+    except OSError as error:
+        raise RecordError(root, "(directory)", f"cannot lstat ({error})") from None
+    if not stat.S_ISDIR(root_mode):
+        raise RecordError(root, "(directory)", "is not a real directory")
+    walk(root, "")
+    digest = hashlib.sha256()
+    for relative, file_path in sorted(files):
+        try:
+            fd = os.open(file_path, os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(fd, "rb") as handle:
+                if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                    raise RecordError(root, os.fsdecode(relative), "is not a regular file")
+                data = handle.read()
+        except OSError as error:
+            raise RecordError(root, os.fsdecode(relative), f"cannot read ({error})") from None
+        digest.update(relative + b"\0" + str(len(data)).encode() + b"\0" + data)
+    return "sha256:" + digest.hexdigest()
+
+
+def claude_observed(pin: str, version: str, install_path: str) -> str:
+    """What a Claude Code installation is compared with its pin by: its content for a content pin, else its version."""
+    return content_sha256(Path(install_path)) if CONTENT_PIN.fullmatch(pin) else version
 
 
 # --- ~/.claude/plugins/installed_plugins.json ----------------------------------------------------------------
@@ -647,6 +721,11 @@ def main(argv: List[str]) -> int:
         pinned = load_plugin_pins(Path(args[0])).gh_extensions
         name = repository.split("/", 1)[1]
         return 0 if any(entry.split("/", 1)[1] == name for entry in pinned) else 1
+    elif command == "content-sha256":
+        print(content_sha256(Path(args[0])))
+    elif command == "claude-observed":
+        # PIN VERSION INSTALL_PATH: the value make update compares with the pin (claude_observed).
+        print(claude_observed(args[0], args[1], args[2]))
     else:
         raise RecordError("pin_records.py", command, "is not a command")
     return 0

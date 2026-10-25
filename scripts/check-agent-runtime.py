@@ -922,12 +922,25 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
                     f"{entry.project_path or entry.install_path}: not managed"
                 )
     for plugin_id, pin in sorted(pins.items()):
-        versions = sorted({entry.version for entry in installed.get(plugin_id, []) if entry.scope == "user"})
-        if not versions:
+        users = [entry for entry in installed.get(plugin_id, []) if entry.scope == "user"]
+        if not users:
             findings.append(f"WARN: Claude Code plugin {plugin_id} is not installed (pin {pin.pin})")
-        elif versions != [pin.pin]:
+            continue
+        # A content pin compares the installed files (pin_records.content_sha256), whatever commit the version names.
+        try:
+            observed = sorted(
+                {
+                    (entry.version, records.claude_observed(pin.pin, entry.version, entry.install_path))
+                    for entry in users
+                }
+            )
+        except RecordError as error:
+            findings.append(f"Claude Code plugin {plugin_id}: {error}; its pin not checked")
+            continue
+        if {value for _, value in observed} != {pin.pin}:
+            at = ", ".join(version if value == version else f"{version} ({value})" for version, value in observed)
             findings.append(
-                f"Claude Code plugin {plugin_id} is installed at {', '.join(versions)}, not its pin {pin.pin} "
+                f"Claude Code plugin {plugin_id} is installed at {at}, not its pin {pin.pin} "
                 "(assets.claude-plugins in home/dot_agents/agent-config.yaml); review that release and record it, "
                 "or run make update to return to the pin"
             )

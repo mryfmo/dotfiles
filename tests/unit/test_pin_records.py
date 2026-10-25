@@ -64,6 +64,8 @@ class PinRecordsTest(unittest.TestCase):
             ("numeric pin", lambda d: d["claude"]["crit@crit"].update(pin=1.8), "claude.crit@crit.pin"),
             ("extra key", lambda d: d["claude"]["crit@crit"].update(sha="x"), "claude.crit@crit"),
             ("short ref", lambda d: d["codex"]["tail@tail"].update(ref="abc"), "codex.tail@tail.ref"),
+            ("short content pin", lambda d: d["claude"]["crit@crit"].update(pin="sha256:ab"), "claude.crit@crit.pin"),
+            ("codex content pin", lambda d: d["codex"]["tail@tail"].update(pin="sha256:" + "a" * 64), "tail@tail.pin"),
             ("bad repository", lambda d: d["gh_extensions"].update({"gh-poi": "v1"}), "gh_extensions.gh-poi"),
         ):
             with self.subTest(case=name):
@@ -540,6 +542,66 @@ class PinRecordsTest(unittest.TestCase):
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("enabledPlugins.crit@crit: must be a boolean", result.stderr)
+
+    def plugin_tree(self, name: str, files: dict) -> Path:
+        root = self.dir / name
+        for relative, data in files.items():
+            (root / relative).parent.mkdir(parents=True, exist_ok=True)
+            (root / relative).write_bytes(data)
+        return root
+
+    def test_content_sha256_covers_paths_and_bytes_only(self) -> None:
+        files = {"README.md": b"r\n", "skills/s/SKILL.md": b"skill\n", ".claude-plugin/plugin.json": b"{}\n"}
+        first = self.plugin_tree("a", files)
+        # The same files written in the other order, with other mtimes and modes and an empty directory.
+        second = self.plugin_tree("b", dict(reversed(list(files.items()))))
+        os.utime(second / "README.md", (1, 1))
+        (second / "README.md").chmod(0o600)
+        (second / "empty").mkdir()
+        pin = records.content_sha256(first)
+        self.assertRegex(pin, r"^sha256:[0-9a-f]{64}$")
+        self.assertEqual(pin, records.content_sha256(second))
+        # Claude Code's own markers at the top do not count; the same name deeper down does.
+        (second / ".orphaned_at").write_text("1")
+        (second / ".in_use").mkdir()
+        (second / ".in_use/123.tmp").write_text("x")
+        self.assertEqual(pin, records.content_sha256(second))
+        (second / "skills/.orphaned_at").write_text("1")
+        self.assertNotEqual(pin, records.content_sha256(second))
+        # One changed byte, or the same bytes under another path, is other content.
+        self.assertNotEqual(pin, records.content_sha256(self.plugin_tree("c", {**files, "README.md": b"R\n"})))
+        moved = {"README.txt" if key == "README.md" else key: value for key, value in files.items()}
+        self.assertNotEqual(pin, records.content_sha256(self.plugin_tree("d", moved)))
+
+    def test_content_sha256_refuses_what_is_not_a_regular_file(self) -> None:
+        files = {"skills/s/SKILL.md": b"skill\n"}
+        link = self.plugin_tree("link", files)
+        (link / "skills/s/other").symlink_to(link / "skills/s/SKILL.md")
+        self.refused(lambda: records.content_sha256(link), "skills/s/other")
+        fifo = self.plugin_tree("fifo", files)
+        os.mkfifo(fifo / "pipe")
+        self.refused(lambda: records.content_sha256(fifo), "pipe")
+        linked_root = self.dir / "linked-root"
+        linked_root.symlink_to(self.plugin_tree("target", files))
+        self.refused(lambda: records.content_sha256(linked_root), "is not a real directory")
+        self.refused(lambda: records.content_sha256(self.dir / "absent"), "cannot lstat")
+
+    def test_claude_observed_uses_the_content_only_for_a_content_pin(self) -> None:
+        root = self.plugin_tree("cache/m/p/d4226d062928", {"a": b"a"})
+        pin = records.content_sha256(root)
+        self.assertEqual(pin, records.claude_observed(pin, "d4226d062928", str(root)))
+        self.assertEqual("d4226d062928", records.claude_observed("1.0.0", "d4226d062928", str(root)))
+
+    def test_each_recorded_content_pin_is_the_reviewed_copy_in_the_fixtures(self) -> None:
+        # tests/fixtures/claude-plugins/<plugin> is the tree reviewed for its pin (U91: frontend-design, measured
+        # equal at nine spark cache versions); the tests that need a plugin at its pin install that copy.
+        pins = records.load_plugin_pins(ROOT / "scripts/plugin-pins.json").claude
+        content = {plugin_id: pin.pin for plugin_id, pin in pins.items() if records.CONTENT_PIN.fullmatch(pin.pin)}
+        self.assertIn("frontend-design@claude-plugins-official", content)
+        for plugin_id, pin in content.items():
+            with self.subTest(plugin=plugin_id):
+                reviewed = ROOT / "tests/fixtures/claude-plugins" / plugin_id.split("@", 1)[0]
+                self.assertEqual(pin, records.content_sha256(reviewed))
 
 
 if __name__ == "__main__":

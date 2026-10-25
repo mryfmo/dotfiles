@@ -1646,19 +1646,27 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
 
     def test_doctor_accepts_the_plugins_spark_enabled_at_their_declared_pins(self) -> None:
-        # U91: spark-9e8d ran pyright-lsp and frontend-design at user scope, enabled, without a pin in
-        # assets.claude-plugins; with their pins declared doctor reports nothing for them.
-        pins = ROOT / "scripts/plugin-pins.json"
-        names = ("pyright-lsp", "frontend-design")
-        recorded = json.loads(pins.read_text())["claude"]
-        installs = {}
-        for name in names:
-            version = recorded[f"{name}@claude-plugins-official"]["pin"]
-            path = self.target_root / ".claude/plugins/cache/claude-plugins-official" / name / version
-            path.mkdir(parents=True)
-            installs[f"{name}@claude-plugins-official"] = [
-                {"scope": "user", "version": version, "installPath": str(path)}
+        # U91: spark-9e8d ran pyright-lsp (version 1.0.0) and frontend-design (commit-version d4226d062928) at
+        # user scope, enabled, without a pin. frontend-design carries a content pin, so its files are compared:
+        # the same files at that older commit-version pass, one changed byte or a symlink fails.
+        recorded = json.loads((ROOT / "scripts/plugin-pins.json").read_text())
+        self.assertRegex(recorded["claude"]["frontend-design@claude-plugins-official"]["pin"], r"^sha256:[0-9a-f]{64}$")
+        cache = self.target_root / ".claude/plugins/cache/claude-plugins-official"
+        (cache / "pyright-lsp/1.0.0").mkdir(parents=True)
+        skill = cache / "frontend-design/d4226d062928/skills/frontend-design/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("# Frontend Design\n")
+        pins = self.temp_dir / "spark-pins.json"
+        recorded["claude"]["frontend-design@claude-plugins-official"]["pin"] = self.module.records.content_sha256(
+            cache / "frontend-design/d4226d062928"
+        )
+        pins.write_text(json.dumps(recorded))
+        installs = {
+            f"{name}@claude-plugins-official": [
+                {"scope": "user", "version": version, "installPath": str(cache / name / version)}
             ]
+            for name, version in (("pyright-lsp", "1.0.0"), ("frontend-design", "d4226d062928"))
+        }
         (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
             json.dumps({"version": 2, "plugins": installs})
         )
@@ -1666,11 +1674,22 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             json.dumps({"enabledPlugins": dict.fromkeys(installs, True)})
         )
 
-        findings = self.module.claude_plugin_pin_findings(
-            self.target_root, self.module.records.load_plugin_pins(pins).claude
-        )
+        def findings() -> list[str]:
+            found = self.module.claude_plugin_pin_findings(
+                self.target_root, self.module.records.load_plugin_pins(pins).claude
+            )
+            return [f for f in found if "pyright-lsp" in f or "frontend-design" in f]
 
-        self.assertEqual([], [finding for finding in findings if any(name in finding for name in names)], findings)
+        self.assertEqual([], findings())
+        skill.write_text("# Frontend Design!\n")
+        [changed] = findings()
+        self.assertFalse(self.module.is_warning(changed), changed)
+        self.assertIn("installed at d4226d062928 (sha256:", changed)
+        skill.write_text("# Frontend Design\n")
+        (skill.parent / "link").symlink_to(skill)
+        [linked] = findings()
+        self.assertFalse(self.module.is_warning(linked), linked)
+        self.assertIn("is a symlink or special file", linked)
 
     def test_doctor_compares_versions_by_type(self) -> None:
         # A version recorded as a JSON number never equals its string pin, even when it prints the same.

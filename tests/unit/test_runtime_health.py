@@ -21,6 +21,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import complete_env, isolate_agent_homes, restore_agent_homes
+from claude_plugin_fixture import pinned_install
 
 
 def setUpModule() -> None:
@@ -37,16 +38,7 @@ def install_pinned_claude_plugins(home: Path) -> None:
     pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
     record = home / ".claude/plugins/installed_plugins.json"
     record.parent.mkdir(parents=True, exist_ok=True)
-    plugins = {
-        plugin_id: [
-            {
-                "scope": "user",
-                "version": pin["pin"],
-                "installPath": f"{home}/.claude/plugins/cache/{plugin_id.split('@')[1]}/{plugin_id.split('@')[0]}/{pin['pin']}",
-            }
-        ]
-        for plugin_id, pin in pins.items()
-    }
+    plugins = {plugin_id: [pinned_install(home, plugin_id, pin["pin"])] for plugin_id, pin in pins.items()}
     record.write_text(json.dumps({"version": 2, "plugins": plugins}))
     # What `claude plugin marketplace list --json` prints on that host: every recorded marketplace, registered.
     listing = [

@@ -1290,17 +1290,20 @@ assets:
       marketplace's listing on 2026-10-26 (spark-9e8d ran both, macOS neither). pyright-lsp ships
       no hooks, commands or servers of its own, only an lspServers entry that starts
       pyright-langserver --stdio, the binary mise installs (npm:pyright). frontend-design ships one
-      skill (skills/frontend-design/SKILL.md, prompt text) and nothing that runs. Its listing has
-      no version, so Claude Code records the marketplace commit it installed from (12 hex digits);
-      any later marketplace commit moves that version with the content unchanged, so a fresh
-      install then lands off the pin and is disabled until the pin is reviewed again. A marketplace
-      source takes a ref only as a branch or tag, not a commit (code.claude.com marketplace reference,
-      marketplace sources), and anthropics/claude-plugins-official has no tags, so the commit cannot
-      be held at the marketplace.
+      skill (skills/frontend-design/SKILL.md, prompt text) and nothing that runs. Its listing and
+      manifest have no version, so Claude Code records the marketplace commit it installed from
+      (12 hex digits), which moves with every marketplace commit while the files stay the same; a
+      marketplace source takes a ref only as a branch or tag, not a commit (code.claude.com
+      marketplace reference, marketplace sources), and anthropics/claude-plugins-official has no
+      tags. Such a plugin is pinned by content instead: pin sha256:<hex>, the hash
+      scripts/pin_records.py content_sha256 takes over the installed copy's files, which make update
+      and make doctor compare in place of the version (equal at 58267944f921, d4226d062928 and the
+      seven other versions spark-9e8d cached on 2026-10-26). The reviewed tree is kept at
+      tests/fixtures/claude-plugins/<plugin>; moving such a pin replaces it with the new reviewed tree.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
-      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: '58267944f921'}
+      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:ce5bda41d00150cd52bea577bc91f738dd86a68ac75efc3a6d512727ba82bd6c'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
       ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}

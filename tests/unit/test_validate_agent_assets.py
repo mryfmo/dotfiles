@@ -1153,23 +1153,51 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
         self.assertEqual(["audit", "orchestrator", "worker"], sorted(policies))
         self.module.validate_omp_policies(manifest, policies)
-        # U71 audit round 3 (P2): a raw merge allow in audit.yml, or any other policy file, is refused too.
+        # U71 audit rounds 3, 8 and 9: in every policy file an allow row that reaches GitHub must be on its role's
+        # allowlist; merge spellings are not enumerated, so the GraphQL mutation and any gh write are refused too.
+        allowed = self.module.OMP_GITHUB_ALLOWLIST
+        self.assertEqual(sorted(allowed), sorted(policies))
+        for role, policy in policies.items():
+            reaching = [
+                rule["match"]
+                for rule in policy["bash"]["patterns"]
+                if rule["approval"] == "allow" and self.module.OMP_GITHUB_REACH.search(rule["match"])
+            ]
+            self.assertEqual(sorted(reaching), sorted(allowed[role]), role)
         for role in sorted(policies):
-            for merge in (
+            for row in (
                 "gh pr merge 541 --squash --match-head-commit *",
                 "gh api repos/o/r/pulls/541/merge *",
-                # U71 audit round 8 (P2): GitHub's merge-a-branch endpoint, by gh and by any other client
                 "gh api repos/o/r/merges *",
-                "gh api -X POST repos/*/merges*",
                 "curl -X POST https://api.github.com/repos/o/r/merges *",
+                "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+                "gh api graphql *",
+                "gh issue create *",
+                "gh pr view 1 --json body && gh pr close 1",
+                "GH_TOKEN=x gh api user",
+                "wget -qO- https://example.com",
+                "gh api repos/* ",
             ):
-                with self.subTest(role=role, merge=merge):
+                with self.subTest(role=role, row=row):
                     injected = json.loads(json.dumps(policies))
-                    injected[role]["bash"]["patterns"].insert(0, {"match": merge, "approval": "allow"})
+                    injected[role]["bash"]["patterns"].insert(0, {"match": row, "approval": "allow"})
                     with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                         self.module.validate_omp_policies(manifest, injected)
-                    self.assertIn("names a GitHub merge", stderr.getvalue())
-                    self.assertIn(f"{role}.yml", stderr.getvalue())
+                    self.assertIn(f"reaches GitHub and is not on the {role} allowlist", stderr.getvalue())
+        # each allowlisted row passes in its own role, and only there
+        for role, rows in allowed.items():
+            for row in rows:
+                for other in sorted(policies):
+                    with self.subTest(row=row, into=other):
+                        injected = json.loads(json.dumps(policies))
+                        patterns = injected[other]["bash"]["patterns"]
+                        patterns[:] = [rule for rule in patterns if rule["match"] != row]
+                        patterns.append({"match": row, "approval": "allow"})
+                        if other == role:
+                            self.module.validate_omp_policies(manifest, injected)
+                        else:
+                            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                                self.module.validate_omp_policies(manifest, injected)
         if self.module.yaml is None:
             with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                 self.module.validate_omp_policies(manifest)

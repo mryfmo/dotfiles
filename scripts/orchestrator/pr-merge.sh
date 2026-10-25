@@ -25,8 +25,10 @@
 #   one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
 #   cancelled check is a refusal. The one write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
 #   refuses the merge if the head moved after these reads; it never passes `--admin`, `--auto` or
-#   `--delete-branch`. After the merge, or after a merge error, `gh pr view <pr> --json state,mergeCommit` decides:
-#   `MERGED` prints the receipt (the merge happened; never run the merge twice), anything else is a failure. The
+#   `--delete-branch`. After the merge, or after a merge error, `gh pr view <pr> --json
+#   state,mergeCommit,baseRefName,headRefOid` decides: `MERGED` into `main` at the audited head prints the receipt (the
+#   merge happened; never run the merge twice); another state, another base, or another merged head (a merge someone
+#   else made after the pinned one failed) is a failure with no receipt that names both shas. The
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
@@ -341,12 +343,16 @@ done <<< "${checks}"
 
 merge_status=0
 gh_bounded pr merge "${pr}" --squash --match-head-commit "${head}" >&2 || merge_status=$?
-after=$(gh_bounded pr view "${pr}" --json state,mergeCommit,baseRefName \
-    --jq '[.state, (.mergeCommit.oid // ""), .baseRefName] | @tsv') ||
+after=$(gh_bounded pr view "${pr}" --json state,mergeCommit,baseRefName,headRefOid \
+    --jq '[.state, (.mergeCommit.oid // ""), .baseRefName, .headRefOid] | @tsv') ||
     fail "cannot read pull request ${pr} after the merge command (exit ${merge_status}); read it before anything else"
-IFS=$'\t' read -r state commit merged_base <<< "${after}"
+IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 [[ ${state} == MERGED && ${commit} =~ ^[0-9a-f]{40}$ ]] ||
     fail "pull request ${pr} is ${state:-unreadable} after the merge command (exit ${merge_status})"
+# A merge this lever did not make (U71 audit round 9): when the pinned merge failed and someone else merged a later
+# head, MERGED alone would credit the audited head with that merge, so the merged head must be the audited one.
+[[ ${merged_head} == "${head}" ]] ||
+    fail "pull request ${pr} merged at head ${merged_head:-unreadable} as ${commit}, not at the audited head ${head} (merge command exit ${merge_status}); that merge is not this verdict's; tell the operator"
 # gh pr merge takes no base (`gh pr merge --help`), so a retarget between the second read and the merge call is
 # reported here, loudly, with the base it landed on; it cannot be undone by the lever.
 [[ ${merged_base} == main ]] ||

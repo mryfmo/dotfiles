@@ -417,15 +417,23 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
 # The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is one lever by its
 # installed path, `~/.local/bin/common/<lever> *`, `~/.local/bin/common/<lever> --<flag> *` or the exact bare
 # `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
-# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table. In every policy
-# file under home/dot_agents/omp/policies, found by glob so a new or renamed file is covered too, an allow whose
-# pattern names a GitHub merge (`gh pr merge`, an API `…/pulls/<n>/merge` or `…/merges` path) is refused, since the
-# orchestrator merges only through pr-merge.sh (U71).
+# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table.
 OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
-# A merge in any spelling the API or gh offers: a `merge` or `merges` path segment (`repos/o/r/pulls/1/merge`,
-# `repos/o/r/merges`, through `gh api`, curl or anything else), or `merge`/`merges` after `gh` (`gh pr merge`).
-OMP_RAW_MERGE_ALLOW = re.compile(r"/merges?\b|\bgh\b.*\bmerges?\b")
+# GitHub reach (U71, audit rounds 3, 8 and 9): enumerating merge spellings always missed one (`/merges`, then GraphQL
+# `mergePullRequest`), so in every policy file under OMP_POLICY_DIR, found by glob so a new or renamed file is covered
+# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an
+# entry of its role's list below; any other such row is refused. The lists are today's rows, small and exact, so the
+# single manifest list U76 renders the policies from can adopt them. The orchestrator merges only through pr-merge.sh.
+OMP_GITHUB_REACH = re.compile(r"\bgh\b|graphql|api\.github\.com|\bcurl\b|\bwget\b", re.IGNORECASE)
+OMP_GITHUB_ALLOWLIST = {
+    # the auditor's read-only GitHub reads, behind audit.yml's common and write-method denies
+    "audit": ("gh pr view *", "gh pr diff *", "gh pr checks *", "gh run view *", "gh api repos/*"),
+    # the orchestrator's GitHub writes go through its levers only; no raw gh row
+    "orchestrator": (),
+    # the worker's one GitHub-write lever; its gh pr create/ready/comment run under the yolo default, not an allow row
+    "worker": (),
+}
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
@@ -463,22 +471,25 @@ def omp_policy_roles() -> list[str]:
     return roles
 
 
-def validate_omp_no_raw_merge_allow(policy: Any, label: str) -> None:
-    """Refuse an allow rule whose pattern names a GitHub merge, in any seat's policy (U71)."""
+def validate_omp_github_allow(policy: Any, label: str, role: str) -> None:
+    """Refuse an allow rule that mentions GitHub reach unless it is byte-identical to an OMP_GITHUB_ALLOWLIST entry of
+    its role (U71); a role without a list allows no such row."""
     patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
     if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
         fail(f"{label} bash.patterns must be a list of rules")
     for rule in patterns:
         match = rule.get("match")
-        if rule.get("approval") == "allow" and isinstance(match, str) and OMP_RAW_MERGE_ALLOW.search(match):
+        if rule.get("approval") != "allow" or not isinstance(match, str) or not OMP_GITHUB_REACH.search(match):
+            continue
+        if match not in OMP_GITHUB_ALLOWLIST.get(role, ()):
             fail(
-                f"{label} allow rule {match!r} names a GitHub merge; seats merge only through "
-                f"{LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
+                f"{label} allow rule {match!r} reaches GitHub and is not on the {role} allowlist in "
+                f"validate-agent-assets.py; seats merge only through {LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
             )
 
 
 def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
-    """Check every seat policy for a raw merge allow and the writing seats' allow rows; `policies` maps each role of
+    """Check every seat policy's GitHub-reaching allow rows against its allowlist and the writing seats' allow rows; `policies` maps each role of
     omp_policy_roles() to its parsed overlay, else PyYAML reads the files."""
     if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
@@ -489,7 +500,7 @@ def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | N
     for role in roles:
         path = ROOT / OMP_POLICY_DIR / f"{role}.yml"
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
-        validate_omp_no_raw_merge_allow(policy, str(path))
+        validate_omp_github_allow(policy, str(path), role)
         if role in OMP_WRITING_POLICIES:
             validate_omp_policy_allow(policy, str(path), pinned)
 

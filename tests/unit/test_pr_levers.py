@@ -832,6 +832,7 @@ class PrMergeTest(PrLeverTestCase):
         after="MERGED",
         again_base="main",
         merged_base="main",
+        merged_head=None,
     ):
         if checks is None:
             checks = [{"bucket": "pass", "name": "test"}, {"bucket": "skipping", "name": "docs"}]
@@ -851,11 +852,12 @@ class PrMergeTest(PrLeverTestCase):
             },
             {"match": rf"^pr merge 7 --squash --match-head-commit {head}$", "exit": merge_exit, "stderr": "x"},
             {
-                "match": r"^pr view 7 --json state,mergeCommit,baseRefName$",
+                "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {
                     "state": after,
                     "mergeCommit": {"oid": SHA_B} if after == "MERGED" else None,
                     "baseRefName": merged_base,
+                    "headRefOid": merged_head or head,
                 },
             },
         )
@@ -1003,6 +1005,16 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 1, run.stderr)
         self.assertIn("merged into release, not main", run.stderr)
         self.assertEqual(run.stdout, "")
+
+    def test_a_merge_at_another_head_is_never_credited_to_the_verdict(self):
+        # U71 audit round 9 (P2): the pinned merge failed and someone else merged a later head; MERGED alone gave a
+        # receipt for the audited head.
+        self.github(merge_exit=1, merged_head=SHA_B)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertIn(f"merged at head {SHA_B}", run.stderr)
+        self.assertIn(f"not at the audited head {SHA_A}", run.stderr)
 
     def test_a_merge_error_reads_the_state_and_never_merges_twice(self):
         self.github(merge_exit=1)

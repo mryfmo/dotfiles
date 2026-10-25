@@ -148,6 +148,7 @@ allow	tests/unit/test_check_agent_runtime.py	agmsg	proves doctor reports the ret
 allow	tests/unit/test_claude_settings_merge.py	MultiEdit	installed entries with the legacy matcher and the deleted tool's hook converge
 allow	tests/unit/test_claude_settings_merge.py	agmsg	installed entries with the legacy matcher and the deleted tool's hook converge
 allow	tests/unit/test_claude_settings_merge.py	herdr-agents	installed entries with the legacy matcher and the deleted tool's hook converge
+allow	tests/unit/test_drift_watch.py	agmsg	a fake lint's output line, proving the drift watch turns each hit into a finding
 allow	tests/unit/test_generate_agent_configs.py	herdr-agents	legacy allow rules and launch keys the generator drops
 allow	tests/unit/test_hcom_dispatch.py	agmsg	proves the retired dispatch form and prefixed kinds are refused or opaque
 allow	tests/unit/test_hcom_seat_skills.py	agmsg	proves the skills name no retired seat or prefix

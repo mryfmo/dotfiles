@@ -23,7 +23,7 @@ For pull requests, keep the description aligned with the full current PR content
 5. If additional commits are pushed after PR creation, inspect the updated commits/diff with `gh` and refresh the PR description so it reflects the full current PR, not only the latest increment.
 6. Include inspected URLs in the response.
 7. Write commit messages in Conventional Commit format.
-8. Before merging or accepting a PR, follow the `hcom-orchestration` SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then the squash merge pinned to that head sha (`--match-head-commit`).
+8. Before merging or accepting a PR in a repository that has a program store (`.orchestration/orchestrate/<program>/`), follow the `hcom-orchestration` SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then the squash merge pinned to that head sha (`--match-head-commit`). In any other repository, follow that repository's own merge rules.
 
 ## Output Checklist
 
@@ -32,7 +32,7 @@ For pull requests, keep the description aligned with the full current PR content
 - Include inspected issue/PR URLs.
 - When commits were added after PR creation, confirm the PR description was updated to match the full current PR.
 - Keep commit subject in Conventional Commit form: `<type>(<scope>): <summary>`.
-- Before a merge: every bot finding, including any CodeRabbit review and every `failure` and `warning` annotation, is fixed at root cause or dismissed with a pasted refutation; a bot review is optional and not gated.
+- Before a merge in a repository with a program store: every bot finding, including any CodeRabbit review and every `failure` and `warning` annotation, is fixed at root cause or dismissed with a pasted refutation; a bot review is optional and not gated. Elsewhere, the repository's own merge rules apply.
 - Do NOT include local absolute file paths (e.g., `/Users/.../`, `/home/.../`) in any output. Use repository-relative paths instead.
 
 Use [gh-git-rules.md](references/gh-git-rules.md) for command examples and commit-type guidance.

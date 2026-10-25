@@ -432,17 +432,21 @@ find_on_path() {
     return 1
 }
 
-# @description Print the first line of file `$1` (regime-cutover U85). The read's status is the producer's: a file
-#   that cannot be read, or whose first line is empty, fails, so a caller refuses instead of acting on a guess. File
-#   reads in hcom-seat go through this or another checked producer, never `read < file` (tests/unit/test_hcom_seat.py).
+# @description Print the value of the git pointer file `$1` (a `.git` file, `commondir`, `gitdir`) read whole
+#   (regime-cutover U85). git consumes the complete content less its trailing newlines, so only a single line is a
+#   value: content that cannot be read, is empty, or holds any control character once one final newline is dropped (a
+#   second line, a carriage return) fails, and the caller refuses. Pointer files are read this way only where git
+#   cannot be asked yet (before the git state is checked); everywhere after, git answers (git_paths_of).
 # @arg $1 string The file.
-# @stdout The line, without its newline.
-# @exitcode 1 It cannot be read or its first line is empty.
-first_line() {
-    local line
-    line=$(/usr/bin/head -n 1 -- "$1") || return 1
-    [[ -n ${line} ]] || return 1
-    printf '%s\n' "${line}"
+# @stdout The value.
+# @exitcode 1 It cannot be read, is empty, or is not a single line free of control characters.
+pointer_value() {
+    local content
+    content=$(/bin/cat -- "$1" && printf .) || return 1
+    content=${content%.}
+    content=${content%$'\n'}
+    [[ -n ${content} && ${content} != *[[:cntrl:]]* ]] || return 1
+    printf '%s\n' "${content}"
 }
 
 # @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
@@ -551,7 +555,8 @@ if [[ -n ${top} || -e /.git ]]; then
     top=${top:-/}
     gitdir=${top}/.git
     if [[ -f ${gitdir} ]]; then
-        line=$(first_line "${gitdir}") || refuse "cannot read ${gitdir}"
+        line=$(pointer_value "${gitdir}") || refuse "cannot read ${gitdir} as one line free of control characters"
+        [[ ${line} == 'gitdir: '* ]] || refuse "${gitdir} holds no 'gitdir: ' line" # lint-comparisons: allow the literal prefix git writes, no path compare
         gitdir=${line#gitdir: }
         case ${gitdir} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) ;;
@@ -560,7 +565,8 @@ if [[ -n ${top} || -e /.git ]]; then
     fi
     common_guess=${gitdir}
     if [[ -f ${gitdir}/commondir ]]; then
-        line=$(first_line "${gitdir}/commondir") || refuse "cannot read ${gitdir}/commondir"
+        line=$(pointer_value "${gitdir}/commondir") ||
+            refuse "cannot read ${gitdir}/commondir as one line free of control characters"
         case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) common_guess=${line} ;;
         *) common_guess=${gitdir}/${line} ;;
@@ -688,7 +694,10 @@ git_state_check() {
             if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
         done
         if [[ -e ${wt}/commondir ]]; then
-            line=$(first_line "${wt}/commondir") || refuse "cannot read ${wt}/commondir"
+            # Read here before any git may run (the first call precedes the first git command); git has no query for
+            # another worktree's commondir. One line or a refusal: git would consume every line.
+            line=$(pointer_value "${wt}/commondir") ||
+                refuse "cannot read ${wt}/commondir as one line free of control characters"
             case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
             /*) target=${line} ;;
             *) target=${wt}/${line} ;;
@@ -696,18 +705,7 @@ git_state_check() {
             [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
         fi
     done
-    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then
-        git_state+=("${dir_real}/.git")
-        line=$(first_line "${dir_real}/.git") || refuse "cannot read ${dir_real}/.git"
-        target=${line#gitdir: }
-        # `git worktree add --relative-paths` (worktree.useRelativePaths) writes it relative to the worktree.
-        case ${target} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-        /*) ;;
-        *) target=${dir_real}/${target} ;;
-        esac
-        [[ ${target%/*} -ef ${common_real}/worktrees ]] ||
-            refuse "${dir_real}/.git leads to ${target}, outside ${common_real}/worktrees"
-    fi
+    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then git_state+=("${dir_real}/.git"); fi
     for f in "${git_state[@]}"; do
         [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
         # A dry run validates and creates nothing: an absent file holds no setting, and the real launch creates it.
@@ -729,6 +727,37 @@ git_state_check() {
             esac
         done <<< "${names}"
     done
+    # The seat worktree's `.git` file is git's to read (relative forms, `--relative-paths`, included): once the
+    # state it reads has passed, git names the git directory and common directory it resolves there.
+    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then
+        git_paths_of 2 -C "${dir_real}" rev-parse --path-format=absolute --git-dir --git-common-dir
+        [[ ${git_paths[0]%/*} -ef ${common_real}/worktrees && ${git_paths[1]} -ef ${common_real} ]] ||
+            refuse "${dir_real}/.git leads to ${git_paths[0]}, outside ${common_real}/worktrees"
+    fi
+}
+
+# @description Run host git (git, the checked argv) with `$2...` and read its whole answer into `git_paths`
+#   (regime-cutover U85): exactly `$1` newline-terminated lines, each an absolute path free of control characters. A
+#   failing git, an unterminated line, another count (a path holding a newline splits into more), a relative path or
+#   a control character refuses (exit 2).
+# @arg $1 int The number of paths.
+# @arg $@ string git's arguments after it.
+# @set git_paths The paths.
+git_paths_of() {
+    local count=$1 out line
+    shift
+    out=$(git "$@" && printf .) || refuse "git $* failed"
+    out=${out%.}
+    git_paths=()
+    while [[ -n ${out} ]]; do
+        [[ ${out} == *$'\n'* ]] || refuse "git $* printed an unterminated line"
+        line=${out%%$'\n'*}
+        out=${out#*$'\n'}
+        [[ ${line} == /* && ${line} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
+            refuse "git $* printed '${line}', not an absolute path free of control characters"
+        git_paths+=("${line}")
+    done
+    ((${#git_paths[@]} == count)) || refuse "git $* printed ${#git_paths[@]} paths, not ${count}"
 }
 
 # @description Run git with nothing a repository's config or hooks name: no hooks (`core.hooksPath=/dev/null`), no
@@ -806,8 +835,14 @@ for ext in "${exts[@]}"; do
     checked+=("${listed}")
 done
 exts=("${checked[@]}")
-repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
-common=$(git rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of ${repo}"
+# git names the checkout and its git directories; they must be the ones found (and checked) before git ran, by
+# identity, or git reads state the check never saw (GIT_DIR, core.worktree, a pointer git reads differently).
+[[ -n ${top} ]] || refuse 'run hcom-seat inside the repository checkout'
+git_paths_of 3 rev-parse --path-format=absolute --show-toplevel --git-dir --git-common-dir
+repo=${git_paths[0]}
+common=${git_paths[2]}
+[[ ${repo} -ef ${top} && ${git_paths[1]} -ef ${gitdir} && ${common} -ef ${early_common} ]] ||
+    refuse "git resolves the checkout ${repo}, git directory ${git_paths[1]} and common directory ${common}, not ${top}, ${gitdir} and ${early_common} found before it ran"
 seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
 [[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
 case ${role} in
@@ -915,7 +950,7 @@ other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'c
 # @arg $2 string The seat directory, physical.
 # @arg $@ string The seat's allowWrite roots after them, physical, its own slots first (seat_write_roots).
 seat_overlap_check() {
-    local own_role=$1 own_dir=$2 r p i k status wt line target seats_phys labels=() protected=()
+    local own_role=$1 own_dir=$2 r p i k status line target listing record seats_phys labels=() protected=()
     shift 2
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
@@ -926,18 +961,27 @@ seat_overlap_check() {
         labels+=("the seat directory")
         protected+=("${target}")
     done
-    for wt in "${common}"/worktrees/*/gitdir; do
-        [[ -f ${wt} ]] || continue
-        line=$(first_line "${wt}") || refuse "cannot read ${wt}"
-        # A relative gitdir (`git worktree add --relative-paths`) is relative to worktrees/<name>/.
-        case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-        /*) ;;
-        *) line=${wt%/gitdir}/${line} ;;
-        esac
-        target=$(physical_path "${line%/.git}") || refuse "cannot resolve the worktree ${line%/.git} named in ${wt}"
+    # Every linked worktree, as git names it (relative `gitdir` files included): NUL-terminated fields, each turned
+    # into one line (a newline inside a field becomes \001, a control character, refused in a path). The first record
+    # is the main worktree, protected above as the main checkout.
+    listing=$({ git -C "${repo}" worktree list --porcelain -z | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
+        refuse "git cannot list the worktrees of ${repo}"
+    listing=${listing%.}
+    record=0
+    while IFS= read -r line; do
+        if [[ -z ${line} ]]; then
+            record=$((record + 1))
+            continue
+        fi
+        [[ ${line} == 'worktree '* ]] || continue # lint-comparisons: allow the porcelain field name, no path compare
+        ((record > 0)) || continue
+        line=${line#worktree }
+        [[ ${line} == /* && ${line} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
+            refuse "git names the worktree '${line}', not an absolute path free of control characters"
+        target=$(physical_path "${line}") || refuse "cannot resolve the worktree ${line}"
         labels+=("the worktree")
         protected+=("${target}")
-    done
+    done <<< "${listing}"
     for p in "${protected[@]}"; do
         require_clean_path 'a protected seat path' "${p}"
     done

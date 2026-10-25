@@ -755,6 +755,62 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("commondir leads to /tmp", run.stderr)
 
+    def test_a_multiline_commondir_refuses_every_launch(self):
+        """U85 round 18: git consumes a pointer file whole (less trailing newlines), so a `commondir` of
+        `../..\\n/../../attacker\\n` is no `../..`: it is refused for a worktree next to the launch and for the
+        worktree the launch runs in, before git runs."""
+        linked = Path(self.temp.name).resolve() / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked), "HEAD")
+        commondir = self.repo / ".git/worktrees/linked/commondir"
+        commondir.write_text("../..\n/../../attacker\n")
+        for cwd in (self.repo, linked):
+            with self.subTest(cwd=cwd.name):
+                run = self.seat("worker", "--seats-root", self.seats, cwd=cwd)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{commondir.resolve()} as one line free of control characters", run.stderr)
+                self.assertFalse(Path(self.seats).exists())
+        commondir.write_text("../..\n")
+        run = self.seat("worker", "--seats-root", self.seats, cwd=linked)
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_pointer_value_reads_the_whole_file(self):
+        """U85 round 18: pointer_value gives a value only for a single line free of control characters."""
+        text = SEAT.read_text()
+        function = text[text.index("pointer_value() {") : text.index("\n}\n", text.index("pointer_value() {")) + 3]
+        scratch = Path(self.temp.name)
+        cases = {
+            "../..\n": (0, "../..\n"),
+            "gitdir: /a/b": (0, "gitdir: /a/b\n"),
+            "../..\n/../../attacker\n": (1, ""),
+            "../..\r\n": (1, ""),
+            "../..\n\n": (1, ""),
+            "": (1, ""),
+            "\n": (1, ""),
+        }
+        for content, expected in cases.items():
+            with self.subTest(content=content):
+                (scratch / "pointer").write_text(content)
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'set -euo pipefail\n{function}\npointer_value "$1"', "_", str(scratch / "pointer")],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), expected, run.stderr)
+        run = subprocess.run(
+            ["/bin/bash", "-c", f'{function}\npointer_value "$1"', "_", str(scratch / "absent")],
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (1, ""))
+
+    def test_git_must_resolve_the_directories_checked_before_it_ran(self):
+        """U85 round 18: the checkout and git directories git names are the ones found before git ran, by identity;
+        a GIT_DIR naming another repository is refused, not launched over unchecked state."""
+        other = Path(self.temp.name).resolve() / "other"
+        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        run = self.seat("worker", "--seats-root", self.seats, GIT_DIR=str(other / ".git"))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("found before it ran", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+
     def test_an_interpreter_in_a_seat_write_root_never_runs(self):
         """U85 round 6: the interpreter of mise or of a resolved tool is held to the identity check before either runs."""
         interp = self.store / "u85interp"
@@ -972,11 +1028,11 @@ class HcomSeatTest(unittest.TestCase):
     def test_a_failing_header_read_refuses_instead_of_skipping_the_interpreter(self):
         """U85 round 17: pin_exec reads a file's first bytes and its interpreter line with checked producers (head,
         under pipefail); a producer that prints a plausible answer and fails refuses, never reads as a file without `#!`. The
-        git-state reads go through first_line, which fails the same way."""
+        git pointer files are read whole (pointer_value, tested on its own)."""
         text = SEAT.read_text()
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "first_line", "pin_exec")
+            for name in ("refuse", "pin_exec")
         )
         scratch = Path(self.temp.name).resolve()
         counter = scratch / "head-calls"
@@ -1006,13 +1062,6 @@ class HcomSeatTest(unittest.TestCase):
                 2,
                 "cannot read the interpreter of tool",
             ),
-            (
-                "first_line",
-                {"HEAD_FAIL_AT": "0"},
-                'first_line "$1" || refuse first_line failed',
-                2,
-                "first_line failed",
-            ),
         )
         for label, env, call, status, expected in cases:
             with self.subTest(label):
@@ -1035,7 +1084,7 @@ class HcomSeatTest(unittest.TestCase):
     def test_no_file_read_or_command_status_is_masked(self):
         """U85 round 17: hcom-seat passes ShellCheck with check-extra-masked-returns (SC2312) and
         require-variable-braces, and reads no file with `read < file`, whose failure a `||` fallback can mask (file
-        reads go through a checked producer such as first_line). Both are checked here so the class cannot return."""
+        reads go through a checked producer such as pointer_value). Both are checked here so the class cannot return."""
         for path in (SEAT, ROOT / "home/dot_local/bin/common/executable_hcom-seat"):
             with self.subTest(path=path.name):
                 masked = [

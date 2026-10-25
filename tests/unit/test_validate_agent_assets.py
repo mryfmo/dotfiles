@@ -1035,11 +1035,18 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         def with_lever_excluded(candidate: dict) -> None:
             candidate["claude"]["sandbox"]["excludedCommands"].append("~/.local/bin/common/hcom-seat *")
 
+        def with_token_to_pypi(candidate: dict) -> None:
+            # Round 4: pypi.org is an allowed domain, so a subset check let the gh token be injected there.
+            for entry in candidate["claude"]["sandbox"]["credentials"]["files"]:
+                if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
+                    entry["injectHosts"] = ["pypi.org"]
+
         for name, mutate, message in (
             ("unprompted exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
             ("unsandboxed retry", with_retry, "allowUnsandboxedCommands must be false"),
             ("literal retry rule", with_dead_rule, "must not name dangerouslyDisableSandbox"),
             ("allowed lever excluded", with_lever_excluded, "excludedCommands must stay within"),
+            ("gh token injected into pypi.org", with_token_to_pypi, "injectHosts exactly ['api.github.com']"),
         ):
             with self.subTest(form=name):
                 candidate = copy.deepcopy(manifest)
@@ -1332,8 +1339,37 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "codex login readable": (without_file("~/.codex/auth.json"), "deny entry for each credential store"),
             "gh hosts unlisted": (without_file("~/.config/gh/hosts.yml"), "~/.config/gh/hosts.yml"),
             "gh mask fails open": (hosts(onExtractNoMatch="warn"), "onExtractNoMatch=deny"),
-            "gh mask injects anywhere": (hosts(injectHosts=["evil.example.com"]), "injectHosts inside allowedDomains"),
+            "gh mask injects anywhere": (
+                hosts(injectHosts=["evil.example.com"]),
+                "injectHosts exactly ['api.github.com']",
+            ),
+            # Round 4: an allowed domain is not an allowed destination for the token.
+            "gh mask injects into pypi.org": (
+                lambda sandbox: (
+                    sandbox["network"]["allowedDomains"].append("pypi.org"),
+                    hosts(injectHosts=["pypi.org"])(sandbox),
+                ),
+                "injectHosts exactly ['api.github.com']",
+            ),
+            "gh mask injects into an extra host": (
+                hosts(injectHosts=["api.github.com", "github.com"]),
+                "injectHosts exactly ['api.github.com']",
+            ),
+            "gh mask injects into every allowed domain": (
+                lambda sandbox: [e.pop("injectHosts", None) for e in sandbox["credentials"]["files"]],
+                "injectHosts exactly ['api.github.com']",
+            ),
             "gh mask allow": (hosts(mode="allow"), "~/.config/gh/hosts.yml"),
+            "another file masked": (
+                lambda sandbox: sandbox["credentials"]["files"].append(
+                    {"path": "~/.netrc", "mode": "mask", "injectHosts": ["api.github.com"]}
+                ),
+                "may mask only ~/.config/gh/hosts.yml",
+            ),
+            "a variable masked": (
+                lambda sandbox: sandbox["credentials"]["envVars"].append({"name": "GH_TOKEN", "mode": "mask"}),
+                "envVars entries must all be deny",
+            ),
             "token env passed": (
                 lambda sandbox: sandbox["credentials"].update(envVars=[]),
                 "envVars must deny",

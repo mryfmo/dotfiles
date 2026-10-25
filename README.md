@@ -590,7 +590,9 @@ subprocess:
   Keychain. The mask sets `maskDuplicates` and `onExtractNoMatch: deny`, so a
   file the pattern does not match stays unreadable rather than exposed. The
   validator runs the `extract` pattern over a synthetic hosts file and refuses
-  it unless group 1 is exactly every token value.
+  it unless group 1 is exactly every token value. It also requires
+  `injectHosts` to be exactly `["api.github.com"]` (`GH_MASK_INJECT_HOSTS`),
+  not any allowed domain, and refuses a mask on any other file or variable.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
   environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
   host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot

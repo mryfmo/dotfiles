@@ -329,6 +329,8 @@ SANDBOX_CREDENTIAL_DENIES = (
     "~/.config/age/key.txt",
 )
 GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
+# The only hosts the sandbox proxy may send the real gh token to (U68): an exact list, like the write roots.
+GH_MASK_INJECT_HOSTS = ("api.github.com",)
 SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
 # Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
 # `dangerouslyDisableSandbox` retry, and only these exclusions run outside the sandbox, each behind an identical
@@ -389,6 +391,12 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
     missing = [path for path in SANDBOX_CREDENTIAL_DENIES if modes.get(path) != "deny"]
     if missing:
         fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
+    # A mask authorises the proxy to send the real credential, so its destinations are an exact list too (U68): only
+    # the gh hosts file may be masked, and only toward GH_MASK_INJECT_HOSTS, compared byte for byte.
+    masked = [e.get("path") for e in files if e.get("mode") == "mask"]
+    others = [path for path in masked if path != GH_HOSTS_FILE]  # lint-comparisons: allow settings text
+    if others:
+        fail(f"{label}.credentials.files may mask only {GH_HOSTS_FILE}; deny the others: {others}")
     hosts = next((e for e in files if e.get("path") == GH_HOSTS_FILE), None)  # lint-comparisons: allow settings text
     domains = sandbox.get("network", {}).get("allowedDomains", [])
     if (
@@ -400,21 +408,24 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
                 not mask_extracts_every_token(hosts.get("extract"))
                 or hosts.get("maskDuplicates") is not True
                 or hosts.get("onExtractNoMatch") != "deny"
-                or not hosts.get("injectHosts")
-                or not set(hosts.get("injectHosts", [])) <= set(domains)
+                or hosts.get("injectHosts") != list(GH_MASK_INJECT_HOSTS)
+                or not set(GH_MASK_INJECT_HOSTS) <= set(domains)
             )
         )
     ):
         fail(
             f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with an extract whose group 1 captures "
-            f"each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts inside "
-            f"allowedDomains: {hosts!r}"
+            f"each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts exactly "
+            f"{list(GH_MASK_INJECT_HOSTS)} (also in allowedDomains): {hosts!r}"
         )
     env_vars = credentials.get("envVars", [])
     entries = env_vars if isinstance(env_vars, list) else []
     env_modes = {entry.get("name"): entry.get("mode") for entry in entries if isinstance(entry, dict)}
     if not isinstance(env_vars, list) or any(env_modes.get(name) != "deny" for name in SANDBOX_ENV_DENIES):
         fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    masked_env = [name for name, mode in env_modes.items() if mode != "deny"]
+    if masked_env:
+        fail(f"{label}.credentials.envVars entries must all be deny (no mask sends a variable anywhere): {masked_env}")
     tls = sandbox.get("network", {}).get("tlsTerminate")
     masks = any(entry.get("mode") == "mask" for entry in files)
     if os_name == "darwin" and tls is not None:

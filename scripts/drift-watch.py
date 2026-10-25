@@ -13,10 +13,13 @@ The checks, all pure reads (no installs, no host state):
 - mise-pin: every exact (non-"latest") version in home/dot_mise/config.toml against the newest stable upstream
   release at least minimum_release_age old (the window the same file sets, 72h today).
 - manifest-pin: every `pin` and `fallback.pin` in home/dot_agents/agent-config.yaml assets, with the same window;
-  a git-commit pin is drift when the default branch has commits past it older than the window.
+  a git-commit pin is drift when the default branch has commits past it older than the window, and absent when the
+  compare endpoint answers 404 after the repository itself was read (the only read where 404 means "absent"; any
+  other failed read, a repository 404 included, is a read failure).
 - plugin-pin: every Claude and Codex plugin pin in that manifest against each version its marketplace serves now: the
-  catalog entry's `version` when it has one and, always, the plugin.json its source points at (a marketplace serves
-  its default branch, so there is no release date to apply the window to).
+  catalog entry's `version` when it has one and, always, the plugin.json its source points at (a relative path or a
+  `local` source is read in the marketplace's own repository; a marketplace serves its default branch, so there is
+  no release date to apply the window to).
 - unrecorded: a `pin: unknown`.
 - retired-term: the retired-term lint (RETIRED_TERM_LINT, owned by U72) when this tree has it; each line it prints
   is a finding.
@@ -82,6 +85,8 @@ class ReadError(Exception):
 
 
 MISSING = object()
+# Every upstream timestamp: date, time, optional fraction, and a zone (Z or +hh:mm).
+ISO_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})")
 
 
 class Shape:
@@ -106,14 +111,15 @@ class Shape:
             raise self.fail(f"{what} has no {name}")
         return self.of(obj[name], kind, f"{what}.{name}")
 
-    def time(self, text: str, what: str) -> datetime.datetime:
+    def time(self, text, what: str) -> datetime.datetime:
+        """The one timestamp parser of every source: a non-empty ISO 8601 date-time with a time zone, and a real one
+        (2026-02-30 is refused); anything else is a read failure."""
+        if not isinstance(text, str) or not ISO_TIME.fullmatch(text):
+            raise self.fail(f"{what} {text!r} is no ISO date-time with a time zone")
         try:
-            value = parse_time(text)
+            return datetime.datetime.fromisoformat(text)
         except ValueError:
-            raise self.fail(f"{what} {text!r} is no ISO time") from None
-        if value.tzinfo is None:
-            raise self.fail(f"{what} {text!r} has no time zone")
-        return value
+            raise self.fail(f"{what} {text!r} is no real date-time") from None
 
 
 @dataclass(frozen=True)
@@ -172,7 +178,9 @@ class Upstream:
                 request.add_unredirected_header("Authorization", f"Bearer {self.token}")
         try:
             with OPENER.open(request, timeout=30) as response:
-                return json.loads(response.read())
+                # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
+                # and a str that starts with a byte-order mark is refused by json.loads.
+                return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             raise ReadError(url, f"HTTP {error.code}", error.code) from None
         # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
@@ -234,7 +242,8 @@ def parse_github_releases(doc, shape: Shape) -> list[Release]:
         releases.append(
             Release(
                 shape.key(item, "tag_name", str, "a release"),
-                published and shape.time(published, "published_at"),
+                # null is GitHub's value for a draft; any string, the empty one included, must be a real time.
+                None if published is None else shape.time(published, "published_at"),
                 stable,
             )
         )
@@ -284,7 +293,8 @@ def parse_node(doc, shape: Shape) -> list[Release]:
         date = shape.key(item, "date", str, "a release")
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
             raise shape.fail(f"date {date!r} is no YYYY-MM-DD")
-        releases.append(Release(shape.key(item, "version", str, "a release"), parse_time(f"{date}T23:59:59Z"), True))
+        published = shape.time(f"{date}T23:59:59Z", "date")
+        releases.append(Release(shape.key(item, "version", str, "a release"), published, True))
     return releases
 
 
@@ -457,9 +467,16 @@ class Watch:
         repo_url = f"{GITHUB_API}/repos/{repo}"
         try:
             branch = Shape(repo_url).key(self.upstream.get(repo_url), "default_branch", str)
-            compare_url = f"{GITHUB_API}/repos/{repo}/compare/{pin}...{branch}"
+        except ReadError as error:
+            # Any failed repository read, a 404 included, is a read failure: it says nothing about the pin.
+            self.failures.append(f"manifest-pin {subject}: {error}")
+            return
+        compare_url = f"{GITHUB_API}/repos/{repo}/compare/{pin}...{branch}"
+        try:
             status, ahead, commits = parse_compare(self.upstream.get(compare_url), Shape(compare_url))
         except ReadError as error:
+            # Only here does 404 mean "absent": the repository and its default branch were just read, so the compare
+            # endpoint's 404 means the pinned commit is not in the repository.
             if error.status == 404:
                 self.findings.append(
                     Finding("manifest-pin", subject, pin[:12], f"not found in {repo} (HTTP 404)", where)
@@ -520,8 +537,15 @@ class Watch:
         if (version := shape.key(item, "version", str, plugin, default=None)) is not None:
             served.append((f"{repo}/{marketplace_file}", version))
         source, ref = shape.key(item, "source", (str, dict), plugin), ""
+        if isinstance(source, dict) and shape.key(source, "source", str, f"{plugin}.source") == "local":
+            # A local source (the shape generate-agent-configs.py emits) is a directory of the marketplace's own
+            # repository, so its plugin.json is read there.
+            source = shape.key(source, "path", str, f"{plugin}.source")
         if isinstance(source, str):
             path = posixpath.normpath(posixpath.join(source, manifest_file))
+            # The first component of the normalised path: ".." leaves the repository, "" is an absolute path.
+            if posixpath.normpath(path).split("/", 1)[0] in ("..", ""):
+                raise shape.fail(f"{plugin}.source {source!r} leaves the marketplace repository")
         else:
             kind = shape.key(source, "source", str, f"{plugin}.source")
             location = shape.key(source, "url" if kind == "url" else "repo", str, f"{plugin}.source", default="")

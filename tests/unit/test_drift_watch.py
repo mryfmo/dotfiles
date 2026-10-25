@@ -44,6 +44,7 @@ def workflow(oses):
 
 CURRENT_MISE = """[tools]
 python = "3.15.1"
+node = "26.12.1"
 jq = "latest"
 "npm:ccusage" = "20.0.40"
 
@@ -103,6 +104,10 @@ CURRENT_UPSTREAM = {
             "title": "[macOS] Deprecation of simulator runtimes for Xcode 26 on macOS 15",
         },
         {"number": 7, "state": "open", "title": "macos-15 is retired", "pull_request": {}},
+    ],
+    "https://nodejs.org/dist/index.json": [
+        {"version": "v27.0.0", "date": "2026-10-24"},
+        {"version": "v26.12.1", "date": "2026-10-21"},
     ],
     "https://www.python.org/api/v2/downloads/release/?is_published=true": [
         {"name": "Python 3.15.1", "release_date": "2026-10-21T09:59:50Z", "pre_release": False},
@@ -302,6 +307,8 @@ class DriftWatchTest(unittest.TestCase):
         bats = f"{GH}/bats-core/bats-core/releases?per_page=100"
         python = "https://www.python.org/api/v2/downloads/release/?is_published=true"
         catalog = f"{GH}/DietrichGebert/ponytail/contents/.claude-plugin/marketplace.json"
+        node = "https://nodejs.org/dist/index.json"
+        pypi = "https://pypi.org/pypi/hcom/json"
         for name, change in (
             ("a release list that is an object", lambda upstream: upstream.update({starship: {}})),
             ("a draft flag that is a string", lambda upstream: upstream[bats][2].update({"draft": "no"})),
@@ -317,6 +324,26 @@ class DriftWatchTest(unittest.TestCase):
                 "a release date that is no time",
                 lambda upstream: upstream[python][0].update({"release_date": "yesterday"}),
             ),
+            ("an empty published_at", lambda upstream: upstream[starship][0].update({"published_at": ""})),
+            ("an impossible Node date", lambda upstream: upstream[node][1].update({"date": "2026-02-30"})),
+            (
+                "an impossible python.org date",
+                lambda upstream: upstream[python][0].update({"release_date": "2026-02-30T00:00:00Z"}),
+            ),
+            (
+                "a PyPI upload time without a zone",
+                lambda upstream: upstream[pypi]["releases"]["0.7.31"][0].update(
+                    {"upload_time_iso_8601": "2026-10-21T03:56:00"}
+                ),
+            ),
+            (
+                "an empty npm time",
+                lambda upstream: upstream["https://registry.npmjs.org/ccusage"]["time"].update({"20.0.40": ""}),
+            ),
+            (
+                "repository metadata that is 404",
+                lambda upstream: upstream.update({f"{GH}/Homebrew/install": {"http_status": 404}}),
+            ),
             ("compare commits that are no list", lambda upstream: upstream[BREW_COMPARE].update({"commits": {}})),
             (
                 "a catalog version that is a number",
@@ -329,7 +356,7 @@ class DriftWatchTest(unittest.TestCase):
                 status, report = self.watch(["ubuntu-24.04", "macos-15"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
                 self.assertEqual(4, status, report)
                 self.assertIn("## Read failures (1)", report)
-                self.assertIn("unexpected response", report)
+                self.assertRegex(report, "unexpected response|HTTP 404")
 
     def test_a_catalog_version_never_hides_an_advanced_plugin_json(self):
         upstream = copy.deepcopy(CURRENT_UPSTREAM)
@@ -352,6 +379,26 @@ class DriftWatchTest(unittest.TestCase):
         status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
         self.assertEqual(0, status, report)
         self.assertEqual(set(), self.findings(report))
+
+    def test_a_codex_plugin_with_a_local_source_is_read_from_its_marketplace_repository(self):
+        codex = f"{GH}/DietrichGebert/ponytail/contents/.agents/plugins/marketplace.json"
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[codex]["plugins"][0]["source"] = {"source": "local", "path": "./plugins/ponytail"}
+        upstream[f"{GH}/DietrichGebert/ponytail/contents/plugins/ponytail/.codex-plugin/plugin.json"] = {
+            "version": "5.4.0"
+        }
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(3, status, report)
+        self.assertEqual({("plugin-pin", "codex-plugins.ponytail")}, self.findings(report))
+        self.assertIn("5.4.0 (DietrichGebert/ponytail/plugins/ponytail/.codex-plugin/plugin.json)", report)
+        # A local path that leaves the repository is a read failure; a source kind the watch cannot read is listed.
+        upstream[codex]["plugins"][0]["source"] = {"source": "local", "path": "../elsewhere"}
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(4, status, report)
+        upstream[codex]["plugins"][0]["source"] = {"source": "npm", "package": "ponytail"}
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(0, status, report)
+        self.assertIn("codex-plugins.ponytail 5.3.2", report.split("## Not watched", 1)[1])
 
     def test_a_commit_pin_upstream_no_longer_has_is_drift(self):
         upstream = copy.deepcopy(CURRENT_UPSTREAM)
@@ -453,6 +500,10 @@ class UpstreamTokenTest(unittest.TestCase):
             ("timeout", mock.Mock(side_effect=TimeoutError("timed out"))),
             ("truncated JSON", mock.Mock(return_value=b'{"tag_name": ')),
             ("not UTF-8", mock.Mock(return_value=b"\xff\xfe")),
+            ("a UTF-8 byte-order mark", mock.Mock(return_value=b'\xef\xbb\xbf{"a": 1}')),
+            ("UTF-16 with a byte-order mark", mock.Mock(return_value='{"a": 1}'.encode("utf-16"))),
+            ("UTF-16-LE without one", mock.Mock(return_value='{"a": 1}'.encode("utf-16-le"))),
+            ("UTF-32", mock.Mock(return_value='{"a": 1}'.encode("utf-32"))),
         ):
             response = mock.MagicMock()
             response.__enter__.return_value.read = read

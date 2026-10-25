@@ -621,14 +621,14 @@ claude() {
             {"id": "crit@crit", "scope": "project", "version": "999.0.0", "enabled": True},
         ]
         result, calls, _ = self.converge_listed('converge_claude_plugin "crit@crit"', listing, DISABLE_NOOP="1")
-        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn("plugin disable crit@crit --scope project", calls)
         self.assertIn("is still enabled off its pin", result.stderr)
 
     def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
         listing = [{"id": "crit@crit", "scope": "user", "version": "999.0.0", "enabled": True}]
         result, calls, after = self.converge_listed('converge_claude_plugin "crit@crit"', listing, DISABLE_FAILS="1")
-        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn("plugin disable crit@crit --scope user", calls)
         self.assertIn("ERROR: claude plugin disable crit@crit --scope user failed", result.stderr)
         self.assertIs(True, after[0]["enabled"])
@@ -661,7 +661,7 @@ claude() {
         ):
             with self.subTest(flags=flags):
                 result, _, _ = self.converge_listed(step, [], markets=[], **flags)
-                self.assertEqual(2, result.returncode, result.stderr)
+                self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn(message, result.stderr)
 
     def test_a_claude_plugin_is_not_changed_when_the_plugin_list_cannot_be_read(self):
@@ -670,6 +670,29 @@ claude() {
         self.assertEqual(1, result.returncode)
         self.assertEqual([], calls)
         self.assertIn("claude plugin list --json failed", result.stderr)
+        # Unchecked is a failure of the run, through every caller: the named step and the manifest loop.
+        for step in ("update_claude_crit", "converge_claude_plugins"):
+            with self.subTest(step=step):
+                gate = f"ensure_crit_cli() {{ :; }}; ensure_claude_crit_marketplace() {{ :; }}; {step}; fail_on_claude_pin_failures"
+                result, _, _ = self.converge_listed(gate, [], LIST_FAILS="1")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("could not be checked or kept at their pin", result.stderr)
+
+    def test_a_disabled_plugin_at_its_pin_is_left_disabled(self):
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+        listing = [
+            {
+                "id": "pstack@cursor-plugins",
+                "scope": "user",
+                "version": pins["pstack@cursor-plugins"]["pin"],
+                "enabled": False,
+            }
+        ]
+        result, calls, after = self.converge_listed('converge_claude_plugin "pstack@cursor-plugins"', listing)
+        self.assertEqual(0, result.returncode, result.stderr)
+        # An operator's disable of a reviewed release stays: nothing is enabled, updated or installed.
+        self.assertEqual([], calls)
+        self.assertIs(False, after[0]["enabled"])
 
     def test_every_pinned_claude_plugin_is_checked_from_the_manifest_list(self):
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]

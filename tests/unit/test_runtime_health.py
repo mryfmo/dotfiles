@@ -17,6 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+# A host whose Claude Code runs every pinned plugin at its pin: `claude plugin list --json` reports them from the
+# fixture repository's scripts/plugin-pins.json (the updater's own pins), so the convergence has nothing to change.
+PINNED_PLUGIN_LIST = (
+    'if [ "$1 $2 $3" = "plugin list --json" ]; then '
+    "jq '[.claude | to_entries[] | {id: .key, scope: \"user\", version: .value.pin, enabled: true}]' "
+    '"${DOTFILES_SOURCE_DIR:-$PWD}/scripts/plugin-pins.json"; fi'
+)
+
+
 class RuntimeHealthTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="runtime-health-test-"))
@@ -170,6 +179,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 bin_dir / command,
                 f"""
                 printf '{command} %s\\n' "$*" >> "$TEST_LOG"
+                {PINNED_PLUGIN_LIST if command == "claude" else ""}
                 """,
             )
         log = repo / "commands.log"
@@ -254,6 +264,9 @@ class RuntimeHealthTest(unittest.TestCase):
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash
 printf 'claude %s\n' "$*" >> "$TEST_LOG"
+"""
+            + PINNED_PLUGIN_LIST
+            + """
 EOF
                 chmod +x "$BROKEN_CLAUDE"
             fi

@@ -1018,9 +1018,11 @@ taking the newest release:
   scope) at its pin is left alone; a missing plugin is installed from its
   recorded marketplace (registered first when absent), and one at another
   version is updated. Every installation still off its pin afterwards is
-  disabled, because Claude Code runs a plugin's hooks with no trust step. A
-  pinned plugin that cannot be installed, or an off-pin installation that
-  cannot be proven disabled, fails `make update`.
+  disabled, because Claude Code runs a plugin's hooks with no trust step. The
+  enabled state of an installation at its pin is never changed, so a plugin
+  you disabled stays disabled. A pinned plugin that cannot be checked or
+  installed, or an off-pin installation that cannot be proven disabled, fails
+  `make update`.
 - Codex fetches the Ponytail marketplace at the pinned commit (`ref` under
   `[marketplaces.ponytail]`, which the Codex modify script owns), and its hooks
   are trusted only at their `trusted_hash` pins. The OpenAI-curated Superpowers

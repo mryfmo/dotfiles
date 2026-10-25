@@ -1054,7 +1054,6 @@ def validate_crit_install_assets() -> None:
         "crit-darwin-amd64",
         "crit-darwin-arm64",
         "crit@crit",
-        "claude plugin enable",
         'converge_claude_step "${CLAUDE_CRIT_PLUGIN}"',
         "crit install codex-plugin --force",
         "tomasz-tomczyk/crit",

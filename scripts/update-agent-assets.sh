@@ -429,15 +429,18 @@ function off_pin_enabled_installs() {
 #   (every scope) is read: a missing plugin is installed from its recorded marketplace, registered first
 #   when absent; an installation at another version is updated in its scope. Every installation still
 #   off its pin afterwards is disabled in its scope, and the list is re-read: Claude Code runs a plugin's
-#   hooks with no trust step, so only the reviewed version may stay enabled. `make doctor` reports drift.
+#   hooks with no trust step, so only the reviewed version may stay enabled. The enabled state of an
+#   installation at its pin is never changed (an operator's disable stays); a plugin this run installed
+#   fresh is left as `claude plugin install` leaves it. `make doctor` reports drift.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 0 When every installation is at its pin, or every one off it is proven disabled.
-# @exitcode 1 When the pin or the plugin list cannot be read first; the plugin is then not changed.
-# @exitcode 2 When the pinned plugin cannot be installed, or an installation off its pin may still be enabled.
+# @exitcode 1 Otherwise: the pin or the plugin list cannot be read (the plugin is then not checked), the
+#   pinned plugin cannot be installed, or an installation off its pin may still be enabled. Every caller
+#   counts it as a run failure.
 #
 function converge_claude_plugin() {
     local plugin_id="$1"
-    local pin installs scope version enabled off failed=0
+    local pin installs scope version enabled off state failed=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s; the plugin was not changed.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -449,11 +452,11 @@ function converge_claude_plugin() {
     fi
     if [ -z "${installs}" ]; then
         if ! ensure_claude_plugin_marketplace "${plugin_id}"; then
-            return 2
+            return 1
         fi
         if ! claude plugin install "${plugin_id}"; then
             printf 'ERROR: claude plugin install %s failed; the pinned plugin is not installed.\n' "${plugin_id}" >&2
-            return 2
+            return 1
         fi
     else
         while read -r scope version enabled; do
@@ -466,11 +469,11 @@ function converge_claude_plugin() {
     if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
         printf 'ERROR: claude plugin list --json failed after changing %s; disabling it until make update can compare it with its pin.\n' "${plugin_id}" >&2
         claude plugin disable "${plugin_id}" || true
-        return 2
+        return 1
     fi
     if [ -z "${installs}" ]; then
         printf 'ERROR: %s is not installed after claude plugin install.\n' "${plugin_id}" >&2
-        return 2
+        return 1
     fi
     off="$(off_pin_enabled_installs "${installs}" "${pin}")"
     if [ -n "${off}" ]; then
@@ -483,33 +486,32 @@ function converge_claude_plugin() {
         done <<< "${off}"
         if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
             printf 'ERROR: claude plugin list --json failed after disabling %s; cannot prove it is disabled.\n' "${plugin_id}" >&2
-            return 2
+            return 1
         fi
         off="$(off_pin_enabled_installs "${installs}" "${pin}")"
         if [ -n "${off}" ] || [ "${failed}" -ne 0 ]; then
             printf 'ERROR: Claude Code plugin %s is still enabled off its pin %s in: %s.\n' "${plugin_id}" "${pin}" "${off//$'\n'/, }" >&2
-            return 2
+            return 1
         fi
     fi
     while read -r scope version enabled; do
         if [ "${version}" = "${pin}" ]; then
-            printf 'Claude Code plugin %s (%s scope) is at its pin %s.\n' "${plugin_id}" "${scope}" "${pin}"
-            if [ "${enabled}" != "true" ]; then
-                claude plugin enable "${plugin_id}" --scope "${scope}" < /dev/null || true
-            fi
+            state="enabled"
+            [ "${enabled}" = true ] || state="disabled, left as is"
+            printf 'Claude Code plugin %s (%s scope) is at its pin %s (%s).\n' "${plugin_id}" "${scope}" "${pin}" "${state}"
         fi
     done <<< "${installs}"
 }
 
 # Plugin IDs converged in this run, space-delimited (bash 3.2 has no associative arrays), and the
-# count of plugins that may still be enabled off their pin; main fails the run when it is not zero.
+# count of plugins whose convergence failed for any reason; main fails the run when it is not zero.
 CLAUDE_CONVERGED=" "
 CLAUDE_PIN_FAILURES=0
 
 #
-# @description Converge one Claude Code plugin once per run and count a plugin that may stay enabled off its pin.
+# @description Converge one Claude Code plugin once per run; any failure of converge_claude_plugin is counted.
 # @arg $1 string Fully qualified Claude Code plugin ID.
-# @exitcode 0 When the plugin is at its pin or proven disabled; nonzero otherwise (the caller records nothing).
+# @exitcode 0 When the plugin is at its pin or proven disabled; nonzero otherwise, counted in CLAUDE_PIN_FAILURES.
 #
 function converge_claude_step() {
     local plugin_id="$1"
@@ -517,19 +519,19 @@ function converge_claude_step() {
 
     CLAUDE_CONVERGED="${CLAUDE_CONVERGED}${plugin_id} "
     converge_claude_plugin "${plugin_id}" || status=$?
-    if [ "${status}" -eq 2 ]; then
+    if [ "${status}" -ne 0 ]; then
         CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
     fi
     return "${status}"
 }
 
 #
-# @description Fail the run when a Claude Code plugin may still be enabled off its pin (counted by converge_claude_step).
+# @description Fail the run when any Claude Code plugin could not be checked or kept at its pin (counted by converge_claude_step).
 # @exitcode 1 When CLAUDE_PIN_FAILURES is not zero.
 #
 function fail_on_claude_pin_failures() {
     if [ "${CLAUDE_PIN_FAILURES}" -gt 0 ]; then
-        printf 'ERROR: %s Claude Code plugin(s) may still be enabled off their pin; see the errors above.\n' "${CLAUDE_PIN_FAILURES}" >&2
+        printf 'ERROR: %s Claude Code plugin(s) could not be checked or kept at their pin; see the errors above.\n' "${CLAUDE_PIN_FAILURES}" >&2
         return 1
     fi
 }
@@ -649,7 +651,7 @@ function update_claude_crit() {
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" || return 1
-    manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
+    manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -668,7 +670,7 @@ function update_claude_ponytail() {
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" || return 1
-    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
+    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -686,7 +688,7 @@ function update_claude_understand_anything() {
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" || return 1
-    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
+    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #

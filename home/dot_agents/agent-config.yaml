@@ -769,7 +769,8 @@ assets:
       (every scope), leaves one at its pin alone, installs a missing plugin from the marketplace
       recorded here (registering it first), updates one that is not at its pin, and disables every
       installation still off its pin afterwards, failing the run when a pinned plugin cannot be
-      installed or an off-pin installation cannot be proven disabled: Claude Code runs a
+      installed, cannot be checked, or has an off-pin installation it cannot prove disabled; it never
+      changes the enabled state of an installation at its pin: Claude Code runs a
       plugin's hooks with no trust step, so only a reviewed version stays enabled. This list drives
       that loop, so every plugin here is converged, pstack included (installed by hand from the
       cursor/plugins marketplace; assets.pstack deploys its skills). make doctor fails when an

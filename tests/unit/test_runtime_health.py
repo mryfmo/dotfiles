@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import re
@@ -1056,6 +1057,11 @@ EOF
                     # The bare install moves a "latest" node that is not installed yet.
                     [[ "$FAIL_PHASE:$*" != "node_by_install:install --yes" ]] || touch "$NODE_MOVED"
                     case "$FAIL_PHASE:$*" in
+                        young*:"install --yes npm:ccusage@20.0.0")
+                            # As npm under min-release-age=3 for a release (or a dependency) younger than the window.
+                            echo "npm error notarget No matching version found with a date before the window." >&2
+                            exit 1
+                            ;;
                         npm_reinstall*:"install --yes npm:ccusage@20.0.0")
                             # The download fails after mise created a partial install directory.
                             mkdir -p "$CCUSAGE_DIR/partial"
@@ -1091,11 +1097,32 @@ EOF
                 current)
                     case "$2" in
                         node) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
-                        npm:ccusage) printf '20.0.0\n' ;;
+                        # FAKE_CCUSAGE_VERSION stands for a version string npm would not read as one version.
+                        npm:ccusage) printf '%s\n' "${FAKE_CCUSAGE_VERSION-20.0.0}" ;;
                     esac
                     ;;
                 # Like mise, where fails for a tool whose install is not in place.
                 where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
+                # The current node's npm. FAKE_MIN_AGE is `npm config get min-release-age`'s answer (~/.npmrc sets 3);
+                # FAKE_PUBLISHED is the registry's publish time of 20.0.0, FAKE_TIMES replaces npm view's whole answer;
+                # "fail" makes that npm command fail.
+                exec)
+                    case "$*" in
+                        "exec -- npm config get min-release-age")
+                            [[ "${FAKE_MIN_AGE-3}" != fail ]] || exit 1
+                            printf '%s\n' "${FAKE_MIN_AGE-3}"
+                            ;;
+                        "exec -- npm view --json ccusage time")
+                            [[ "${FAKE_TIMES-}" != fail ]] || exit 1
+                            if [ -n "${FAKE_TIMES+set}" ]; then
+                                printf '%s\n' "$FAKE_TIMES"
+                            else
+                                printf '{"created": "2019-01-01T00:00:00.000Z", "20.0.0": "%s"}\n' "${FAKE_PUBLISHED-2020-01-01T00:00:00.000Z}"
+                            fi
+                            ;;
+                        *) exit 1 ;;
+                    esac
+                    ;;
             esac
             """,
         )
@@ -1400,6 +1427,131 @@ EOF
                     self.assertFalse(marker_file.exists())
                 else:
                     self.assertEqual(f"{recorded}\n", marker_file.read_text())
+
+    def rebuild_run(self, phase: str, overrides: dict[str, str]):
+        """Run the update with the node marker behind, so the npm: tools are rebuilt; return the result and paths."""
+        repo, env = self.upgrade_fixture(phase)
+        env.update(overrides)
+        marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+        marker_file.parent.mkdir(parents=True)
+        marker_file.write_text("26.0.0\n")
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        log = (repo / "commands.log").read_text().splitlines()
+        return result, log, Path(env["CCUSAGE_DIR"]), marker_file
+
+    def test_rebuild_skips_a_release_younger_than_npm_min_release_age_before_moving_it(self) -> None:
+        # U89: npm's min-release-age=3 refused the exact version a host already ran (ETARGET for
+        # @anthropic-ai/claude-code@2.1.310 on spark). No package is exempt from the window: the rebuild asks npm for
+        # the window and the publish time first and skips a younger version before its install moves.
+        now = datetime.datetime.now(datetime.UTC)
+        stamp = "%Y-%m-%dT%H:%M:%S.000Z"
+        young, old = now - datetime.timedelta(hours=1), now - datetime.timedelta(days=3, minutes=5)
+        for name, overrides, rebuilt in (
+            ("an hour old", {"FAKE_PUBLISHED": young.strftime(stamp)}, False),
+            ("past the window", {"FAKE_PUBLISHED": old.strftime(stamp)}, True),
+            ("npm sets no window", {"FAKE_PUBLISHED": young.strftime(stamp), "FAKE_MIN_AGE": "null"}, True),
+        ):
+            with self.subTest(name):
+                result, log, tool, marker_file = self.rebuild_run(f"age-{len(name)}", overrides)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertNotIn("required failure", result.stderr)
+                installs = [line for line in log if line.startswith("mise install --yes npm:")]
+                self.assertEqual(["mise install --yes npm:ccusage@20.0.0"] if rebuilt else [], installs)
+                self.assertEqual(rebuilt, (tool / "rebuilt").exists())
+                self.assertEqual(not rebuilt, (tool / "original").exists())
+                self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+                skips = [line for line in result.stderr.splitlines() if line.startswith("skip: npm:ccusage")]
+                if rebuilt:
+                    self.assertEqual([], skips)
+                    self.assertEqual("27.0.0\n", marker_file.read_text())
+                    continue
+                published = young.replace(microsecond=0)
+                clears = published + datetime.timedelta(days=3, seconds=60)
+                self.assertEqual(1, len(skips), result.stderr)
+                self.assertIn(
+                    f"published {published:%Y-%m-%dT%H:%M:%S.%fZ}, younger than npm's min-release-age of 3 days and"
+                    f" a 60-second margin; it can be rebuilt from {clears:%Y-%m-%dT%H:%M:%S.%fZ}); its previous"
+                    " install stays",
+                    skips[0],
+                )
+                self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+                # The marker stays, so the next make update tries again once the window has passed.
+                self.assertEqual("26.0.0\n", marker_file.read_text())
+
+    def test_release_age_is_compared_at_full_precision_with_a_minute_of_margin(self) -> None:
+        # Round-4 audit of 145fd568: the fraction of the publish time was dropped, so a release 540 ms inside npm's
+        # window passed while npm refused it. A frozen clock puts the boundary at publish + 3 days + 60 s, exactly.
+        published = datetime.datetime(2026, 10, 23, 21, 20, 46, 540000, tzinfo=datetime.UTC)
+        times = json.dumps({"2.1.310": "2026-10-23T21:20:46.540Z"})
+        edge = (published + datetime.timedelta(days=3, seconds=60)).timestamp()
+        window_end = (published + datetime.timedelta(days=3)).timestamp()
+        for name, now, expected in (
+            ("inside the margin by 0.3 s", f"{edge - 0.3:.6f}", 1),
+            ("past the margin by 0.3 s", f"{edge + 0.3:.6f}", 0),
+            # The whole-second reading of 21:20:46.540 would pass here (0.2 s past 46.000 + margin).
+            ("before the fraction of the edge", f"{int(edge) + 0.2:.6f}", 1),
+            ("past npm's window but inside the margin", f"{window_end + 30:.6f}", 1),
+            ("a minute short of npm's window", f"{window_end - 60:.6f}", 1),
+            ("the given time is not a number", "soon", 2),
+        ):
+            with self.subTest(name):
+                # The system python3, as the update's fixtures and a host run it (3.9 on macOS).
+                result = self.run_test_command(
+                    [
+                        "bash",
+                        "-c",
+                        'source scripts/upgrade-tools.sh; set +e; npm_release_age_verdict 2.1.310 3 "$1" <<< "$2"',
+                        "verdict",
+                        now,
+                        times,
+                    ],
+                    cwd=ROOT,
+                    env={**os.environ, "PATH": "/usr/bin:/bin"},
+                )
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if expected == 1:
+                    self.assertIn("it can be rebuilt from 2026-10-26T21:21:46.540000Z", result.stdout)
+
+    def test_rebuild_skips_with_a_reason_when_the_release_age_cannot_be_told(self) -> None:
+        # Fail closed: a failed or unreadable npm answer is "cannot tell", never "old enough", and is decided before
+        # the install directory moves. Only "npm still refuses a dependency" reaches the install, which npm refuses.
+        version, window, times = "not one exact version", "not a number of days", "no publish time for 20.0.0"
+        cases = [
+            ("npm config get fails", {"FAKE_MIN_AGE": "fail"}, "npm config get min-release-age failed", False),
+            ("npm config get prints nothing", {"FAKE_MIN_AGE": ""}, window, False),
+            ("npm config get prints a word", {"FAKE_MIN_AGE": "three"}, window, False),
+            ("npm config get prints a negative", {"FAKE_MIN_AGE": "-1"}, window, False),
+            ("npm config get prints a unit", {"FAKE_MIN_AGE": "3 days"}, window, False),
+            ("npm view fails", {"FAKE_TIMES": "fail"}, "npm view cannot read the publish time", False),
+            ("npm view prints no JSON", {"FAKE_TIMES": "not json"}, "printed no JSON publish times", False),
+            ("npm view prints a list", {"FAKE_TIMES": '["20.0.0"]'}, times, False),
+            ("npm view lists other versions", {"FAKE_TIMES": '{"20.0.1": "2020-01-01T00:00:00.000Z"}'}, times, False),
+            ("publish time not UTC", {"FAKE_PUBLISHED": "2020-01-01T00:00:00+09:00"}, times, False),
+            ("publish time a word", {"FAKE_PUBLISHED": "yesterday"}, times, False),
+            ("publish time not a date", {"FAKE_PUBLISHED": "2020-02-30T00:00:00.000Z"}, "not a date", False),
+            ("npm still refuses a dependency", {}, "npm refused or could not fetch", True),
+        ]
+        # Versions npm would not read as one exact version (20.0.0-a..b is a tag to npm).
+        for text in ("20.0.0-a..b", "1.2", "v1.2.3", "1.2.3 ", "1.2.3+build", "01.2.3", "1.2.3-01"):
+            cases.append((f"version {text!r}", {"FAKE_CCUSAGE_VERSION": text}, version, False))
+        for number, (name, overrides, reason, attempted) in enumerate(cases):
+            with self.subTest(name):
+                phase = "young_dependency" if attempted else f"untold-{number}"
+                result, log, tool, marker_file = self.rebuild_run(phase, overrides)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                skips = [line for line in result.stderr.splitlines() if line.startswith("skip: npm:ccusage")]
+                self.assertEqual(1, len(skips), result.stderr)
+                self.assertIn(reason, skips[0])
+                self.assertIn("its previous install stays", skips[0])
+                self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+                installs = [line for line in log if line.startswith("mise install --yes npm:")]
+                self.assertEqual(["mise install --yes npm:ccusage@20.0.0"] if attempted else [], installs)
+                self.assertTrue((tool / "original").exists())
+                self.assertFalse((tool / "rebuilt").exists())
+                self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+                self.assertEqual("26.0.0\n", marker_file.read_text())
 
     def test_upgrade_fails_when_the_final_install_fails_after_a_rebuild(self) -> None:
         # The rebuild restored the previous install, but the final bare install fails: not converged.

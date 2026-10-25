@@ -23,6 +23,8 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    # Ten seconds on a pull request; the scheduled link and package checks reach the network.
+    timeout-minutes: 10
 
     steps:
       - name: Configure Git defaults

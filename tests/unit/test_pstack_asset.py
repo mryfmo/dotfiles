@@ -369,6 +369,30 @@ class PstackAssetTest(unittest.TestCase):
                 self.assertEqual(lossy, marketplace.read_text())
         self.assertEqual(0, self.retire_marketplace(self.temp_dir / "fresh-host").returncode, "no marketplace yet")
 
+    def test_a_symlinked_marketplace_is_refused_and_its_target_left_alone(self) -> None:
+        """A marketplace.json that is a symlink is never rewritten, neither through the link nor by replacing it."""
+        home = self.temp_dir / "linked-marketplace"
+        (home / ".agents/plugins").mkdir(parents=True)
+        target = self.temp_dir / "elsewhere/marketplace.json"
+        target.parent.mkdir()
+        retired = {
+            "name": "mryfmo-dev-workflows",
+            "source": {"path": "./plugins/mryfmo-dev-workflows", "source": "local"},
+        }
+        target.write_text(json.dumps({"name": "m", "plugins": [retired]}, indent=2) + "\n")
+        before = target.read_bytes()
+        link = home / ".agents/plugins/marketplace.json"
+        link.symlink_to(target)
+
+        failed = self.retire_marketplace(home)
+
+        self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+        self.assertIn(f"{link} is a symlink; left unchanged", failed.stderr)
+        self.assertTrue(link.is_symlink(), "the link is not replaced by a regular file")
+        self.assertEqual(target.resolve(), link.resolve())
+        self.assertEqual(before, target.read_bytes(), "nothing is written through the link")
+        self.assertEqual(["marketplace.json"], os.listdir(home / ".agents/plugins"), "no temporary file is left")
+
     def check_pstack(self, home: Path, omp_listing: str | None) -> subprocess.CompletedProcess[str]:
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir(exist_ok=True)

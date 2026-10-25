@@ -322,6 +322,48 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_repo_claude_settings("python3")
         self.module.validate_repo_claude_settings_portable()
 
+    def test_rendered_skill_entries_that_drift_from_the_audience_are_refused(self) -> None:
+        """validate_skill_audience parses the rendered Codex, omp and Claude files and refuses each kind of drift."""
+        manifest = self.module.generator().load_manifest()
+        rendered = [
+            manifest["codex"]["config_path"],
+            "home/.chezmoitemplates/omp-config-managed.yml",
+            *(f"home/dot_agents/omp/profiles/{role}.yml.tmpl" for role in manifest["omp"]["roles"]),
+        ]
+        for rel in rendered:
+            (self.temp_dir / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / rel, self.temp_dir / rel)
+        shutil.copytree(ROOT / "home/dot_claude/skills", self.temp_dir / "home/dot_claude/skills")
+        self.module.validate_skill_audience(manifest)
+
+        codex = self.temp_dir / manifest["codex"]["config_path"]
+        worker = self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"
+        audit = self.temp_dir / "home/dot_agents/omp/profiles/audit.yml.tmpl"
+        plain = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
+        cases = {
+            "Codex disable dropped": (codex, ("hcom-worker/SKILL.md", "kept-for-codex/SKILL.md"), "[[skills.config]]"),
+            "worker no longer ignores a seat skill": (worker, ("    - hcom-orchestration\n", ""), "for omp-worker"),
+            "audit given skills": (audit, ("  enabled: false\n", "  enabled: true\n"), "for omp-audit"),
+            "plain launch loses enabled": (plain, ("  enabled: true\n", ""), "for omp:"),
+        }
+        for label, (path, (old, new), message) in cases.items():
+            with self.subTest(case=label):
+                original = path.read_text()
+                self.assertIn(old, original)
+                path.write_text(original.replace(old, new, 1))
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_skill_audience(manifest)
+                self.assertIn(message, stderr.getvalue())
+                path.write_text(original)
+        link = self.temp_dir / "home/dot_claude/skills/hcom-worker/symlink_SKILL.md.tmpl"
+        link.parent.mkdir()
+        link.write_text("{{ .chezmoi.sourceDir }}/dot_agents/skills/hcom-worker/SKILL.md\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_skill_audience(manifest)
+        self.assertIn("audience leaves out claude: ['hcom-worker']", stderr.getvalue())
+
     def test_codex_modify_script_requires_executable_source(self) -> None:
         path = self.temp_dir / "home/dot_codex/modify_private_config.toml"
         path.write_text(

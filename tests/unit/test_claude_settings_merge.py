@@ -559,6 +559,25 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
         self.assertEqual(self.merge(managed, once), once)
 
+    def test_installed_async_staleness_hook_is_replaced_by_the_synchronous_one(self) -> None:
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        command = f"{self.home_dir}/.local/bin/common/agent-session-staleness hook"
+        installed = {"type": "command", "command": command, "async": True, "timeout": 5}
+        current = json.dumps({"hooks": {"SessionStart": [{"matcher": "*", "hooks": [installed]}]}})
+
+        once = self.merge(managed, current)
+        staleness = [
+            hook
+            for entry in json.loads(once)["hooks"]["SessionStart"]
+            for hook in entry["hooks"]
+            if "agent-session-staleness" in hook["command"]
+        ]
+        self.assertEqual(len(staleness), 1, staleness)
+        self.assertNotIn("async", staleness[0])
+        self.assertEqual(self.merge(managed, once), once)
+
     def test_retired_update_keys_leave_settings_the_old_template_installed(self) -> None:
         """The former managed defaults go; every other installed key stays; a second run is a no-op (U18, D-024-150)."""
         render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
@@ -600,7 +619,8 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         merged = json.loads(after)
         self.assertEqual(merged["permissions"]["allow"], managed["permissions"]["allow"])
         self.assertNotIn("scripts/orchestrator/", json.dumps(merged["permissions"]))
-        self.assertTrue(all("~/.local/bin/common/" in rule for rule in merged["permissions"]["allow"][:-1]))
+        levers = merged["permissions"]["allow"][:-1]
+        self.assertTrue(all("~/.local/bin/common/" in rule for rule in levers))  # lint-comparisons: allow rule-text
         self.assertEqual((merged["operatorOnly"], merged["enabledPlugins"]), ({"kept": True}, {"crit@crit": True}))
         self.assertEqual(self.merge(managed, after), after)
 

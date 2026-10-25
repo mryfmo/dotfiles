@@ -23,8 +23,10 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # entry invoking this script is managed, whatever home path it was rendered with.
 # herdr-agents no longer has a managed hook (its --attach mode left with the
 # old regime's tooling, regime-cutover U26); the name stays so an installed
-# entry is still managed and leaves on the next merge.
-MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
+# entry is still managed and leaves on the next merge. agent-session-staleness
+# changed from async to synchronous (regime-cutover U69); without it here the
+# installed async variant stayed next to the new entry and the hook ran twice.
+MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents", "agent-session-staleness")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
 # Without a predicate a mixed entry (enforce-uv.sh next to an unmanaged hook)
 # differs from the managed entry, so the additive merge appended it again.

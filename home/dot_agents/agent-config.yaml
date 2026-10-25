@@ -436,10 +436,12 @@ claude:
             timeout: 10
       - matcher: "*"
         hooks:
+          # Synchronous so the restart notice's systemMessage is shown to the user (an async
+          # hook's output reaches only Claude). The scan stops at its own 2 s wall limit and
+          # exits 0 silently, so it returns before this timeout; a timeout is non-blocking.
           - type: command
             command: "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook"
-            async: true
-            timeout: 5
+            timeout: 3
   statusLine:
     type: command
     command: ccstatusline

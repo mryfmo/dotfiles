@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import os
+import runpy
 import stat
 import subprocess
 import sys
@@ -22,6 +23,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_agent-session-staleness"
 CHECKER = ROOT / "scripts/check-agent-runtime.py"
+MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
+MANAGED_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 
 
 def load_script():
@@ -170,8 +173,47 @@ class AgentSessionStalenessTest(unittest.TestCase):
         self.assertLessEqual(len(lines), 5)
         self.assertTrue(all(line.startswith("restart recommended:") for line in lines))
         self.assertEqual(sum("skills" in line for line in lines), 1)
-        self.assertTrue(any("claude-plugin:market/plugin" in line for line in lines))
+        self.assertTrue(any("claude-plugin:market/plugin" in line for line in lines))  # lint-comparisons: allow label
         self.assertTrue(any("claude-settings" in line for line in lines))
+
+    def test_hook_that_hits_its_wall_limit_exits_zero_without_output(self) -> None:
+        module = load_script()
+        payload = json.dumps({"session_id": "slow-session", "source": "startup"})
+        self.assertEqual(self.run_script("hook", stdin=payload).stdout, "")  # writes the baseline
+
+        def hang(*_args: object) -> list[object]:
+            time.sleep(5)
+            return []
+
+        stdout = io.StringIO()
+        started = time.monotonic()
+        with (
+            mock.patch.object(module, "WALL_LIMIT_S", 0.2),
+            mock.patch.object(module, "collect_updates", side_effect=hang),
+            mock.patch.object(sys, "stdin", io.StringIO(payload)),
+            contextlib.redirect_stdout(stdout),
+        ):
+            result = module.guarded_main(["hook"], home=self.home)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertLess(time.monotonic() - started, 2)
+
+    def test_managed_session_start_hook_is_synchronous_and_outlasts_the_wall_limit(self) -> None:
+        # Synchronous so systemMessage is shown to the user; the Claude timeout exceeds the script's own
+        # limit so the script stops scanning and exits 0 before Claude would kill it.
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home)}):
+            settings = json.loads(render(MANAGED_SETTINGS.read_text()))
+        hooks = [
+            hook
+            for entry in settings["hooks"]["SessionStart"]
+            for hook in entry["hooks"]
+            if hook["command"] == f"{self.home}/.local/bin/common/agent-session-staleness hook"
+        ]
+        self.assertEqual(len(hooks), 1)
+        self.assertFalse(hooks[0].get("async", False))
+        self.assertGreater(hooks[0]["timeout"], load_script().WALL_LIMIT_S)
 
     def test_internal_failure_is_silent_success_with_one_stderr_line(self) -> None:
         module = load_script()

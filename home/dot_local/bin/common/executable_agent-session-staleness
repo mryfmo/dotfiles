@@ -22,7 +22,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-WALL_LIMIT_S = 5
+# The SessionStart hook runs synchronously with a 3 s timeout (agent-config.yaml); the
+# scan stops here first and exits 0 without output. Measured runtime: about 0.04 s.
+WALL_LIMIT_S = 2
 MAX_SCAN_ENTRIES = 10_000
 MAX_HOOK_PAYLOAD_BYTES = 64 * 1024
 MAX_STATE_FILES = 1_000
@@ -228,8 +230,8 @@ def run_hook(home: Path, deadline: float) -> int:
                 return 0
         lines = stale_lines(home, parse_since(baseline), deadline)
         if lines:
-            # An async hook's plain stdout reaches neither Claude nor the user; the documented
-            # JSON fields are delivered on the next turn (https://code.claude.com/docs/en/hooks).
+            # systemMessage is shown to the user and additionalContext reaches Claude; both only
+            # from a synchronous hook (https://code.claude.com/docs/en/hooks).
             message = "\n".join(lines)
             print(
                 json.dumps(

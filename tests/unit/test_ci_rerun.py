@@ -298,10 +298,11 @@ class CiRerunTest(unittest.TestCase):
         (fake / "mkdir").write_text('#!/usr/bin/env bash\n/bin/mkdir "$@" 2> /dev/null || [ -d "${!#}" ]\n')
         (fake / "mkdir").chmod(0o755)
         self.reset()
-        path = f"{fake}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
-        racing = [self.start("101", GH_LOG_DELAY="1", PATH=path) for _ in range(2)]
+        self.answer(mkdir=str(fake / "mkdir"))  # the resolver pins what mise answers, so the fake goes in there
+        racing = [self.start("101", GH_LOG_DELAY="1") for _ in range(2)]
         self.assertEqual([0, 4], sorted(self.finish(process).returncode for process in racing))
         self.assertEqual(1, len(self.reruns()))
+        self.answer()
         self.reset()
         distinct = [self.start(run_id, GH_LOG_DELAY="1") for run_id in ("101", "303")]
         self.assertEqual([0, 0], [self.finish(process).returncode for process in distinct])
@@ -377,6 +378,45 @@ class CiRerunTest(unittest.TestCase):
                 result = self.finish(self.start("101", PATH=path))
                 self.assertEqual(code, result.returncode, result.stdout + result.stderr)
                 self.assertEqual(bool(code), "no jq outside a shims directory" in result.stderr, result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_refuses_a_shim_or_a_missing_tool_by_what_the_file_is(self):
+        # Audit on e7720d8b: the shims test read the directory's spelling (ShImS passed on case-insensitive APFS and
+        # ran a cwd-sensitive mise shim), and a missing or non-executable answer was skipped by PATH lookup, so the
+        # script silently ran /usr/bin's tool instead.
+        marker = self.t / "planted.log"
+        mark = f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n'  # works, and leaves a mark
+        mixed, lower = self.t / "ShImS/jq", self.t / "lower/shims/jq"
+        for shimmed in (mixed, lower):
+            shimmed.parent.mkdir(parents=True)
+            shimmed.write_text(mark)
+            shimmed.chmod(0o755)
+        (self.t / "links").mkdir()
+        (self.t / "links/jq").symlink_to(self.t / "bin/mise")  # what `mise reshim` makes, here outside any shims dir
+        (self.t / "links/dangling").symlink_to(self.t / "nowhere/jq")
+        (self.t / "plain").mkdir()
+        (self.t / "plain/jq").write_text(mark)  # not executable
+        shim, missing = "no jq outside a shims directory", "jq is not an executable file"
+        cases = [
+            ("a shims directory in mixed case", mixed, shim),
+            ("a link to the mise binary", self.t / "links/jq", shim),
+            ("a missing file", self.t / "nowhere/jq", missing),
+            ("a dangling link", self.t / "links/dangling", missing),
+            ("a file that is not executable", self.t / "plain/jq", missing),
+            ("a directory", self.t / "plain", missing),
+        ]
+        alias = self.t / "lower/ShImS/jq"
+        if alias.exists():  # a case-insensitive file system: the lower-case directory under another spelling
+            cases.append(("a lower-case shims directory spelled ShImS", alias, shim))
+        for name, answer, message in cases:
+            with self.subTest(name):
+                self.reset()
+                self.answer(jq=str(answer))
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101"))
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertEqual([], self.entries())
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
 
     def test_ci_rerun_keeps_a_caller_tmpdir_out_of_its_pinned_path(self):

@@ -16,7 +16,10 @@
 #   runs. The reservation stays after success, failure or interruption, so a run is rerun at most
 #   once, and it blocks only its own run. All of these live in the checkout this script lives in
 #   (`git rev-parse --show-toplevel` there). Before reading anything, uv, python3, gh, jq, git and mkdir are resolved
-#   as `mise which` answers them under env -i from / (else `command -v`; a shims or relative path exits 1); all but
+#   as `mise which` answers them under env -i from / (else `command -v`). Each answer is followed through every link
+#   to its physical file, which must be an executable regular file and no shim: neither the mise binary itself (same
+#   device and inode; a mise shim is a link to it) nor a file in a directory named shims in any letter case, as
+#   found or as resolved; otherwise the script exits 1. All but
 #   python3 are linked into a private directory (under TMPDIR when it is absolute and has no ':', else /tmp; removed
 #   on exit and on HUP, INT or TERM) and PATH becomes those links then /usr/bin:/bin. python3 is always
 #   started by its own path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
@@ -26,8 +29,8 @@
 #   rm) runs by its absolute system path; mise, the resolver itself, is the one program found through PATH.
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every candidate job matched a signature; the run was reserved and rerun once.
-# @exitcode 1 A tool resolves only to a shims or relative path, a gh or jq call or the signature file failed (never
-#   gh's own codes), or the reserved rerun failed.
+# @exitcode 1 A tool resolves to a shim, a relative path or no executable regular file, a gh or jq call or the
+#   signature file failed (never gh's own codes), or the reserved rerun failed.
 # @exitcode 2 Usage error, a run not completed yet, or a run with no failed, timed-out or cancelled job.
 # @exitcode 3 A job matched no signature (`real failure: <job>`) or the head is superseded (`superseded: run <id>`).
 # @exitcode 4 The run is already reserved or in ci-reruns.tsv; nothing was rerun.
@@ -50,10 +53,49 @@ trap '/bin/rm -rf -- "${bin}"' EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+#
+# @description Print the physical path of a file, following every link of it and of its directories.
+# @arg $1 string An absolute path.
+# @exitcode 1 A link cannot be read, the chain is longer than 40 links, or a directory does not exist.
+#
+function physical() {
+    local path=$1 link dir hops=0
+    while [[ -L ${path} ]]; do
+        ((++hops <= 40)) || return 1
+        link=$(/usr/bin/readlink -- "${path}") || return 1
+        [[ ${link} == /* ]] || link=${path%/*}/${link} # lint-comparisons: allow an absolute-path prefix test
+        path=${link}
+    done
+    dir=$(cd -P -- "${path%/*}/" 2> /dev/null && pwd -P) || return 1
+    printf '%s/%s\n' "${dir%/}" "${path##*/}"
+}
+
+#
+# @description Succeed when a tool is a shim: its physical file is the mise binary, or the directory it was found in
+#   or resolves to is named shims in any letter case (a case-insensitive file system accepts every spelling).
+# @arg $1 string The path the tool was found at.
+# @arg $2 string Its physical path.
+#
+function is_shim() {
+    local dir
+    [[ -n ${mise_bin} && $2 -ef ${mise_bin} ]] && return 0
+    for dir in "${1%/*}/" "${2%/*}/"; do
+        dir=$(cd -P -- "${dir}" 2> /dev/null && pwd -P) || return 0
+        [[ ${dir}/ == */[Ss][Hh][Ii][Mm][Ss]/* ]] && return 0 # lint-comparisons: allow a directory-name test, not a comparison of two paths
+    done
+    return 1
+}
+
+mise_bin=$(command -v mise) && [[ ${mise_bin} == /* ]] && mise_bin=$(physical "${mise_bin}") || mise_bin='' # lint-comparisons: allow an absolute-path prefix test
 for tool in python3 uv gh jq git mkdir; do
     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
-    # The directory is judged physically, so a PATH entry that links to a shims directory is refused too.
-    if ! { [[ ${found} == /* ]] && where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)" && [[ ${where}/ != */shims/* ]]; }; then
+    # A missing or non-executable link target would be skipped by PATH lookup and fall through to /usr/bin.
+    if ! { [[ ${found} == /* ]] && real=$(physical "${found}") && [[ -f ${real} && -x ${real} ]]; }; then # lint-comparisons: allow an absolute-path prefix test
+        echo "ci-rerun: ${tool} is not an executable file ('${found}')" >&2
+        exit 1
+    fi
+    if is_shim "${found}" "${real}"; then
         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
         exit 1
     fi

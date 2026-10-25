@@ -12,6 +12,11 @@ writing it the plain way, never by teaching the guard a new spelling.
   shfmt keeps a substitution inside `${x:-<(...)}` as text. Redirection targets are no arguments.
 - shell /tmp: a literal `/tmp` path, single-quoted text included, is refused unless it is the operand of a
   `${TMPDIR...}` expansion or its word expands TMPDIR outside single quotes.
+- The sandbox's own directory is no `/tmp` path in this sense: `/tmp/claude` and `/private/tmp/claude` (and what lies
+  under them) are the TMPDIR srt hands the sandboxed child and keeps writable whatever the policy says
+  (`SANDBOX_OWN_WRITE_PATHS` and `generateProxyEnvVars` in @anthropic-ai/sandbox-runtime 0.0.81
+  dist/sandbox/sandbox-utils.js:499-508, 687-691), so a script naming them (hcom-seat lists them as srt's implicit
+  write roots) runs inside the sandbox too. Nothing else under `/tmp` is.
 - Python /tmp: a string constant holding a `/tmp` path is refused unless its statement reads TMPDIR by a canonical
   spelling (`os.environ.get("TMPDIR"...)`, `os.environ["TMPDIR"]`, `os.getenv("TMPDIR"...)`) or calls `tempfile.*` with
   the constant outside that call's arguments (an explicit `dir="/tmp"` bypasses TMPDIR). Aliased reads (`from os import
@@ -36,8 +41,16 @@ ROOTS = ("scripts", "home", "install")
 SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
 PYTHON = re.compile(r"#!.*python")
 TMP = re.compile(r"/tmp(/|\b)")
+# srt's own TMPDIR, writable in the sandbox; a `..` component may follow nowhere in the path.
+SANDBOX_TMP = re.compile(r"(?:/private)?/tmp/claude(?![\w.-])(?![^\s\"')]*/\.\.(?:/|[\s\"')]|$))")
+
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 ENV_READS = ("os.environ.get", "os.getenv")
+
+
+def tmp_hits(value):
+    """The /tmp matches of `value` outside the sandbox's own directory, at their offsets in `value`."""
+    return TMP.finditer(SANDBOX_TMP.sub(lambda m: "_" * len(m.group()), value))
 
 
 @functools.cache
@@ -157,7 +170,7 @@ def shell_tmp_lines(tree):
             ok = ok or word_expands_tmpdir(n)
         if n.get("Type") in ("Lit", "SglQuoted") and not ok:
             value = n.get("Value", "")
-            for m in TMP.finditer(value):
+            for m in tmp_hits(value):
                 yield n["Pos"]["Line"] + value[: m.start()].count("\n")
         todo.extend((v, ok or expands_tmpdir(n)) for v in n.values())
 
@@ -203,7 +216,7 @@ def python_tmp_lines(text):
             if isinstance(n, ast.Constant) and isinstance(n.value, str):
                 if tempfile_calls and id(n) not in in_tempfile_args:
                     continue
-                yield from (n.lineno + n.value[: m.start()].count("\n") for m in TMP.finditer(n.value))
+                yield from (n.lineno + n.value[: m.start()].count("\n") for m in tmp_hits(n.value))
 
 
 def misread_lines(tree):
@@ -303,6 +316,10 @@ TMP_REFUSED = {
     ("bad.py", 'from os import getenv as env\nout = env("TMPDIR", "/tmp")\n'): [2],
     ("bad.py", "from tempfile import gettempdir\nd = gettempdir() or '/tmp'\n"): [2],
     ("bad.py", 'os.environ["TMPDIR"] = "/tmp/work"\n'): [1],
+    ("bad.sh", SH + "roots=(/tmp/claudex /tmp/claude.d /tmp/claude-1)\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude/../x\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude/a/.. /tmp/y\n"): [2],
+    ("bad.py", 'out = "/private/tmp/claudes"\n'): [1],
 }
 TMP_ACCEPTED = (
     ("ok.sh", SH + 't="${TMPDIR:-/tmp}/x"\nx=1 # a comment may name /tmp\n'),
@@ -314,6 +331,8 @@ TMP_ACCEPTED = (
     ("ok.py", "d = tempfile.gettempdir() or '/tmp'\n"),
     ("ok.py", 'd = tempfile.mkdtemp(dir=os.environ.get("TMPDIR", "/tmp"))\n'),
     ("ok.py", 'x = os.environ["TMPDIR"] or "/tmp"\n'),
+    ("ok.sh", SH + 'roots=("${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)\nout=/tmp/claude/x\n'),
+    ("ok.py", 'roots = ["/tmp/claude", "/private/tmp/claude/x"]\n'),
 )
 
 

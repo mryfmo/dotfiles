@@ -29,6 +29,7 @@ PLIST = ROOT / "home/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.
 SERVICE = ROOT / "home/dot_config/systemd/user/regime-supervisor.service.tmpl"
 TIMER = ROOT / "home/dot_config/systemd/user/regime-supervisor.timer.tmpl"
 CHEZMOI = shutil.which("chezmoi")
+BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 # A process that takes the kernel lock on argv[1], says so, and keeps it until it is killed.
 HOLDER = "import fcntl, sys, time; h = open(sys.argv[1], 'a'); fcntl.flock(h, fcntl.LOCK_EX); print('held', flush=True); time.sleep(120)"
 GIT_IDENTITY = {
@@ -64,6 +65,10 @@ class RegimeStartTest(unittest.TestCase):
         bindir = self.temp / "bin"
         bindir.mkdir()
         (bindir / "hcom").symlink_to(FAKE_HCOM)
+        # hcom-seat requires herdr, omp and srt (and bwrap, socat and rg on Linux) before it launches (U85); the fake
+        # hcom runs none of them, so copies of the system's `true` binary stand in (hcom-seat checks real executables).
+        for tool in ("herdr", "omp", "srt", "bwrap", "socat", "rg"):
+            shutil.copy(BINARY_STAND_IN, bindir / tool)
         self.state = self.temp / "hcom-state.json"
         self.store = self.temp / "store"
         self.store.mkdir()

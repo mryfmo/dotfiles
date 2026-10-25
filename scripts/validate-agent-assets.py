@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-import configparser
 import json
 import os
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -1390,25 +1391,136 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
             fail(f"{claude_rule} must document model profile token {token!r}")
 
 
+GIT_SIGNING_KEYS = ("user.signingkey", "gpg.format", "commit.gpgsign")
+# An [include] or [includeIf] section pulls in config the render check never sees.
+GIT_INCLUDE_SECTION = re.compile(r"^\s*\[\s*include(if)?\b", re.IGNORECASE | re.MULTILINE)
+
+
+def git_config_read(git: str, config_file: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run `git config --file <config_file> <args>` with no system or global config in play."""
+    try:
+        return subprocess.run(
+            [git, "config", "--file", str(config_file), *args],
+            env={
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "HOME": str(config_file.parent),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": os.devnull,
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f"git config could not read the rendered {config_file.name}: {error}")
+
+
+def render_git_config(template: Path, with_key: bool) -> tuple[dict[str, list[str]], str, str | None]:
+    """Render the git config template with chezmoi in a scratch HOME and read the output with git itself.
+
+    The scratch HOME holds `~/.ssh/id_ed25519.pub` only when `with_key` is set, so the two renders
+    show what the template does on a host with and without the signing key. Git parses the render
+    (`git config --file <render> --list`), so section and key names are matched the way git matches
+    them (case-insensitively). Returns every entry by canonical name, the scratch HOME, and
+    commit.gpgsign read as a git boolean (None when unset).
+    """
+    relative = template.relative_to(ROOT)
+    chezmoi = os.environ.get("DOTFILES_CHEZMOI") or shutil.which("chezmoi")
+    if not chezmoi:
+        fail(f"chezmoi is required to render {relative}; install it or set DOTFILES_CHEZMOI")
+    git = shutil.which("git")
+    if not git:
+        fail(f"git is required to read the rendered {relative}")
+    with tempfile.TemporaryDirectory(prefix="validate-git-config-") as temporary:
+        home = Path(temporary)
+        if with_key:
+            (home / ".ssh").mkdir()
+            (home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA validate-agent-assets\n")
+        config = home / "chezmoi.toml"
+        config.write_text('[data]\nemail = "validate@example.invalid"\n')
+        try:
+            result = subprocess.run(
+                [
+                    chezmoi,
+                    "execute-template",
+                    "--config",
+                    str(config),
+                    "--persistent-state",
+                    str(home / "chezmoistate.boltdb"),
+                    "--source",
+                    str(ROOT / "home"),
+                    "--destination",
+                    str(home),
+                    "--file",
+                    str(template),
+                ],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(home)},
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            fail(f"chezmoi could not render {relative}: {error}")
+        if result.returncode != 0:
+            fail(f"chezmoi could not render {relative}: {result.stderr.strip()}")
+        rendered = home / "gitconfig"
+        rendered.write_text(result.stdout)
+        listing = git_config_read(git, rendered, "--null", "--list")
+        if listing.returncode != 0:
+            fail(f"{relative} does not render to a valid git config: {listing.stderr.strip()}")
+        entries: dict[str, list[str]] = {}
+        for entry in listing.stdout.split("\0"):
+            if entry:
+                name, _, value = entry.partition("\n")
+                entries.setdefault(name, []).append(value)
+        gpgsign = None
+        if "commit.gpgsign" in entries:
+            boolean = git_config_read(git, rendered, "--type=bool", "--get-all", "commit.gpgsign")
+            if boolean.returncode != 0:
+                fail(f"{relative} renders a commit.gpgsign git cannot read as a boolean: {boolean.stderr.strip()}")
+            gpgsign = boolean.stdout.strip()
+        return entries, str(home), gpgsign
+
+
 def validate_git_config() -> None:
-    """Validate managed Git commit signing configuration."""
+    """Validate managed Git commit signing by rendering the template on a host with and without the key.
+
+    With `~/.ssh/id_ed25519.pub` present the rendered config signs commits with that key over SSH;
+    without it none of the three signing settings is rendered, so commits are unsigned instead of failing.
+    Git reads each render, and the template may carry no include directive the check could not follow.
+    """
     path = ROOT / "home/dot_config/git/config.tmpl"
+    relative = path.relative_to(ROOT)
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:
-        fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    config = configparser.ConfigParser(strict=False)
-    config.read_string(text)
-    expected = {
-        ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
-        ("gpg", "format"): "ssh",
-        ("commit", "gpgsign"): "true",
-    }
-    for (section, key), expected_value in expected.items():
-        actual_value = config.get(section, key, fallback="").strip()
-        if actual_value != expected_value:
-            fail(
-                f"{path.relative_to(ROOT)} must configure SSH commit signing with [{section}] {key} = {expected_value}"
-            )
+        fail(f"{relative} must not reference the removed GPG signing key")
+    if GIT_INCLUDE_SECTION.search(text):
+        fail(f"{relative} must not use [include] or [includeIf]: the render check cannot follow them")
+    for with_key in (True, False):
+        entries, home, gpgsign = render_git_config(path, with_key=with_key)
+        state = "with the signing key present" if with_key else "without the signing key"
+        includes = sorted(name for name in entries if name.startswith(("include.", "includeif.")))
+        if includes:
+            fail(f"{relative} rendered {state} must not include other config: {', '.join(includes)}")
+        if not with_key:
+            for name in GIT_SIGNING_KEYS:
+                if name in entries:
+                    fail(f"{relative} rendered {state} must not set {name}")
+            continue
+        expected = {
+            "user.signingkey": f"{home}/.ssh/id_ed25519.pub",
+            "gpg.format": "ssh",
+        }
+        for name in GIT_SIGNING_KEYS:
+            if len(entries.get(name, [])) != 1:
+                fail(f"{relative} rendered {state} must set {name} exactly once, not {entries.get(name, [])!r}")
+        for name, expected_value in expected.items():
+            if entries[name][0] != expected_value:
+                fail(f"{relative} rendered {state} must set {name} = {expected_value}, not {entries[name][0]!r}")
+        if gpgsign != "true":
+            fail(f"{relative} rendered {state} must set commit.gpgsign = true, not {gpgsign!r}")
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

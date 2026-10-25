@@ -1109,7 +1109,7 @@ The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/m
 
 [`scripts/drift-watch.py`](scripts/drift-watch.py) reports what has aged in this tree. It reads only GitHub's public API (api.github.com); no LLM and no host state are involved:
 
-- **runner-image**: a runner label in `.github/workflows` whose image an [actions/runner-images](https://github.com/actions/runner-images/issues?q=label%3AAnnouncement) announcement deprecates or retires.
+- **runner-image**: a runner label in `.github/workflows` whose runner image an [actions/runner-images](https://github.com/actions/runner-images/issues?q=label%3AAnnouncement) announcement retires. The announcement's subject must be the image itself, for example "The macOS 14 … runner images will begin deprecation" or "macos-14 will be retired". A tool deprecated on an image ("Deprecation of Python 3.9 on macOS 15 runner images") is not reported.
 - **mise-pin** and **manifest-pin**: an exact version in `home/dot_mise/config.toml`, or a `pin` or `fallback.pin` in `home/dot_agents/agent-config.yaml`, whose releases are on GitHub and that is behind the newest stable GitHub release at least `minimum_release_age` old (72h, read from the mise config).
 - **plugin-pin**: a Claude or Codex plugin pin that differs from the version its marketplace serves now, both its catalog entry and its `plugin.json`.
 - **unrecorded**: a `pin: unknown`.
@@ -1118,9 +1118,12 @@ The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/m
 Every other pin is listed under "Not watched" with the reason `no strict upstream parser in scope`. That covers npm, PyPI, nodejs.org, python.org, gcloud, git-commit, installer-script and vendored pins. A failed or malformed upstream read is listed under "Read failures" and never counts as current.
 
 ```shell
-# Print the report: exit 0 means no drift, 3 means drift, 4 means an upstream read failed.
+# Print the report. make exits 0 when there is no drift and 2 otherwise, after printing the script's own status
+# on stderr: "drift-watch.py exited 3" means drift, "exited 4" means an upstream read failed.
 # An exported GITHUB_TOKEN raises GitHub's anonymous limit of 60 API requests an hour.
 make drift
+# The raw status (0, 3 or 4), as the workflow reads it:
+uv run --no-project --with pyyaml python -I scripts/drift-watch.py
 ```
 
 [`.github/workflows/drift-watch.yml`](.github/workflows/drift-watch.yml) runs the same script every Monday, and you can also start it by hand. It has a read-only contents token, `issues: write`, and no secrets. It keeps one tracking issue titled "Drift watch", opened by `github-actions[bot]`: it opens the issue when it finds drift, rewrites the body on every run, and closes the issue when a run finds nothing. A read failure also fails the run.

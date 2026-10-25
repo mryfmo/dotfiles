@@ -8,8 +8,12 @@ beside whatever it found; a failed read is never read as "current"). Any other s
 
 The watch reads api.github.com only, and only these four things:
 - runner-image: every runner label in .github/workflows (`runs-on` and strategy.matrix values) against the
-  actions/runner-images announcements whose title retires an image of that OS and major version (e.g. "macOS 14"
-  for macos-14-large) or names the label itself.
+  actions/runner-images announcements whose subject is that runner image and that retire it: the title (after an
+  optional "[macOS]" tag and "The") starts with the OS and major version and says its runner image(s) will be or
+  are deprecated, retired, removed or unsupported ("The macOS 14 Sonoma based runner images will begin
+  deprecation"), or starts with the label itself ("macos-14 will be retired", "The macos-14 image is deprecated").
+  A title that deprecates something on, from or in an image ("Deprecation of Python 3.9 on macOS 15 runner
+  images") is a tool deprecation and is never reported.
 - mise-pin and manifest-pin: every exact version in home/dot_mise/config.toml and every `pin` and `fallback.pin` in
   home/dot_agents/agent-config.yaml assets that lives on GitHub, against the newest stable GitHub release at least
   minimum_release_age old (the window home/dot_mise/config.toml sets, 72h today).
@@ -52,20 +56,31 @@ MISE_CONFIG = "home/dot_mise/config.toml"
 MANIFEST = "home/dot_agents/agent-config.yaml"
 WORKFLOWS = ".github/workflows"
 OUT_OF_SCOPE = "no strict upstream parser in scope"
-# An announcement counts when its title retires something and that something is an image (not a tool on one, such
-# as "Deprecation of simulator runtimes ... on macOS 15"), or when it names the label itself.
-RETIREMENT = re.compile(r"deprecat|retir|unsupported|end of life", re.IGNORECASE)
-IMAGE_WORD = re.compile(r"\bimages?\b", re.IGNORECASE)
+_SUBJECT = r"(?:\[[^\]]*\]\s*)?(?:The\s+)?"
+_RETIRED = r"(?:will\s+(?:begin\s+)?(?:be\s+)?|(?:is|are)\s+(?:now\s+)?)(?:deprecat|retir|remov|unsupported)"
+IMAGE_RETIREMENT = re.compile(
+    _SUBJECT + r"(?P<os>macOS|Ubuntu|Windows)(?:\s+Server)?\s+(?P<major>\d+)\b[^:;]*?\brunner\s+images?\s+" + _RETIRED,
+    re.IGNORECASE,
+)
+LABEL_RETIREMENT = re.compile(
+    _SUBJECT + r"`?(?P<label>(?:ubuntu|macos|windows)-[a-z0-9.-]+)`?\s+(?:(?:runner\s+)?image\s+)?" + _RETIRED,
+    re.IGNORECASE,
+)
+TOOL_ON_IMAGE = re.compile(r"\b(?:on|from|in)\s+(?:the\s+)?`?(?:macOS|Ubuntu|Windows)\b", re.IGNORECASE)
 RUNNER_LABEL = re.compile(r"(?:ubuntu|macos|windows)-[a-z0-9.]+(?:-[a-z0-9]+)*")
-TITLE_IMAGE = re.compile(r"\b(macos|ubuntu|windows)(?:\s+server)?\s+(\d+)", re.IGNORECASE)
 # mise core tools with an exact pin whose releases are on GitHub; every other core tool is not watched.
 MISE_CORE_GITHUB = {"fd": "sharkdp/fd", "uv": "astral-sh/uv"}
 PLUGIN_FILES = {
     "claude-plugin": (".claude-plugin/marketplace.json", ".claude-plugin/plugin.json"),
     "codex-plugin": (".agents/plugins/marketplace.json", ".codex-plugin/plugin.json"),
 }
-# Every upstream timestamp: date, time, optional fraction, and a zone (Z or +hh:mm).
-ISO_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})")
+# Every upstream timestamp, RFC 3339 with the fields range-checked: YYYY-MM-DDTHH:MM:SS, an optional fraction, and
+# Z or an offset of at most 23:59. fromisoformat then refuses a day the month does not have (2026-02-30); it is never
+# trusted with the rest, since it normalises an offset such as +00:60.
+ISO_TIME = re.compile(
+    r"\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?"
+    r"(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)"
+)
 REPO_PART = re.compile(r"[A-Za-z0-9_.-]+")
 GIT_REF = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*")
 MISSING = object()
@@ -281,6 +296,17 @@ def scalars(value):
         yield value
 
 
+def retires(title: str, label: str) -> bool:
+    """Whether an announcement title retires the runner image a label runs on (see the module docstring)."""
+    if TOOL_ON_IMAGE.search(title):
+        return False
+    if match := IMAGE_RETIREMENT.match(title):
+        image = re.match(r"(ubuntu|macos|windows)-(\d+)", label)
+        return bool(image) and (match["os"].lower(), int(match["major"])) == (image[1], int(image[2]))
+    match = LABEL_RETIREMENT.match(title)
+    return bool(match) and match["label"].lower() == label
+
+
 def mise_repo(name: str, spec) -> str | None:
     """The GitHub repository a mise tool's releases come from, or None when they come from anywhere else."""
     backend, _, rest = name.partition(":")
@@ -347,20 +373,8 @@ class Watch:
             self.failures.append(f"runner-image: {error}")
             return
         for label, files in sorted(used.items()):
-            image = re.match(r"(ubuntu|macos|windows)-(\d+)", label)
             for number, state, title in announcements:
-                if not RETIREMENT.search(title):
-                    continue
-                named = re.search(rf"(?<![\w.-]){re.escape(label)}(?![\w.-])", title)
-                retired = (
-                    image
-                    and IMAGE_WORD.search(title)
-                    and any(
-                        (os_name.lower(), int(major)) == (image[1], int(image[2]))
-                        for os_name, major in TITLE_IMAGE.findall(title)
-                    )
-                )
-                if named or retired:
+                if retires(title, label):
                     recorded = ", ".join(sorted(files))
                     notice = f"{RUNNER_IMAGES}#{number} ({state}): {title}"
                     self.findings.append(Finding("runner-image", label, recorded, notice, f"{WORKFLOWS}/"))

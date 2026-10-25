@@ -221,11 +221,14 @@ render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
 
 .PHONY: drift
-# The weekly drift watch (.github/workflows/drift-watch.yml) on this tree: prints its Markdown report and exits 3 on
-# drift, 4 when an upstream read failed. Reads public upstream metadata only; an exported GITHUB_TOKEN raises the
-# GitHub API's 60-requests-an-hour anonymous limit and is sent to api.github.com only.
+# The weekly drift watch (.github/workflows/drift-watch.yml) on this tree: prints its Markdown report. Reads
+# api.github.com only; an exported GITHUB_TOKEN raises the GitHub API's 60-requests-an-hour anonymous limit. make
+# turns every failing recipe into its own status 2, so the recipe prints the script's status (3: drift, 4: a read
+# failed) on stderr before it fails; run scripts/drift-watch.py directly for the raw status.
 drift:
-	$(UV_PYYAML) python -I scripts/drift-watch.py
+	@status=0; $(UV_PYYAML) python -I scripts/drift-watch.py || status=$$?; \
+	if [ "$$status" -ne 0 ]; then printf 'drift-watch.py exited %s (3: drift, 4: an upstream read failed)\n' "$$status" >&2; fi; \
+	exit "$$status"
 
 # ShellCheck groups (regime-cutover U38, U38b), git pathspecs; CI's ShellCheck step runs this target and nothing else
 # (tests/unit/test_shellcheck_target.py pins the step, the groups and the checks). Each group's bash scripts (by

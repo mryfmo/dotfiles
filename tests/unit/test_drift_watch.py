@@ -279,6 +279,17 @@ class DriftWatchTest(unittest.TestCase):
             ("an empty published_at", lambda upstream: upstream[STARSHIP][0].update({"published_at": ""})),
             ("an impossible date", lambda upstream: upstream[FD][1].update({"published_at": "2026-02-30T00:00:00Z"})),
             ("a date without a zone", lambda upstream: upstream[FD][1].update({"published_at": "2026-08-26T00:00:00"})),
+            (
+                "an offset minute of 60",
+                lambda upstream: upstream[FD][1].update({"published_at": "2026-08-26T00:00:00+00:60"}),
+            ),
+            (
+                "an offset hour of 24",
+                lambda upstream: upstream[FD][1].update({"published_at": "2026-08-26T00:00:00+24:00"}),
+            ),
+            ("an hour of 25", lambda upstream: upstream[FD][1].update({"published_at": "2026-08-26T25:00:00Z"})),
+            ("a second of 60", lambda upstream: upstream[FD][1].update({"published_at": "2026-08-26T00:00:60Z"})),
+            ("a month of 13", lambda upstream: upstream[FD][1].update({"published_at": "2026-13-26T00:00:00Z"})),
             ("a draft with an invalid date", lambda upstream: upstream[BATS][0].update({"published_at": "soon"})),
             ("an issue number that is a string", lambda upstream: upstream[RUNNER_ISSUES][0].update({"number": "1"})),
             ("an issue number that is a boolean", lambda upstream: upstream[RUNNER_ISSUES][0].update({"number": True})),
@@ -377,7 +388,7 @@ class DriftWatchTest(unittest.TestCase):
         self.assertEqual(4, status, report)
 
     def test_upstream_text_cannot_break_out_of_its_table_cell(self):
-        title = "macos-15 retired | `x` @someone [link](https://e.invalid)\n## injected"
+        title = "macos-15 will be retired | `x` @someone [link](https://e.invalid)\n## injected"
         status, report = self.current(
             lambda upstream: upstream[RUNNER_ISSUES].append({"number": 9, "state": "open", "title": title}),
             oses=["macos-15"],
@@ -389,6 +400,57 @@ class DriftWatchTest(unittest.TestCase):
         self.assertTrue(upstream_cell.startswith("`") and upstream_cell.endswith("`"), upstream_cell)
         self.assertEqual(2, upstream_cell.count("`"), upstream_cell)
         self.assertNotIn("\n## injected", report)
+
+    def test_only_an_announcement_whose_subject_is_the_runner_image_is_reported(self):
+        retiring = {
+            "The macOS 14 Sonoma based runner images will begin deprecation on July 6th and will be fully unsupported": (
+                "macos-14"
+            ),
+            "[macOS] The macOS 14 Sonoma based runner images will begin deprecation": "macos-14-large",
+            "[Ubuntu] The Ubuntu 22 based runner images will begin deprecation on September 17th": "ubuntu-22.04",
+            "The Windows 2019 Actions runner image will begin deprecation on 2025-06-01": "windows-2019",
+            "`macos-15` will be retired on 2027-01-01": "macos-15",
+            "The macos-15 image is deprecated": "macos-15",
+        }
+        not_retiring = {
+            "Deprecation of Python 3.9 on macOS 15 runner images": "macos-15",
+            "[macOS] Deprecation of simulator runtimes for Xcode 26.0.1 on macOS 15 on January 26th": "macos-15",
+            "[macOS] Python 3.9 will be removed from macOS 15 runner images": "macos-15",
+            "macOS 15 runner images: Python 3.9 will be removed": "macos-15",
+            "[Ubuntu & Windows] Four tools scheduled for deprecation on November 3, 2025": "ubuntu-24.04",
+            "[macOS] `macos-latest` YAML-label will use `macos-15` in August 2025": "macos-15",
+            "[Ubuntu] `ubuntu-latest` label will use Ubuntu 26.04 in November 2026": "ubuntu-24.04",
+            "The macOS 14 Sonoma based runner images will begin deprecation": "macos-15",
+            "Deprecated packages on macos-15 will be removed": "macos-15",
+        }
+        for title, label in {**retiring, **not_retiring}.items():
+            with self.subTest(title):
+                issue = [{"number": 1, "state": "open", "title": title}]
+                status, report = self.current(
+                    lambda upstream, issue=issue: upstream.update({RUNNER_ISSUES: issue}), oses=[label]
+                )
+                self.assertEqual(3 if title in retiring else 0, status, report)
+
+    def test_make_drift_names_the_script_status(self):
+        # make turns a failing recipe into its own status 2; the recipe prints the script's status first.
+        with tempfile.TemporaryDirectory() as directory:
+            stub = Path(directory) / "uv"
+            stub.write_text('#!/usr/bin/env bash\n[ "${*: -2}" = "-c import yaml" ] && exit 0\nexit "$RUN_RC"\n')
+            stub.chmod(0o755)
+            for script_status, make_status in (("0", 0), ("3", 2), ("4", 2)):
+                with self.subTest(script_status):
+                    env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "RUN_RC": script_status}
+                    env.pop("MAKEFLAGS", None)
+                    run = subprocess.run(
+                        ["make", "--no-print-directory", "-C", str(ROOT), "drift"],
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(make_status, run.returncode, run.stderr)
+                    named = f"drift-watch.py exited {script_status} (3: drift, 4: an upstream read failed)"
+                    self.assertEqual(script_status != "0", named in run.stderr, run.stderr)
 
 
 class UpstreamTokenTest(unittest.TestCase):

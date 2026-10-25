@@ -57,7 +57,7 @@ export function chooseTeam(flag: unknown, env: string | undefined): { team: stri
 	return { team };
 }
 
-// Per kind (an older sender's `AGMSG-` prefix is ignored), what a row from the seat / from another seat does to its
+// Per kind (the exact first word; any other word, a retired `AGMSG-` prefix included, moves nothing), what a row from the seat / from another seat does to its
 // task: a string opens it with that debt, null closes it, undefined leaves it alone. The newest
 // moving row per task_id decides, so a HOLD or MERGED after a RESULT closes it and a new TASK reopens it.
 export const MOVES: Record<string, [seat: string | null | undefined, other: string | null | undefined]> = {
@@ -78,10 +78,8 @@ export function openItems(tsv: string, seat: string): OpenItem[] {
 		const [id, , from, to, kind = "", body = ""] = line.split("\t");
 		const taskId = /(?:^|\s)task_id=(\S+)/.exec(body)?.[1];
 		if (!taskId) continue;
-		// An older sender's `AGMSG-` prefix is ignored, so a seat still sending it keeps closing items (U35).
-		const name = kind.replace(/^AGMSG-/, "");
-		let move = MOVES[name]?.[from === seat ? 0 : 1];
-		if (from === seat && name === "TASK") tasked.set(taskId, to);
+		let move = Object.hasOwn(MOVES, kind) ? MOVES[kind][from === seat ? 0 : 1] : undefined;
+		if (from === seat && kind === "TASK") tasked.set(taskId, to);
 		// Another seat's row opens a debt only on a task this seat sent to that very seat, so a peer's RESULT on its
 		// own unit never holds a worker seat, which shares the thread (U33c: every seat loads the gate). Another
 		// seat's VERDICT is text: a worker must not settle the seat's debt on its own unit.

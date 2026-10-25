@@ -24,6 +24,17 @@ GIT_IDENTITY = {
 }
 
 
+class AuditSectionTest(unittest.TestCase):
+    def test_this_repository_audit_section_is_the_template_byte_for_byte(self):
+        # One source (F013): regime-init appends the template to other repositories, and the audit of this one reads
+        # its own AGENTS.md, so the two sections never drift. The section runs from its heading to the next one.
+        text = (ROOT / "AGENTS.md").read_text()
+        start = text.index("\n## Audit\n") + 1
+        end = text.find("\n## ", start)
+        section = text[start : end if end != -1 else len(text)]
+        self.assertEqual(section, (TEMPLATES / "AGENTS-audit-section.md").read_text())
+
+
 class RegimeInitTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

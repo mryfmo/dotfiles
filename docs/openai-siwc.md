@@ -167,4 +167,4 @@ The architect skill's single-runner form was used, with the arena skipped by the
 
 ## Next step
 
-Gate G2: the operator runs `/login openai-siwc` and one `-p` turn in each audit-side profile (`audit`, `audit-r2`, `security`), as the package README lists, which answers the first four questions.
+Gate G2: the operator runs `/login openai-siwc` and one `-p` turn in the `audit` profile, as the package README lists, which answers the first four questions.

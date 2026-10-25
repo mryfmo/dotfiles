@@ -2,7 +2,7 @@
 """Format files reported by Claude Code hook JSON input.
 
 The hook reads the complete JSON event from stdin, extracts every edited file path
-from common Write/Edit/MultiEdit payload shapes, filters by suffix, and runs the
+from the Write and Edit payload shapes, filters by suffix, and runs the
 formatter for that suffix without going through a shell. ruff and prettier come
 from PATH: they track latest behind mise's 72h minimum_release_age, and ruff.toml and
 .prettierignore keep vendored and record paths untouched.

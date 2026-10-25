@@ -65,39 +65,32 @@ test("a peer's RESULT on its own unit opens nothing for a seat that did not task
 	expect(openItems(tsv(listed), "orch")).toEqual([{ taskId: "t7", owes: "owes a VERDICT, MERGED or HOLD line", id: 4 }]);
 });
 
-test("an older sender's AGMSG- prefix is ignored: one prefixed row per kind moves its task like the plain row (U35)", () => {
-	const plain = [
-		row(3, "orch", "TASK v1 task_id=t1", "worker"),
-		row(4, "worker", "RESULT v1 task_id=t1 status=ready_for_review head=abc"),
-		row(5, "orch", "TASK v1 task_id=t2", "worker"),
-		row(8, "orch", "TASK v1 task_id=t3", "worker"),
-		row(9, "orch", "MERGED v1 task_id=t3 sha=0123456"),
-		row(10, "orch", "TASK v1 task_id=t4", "worker"),
-		row(11, "orch", "HOLD v1 task_id=t4 note=waiting"),
-		row(12, "orch", "TASK v1 task_id=t5", "worker"),
-		row(13, "worker", "RESULT v1 task_id=t5 status=ready_for_review head=fed"),
-		row(14, "orch", "VERDICT v1 task_id=t5 verdict=correct"),
+test("a retired AGMSG- prefixed kind is not a kind: it neither opens nor closes a task", () => {
+	const thread = [
+		row(3, "orch", "AGMSG-TASK v1 task_id=t1", "worker"),
+		row(4, "orch", "TASK v1 task_id=t2", "worker"),
+		row(5, "worker", "RESULT v1 task_id=t2 status=ready_for_review head=abc"),
+		row(6, "orch", "AGMSG-VERDICT v1 task_id=t2 verdict=correct"),
+		row(7, "orch", "TASK v1 task_id=t3", "worker"),
+		row(8, "orch", "AGMSG-MERGED v1 task_id=t3 sha=0123456"),
+		row(9, "orch", "TASK v1 task_id=t4", "worker"),
+		row(10, "orch", "AGMSG-HOLD v1 task_id=t4 note=waiting"),
+		row(11, "orch", "TASK v1 task_id=t5", "worker"),
+		row(12, "worker", "AGMSG-RESULT v1 task_id=t5 status=ready_for_review head=fed"),
 	];
-	const prefixed = plain.map(line => {
-		const cells = line.split("\t");
-		return [...cells.slice(0, 4), `AGMSG-${cells[4]}`, `AGMSG-${cells[5]}`].join("\t");
-	});
-	expect(prefixed.every(line => line.split("\t")[4].startsWith("AGMSG-"))).toBe(true);
-	const expected = [
-		{ taskId: "t1", owes: "owes a VERDICT, MERGED or HOLD line", id: 4 },
-		{ taskId: "t2", owes: "awaiting RESULT", id: 5 },
-	];
-	expect(openItems(tsv(plain), "orch")).toEqual(expected);
-	expect(openItems(tsv(prefixed), "orch")).toEqual(expected);
-	// A mix of old and new senders on one thread reads the same.
-	expect(openItems(tsv(plain.map((line, index) => (index % 2 ? prefixed[index] : line))), "orch")).toEqual(expected);
+	expect(openItems(tsv(thread), "orch")).toEqual([
+		{ taskId: "t2", owes: "owes a VERDICT, MERGED or HOLD line", id: 5 },
+		{ taskId: "t3", owes: "awaiting RESULT", id: 7 },
+		{ taskId: "t4", owes: "awaiting RESULT", id: 9 },
+		{ taskId: "t5", owes: "awaiting RESULT", id: 11 },
+	]);
 });
 
-test("a status=question PONG moves nothing, from any seat and with the old prefix (U35)", () => {
+test("a status=question PONG moves nothing, from any seat (U35)", () => {
 	const thread = [
 		row(3, "orch", "TASK v1 task_id=t7 brief=b.md", "worker"),
 		row(4, "worker", "PONG v1 task_id=t7 status=question note=scope"),
-		row(5, "peer", "AGMSG-PONG v1 task_id=t7 status=question note=x"),
+		row(5, "peer", "PONG v1 task_id=t7 status=question note=x"),
 	];
 	expect(openItems(tsv(thread), "orch")).toEqual([{ taskId: "t7", owes: "awaiting RESULT", id: 3 }]);
 	expect(openItems(tsv(thread), "worker")).toEqual([]);

@@ -32,6 +32,8 @@ JQ = shutil.which("jq") or str(Path.home() / ".local/share/mise/installs/jq/late
 CLAUDE_DOCTOR_BIN = os.environ.get("CLAUDE_DOCTOR_BIN") or shutil.which("claude")
 LINUX_GLOB_WARNING = "Glob patterns in sandbox permission rules are not fully supported on Linux"
 LINUX_GLOB_FOUND = re.compile(r"Found (\d+) pattern\(s\): (.+?)(?: \((\d+) more\))?\. On Linux")
+# A project path that exists on every test host, so the profile merge keeps its trust.
+EXISTING_PROJECT = "/tmp"
 # The same fixture as test_codex_config_merge: a profile table whose multiline strings hold header-like lines, with and without a trailing comment.
 MULTILINE_PROFILE = (
     "[agents.reviewer]\n"
@@ -1330,9 +1332,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "statusMessage": "Evaluating permission request",
             },
         )
+        operator_hooks = self.temp_dir / "elsewhere/hooks.json"
+        operator_hooks.parent.mkdir()
+        operator_hooks.write_text("{}")
         current = (
             f'[hooks.state]\n\n[hooks.state."{key}"]\ntrusted_hash = "sha256:stale"\n\n'
-            '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
+            f'[hooks.state."{operator_hooks}:stop:0:0"]\ntrusted_hash = "sha256:operator"\n'
         )
 
         result = self.run_profile(manifest, home, current)
@@ -1468,7 +1473,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         key = f"{home}/.codex/config.toml:permission_request:0:0"
         others = (
             '[hooks.state."custom-hook"] # mine\ntrusted_hash = "sha256:custom"\n\n'
-            '[projects."/work"]  # trusted\ntrust_level = "trusted"\n'
+            f'[projects."{EXISTING_PROJECT}"]  # trusted\ntrust_level = "trusted"\n'
         )
         # A commented declared header, then an uncommented one followed by commented unrelated tables.
         for declared in (f'[hooks.state."{key}"] # declared', f'[hooks.state."{key}"]'):
@@ -1483,7 +1488,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
                 self.assertEqual(result.stdout.count(key), 1)
                 self.assertEqual(state["custom-hook"], {"trusted_hash": "sha256:custom"})
-                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(data["projects"][EXISTING_PROJECT], {"trust_level": "trusted"})
                 self.assertIn("replacing sha256:stale with", result.stderr)
 
     def test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings(self) -> None:
@@ -1510,7 +1515,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             with self.subTest(entry=entry):
                 current = (
                     f'[hooks.state]\n{entry}"other" = {{ trusted_hash = "sha256:other" }}\n\n'
-                    '[projects."/work"]\ntrust_level = "trusted"\n'
+                    f'[projects."{EXISTING_PROJECT}"]\ntrust_level = "trusted"\n'
                 )
 
                 result = self.run_profile(manifest, home, current)
@@ -1521,7 +1526,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
                 self.assertIs(state[key]["enabled"], True)
                 self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
-                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(data["projects"][EXISTING_PROJECT], {"trust_level": "trusted"})
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
@@ -1529,7 +1534,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
         key = f"{home}/.codex/config.toml:permission_request:0:0"
-        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        others = f'\n[projects."{EXISTING_PROJECT}"]\ntrust_level = "trusted"\n'
         currents = [
             f'{parent}\n"{key}" = {{ trusted_hash = "sha256:stale", enabled = false }}\n'
             f'"other" = {{ trusted_hash = "sha256:other" }}\n' + others
@@ -1549,7 +1554,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
                 self.assertIs(state[key]["enabled"], True)
                 self.assertEqual(state["other"], {"trusted_hash": "sha256:other"})
-                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(data["projects"][EXISTING_PROJECT], {"trust_level": "trusted"})
                 self.assertEqual(result.stdout.count(key), 1)
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
@@ -1558,7 +1563,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
         key = f"{home}/.codex/config.toml:permission_request:0:0"
-        others = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        others = f'\n[projects."{EXISTING_PROJECT}"]\ntrust_level = "trusted"\n'
         for current in (
             f'[hooks]\nstate."{key}".trusted_hash = "sha256:stale"\nstate . "{key}" . enabled = false\n' + others,
             f'hooks.state."{key}".trusted_hash = "sha256:stale"\n"hooks".state."{key}".enabled = false\n' + others,
@@ -1571,7 +1576,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 state = data["hooks"]["state"]
                 self.assertNotEqual(state[key]["trusted_hash"], "sha256:stale")
                 self.assertIs(state[key]["enabled"], True)
-                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertEqual(data["projects"][EXISTING_PROJECT], {"trust_level": "trusted"})
                 self.assertEqual(result.stdout.count(key), 1)
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
@@ -1634,16 +1639,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         home = self.temp_dir / "target-home"
         base = home / ".codex/config.toml"
         base.parent.mkdir(parents=True)
-        base.write_text(
-            '[hooks.state]\n\n[hooks.state."/workspace/.codex/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:base"\n'
-        )
+        hooks_file = home / ".codex/hooks.json"
+        hooks_file.write_text("{}")
+        base.write_text(f'[hooks.state]\n\n[hooks.state."{hooks_file}:stop:0:0"]\ntrusted_hash = "sha256:base"\n')
 
         result = subprocess.run(
             [sys.executable, str(standard_profile)],
             input=(
-                "[hooks.state]\n\n"
-                '[hooks.state."/home/.codex/config.toml:permission_request:0:0"]\n'
-                'trusted_hash = "sha256:profile"\n'
+                f'[hooks.state]\n\n[hooks.state."{hooks_file}:session_start:0:0"]\ntrusted_hash = "sha256:profile"\n'
             ),
             text=True,
             stdout=subprocess.PIPE,
@@ -2196,7 +2199,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             settings["hooks"]["PostToolUse"],
             [
                 {
-                    "matcher": "Write|Edit|MultiEdit",
+                    "matcher": "Write|Edit",
                     "hooks": [
                         {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
                         {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"},
@@ -2209,7 +2212,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         del manifest["claude"]["hooks"]["format_edited_files_hook"]
         del manifest["claude"]["hooks"]["project_map_reload_hook"]
         settings = self.module.json.loads(self.module.render_claude_settings(manifest))
-        self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Write|Edit|MultiEdit", "hooks": []}])
+        self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Write|Edit", "hooks": []}])
 
     def test_project_map_reload_hook_renders_into_post_tool_use(self) -> None:
         manifest = sample_manifest()
@@ -2218,7 +2221,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             settings["hooks"]["PostToolUse"],
             [
                 {
-                    "matcher": "Write|Edit|MultiEdit",
+                    "matcher": "Write|Edit",
                     "hooks": [
                         {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
                         {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"},
@@ -2232,7 +2235,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             settings["hooks"]["PostToolUse"],
             [
                 {
-                    "matcher": "Write|Edit|MultiEdit",
+                    "matcher": "Write|Edit",
                     "hooks": [
                         {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"},
                     ],
@@ -2307,7 +2310,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             cases = [
                 ("Write", {"file_path": map_path}, listing, {}, 2, True),
                 ("Edit", {"file_path": map_path}, listing, {}, 2, True),
-                ("MultiEdit", {"file_path": map_path}, listing, {}, 2, True),
                 ("missing file_path", {}, listing, {}, 0, False),
                 ("other path", {"file_path": str(root / "other.html")}, listing, {}, 0, False),
                 ("missing jq", {"file_path": map_path}, listing, {"PATH": ""}, 0, False),
@@ -3089,7 +3091,7 @@ class StandingRulesTest(unittest.TestCase):
         rules = self.manifest["standing_rules"]["rules"]
         cases = {
             "front matter outside claude": ("claude-only", ["claude", "codex"], "front matter"),
-            "the audit seat": ("shared", ["claude", "omp-audit"], "origin/main AGENTS.md"),
+            "the audit run": ("shared", ["claude", "omp-audit"], "origin/main AGENTS.md"),
             "an unknown audience": ("shared", ["claude", "cursor"], "unknown audience"),
             "an empty audience": ("shared", [], "non-empty audience"),
         }

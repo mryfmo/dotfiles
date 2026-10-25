@@ -58,7 +58,7 @@ class UpgradeUvToolsTest(unittest.TestCase):
                     "CALLS": str(calls),
                     "TOOLS": tools,
                     "FAIL": fail,
-                    # herdr-agents exports both in every pane it creates, where make update runs.
+                    # A terminal pane may export both, and make update runs there.
                     "FORCE_COLOR": "1",
                     "CLICOLOR_FORCE": "1",
                 },

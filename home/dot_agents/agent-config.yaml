@@ -177,8 +177,6 @@ omp:
     orchestrator: deep
     worker: standard
     audit: audit
-    review: review
-    security: security
 
 # Model IDs and efforts live only in this map. Profiles render into Claude
 # settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
@@ -477,13 +475,13 @@ claude:
   # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: 0294ae3e5f52980e5b4737cae61b7bb78ea96c4437d2d9caad0d0143ddad17ba
-      hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
+      hcom-seat: 2da3209222ed295efd3f7a695beccfaacf56400ff7b1c83cc300cbd7653ce7fd
+      hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
-      regime-init: f6b9443069d7d9b0a195a8bd1a3b0562e54a73effe3fb2b2f587c68bb4789324
-      seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
+      regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
+      seat-login-preflight: 5aa82ac3df2434cb3b2e888949d79039712dd42ed1d7cdd663916b648b4983ce
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037

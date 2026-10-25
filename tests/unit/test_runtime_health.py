@@ -918,6 +918,7 @@ EOF
             repo / "scripts/check-agent-runtime.py",
             "printf 'runtime drift\\n' >&2\nexit 7\n",
         )
+        self.executable(repo / "scripts/lint-retired-terms.py", "exit 0\n")
         env = self.doctor_environment()
         env["HOME"] = str(home)
 
@@ -931,6 +932,13 @@ EOF
         self.executable(repo / "scripts/check-agent-runtime.py", "printf 'runtime healthy\\n'\n")
         result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+        # A retired term in the tree fails the runtime bucket the same way (U72).
+        self.executable(repo / "scripts/lint-retired-terms.py", "printf 'AGENTS.md:1: retired term\\n'\nexit 1\n")
+        result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("AGENTS.md:1: retired term", result.stdout)
+        self.assertIn("Doctor summary: tools=passed; runtime=failed", result.stdout)
 
     def test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing(
         self,
@@ -950,6 +958,7 @@ EOF
             repo / "scripts/check-agent-runtime.py",
             "printf 'missing runtime root\\n' >&2\nexit 7\n",
         )
+        self.executable(repo / "scripts/lint-retired-terms.py", "exit 0\n")
         env = self.doctor_environment()
         env["HOME"] = str(home)
 
@@ -974,6 +983,7 @@ EOF
             repo / "scripts/check-agent-runtime.py",
             "printf 'repair=%s\\n' \"${REPAIR:-unset}\"\n",
         )
+        self.executable(repo / "scripts/lint-retired-terms.py", "exit 0\n")
         env = self.doctor_environment()
         env["HOME"] = str(home)
 

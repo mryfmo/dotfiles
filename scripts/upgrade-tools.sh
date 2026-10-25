@@ -473,7 +473,7 @@ function upgrade_uv_tools() {
     has_command uv || return 1
 
     section "uv tools"
-    # Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set (herdr-agents panes): uv colours tool names there.
+    # Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set: uv colours tool names there.
     tools="$(uv tool list --color never)" || return
     # Tool lines read "<name> v<version>"; their entry points follow as "- <command>".
     for tool in $(printf '%s\n' "${tools}" | awk '/^[^- ]/ { print $1 }'); do

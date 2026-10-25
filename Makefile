@@ -118,7 +118,6 @@ update:
 # just fetched, so a recipe change lands in the same run. SYSTEM reaches it
 # through MAKEFLAGS.
 update-tree:
-	$(MAKE) agmsg-retire
 	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
@@ -172,6 +171,7 @@ doctor:
 	else echo "optional warning: pi-claude-bridge and pstack checks skipped because omp is not installed"; fi; \
 	if [ -d home/dot_agents ] && [ -d home/dot_claude ] && [ -d home/dot_codex ]; then \
 		./scripts/check-agent-runtime.py || runtime_status=$$?; \
+		./scripts/lint-retired-terms.py || runtime_status=$$?; \
 	else \
 		echo "optional warning: agent runtime check skipped because source roots are incomplete"; \
 		runtime_result=not-applicable; \
@@ -188,18 +188,6 @@ usage-snapshot:
 .PHONY: usage-report
 usage-report:
 	uv run python scripts/usage-report.py
-
-.PHONY: agmsg-retire
-# The agmsg regime is retired (E1 of plan 025): remove its hooks and identities from every
-# registered clone of this repository, then from this one (D-024-145, D-024-147). update-tree
-# runs it before `chezmoi apply`, so the installed agmsg tree whose scripts it calls is still
-# there when .chezmoiremove takes it away (U27).
-agmsg-retire:
-	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \
-		cd "$(CURDIR)" && bash home/dot_local/bin/common/executable_herdr-agents --retire-agmsg; \
-	else \
-		echo "Herdr agents source helper not found; skipping agmsg retire."; \
-	fi
 
 .PHONY: watch
 watch:
@@ -221,7 +209,7 @@ format:
 
 # UNIT_TEST_JOBS=1 is the serial run; any other count runs the test modules in parallel shards, that many at a time
 # (0, the default, is the CPU count), with one combined summary (scripts/ci/unittest-shards.py). Tests that run
-# `uv run --offline --with pyyaml` against the real uv cache (test_pre_send.py) found PyYAML there only because an
+# `uv run --offline --with pyyaml` against the real uv cache found PyYAML there only because an
 # earlier module of the serial order had fetched it; the shards keep no such order, so the cache gets it first.
 UNIT_TEST_JOBS ?= 0
 
@@ -250,6 +238,13 @@ codex-hook-trust:
 .PHONY: render-check
 render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
+
+.PHONY: retired-terms
+# The retired-term lint over scripts/retired-terms.tsv, the one list of retired names, paths and removals (U72). CI runs
+# it through tests/unit/test_lint_retired_terms.py, `make doctor` with the runtime checks, and
+# the weekly drift watch (scripts/drift-watch.py: exit 1 lines become findings, any other non-zero a read failure).
+retired-terms:
+	./scripts/lint-retired-terms.py
 
 .PHONY: drift
 # The weekly drift watch (.github/workflows/drift-watch.yml) on this tree: prints its Markdown report. Reads

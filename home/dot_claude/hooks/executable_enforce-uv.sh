@@ -208,7 +208,7 @@ function add_segment() {
 # @arg $1 string The command line.
 # @set SEGMENTS array The simple commands, in order.
 function split_segments() {
-    local line="$1" current="" quote="" char prev i j rest body delimiter strip
+    local line="$1" current="" quote="" char prev i j rest body delimiter strip escaped=-1
     local -a delimiters=() strips=()
     SEGMENTS=()
     for ((i = 0; i < ${#line}; i++)); do
@@ -223,9 +223,13 @@ function split_segments() {
             fi
             continue
         fi
+        # The character before this one; a backslash-escaped one is part of a word, never an operator or a blank.
         prev=""
         if ((i > 0)); then
             prev=${line:i-1:1}
+        fi
+        if ((i - 1 == escaped)); then
+            prev="\\"
         fi
         case "$char" in
         "'" | '"')
@@ -235,6 +239,7 @@ function split_segments() {
         "\\")
             current+=$char${line:i+1:1}
             i=$((i + 1))
+            escaped=$i
             ;;
         '#')
             if [[ -z "$prev" || "$prev" == [[:space:]\;\&\|\(\)] ]]; then

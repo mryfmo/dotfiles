@@ -569,28 +569,16 @@ OMP_GITHUB_ALLOWLIST = {
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 # The worker's own-branch pushes (regime-cutover U76): the only allow rows besides levers in a writing policy, worker.yml
-# only. Each must follow its carve denies (a branch starting with `-`, a second word, `:` or `+`, and `main`) and be
-# followed by the catch-all push denies, in this order; omp takes the first matching rule.
-OMP_WORKER_PUSH_ALLOW = ("git push", "git push origin *", "git push -u origin *")
-OMP_WORKER_PUSH_CARVE = (
-    "*git *push* main",
-    "*git *push* main *",
-    "*git *push*/main",
-    "*git *push*/main *",
-    *(
-        f"{prefix} {tail}"
-        for prefix in ("git push origin", "git push -u origin")
-        for tail in ("-*", "* *", "*:*", "*+*")
-    ),
-)
+# only. Exact lines without a wildcard (omp patterns have no character class, so a branch word could not be limited to
+# a safe character set), followed by the catch-all push denies, in this order; omp takes the first matching rule.
+OMP_WORKER_PUSH_ALLOW = ("git push", "git push origin HEAD", "git push -u origin HEAD")
 OMP_WORKER_PUSH_CATCH = ("*git push*", "*git -* push*")
 
 
 def validate_omp_worker_push(patterns: list[dict[str, Any]], label: str) -> None:
-    """The worker's push rows are exactly the carve denies, the three allows and the catch-all denies, contiguous and in
-    that order; a change to any of them is a reviewed change to these constants."""
+    """The worker's push rows are exactly the three allows and the catch-all denies, contiguous and in that order; a
+    change to any of them is a reviewed change to these constants."""
     expected = [
-        *({"match": match, "approval": "deny"} for match in OMP_WORKER_PUSH_CARVE),
         *({"match": match, "approval": "allow"} for match in OMP_WORKER_PUSH_ALLOW),
         *({"match": match, "approval": "deny"} for match in OMP_WORKER_PUSH_CATCH),
     ]

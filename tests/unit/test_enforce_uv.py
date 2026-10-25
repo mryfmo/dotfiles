@@ -50,6 +50,10 @@ class EnforceUvTest(unittest.TestCase):
             ("python3 a.py &>log.txt", "uv run python3 a.py &>log.txt\n"),
             ("python3 script.py >| out", "uv run python3 script.py >| out\n"),
             ("echo a >| f | python x.py", "uv run python x.py"),
+            # U76 round 6: an escaped character is part of its word, so `\ #` starts no comment and `\>&` no redirection.
+            ("echo \\ # ; python x.py", "uv run python x.py"),
+            ("echo a\\#b; python y.py", "uv run python y.py"),
+            ("echo \\>&python z.py", "uv run python z.py"),
             ("sleep 1 & python x.py", "uv run python x.py"),
             ("make lint 2>&1 && python y.py", "uv run python y.py"),
         ):
@@ -81,6 +85,7 @@ class EnforceUvTest(unittest.TestCase):
                 ("Bash", 'git commit -m "use python && pip here"'),
                 ("Bash", "cd x && uv run python foo.py"),
                 ("Bash", "echo ok # ; python script.py"),
+                ("Bash", "echo \\\\ # ; python script.py"),
                 ("Bash", "# python script.py\ngit status"),
                 ("Bash", "cat <<EOF > run.sh\npython x.py\nEOF"),
                 ("Bash", "cat <<'EOF' > run.sh\npip install x\nEOF\nchmod +x run.sh"),

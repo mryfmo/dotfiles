@@ -1432,14 +1432,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_omp_policy_allow({"bash": {"patterns": "x"}}, "seat.yml", pinned)
         self.assertIn("bash.patterns must be a list of rules", stderr.getvalue())
 
-    def test_the_worker_push_allows_are_accepted_only_in_worker_yml_and_only_with_their_carve_and_catch_rows(
-        self,
-    ) -> None:
-        """U76 round 5: the worker's push allowlist is the one non-lever allow in a writing seat, and only in its exact
-        deny-allow-deny order; the committed worker.yml passes."""
+    def test_the_worker_push_allows_are_accepted_only_in_worker_yml_and_only_before_their_catch_rows(self) -> None:
+        """U76 rounds 5 and 6: the worker's three exact push lines are the one non-lever allow in a writing seat, and
+        only directly before the catch-all push denies; a wildcard push allow is refused."""
         module = self.module
+        self.assertFalse([match for match in module.OMP_WORKER_PUSH_ALLOW if "*" in match])
         rows = [
-            *({"match": m, "approval": "deny"} for m in module.OMP_WORKER_PUSH_CARVE),
             *({"match": m, "approval": "allow"} for m in module.OMP_WORKER_PUSH_ALLOW),
             *({"match": m, "approval": "deny"} for m in module.OMP_WORKER_PUSH_CATCH),
         ]
@@ -1447,9 +1445,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         broken = {
             "orchestrator role": (rows, "orchestrator"),
             "catch-all dropped": (rows[:-1], "worker"),
-            "a carve deny dropped": (rows[1:], "worker"),
-            "carve after the allows": (rows[4:-2] + rows[:4] + rows[-2:], "worker"),
-            "an extra push allow": (rows + [{"match": "git push *", "approval": "allow"}], "worker"),
+            "an allow dropped": (rows[1:], "worker"),
+            "catch before the allows": (rows[3:] + rows[:3], "worker"),
+            "the round-5 wildcard allow": (rows + [{"match": "git push origin *", "approval": "allow"}], "worker"),
         }
         for name, (patterns, role) in broken.items():
             with (

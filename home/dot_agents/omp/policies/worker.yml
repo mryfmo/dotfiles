@@ -1054,32 +1054,21 @@ bash:
     - match: "*gh alias delete"
       approval: deny
     # <<< command_policy <<<
-    # The worker pushes its own branch by remote name only (hcom-worker SKILL step 3), so its pushes are an allowlist
-    # (regime-cutover U76, round-5 audit: `git push origin --tags` passed the flag list before it). omp takes the first
-    # rule that matches; an allow vouches only for a whole simple command (no `;`, `&`, `|`, `<`, `>`, `$`, backtick or
-    # parenthesis), a deny for the whole line or any segment of it (src/tools/bash.ts:301-307 of 18.11.3). A glob's `*`
-    # matches anything, spaces included, so the branch word of `git push [-u] origin <branch>` is carved first: a
-    # branch starting with `-`, a second word (flag, tag, refspec), a `:` or a `+` is denied, and so is `main` by name or
-    # as `refs/heads/main`. Then the three allowed shapes, then a deny for every other line holding `git push` or
-    # `git -<option> … push`, compound lines with an allowed shape included. Over-match: a line that merely says
-    # `git push` (a commit message) is refused; reword it. Not caught: a push that git config or an alias shapes
-    # (`remote.origin.push`, `push.default`, `git -c alias.p=push p`, an alias in ~/.gitconfig); the GitHub ruleset keeps
-    # main, and srt and the seat GitHub identity (U88) the rest. validate-agent-assets.py allows these three allow rows
-    # in worker.yml only (OMP_WORKER_PUSH_ALLOW).
-    - {match: "*git *push* main", approval: deny}
-    - {match: "*git *push* main *", approval: deny}
-    - {match: "*git *push*/main", approval: deny}
-    - {match: "*git *push*/main *", approval: deny}
-    - {match: "git push origin -*", approval: deny}
-    - {match: "git push origin * *", approval: deny}
-    - {match: "git push origin *:*", approval: deny}
-    - {match: "git push origin *+*", approval: deny}
-    - {match: "git push -u origin -*", approval: deny}
-    - {match: "git push -u origin * *", approval: deny}
-    - {match: "git push -u origin *:*", approval: deny}
-    - {match: "git push -u origin *+*", approval: deny}
+    # The worker pushes its own branch (hcom-worker SKILL step 3), so its pushes are an allowlist of three exact lines
+    # with no wildcard: `git push -u origin HEAD` (the current branch to the same name on origin, and its upstream),
+    # `git push origin HEAD` and bare `git push`. omp takes the first rule that matches; an allow vouches only for a
+    # whole simple command, a deny for the whole line or any segment of it (src/tools/bash.ts:301-307 of 18.11.3). Any
+    # other line holding `git push` or `git -<option> … push` meets the deny after them. There is no branch word to
+    # carve (regime-cutover U76, round-6 audit: a `*` branch let `git push origin {--tags,feat/x}` through by brace
+    # expansion): omp's patterns have `*` as their only wildcard and no character class (bash.ts:243-249 escapes
+    # `[ ] ? { }`), so no rule can limit a word to a safe character set or name a literal `*`. Over-match: a push by
+    # branch name, to another remote, chained, and a line that merely says `git push` (a commit message) are refused.
+    # Not caught: a push that git config or an alias shapes (`remote.origin.push`, `push.default`, `push.followTags`,
+    # `git -c alias.p=push p`, an alias in ~/.gitconfig), and `git push` from a checkout of `main`; the GitHub ruleset
+    # keeps main, and srt and the seat GitHub identity (U88) the rest. validate-agent-assets.py accepts these allow rows
+    # in worker.yml only, followed by the two denies (OMP_WORKER_PUSH_ALLOW, OMP_WORKER_PUSH_CATCH).
     - {match: "git push", approval: allow}
-    - {match: "git push origin *", approval: allow}
-    - {match: "git push -u origin *", approval: allow}
+    - {match: "git push origin HEAD", approval: allow}
+    - {match: "git push -u origin HEAD", approval: allow}
     - {match: "*git push*", approval: deny}
     - {match: "*git -* push*", approval: deny}

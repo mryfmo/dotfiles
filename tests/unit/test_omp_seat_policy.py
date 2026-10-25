@@ -51,7 +51,7 @@ POLICIES_VALUES = ("allow", "deny", "prompt")  # approval.ts:99
 # from the rendered plain-launch config, and tests/unit/test_command_policy.py checks them against the manifest.
 PLAIN_LAUNCH = ROOT / "home/.chezmoitemplates/omp-config-managed.yml"
 # The worker's own-branch push shapes, its only allows besides the body lever (U76 round 5).
-WORKER_PUSH_ALLOW = ("git push", "git push origin *", "git push -u origin *")
+WORKER_PUSH_ALLOW = ("git push", "git push origin HEAD", "git push -u origin HEAD")
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
@@ -189,9 +189,23 @@ TABLE = {
         ("bash", "git push origin feat/x:main", "deny"),
         ("bash", f"{PUSH_RECIPE} main", "deny"),
         ("bash", "cd w && git push origin main", "deny"),
-        ("bash", "git push origin feat/omp-seat-policy", "allow"),
-        ("bash", "git push -u origin feat/x", "allow"),
+        # U76 round 6: three exact push lines, no branch word.
         ("bash", "git push", "allow"),
+        ("bash", "git push origin HEAD", "allow"),
+        ("bash", "git push -u origin HEAD", "allow"),
+        ("bash", "git push  -u   origin  HEAD", "allow"),
+        ("bash", "git push origin feat/omp-seat-policy", "deny"),
+        ("bash", "git push -u origin feat/x", "deny"),
+        ("bash", "git push origin {--tags,feat/x}", "deny"),
+        ("bash", "git push -u origin {--force,feat/x}", "deny"),
+        ("bash", "git push origin feat/{a,b}", "deny"),
+        ("bash", "git push origin feat/a\\ --tags", "deny"),
+        ("bash", "git push origin 'x --tags'", "deny"),
+        ("bash", "git push origin ~", "deny"),
+        ("bash", "git push origin feat/x?", "deny"),
+        ("bash", "git push origin *", "deny"),
+        ("bash", "git push origin HEAD --tags", "deny"),
+        ("bash", "git push origin HEAD*", "deny"),
         # U76 round 3: the worker pushes by remote name only; a URL carries a colon, so the recipe form is refused.
         ("bash", f"{PUSH_RECIPE} feat/omp-seat-policy", "deny"),
         # F002 and the round-3 audit: no push that deletes, forces, prunes or mirrors, in any refspec spelling.

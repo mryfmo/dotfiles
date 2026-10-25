@@ -11,6 +11,17 @@ readonly SCRIPT_PATH="./install/common/chezmoi_private.sh"
     [ "${status}" -eq 0 ]
 }
 
+@test "[common] install_chezmoi_private clones the full https URL without a dead --ssh flag" {
+    run bash -c "
+        source '${SCRIPT_PATH}'
+        function chezmoi() { printf '%s\n' \"\$@\"; }
+        install_chezmoi_private
+    "
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"https://github.com/mryfmo/dotfiles-private"* ]]
+    [[ "${output}" != *"--ssh"* ]]
+}
+
 @test "[common] install_chezmoi_private continues when chezmoi init fails" {
     run bash -lc "
         source '${SCRIPT_PATH}'

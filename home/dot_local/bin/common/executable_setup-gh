@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 
 # @file home/dot_local/bin/common/executable_setup-gh
-# @brief Authenticate `gh` and upload the local SSH key.
+# @brief Log in `gh` through gh-auth.sh and upload the local SSH key.
 # @description
-#   Logs into GitHub through the GitHub CLI, ensures the local SSH public key
-#   exists through an explicit interactive flow, and registers the public key as
-#   both an authentication key and a commit signing key on the authenticated
-#   account.
+#   Logs this machine into GitHub through the one login path, the dotfiles
+#   checkout's `scripts/gh-auth.sh` (file storage the sandboxed seats can read;
+#   the checkout is found through `chezmoi source-path`, so any sourceDir works),
+#   ensures the local SSH public key exists through an explicit interactive
+#   flow, and registers it as both an authentication and a commit signing key.
+#   The two key uploads need `admin:public_key` and `admin:ssh_signing_key`;
+#   they run under a separate one-off login in a temporary `GH_CONFIG_DIR`,
+#   which is logged out and deleted afterwards, so the machine login every
+#   agent uses never gains those scopes. `gh auth logout` does not revoke the
+#   one-off token on GitHub; revoke it under Settings → Applications if wanted.
 # @example
 #   setup-gh
 
@@ -15,9 +21,39 @@ set -Eeuo pipefail
 readonly DEFAULT_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
 readonly DEFAULT_SSH_PUBLIC_KEY_PATH="${DEFAULT_SSH_KEY_PATH}.pub"
 
-# @description Authenticate GitHub CLI against github.com over HTTPS.
+# @description Print the dotfiles checkout's scripts/gh-auth.sh. The checkout is chezmoi's configured
+#   sourceDir, not always ~/.local/share/chezmoi: `chezmoi source-path` names its home/ subtree
+#   (.chezmoiroot), and git names the repository root above it.
+# @stdout Absolute path of an executable scripts/gh-auth.sh.
+# @exitcode 1 chezmoi or git is missing or fails, or the script is not there.
+function gh_auth_script() {
+    local source_path top script
+    if ! command -v chezmoi > /dev/null 2>&1; then
+        printf 'setup-gh: chezmoi is not installed, so the dotfiles checkout holding scripts/gh-auth.sh cannot be found\n' >&2
+        return 1
+    fi
+    if ! source_path="$(chezmoi source-path)" || [ -z "${source_path}" ]; then
+        printf 'setup-gh: chezmoi source-path failed; cannot find the dotfiles checkout\n' >&2
+        return 1
+    fi
+    if ! top="$(git -C "${source_path}" rev-parse --show-toplevel)" || [ -z "${top}" ]; then
+        printf 'setup-gh: %s is not inside a git checkout; cannot find scripts/gh-auth.sh\n' "${source_path}" >&2
+        return 1
+    fi
+    script="${top}/scripts/gh-auth.sh"
+    if [[ ! -x "${script}" ]]; then
+        printf 'setup-gh: %s not found; run "make gh-auth" in the dotfiles checkout\n' "${script}" >&2
+        return 1
+    fi
+    printf '%s\n' "${script}"
+}
+
+# @description Log in the machine's GitHub account through the dotfiles checkout's gh-auth.sh.
+# @exitcode 1 gh-auth.sh cannot be found or the login did not complete.
 function login_to_github() {
-    gh auth login -h github.com -p https
+    local script
+    script="$(gh_auth_script)" || return 1
+    "${script}"
 }
 
 # @description Print the short host name, or fail naming the read when neither form works.
@@ -72,13 +108,48 @@ function ensure_default_ssh_key() {
     chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }
 
-# @description Upload the local public SSH key through GitHub CLI.
+# The one-off login's GH_CONFIG_DIR until it is removed; empty once cleaned up.
+KEY_CONFIG=""
+# Set once the logout has started, so a cleanup re-entered from a signal trap skips it.
+KEY_LOGOUT_STARTED=""
+
+# @description Log out the one-off login and delete its config directory. KEY_CONFIG is cleared
+#   only after the directory is gone, so a signal during the logout or the removal re-enters this
+#   function from its trap, skips the logout already started, and still removes the directory.
+#   Idempotent: a call after a finished cleanup does nothing.
+function cleanup_key_login() {
+    local dir="${KEY_CONFIG}"
+    [ -n "${dir}" ] || return 0
+    if [ -z "${KEY_LOGOUT_STARTED}" ]; then
+        KEY_LOGOUT_STARTED=1
+        GH_CONFIG_DIR="${dir}" gh auth logout -h github.com > /dev/null 2>&1 || true
+    fi
+    rm -rf "${dir}"
+    KEY_CONFIG=""
+}
+
+# @description Upload the local public SSH key under a one-off login that holds the key-admin scopes.
+#   The cleanup trap is installed before the login starts, so INT, TERM or HUP after authentication
+#   still log out and delete the token file (exit 128 + the signal number).
 function add_ssh_key_to_github() {
+    local status=0
     ensure_default_ssh_key
-    gh auth refresh -h github.com -s admin:public_key
-    gh auth refresh -h github.com -s admin:ssh_signing_key
-    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication
-    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
+    trap cleanup_key_login EXIT
+    trap 'cleanup_key_login; exit 129' HUP
+    trap 'cleanup_key_login; exit 130' INT
+    trap 'cleanup_key_login; exit 143' TERM
+    KEY_CONFIG="$(mktemp -d "${TMPDIR:-/tmp}/setup-gh.XXXXXX")" || return 1
+    (
+        export GH_CONFIG_DIR="${KEY_CONFIG}"
+        unset GH_TOKEN GITHUB_TOKEN
+        printf 'setup-gh: a one-off login with admin:public_key and admin:ssh_signing_key uploads the key; the machine login keeps its scopes\n' >&2
+        gh auth login -h github.com -p https --insecure-storage -s admin:public_key,admin:ssh_signing_key &&
+            gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication &&
+            gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
+    ) || status=$?
+    cleanup_key_login
+    trap - EXIT HUP INT TERM
+    return "${status}"
 }
 
 # @description Run the GitHub authentication and SSH key setup flow.

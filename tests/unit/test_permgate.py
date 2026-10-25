@@ -51,6 +51,10 @@ class PermgateTest(unittest.TestCase):
         self.policy_path = self.root / "permgate-policy.yaml"
         self.state_path = self.root / "decisions.jsonl"
         self.write_policy()
+        # Claude's rendered settings, the source of the sandbox-excluded set permgate must never approve (U68).
+        self.settings_path = self.root / ".claude/settings.json"
+        self.settings_path.parent.mkdir()
+        self.settings_path.write_text(json.dumps({"sandbox": {"excludedCommands": ["git push *", "gh *"]}}))
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -165,11 +169,61 @@ class PermgateTest(unittest.TestCase):
 
     def test_repository_policy_allows_and_falls_through(self) -> None:
         self.policy_path.write_text((ROOT / "home/dot_agents/permgate-policy.yaml").read_text())
-        allowed = self.run_gate("claude", CLAUDE_INPUT | {"tool_input": {"command": "gh pr view 1"}})
+        allowed = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": "gh pr view 1"}})
+        self.assertEqual(permission_behavior(allowed.stdout), "allow")
+        allowed = self.run_gate("claude", CLAUDE_INPUT | {"tool_input": {"command": "git status --short"}})
         self.assertEqual(permission_behavior(allowed.stdout), "allow")
         undecided = self.run_gate("claude", CLAUDE_INPUT | {"tool_input": {"command": "ls"}})
         self.assertEqual(undecided.stdout, "")
         self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
+
+    def test_claude_commands_the_sandbox_excludes_always_fall_through(self) -> None:
+        """U68 round 7: an excluded command runs unsandboxed, so only the user may approve it."""
+        self.policy_path.write_text((ROOT / "home/dot_agents/permgate-policy.yaml").read_text())
+        rendered = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+        excluded = json.loads(rendered.read_text().split('"excludedCommands": ', 1)[1].split("]", 1)[0] + "]")
+        self.assertEqual(["git push *", "gh *"], excluded, "the fixture mirrors the managed settings")
+        commands = [
+            "gh pr view 1",
+            "gh run list",
+            "gh repo view",
+            "gh --version",
+            "  gh pr checks 7",
+            "/opt/homebrew/bin/gh pr view 1",
+            "env GH_PAGER=cat gh pr view 1",
+            "GH_PAGER=cat gh run view 9",
+            "command gh repo view",
+            "git push origin main",
+            "git -C sub push",
+            "env git push",
+        ]
+        for command in commands:
+            with self.subTest(command=command):
+                result = self.run_gate("claude", CLAUDE_INPUT | {"tool_input": {"command": command}})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "", "no decision: the native prompt decides")
+                self.assertEqual(self.read_log()[-1]["decision"], "ask")
+        # The same command keeps its policy decision for Codex, which has no such exclusion.
+        codex = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": "gh pr view 1"}})
+        self.assertEqual(permission_behavior(codex.stdout), "allow")
+        # A sandboxed git read stays auto-approved for Claude.
+        status = self.run_gate("claude", CLAUDE_INPUT | {"tool_input": {"command": "git status --short"}})
+        self.assertEqual(permission_behavior(status.stdout), "allow")
+
+    def test_an_unreadable_excluded_set_decides_nothing_for_claude(self) -> None:
+        """U68 round 7: a failed read of the rendered settings is a config error, never an empty exclusion set."""
+        for content in (None, "not-json", '{"sandbox": {"excludedCommands": "gh *"}}', '{"sandbox": []}'):
+            with self.subTest(content=content):
+                if content is None:
+                    self.settings_path.unlink(missing_ok=True)
+                else:
+                    self.settings_path.write_text(content)
+                result = self.run_gate("claude", CLAUDE_INPUT)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(self.read_log()[-1]["layer"], "config-error")
+        codex = self.run_gate("codex", CODEX_INPUT)
+        self.assertEqual(permission_behavior(codex.stdout), "allow")
 
     def test_recursion_sentinel_is_a_complete_no_op(self) -> None:
         result = self.run_gate("claude", "not-json", sentinel=True)

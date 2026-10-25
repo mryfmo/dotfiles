@@ -459,6 +459,9 @@ class GithubReleaseTest(unittest.TestCase):
             exit 1
             """,
         )
+        dockerfile_id = subprocess.run(
+            ["git", "hash-object", "Dockerfile"], cwd=ROOT, text=True, capture_output=True, check=True
+        ).stdout.strip()
         self.executable(
             "docker",
             f"""
@@ -466,11 +469,13 @@ class GithubReleaseTest(unittest.TestCase):
             case "$1:$*" in
                 inspect:*chezmoi.version*) [ -n "${{IMAGE_VERSION:-}}" ] || exit 1; printf '%s\\n' "$IMAGE_VERSION" ;;
                 inspect:*chezmoi.sha256*) [ -n "${{IMAGE_VERSION:-}}" ] || exit 1; printf '%s\\n' "${{IMAGE_SHA256:-}}" ;;
+                inspect:*dotfiles.dockerfile*) [ -n "${{IMAGE_VERSION:-}}" ] || exit 1; printf '%s\\n' "${{IMAGE_DOCKERFILE:-}}" ;;
                 version:*) printf 'amd64\\n' ;;
             esac
             exit 0
             """,
         )
+        built = {"IMAGE_VERSION": "2.73.0", "IMAGE_SHA256": digest}
         for case, extra, verified in (
             ("verified", {}, True),
             ("attestation refused", {"GH_VERIFY": "1"}, False),
@@ -478,7 +483,10 @@ class GithubReleaseTest(unittest.TestCase):
             ("gh not ready", {"GH_AUTH": "1"}, False),
             # An image the previous recipe built carries the version but no verified sha256: rebuilt.
             ("old image without the sha256 label", {"IMAGE_VERSION": "2.73.0"}, True),
-            ("image this recipe built", {"IMAGE_VERSION": "2.73.0", "IMAGE_SHA256": digest}, "reused"),
+            # An image built before the Dockerfile changed (U82: python3 joined it) is rebuilt, never reused.
+            ("image without the Dockerfile label", built, True),
+            ("image built from another Dockerfile", built | {"IMAGE_DOCKERFILE": "0" * 40}, True),
+            ("image this recipe built", built | {"IMAGE_DOCKERFILE": dockerfile_id}, "reused"),
         ):
             with self.subTest(case=case):
                 self.log.unlink(missing_ok=True)
@@ -510,6 +518,7 @@ class GithubReleaseTest(unittest.TestCase):
                     self.assertIn(f"gh release verify-asset v2.73.0 {self.temp_dir}/github-release.", log)
                     # The build arg is the digest line alone, ending the docker command line.
                     self.assertIn(f"--build-arg CHEZMOI_VERSION=2.73.0 --build-arg CHEZMOI_SHA256={digest}\n", log)
+                    self.assertIn(f" --build-arg DOCKERFILE_ID={dockerfile_id} ", log)
                     self.link("mktemp", "rm", "cp", "sha256sum", "shasum", "basename")
                     verified_sha = self.run_helper(
                         "github_release_verified_sha256 twpayne/chezmoi v2.73.0 "

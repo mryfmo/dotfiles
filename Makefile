@@ -1,7 +1,4 @@
 DOCKER_IMAGE_NAME=dotfiles
-DOCKER_ARCH=x86_64
-DOCKER_NUM_CPU=4
-DOKCER_RAM_GB=4
 HOST ?= 127.0.0.1
 PORT ?= 8000
 MKDOCS_UV = uv run \
@@ -15,20 +12,33 @@ MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 # Docker
 #
 
-.PHONY: docker
+# The container engine for docker-image, docker and apply-check: docker, else podman. A command line or
+# environment value wins.
+CONTAINER_ENGINE ?= $(shell for engine in docker podman; do command -v "$$engine" && break; done 2> /dev/null)
+
+.PHONY: docker-image
 # The chezmoi release setup.sh bootstraps. The tag stays in a shell variable: fetched text never
 # becomes Make or shell source. A build has no gh, so the archive's checksum and release attestation
 # are checked here on the host, and the Dockerfile checks its download against the verified sha256.
-# An existing image is reused only when this recipe built it: its chezmoi.sha256 label marks a
-# host-verified archive, and an older image without it is rebuilt.
-docker:
-	@chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
+# An existing image is reused only when this recipe built it from this Dockerfile: its chezmoi.sha256
+# label marks a host-verified archive and its dotfiles.dockerfile label the Dockerfile's git blob id;
+# an image missing either, or built from another Dockerfile, is rebuilt.
+docker-image:
+	@engine="$(CONTAINER_ENGINE)"; \
+	[ -n "$${engine}" ] || { echo "no container engine: install docker or podman (neither is on PATH)" >&2; exit 1; }; \
+	dockerfile_id="$$(git hash-object Dockerfile)" || { echo "git hash-object Dockerfile failed; the image's Dockerfile is unknown" >&2; exit 1; }; \
+	chezmoi_version="$$(bash -c 'source scripts/lib/github-release.sh && github_release_tag twpayne/chezmoi')"; \
 	chezmoi_version="$${chezmoi_version#v}"; \
 	[ -n "$${chezmoi_version}" ] || { echo "could not resolve a twpayne/chezmoi release" >&2; exit 1; }; \
-	image_version="$$(docker inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
-	image_sha256="$$(docker inspect -f '{{ index .Config.Labels "chezmoi.sha256" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
-	if [ "$${image_version}" != "$${chezmoi_version}" ] || [ "$${#image_sha256}" -ne 64 ]; then \
-		arch="$$(docker version --format '{{ .Server.Arch }}')" || { echo "docker is not reachable" >&2; exit 1; }; \
+	"$${engine}" info > /dev/null 2>&1 || { echo "$${engine} is installed but not reachable: start its daemon or machine (Docker Desktop, colima, podman machine start)" >&2; exit 1; }; \
+	image_version="$$("$${engine}" inspect -f '{{ index .Config.Labels "chezmoi.version" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
+	image_sha256="$$("$${engine}" inspect -f '{{ index .Config.Labels "chezmoi.sha256" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
+	image_dockerfile="$$("$${engine}" inspect -f '{{ index .Config.Labels "dotfiles.dockerfile" }}' $(DOCKER_IMAGE_NAME) 2>/dev/null)"; \
+	if [ "$${image_version}" != "$${chezmoi_version}" ] || [ "$${#image_sha256}" -ne 64 ] || [ "$${image_dockerfile}" != "$${dockerfile_id}" ]; then \
+		case "$${engine##*/}" in \
+		podman) arch="$$("$${engine}" info --format '{{ .Host.Arch }}')" ;; \
+		*) arch="$$("$${engine}" version --format '{{ .Server.Arch }}')" ;; \
+		esac || { echo "$${engine} did not report its architecture" >&2; exit 1; }; \
 		artifact="chezmoi_$${chezmoi_version}_linux_$${arch}.tar.gz"; \
 		status=0; \
 		chezmoi_sha256="$$(bash -c 'source scripts/lib/github-release.sh && github_release_verified_sha256 twpayne/chezmoi "$$@"' _ "v$${chezmoi_version}" "$${artifact}" "chezmoi_$${chezmoi_version}_checksums.txt")" || status=$$?; \
@@ -37,9 +47,32 @@ docker:
 		2) echo "chezmoi v$${chezmoi_version}: its release attestation needs gh 2.93.0 or newer logged in to github.com: run make gh-auth, then make docker" >&2; exit 1 ;; \
 		*) echo "chezmoi v$${chezmoi_version} failed its checksum or release attestation; nothing was built" >&2; exit 1 ;; \
 		esac; \
-		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg CHEZMOI_VERSION="$${chezmoi_version}" --build-arg CHEZMOI_SHA256="$${chezmoi_sha256}"; \
+		"$${engine}" build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" --build-arg DOCKERFILE_ID="$${dockerfile_id}" --build-arg CHEZMOI_VERSION="$${chezmoi_version}" --build-arg CHEZMOI_SHA256="$${chezmoi_sha256}"; \
 	fi
-	docker run -it -v "$$(pwd):/home/$$(whoami)/.local/share/chezmoi" --hostname dotfiles-test dotfiles /bin/bash --login
+
+.PHONY: docker
+docker: docker-image
+	"$(CONTAINER_ENGINE)" run -it -v "$$(pwd):/home/$$(whoami)/.local/share/chezmoi" --hostname dotfiles-test $(DOCKER_IMAGE_NAME) /bin/bash --login
+
+.PHONY: apply-check
+# Applies this working tree as a fresh Ubuntu client, then as a fresh server, each in a throwaway container,
+# and runs scripts/apply-check.sh's credential-free doctor checks; that script says what is checked and what
+# is left out. The tree is mounted read-only and copied inside; the container gets no network, no credential
+# and no host HOME, and --rm discards it. GITHUB_ACTIONS and RUNNER_TEMP declare it a CI runner in the sense
+# of scripts/lib/ci-runner.sh: as keyless as a runner, so the chezmoi config renders without age encryption.
+# The apply-container job of .github/workflows/apply-check.yml runs this same target.
+apply-check: docker-image
+	@status=0; summary=""; \
+	for system in client server; do \
+		if "$(CONTAINER_ENGINE)" run --rm --network none -e GITHUB_ACTIONS=true -e RUNNER_TEMP=/tmp \
+			-v "$(CURDIR):/src:ro" $(DOCKER_IMAGE_NAME) bash /src/scripts/apply-check.sh --system "$${system}"; then \
+			summary="$${summary} $${system}=passed"; \
+		else \
+			summary="$${summary} $${system}=failed"; status=1; \
+		fi; \
+	done; \
+	printf '\nmake apply-check:%s\n' "$${summary}"; \
+	exit "$${status}"
 
 #
 # Chezmoi

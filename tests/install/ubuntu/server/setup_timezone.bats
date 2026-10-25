@@ -15,7 +15,8 @@ readonly TMPL_PATH="./home/.chezmoiscripts/ubuntu/run_once_50-server-setup-timez
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"ln -snf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime"* ]]
     [[ "${output}" == *"tee /etc/timezone"* ]]
-    [[ "${output}" == *"apt-get install -y tzdata"* ]]
+    # The frontend must be an argument to sudo: env_reset drops it from the caller's environment.
+    [[ "${output}" == *"DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata"* ]]
 }
 
 @test "[ubuntu-server] setup_timezone is wired for the server role only" {

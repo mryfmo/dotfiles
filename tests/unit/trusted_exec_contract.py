@@ -130,8 +130,9 @@ class WorkerRoot:
         the read is recorded and the descriptor closed, which gives the reader EOF, so it cannot hang;
       - ENOENT or ELOOP: the input is removed or replaced by a link at this poll, which is recorded;
       - any other errno: recorded as an error, so the check fails closed.
-    One last attempt runs after the join, and a consumer still running at the deadline fails the check instead of
-    hanging. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
+    One last attempt runs after the join. At the deadline the probe makes one more attempt (which releases a reader
+    blocked on the sentinel) and waits GRACE_S; a consumer thread still running then fails consume() with
+    "consumer thread still running after the deadline". Python cannot stop a thread, so nothing is claimed about it. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
     for writing is released (its write then fails, EPIPE) instead of waiting for the deadline. No thread runs in the
     probe outside consume(), and stat() opens nothing, so metadata checks never count.
 
@@ -148,7 +149,7 @@ class WorkerRoot:
     FIFO keeps no content).
     """
 
-    POLL_S, DEADLINE_S = 0.001, 30.0
+    POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
@@ -240,7 +241,8 @@ class WorkerRoot:
 
     def consume(self, target, deadline=None):
         """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
-        its exception. A step still running at DEADLINE seconds fails with AssertionError instead of hanging."""
+        its exception. A step still running GRACE_S after DEADLINE seconds fails with AssertionError ("consumer
+        thread still running after the deadline"); the thread itself is left running (it cannot be stopped)."""
         outcome = {}
         worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
         _CONSUMER_ERRORS[worker] = outcome
@@ -249,8 +251,13 @@ class WorkerRoot:
             worker.start()
             while worker.is_alive():
                 if time.monotonic() > end:
-                    self._attempt()  # releases a reader blocked on the sentinel, at least
-                    raise AssertionError("worker root: the consumer was still running after its deadline: it hung")
+                    # Python cannot stop a thread: release a reader blocked on the sentinel, give it a short grace,
+                    # and fail if it is still running (nothing is claimed about cleaning it up).
+                    self._attempt()
+                    worker.join(self.GRACE_S)
+                    if worker.is_alive():
+                        raise AssertionError("worker root: consumer thread still running after the deadline")
+                    break
                 self._attempt()
                 worker.join(self.POLL_S)
             self._attempt()

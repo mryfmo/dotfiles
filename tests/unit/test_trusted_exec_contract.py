@@ -7,6 +7,7 @@ import hashlib
 import os
 import pwd
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -33,10 +34,37 @@ ATTACKS = (("environment", f"{REDIRECTED}; {HOOK}"), ("local-worktree", REDIRECT
 
 
 def run(argv, env, timeout=60, **kw):
-    """A subprocess with a deadline: one that hangs (a watcher that stopped serving the FIFO) fails the test."""
-    return subprocess.run(
-        argv, env=env, capture_output=True, check=False, stdin=subprocess.DEVNULL, timeout=timeout, **kw
+    """A subprocess in a session of its own, with a deadline: one that hangs fails the test, and its whole process
+    group (every descendant) is stopped first, TERM and then KILL, and waited for, so nothing is left running."""
+    proc = subprocess.Popen(
+        argv,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+        **kw,
     )
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out, err = kill_group(proc)
+        raise subprocess.TimeoutExpired(argv, timeout, output=out, stderr=err) from None
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+def kill_group(proc, grace=2):
+    """Stop PROC's process group: TERM, then KILL after GRACE seconds; return what PROC wrote."""
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            break  # the whole group is gone
+        try:
+            return proc.communicate(timeout=grace)
+        except subprocess.TimeoutExpired:
+            continue
+    return proc.communicate()
 
 
 def naive_git(root, env):
@@ -443,10 +471,39 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         probe, forever = self.worker_root_probe(), threading.Event()
         self.addCleanup(forever.set)
         started = time.monotonic()
-        with self.assertRaisesRegex(AssertionError, "still running after its deadline: it hung"):
+        with self.assertRaisesRegex(AssertionError, "consumer thread still running after the deadline"):
             probe.consume(forever.wait, deadline=1)
         self.assertLess(time.monotonic() - started, 10)
         self.assertEqual({}, tec._CONSUMER_ERRORS)  # the timed-out worker is not left registered
+
+    def test_a_reader_blocked_past_the_deadline_is_released_and_recorded(self):
+        # No attempt runs until the deadline (one long join), so the reader is still blocked on the sentinel then:
+        # the deadline's attempt releases it, the grace lets it finish, and its read is recorded.
+        probe = self.worker_root_probe()
+        with mock.patch.object(tec.WorkerRoot, "POLL_S", 3.0):
+            started = time.monotonic()
+            late_reader = lambda: (time.sleep(0.2), Path(probe.input).read_bytes())[1]  # opens after the first attempt
+            self.assertEqual(b"", probe.consume(late_reader, deadline=1))
+            self.assertGreaterEqual(time.monotonic() - started, 1)  # released at the deadline, not before
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+
+    def test_a_timed_out_subprocess_consumer_leaves_no_descendant(self):
+        # A shell whose child blocks on a FIFO nobody serves: at the timeout the whole process group is stopped.
+        fifo = self.scratch("trusted-exec-group-") / "fifo"
+        os.mkfifo(fifo)
+        with self.assertRaises(subprocess.TimeoutExpired) as expired:
+            run(["/bin/sh", "-c", 'cat "$0" & echo "$!"; wait', str(fifo)], ALLOWED_ENV, timeout=1)
+        child = int(expired.exception.output.split()[0])
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            try:
+                os.kill(child, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.01)
+        else:
+            self.fail(f"the blocked child {child} is still running after its group was stopped")
 
     def test_an_errno_other_than_enxio_fails_the_probe(self):
         # No except-all: the only answers the probe reads are ENXIO (no reader) and ENOENT/ELOOP (removed, replaced).

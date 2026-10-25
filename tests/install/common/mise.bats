@@ -20,13 +20,137 @@ function teardown() {
     export PATH
 }
 
-@test "[common] mise" {
+#
+# @description Put fake curl, gh, gpg and gpgv first on PATH, so install_mise runs offline against a fixture
+#   release of jdx/mise: a releases list whose newest stable release is FIXTURE_MISE_TAG, the artifact for this
+#   platform, its SHASUMS256.asc and the release key. curl refuses any other URL as a 404 would, so a case never
+#   reaches the network (unauthenticated api.github.com answers 403 once the runner's rate limit is spent). gh is
+#   not authenticated, so the GPG signature is the check. Every call is logged under MISE_FAKE_DIR.
+# @noargs
+# @set MISE_FAKE_DIR path The fakes' directory: bin/ (on PATH), serve/ (the served files), curl.log and calls.log.
+# @set MISE_FAKE_FINGERPRINT string The fingerprint fake gpg reports, MISE_GPG_FINGERPRINT.
+# @set FIXTURE_MISE_TAG string The release tag the fixture serves as newest stable.
+# @set FIXTURE_MISE_ARTIFACT string The served artifact's name for this platform.
+# @set PATH string The fakes' bin/ first.
+#
+function serve_fixture_release() {
+    export MISE_FAKE_DIR="${BATS_TEST_TMPDIR}/fake"
+    export MISE_FAKE_FINGERPRINT="${MISE_GPG_FINGERPRINT}"
+    FIXTURE_MISE_TAG="v2026.1.0"
+    FIXTURE_MISE_ARTIFACT="$(mise_artifact "${FIXTURE_MISE_TAG}")"
+    local artifact="${FIXTURE_MISE_ARTIFACT}" bin="${MISE_FAKE_DIR}/bin" serve="${MISE_FAKE_DIR}/serve" stage="${MISE_FAKE_DIR}/stage" sum
+    mkdir -p "${bin}" "${serve}" "${stage}/mise/bin"
+
+    cat > "${stage}/mise/bin/mise" << 'EOF'
+#!/bin/sh
+case "$1" in
+--version) printf '2026.1.0 fixture\n' ;;
+activate) printf 'export MISE_FIXTURE_ACTIVE=1\n' ;;
+*) exit 1 ;;
+esac
+EOF
+    chmod +x "${stage}/mise/bin/mise"
+    tar -czf "${serve}/${artifact}" -C "${stage}" mise
+    sum="$(shasum -a 256 "${serve}/${artifact}")"
+    printf '%s  ./%s\n' "${sum%% *}" "${artifact}" > "${serve}/SHASUMS256.asc"
+    printf 'fixture release key\n' > "${serve}/release-key.asc"
+    # The API's layout, which github_release_tag parses: a newer prerelease that must be passed over.
+    cat > "${serve}/releases.json" << 'EOF'
+[
+  {
+    "tag_name": "v2026.2.0-rc.1",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-01-02T00:00:00Z"
+  },
+  {
+    "tag_name": "v2026.1.0",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-01-01T00:00:00Z"
+  }
+]
+EOF
+
+    cat > "${bin}/curl" << 'EOF'
+#!/usr/bin/env bash
+out="" url=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -o) out="$2" && shift ;;
+    -K) [ "$2" != - ] || cat > /dev/null && shift ;;
+    -H) shift ;;
+    https://*) url="$1" ;;
+    esac
+    shift
+done
+printf '%s\n' "${url}" >> "${MISE_FAKE_DIR}/curl.log"
+case "${url}" in
+"https://api.github.com/repos/jdx/mise/releases?per_page=30") file=releases.json ;;
+"https://keys.openpgp.org/vks/v1/by-fingerprint/${MISE_FAKE_FINGERPRINT}") file=release-key.asc ;;
+https://github.com/jdx/mise/releases/download/v2026.1.0/*) file="${url##*/}" ;;
+*) file="" ;;
+esac
+if [ -z "${file}" ] || [ ! -f "${MISE_FAKE_DIR}/serve/${file}" ]; then
+    printf 'curl: (22) The requested URL returned error: 404 (fake network: %s)\n' "${url}" >&2
+    exit 22
+fi
+if [ -n "${out}" ]; then cp "${MISE_FAKE_DIR}/serve/${file}" "${out}"; else cat "${MISE_FAKE_DIR}/serve/${file}"; fi
+EOF
+    cat > "${bin}/gh" << 'EOF'
+#!/bin/sh
+printf 'gh %s\n' "$*" >> "${MISE_FAKE_DIR}/calls.log"
+exit 1
+EOF
+    cat > "${bin}/gpg" << 'EOF'
+#!/usr/bin/env bash
+printf 'gpg %s\n' "$*" >> "${MISE_FAKE_DIR}/calls.log"
+case " $* " in
+*" --import-options show-only "*)
+    printf 'pub:-:255:22:8B81C9D17413A06D:1700000000::::::\n'
+    printf 'fpr:::::::::%s:\n' "${MISE_FAKE_FINGERPRINT}"
+    ;;
+*" --dearmor "*)
+    while [ "$1" != --output ]; do shift; done
+    : > "$2"
+    ;;
+*) exit 2 ;;
+esac
+EOF
+    # The fixture SHASUMS256.asc holds the checksum lines themselves: gpgv prints them as the signed text.
+    cat > "${bin}/gpgv" << 'EOF'
+#!/usr/bin/env bash
+printf 'gpgv %s\n' "$*" >> "${MISE_FAKE_DIR}/calls.log"
+[ "$1" = --keyring ] && [ -f "$2" ] || exit 2
+cat "${@: -1}"
+EOF
+    chmod +x "${bin}/curl" "${bin}/gh" "${bin}/gpg" "${bin}/gpgv"
+    export PATH="${bin}:${PATH}"
+}
+
+@test "[common] mise installs the newest cooled-down release, verified, and activates it" {
     compgen -G "${TMPL_SCRIPT_GLOB}" > /dev/null
+    serve_fixture_release
 
-    DOTFILES_DEBUG=1 bash -c 'source "$1"; install_mise' _ "${SCRIPT_PATH}"
+    run env DOTFILES_DEBUG=1 bash -c 'source "$1"; install_mise && printf "active=%s\n" "${MISE_FIXTURE_ACTIVE:-}"' _ "${SCRIPT_PATH}"
 
-    export PATH="${PATH}:${HOME}/.local/bin"
-    [ -x "$(command -v mise)" ]
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"active=1"* ]]
+    run "${MISE_INSTALL_PATH}" --version
+    [ "${output}" = "2026.1.0 fixture" ]
+    grep -qx "https://github.com/jdx/mise/releases/download/${FIXTURE_MISE_TAG}/${FIXTURE_MISE_ARTIFACT}" "${MISE_FAKE_DIR}/curl.log"
+    grep -q '^gpgv --keyring ' "${MISE_FAKE_DIR}/calls.log"
+}
+
+@test "[common] mise installs nothing when the artifact does not match the signed checksums" {
+    serve_fixture_release
+    printf 'tampered' >> "${MISE_FAKE_DIR}/serve/${FIXTURE_MISE_ARTIFACT}"
+
+    run bash -c 'source "$1"; install_mise' _ "${SCRIPT_PATH}"
+
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"Checksum mismatch for ${FIXTURE_MISE_ARTIFACT}"* ]]
+    [ ! -e "${MISE_INSTALL_PATH}" ]
 }
 
 @test "[common] mise bootstrap resolves the newest cooled-down jdx/mise release" {

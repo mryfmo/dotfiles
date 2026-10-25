@@ -11,12 +11,15 @@
 #   --ignored=matching --untracked-files=all` prints nothing: `git worktree
 #   remove` deletes ignored files without asking, so a tree holding one, an
 #   `.env` say, is kept) and its work landed, the first of: its head is
-#   reachable from `origin/main` (`git merge-base --is-ancestor`); merging it
-#   into `origin/main` changes nothing (`git merge-tree --write-tree origin/main
-#   <head>` prints the tree of `origin/main`, the case of a squash merge with no
-#   later commit); or its head is the `headRefOid` of a merged pull request of
-#   this repository (`gh pr list --state merged --head <branch> --json
-#   number,headRefOid --limit 100`, detached `--search <sha>`). A branch name
+#   reachable from `origin/main` (`git merge-base --is-ancestor`); it landed by
+#   content (every path `git diff --no-renames --name-only -z <merge-base>
+#   <head>` names holds in `origin/main` the entry it holds in the head, mode
+#   and object, or is absent from both: the case of a squash merge with no
+#   later commit; no merge runs, so no configured merge driver or `merge=`
+#   attribute can answer, and a git failure is an `error` row); or its head is
+#   the `headRefOid` of a merged pull request of this repository (`gh pr list
+#   --state merged --head <branch> --json number,headRefOid --limit 100`,
+#   detached `--search <sha>`). A branch name
 #   alone never counts: a commit pushed after a squash merge is not in main,
 #   and `--head` also matches a fork's branch of the same name. A locked or
 #   missing worktree is kept. The listing is read field by field on its NUL
@@ -25,10 +28,14 @@
 #   `<verdict>\t<path>\t<ref>\t<reason>` (a newline in the path printed as
 #   `\n`), verdict `gc` (qualifies), `keep` or `error`, then one `summary` row.
 #   Nothing is removed without `--apply`; with it each qualifying path is
-#   removed with `git worktree remove <path>`, never forced, so git itself
-#   still refuses a tree that changed since the check, and each prints a
-#   `removed` or `failed` row. `git worktree prune` is never run: it would
-#   drop the admin data of every worktree whose directory is missing, an
+#   checked clean again (the same `git status`) right before `git worktree
+#   remove <path>`, never forced, and a tree that changed since the
+#   classification prints a `skipped` row and is kept; each other prints a
+#   `removed` or `failed` row. Residual: git has no atomic check-and-remove, so
+#   a file written between that re-check and the removal (an ignored one,
+#   which the unforced remove deletes) is lost. `git worktree prune` is never
+#   run: it would drop the admin data of every worktree whose directory is
+#   missing, an
 #   unlocked omp seat included. A `gh` error fails closed: the run removes
 #   nothing and exits 1. `origin/main` is read as it is; run `git fetch origin`
 #   first for a current answer. Every `gh` call is bounded by
@@ -133,10 +140,6 @@ git -C "${toplevel}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/nu
     echo 'worktree-gc: origin/main is absent; run git fetch origin' >&2
     exit 1
 }
-main_tree=$(git -C "${toplevel}" rev-parse 'origin/main^{tree}') || {
-    echo 'worktree-gc: cannot read the tree of origin/main' >&2
-    exit 1
-}
 
 # @description Print the physical form of a path, or the path itself when it no longer exists.
 # @arg $1 path A path.
@@ -184,7 +187,8 @@ record() {
 # The producer writes to a file, not a pipe or a process substitution, so its exit status is checked; the NUL-separated
 # fields are read as they are (`read -d ''`), never turned into lines, so a newline inside a path stays in its field.
 listing=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
-trap 'rm -f "${listing}"' EXIT
+changed=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
+trap 'rm -f "${listing}" "${changed}"' EXIT
 git -C "${toplevel}" worktree list --porcelain -z > "${listing}" || {
     echo 'worktree-gc: git worktree list failed' >&2
     exit 1
@@ -213,13 +217,46 @@ for path in "${selected[@]+"${selected[@]}"}"; do
     }
 done
 
+# @description Succeed when the head landed in origin/main by content: every path `git diff` names between the merge
+#   base and the head holds in origin/main the `git ls-tree -r` entry (mode, type, object) it holds in the head, or is
+#   absent from both. Nothing here merges, so no merge driver, `merge=` attribute or `merge.*` setting takes part; the
+#   diff is name-only and NUL-separated, renames off and submodules shown, and every pathspec literal.
+# @arg $1 string The head sha.
+# @exitcode 0 Landed by content (an empty change set included).
+# @exitcode 1 Not landed, or the head shares no history with origin/main.
+# @exitcode 2 A git call failed.
+landed_by_content() {
+    local head=$1 mb rc field in_head in_main
+    local -a changed_paths=()
+    mb=$(git -C "${toplevel}" merge-base origin/main "${head}") && rc=0 || rc=$?
+    ((rc != 1)) || return 1
+    if ((rc)) || [[ ! ${mb} =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then return 2; fi
+    git -C "${toplevel}" diff --no-renames --no-relative --no-ext-diff --no-textconv --no-color \
+        --ignore-submodules=none --name-only -z "${mb}" "${head}" -- > "${changed}" || return 2
+    while IFS= read -r -d '' field; do changed_paths+=("${field}"); done < "${changed}"
+    ((${#changed_paths[@]})) || return 0
+    # Without -z the quoted listing has one line per entry, so it survives a command substitution; both sides are quoted alike.
+    in_head=$(git -C "${toplevel}" -c core.quotePath=true --literal-pathspecs ls-tree -r --full-tree "${head}" \
+        -- "${changed_paths[@]}") || return 2
+    in_main=$(git -C "${toplevel}" -c core.quotePath=true --literal-pathspecs ls-tree -r --full-tree origin/main \
+        -- "${changed_paths[@]}") || return 2
+    [[ ${in_head} == "${in_main}" ]] || return 1
+}
+
+# @description Set `status` to the `git status --porcelain --ignored=matching --untracked-files=all` of a worktree.
+# @arg $1 path The worktree.
+# @exitcode 1 git status failed.
+tree_status() {
+    status=$(git -C "$1" status --porcelain --ignored=matching --untracked-files=all)
+}
+
 # @description Set `verdict` and `reason` for one candidate.
 # @arg $1 path The worktree.
 # @arg $2 string Its head sha.
 # @arg $3 string Its branch, empty when detached.
 # @arg $4 string Its state: `locked`, `missing`, `newline` or empty.
 classify() {
-    local path=$1 head=$2 branch=$3 state=$4 status merged rc query prs number
+    local path=$1 head=$2 branch=$3 state=$4 rc query prs number
     verdict=keep
     if [[ ${state} == newline ]]; then
         verdict=error reason='path contains a newline'
@@ -233,7 +270,7 @@ classify() {
         reason='missing (its admin data is left for the operator)'
         return
     fi
-    if ! status=$(git -C "${path}" status --porcelain --ignored=matching --untracked-files=all); then
+    if ! tree_status "${path}"; then
         verdict=error reason='git status failed'
         return
     fi
@@ -253,14 +290,13 @@ classify() {
         verdict=gc reason="head ${head:0:12} is in origin/main"
         return
     fi
-    # Exit 1 is a conflict: the work is not in origin/main as it stands, so it has not landed by content.
-    merged=$(git -C "${toplevel}" merge-tree --write-tree origin/main "${head}" 2> /dev/null) && rc=0 || rc=$?
+    landed_by_content "${head}" && rc=0 || rc=$?
     if ((rc > 1)); then
-        verdict=error reason='git merge-tree failed'
+        verdict=error reason="comparing head ${head:0:12} with origin/main failed"
         return
     fi
-    if ((rc == 0)) && [[ ${merged%%$'\n'*} == "${main_tree}" ]]; then
-        verdict=gc reason="merging head ${head:0:12} into origin/main changes nothing"
+    if ((rc == 0)); then
+        verdict=gc reason="every path head ${head:0:12} changed holds the same entry in origin/main"
         return
     fi
     if [[ -n ${branch} ]]; then
@@ -307,6 +343,17 @@ for path in "${gc[@]+"${gc[@]}"}"; do
         echo "worktree-gc: refused: ${path} is outside ${base}/" >&2
         exit 2
     }
+    # The classification may be minutes old (gh calls); a file written since, an ignored one included, keeps the tree.
+    if ! tree_status "${path}"; then
+        printf 'failed\t%s\tgit status failed before the removal\n' "${path}"
+        failed=$((failed + 1))
+        continue
+    fi
+    if [[ -n ${status} ]]; then
+        printf 'skipped\t%s\tchanged since the check: dirty, untracked or ignored files\n' "${path}"
+        kept=$((kept + 1))
+        continue
+    fi
     if git -C "${toplevel}" worktree remove "${path}"; then
         printf 'removed\t%s\n' "${path}"
         removed=$((removed + 1))

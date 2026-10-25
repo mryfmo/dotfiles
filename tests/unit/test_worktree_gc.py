@@ -27,6 +27,10 @@ if os.environ.get("FAKE_GH_FAIL"):
     sys.exit("fake-gh: HTTP 502")
 if argv[:4] != ["pr", "list", "--state", "merged"]:
     sys.exit(f"fake-gh: unexpected call {argv}")
+if os.environ.get("FAKE_GH_TOUCH"):
+    # A file written into a worktree while the lever waits on gh, after that tree's clean check.
+    with open(os.environ["FAKE_GH_TOUCH"], "w", encoding="utf-8") as late:
+        late.write("TOKEN=late\\n")
 table = json.load(open(os.environ["FAKE_GH_MERGED"], encoding="utf-8"))
 flag, value = argv[4], argv[5]
 print(json.dumps(table["head" if flag == "--head" else "search"].get(value, [])))
@@ -320,7 +324,7 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         row = self.rows(result.stdout)[0]
         self.assertEqual(row[0], "gc", row)
-        self.assertIn("into origin/main changes nothing", row[3])
+        self.assertIn("changed holds the same entry in origin/main", row[3])
         self.assertEqual(self.calls(self.gh_calls), [], "content already in main needs no gh call")
 
         self.commit_file(path, "later.txt", "after the squash\n")
@@ -330,6 +334,101 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertEqual(row[0], "keep", row)
         self.assertIn("neither in origin/main nor the head of a merged PR", row[3])
         self.assertTrue((path / "later.txt").is_file())
+
+    def keep_ours_conflict(self, name):
+        """A branch and main both change README; returns the tree path once main's change is pushed."""
+        path, _ = self.add_tree(name, f"feat/{name}", commit=False)
+        self.commit_file(path, "README", "branch work\n")
+        self.land_on_main("README", "main work\n")
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        return path
+
+    def assert_kept_although_a_merge_would_change_nothing(self, path):
+        head = self.git("rev-parse", "HEAD", cwd=path)
+        merged = self.git("merge-tree", "--write-tree", "origin/main", head).splitlines()[0]
+        self.assertEqual(merged, self.git("rev-parse", "origin/main^{tree}"), "the driver hides the conflict")
+        self.git_calls.unlink()
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(rows[0][:2], ["keep", str(path)], rows)
+        self.assertIn("neither in origin/main nor the head of a merged PR", rows[0][3])
+        self.assertEqual((path / "README").read_text(), "branch work\n")
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "merge-tree" in argv], [], "no merge runs")
+
+    def test_a_keep_ours_merge_default_does_not_land_a_conflicting_change(self):
+        """`merge.default=ours` with a no-op driver resolves the conflict to main's tree with exit 0 (U56b F1)."""
+        self.git("config", "merge.default", "ours")
+        self.git("config", "merge.ours.driver", "true")
+        self.assert_kept_although_a_merge_would_change_nothing(self.keep_ours_conflict("keep-ours-config"))
+
+    def test_a_keep_ours_merge_attribute_does_not_land_a_conflicting_change(self):
+        self.git("config", "merge.ours.driver", "true")
+        attributes = self.checkout / ".git/info/attributes"
+        attributes.parent.mkdir(exist_ok=True)
+        attributes.write_text("* merge=ours\n")
+        self.assert_kept_although_a_merge_would_change_nothing(self.keep_ours_conflict("keep-ours-attribute"))
+
+    def test_a_rename_and_a_deletion_land_only_once_main_holds_both(self):
+        self.land_on_main("old.txt", "old\n")
+        self.land_on_main("gone.txt", "gone\n")
+        path, _ = self.add_tree("moved", "feat/moved", commit=False)
+        self.git("mv", "old.txt", "new.txt", cwd=path)
+        self.git("rm", "-q", "gone.txt", cwd=path)
+        self.git("commit", "-m", "move and delete", cwd=path)
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        verdicts = []
+        for step in ("unlanded", "deletion only", "rename too"):
+            if step == "deletion only":
+                self.git("rm", "-q", "gone.txt")
+                self.git("commit", "-m", "squash: delete")
+                self.git("push", "origin", "main")
+            elif step == "rename too":
+                self.git("mv", "old.txt", "new.txt")
+                self.git("commit", "-m", "squash: move")
+                self.git("push", "origin", "main")
+            result = self.run_gc()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            verdicts.append(self.rows(result.stdout)[0][0])
+        self.assertEqual(verdicts, ["keep", "keep", "gc"])
+        result = self.run_gc("--apply")
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertFalse(path.exists())
+
+    def test_a_mode_change_alone_is_not_landed_by_the_same_blob(self):
+        path, _ = self.add_tree("mode", "feat/mode", commit=False)
+        (path / "README").chmod(0o755)
+        self.git("commit", "-am", "make README executable", cwd=path)
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.rows(result.stdout)[0][0], "keep")
+        self.assertTrue(path.is_dir())
+
+    def test_a_content_comparison_failure_is_an_error_and_removes_nothing(self):
+        path, _ = self.add_tree("squashed", "feat/squashed")
+        self.land_on_main("squashed.txt", "squashed\n")
+        result = self.run_gc("--apply", FAKE_GIT_FAIL="ls-tree")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        rows = self.rows(result.stdout)
+        self.assertEqual(rows[0][0], "error", rows)
+        self.assertIn("with origin/main failed", rows[0][3])
+        self.assertIn("nothing removed", rows[-1][1])
+        self.assertTrue(path.is_dir())
+
+    def test_an_ignored_file_written_after_the_check_keeps_the_tree(self):
+        """The clean check runs again right before the removal (U56b F2); here gh writes `.env` mid-run."""
+        self.land_on_main(".gitignore", ".env\n")
+        path, head = self.add_tree("late-env", "feat/late-env")
+        self.merged.write_text(json.dumps({"head": {"feat/late-env": [{"number": 31, "headRefOid": head}]}}))
+        result = self.run_gc("--apply", FAKE_GH_TOUCH=str(path / ".env"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["gc", "skipped", "summary"], rows)
+        self.assertEqual(rows[1][:2], ["skipped", str(path)])
+        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 1 kept"])
+        self.assertEqual((path / ".env").read_text(), "TOKEN=late\n")
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
 
     def test_a_merged_pr_with_the_branch_name_but_another_head_does_not_land_the_tree(self):
         path, head = self.add_tree("same-name", "feat/same-name")

@@ -1286,8 +1286,18 @@ assets:
       assets.pstack deploys its skills). make doctor fails when a user-scope installed version
       differs from its pin and warns for a plugin the user settings enable without a pin here.
       To move a plugin, review the upstream release, set its pin here, regenerate, then make update.
+      pyright-lsp and frontend-design are the exception to the first sentence: their pins are the
+      marketplace's listing on 2026-10-26 (spark-9e8d ran both, macOS neither). pyright-lsp ships
+      no hooks, commands or servers of its own, only an lspServers entry that starts
+      pyright-langserver --stdio, the binary mise installs (npm:pyright). frontend-design ships one
+      skill (skills/frontend-design/SKILL.md, prompt text) and nothing that runs. Its listing has
+      no version, so Claude Code records the marketplace commit it installed from (12 hex digits);
+      any later marketplace commit moves that version with the content unchanged, so a fresh
+      install then lands off the pin and is disabled until the pin is reviewed again.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
+      pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
+      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: '58267944f921'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
       ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}

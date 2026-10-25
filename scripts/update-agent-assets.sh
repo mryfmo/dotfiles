@@ -1847,6 +1847,50 @@ PY
 }
 
 #
+# @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
+# @description
+#   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
+#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. The file goes only
+#   when it is a regular file (not a symlink) holding the exact line
+#   `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh` and that owner no
+#   longer exists; any other file is kept and named. After removing the shim, ~/.agents/bin is removed only when it is
+#   then empty (rmdir), so an unrelated file keeps the directory. A missing shim is nothing to do, so a second run
+#   changes nothing.
+# @exitcode 1 ~/.agents or ~/.agents/bin is a symlink, or a removal failed; nothing else is touched.
+#
+function retire_agmsg_shim() {
+    local bin="${HOME}/.agents/bin" shim owner
+    shim="${bin}/agy-tui"
+    owner="${HOME}/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"
+    if [ -L "${HOME}/.agents" ] || [ -L "${bin}" ]; then
+        printf 'agmsg: %s or %s is a symlink; refusing to remove anything under it.\n' "${HOME}/.agents" "${bin}" >&2
+        return 1
+    fi
+    [ -e "${shim}" ] || [ -L "${shim}" ] || return 0
+    if [ -L "${shim}" ] || [ ! -f "${shim}" ] || [ -e "${owner}" ] || ! grep -qxF -- "# agmsg-shim-owner: ${owner}" "${shim}"; then
+        printf 'agmsg: kept %s: it is not the retired agmsg shim.\n' "${shim}" >&2
+        return 0
+    fi
+    rm -- "${shim}" || {
+        printf 'agmsg: cannot remove the retired shim %s.\n' "${shim}" >&2
+        return 1
+    }
+    printf 'agmsg: removed the retired shim %s.\n' "${shim}"
+    local left
+    left="$(ls -A -- "${bin}")" || {
+        printf 'agmsg: cannot list %s.\n' "${bin}" >&2
+        return 1
+    }
+    if [ -z "${left}" ]; then
+        rmdir -- "${bin}" || {
+            printf 'agmsg: cannot remove the empty %s.\n' "${bin}" >&2
+            return 1
+        }
+        printf 'agmsg: removed the empty %s.\n' "${bin}"
+    fi
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1863,18 +1907,18 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -1882,6 +1926,7 @@ function main() {
     remove_node_global_agent_cli_shadows
     retire_shared_pstack_copies
     retire_marketplace_dev_workflows
+    retire_agmsg_shim
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     # Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned
     # plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).

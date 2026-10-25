@@ -1645,6 +1645,33 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(any("installed_plugins.json is missing" in finding for finding in findings), findings)
         self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
 
+    def test_doctor_accepts_the_plugins_spark_enabled_at_their_declared_pins(self) -> None:
+        # U91: spark-9e8d ran pyright-lsp and frontend-design at user scope, enabled, without a pin in
+        # assets.claude-plugins; with their pins declared doctor reports nothing for them.
+        pins = ROOT / "scripts/plugin-pins.json"
+        names = ("pyright-lsp", "frontend-design")
+        recorded = json.loads(pins.read_text())["claude"]
+        installs = {}
+        for name in names:
+            version = recorded[f"{name}@claude-plugins-official"]["pin"]
+            path = self.target_root / ".claude/plugins/cache/claude-plugins-official" / name / version
+            path.mkdir(parents=True)
+            installs[f"{name}@claude-plugins-official"] = [
+                {"scope": "user", "version": version, "installPath": str(path)}
+            ]
+        (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": installs})
+        )
+        (self.target_root / ".claude/settings.json").write_text(
+            json.dumps({"enabledPlugins": dict.fromkeys(installs, True)})
+        )
+
+        findings = self.module.claude_plugin_pin_findings(
+            self.target_root, self.module.records.load_plugin_pins(pins).claude
+        )
+
+        self.assertEqual([], [finding for finding in findings if any(name in finding for name in names)], findings)
+
     def test_doctor_compares_versions_by_type(self) -> None:
         # A version recorded as a JSON number never equals its string pin, even when it prints the same.
         pins = self.plugin_pins_fixture()

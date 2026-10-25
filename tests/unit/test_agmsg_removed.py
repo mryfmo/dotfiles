@@ -9,9 +9,13 @@ only the real `home/.chezmoiremove` to a scratch HOME, so it exercises exactly t
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
 
 ROOT = Path(__file__).resolve().parents[2]
 REMOVALS = (
@@ -24,6 +28,14 @@ REMOVALS = (
     # The retire helper's deployed copy: nothing on either host is left for it to retire (U72).
     ".local/bin/common/herdr-agents",
 )
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
 
 
 class AgmsgRemovedTest(unittest.TestCase):
@@ -101,6 +113,73 @@ class AgmsgRemovedTest(unittest.TestCase):
             ):
                 self.assertFalse((home / gone).exists(), f"{gone}: the directory itself is removed")
                 self.assertFalse((home / gone).is_symlink(), gone)
+
+    def retire_shim(self, home: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-c", f"source {ROOT / 'scripts/update-agent-assets.sh'}; retire_agmsg_shim"],
+            cwd=ROOT,
+            env={**os.environ, "HOME": str(home)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    @staticmethod
+    def write_shim(home: Path, owner_home: Path | None = None) -> Path:
+        """Write ~/.agents/bin/agy-tui as agmsg wrote it on both hosts (owner under `owner_home`, default `home`)."""
+        owner = (owner_home or home) / ".agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"
+        shim = home / ".agents/bin/agy-tui"
+        shim.parent.mkdir(parents=True, exist_ok=True)
+        shim.write_text(
+            "#!/usr/bin/env bash\nset -euo pipefail\n# agmsg Antigravity TUI launcher shim\n"
+            f'# agmsg-shim-owner: {owner}\nexec bash {owner} "$@"\n'
+        )
+        shim.chmod(0o711)
+        return shim
+
+    def test_make_update_removes_the_dangling_agmsg_shim_and_its_empty_bin(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.write_shim(home)
+            first = self.retire_shim(home)
+            self.assertEqual(0, first.returncode, first.stderr)
+            self.assertFalse((home / ".agents/bin").exists(), "the emptied ~/.agents/bin is removed")
+            self.assertTrue((home / ".agents").is_dir())
+            again = self.retire_shim(home)
+            self.assertEqual(
+                (0, "", ""), (again.returncode, again.stdout, again.stderr), "a second run changes nothing"
+            )
+
+    def test_an_unrelated_file_keeps_the_bin_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.write_shim(home)
+            (home / ".agents/bin/mine").write_text("keep\n")
+            self.assertEqual(0, self.retire_shim(home).returncode)
+            self.assertEqual(["mine"], os.listdir(home / ".agents/bin"))
+            self.assertEqual(0, self.retire_shim(home).returncode)
+            self.assertEqual(["mine"], os.listdir(home / ".agents/bin"))
+
+    def test_a_file_that_is_not_the_agmsg_shim_is_kept(self):
+        cases = {
+            "own agy-tui": lambda home: (home / ".agents/bin/agy-tui").write_text("#!/bin/sh\nexec agy\n"),
+            "owner of another home": lambda home: self.write_shim(home, owner_home=home / "elsewhere"),
+            "owner still present": lambda home: (
+                self.write_shim(home),
+                (home / ".agents/skills/agmsg/scripts/drivers/types/antigravity").mkdir(parents=True),
+                (home / ".agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh").write_text("x\n"),
+            ),
+        }
+        for label, make in cases.items():
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temp:
+                home = Path(temp)
+                (home / ".agents/bin").mkdir(parents=True)
+                make(home)
+                before = (home / ".agents/bin/agy-tui").read_bytes()
+                result = self.retire_shim(home)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("is not the retired agmsg shim", result.stderr)
+                self.assertEqual(before, (home / ".agents/bin/agy-tui").read_bytes())
 
 
 if __name__ == "__main__":

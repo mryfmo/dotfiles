@@ -126,7 +126,11 @@ def clean(record: object, label: str, value: str) -> str:
 
 
 def optional(record: object, data: Dict[str, Any], name: str, kind: type, where: str = "") -> Any:
-    return None if data.get(name) is None else field(record, data, name, kind, where)
+    """DATA[NAME] when the key is there, None only when it is missing: a present key, explicit null
+    included, must have type KIND, so null never stands in for "not recorded"."""
+    if not isinstance(data, dict):
+        raise RecordError(record, where.rstrip(".") or "(top)", f"must be an object, not {type(data).__name__}")
+    return field(record, data, name, kind, where) if name in data else None
 
 
 def plugin_parts(record: object, label: str, plugin_id: str) -> Tuple[str, str]:
@@ -240,11 +244,11 @@ def load_claude_enabled(path: Path) -> Optional[Dict[str, bool]]:
         return None
     if not isinstance(data, dict):
         raise RecordError(path, "(top)", "must be an object")
-    enabled = data.get("enabledPlugins")
-    if enabled is None:
+    if "enabledPlugins" not in data:
         return {}
+    enabled = data["enabledPlugins"]
     if not isinstance(enabled, dict):
-        raise RecordError(path, "enabledPlugins", "must be an object")
+        raise RecordError(path, "enabledPlugins", f"must be an object, not {type(enabled).__name__}")
     for plugin_id, value in enabled.items():
         plugin_parts(path, f"enabledPlugins.{plugin_id}", plugin_id)
         if type(value) is not bool:
@@ -268,9 +272,13 @@ def claude_marketplace_state(listing: str, name: str, recorded: str) -> str:
         if field(record, entry, "name", str, f"[{index}].") != name:
             continue
         source = field(record, entry, "source", str, f"[{index}].")
-        repo = entry.get("repo")
-        if source != "github" or repo != recorded:
-            raise RecordError(record, f"[{index}]", f"{name} is registered from {source}:{repo}, not github:{recorded}")
+        if source != "github":
+            raise RecordError(record, f"[{index}].source", f"{name} is registered from {source}, not github:{recorded}")
+        repo = field(record, entry, "repo", str, f"[{index}].")
+        if repo != recorded:
+            raise RecordError(
+                record, f"[{index}].repo", f"{name} is registered from github:{repo}, not github:{recorded}"
+            )
         return "registered"
     return "absent"
 
@@ -371,14 +379,14 @@ def load_codex_config(path: Path) -> Optional[CodexConfig]:
     data = load_toml(path)
     if data is ABSENT:
         return None
-    plugins = data.get("plugins", {})
+    plugins = data["plugins"] if "plugins" in data else {}
     if not isinstance(plugins, dict):
         raise RecordError(path, "plugins", "must be a table")
     enabled = {}
     for plugin_id, table in plugins.items():
         plugin_parts(path, f"plugins.{plugin_id}", plugin_id)
         enabled[plugin_id] = field(path, table, "enabled", bool, f"plugins.{plugin_id}.")
-    marketplaces = data.get("marketplaces", {})
+    marketplaces = data["marketplaces"] if "marketplaces" in data else {}
     if not isinstance(marketplaces, dict):
         raise RecordError(path, "marketplaces", "must be a table")
     for name, table in marketplaces.items():

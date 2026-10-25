@@ -1589,6 +1589,17 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.assertTrue(any("is JSON null" in error for error in errors), findings)
                 self.assertFalse([finding for finding in findings if "is missing" in finding], findings)
 
+    def test_doctor_refuses_a_null_pinned_ref(self) -> None:
+        # Audit round 16: `ref: null` used to read as "no ref", skipping the Codex revision check.
+        pins = self.plugin_pins_fixture()
+        data = json.loads(pins.read_text())
+        data["codex"]["tail@tail"]["ref"] = None
+        pins.write_text(json.dumps(data))
+        self.install_plugin_fixture("2.0.0", "5.0.0", "b" * 40, "v1.0.0")
+        (finding,) = self.plugin_findings(pins)
+        self.assertTrue(finding.startswith("plugin pins unreadable:"), finding)
+        self.assertIn("codex.tail@tail.ref: must be str, not NoneType", finding)
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

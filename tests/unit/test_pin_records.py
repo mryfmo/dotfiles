@@ -270,6 +270,43 @@ class PinRecordsTest(unittest.TestCase):
         )
         self.assertEqual("1.8.14", json.loads(result.stdout)[0]["version"])
 
+    def test_explicit_null_in_an_optional_field_is_an_error(self) -> None:
+        # An optional key may be missing; present, it must have its type: null never means "not recorded".
+        pins = {
+            "claude": {},
+            "codex": {"tail@tail": {"marketplace": "m", "pin": "1", "ref": None}},
+            "gh_extensions": {},
+        }
+        listing = json.dumps([{"name": "crit", "source": "github", "repo": None}])
+        config = '[marketplaces.tail]\nsource_type = "git"\nsource = "s"\nref = 1\n'
+        for name, call, field in (
+            (
+                "plugin-pins codex ref",
+                lambda: records.load_plugin_pins(self.write("p.json", pins)),
+                "codex.tail@tail.ref",
+            ),
+            (
+                "settings enabledPlugins",
+                lambda: records.load_claude_enabled(self.write("s.json", {"enabledPlugins": None})),
+                "enabledPlugins",
+            ),
+            ("marketplace list repo", lambda: records.claude_marketplace_state(listing, "crit", "o/crit"), "[0].repo"),
+            (
+                "config marketplace ref",
+                lambda: records.load_codex_config(self.write("c.toml", config)),
+                "marketplaces.tail.ref",
+            ),
+        ):
+            with self.subTest(field=name):
+                self.refused(call, field)
+        # Missing optional keys stay allowed.
+        del pins["codex"]["tail@tail"]["ref"]
+        self.assertIsNone(records.load_plugin_pins(self.write("p.json", pins)).codex["tail@tail"].ref)
+        self.assertEqual({}, records.load_claude_enabled(self.write("s.json", {})))
+        with self.assertRaises(records.RecordError):
+            records.optional("r", {"ref": None}, "ref", str)
+        self.assertIsNone(records.optional("r", {}, "ref", str))
+
     def test_command_line_fails_with_the_field(self) -> None:
         path = self.write("s.json", {"enabledPlugins": {"crit@crit": "false"}})
         result = subprocess.run(

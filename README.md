@@ -106,7 +106,7 @@ click is the laptop's. The design and the threat table are in
    start and each decision to `~/.local/state/hcom/url-opener.log`.
 3. On the Ubuntu host, in your own terminal, run
    `seat-login-preflight <profile>` for each seat profile (orchestrator,
-   worker, audit, review, security) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. The
+   worker, audit) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. The
    Claude sign-in shows a code in the laptop tab; paste it at the terminal
    prompt. If that flow fails, run `claude setup-token` on the laptop and store
    the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
@@ -329,14 +329,6 @@ protocol mismatch after updating Herdr prints instructions to stop and restart
 the server (or recreate the Ghostty session), then continues successfully; run
 `herdr server reload-config` manually after restarting.
 
-Before `chezmoi apply`, `make update` runs `make agmsg-retire`, the one step
-left of the retired agmsg regime (E1 of plan 025). In every registered clone of
-this repository, and then in the clone it runs in, it removes the agmsg hooks
-from `.claude/settings.local.json` and makes the project's agmsg identity leave
-its team, so a host is retired before the apply removes the installed agmsg
-skill tree; a registered project of another repository is reported as skipped
-and left untouched. `herdr-agents --retire-agmsg <dir>` retires one project.
-
 Weekly model-usage measurement is informational and never changes
 `model_profiles`. Capture or report usage manually with:
 
@@ -384,7 +376,7 @@ run by a worker task when the operator asks for it at a regime boundary.
 Incremental updates cannot publish here: plugin 2.9.7's symbol gate
 (`validate-incremental-symbols.mjs`) marks every unowned function `unknown` in
 files without a deterministic parser, namely the extension-less shell script
-`executable_herdr-agents` and the Python chezmoi script
+`executable_hcom-dispatch` and the Python chezmoi script
 `modify_private_settings.json`. The plugin has no per-path language override.
 `.ua/config.json` therefore sets `autoUpdate: false`, which stops the plugin's
 SessionStart and PostToolUse update prompts. Between rebuilds the graph is
@@ -582,7 +574,7 @@ a Dependencies tab while it is missing. This repository does not install it, so
 on a Linux host without it sandboxed commands can reach every Unix socket,
 the herdr socket included. `sandbox.excludedCommands` holds exactly
 `git push *` and `gh *` (below). The managed `permissions.allow`
-rules, the coordinator's levers with their `env` and writable directories,
+rules, the coordinator's levers and their writable directories,
 are described in `scripts/orchestrator/README.md`, "Pre-authorized levers"; they
 name the copies chezmoi installs under `~/.local/bin/common` (mode 0755, outside
 every sandbox write root), each of which checks its own sha256 against the
@@ -741,8 +733,8 @@ of the loop.
    `HCOM_DIR=~/.local/state/hcom-regime bus-history.sh regime --limit 20`), or in
    a seat's pane (`hcom term <name> --clean`).
 5. Stop with `regime-stop` in the checkout: it ends the supervision and stops
-   the orchestrator; `regime-stop --all` also stops the workers and the audit
-   seat. Their worktrees and branches stay, and `regime-start` starts again.
+   the orchestrator; `regime-stop --all` also stops the worker seats. Their
+   worktrees and branches stay, and `regime-start` starts again.
 
 The supervisor keeps the orchestrator alive. It ships disabled, and enabling it
 is a host-wide choice that persists across logins and reboots until you
@@ -798,8 +790,6 @@ opens as one plain pane with no agent layout. Exiting Herdr returns to the
 shell. The omp seats of the hcom regime run in Herdr panes that
 `scripts/orchestrator/hcom-seat` starts, one seat per pane
 ([scripts/orchestrator/README.md](scripts/orchestrator/README.md), "hcom-seat").
-`herdr-agents` keeps only `--retire-agmsg`, which `make update` runs before
-`chezmoi apply`.
 
 The Codex execpolicy forbidden set is managed by this repository:
 `home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
@@ -1012,7 +1002,7 @@ machine's one GitHub account, stored in gh's default directory.
 - **`make doctor`:** reports the login (`found:` with its name), or warns with
   the `make gh-auth` hint when gh holds no working login or more than one.
 
-On Linux the Claude sandbox cannot reach the host keyring. So a Claude seat
+On Linux the Claude sandbox cannot reach the host keyring. So Claude Code
 runs `gh`, `git push` and an authenticated `git fetch` outside the sandbox,
 through the permission prompt. SSH pushes use SSH keys instead.
 
@@ -1149,8 +1139,8 @@ The hcom regime runs in any git repository on this host, not only in this one. T
 1. On the host, once: `make update` in this repository. It installs the levers, the `~/.agents/regime/` templates, the omp policies, profiles and skills.
 2. In the other repository's checkout: `regime-init <program> --write-agents`. It creates `.orchestration/orchestrate/<program>/`, holding `preferences.md` (the standing orders) and empty `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md`. It writes `~/.local/state/hcom/<slug>/origin`, and it appends the audit section to `AGENTS.md` unless one is there. A second run changes nothing.
 3. Review the AGENTS.md audit section it wrote, and add the program's own rules below it. Commit the store and `AGENTS.md` like any other change.
-4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker seats get worktrees under `~/.local/state/omp-seats/<slug>/`. There is no audit seat: the orchestrator runs each audit as one fresh `omp-run.sh --role audit` run.
-5. Kick off the program: `hcom-dispatch <slug> operator orchestrator-<word> - "TASK v1 task_id=O1 brief=<absolute path of the program brief>"`.
+4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker seats get worktrees under `~/.local/state/omp-seats/<slug>/`. The orchestrator runs each audit as one fresh `omp-run.sh --role audit` run per head, outside the bus.
+5. Kick off the program: `hcom-dispatch <slug> operator orchestrator-<word> "TASK v1 task_id=O1 brief=<absolute path of the program brief>"`.
 
 A seat inherits `HCOM_DIR` and `HCOM_TEAM` from its launch, and an explicit value wins over the derivation, so from inside a seat (the orchestrator seat, say) run another repository's `regime-init`, `hcom-seat` and `hcom-dispatch` as `env -u HCOM_DIR -u HCOM_TEAM <command>`; otherwise its seats join the inheriting seat's store and team. What stays per host: the logins (the Claude Code login the bridge seat uses, `/login openai-siwc` in the audit-side omp profiles), the omp profiles and policies, and the levers themselves. A second checkout with the same basename is refused by `regime-init` and the levers; set `HCOM_DIR` and `HCOM_TEAM` explicitly for it.
 
@@ -1231,6 +1221,7 @@ render-only `home/` paths.
 
 Python unit tests can be run locally with `make unit-test`.
 It runs one test module per process, as many at a time as the machine has CPUs, and ends with one combined summary; `UNIT_TEST_JOBS=1 make unit-test` runs the serial `unittest discover`.
+`make retired-terms` runs `scripts/lint-retired-terms.py` over `scripts/retired-terms.tsv`, the one list of retired names, deleted paths and deployed copies `home/.chezmoiremove` must remove: it prints each hit as `<file>:<line>: <text>` and exits 1, exits 0 on a clean tree, and exits 2 when it cannot check. The unit tests (`tests/unit/test_lint_retired_terms.py`) and `make doctor` run it too. A deliberate mention (history, compatibility, the removal code itself) is an exact `allow <file> <term>` row of that list; `.orchestration/` (the program records) and `.ua/` (the generated graph) are not read.
 Test the shellscript for setup with [Bash Automated Testing System (bats)](https://github.com/bats-core/bats-core).
 Agent sessions must not run Bats locally; push and use GitHub Actions for Bats validation.
 The scripts for the unit test can be found under [`./tests`](https://github.com/mryfmo/dotfiles/tree/main/tests/install) directory.

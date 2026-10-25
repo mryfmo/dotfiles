@@ -55,10 +55,7 @@ class QuietParser(argparse.ArgumentParser):
 
 
 def version_key(version: str) -> tuple[tuple[int, int | str], ...]:
-    return tuple(
-        (0, int(token)) if token.isdigit() else (1, token.lower())
-        for token in re.split(r"(\d+)", version)
-    )
+    return tuple((0, int(token)) if token.isdigit() else (1, token.lower()) for token in re.split(r"(\d+)", version))
 
 
 def display_path(path: Path, home: Path) -> str:
@@ -72,14 +69,7 @@ def excluded(path: Path, home: Path) -> bool:
     relative = path.relative_to(home)
     if any(part in EXCLUDED_DIR_NAMES for part in relative.parts):
         return True
-    if ".sqlite" in path.name.lower():
-        return True
-    parts = relative.parts
-    return (
-        len(parts) >= 4
-        and parts[:3] == (".agents", "skills", "agmsg")
-        and (parts[3] in {"db", "run", "teams"} or parts[3].startswith("db-"))
-    )
+    return ".sqlite" in path.name.lower()
 
 
 def scan_files(root: Path, home: Path, deadline: float) -> Iterator[tuple[Path, float]]:
@@ -106,9 +96,7 @@ def scan_files(root: Path, home: Path, deadline: float) -> Iterator[tuple[Path, 
                     yield path, entry.stat(follow_symlinks=False).st_mtime
 
 
-def plugin_cache_updates(
-    home: Path, since: float | None, deadline: float
-) -> list[Update]:
+def plugin_cache_updates(home: Path, since: float | None, deadline: float) -> list[Update]:
     cache = home / ".claude/plugins/cache"
     if not cache.is_dir():
         return []
@@ -127,13 +115,10 @@ def plugin_cache_updates(
                     raise TimeoutError("plugin cache scan exceeded its bound")
                 if version.is_dir(follow_symlinks=False):
                     stat_result = version.stat(follow_symlinks=False)
-                    versions.append(
-                        (version.name, stat_result.st_mtime, Path(version.path))
-                    )
+                    versions.append((version.name, stat_result.st_mtime, Path(version.path)))
             if since is None:
                 updates.extend(
-                    (mtime, f"claude-plugin:{marketplace.name}/{plugin.name}", path)
-                    for _, mtime, path in versions
+                    (mtime, f"claude-plugin:{marketplace.name}/{plugin.name}", path) for _, mtime, path in versions
                 )
                 continue
             highest = max(versions, key=lambda item: version_key(item[0]), default=None)
@@ -142,10 +127,7 @@ def plugin_cache_updates(
             if (
                 highest
                 and highest[1] > since
-                and (
-                    baseline is None
-                    or version_key(highest[0]) > version_key(baseline[0])
-                )
+                and (baseline is None or version_key(highest[0]) > version_key(baseline[0]))
             ):
                 updates.append(
                     (
@@ -183,10 +165,7 @@ def prune_state_files(state_dir: Path, deadline: float) -> None:
                 if index >= MAX_STATE_FILES or time.monotonic() >= deadline:
                     return
                 try:
-                    if (
-                        entry.is_file(follow_symlinks=False)
-                        and entry.stat(follow_symlinks=False).st_mtime < cutoff
-                    ):
+                    if entry.is_file(follow_symlinks=False) and entry.stat(follow_symlinks=False).st_mtime < cutoff:
                         os.unlink(entry.path)
                 except OSError:
                     pass
@@ -204,20 +183,14 @@ def run_hook(home: Path, deadline: float) -> int:
             return 0
         session_id = payload.get("session_id")
         source = payload.get("source")
-        if (
-            not isinstance(session_id, str)
-            or not session_id
-            or (source is not None and not isinstance(source, str))
-        ):
+        if not isinstance(session_id, str) or not session_id or (source is not None and not isinstance(source, str)):
             return 0
 
         state_dir = home / ".local/state/agent-staleness"
         state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         state_dir.chmod(0o700)
         prune_state_files(state_dir, deadline)
-        state_file = (
-            state_dir / f"{hashlib.sha256(session_id.encode()).hexdigest()}.epoch"
-        )
+        state_file = state_dir / f"{hashlib.sha256(session_id.encode()).hexdigest()}.epoch"
         flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(state_file, flags, 0o600)
         os.fchmod(descriptor, 0o600)
@@ -253,11 +226,7 @@ def run(argv: list[str], home: Path, deadline: float) -> int:
     if not argv:
         updates = sorted(collect_updates(home, None, deadline), reverse=True)[:10]
         for mtime, label, path in updates:
-            timestamp = (
-                datetime.fromtimestamp(mtime, timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z")
-            )
+            timestamp = datetime.fromtimestamp(mtime, timezone.utc).isoformat().replace("+00:00", "Z")
             print(f"{timestamp} {label} {display_path(path, home)}")
         return 0
 
@@ -290,17 +259,13 @@ def stale_lines(home: Path, since: float, deadline: float) -> list[str]:
             latest_by_label[update[1]] = update
     return [
         f"restart recommended: {label} ({display_path(path, home)})"
-        for _mtime, label, path in sorted(latest_by_label.values(), reverse=True)[
-            :MAX_OUTPUT_LINES
-        ]
+        for _mtime, label, path in sorted(latest_by_label.values(), reverse=True)[:MAX_OUTPUT_LINES]
     ]
 
 
 def guarded_main(argv: list[str] | None = None, *, home: Path | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    target_home = (
-        Path(os.environ.get("HOME", str(Path.home()))) if home is None else home
-    )
+    target_home = Path(os.environ.get("HOME", str(Path.home()))) if home is None else home
     previous_handler = signal.getsignal(signal.SIGALRM)
 
     def timeout_handler(_signum: int, _frame: object) -> None:

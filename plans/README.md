@@ -1,27 +1,9 @@
 # Dotfiles production-hardening implementation plans
 
-Generated from the audit of commit `e7c2808` on 2026-07-11. These plans are
-written for an executor that has no access to the audit conversation. Read the
-selected plan completely, execute its atomic tasks in order, and do not infer
-missing requirements. A STOP condition always wins over task completion.
-
-## Global execution rules
-
-- Work on one plan at a time in the order below. Do not combine plans in one PR.
-- Before editing, run the plan's drift check and confirm a clean worktree.
-- Add a failing regression test before changing non-trivial logic.
-- Do not run Bats locally. Bats runs only in GitHub Actions, per repository
-  instructions. Use Python unit tests and static checks locally.
-- Do not commit `.agents/worklog/**`, coverage output, caches, or review evidence.
-- Before committing a non-empty diff, run `make require-crit-review` and follow
-  the repository's Crit-data receipt workflow when it requests review.
-- Use Conventional Commits as
-  `home/dot_agents/skills/gh-first-workflow/references/gh-git-rules.md`
-  defines them. Push and open/update a PR only when the operator
-  explicitly requests it.
-- After pushing, wait for every required CI check and every review bot. Fix all
-  actionable failures and unresolved comments, rerun local gates, then merge
-  only after all required checks are green and review threads are resolved.
+Generated from the audit of commit `e7c2808` on 2026-07-11. Every plan below is
+`DONE`, so this directory is a historical record: the plans name tools and gates
+of that time (some since retired), and none of them is a current instruction.
+The rules for changing this repository are `AGENTS.md` and the skills it names.
 
 ## Phases, execution order, and status
 

@@ -1,0 +1,167 @@
+# The one list of retired terms and paths (regime-cutover U72). scripts/lint-retired-terms.py reads it; its docstring
+# defines the kinds. Rows are tab-separated: term <text> <reason> | allow <file> <term> <reason> | skip <dir>/ <reason>
+# | gone <path> <reason> | removed <chezmoi target> <reason>.
+term	agmsg	the agmsg regime, retired by D-024-131 (U26 tooling, U27 docs and tree)
+term	codex-orchestrate	agmsg-era launcher, deleted in U26
+term	hcom-audit	the long-lived audit seat's skill, deleted in U58
+term	hcom-reply	the audit seat's bus-reply lever, deleted in U58
+term	audit-r2	the second audit seat, retired with the audit seat (U58)
+term	audit seat	every audit is one fresh run per head (U57, U58); there is no audit seat
+term	verifier seat	the verifier is no seat (U57)
+term	codex seat	every seat is an omp seat (D-024-152); there is no Codex seat
+term	claude seat	every seat is an omp seat (D-024-152); there is no Claude seat
+term	crit-review	the Crit review rule (crit-review.md, U32) and its receipt gate (make require-crit-review, U26)
+term	crit comments --all --json	the Crit JSON review receipt, retired with crit-review.md (U32)
+term	review_surface	a Crit review receipt field (U32)
+term	resolved record	the Crit receipt's evidence rule (U32); review evidence is the ledger verdict row
+term	allowed_files	the retired task-file schema; a unit's paths are its brief's SCOPE
+term	threat_table	the retired task-file schema; the threat table is the PR body's `## Threat table`
+term	design tier	the retired task-file schema
+term	task file	the retired task-file schema; a unit has a brief and a PR body
+term	pr-feedback	scripts/pr-feedback.py, deleted in U26
+term	regime-counters	scripts/regime-counters.sh, deleted in U26
+term	acceptance record	the agmsg acceptance records, retired in U26
+term	herdr-agents	the agmsg retire tool, deleted in U72 once both hosts held nothing to retire
+term	--remove-worker	a herdr-agents worker mode, deleted in U26
+term	--add-worker	a herdr-agents worker mode, deleted in U26
+term	MultiEdit	Claude Code's legacy tool name; the edit tools are Write and Edit
+term	agent-stop-gate.sh	deleted in U26
+term	check-regime-boundary	deleted in U26
+term	acceptance-front-matter	deleted in U26
+term	orchestrator/boundary.sh	deleted in U26
+term	bus-read.sh	deleted in U26
+term	chain-integrate	deleted in U26
+term	codex-review.sh	deleted in U26
+term	design-keydiff	deleted in U26
+term	orchestrator/dispatch.sh	deleted in U26
+term	ff-main.sh	deleted in U26
+term	fill_sweep	deleted in U26
+term	ledger-check	deleted in U26
+term	local-advisory	deleted in U26
+term	local-review.sh	deleted in U26
+term	orch-audit	deleted in U26
+term	orch-gate	deleted in U26
+term	pr-cost.sh	deleted in U26
+term	pre-send.sh	deleted in U26
+term	pre_send	deleted in U26
+term	replay.sh	deleted in U26
+term	resolve-threads.sh	deleted in U26
+term	sandbox-scan	deleted in U26
+term	task-consistency-check	deleted in U26
+term	three-repeat	deleted in U26
+gone	home/dot_local/bin/common/executable_agmsg-dispatch	deleted source path
+gone	home/dot_local/bin/common/executable_codex-orchestrate	deleted source path
+gone	home/dot_local/bin/common/executable_herdr-agents	deleted source path
+gone	home/dot_local/bin/common/executable_hcom-reply	deleted source path
+gone	home/dot_agents/skills/hcom-audit	deleted source path
+gone	home/dot_claude/skills/hcom-audit	deleted source path
+gone	home/dot_agents/skills/agmsg-orchestration	deleted source path
+gone	home/dot_config/claude/rules/agmsg-orchestration.md	deleted source path
+gone	home/dot_config/claude/rules/crit-review.md	deleted source path
+gone	home/dot_config/claude/rules/pr-integration.md	deleted source path
+gone	scripts/agent-stop-gate.sh	deleted source path
+gone	scripts/check-regime-boundary.sh	deleted source path
+gone	scripts/pr-feedback.py	deleted source path
+gone	scripts/regime-counters.sh	deleted source path
+gone	scripts/require-crit-review.py	deleted source path
+gone	scripts/orchestrator/acceptance-front-matter.py	deleted source path
+gone	scripts/orchestrator/boundary.sh	deleted source path
+gone	scripts/orchestrator/bus-read.sh	deleted source path
+gone	scripts/orchestrator/chain-integrate.sh	deleted source path
+gone	scripts/orchestrator/codex-review.sh	deleted source path
+gone	scripts/orchestrator/design-keydiff.py	deleted source path
+gone	scripts/orchestrator/dispatch.sh	deleted source path
+gone	scripts/orchestrator/ff-main.sh	deleted source path
+gone	scripts/orchestrator/fill_sweep.py	deleted source path
+gone	scripts/orchestrator/ledger-check.py	deleted source path
+gone	scripts/orchestrator/local-advisory.sh	deleted source path
+gone	scripts/orchestrator/local-review.sh	deleted source path
+gone	scripts/orchestrator/orch-audit.sh	deleted source path
+gone	scripts/orchestrator/orch-gate.sh	deleted source path
+gone	scripts/orchestrator/pr-cost.sh	deleted source path
+gone	scripts/orchestrator/pre-send.sh	deleted source path
+gone	scripts/orchestrator/pre_send.py	deleted source path
+gone	scripts/orchestrator/replay.sh	deleted source path
+gone	scripts/orchestrator/resolve-threads.sh	deleted source path
+gone	scripts/orchestrator/sandbox-scan.sh	deleted source path
+gone	scripts/orchestrator/task-consistency-check.py	deleted source path
+gone	scripts/orchestrator/three-repeat.sh	deleted source path
+removed	.agents/skills/agmsg/**	deployed copy of a retired source
+removed	.claude/skills/agmsg/**	deployed copy of a retired source
+removed	.claude/commands/agmsg.md	deployed copy of a retired source
+removed	.agents/skills/agmsg-orchestration	deployed copy of a retired source
+removed	.claude/skills/agmsg-orchestration	deployed copy of a retired source
+removed	.local/bin/common/agmsg-dispatch	deployed copy of a retired source
+removed	.local/bin/common/codex-orchestrate	deployed copy of a retired source
+removed	.local/bin/common/herdr-agents	deployed copy of a retired source
+removed	.config/claude/rules/agmsg-orchestration.md	deployed copy of a retired source
+removed	.config/claude/rules/crit-review.md	deployed copy of a retired source
+removed	.config/claude/rules/pr-integration.md	deployed copy of a retired source
+removed	.claude/rules/agmsg-orchestration.md	deployed copy of a retired source
+removed	.claude/rules/crit-review.md	deployed copy of a retired source
+removed	.claude/rules/pr-integration.md	deployed copy of a retired source
+removed	.agents/skills/hcom-audit	deployed copy of a retired source
+removed	.claude/skills/hcom-audit	deployed copy of a retired source
+removed	.local/bin/common/hcom-reply	deployed copy of a retired source
+removed	.agents/omp/profiles/review.yml	the omp review role, which no launcher started (U72)
+removed	.agents/omp/profiles/security.yml	the omp security role, which no launcher started (U72)
+skip	.orchestration/	the program records: history written by the coordinator, read as data, never as current rules
+skip	.ua/	the Understand-Anything graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
+allow	.claude/contextdb/contextdb/normalize.py	MultiEdit	CompactionDB reads past transcripts, which name the legacy tool
+allow	docs/operator-handout-g16.md	audit seat	the G16 handout removes the retired seat's leftover worktrees
+allow	docs/orchestrator-seat.md	agmsg	states that the retired kinds, seat, skill and lever are refused or gone
+allow	docs/orchestrator-seat.md	audit seat	states that the retired kinds, seat, skill and lever are refused or gone
+allow	docs/orchestrator-seat.md	hcom-audit	states that the retired kinds, seat, skill and lever are refused or gone
+allow	docs/orchestrator-seat.md	hcom-reply	states that the retired kinds, seat, skill and lever are refused or gone
+allow	home/.chezmoiremove	agmsg	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	codex-orchestrate	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	crit-review	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	hcom-audit	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	hcom-reply	the removal entries for the retired deployed copies
+allow	home/.chezmoiremove	herdr-agents	the removal entries for the retired deployed copies
+allow	home/dot_agents/omp/hooks/stop-gate.ts	agmsg	documents that a retired prefixed kind moves nothing
+allow	home/dot_agents/omp/hooks/tests/stop-gate.test.ts	agmsg	proves a retired prefixed kind moves nothing
+allow	home/dot_agents/omp/policies/README.md	agmsg	the measured O1 incident and the audit policy rows that deny the retired lever
+allow	home/dot_agents/omp/policies/README.md	audit seat	the measured O1 incident and the audit policy rows that deny the retired lever
+allow	home/dot_agents/omp/policies/README.md	hcom-reply	the measured O1 incident and the audit policy rows that deny the retired lever
+allow	home/dot_claude/modify_private_settings.json	herdr-agents	the merge removes a stale hook of the deleted tool from installed settings
+allow	home/dot_local/bin/common/executable_hcom-dispatch	agmsg	documents that the retired dispatch form is refused
+allow	plans/001-contain-starship-cleanup.md	acceptance record	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/002-make-review-evidence-non-vacuous.md	crit comments --all --json	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/002-make-review-evidence-non-vacuous.md	crit-review	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/002-make-review-evidence-non-vacuous.md	resolved record	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/002-make-review-evidence-non-vacuous.md	review_surface	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/005-make-runtime-health-and-verification-truthful.md	agmsg	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	plans/005-make-runtime-health-and-verification-truthful.md	herdr-agents	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	scripts/orchestrator/README.md	agmsg	documents that the retired dispatch form, kinds and seat are refused or gone
+allow	scripts/orchestrator/README.md	audit seat	documents that the retired dispatch form, kinds and seat are refused or gone
+allow	scripts/orchestrator/README.md	hcom-reply	documents that the retired dispatch form, kinds and seat are refused or gone
+allow	scripts/orchestrator/hcom-dispatch	agmsg	documents that the retired dispatch form is refused
+allow	tests/fixtures/hcom/events-u5team.jsonl	agmsg	recorded bus rows of 2026-10-23, read as opaque kinds
+allow	tests/install/common/lifecycle.bats	crit comments --all --json	proves the Codex rule carries no Crit receipt flow
+allow	tests/unit/test_agmsg_removed.py	agmsg	proves the retired tree is removed from hosts
+allow	tests/unit/test_agmsg_removed.py	herdr-agents	proves the retired tree is removed from hosts
+allow	tests/unit/test_asset_manifest.py	agmsg	proves the updater prunes the retired step's manifest record
+allow	tests/unit/test_audit_seat_removed.py	audit seat	proves the retired seat's sources and deployed copies are gone
+allow	tests/unit/test_audit_seat_removed.py	hcom-audit	proves the retired seat's sources and deployed copies are gone
+allow	tests/unit/test_audit_seat_removed.py	hcom-reply	proves the retired seat's sources and deployed copies are gone
+allow	tests/unit/test_check_agent_runtime.py	agmsg	proves doctor reports the retired tree's leftovers
+allow	tests/unit/test_claude_settings_merge.py	MultiEdit	installed entries with the legacy matcher and the deleted tool's hook converge
+allow	tests/unit/test_claude_settings_merge.py	agmsg	installed entries with the legacy matcher and the deleted tool's hook converge
+allow	tests/unit/test_claude_settings_merge.py	herdr-agents	installed entries with the legacy matcher and the deleted tool's hook converge
+allow	tests/unit/test_drift_watch.py	agmsg	a fake lint's output line, proving the drift watch turns each hit into a finding
+allow	tests/unit/test_generate_agent_configs.py	herdr-agents	legacy allow rules and launch keys the generator drops
+allow	tests/unit/test_hcom_dispatch.py	agmsg	proves the retired dispatch form and prefixed kinds are refused or opaque
+allow	tests/unit/test_hcom_seat_skills.py	agmsg	proves the skills name no retired seat or prefix
+allow	tests/unit/test_hcom_seat_skills.py	audit seat	proves the skills name no retired seat or prefix
+allow	tests/unit/test_omp_seat_policy.py	audit seat	policy rows that deny the retired lever and sample command strings
+allow	tests/unit/test_omp_seat_policy.py	chain-integrate	policy rows that deny the retired lever and sample command strings
+allow	tests/unit/test_omp_seat_policy.py	hcom-reply	policy rows that deny the retired lever and sample command strings
+allow	tests/unit/test_omp_seat_policy.py	pr-feedback	policy rows that deny the retired lever and sample command strings
+allow	tests/unit/test_pr_levers.py	agmsg	a recorded close-comment of the G8 clean-up table
+allow	tests/unit/test_rules_cutover.py	agmsg	proves the retired Claude rules and their deployed copies are gone
+allow	tests/unit/test_rules_cutover.py	crit-review	proves the retired Claude rules and their deployed copies are gone
+allow	tests/unit/test_supply_chain_policy.py	agmsg	proves the retire step is gone from make update
+allow	tests/unit/test_supply_chain_policy.py	herdr-agents	proves the retire step is gone from make update
+allow	tests/unit/test_validate_agent_assets.py	pr-feedback	fixture names of past validation files
+allow	vendor/compactiondb/.claude/contextdb/contextdb/normalize.py	MultiEdit	vendored CompactionDB source, pinned upstream

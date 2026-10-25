@@ -540,7 +540,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         ):
             self.assertNotIn(str(accounted), joined)
 
-    def test_installer_owned_agmsg_skill_and_backups_are_not_orphans(self) -> None:
+    def test_backups_are_not_orphans_and_the_retired_agmsg_install_is_stale(self) -> None:
+        # The agmsg step is gone from the updater (U26), so a host that still holds its skill gets the removal hint.
         home = self.temp_dir / "home"
         source = self.temp_dir / "repo-source"
         agents = home / ".agents"
@@ -561,8 +562,32 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         warnings = self.module.orphaned_asset_warnings(home, source)
 
         self.assertEqual(
-            [f"WARN: orphaned agent asset: {agents / 'orphan-root'}; manual review required"],
+            [
+                f"WARN: orphaned agent asset: {agents / 'orphan-root'}; manual review required",
+                f"WARN: stale agent asset: {skills / 'agmsg'}; suggested: remove-agent-asset update_agmsg",
+            ],
             warnings,
+        )
+
+    def test_the_retired_agmsg_store_directories_are_orphans(self) -> None:
+        # U27 removed the agmsg tree from both hosts, so a db, run or teams directory left in ~/.agents or its skills
+        # is reported, never allow-listed.
+        home = self.temp_dir / "home"
+        source = self.temp_dir / "repo-source"
+        agents = home / ".agents"
+        skills = agents / "skills"
+        (source / "dot_agents/skills/managed").mkdir(parents=True)
+        leftovers = [agents / name for name in ("db", "run", "teams")] + [
+            skills / name for name in ("agmsg", "db", "run", "teams")
+        ]
+        for path in leftovers:
+            path.mkdir(parents=True)
+
+        warnings = self.module.orphaned_asset_warnings(home, source)
+
+        self.assertEqual(
+            sorted(f"WARN: orphaned agent asset: {path}; manual review required" for path in leftovers),
+            sorted(warnings),
         )
 
     def test_terminal_browser_receipt_links_are_not_orphans(self) -> None:

@@ -234,7 +234,6 @@ class AgentSessionStalenessTest(unittest.TestCase):
             ".agents/compactiondb/.claude/contextdb/spool/event.json",
             ".agents/compactiondb/.claude/contextdb/health/errors.jsonl",
             ".agents/plugins/example/cache.sqlite3",
-            ".agents/skills/agmsg/db/messages.db",
         ):
             self.touch(relative_path, since + 10)
 

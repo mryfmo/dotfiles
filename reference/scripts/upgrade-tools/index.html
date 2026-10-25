@@ -4899,6 +4899,8 @@
 <li><code>main</code></li>
 <li><code>manifest_wheel_pin</code></li>
 <li><code>mise_tool_is_held</code></li>
+<li><code>npm_rebuild_skipped</code></li>
+<li><code>npm_release_age_verdict</code></li>
 <li><code>parse_args</code></li>
 <li><code>rebuild_mise_npm_tool</code></li>
 <li><code>reinstall_mise_npm_tools</code></li>
@@ -5244,23 +5246,165 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Decide whether npm's own release-age window (min-release-age, ~/.npmrc) lets npm install one exact</span>
+<span class="c1">#   version again, from the window npm reports and the version's publish time in the registry. The rebuild of an</span>
+<span class="c1">#   installed version asks this first, so a version younger than the window is skipped before its install is moved,</span>
+<span class="c1">#   instead of failing in npm (ETARGET) after it. Every read is strict: an answer that is not exactly what npm prints</span>
+<span class="c1">#   is "cannot tell", never "old enough". The publish time is compared at its full precision (fractional seconds to</span>
+<span class="c1">#   the microsecond), and a version counts as old enough only from 60 seconds after the window ends, so a clock that</span>
+<span class="c1">#   differs from npm's by less than that never lets the rebuild move an install npm then refuses.</span>
+<span class="c1"># @arg $1 string The version mise reports as installed: one SemVer 2.0.0 version without build metadata.</span>
+<span class="c1"># @arg $2 string `npm config get min-release-age` output: a number of days, or `null` when npm sets no window.</span>
+<span class="c1"># @arg $3 number Optional: the current time in Unix seconds, for a frozen clock; the system clock when absent.</span>
+<span class="c1"># @stdin `npm view --json &lt;package&gt; time`: the registry's map of version to publish time.</span>
+<span class="c1"># @stdout The reason, when the version is not old enough or the answer cannot be told.</span>
+<span class="c1"># @exitcode 0 The version is at least min-release-age days and 60 seconds old, or npm sets no window.</span>
+<span class="c1"># @exitcode 1 The version is younger than that.</span>
+<span class="c1"># @exitcode 2 The version, the window, the publish time or the given time cannot be read.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>npm_release_age_verdict<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="c1"># The program is read into a variable, so stdin stays npm view's answer; read -d '' ends with status 1 at the end</span>
+<span class="w">    </span><span class="c1"># of the here-document by design, so an empty program is the failure checked. (A here-document inside $(...)</span>
+<span class="w">    </span><span class="c1"># breaks bash 3.2, the /bin/bash of macOS.)</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">code</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>code<span class="w"> </span><span class="s">&lt;&lt; 'PY' || [ -n "${code}" ] || return 2</span>
+<span class="s">import datetime</span>
+<span class="s">import json</span>
+<span class="s">import re</span>
+<span class="s">import sys</span>
+
+<span class="s">version, age, *clock = sys.argv[1:]</span>
+<span class="s"># Past the end of npm's window by this much before a version counts as old enough: clocks differ.</span>
+<span class="s">MARGIN = datetime.timedelta(seconds=60)</span>
+<span class="s"># The SemVer 2.0.0 regular expression, verbatim from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string</span>
+<span class="s"># (ASCII digits only; fullmatch, so no trailing newline). npm reads anything else, such as 20.0.0-a..b, as a tag.</span>
+<span class="s">SEMVER = re.compile(</span>
+<span class="s">    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"</span>
+<span class="s">    r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"</span>
+<span class="s">    r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",</span>
+<span class="s">    re.ASCII,</span>
+<span class="s">)</span>
+<span class="s"># The registry's publish times, as npm view prints them: UTC with optional fractional seconds.</span>
+<span class="s">PUBLISHED = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z", re.ASCII)</span>
+
+
+<span class="s">def cannot_tell(reason):</span>
+<span class="s">    print(reason)</span>
+<span class="s">    sys.exit(2)</span>
+
+
+<span class="s">def microseconds(fraction):</span>
+<span class="s">    """A decimal fraction of a second in whole microseconds, rounded up, so a time is never read as earlier."""</span>
+<span class="s">    nanoseconds = int((fraction or "").ljust(9, "0"))</span>
+<span class="s">    return -(-nanoseconds // 1000)</span>
+
+
+<span class="s">exact = SEMVER.fullmatch(version)</span>
+<span class="s"># npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.</span>
+<span class="s">if exact is None or exact.group(5) is not None:</span>
+<span class="s">    cannot_tell(f"mise reports {version!r}, not one exact version")</span>
+<span class="s"># timezone.utc, not datetime.UTC: macOS's /usr/bin/python3 is 3.9.</span>
+<span class="s">epoch = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)</span>
+<span class="s">if not clock:</span>
+<span class="s">    now = datetime.datetime.now(datetime.timezone.utc)</span>
+<span class="s">elif len(clock) == 1 and (given := re.fullmatch(r"(0|[1-9]\d{0,11})(?:\.(\d{1,6}))?", clock[0], re.ASCII)):</span>
+<span class="s">    now = epoch + datetime.timedelta(seconds=int(given[1]), microseconds=microseconds(given[2]))</span>
+<span class="s">else:</span>
+<span class="s">    cannot_tell(f"the given time {clock!r} is not one number of Unix seconds")</span>
+<span class="s">if age == "null":</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">if not re.fullmatch(r"(?:0|[1-9]\d{0,5})(?:\.\d{1,6})?", age, re.ASCII):</span>
+<span class="s">    cannot_tell(f"npm config get min-release-age printed {age!r}, not a number of days")</span>
+<span class="s">try:</span>
+<span class="s">    times = json.load(sys.stdin)</span>
+<span class="s">except ValueError:</span>
+<span class="s">    cannot_tell("npm view printed no JSON publish times")</span>
+<span class="s">published = times.get(version) if isinstance(times, dict) else None</span>
+<span class="s">match = PUBLISHED.fullmatch(published) if isinstance(published, str) else None</span>
+<span class="s">if match is None:</span>
+<span class="s">    cannot_tell(f"npm view lists no publish time for {version}")</span>
+<span class="s">try:</span>
+<span class="s">    when = datetime.datetime(*map(int, match.groups()[:6]), tzinfo=datetime.timezone.utc)</span>
+<span class="s">except ValueError:</span>
+<span class="s">    cannot_tell(f"npm view lists {published!r} for {version}, not a date")</span>
+<span class="s"># Full precision: 2026-10-23T21:20:46.540Z is 540 ms later than 21:20:46, and npm compares the whole value.</span>
+<span class="s">when += datetime.timedelta(microseconds=microseconds(match[7]))</span>
+<span class="s">clears = when + datetime.timedelta(days=float(age)) + MARGIN</span>
+<span class="s">if now &lt; clears:</span>
+<span class="s">    print(</span>
+<span class="s">        f"{version} was published {when:%Y-%m-%dT%H:%M:%S.%fZ}, younger than npm's min-release-age of {age} days"</span>
+<span class="s">        f" and a 60-second margin; it can be rebuilt from {clears:%Y-%m-%dT%H:%M:%S.%fZ}"</span>
+<span class="s">    )</span>
+<span class="s">    sys.exit(1)</span>
+<span class="s">PY</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Report that one npm: tool keeps its previous install instead of being rebuilt on the current node.</span>
+<span class="c1"># @arg $1 string mise npm tool name.</span>
+<span class="c1"># @arg $2 string The reason.</span>
+<span class="c1"># @stderr One skip line.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>npm_rebuild_skipped<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'skip: %s is not rebuilt on the current node (%s); its previous install stays, and the next make update tries again\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Rebuild one npm: tool on the current node, keeping its working install until the new one succeeds.</span>
 <span class="c1">#   mise install --force would delete the install before downloading its</span>
 <span class="c1">#   replacement, so a rebuild without a network would leave the tool missing.</span>
+<span class="c1">#   The rebuild reinstalls the exact version already installed, under npm's own min-release-age like every other</span>
+<span class="c1">#   install: no package is exempt from it. npm refuses a version younger than that window (ETARGET), although the</span>
+<span class="c1">#   host already runs it, so the rebuild first asks npm for the window and the version's publish time</span>
+<span class="c1">#   (npm_release_age_verdict) and skips a version that is younger, or whose age it cannot tell, before anything</span>
+<span class="c1">#   moves. An install npm still refuses (a dependency younger than the window) restores the previous install.</span>
 <span class="c1"># @arg $1 string mise npm tool name, for example npm:ccusage.</span>
+<span class="c1"># @stderr A skip line naming the reason when the tool is not rebuilt.</span>
+<span class="c1"># @exitcode 1 When the tool was not rebuilt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>rebuild_mise_npm_tool<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_tool</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version<span class="w"> </span>install_dir<span class="w"> </span>backup
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version<span class="w"> </span>install_dir<span class="w"> </span>backup<span class="w"> </span>min_age<span class="w"> </span><span class="nb">times</span><span class="w"> </span>verdict
 
-<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span>current<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">install_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span>where<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span>current<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"mise cannot name its current version"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">install_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span>where<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"mise cannot name its install directory"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="c1"># Only an existing absolute install directory is moved or removed.</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="c1"># lint-comparisons: allow an absolute-path prefix test</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"no version or no absolute install directory"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">backup</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">.before-node-rebuild"</span>
 <span class="w">    </span><span class="c1"># restore_interrupted_npm_rebuilds put any leftover backup back; never move an install into one.</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2"> is missing or a backup of it exists"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># Decided before anything moves, with the npm that mise's npm backend runs (the current node's).</span>
+<span class="w">    </span><span class="nv">min_age</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>npm<span class="w"> </span>config<span class="w"> </span>get<span class="w"> </span>min-release-age<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"npm config get min-release-age failed"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">times</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>npm<span class="w"> </span>view<span class="w"> </span>--json<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="p">#npm:</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">time</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"npm view cannot read the publish time of </span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">age_status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">verdict</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>npm_release_age_verdict<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">min_age</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">times</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">age_status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">age_status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">verdict</span><span class="k">:-</span><span class="nv">its</span><span class="p"> release age cannot be told</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2"> cannot be moved aside"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="c1"># Until the new install succeeds, an interruption or exit puts the working install back.</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>restore
 <span class="w">    </span><span class="nv">restore</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'restore_npm_install %q %q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
@@ -5276,12 +5420,16 @@
 <span class="w">        </span><span class="c1"># install; the dot keeps a leftover out of mise's installed versions.</span>
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">discard</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="p">%/*</span><span class="si">}</span><span class="s2">/.</span><span class="si">${</span><span class="nv">install_dir</span><span class="p">##*/</span><span class="si">}</span><span class="s2">.discarded-after-rebuild"</span>
 <span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">discard</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">discard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">discard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: %s was rebuilt, but its previous install %s cannot be set aside\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
 <span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">discard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: could not delete %s; nothing uses it\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">discard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">trap</span><span class="w"> </span>-<span class="w"> </span>INT<span class="w"> </span>TERM<span class="w"> </span>EXIT
-<span class="w">    </span>restore_npm_install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>restore_npm_install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">backup</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span>npm_rebuild_skipped<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"npm refused or could not fetch </span><span class="si">${</span><span class="nv">mise_tool</span><span class="p">#npm:</span><span class="si">}</span><span class="s2">@</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">, its error is above; a dependency younger than npm's min-release-age is still refused"</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
@@ -5318,7 +5466,8 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Rebuild the current npm: tools so they run on the current node.</span>
+<span class="c1"># @description Rebuild the current npm: tools so they run on the current node; each one not rebuilt says why.</span>
+<span class="c1"># @exitcode 1 When the tools cannot be listed or at least one was not rebuilt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>reinstall_mise_npm_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tool
@@ -5328,10 +5477,7 @@
 <span class="w">    </span><span class="nv">mise_tools</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>current_mise_tools<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>mise_tool<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>npm:*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>rebuild_mise_npm_tool<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: rebuilding %s on the current node failed; its previous install stays; continuing\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
-<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>rebuild_mise_npm_tool<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tools</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">"</span>

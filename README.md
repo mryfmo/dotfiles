@@ -219,14 +219,28 @@ it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
 `self_update.minimum_release_age = "72h"` (unset, it would inherit the global `minimum_release_age`, else 24h; it is set explicitly all the same), and Codex
 and Claude Code follow the same cooldown. The managed `~/.npmrc` sets npm's own
 `min-release-age=3`, the same 72 hours, so every npm install on the host agrees
-with the release mise chose. A `node` major bump can leave `npm:` tool installs
+with the release mise chose. No package is exempt from either window: no install
+path sets `npm_config_min_release_age=0` (the agent CLIs, omp and its
+dependencies included) or exempts a package by name.
+A `node` major bump can leave `npm:` tool installs
 invalid until `mise install` reruns, so `make update` records the `node` they
 were built on in `${XDG_STATE_HOME:-~/.local/state}/dotfiles/npm-tools-node`;
 when `node` differs from it (or it is missing), whatever moved `node`, it
 rebuilds each `npm:` tool at its current version, keeping the previous install
 until the new one succeeds (an offline or interrupted rebuild leaves the working
-tool in place), and then runs `mise install` once more. The marker is written only after
-both succeed, and a marker that cannot be written fails the update.
+tool in place), and then runs `mise install` once more. npm's window also
+refuses the exact version already installed while it is younger than three
+days, so before it moves anything the rebuild asks npm for `min-release-age` and
+the version's publish time (`npm view <package> time`). A version is old enough
+only from 60 seconds past the end of that window, compared to the fraction of a
+second, so a clock that differs a little from npm's never moves an install npm
+then refuses. A younger version, or one whose age cannot be told, is skipped with
+the reason on a `skip:` line (for a younger one, the time from which it can be
+rebuilt), and its previous install
+stays; an install npm still refuses (a dependency younger than the window) puts
+the previous install back the same way. The marker is written only after
+every tool is rebuilt and the final install succeeds, so a skipped tool is
+rebuilt by a later `make update`, and a marker that cannot be written fails the update.
 `mise self-update --no-plugins` leaves installed mise plugins such as `shdoc`
 alone, because a plugin update is a branch move the cooldown does not cover;
 run `mise plugins update` when you want one.
@@ -965,7 +979,7 @@ merge.
             "context": "test (ubuntu-24.04, client)"
           },
           {
-            "context": "test (macos-14, client)"
+            "context": "test (macos-15, client)"
           },
           {
             "context": "public-bootstrap (ubuntu-24.04, server)"
@@ -974,7 +988,7 @@ merge.
             "context": "public-bootstrap (ubuntu-24.04, client)"
           },
           {
-            "context": "public-bootstrap (macos-14, client)"
+            "context": "public-bootstrap (macos-15, client)"
           }
         ]
       }

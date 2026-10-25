@@ -31,13 +31,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macos-15 runs beside macos-14 until the ruleset's required contexts
-        # move to it; macos-14 is retired on 2026-11-02 (U64).
-        os: [ubuntu-24.04, macos-14, macos-15]
+        os: [ubuntu-24.04, macos-15]
         system: [client, server]
         exclude:
-          - os: macos-14
-            system: server
           - os: macos-15
             system: server
         # Non-required canary for the next Ubuntu image: it shows how the suite
@@ -448,7 +444,7 @@ jobs:
           # The modules run in parallel shards with one combined summary that fails when any shard fails
           # (scripts/ci/unittest-shards.py; UNIT_TEST_JOBS=1 is the serial run). Twice as many shards as CPUs:
           # the tests wait on their subprocesses, and on PR #493 that took the step from 215 s to 170 s on
-          # macos-14 (3 CPUs) and from 111 s to 92 s on ubuntu-24.04 (4 CPUs) (U39).
+          # macos-14 (3 CPUs, the macOS image of that time) and from 111 s to 92 s on ubuntu-24.04 (4 CPUs) (U39).
           cpus="$(getconf _NPROCESSORS_ONLN)"
           UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test
 

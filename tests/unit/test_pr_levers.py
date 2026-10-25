@@ -7,12 +7,14 @@ The tests assert the receipts, the refusals (exit 2, no write call), the failed 
 `<owner>/<repo>` comes from `gh repo view` and that `--delete-branch` never appears. The real `gh` is never called.
 """
 
+import base64
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -800,6 +802,8 @@ class PrThreadsCheckTest(ThreadsFixture):
 
 
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+# A fake Codex access token for PrAuditTest's login (U71, the credential scan).
+LOGIN_CREDENTIAL = "eyJfake.Q2xhdWRlRmFibGVUZXN0VG9rZW4.sig-0123456789abcdefXYZ"
 
 
 def ledger_row(head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z"):
@@ -811,9 +815,12 @@ class PrMergeTest(PrLeverTestCase):
 
     def setUp(self):
         super().setUp()
-        self.records = self.root / "store"
-        self.records.mkdir()
+        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits.
+        self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
+        self.records.mkdir(parents=True)
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\n")
         self.ledger(ledger_row(SHA_A))
+        self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
 
     def ledger(self, *rows):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
@@ -829,6 +836,7 @@ class PrMergeTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": draft},
             },
+            {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             listing,
             {"match": r"^pr view 7 --json headRefOid$", "json": {"headRefOid": again or head}},
             {"match": rf"^pr merge 7 --squash --match-head-commit {head}$", "exit": merge_exit, "stderr": "x"},
@@ -912,13 +920,65 @@ class PrMergeTest(PrLeverTestCase):
             ((), "usage:"),
             (("7",), "usage:"),
             (("x7", "--records", str(self.records)), "not a decimal number"),
-            (("7", "--records", str(self.root / "none")), "no readable regular ledger.tsv"),
             (("7", "--records", str(self.records), "--carry-from", SHA_A[:8]), "full 40-hex sha"),
             (("7", "--records", str(self.records), "--auto"), "usage:"),
         ):
             with self.subTest(args=args):
                 self.assert_refused(self.run_lever("pr-merge.sh", *args), message)
         self.assertEqual(self.gh_calls(), [])
+
+    def test_only_the_checkout_s_own_store_named_by_the_body_is_read(self):
+        # U71, bot P1 4370212009: `--records` took any directory, so a fabricated ledger elsewhere passed.
+        fake = self.root / "fabricated"
+        fake.mkdir()
+        (fake / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.ledger()  # the real store holds no verdict for the head
+        self.github()
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "is not the program's store")
+        other = self.repo / ".orchestration/orchestrate/other-program"
+        other.mkdir()
+        (other / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(other)), "is not the program's store")
+        self.assertEqual(self.writes(), [])
+        # the program comes from the body, and the body must name exactly one
+        self.ledger(ledger_row(SHA_A))
+        for body, message in (
+            ("no marker\n", "exactly one line 'Program-Unit: <program>/U<n>'; it holds: none"),
+            ("Program-Unit: regime-cutover/U71\nProgram-Unit: other-program/U1\n", "exactly one line"),
+            ("Program-Unit: other-program/U71\n", "is not the program's store"),
+            ("Program-Unit: no-store/U71\n", "a symlink or a missing store"),
+        ):
+            with self.subTest(body=body):
+                self.body = body
+                self.github()
+                self.assert_refused(self.merge(), message)
+        self.body = "Program-Unit: regime-cutover/U71\r\n"  # a body edited on github.com carries CRLF
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_a_symlinked_store_or_ledger_and_a_linked_worktree_are_refused(self):
+        real = self.root / "elsewhere"
+        real.mkdir()
+        (real / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        shutil.rmtree(self.records)
+        self.records.symlink_to(real)
+        self.github()
+        self.assert_refused(self.merge(), "a symlink or a missing store")
+        self.records.unlink()
+        self.records.mkdir()
+        (self.records / "ledger.tsv").symlink_to(real / "ledger.tsv")
+        self.assert_refused(self.merge(), "is not a readable regular file of this user")
+        (self.records / "ledger.tsv").unlink()
+        self.ledger(ledger_row(SHA_A))
+        linked = self.root / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked))
+        store = linked / ".orchestration/orchestrate/regime-cutover"
+        store.mkdir(parents=True)
+        (store / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        run = self.run_lever("pr-merge.sh", "7", "--records", str(store), cwd=linked)
+        self.assert_refused(run, "is a linked worktree")
+        self.assertEqual(self.writes(), [])
 
     def test_a_merge_error_reads_the_state_and_never_merges_twice(self):
         self.github(merge_exit=1)
@@ -1031,7 +1091,10 @@ class PrAuditTest(PrLeverTestCase):
         self.seen = self.root / "seen"
         self.seen.mkdir()
         self.login = self.root / "auth.json"
-        self.login.write_text("{}\n")
+        # A login shaped like codex's auth.json; the access token is what the credential scan looks for.
+        self.login.write_text(
+            json.dumps({"OPENAI_API_KEY": None, "tokens": {"access_token": LOGIN_CREDENTIAL, "account_id": "acct"}})
+        )
         self.env |= {
             "FAKE_CODEX_LOG": str(self.seen),
             "FAKE_CODEX_VERDICT": "Findings: none.\n\nVerdict: correct",
@@ -1099,7 +1162,8 @@ class PrAuditTest(PrLeverTestCase):
         self.assertEqual((self.seen / "login").read_text().strip(), str(self.login))
         self.assertEqual(
             (self.seen / "config").read_text(),
-            'model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\n\n[skills]\ninclude_instructions = false\n\n'
+            'model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\nweb_search = "disabled"\n\n[skills]\n'
+            "include_instructions = false\n\n"
             "[skills.bundled]\nenabled = false\n",
         )
         self.assertEqual((self.seen / "cwd").read_text(), "", "the auditor's cwd is empty")
@@ -1228,6 +1292,50 @@ class PrAuditTest(PrLeverTestCase):
         self.env["PR_AUDIT_CODEX_LOGIN"] = str(self.root / "absent.json")
         self.assert_refused(self.audit(unit="U72"), "no readable Codex login")
         self.assert_refused(self.audit(unit="u72"), "--unit must be")
+        # a login the scan cannot read a credential from: no audit runs unscanned
+        empty = self.root / "empty-auth.json"
+        empty.write_text('{"tokens": {}}')
+        self.env["PR_AUDIT_CODEX_LOGIN"] = str(empty)
+        self.assert_refused(self.audit(unit="U72"), "cannot read a credential to scan the output for")
+        self.assertFalse((self.seen / "argv").exists())
+
+    def test_an_echoed_credential_blocks_the_round_and_is_never_stored(self):
+        # U71, bot P1 4370212012: a steered auditor can read the login through the CODEX_HOME link and echo it.
+        raw = LOGIN_CREDENTIAL.encode()
+        forms = {
+            "literal": f"token: {LOGIN_CREDENTIAL}",
+            "partial": f"part {LOGIN_CREDENTIAL[7:33]} part",
+            "reversed": LOGIN_CREDENTIAL[::-1],
+            "hex": raw.hex().upper(),
+            "base64": base64.b64encode(raw).decode(),
+            "base64url-shifted": base64.urlsafe_b64encode(b"ab" + raw).decode(),
+            "base64-wrapped": "\n".join(textwrap.wrap(base64.b64encode(b"x" + raw).decode(), 20)),
+        }
+        self.github()
+        for index, (name, text) in enumerate([*forms.items(), ("in the log only", None)]):
+            with self.subTest(name):
+                unit = f"U{90 + index}"
+                if text is None:
+                    self.env |= {"FAKE_CODEX_VERDICT": "Verdict: correct", "FAKE_CODEX_TAG": LOGIN_CREDENTIAL}
+                    text = LOGIN_CREDENTIAL
+                else:
+                    self.env |= {"FAKE_CODEX_VERDICT": f"{text}\nVerdict: correct", "FAKE_CODEX_TAG": ""}
+                run = self.audit(unit=unit)
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                row = self.rows()[-1]
+                self.assertEqual(row[1], unit)
+                self.assertTrue(row[4].startswith("blocked (credential echoed; output withheld;"), row[4])
+                verdict = (self.records / f"verdicts/{unit}-{self.head[:8]}.md").read_text()
+                log = self.log(1, unit).read_text()
+                self.assertTrue(verdict.endswith("\nVerdict: blocked\n"), verdict)
+                for stored in (verdict, log, (self.records / "ledger.tsv").read_text(), run.stdout + run.stderr):
+                    self.assertNotIn(LOGIN_CREDENTIAL, stored)
+                    self.assertNotIn(text, stored)
+        self.env |= {
+            "FAKE_CODEX_VERDICT": "No finding; the token field is redacted.\nVerdict: correct",
+            "FAKE_CODEX_TAG": "",
+        }
+        self.assertEqual(self.audit(unit="U99").returncode, 0, "a clean output still records its verdict")
 
 
 class DispositionDriftTest(unittest.TestCase):

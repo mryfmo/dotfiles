@@ -4,9 +4,12 @@
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
-#   not stop a glob spelling; a seat running `gh` itself is the residual unit U88 removes). `<pr>` is decimal and `--records` names the program store
-#   (`.orchestration/orchestrate/<program>`, holding `ledger.tsv` with its header
-#   `ts unit pr head_sha verdict verifier evidence`); both are checked before the first `gh` call. The lever reads
+#   not stop a glob spelling; a seat running `gh` itself is the residual unit U88 removes). `<pr>` is decimal and
+#   checked before the first `gh` call. The lever runs in the main checkout (a linked worktree is refused) and reads
+#   only that checkout's store: `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv` (header
+#   `ts unit pr head_sha verdict verifier evidence`), `<program>` taken from the pull request body's one
+#   `Program-Unit: <program>/U<n>` line, no directory of that chain nor the ledger a symlink, each owned by this user;
+#   `--records` must resolve (`pwd -P`) to exactly that store, so a ledger written anywhere else is never read. It reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
 #   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
@@ -26,7 +29,7 @@
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
-# @option --records <dir> The program store holding `ledger.tsv` (required).
+# @option --records <dir> The program store holding `ledger.tsv` (required; must be the checkout's own store, above).
 # @option --carry-from <sha> The audited earlier head (40 hex) whose `correct` row carries to the current head.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts> carried-from=<sha or ->`.
@@ -97,6 +100,8 @@ lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir> [--carry-from <sha>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
+# The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read.
+program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/U[0-9]+$'
 
 # A verdict column that starts with the word `correct` (never `incorrect`): `correct`, `correct (…)`, `correct;…`.
 correct_re='^correct($|[[:space:](;,])'
@@ -176,6 +181,38 @@ diff_against_main() {
         "${base}" "$1" > "$2" || fail "git diff-tree ${base} $1 failed"
 }
 
+# @description Set `ledger` to the one store the merge may read (U71, bot P1 4370212009: a caller-chosen ledger.tsv
+#   could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv` of this main checkout,
+#   `<program>` taken from the pull request body's one `Program-Unit: <program>/U<n>` line. No directory from the
+#   checkout down and not the ledger is a symlink, each is owned by this user, and `--records` must resolve
+#   (`pwd -P`) to exactly that directory; anything else is a refusal.
+# @set ledger The canonical ledger path.
+resolve_store() {
+    local body markers line program path given part
+    body=$(gh_bounded pr view "${pr}" --json body --jq .body) || fail "cannot read the body of pull request ${pr}"
+    markers=''
+    while IFS= read -r line; do
+        line=${line%$'\r'}
+        [[ ${line} == Program-Unit:* ]] && markers+="${line}"$'\n'
+    done <<< "${body}"
+    markers=${markers%$'\n'}
+    [[ -n ${markers} && ${markers} != *$'\n'* && ${markers} =~ ${program_unit_re} ]] ||
+        refuse "the body of pull request ${pr} must hold exactly one line 'Program-Unit: <program>/U<n>'; it holds: ${markers:-none}"
+    program=${BASH_REMATCH[1]}
+    path=${toplevel}
+    for part in .orchestration orchestrate "${program}"; do
+        path=${path}/${part}
+        [[ -d ${path} && ! -L ${path} && -O ${path} ]] ||
+            refuse "${path} is not a directory of this user (a symlink or a missing store); the merge reads only the checkout's own store"
+    done
+    given=$(cd "${records}" 2> /dev/null && pwd -P) || refuse "--records ${records} is no directory"
+    [[ ${given} == "${path}" ]] || # lint-comparisons: allow both sides are pwd -P forms
+        refuse "--records ${records} is not the program's store ${path} (named by the body's Program-Unit line)"
+    ledger=${path}/ledger.tsv
+    [[ -f ${ledger} && ! -L ${ledger} && -O ${ledger} && -r ${ledger} ]] ||
+        refuse "${ledger} is not a readable regular file of this user"
+}
+
 [[ $# -ge 1 ]] || refuse "${usage}"
 pr=$1
 shift
@@ -194,9 +231,18 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n ${records} ]] || refuse "${usage}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-ledger=${records}/ledger.tsv
-[[ -f ${ledger} && ! -L ${ledger} && -r ${ledger} ]] || refuse "--records holds no readable regular ledger.tsv: ${records}"
 [[ -z ${carry} || ${carry} =~ ^[0-9a-f]{40}$ ]] || refuse "--carry-from must be a full 40-hex sha: ${carry}"
+# The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
+# worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
+toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
+[[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'run from the repository checkout that holds the program store'
+toplevel=$(cd "${toplevel}" && pwd -P) || refuse "cannot resolve ${toplevel}"
+git_dir=$(git_top rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
+common_dir=$(git_top rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
+git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
+common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
+[[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
+    refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator keeps its store"
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"
@@ -205,14 +251,13 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 [[ ${base} == main ]] || refuse "pull request ${pr} targets ${base:-nothing}, not main"
 [[ ${draft} == false ]] || refuse "pull request ${pr} is a draft (isDraft=${draft:-unreadable})"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${head}"
+resolve_store
 
 if [[ -z ${carry} ]]; then
     require_correct_row "${head}"
 else
     [[ ${carry} != "${head}" ]] || refuse "--carry-from ${carry} is the head itself; drop --carry-from"
     require_correct_row "${carry}"
-    toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'a carry needs a git checkout of the repository'
-    [[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'a carry needs a git checkout of the repository'
     perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git -C "${toplevel}" fetch -q --no-tags origin \
         "+refs/heads/main:refs/pr-merge/${pr}/main" "+refs/pull/${pr}/head:refs/pr-merge/${pr}/head" ||
         fail "git fetch of main and refs/pull/${pr}/head failed"

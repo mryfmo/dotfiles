@@ -18,13 +18,19 @@
 #   the XDG base-directory variables are unset too), and a `CODEX_HOME` holding only `auth.json`, a symlink to the
 #   login (`PR_AUDIT_CODEX_LOGIN`, default `~/.codex/auth.json`, never copied), and `config.toml` with the model pin,
 #   `model` and `model_reasoning_effort` of `model_profiles.<profile>.codex` in the manifest the self-check read
-#   (`--profile`, default `review`, the profile every program audit has run on), plus
+#   (`--profile`, default `review`, the profile every program audit has run on), plus `web_search = "disabled"`,
 #   `[skills] include_instructions = false` and `[skills.bundled] enabled = false`, so not even codex's bundled
 #   system skills are listed; `--strict-config` makes a key codex does not know a failure, never a silent no-op.
 #   No user-global AGENTS.md, skills, rules, plugins, hooks or MCP servers reach the auditor. The audit is
 #   `codex exec --strict-config --skip-git-repo-check -s read-only -C <empty cwd> -o <verdict> -` bounded by
-#   PR_AUDIT_TIMEOUT seconds, its output going to the round's own log
-#   `<log dir>/<program>-<unit>-<head8>-r<k>.log`. The verdict file
+#   PR_AUDIT_TIMEOUT seconds; read-only runs the auditor's commands without network
+#   (https://developers.openai.com/codex/agent-approvals-security: "By default, the agent runs with network access
+#   turned off"), but it still reads the login through the link (U71, bot P1 4370212012). So codex's output goes to the
+#   scratch directory first, and the credential scan (`credential_scan`, below) reads it against the login: a hit, or
+#   a scan that fails, records the round as `blocked (credential echoed; output withheld; …)`, stores none of the
+#   output, and exits 3; only a clean output reaches the verdict file and the round's own log
+#   `<log dir>/<program>-<unit>-<head8>-r<k>.log`. A login the scan cannot read a credential from is a refusal before
+#   the audit. The verdict file
 #   is `<records>/verdicts/<unit>-<head8>.md`, or `<unit>-<head8>-r<k>.md` when a round of the same head (a re-run
 #   after `blocked`) already wrote that name. Both names are created exclusively (noclobber) before codex starts: a
 #   name already taken is a refusal, so no round's verdict or log is ever overwritten or truncated. The prompt is
@@ -54,7 +60,7 @@
 # @exitcode 0 The round is recorded with `Verdict: correct`.
 # @exitcode 1 A `gh` or `git` read failed, or the ledger row could not be written.
 # @exitcode 2 Refused: usage, the pull request's state, a head the fetch never matched, a verdict file already at
-#   the round's name, or a missing input (rules section, login, model pin).
+#   the round's name, or a missing input (rules section, login, a credential in it to scan for, model pin).
 # @exitcode 3 The round is recorded as `incorrect` or `blocked`.
 # @example
 #   ~/.local/bin/common/pr-audit.sh 480 --unit U71 --records .orchestration/orchestrate/regime-cutover --context "$TMPDIR/ctx-u71.md"
@@ -152,6 +158,78 @@ gh_bounded() {
     bounded "${gh_timeout}" gh "$@"
 }
 
+# The credential scan (U71, bot P1 4370212012): an auditor that a prompt in the changeset steers can read the login
+# through the scratch CODEX_HOME link (read-only mode still reads) and echo it. `credential_scan check <login>` exits 0
+# when the login yields at least one credential to scan for; `credential_scan scan <login> <file>...` exits 0 when no
+# file holds one, 1 on a hit and 2 on any error. The credentials are `OPENAI_API_KEY` and every string under
+# `tokens` of at least 16 characters. A hit is any 24-character window of a credential or of its reverse, its
+# lower-case hex, or its base64 or base64url form at each of the three byte alignments (the stable middle), searched in
+# each file as written and with all whitespace removed (wrapped output). Nothing is printed, whatever happens.
+credential_scan_py='
+import base64, json, re, sys
+
+def leaves(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from leaves(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from leaves(item)
+
+def main():
+    mode, login, *files = sys.argv[1:]
+    with open(login, "rb") as handle:
+        data = json.load(handle)
+    secrets = []
+    if isinstance(data, dict):
+        for key in ("OPENAI_API_KEY", "tokens"):
+            secrets += [s.encode() for s in leaves(data.get(key)) if len(s) >= 16]
+    if not secrets:
+        return 2
+    if mode == "check":
+        return 0
+    if mode != "scan" or not files:
+        return 2
+    width = 24
+    windows, needles = set(), set()
+    for raw in secrets:
+        for form in (raw, raw[::-1]):
+            windows.update(form[i : i + width] for i in range(len(form) - width + 1))
+            if len(form) < width:
+                needles.add(form)
+        needles.add(raw.hex().encode())
+        for k in range(3):
+            for encode in (base64.b64encode, base64.urlsafe_b64encode):
+                encoded = encode(b"\0" * k + raw).rstrip(b"=")
+                middle = encoded[4 if k else 0 : len(encoded) - 4]
+                if len(middle) >= 12:
+                    needles.add(middle)
+    for path in files:
+        with open(path, "rb") as handle:
+            text = handle.read()
+        for view in (text, re.sub(rb"\s+", b"", text)):
+            lowered = view.lower()
+            if any(needle in view or needle in lowered for needle in needles):
+                return 1
+            if any(view[i : i + width] in windows for i in range(len(view) - width + 1)):
+                return 1
+    return 0
+
+try:
+    code = main()
+except Exception:
+    code = 2
+sys.exit(code)
+'
+
+# @description Run the credential scan (above) with its wait bounded; its stdout and stderr are discarded.
+# @arg $@ string `check <login>` or `scan <login> <file>...`.
+credential_scan() {
+    bounded "${gh_timeout}" uv run --no-config --no-project python -I -c "${credential_scan_py}" "$@" > /dev/null 2>&1
+}
+
 # @description Remove the scratch directory and the audit worktree (registered in the checkout) on exit.
 cleanup() {
     if [[ -n ${worktree:-} && -d ${worktree} ]]; then
@@ -202,6 +280,8 @@ if ! [[ ${size} =~ ^[0-9]+$ ]] || ((size == 0 || size > 262144)); then
     refuse "the context must hold 1 to 262144 bytes: ${context}"
 fi
 [[ -f ${login} && -r ${login} ]] || refuse "no readable Codex login at ${login} (run codex login as the operator)"
+credential_scan check "${login}" ||
+    refuse "cannot read a credential to scan the output for from the login ${login}; no audit runs unscanned"
 program=$(cd "${records}" && pwd -P) || refuse "cannot resolve ${records}"
 program=${program##*/}
 pin=$(bounded "${gh_timeout}" uv run --no-config --no-project --with pyyaml python -I -c '
@@ -264,7 +344,7 @@ git -C "${repo}" worktree add -q --detach "${worktree}" "${head}" || {
 }
 mkdir "${scratch}/cwd" "${scratch}/home" "${scratch}/codex-home" || fail 'cannot make the scratch cwd, HOME and CODEX_HOME'
 ln -s "${login}" "${scratch}/codex-home/auth.json" || fail 'cannot link the Codex login'
-printf 'model = "%s"\nmodel_reasoning_effort = "%s"\n\n[skills]\ninclude_instructions = false\n\n[skills.bundled]\nenabled = false\n' \
+printf 'model = "%s"\nmodel_reasoning_effort = "%s"\nweb_search = "disabled"\n\n[skills]\ninclude_instructions = false\n\n[skills.bundled]\nenabled = false\n' \
     "${model}" "${effort}" > "${scratch}/codex-home/config.toml" || fail 'cannot write the model pin'
 (umask 077 && mkdir -p "${log_dir}") || fail "cannot create the log directory ${log_dir}"
 # Exclusive creation: a name another round took is a refusal, never a truncation.
@@ -308,8 +388,28 @@ else
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         HOME=${scratch}/home CODEX_HOME=${scratch}/codex-home bounded "${audit_timeout}" codex exec --strict-config \
             --skip-git-repo-check -s read-only -C "${scratch}/cwd" -o "${scratch}/verdict.md" - < "${prompt}"
-    ) >> "${log}" 2>&1 || codex_status=$?
-    if [[ -s ${scratch}/verdict.md ]]; then
+    ) > "${scratch}/codex.log" 2>&1 || codex_status=$?
+    # Nothing codex wrote reaches the store or the round log before the credential scan passes.
+    scan_files=("${scratch}/codex.log")
+    [[ ! -e ${scratch}/verdict.md ]] || scan_files+=("${scratch}/verdict.md")
+    scan_status=0
+    credential_scan scan "${login}" "${scan_files[@]}" || scan_status=$?
+    if ((scan_status != 0)); then
+        if ((scan_status == 1)); then
+            note='credential echoed; output withheld; '
+        else
+            note="credential scan failed (exit ${scan_status}); output withheld; "
+        fi
+        rm -f "${scratch}/codex.log" "${scratch}/verdict.md"
+        printf 'pr-audit.sh: the output of codex exec (exit %s) was withheld: %s\n' "${codex_status}" "${note%; }" >> "${log}" ||
+            fail "cannot write ${log}"
+        echo "${lever}: ${note%; }; the round is recorded as blocked" >&2
+    elif ! cat "${scratch}/codex.log" >> "${log}"; then
+        fail "cannot write ${log}"
+    fi
+    if ((scan_status != 0)); then
+        :
+    elif [[ -s ${scratch}/verdict.md ]]; then
         cat "${scratch}/verdict.md" >> "${verdict_file}" || fail "cannot write ${verdict_file}"
         tail_line=$(awk 'NF { line = $0 } END { sub(/\r$/, "", line); print line }' "${verdict_file}") ||
             fail "cannot read ${verdict_file}"
@@ -325,6 +425,7 @@ else
         word=blocked
         note+="codex exec exited ${codex_status}; "
     }
+    ((scan_status == 0)) || word=blocked
 fi
 # The verdict file's last line always equals the ledger row's word: a round recorded as `blocked` whose file does
 # not already end so (no prompt, no output, no verdict line, or a verdict followed by a failed exit) gets the reason

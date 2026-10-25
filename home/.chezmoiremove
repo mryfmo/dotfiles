@@ -22,3 +22,6 @@
 .claude/rules/agmsg-orchestration.md
 .claude/rules/crit-review.md
 .claude/rules/pr-integration.md
+.agents/skills/hcom-audit
+.claude/skills/hcom-audit
+.local/bin/common/hcom-reply

@@ -16,7 +16,7 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 1. A TASK arrives as an hcom delivery addressed `@<your name> --thread <team>`, which makes you a member of the team thread. Its first word is the kind, `TASK v1 task_id=<id> ...` (a leading `AGMSG` on that word, the retired agmsg prefix an older sender may still write, is ignored), and the rest names the brief.
 2. Read the whole line and the brief it names. Keep the sender (`from`) and the thread (`team`): the reply goes back to them.
 3. Work outside the brief's SCOPE is refused and reported, not improvised.
-4. A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK, never question the audit seat on the bus. The fix TASK names the file that holds the findings (`brief=` or `findings=`), an absolute path under the program's `verdicts/` in the orchestrator's checkout; read the findings from that file only, never from your clone, where the uncommitted file does not exist.
+4. A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK. The fix TASK names the file that holds the findings (`brief=` or `findings=`), an absolute path under the program's `verdicts/` in the orchestrator's checkout; read the findings from that file only, never from your clone, where the uncommitted file does not exist.
 5. A `status=question` row from another seat is addressed to the orchestrator; never answer it, not even to say you cannot.
 
 ## Work

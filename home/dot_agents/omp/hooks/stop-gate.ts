@@ -83,12 +83,9 @@ export function openItems(tsv: string, seat: string): OpenItem[] {
 		let move = MOVES[name]?.[from === seat ? 0 : 1];
 		if (from === seat && name === "TASK") tasked.set(taskId, to);
 		// Another seat's row opens a debt only on a task this seat sent to that very seat, so a peer's RESULT on its
-		// own unit never holds a worker or audit seat, which share the thread (U33c: every seat loads the gate).
+		// own unit never holds a worker seat, which shares the thread (U33c: every seat loads the gate). Another
+		// seat's VERDICT is text: a worker must not settle the seat's debt on its own unit.
 		if (from !== seat && typeof move === "string" && !sentTo(taskId, from)) move = undefined;
-		// Another seat's VERDICT answers only the still-open `-audit` TASK this seat sent to that very seat
-		// (hcom-audit SKILL). Any other VERDICT is text: a worker must not settle the seat's debt on its own unit.
-		const auditReply = taskId.endsWith("-audit") && sentTo(taskId, from) && latest.get(taskId)?.owes === MOVES.TASK[0];
-		if (from !== seat && name === "VERDICT" && auditReply) move = null;
 		if (move === undefined) continue;
 		latest.set(taskId, move === null ? null : { taskId, owes: move, id: Number(id) });
 	}

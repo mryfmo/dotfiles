@@ -29,7 +29,13 @@ class RulesCutoverTest(unittest.TestCase):
         text = REGIME.read_text()
         self.assertLessEqual(len(text.splitlines()), 15)
         self.assertTrue(text.startswith("## "), text[:20])
-        for token in ("hcom-orchestration", "hcom-worker", "hcom-audit", "AGENTS.md", "--match-head-commit"):
+        for token in (
+            "hcom-orchestration",
+            "hcom-worker",
+            "omp-run.sh --role audit",
+            "AGENTS.md",
+            "--match-head-commit",
+        ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
         # The Routing invariant of the retired rule, kept word for word.

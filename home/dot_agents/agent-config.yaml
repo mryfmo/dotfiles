@@ -307,8 +307,8 @@ claude:
   # The coordinator's levers, installed read-only (regime-cutover U31). The
   # generator renders home/dot_local/bin/common/executable_<name> from
   # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
-  # ~/.local/bin/common/<name>, outside every sandbox write root, like
-  # hcom-reply) and refreshes the pins below; each lever refuses to run (exit 2)
+  # ~/.local/bin/common/<name>, outside every sandbox write root) and
+  # refreshes the pins below; each lever refuses to run (exit 2)
   # when its own sha256 differs from its line here, read from the deployed
   # ~/.agents/agent-config.yaml for the installed copy. regime-env is the
   # helper the levers source for the per-repository derivation (U33): pinned
@@ -319,15 +319,15 @@ claude:
   # ~/.agents/omp/policies, never by a claude.permissions rule.
   levers:
     sha256:
-      hcom-seat: 11b236e740e1667849f8e6c99e787dde3e191047c7325e59ae71d9a04a8796cc
+      hcom-seat: 213f9f5bbe782f51cf74137024c1793533e11fc14223eac45d5fbe98aec4a2f3
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
-      regime-init: 214a381e4c7573324385aedb9d2940511f5880e5248097f751337b1d304de7bd
+      regime-init: f6b9443069d7d9b0a195a8bd1a3b0562e54a73effe3fb2b2f587c68bb4789324
       seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
-      regime-stop: 578db3f205077cff31951ccfd5fd0c0bd873e6a58687a3e665ac54d30f1dd26b
+      regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
       pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
       pr-update-branch.sh: 7892eecf70f1ffacc8045f8b016f7d0efde68ab44fa734ba0ca0f606bdac075f
@@ -374,7 +374,7 @@ claude:
         - ~/.local/state/hcom-regime
         # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
         - ~/.local/state/hcom
-        # The omp seat worktrees, positioned by the orchestrator (hcom-orchestration step 4; U16).
+        # The omp seat worktrees, which `hcom-seat worker` creates and reuses (U16, U33).
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:
         - ~/Library/Caches/mise

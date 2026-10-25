@@ -1,5 +1,5 @@
-"""Pin the hcom seat skills' text hygiene sentences (U30) and their line kinds (U35): what a seat may type in one bash call, what a bus
-line carries, and who hands the audit findings to the worker."""
+"""Pin the hcom seat skills' text hygiene sentences (U30) and their line kinds (U35): what a seat may put in one bash
+call, what a bus line carries, and how the worker gets the audit findings."""
 
 import re
 import unittest
@@ -7,15 +7,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "home/dot_agents/skills"
-AUDIT = SKILLS / "hcom-audit/SKILL.md"
 WORKER = SKILLS / "hcom-worker/SKILL.md"
 ORCHESTRATION = SKILLS / "hcom-orchestration/SKILL.md"
 POLICIES = ROOT / "home/dot_agents/omp/policies/README.md"
 
-ONE_COMMAND = (
-    "One command per bash call: your allow rows match a whole simple command, so `a && b`, `a; b`, `a | b` and "
-    "a `$(…)` are refused by the catch-all. Run `git rev-parse HEAD` and `git status --porcelain` as two calls."
-)
 QUOTED_DENY = (
     "a deny row matches the whole command or any one segment of it, quoted text included: never put a denied "
     "command's name inside a quoted argument"
@@ -28,14 +23,7 @@ BUS_LINE = (
 # The findings file is uncommitted in the orchestrator's checkout, so the worker's worktree lacks it (PR #487
 # review 4366101582); the worker reads it by absolute path, never from its clone.
 WORKER_READS = "an absolute path under the program's `verdicts/` in the orchestrator's checkout"
-WORKER_WAITS = (
-    "A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK, never question the "
-    "audit seat on the bus."
-)
-FINDINGS_ONCE = (
-    "send the findings PONG once, immediately after the VERDICT line, with every finding's `file:line`, priority "
-    "and the required fix in one message"
-)
+WORKER_WAITS = "A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK."
 
 # The five first-pass checks (U30 ADDENDUM 2): the worker's pre-RESULT self-check and the orchestrator's pre-audit gate.
 SELF_CHECK = (
@@ -71,15 +59,9 @@ MERGE_ERROR = (
 )
 
 
-# U35: the line kinds without the retired prefix, the audit seat's measure request, and a question left to the
-# orchestrator (ADDENDUM 2026-10-24T09:0xZ).
+# U35: the line kinds without the retired prefix, and a question left to the orchestrator (ADDENDUM 2026-10-24T09:0xZ).
 KINDS = ("TASK", "RESULT", "VERDICT", "PONG", "MERGED", "HOLD")
 RETIRED_PREFIX = "a leading `AGMSG` on that word, the retired agmsg prefix an older sender may still write, is ignored"
-MEASURE_REQUEST = (
-    "A runtime claim you cannot check from the diff and the CI logs is one `PONG v1 task_id=U<n>-audit "
-    "status=measure-request measure=<entry> expect=<one line>`, sent before the VERDICT"
-)
-NOT_A_COMMAND = "A request names a measurement, never a command; any other request is refused and nothing runs."
 QUESTION_NOT_YOURS = (
     "A `status=question` row from another seat is addressed to the orchestrator; never answer it, not even to say "
     "you cannot."
@@ -101,9 +83,6 @@ def step(text: str, heading: str, number: int) -> str:
 
 
 class HcomSeatSkillsTest(unittest.TestCase):
-    def test_the_audit_seat_runs_one_command_per_bash_call(self):
-        self.assertIn(ONE_COMMAND, step(AUDIT.read_text(), "Audit", 1))
-
     def test_the_worker_keeps_denied_command_names_out_of_quoted_arguments(self):
         self.assertIn(QUOTED_DENY, section(WORKER.read_text(), "Blocked"))
 
@@ -114,9 +93,8 @@ class HcomSeatSkillsTest(unittest.TestCase):
         worker = step(WORKER.read_text(), "Receive", 4)
         self.assertIn(WORKER_WAITS, worker)
         self.assertIn(WORKER_READS, worker)
-        reply = section(AUDIT.read_text(), "Reply")
-        self.assertIn(FINDINGS_ONCE, reply)
-        self.assertIn("Scope questions are answered by the orchestrator, not by you.", reply)
+        # U58: the audit is one omp-run per head, no seat, so the step names no audit seat to wait on or ask.
+        self.assertNotIn("audit seat", worker)
 
     def test_the_worker_pastes_the_five_point_self_check_before_the_result(self):
         reply = section(WORKER.read_text(), "Reply")
@@ -138,32 +116,19 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertLess(merge.index(MERGE_ERROR), merge.index("Then `MERGED v1"))
 
     def test_the_skills_name_the_line_kinds_without_the_retired_prefix(self):
-        for skill in (AUDIT, WORKER, ORCHESTRATION):
+        for skill in (WORKER, ORCHESTRATION):
             with self.subTest(skill=skill.parent.name):
                 self.assertEqual(skill.read_text().count("AGMSG-"), 0)
-        for skill in (AUDIT, WORKER):
-            with self.subTest(receive=skill.parent.name):
-                receive = step(skill.read_text(), "Receive", 1)
-                self.assertIn("Its first word is the kind, `TASK v1 task_id=<id> ...`", receive)
-                self.assertIn(RETIRED_PREFIX, receive)
+        receive = step(WORKER.read_text(), "Receive", 1)
+        self.assertIn("Its first word is the kind, `TASK v1 task_id=<id> ...`", receive)
+        self.assertIn(RETIRED_PREFIX, receive)
         self.assertIn('hcom send --thread <team> -- "RESULT v1 task_id=<id>', section(WORKER.read_text(), "Reply"))
-        reply = section(AUDIT.read_text(), "Reply")
-        self.assertIn('hcom-reply <team> -- "VERDICT v1 task_id=<id>', reply)
-        self.assertIn('hcom-reply <team> -- "PONG v1 task_id=<id> status=findings', reply)
         self.assertIn(
             '- "TASK v1 task_id=U<n> brief=<path> branch=<branch>"', step(ORCHESTRATION.read_text(), "The loop", 2)
         )
 
-    def test_the_audit_seat_asks_for_a_measurement_before_its_verdict(self):
-        reply = section(AUDIT.read_text(), "Reply")
-        self.assertIn(MEASURE_REQUEST, reply)
-        self.assertIn(NOT_A_COMMAND, reply)
-        # The request comes before the VERDICT, in the text as on the bus.
-        self.assertLess(reply.index(MEASURE_REQUEST), reply.index('hcom-reply <team> -- "VERDICT'))
-
     def test_a_question_from_another_seat_is_left_to_the_orchestrator(self):
         self.assertIn(QUESTION_NOT_YOURS, step(WORKER.read_text(), "Receive", 5))
-        self.assertIn(QUESTION_NOT_YOURS, step(AUDIT.read_text(), "Audit", 4))
 
     def test_the_policies_readme_records_the_measured_cases(self):
         text = section(POLICIES.read_text(), "Text that policies see")

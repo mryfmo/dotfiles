@@ -14,8 +14,6 @@ const ROWS = [
 	row(5, "orch", "PING v1 task_id=t1"),
 	row(6, "worker", "RESULT v1 task_id=t1 status=ready_for_review pr=https://example/pull/1 head=abc"),
 	row(7, "worker", "RESULT v1 task_id=t2 status=ready_for_review pr=https://example/pull/2 head=def"),
-	row(8, "orch", "TASK v1 task_id=t2-audit head=def brief=briefs/U14.md", "audit"),
-	row(9, "audit", "VERDICT v1 task_id=t2-audit verdict=correct head=def findings=0"),
 	row(10, "orch", "MERGED v1 task_id=t2 sha=0123456"),
 	row(11, "orch", "TASK v1 task_id=t3 brief=briefs/U11.md", "worker"),
 	row(12, "orch", "PONG v1 status=idle"),
@@ -29,41 +27,39 @@ test("an unanswered TASK and an unjudged RESULT are open; MERGED closes, PING an
 	]);
 });
 
-test("the tasked audit seat's VERDICT closes the `-audit` TASK sent to it; the seat's own HOLD or VERDICT closes its debt", () => {
-	expect(openItems(tsv(ROWS.slice(0, 6)), "orch").map(item => item.taskId)).toEqual(["t1", "t2", "t2-audit"]);
-	expect(openItems(tsv(ROWS.slice(0, 7)), "orch").map(item => item.taskId)).toEqual(["t1", "t2"]);
+test("the seat's own HOLD or VERDICT closes its debt", () => {
+	expect(openItems(tsv(ROWS.slice(0, 5)), "orch").map(item => item.taskId)).toEqual(["t1", "t2"]);
 	const held = [...ROWS, row(13, "orch", "HOLD v1 task_id=t3 note=waiting"), row(14, "orch", "VERDICT v1 task_id=t1 verdict=correct")];
 	expect(openItems(tsv(held), "orch")).toEqual([]);
 	expect(openItems("", "orch")).toEqual([]);
 });
 
-test("another seat's VERDICT settles nothing else: not a worker's on its own unit, not a stranger's on the audit id, not one on an id never tasked", () => {
-	const open = ROWS.slice(0, 6);
+test("another seat's VERDICT settles nothing: not a worker's on its own unit, not one on a TASK sent to it, not one on an id never tasked", () => {
+	const open = ROWS.slice(0, 5);
 	const still = [
 		{ taskId: "t1", owes: "owes a VERDICT, MERGED or HOLD line", id: 6 },
 		{ taskId: "t2", owes: "owes a VERDICT, MERGED or HOLD line", id: 7 },
-		{ taskId: "t2-audit", owes: "awaiting RESULT", id: 8 },
 	];
 	expect(openItems(tsv([...open, row(13, "worker", "VERDICT v1 task_id=t2 verdict=correct head=def")]), "orch")).toEqual(still);
-	expect(openItems(tsv([...open, row(13, "worker", "VERDICT v1 task_id=t2-audit verdict=correct head=def")]), "orch")).toEqual(still);
 	expect(openItems(tsv([...open, row(13, "audit", "VERDICT v1 task_id=t9-audit verdict=correct head=def")]), "orch")).toEqual(still);
+	// U58: the audit is no seat, so a VERDICT from the seat an `-audit` TASK went to no longer closes that TASK.
+	const tasked = [...open, row(13, "orch", "TASK v1 task_id=t2-audit head=def", "audit")];
+	const awaiting = [...still, { taskId: "t2-audit", owes: "awaiting RESULT", id: 13 }];
+	expect(openItems(tsv([...tasked, row(14, "audit", "VERDICT v1 task_id=t2-audit verdict=correct head=def")]), "orch")).toEqual(awaiting);
 });
 
 test("a peer's RESULT on its own unit opens nothing for a seat that did not task it (U33c: every seat loads the gate)", () => {
-	// The worker's view of the shared thread: its own TASK from orch, a peer's RESULT, the peer's audit traffic.
+	// The worker's view of the shared thread: its own TASK from orch, a peer's TASK and RESULT.
 	const thread = [
 		row(3, "orch", "TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
 		row(4, "orch", "TASK v1 task_id=t5 brief=briefs/U5.md", "peer"),
 		row(5, "peer", "RESULT v1 task_id=t5 status=ready_for_review pr=https://example/pull/5 head=aaa"),
-		row(6, "orch", "TASK v1 task_id=t5-audit head=aaa", "audit"),
 	];
 	expect(openItems(tsv(thread), "worker")).toEqual([]);
-	expect(openItems(tsv(thread), "audit")).toEqual([]);
 	// The orchestrator still owes a VERDICT on the RESULT of a TASK it sent, also to a comma list of seats.
 	expect(openItems(tsv(thread), "orch").map(item => [item.taskId, item.owes])).toEqual([
 		["t1", "awaiting RESULT"],
 		["t5", "owes a VERDICT, MERGED or HOLD line"],
-		["t5-audit", "awaiting RESULT"],
 	]);
 	const listed = [row(3, "orch", "TASK v1 task_id=t7", "peer,worker"), row(4, "worker", "RESULT v1 task_id=t7 status=done")];
 	expect(openItems(tsv(listed), "orch")).toEqual([{ taskId: "t7", owes: "owes a VERDICT, MERGED or HOLD line", id: 4 }]);
@@ -74,8 +70,6 @@ test("an older sender's AGMSG- prefix is ignored: one prefixed row per kind move
 		row(3, "orch", "TASK v1 task_id=t1", "worker"),
 		row(4, "worker", "RESULT v1 task_id=t1 status=ready_for_review head=abc"),
 		row(5, "orch", "TASK v1 task_id=t2", "worker"),
-		row(6, "orch", "TASK v1 task_id=t2-audit head=def", "audit"),
-		row(7, "audit", "VERDICT v1 task_id=t2-audit verdict=correct head=def"),
 		row(8, "orch", "TASK v1 task_id=t3", "worker"),
 		row(9, "orch", "MERGED v1 task_id=t3 sha=0123456"),
 		row(10, "orch", "TASK v1 task_id=t4", "worker"),
@@ -99,23 +93,14 @@ test("an older sender's AGMSG- prefix is ignored: one prefixed row per kind move
 	expect(openItems(tsv(plain.map((line, index) => (index % 2 ? prefixed[index] : line))), "orch")).toEqual(expected);
 });
 
-test("a measure-request, its measured or measure-refused answer and a status=question PONG move nothing (U35)", () => {
-	const audit = [
-		row(3, "orch", "TASK v1 task_id=t7-audit head=abc brief=b.md", "audit"),
-		row(4, "audit", "PONG v1 task_id=t7-audit status=measure-request measure=unit-test expect=OK"),
-		row(5, "orch", "PONG v1 task_id=t7-audit status=measured measure=unit-test note=OK"),
-		row(6, "audit", "PONG v1 task_id=t7-audit status=measure-request measure=curl expect=x"),
-		row(7, "orch", "PONG v1 task_id=t7-audit status=measure-refused note=menu"),
-		row(8, "worker", "PONG v1 task_id=t7 status=question note=scope"),
-		row(9, "peer", "AGMSG-PONG v1 task_id=t7-audit status=question note=x"),
+test("a status=question PONG moves nothing, from any seat and with the old prefix (U35)", () => {
+	const thread = [
+		row(3, "orch", "TASK v1 task_id=t7 brief=b.md", "worker"),
+		row(4, "worker", "PONG v1 task_id=t7 status=question note=scope"),
+		row(5, "peer", "AGMSG-PONG v1 task_id=t7 status=question note=x"),
 	];
-	const awaiting = [{ taskId: "t7-audit", owes: "awaiting RESULT", id: 3 }];
-	expect(openItems(tsv(audit), "orch")).toEqual(awaiting);
-	expect(openItems(tsv(audit), "audit")).toEqual([]);
-	expect(openItems(tsv(audit), "worker")).toEqual([]);
-	// The audit seat's VERDICT after the measurement closes the item.
-	const closed = [...audit, row(10, "audit", "VERDICT v1 task_id=t7-audit verdict=correct head=abc")];
-	expect(openItems(tsv(closed), "orch")).toEqual([]);
+	expect(openItems(tsv(thread), "orch")).toEqual([{ taskId: "t7", owes: "awaiting RESULT", id: 3 }]);
+	expect(openItems(tsv(thread), "worker")).toEqual([]);
 });
 
 test("the message lists every item with its row and both ways out", () => {

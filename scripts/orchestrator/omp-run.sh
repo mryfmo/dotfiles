@@ -139,6 +139,8 @@ if [[ ${role} == audit ]]; then
     trap 'rm -rf "${scratch}"' EXIT
     scratch_real=$(realpath "${scratch}") || refuse "cannot resolve the scratch directory ${scratch}"
     run_dir=${scratch_real}/cwd
+    # Every discovery walk stops at TMPDIR; a scratch directory inside the reviewed tree would put the head above it.
+    case "${scratch_real}/" in "${work_tree%/}/"*) refuse "the scratch directory ${scratch_real} is inside the reviewed worktree ${work_tree}" ;; esac
     mkdir "${run_dir}" || refuse "cannot create ${run_dir}"
     # Every provider the registry holds, then each overlay entry it lacks (a model provider, a path-scoped object), so
     # this last overlay replaces the earlier lists without dropping one. bun runs in the scratch directory, never the
@@ -155,7 +157,8 @@ for (const overlay of overlays) {
     if (!Array.isArray(listed)) throw new Error(`disabledProviders in ${overlay} is not a list`);
     for (const entry of listed) if (!disabled.some(id => Bun.deepEquals(id, entry))) disabled.push(entry);
 }
-console.log(JSON.stringify({ disabledProviders: disabled }));'
+// The advisor builds its own prompt from WATCHDOG files no provider gates (`src/advisor`), so it stays off here.
+console.log(JSON.stringify({ disabledProviders: disabled, advisor: { enabled: false } }));'
     discovery_off=${scratch_real}/discovery-off.yml
     (cd "${scratch_real}" && "${bun_bin}" --no-install -e "${providers_js}" "${registry}" "${policy}" "${profile}") > "${discovery_off}" ||
         refuse "cannot list omp's discovery providers from ${registry}"

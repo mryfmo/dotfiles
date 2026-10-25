@@ -393,7 +393,8 @@ class OmpRunTest(unittest.TestCase):
                     "agent-plugins",
                     "some-model-provider",
                     {"pathPrefix": "/work", "providers": ["codex"]},
-                ]
+                ],
+                "advisor": {"enabled": False},
             },
         )
 
@@ -450,6 +451,8 @@ class OmpRunTest(unittest.TestCase):
         bare_omp.mkdir()
         bare_registry = self.omp_package(self.root / "bare-omp-pkg", registry=False)
         (bare_omp / "omp").symlink_to(self.root / "bare-omp-pkg/dist/cli.js")
+        inside = self.work / "tmp-under-head"
+        inside.mkdir()
         cases = {
             "usage": ([], {}, "usage:"),
             "dangling option": ([*good, "--mode"], {}, "usage:"),
@@ -486,6 +489,7 @@ class OmpRunTest(unittest.TestCase):
                 f"cannot list omp's discovery providers from {self.registry}",
             ),
             "unresolvable TMPDIR": (good, {"TMPDIR": "nowhere"}, "cannot resolve TMPDIR nowhere"),
+            "scratch inside the reviewed worktree": (good, {"TMPDIR": str(inside)}, "is inside the reviewed worktree"),
         }
         for name, (args, env, needle) in cases.items():
             with self.subTest(name):

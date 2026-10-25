@@ -1648,34 +1648,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
         
   
@@ -5087,7 +5059,7 @@
 <table>
 <thead>
 <tr>
-<th>Row, by kind (an older sender's <code>AGMSG-</code> prefix is ignored) and sender</th>
+<th>Row, by kind (the exact first word) and sender</th>
 <th>Effect on its <code>task_id</code></th>
 </tr>
 </thead>
@@ -5110,7 +5082,7 @@
 </tr>
 </tbody>
 </table>
-<p>The line kinds are the first word of a bus line: <code>TASK</code>, <code>RESULT</code>, <code>VERDICT</code>, <code>PONG</code>, <code>MERGED</code> and <code>HOLD</code> (plus <code>PING</code>, which moves nothing). A seat that still writes the retired <code>AGMSG-</code> prefix (<code>AGMSG-TASK</code> and so on) is read the same, because the gate strips the prefix before it looks the kind up (U35). There is no audit seat on the bus: every audit is one fresh <code>omp-run.sh --role audit</code> run that the orchestrator starts and reads (the <code>hcom-orchestration</code> skill, step 4), so its verdict reaches the bus only as the orchestrator's own VERDICT line, and another seat's VERDICT closes nothing, on an <code>-audit</code> id or any other (U58).</p>
+<p>The line kinds are the first word of a bus line: <code>TASK</code>, <code>RESULT</code>, <code>VERDICT</code>, <code>PONG</code>, <code>MERGED</code> and <code>HOLD</code> (plus <code>PING</code>, which moves nothing). Any other first word, such as the retired <code>AGMSG-TASK</code>, is not a kind and moves nothing. There is no audit seat on the bus: every audit is one fresh <code>omp-run.sh --role audit</code> run that the orchestrator starts and reads (the <code>hcom-orchestration</code> skill, step 4), so its verdict reaches the bus only as the orchestrator's own VERDICT line, and another seat's VERDICT closes nothing, on an <code>-audit</code> id or any other (U58).</p>
 <p>Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.</p>
 <p>One message lists the open items with their row ids and the ways out: answer them, wait with <code>hcom listen</code>, or send <code>HOLD v1 task_id=&lt;id&gt; note=&lt;why&gt;</code>, the auditable override that the skill names. <code>OMP_STOP_GATE_ALLOW_OPEN=1</code> ends the turn with the warning instead of the block.</p>
 <h3 id="the-seats-environment">The seat's environment<a class="headerlink" href="#the-seats-environment" title="Permanent link">&para;</a></h3>

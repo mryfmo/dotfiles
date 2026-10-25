@@ -1576,34 +1576,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
         
   
@@ -4944,12 +4916,12 @@ consent click and, for Claude, pasting a code.</p>
 </thead>
 <tbody>
 <tr>
-<td>ChatGPT (<code>openai-siwc</code>, the <code>audit</code> and <code>security</code> profiles)</td>
+<td>ChatGPT (<code>openai-siwc</code>, the <code>audit</code> profile)</td>
 <td><code>~/.omp/profiles/&lt;profile&gt;/agent/openai-siwc/registration.json</code> (host id and issued client id, no token) and the profile's <code>agent.db</code> (tokens)</td>
 <td>The callback is a <code>127.0.0.1</code> loopback, the only redirect SIWC allows. <code>OPENAI_SIWC_CALLBACK_PORT=1455</code> pins it, and the laptop's <code>LocalForward 1455 127.0.0.1:1455</code> carries the browser's redirect to the seat host's listener.</td>
 </tr>
 <tr>
-<td>Claude (<code>claude-bridge</code>, the <code>orchestrator</code>, <code>worker</code> and <code>review</code> profiles; the bridge child uses the host login)</td>
+<td>Claude (<code>claude-bridge</code>, the <code>orchestrator</code> and <code>worker</code> profiles; the bridge child uses the host login)</td>
 <td><code>~/.claude/.credentials.json</code> (0600), or <code>CLAUDE_CODE_OAUTH_TOKEN</code></td>
 <td><code>claude auth login</code> with <code>BROWSER=regime-open-url</code>. The callback port is random, so the browser shows a code to paste at the prompt. The fallback is <code>claude setup-token</code> on the laptop, with the token stored in <code>~/.config/claude-code/oauth-token</code> (0600) on the seat host.</td>
 </tr>
@@ -4970,7 +4942,7 @@ which opens allow-listed sign-in hosts only.</p>
   parent itself and records its start, a failed bind and every request there.</li>
 <li><code>seat-login-preflight</code> (<code>scripts/orchestrator/</code>, installed to <code>~/.local/bin/common/</code>, pinned in
   <code>claude.levers.sha256</code>). With <code>--check</code> it backs the "Seat logins" section of <code>make doctor</code> from metadata only. Given
-  a seat profile (orchestrator, worker, audit, review or security), it checks that a seat can use the login:
+  a seat profile (orchestrator, worker or audit), it checks that a seat can use the login:
   an <code>openai-siwc</code> login stored in the profile's <code>agent.db</code>, counted by the extension's <code>src/credentials.ts</code>
   without reading a token, and for Claude the variable, the credentials file or the Keychain item, never a
   token file the shell has not exported. <code>hcom-seat</code> runs it with the seat's role before it creates or
@@ -5057,8 +5029,8 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 </tr>
 <tr>
 <td><code>seat-login-preflight &lt;profile&gt;</code> (readiness and logins)</td>
-<td>Accepts the five seat profiles of <code>omp.roles</code>, <code>security</code> included. A seat starts only on a login it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and a Claude token in this shell's environment when the token file is the only Claude login. Runs a login only with stdin and stdout on a TTY and <code>HCOM_LAUNCHED</code> unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a <code>mktemp -d</code> directory removed on exit. A failed or ineffective login exits 1, so the seat does not start.</td>
-<td>closed: <code>test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing</code>, <code>test_a_failed_or_ineffective_login_keeps_the_seat_from_starting</code>, <code>test_every_seat_profile_is_accepted_and_security_logs_in_with_its_own_profile</code>, <code>test_a_registration_without_a_stored_login_is_not_ready</code>, <code>test_a_token_file_this_shell_has_not_exported_is_refused</code>, <code>test_a_remote_seat_without_a_login_starts_nothing</code> (<code>tests/unit/test_hcom_seat.py</code>).</td>
+<td>Accepts the three seat profiles of <code>omp.roles</code> (orchestrator, worker, audit) and refuses any other name, a deployed overlay or not. A seat starts only on a login it can use: an <code>openai-siwc</code> login counted in <code>agent.db</code> (an issued client is saved before the token exchange, so a record alone proves nothing), and a Claude token in this shell's environment when the token file is the only Claude login. Runs a login only with stdin and stdout on a TTY and <code>HCOM_LAUNCHED</code> unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a <code>mktemp -d</code> directory removed on exit. A failed or ineffective login exits 1, so the seat does not start.</td>
+<td>closed: <code>test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing</code>, <code>test_a_failed_or_ineffective_login_keeps_the_seat_from_starting</code>, <code>test_the_retired_review_and_security_seat_profiles_are_refused_even_with_a_deployed_overlay</code>, <code>test_a_registration_without_a_stored_login_is_not_ready</code>, <code>test_a_token_file_this_shell_has_not_exported_is_refused</code>, <code>test_a_remote_seat_without_a_login_starts_nothing</code> (<code>tests/unit/test_hcom_seat.py</code>).</td>
 </tr>
 <tr>
 <td><code>src/credentials.ts</code> (login count)</td>

@@ -1598,34 +1598,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
         
   
@@ -4981,7 +4953,7 @@
 <li>The merge reaches the default profile only. A seat started with <code>omp --profile &lt;name&gt;</code> reads <code>~/.omp/profiles/&lt;name&gt;/agent/config.yml</code> instead (pi-utils <code>src/dirs.ts:312-315</code>), so a named profile gets the key, and its model route, from the per-role overlay below.</li>
 </ul>
 <h2 id="per-role-overlays">Per-role overlays<a class="headerlink" href="#per-role-overlays" title="Permanent link">&para;</a></h2>
-<p><code>~/.agents/omp/profiles/&lt;role&gt;.yml</code>, one file per key of <code>omp.roles</code> in the manifest (<code>orchestrator: deep</code>, <code>worker: standard</code>, <code>audit: audit</code>, <code>review: review</code>, <code>security: security</code>). Each holds <code>modelRoles.default</code> from the mapped profile's <code>omp.model</code> and <code>skills.customDirectories</code> from <code>omp.skills_directories</code>; the seat launcher passes the role's file as a second <code>--config</code> beside the policy overlay (<code>home/dot_agents/omp/policies/&lt;role&gt;.yml</code>), so a named profile gets its model route and skill roots without a hand edit of <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code>.</p>
+<p><code>~/.agents/omp/profiles/&lt;role&gt;.yml</code>, one file per key of <code>omp.roles</code> in the manifest (<code>orchestrator: deep</code>, <code>worker: standard</code>, <code>audit: audit</code>). Each holds <code>modelRoles.default</code> from the mapped profile's <code>omp.model</code> and <code>skills.customDirectories</code> from <code>omp.skills_directories</code>; the seat launcher passes the role's file as a second <code>--config</code> beside the policy overlay (<code>home/dot_agents/omp/policies/&lt;role&gt;.yml</code>), so a named profile gets its model route and skill roots without a hand edit of <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code>. The <code>review</code> and <code>security</code> roles, which no launcher started, were removed (U72); <code>home/.chezmoiremove</code> deletes their deployed overlays.</p>
 <ul>
 <li><code>scripts/generate-agent-configs.py</code> renders them as <code>home/dot_agents/omp/profiles/&lt;role&gt;.yml.tmpl</code>; <code>make render-check</code> fails when a file is stale, and the generator fails when <code>omp.roles</code> is missing, names an unknown profile, or carries a role name that is not launcher-safe. <code>tests/unit/test_generate_agent_configs.py</code> holds the cases and checks that every policy file has an overlay.</li>
 <li>The committed file is a chezmoi template so that the deployed file carries the absolute home (<code>{{ .chezmoi.homeDir }}/.agents/skills</code>) while the repository stays machine-independent. The absolute form is needed because omp expands <code>~</code> in <code>skills.customDirectories</code> only on the session route (<code>loadSkills</code>, <code>src/extensibility/skills.ts:471-473</code>); <code>omp skill list</code> resolves a non-absolute entry against the inspected directory first (<code>src/cli/skill-list.ts:58-64</code>), and measured, the <code>~</code> form lists nothing there. <code>modelRoles.default</code> is a plain string copied from the layer (<code>src/config/model-settings.ts:109</code>, <code>src/config/settings.ts:1626-1638</code>) and gets no path handling.</li>

@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_hcom-dispatch/">
       
       
-        <link rel="next" href="../executable_herdr-agents/">
+        <link rel="next" href="../executable_omp-run/">
       
       
         
@@ -1563,34 +1563,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -4915,7 +4887,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_hcom-seat">home/dot_local/bin/common/executable_hcom-seat<a class="headerlink" href="#homedot_localbincommonexecutable_hcom-seat" title="Permanent link">&para;</a></h1>
-<p>Plan 025 W5b (U7), the minimal form before X. A seat is one omp process that <code>hcom omp</code> starts in a herdr pane (<code>hcom omp --help</code>: <code>hcom [N] omp [args...]</code>, <code>--tag &lt;name&gt;</code>, <code>--dir &lt;path&gt;</code>, <code>--terminal &lt;preset&gt;</code>; hcom gives the seat HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For <code>&lt;role&gt;</code> the launch line is <code>hcom omp --tag &lt;name&gt; --dir &lt;dir&gt; --terminal herdr --go -- --profile &lt;role&gt; --config ~/.agents/omp/policies/&lt;role&gt;.yml --config ~/.agents/omp/profiles/&lt;role&gt;.yml --append-system-prompt ~/.agents/omp/rules/&lt;role&gt;.md -e &lt;ext&gt;...</code>; hcom drops the <code>--</code> and forwards what follows to omp verbatim (hcom 0.7.30 and 0.7.31, measured 2026-10-23 and 2026-10-24; <code>extract_launch_flags</code>, <code>src/commands/launch.rs:572-581</code> at v0.7.30). <code>--go</code> is hcom's launch gate: inside an AI tool, hcom without it prints <code>== LAUNCH PREVIEW == / Add --go to proceed.</code> and starts nothing (<code>launch.rs:48,388-389</code>, measured on the real host 2026-10-23), and <code>extract_launch_flags</code> consumes it only before the <code>--</code> (<code>launch.rs:650-652</code>). The profile equals the role. A named profile reads its own <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code> (pi-utils <code>src/dirs.ts:312-315</code>, U10), so the manifest's <code>modelRoles.default</code> and <code>skills.customDirectories</code> reach the seat only through the second overlay, rendered per role (U14); the first overlay owns the approval mode (U6). Both are required. The seat's standing rules, rendered per role from the manifest's standing_rules (U75), ride <code>--append-system-prompt</code>: the overlays disable the native provider (U66), so no profile context file loads, and the explicit flag also wins over any project APPEND_SYSTEM.md. The rules file is required and must be non-empty, since omp reads a missing path as literal text. The extensions default to the pi-claude-bridge, which the role's model route needs, plus the openai-siwc when it is present; <code>--ext</code> replaces that list. There is no audit seat: every audit is one fresh <code>omp-run.sh --role audit</code> run (regime-cutover U57, U58). The stop gate's directory <code>~/.agents/omp/hooks</code> is loaded on every launch, whatever <code>--ext</code> says, and the launch line ends with <code>--hcom-team &lt;HCOM_TEAM&gt;</code>: hcom passes HCOM_DIR into the pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the team this launch was given, an explicit one included (regime-cutover U33c; omp refuses the flag when no loaded extension registers it, so a launch without the gate fails instead of running unguarded). Every directory, a default, <code>--ext</code> or the gate's, must resolve to an entry of <code>claude.levers.extensions</code> in the manifest the self-check reads (regime-cutover U31), else the launch is refused. The orchestrator sits in the repository this command runs in; every other role gets the worktree <code>&lt;seats-root&gt;/&lt;name&gt;</code>, which is created detached from <code>origin/main</code> (HEAD in a repository without it) when absent and reused when it is a worktree of this repository (any other directory at that path is refused). HCOM_DIR, HCOM_TEAM and the seats root come from the environment or <code>--seats-root</code> when set, else from the checkout through the sourced regime-env helper (regime-cutover U33: <code>~/.local/state/hcom/&lt;slug&gt;</code>, <code>&lt;slug&gt;</code>, <code>~/.local/state/omp-seats/&lt;slug&gt;</code>), and are exported to the seat. Every input is checked before anything is created or started: an unknown role, a name or team outside <code>^[a-z0-9][a-z0-9_-]{0,63}$</code>, a store regime-env refuses, hcom absent from PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout is exit 2 with the reason. A seat directory that holds <code>.omp</code> is refused too, after the worktree exists and before hcom starts (U66: omp applies the cwd's <code>.omp/config.yml</code> at start, which no setting turns off). <code>--dry-run</code> prints the launch line, and the derived environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (<code>hcom omp --help</code>: 0 ready, 1 launch failed, 2 still launching or blocked on user attention).</p>
+<p>Plan 025 W5b (U7), the minimal form before X. A seat is one omp process that <code>hcom omp</code> starts in a herdr pane (<code>hcom omp --help</code>: <code>hcom [N] omp [args...]</code>, <code>--tag &lt;name&gt;</code>, <code>--dir &lt;path&gt;</code>, <code>--terminal &lt;preset&gt;</code>; hcom gives the seat HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For <code>&lt;role&gt;</code> the launch line is <code>hcom omp --tag &lt;name&gt; --dir &lt;dir&gt; --terminal herdr --go -- --profile &lt;role&gt; --config ~/.agents/omp/policies/&lt;role&gt;.yml --config ~/.agents/omp/profiles/&lt;role&gt;.yml --append-system-prompt ~/.agents/omp/rules/&lt;role&gt;.md -e &lt;ext&gt;...</code>; hcom drops the <code>--</code> and forwards what follows to omp verbatim (hcom 0.7.30 and 0.7.31, measured 2026-10-23 and 2026-10-24; <code>extract_launch_flags</code>, <code>src/commands/launch.rs:572-581</code> at v0.7.30). <code>--go</code> is hcom's launch gate: inside an AI tool, hcom without it prints <code>== LAUNCH PREVIEW == / Add --go to proceed.</code> and starts nothing (<code>launch.rs:48,388-389</code>, measured on the real host 2026-10-23), and <code>extract_launch_flags</code> consumes it only before the <code>--</code> (<code>launch.rs:650-652</code>). The profile equals the role. A named profile reads its own <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code> (pi-utils <code>src/dirs.ts:312-315</code>, U10), so the manifest's <code>modelRoles.default</code> and <code>skills.customDirectories</code> reach the seat only through the second overlay, rendered per role (U14); the first overlay owns the approval mode (U6). Both are required. The seat's standing rules, rendered per role from the manifest's standing_rules (U75), ride <code>--append-system-prompt</code>: the overlays disable the native provider (U66), so no profile context file loads, and the explicit flag also wins over any project APPEND_SYSTEM.md. The rules file is required and must be non-empty, since omp reads a missing path as literal text. The extensions default to the pi-claude-bridge, which the role's model route needs, plus the openai-siwc when it is present; <code>--ext</code> replaces that list. The roles are orchestrator and worker; every audit is one fresh <code>omp-run.sh --role audit</code> run, never a seat (regime-cutover U57, U58). The stop gate's directory <code>~/.agents/omp/hooks</code> is loaded on every launch, whatever <code>--ext</code> says, and the launch line ends with <code>--hcom-team &lt;HCOM_TEAM&gt;</code>: hcom passes HCOM_DIR into the pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the team this launch was given, an explicit one included (regime-cutover U33c; omp refuses the flag when no loaded extension registers it, so a launch without the gate fails instead of running unguarded). Every directory, a default, <code>--ext</code> or the gate's, must resolve to an entry of <code>claude.levers.extensions</code> in the manifest the self-check reads (regime-cutover U31), else the launch is refused. The orchestrator sits in the repository this command runs in; every other role gets the worktree <code>&lt;seats-root&gt;/&lt;name&gt;</code>, which is created detached from <code>origin/main</code> (HEAD in a repository without it) when absent and reused when it is a worktree of this repository (any other directory at that path is refused). HCOM_DIR, HCOM_TEAM and the seats root come from the environment or <code>--seats-root</code> when set, else from the checkout through the sourced regime-env helper (regime-cutover U33: <code>~/.local/state/hcom/&lt;slug&gt;</code>, <code>&lt;slug&gt;</code>, <code>~/.local/state/omp-seats/&lt;slug&gt;</code>), and are exported to the seat. Every input is checked before anything is created or started: an unknown role, a name or team outside <code>^[a-z0-9][a-z0-9_-]{0,63}$</code>, a store regime-env refuses, hcom absent from PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout is exit 2 with the reason. A seat directory that holds <code>.omp</code> is refused too, after the worktree exists and before hcom starts (U66: omp applies the cwd's <code>.omp/config.yml</code> at start, which no setting turns off). <code>--dry-run</code> prints the launch line, and the derived environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (<code>hcom omp --help</code>: 0 ready, 1 launch failed, 2 still launching or blocked on user attention).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_hcom-seat</code></li>
@@ -4954,8 +4926,8 @@
 <span class="c1">#   context file loads, and the explicit flag also wins over any project APPEND_SYSTEM.md. The rules file is required</span>
 <span class="c1">#   and must be non-empty, since omp reads a missing path as literal text. The extensions default to the</span>
 <span class="c1">#   pi-claude-bridge, which the role's model route needs, plus the openai-siwc when it</span>
-<span class="c1">#   is present; `--ext` replaces that list. There is no audit seat: every audit is one</span>
-<span class="c1">#   fresh `omp-run.sh --role audit` run (regime-cutover U57, U58). The stop gate's directory</span>
+<span class="c1">#   is present; `--ext` replaces that list. The roles are orchestrator and worker; every audit is</span>
+<span class="c1">#   one fresh `omp-run.sh --role audit` run, never a seat (regime-cutover U57, U58). The stop gate's directory</span>
 <span class="c1">#   `~/.agents/omp/hooks` is loaded on every launch, whatever `--ext` says, and the</span>
 <span class="c1">#   launch line ends with `--hcom-team &lt;HCOM_TEAM&gt;`: hcom passes HCOM_DIR into the</span>
 <span class="c1">#   pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the</span>

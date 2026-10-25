@@ -1564,34 +1564,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../executable_omp-run/" class="md-nav__link">
         
   
@@ -4957,10 +4929,7 @@ class<span class="w"> </span>QuietParser<span class="o">(</span>argparse.Argumen
 
 
 def<span class="w"> </span>version_key<span class="o">(</span>version:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>tuple<span class="o">[</span>int,<span class="w"> </span>int<span class="w"> </span><span class="p">|</span><span class="w"> </span>str<span class="o">]</span>,<span class="w"> </span>...<span class="o">]</span>:
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>
-<span class="w">        </span><span class="o">(</span><span class="m">0</span>,<span class="w"> </span>int<span class="o">(</span>token<span class="o">))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>token.isdigit<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span><span class="m">1</span>,<span class="w"> </span>token.lower<span class="o">())</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>token<span class="w"> </span><span class="k">in</span><span class="w"> </span>re.split<span class="o">(</span>r<span class="s2">"(\d+)"</span>,<span class="w"> </span>version<span class="o">)</span>
-<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">((</span><span class="m">0</span>,<span class="w"> </span>int<span class="o">(</span>token<span class="o">))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>token.isdigit<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span><span class="m">1</span>,<span class="w"> </span>token.lower<span class="o">())</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>token<span class="w"> </span><span class="k">in</span><span class="w"> </span>re.split<span class="o">(</span>r<span class="s2">"(\d+)"</span>,<span class="w"> </span>version<span class="o">))</span>
 
 
 def<span class="w"> </span>display_path<span class="o">(</span>path:<span class="w"> </span>Path,<span class="w"> </span>home:<span class="w"> </span>Path<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
@@ -4974,14 +4943,7 @@ def<span class="w"> </span>excluded<span class="o">(</span>path:<span class="w">
 <span class="w">    </span><span class="nv">relative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>path.relative_to<span class="o">(</span>home<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>EXCLUDED_DIR_NAMES<span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>relative.parts<span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>True
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="s2">".sqlite"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>path.name.lower<span class="o">()</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>True
-<span class="w">    </span><span class="nv">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>relative.parts
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>len<span class="o">(</span>parts<span class="o">)</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span><span class="m">4</span>
-<span class="w">        </span>and<span class="w"> </span>parts<span class="o">[</span>:3<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="o">(</span><span class="s2">".agents"</span>,<span class="w"> </span><span class="s2">"skills"</span>,<span class="w"> </span><span class="s2">"agmsg"</span><span class="o">)</span>
-<span class="w">        </span>and<span class="w"> </span><span class="o">(</span>parts<span class="o">[</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"db"</span>,<span class="w"> </span><span class="s2">"run"</span>,<span class="w"> </span><span class="s2">"teams"</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>parts<span class="o">[</span><span class="m">3</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">"db-"</span><span class="o">))</span>
-<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">".sqlite"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>path.name.lower<span class="o">()</span>
 
 
 def<span class="w"> </span>scan_files<span class="o">(</span>root:<span class="w"> </span>Path,<span class="w"> </span>home:<span class="w"> </span>Path,<span class="w"> </span>deadline:<span class="w"> </span>float<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>Iterator<span class="o">[</span>tuple<span class="o">[</span>Path,<span class="w"> </span>float<span class="o">]]</span>:
@@ -5008,9 +4970,7 @@ def<span class="w"> </span>scan_files<span class="o">(</span>root:<span class="w
 <span class="w">                    </span>yield<span class="w"> </span>path,<span class="w"> </span>entry.stat<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>.st_mtime
 
 
-def<span class="w"> </span>plugin_cache_updates<span class="o">(</span>
-<span class="w">    </span>home:<span class="w"> </span>Path,<span class="w"> </span>since:<span class="w"> </span>float<span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>deadline:<span class="w"> </span>float
-<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>Update<span class="o">]</span>:
+def<span class="w"> </span>plugin_cache_updates<span class="o">(</span>home:<span class="w"> </span>Path,<span class="w"> </span>since:<span class="w"> </span>float<span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>deadline:<span class="w"> </span>float<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>Update<span class="o">]</span>:
 <span class="w">    </span><span class="nv">cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>home<span class="w"> </span>/<span class="w"> </span><span class="s2">".claude/plugins/cache"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>cache.is_dir<span class="o">()</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[]</span>
@@ -5029,13 +4989,10 @@ def<span class="w"> </span>plugin_cache_updates<span class="o">(</span>
 <span class="w">                    </span>raise<span class="w"> </span>TimeoutError<span class="o">(</span><span class="s2">"plugin cache scan exceeded its bound"</span><span class="o">)</span>
 <span class="w">                </span><span class="k">if</span><span class="w"> </span>version.is_dir<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>:
 <span class="w">                    </span><span class="nv">stat_result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>version.stat<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>
-<span class="w">                    </span>versions.append<span class="o">(</span>
-<span class="w">                        </span><span class="o">(</span>version.name,<span class="w"> </span>stat_result.st_mtime,<span class="w"> </span>Path<span class="o">(</span>version.path<span class="o">))</span>
-<span class="w">                    </span><span class="o">)</span>
+<span class="w">                    </span>versions.append<span class="o">((</span>version.name,<span class="w"> </span>stat_result.st_mtime,<span class="w"> </span>Path<span class="o">(</span>version.path<span class="o">)))</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>since<span class="w"> </span>is<span class="w"> </span>None:
 <span class="w">                </span>updates.extend<span class="o">(</span>
-<span class="w">                    </span><span class="o">(</span>mtime,<span class="w"> </span>f<span class="s2">"claude-plugin:{marketplace.name}/{plugin.name}"</span>,<span class="w"> </span>path<span class="o">)</span>
-<span class="w">                    </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>mtime,<span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>versions
+<span class="w">                    </span><span class="o">(</span>mtime,<span class="w"> </span>f<span class="s2">"claude-plugin:{marketplace.name}/{plugin.name}"</span>,<span class="w"> </span>path<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>mtime,<span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>versions
 <span class="w">                </span><span class="o">)</span>
 <span class="w">                </span><span class="k">continue</span>
 <span class="w">            </span><span class="nv">highest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>versions,<span class="w"> </span><span class="nv">key</span><span class="o">=</span>lambda<span class="w"> </span>item:<span class="w"> </span>version_key<span class="o">(</span>item<span class="o">[</span><span class="m">0</span><span class="o">])</span>,<span class="w"> </span><span class="nv">default</span><span class="o">=</span>None<span class="o">)</span>
@@ -5044,10 +5001,7 @@ def<span class="w"> </span>plugin_cache_updates<span class="o">(</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
 <span class="w">                </span>highest
 <span class="w">                </span>and<span class="w"> </span>highest<span class="o">[</span><span class="m">1</span><span class="o">]</span><span class="w"> </span>&gt;<span class="w"> </span>since
-<span class="w">                </span>and<span class="w"> </span><span class="o">(</span>
-<span class="w">                    </span>baseline<span class="w"> </span>is<span class="w"> </span>None
-<span class="w">                    </span>or<span class="w"> </span>version_key<span class="o">(</span>highest<span class="o">[</span><span class="m">0</span><span class="o">])</span><span class="w"> </span>&gt;<span class="w"> </span>version_key<span class="o">(</span>baseline<span class="o">[</span><span class="m">0</span><span class="o">])</span>
-<span class="w">                </span><span class="o">)</span>
+<span class="w">                </span>and<span class="w"> </span><span class="o">(</span>baseline<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span>version_key<span class="o">(</span>highest<span class="o">[</span><span class="m">0</span><span class="o">])</span><span class="w"> </span>&gt;<span class="w"> </span>version_key<span class="o">(</span>baseline<span class="o">[</span><span class="m">0</span><span class="o">]))</span>
 <span class="w">            </span><span class="o">)</span>:
 <span class="w">                </span>updates.append<span class="o">(</span>
 <span class="w">                    </span><span class="o">(</span>
@@ -5085,10 +5039,7 @@ def<span class="w"> </span>prune_state_files<span class="o">(</span>state_dir:<s
 <span class="w">                </span><span class="k">if</span><span class="w"> </span>index<span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>MAX_STATE_FILES<span class="w"> </span>or<span class="w"> </span>time.monotonic<span class="o">()</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>deadline:
 <span class="w">                    </span><span class="k">return</span>
 <span class="w">                </span>try:
-<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                        </span>entry.is_file<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>
-<span class="w">                        </span>and<span class="w"> </span>entry.stat<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>.st_mtime<span class="w"> </span>&lt;<span class="w"> </span>cutoff
-<span class="w">                    </span><span class="o">)</span>:
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span>entry.is_file<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>entry.stat<span class="o">(</span><span class="nv">follow_symlinks</span><span class="o">=</span>False<span class="o">)</span>.st_mtime<span class="w"> </span>&lt;<span class="w"> </span>cutoff:
 <span class="w">                        </span>os.unlink<span class="o">(</span>entry.path<span class="o">)</span>
 <span class="w">                </span>except<span class="w"> </span>OSError:
 <span class="w">                    </span>pass
@@ -5106,20 +5057,14 @@ def<span class="w"> </span>run_hook<span class="o">(</span>home:<span class="w">
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="nv">session_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">"session_id"</span><span class="o">)</span>
 <span class="w">        </span><span class="nb">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">"source"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span>not<span class="w"> </span>isinstance<span class="o">(</span>session_id,<span class="w"> </span>str<span class="o">)</span>
-<span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>session_id
-<span class="w">            </span>or<span class="w"> </span><span class="o">(</span><span class="nb">source</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>source,<span class="w"> </span>str<span class="o">))</span>
-<span class="w">        </span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>session_id,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>session_id<span class="w"> </span>or<span class="w"> </span><span class="o">(</span><span class="nb">source</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>source,<span class="w"> </span>str<span class="o">))</span>:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 <span class="w">        </span><span class="nv">state_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>home<span class="w"> </span>/<span class="w"> </span><span class="s2">".local/state/agent-staleness"</span>
 <span class="w">        </span>state_dir.mkdir<span class="o">(</span><span class="nv">mode</span><span class="o">=</span>0o700,<span class="w"> </span><span class="nv">parents</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">exist_ok</span><span class="o">=</span>True<span class="o">)</span>
 <span class="w">        </span>state_dir.chmod<span class="o">(</span>0o700<span class="o">)</span>
 <span class="w">        </span>prune_state_files<span class="o">(</span>state_dir,<span class="w"> </span>deadline<span class="o">)</span>
-<span class="w">        </span><span class="nv">state_file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span>state_dir<span class="w"> </span>/<span class="w"> </span>f<span class="s2">"{hashlib.sha256(session_id.encode()).hexdigest()}.epoch"</span>
-<span class="w">        </span><span class="o">)</span>
+<span class="w">        </span><span class="nv">state_file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>state_dir<span class="w"> </span>/<span class="w"> </span>f<span class="s2">"{hashlib.sha256(session_id.encode()).hexdigest()}.epoch"</span>
 <span class="w">        </span><span class="nv">flags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.O_RDWR<span class="w"> </span><span class="p">|</span><span class="w"> </span>os.O_CREAT<span class="w"> </span><span class="p">|</span><span class="w"> </span>getattr<span class="o">(</span>os,<span class="w"> </span><span class="s2">"O_NOFOLLOW"</span>,<span class="w"> </span><span class="m">0</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">descriptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.open<span class="o">(</span>state_file,<span class="w"> </span>flags,<span class="w"> </span>0o600<span class="o">)</span>
 <span class="w">        </span>os.fchmod<span class="o">(</span>descriptor,<span class="w"> </span>0o600<span class="o">)</span>
@@ -5155,11 +5100,7 @@ def<span class="w"> </span>run<span class="o">(</span>argv:<span class="w"> </sp
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>argv:
 <span class="w">        </span><span class="nv">updates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sorted<span class="o">(</span>collect_updates<span class="o">(</span>home,<span class="w"> </span>None,<span class="w"> </span>deadline<span class="o">)</span>,<span class="w"> </span><span class="nv">reverse</span><span class="o">=</span>True<span class="o">)[</span>:10<span class="o">]</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>mtime,<span class="w"> </span>label,<span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>updates:
-<span class="w">            </span><span class="nv">timestamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                </span>datetime.fromtimestamp<span class="o">(</span>mtime,<span class="w"> </span>timezone.utc<span class="o">)</span>
-<span class="w">                </span>.isoformat<span class="o">()</span>
-<span class="w">                </span>.replace<span class="o">(</span><span class="s2">"+00:00"</span>,<span class="w"> </span><span class="s2">"Z"</span><span class="o">)</span>
-<span class="w">            </span><span class="o">)</span>
+<span class="w">            </span><span class="nv">timestamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>datetime.fromtimestamp<span class="o">(</span>mtime,<span class="w"> </span>timezone.utc<span class="o">)</span>.isoformat<span class="o">()</span>.replace<span class="o">(</span><span class="s2">"+00:00"</span>,<span class="w"> </span><span class="s2">"Z"</span><span class="o">)</span>
 <span class="w">            </span>print<span class="o">(</span>f<span class="s2">"{timestamp} {label} {display_path(path, home)}"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
@@ -5192,17 +5133,13 @@ def<span class="w"> </span>stale_lines<span class="o">(</span>home:<span class="
 <span class="w">            </span>latest_by_label<span class="o">[</span>update<span class="o">[</span><span class="m">1</span><span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>update
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">[</span>
 <span class="w">        </span>f<span class="s2">"restart recommended: {label} ({display_path(path, home)})"</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>_mtime,<span class="w"> </span>label,<span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>sorted<span class="o">(</span>latest_by_label.values<span class="o">()</span>,<span class="w"> </span><span class="nv">reverse</span><span class="o">=</span>True<span class="o">)[</span>
-<span class="w">            </span>:MAX_OUTPUT_LINES
-<span class="w">        </span><span class="o">]</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>_mtime,<span class="w"> </span>label,<span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>sorted<span class="o">(</span>latest_by_label.values<span class="o">()</span>,<span class="w"> </span><span class="nv">reverse</span><span class="o">=</span>True<span class="o">)[</span>:MAX_OUTPUT_LINES<span class="o">]</span>
 <span class="w">    </span><span class="o">]</span>
 
 
 def<span class="w"> </span>guarded_main<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None,<span class="w"> </span>*,<span class="w"> </span>home:<span class="w"> </span>Path<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
 <span class="w">    </span><span class="nv">arguments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>list<span class="o">(</span>sys.argv<span class="o">[</span><span class="m">1</span>:<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>argv<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>argv<span class="o">)</span>
-<span class="w">    </span><span class="nv">target_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>Path<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span>str<span class="o">(</span>Path.home<span class="o">())))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>home<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>home
-<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">target_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"HOME"</span>,<span class="w"> </span>str<span class="o">(</span>Path.home<span class="o">())))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>home<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>home
 <span class="w">    </span><span class="nv">previous_handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>signal.getsignal<span class="o">(</span>signal.SIGALRM<span class="o">)</span>
 
 <span class="w">    </span>def<span class="w"> </span>timeout_handler<span class="o">(</span>_signum:<span class="w"> </span>int,<span class="w"> </span>_frame:<span class="w"> </span>object<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>None:

@@ -1495,34 +1495,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../executable_omp-run/" class="md-nav__link">
         
   
@@ -4955,8 +4927,8 @@
 <span class="c1">#   a producer (`uname`, `stat`, `date`, `security`) that fails, are reported as unreadable, never as</span>
 <span class="c1">#   absent, and make the exit status 1.</span>
 <span class="c1">#</span>
-<span class="c1">#   `&lt;profile&gt;` (a seat profile of the manifest's `omp.roles`: orchestrator, worker, audit, review or</span>
-<span class="c1">#   security; `hcom-seat` calls it with the seat's role before it creates or starts anything) does nothing</span>
+<span class="c1">#   `&lt;profile&gt;` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`</span>
+<span class="c1">#   calls it with the seat's role before it creates or starts anything) does nothing</span>
 <span class="c1">#   on a local host. On a remote host (`SSH_CONNECTION` set, or a Linux host without a display, which a</span>
 <span class="c1">#   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) it checks</span>
 <span class="c1">#   that a seat can use the login, which is more than `--check` shows. SIWC needs an active `openai-siwc`</span>
@@ -5049,7 +5021,7 @@ lever_self_check
 <span class="nv">token_file</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.config/claude-code/oauth-token
 <span class="nv">callback_port</span><span class="o">=</span><span class="m">1455</span>
 <span class="c1"># The seat profiles, the values of `omp.roles` in home/dot_agents/agent-config.yaml.</span>
-<span class="nv">seat_profiles</span><span class="o">=(</span>orchestrator<span class="w"> </span>worker<span class="w"> </span>audit<span class="w"> </span>review<span class="w"> </span>security<span class="o">)</span>
+<span class="nv">seat_profiles</span><span class="o">=(</span>orchestrator<span class="w"> </span>worker<span class="w"> </span>audit<span class="o">)</span>
 <span class="c1"># openai-siwc `src/store.ts`: `JSON.parse` of the whole file, so exactly one top-level document (jq reads a stream, so</span>
 <span class="c1"># `-s` gathers every document and the filter requires one), then `isRegistration`, with the issued client id held to</span>
 <span class="c1"># the charset `src/seed.ts` accepts, so nothing else reaches the terminal. \A and \z anchor the whole string.</span>
@@ -5295,7 +5267,7 @@ login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="o">((</span><span class="nv">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"the </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2"> login exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
-<span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: seat-login-preflight --check [&lt;profile&gt;...] | seat-login-preflight &lt;orchestrator|worker|audit|review|security&gt;'</span>
+<span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: seat-login-preflight --check [&lt;profile&gt;...] | seat-login-preflight &lt;orchestrator|worker|audit&gt;'</span>
 <span class="o">((</span><span class="nv">$#</span><span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">usage</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--check<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">shift</span>

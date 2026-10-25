@@ -1487,34 +1487,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
         
   
@@ -5403,7 +5375,7 @@
 <span class="w">    </span>has_command<span class="w"> </span>uv<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"uv tools"</span>
-<span class="w">    </span><span class="c1"># Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set (herdr-agents panes): uv colours tool names there.</span>
+<span class="w">    </span><span class="c1"># Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set: uv colours tool names there.</span>
 <span class="w">    </span><span class="nv">tools</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>tool<span class="w"> </span>list<span class="w"> </span>--color<span class="w"> </span>never<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="c1"># Tool lines read "&lt;name&gt; v&lt;version&gt;"; their entry points follow as "- &lt;command&gt;".</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tools</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'/^[^- ]/ { print $1 }'</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>

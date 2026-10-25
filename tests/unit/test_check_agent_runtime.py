@@ -9,6 +9,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -1015,6 +1016,15 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(1, len(warnings), warnings)
         self.assertTrue(warnings[0].startswith(f"WARN: Codex hook trust: cannot evaluate {script}"), warnings)
+
+    def test_doctor_reports_a_hook_trust_block_that_refuses_without_tomllib(self) -> None:
+        # Failure injection: tomllib cannot be imported, so the block's guarded import refuses (SystemExit).
+        with mock.patch.dict(sys.modules, {"tomllib": None}):
+            warnings = self.module.codex_hook_trust_warnings(self.target_root)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertIn("cannot evaluate", warnings[0])
+        self.assertIn("ERROR: codex config merge:", warnings[0])
 
     def test_check_includes_codex_hook_trust_warnings(self) -> None:
         with (

@@ -7,6 +7,7 @@ import json
 import os
 import runpy
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -689,6 +690,29 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
         self.assertIn("ERROR: codex config merge:", result.stderr)
+
+    def test_every_modify_script_refuses_cleanly_without_tomllib(self) -> None:
+        # Failure injection: run each committed modify script with tomllib unimportable.
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(self.source_dir / "target-home"))
+        env["HOME"] = str(self.source_dir / "target-home")
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
+        blocked = "import runpy, sys; sys.modules['tomllib'] = None; runpy.run_path(sys.argv[1], run_name='__main__')"
+        for script in sorted((ROOT / "home/dot_codex").glob("modify_*config.toml")):
+            with self.subTest(script=script.name):
+                result = subprocess.run(
+                    [sys.executable, "-c", blocked, str(script)],
+                    input="",
+                    text=True,
+                    capture_output=True,
+                    env=env,
+                    check=False,
+                )
+
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("ERROR: codex config merge: reading hook trust needs Python 3.11", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
 
     def test_invalid_merge_output_is_refused(self) -> None:
         home = self.source_dir / "target-home"

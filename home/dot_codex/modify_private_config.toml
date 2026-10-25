@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 RUNTIME_PREFIXES = (
@@ -179,8 +178,9 @@ def retired_and_disabled(name: str | None, chunk: str) -> bool:
     if name not in RETIRED_MCP_TABLES:
         return False
     try:
-        table = tomllib.loads(chunk)
-    except tomllib.TOMLDecodeError:
+        # hook_trust_toml is the generated block's guarded tomllib import below, which refuses without it.
+        table = hook_trust_toml.loads(chunk)
+    except hook_trust_toml.TOMLDecodeError:
         return False
     return table["mcp_servers"][name.removeprefix("mcp_servers.")].get("enabled") is False
 

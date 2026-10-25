@@ -9,6 +9,8 @@ using the generated source state.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import re
@@ -578,13 +580,17 @@ def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = No
     """
     home = home or HOME
     script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    stderr = io.StringIO()
     try:
         block = script.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
         namespace: dict[str, object] = {"sys": sys, "Path": Path}
-        exec(block.split("\n", 1)[1], namespace)
-        results = namespace["declared_hook_trust"](str(home))
-    except Exception as error:  # A broken block must surface, not read as "every hook matches its pin".
-        return [f"WARN: Codex hook trust: cannot evaluate {script}: {error!r}"]
+        # The block's refuse() exits for the modify script; here that exit is a finding, never doctor's own exit.
+        with contextlib.redirect_stderr(stderr):
+            exec(block.split("\n", 1)[1], namespace)
+            results = namespace["declared_hook_trust"](str(home))
+    except (Exception, SystemExit) as error:  # A broken block must surface, not read as "every hook matches its pin".
+        detail = stderr.getvalue().strip() or repr(error)
+        return [f"WARN: Codex hook trust: cannot evaluate {script}: {detail}"]
     return [
         f"WARN: Codex hook trust: {warning}" for _key, _entry, _digest, kind, warning in results if kind == "changed"
     ]

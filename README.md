@@ -537,8 +537,8 @@ sockets only when the optional seccomp filter from
 `npm install -g @anthropic-ai/sandbox-runtime` is installed; `/sandbox` shows
 a Dependencies tab while it is missing. This repository does not install it, so
 on a Linux host without it sandboxed commands can reach every Unix socket,
-the herdr socket included. `sandbox.excludedCommands` holds only `git push *`
-(below). The managed
+the herdr socket included. `sandbox.excludedCommands` holds exactly
+`git push *` and `gh *` (below). The managed
 `permissions.allow` rules, the coordinator's levers with their `env` and
 writable directories, are described in `scripts/orchestrator/README.md`,
 "Pre-authorized levers"; they name the copies chezmoi installs read-only under
@@ -558,15 +558,17 @@ commands, while deny rules and content-scoped ask rules such as
 (`allowUnsandboxedCommands` is `false`): Claude Code ignores the
 `dangerouslyDisableSandbox` retry, so a command that fails in the sandbox is
 not rerun outside it, and an allow rule (a lever's included) only ever
-approves a sandboxed run. The one command that runs outside the sandbox is
-`git push`, through `sandbox.excludedCommands: ["git push *"]`; an excluded
-command goes through the regular permission flow, and the `Bash(git push *)`
-ask rule makes every push prompt, in auto mode too, because ask rules are
-evaluated before allow rules. A push written with a `cd`, `git -C`, a
+approves a sandboxed run. Two commands run outside the sandbox, through
+`sandbox.excludedCommands: ["git push *", "gh *"]`: `git push`, because pushes
+go over SSH and `~/.ssh` is denied inside, and `gh`, because its token file is
+denied inside. An excluded command goes through the regular permission flow,
+and the identical ask rules `Bash(git push *)` and `Bash(gh *)` make every
+push and every `gh` call from Claude prompt, in auto mode too, because ask
+rules are evaluated before allow rules. A call written with a `cd`, `-C`, a
 redirect or a command substitution is not excluded, stays sandboxed and
 fails. `validate-agent-assets.py` refuses `allowUnsandboxedCommands` other
-than `false`, any exclusion other than `git push *`, an exclusion without
-its identical `Bash(...)` ask rule, and any rule naming
+than `false`, an exclusion list other than exactly those two, an exclusion
+without its identical `Bash(...)` ask rule, and any rule naming
 `dangerouslyDisableSandbox`, which Claude Code 2.1.310 reads as a literal
 command ([sandboxing](https://code.claude.com/docs/en/sandboxing#turn-off-the-retry-with-strict-sandbox-mode),
 [permissions](https://code.claude.com/docs/en/permissions)).
@@ -578,30 +580,28 @@ Claude's own file tools and the file commands it recognises in Bash, and do
 not reach arbitrary subprocesses. The sandbox keys guard every sandboxed
 subprocess:
 
-- `sandbox.credentials.files` denies `~/.ssh`, `~/.claude/.credentials.json`,
+- `sandbox.credentials.files` denies `~/.ssh`, the `gh` token file
+  `~/.config/gh/hosts.yml`, `~/.claude/.credentials.json`,
   `~/.config/claude-code/oauth-token`, `~/.codex/auth.json`, the omp login
   stores (`~/.omp/agent/agent.db*` and `~/.omp/profiles/*/agent/agent.db*`)
-  and the chezmoi age key `~/.config/age/key.txt`. It masks
-  `~/.config/gh/hosts.yml`: on Linux a sandboxed command reads a sentinel in
-  place of each `oauth_token`, and the sandbox proxy puts the real token back
-  only on requests to `api.github.com` (`network.tlsTerminate`, rendered on
-  Linux only, lets the proxy do that). On macOS Claude Code applies a file mask
-  as a deny, so the file is unreadable there. The mask sets `maskDuplicates`
-  and `onExtractNoMatch: deny`, so a file the pattern does not match stays
-  unreadable rather than exposed. The validator runs the `extract` pattern
-  over a synthetic hosts file and refuses it unless group 1 is exactly every
-  token value. It also requires `injectHosts` to be exactly
-  `["api.github.com"]` (`GH_MASK_INJECT_HOSTS`), not any allowed domain,
-  refuses a mask on any other file or variable, and refuses a path or variable
+  and the chezmoi age key `~/.config/age/key.txt`. Every entry is a plain
+  deny, on every OS. No credential is masked: Claude Code's `mask` mode makes
+  the sandbox proxy write the real value into any request body sent to its
+  `injectHosts`, so a sandboxed client could post the placeholder to an
+  endpoint that echoes its input (GitHub's `POST /markdown`) and read the real
+  token back. `validate-agent-assets.py` refuses any entry that is not exactly
+  `{path, mode: deny}` (or `{name, mode: deny}`), `network.tlsTerminate`,
+  `allowPlaintextInject`, `awsPairs` and `sigv4`, and a path or variable
   listed twice, because Claude Code keeps the later of two entries.
 - Known limit on macOS: the entries above cover files. Claude Code's own login
   and the `gh` token live in the login Keychain there, and the Claude Code
   2.1.310 sandbox profile always allows the `com.apple.SecurityServer` and
   `com.apple.securityd.xpc` services, with no setting to take them away
   (`allowMachLookup` only adds services). A sandboxed command can therefore
-  ask the Keychain for those items, as `security find-generic-password` or a
-  sandboxed `gh` does. On Linux the Claude login is the denied
-  `~/.claude/.credentials.json` and the `gh` token is the masked hosts file.
+  ask the Keychain for those items, as `security find-generic-password` does,
+  or as `gh` does when a sandboxed script runs it under another name. On
+  Linux the Claude login is the denied
+  `~/.claude/.credentials.json` and the `gh` token is the denied hosts file.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
   environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
   host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
@@ -653,8 +653,10 @@ login stores fails inside the sandbox (on macOS the Keychain-held Claude login
 and `gh` token stay reachable, see the known limit above), and so does one
 that needs a Unix socket on
 macOS, or on Linux only where the seccomp filter is installed (without it,
-sandboxed commands reach every Unix socket). `git push` runs outside the
-sandbox and prompts every time. Network hosts other than the listed domains
+sandboxed commands reach every Unix socket). `git push` and `gh` run outside
+the sandbox and prompt every time; a script that runs `gh` inside the sandbox
+cannot read the token on Linux, and on macOS still reaches the Keychain (the
+known limit above). Network hosts other than the listed domains
 prompt. Claude Code refuses to start when the sandbox cannot.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main

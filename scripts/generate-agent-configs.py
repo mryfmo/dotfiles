@@ -405,16 +405,12 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
 
     `filesystem.denyRead` and `credentials` render on every OS: the Linux sandbox enforces `denyRead` globs and
     credential entries but drops the glob forms of Read/Edit permission rules (regime-cutover U17). Per OS (U68):
-    Mach services and `allowUnixSockets` are macOS-only keys that Claude Code ignores on Linux, and
-    `network.tlsTerminate` renders on Linux only, the one platform where a file `mask` substitutes the real value
-    (macOS applies a file mask as a deny, code.claude.com/docs/en/sandboxing "Mask credential files").
+    Mach services and `allowUnixSockets` are macOS-only keys that Claude Code ignores on Linux.
     """
     sandbox = manifest["claude"]["sandbox"]
     filesystem = sandbox.get("filesystem", {})
     network = copy.deepcopy(sandbox["network"])
-    if os_name == "darwin":
-        network.pop("tlsTerminate", None)
-    else:
+    if os_name != "darwin":
         network.pop("allowMachLookup", None)
         network.pop("allowUnixSockets", None)
     deny_read = [

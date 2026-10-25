@@ -65,7 +65,8 @@
       "Bash(gh api -F*)",
       "Bash(gh api --raw-field=*)",
       "Bash(gh api --field=*)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(gh *)"
     ]
   },
   "sandbox": {{ if eq .chezmoi.os "darwin" }}
@@ -75,7 +76,8 @@
   "autoAllowBashIfSandboxed": true,
   "allowUnsandboxedCommands": false,
   "excludedCommands": [
-    "git push *"
+    "git push *",
+    "gh *"
   ],
   "filesystem": {
     "allowWrite": [
@@ -102,13 +104,7 @@
       },
       {
         "path": "~/.config/gh/hosts.yml",
-        "mode": "mask",
-        "extract": "oauth_token:\\s*(\\S+)",
-        "maskDuplicates": true,
-        "onExtractNoMatch": "deny",
-        "injectHosts": [
-          "api.github.com"
-        ]
+        "mode": "deny"
       },
       {
         "path": "~/.claude/.credentials.json",
@@ -165,7 +161,8 @@
   "autoAllowBashIfSandboxed": true,
   "allowUnsandboxedCommands": false,
   "excludedCommands": [
-    "git push *"
+    "git push *",
+    "gh *"
   ],
   "filesystem": {
     "allowWrite": [
@@ -189,13 +186,7 @@
       },
       {
         "path": "~/.config/gh/hosts.yml",
-        "mode": "mask",
-        "extract": "oauth_token:\\s*(\\S+)",
-        "maskDuplicates": true,
-        "onExtractNoMatch": "deny",
-        "injectHosts": [
-          "api.github.com"
-        ]
+        "mode": "deny"
       },
       {
         "path": "~/.claude/.credentials.json",
@@ -239,8 +230,7 @@
       "codeload.github.com",
       "pypi.org",
       "files.pythonhosted.org"
-    ],
-    "tlsTerminate": {}
+    ]
   }
 }
 {{ end }},

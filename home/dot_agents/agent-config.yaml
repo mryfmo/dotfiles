@@ -306,10 +306,11 @@ claude:
       - Bash(gh api -F*)
       - Bash(gh api --raw-field=*)
       - Bash(gh api --field=*)
-      # The one command that runs outside the sandbox (sandbox.excludedCommands
-      # below) prompts every time, in auto mode too: ask rules are evaluated
+      # The two commands that run outside the sandbox (sandbox.excludedCommands
+      # below) prompt every time, in auto mode too: ask rules are evaluated
       # before allow rules (code.claude.com/docs/en/permissions) (U68).
       - Bash(git push *)
+      - Bash(gh *)
   env:
     GH_TELEMETRY: "false"
     DO_NOT_TRACK: "1"
@@ -374,15 +375,18 @@ claude:
     # (code.claude.com/docs/en/sandboxing, "Turn off the retry with strict
     # sandbox mode"; measured in the installed 2.1.310 code, U68).
     allowUnsandboxedCommands: false
-    # Only `git push`: the git config rewrites GitHub pushes to SSH
-    # (pushInsteadOf) and the sandbox denies ~/.ssh, so a push cannot run
-    # sandboxed. An excluded command goes through the regular permission flow,
-    # and the `Bash(git push *)` ask rule makes each push prompt. A call with a
-    # `cd`, `git -C`, a redirect or a command substitution stays sandboxed
-    # and fails. herdr calls and `hcom-seat` on macOS need the herdr socket and
-    # are not excluded: launch seats from the omp orchestrator or a terminal.
+    # Two exclusions, each behind its identical ask rule above. An excluded
+    # command goes through the regular permission flow, so each one prompts.
+    # `git push`: the git config rewrites GitHub pushes to SSH (pushInsteadOf)
+    # and the sandbox denies ~/.ssh, so a push cannot run sandboxed. `gh`: the
+    # gh hosts file is denied to sandboxed commands, so gh authenticates only
+    # outside the sandbox. A call with a `cd`, `-C`, a redirect or a command
+    # substitution stays sandboxed and fails. herdr calls and `hcom-seat` on
+    # macOS need the herdr socket and are not excluded: launch seats from the
+    # omp orchestrator or a terminal.
     excludedCommands:
       - git push *
+      - gh *
     linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
@@ -425,15 +429,13 @@ claude:
         - /private/tmp/**/.env.*
     # Rendered as sandbox.credentials. A `deny` file entry denies reads inside
     # the sandbox like denyRead; a `deny` envVars entry unsets the variable for
-    # sandboxed commands. The gh hosts file is masked: on Linux sandboxed
-    # commands read a sentinel in place of each oauth_token and the proxy puts
-    # the real token back only on requests to api.github.com, which needs
-    # network.tlsTerminate; on macOS Claude Code applies a file mask as a deny.
-    # `onExtractNoMatch: deny` keeps the file unreadable if the pattern ever
-    # misses (code.claude.com/docs/en/settings-reference,
-    # sandbox.credentials.files). The file-based agent login stores and the
-    # chezmoi age key are denied (U68). Each path appears once: Claude Code
-    # keeps the later of two entries for one path.
+    # sandboxed commands. Every entry is a deny: a `mask` lets the sandbox proxy
+    # put the real value into any request body to its injectHosts, so a
+    # sandboxed client can send the placeholder to an endpoint that echoes it
+    # (GitHub's POST /markdown) and read the real token back (audit round 6,
+    # reproduced on the installed 2.1.310 transformer). The gh hosts file, the
+    # file-based agent login stores and the chezmoi age key are denied (U68).
+    # Each path appears once: Claude Code keeps the later of two entries.
     # Known limit, macOS: these entries cover files only. Claude Code's own
     # login and the gh token live in the login Keychain there, and the Claude
     # Code 2.1.310 Seatbelt profile always allows mach-lookup of
@@ -441,21 +443,16 @@ claude:
     # remove them (allowMachLookup only adds services), so a sandboxed command
     # can ask securityd for those items (`security find-generic-password`).
     # On Linux the Claude login is the denied ~/.claude/.credentials.json.
-    # The ~/.ssh deny means a sandboxed `git push` cannot authenticate: the git
-    # config rewrites GitHub pushes to SSH (pushInsteadOf), so `git push` is the
-    # one excluded command, behind its ask rule. All sandbox denies hold for
-    # sandboxed runs only; that prompt is the gate for the push (D-024-148).
+    # The ~/.ssh and gh hosts denies mean a sandboxed `git push` or `gh` cannot
+    # authenticate, so both are excluded commands behind their ask rules. All
+    # sandbox denies hold for sandboxed runs only; the prompt is the gate for
+    # the excluded commands (D-024-148).
     credentials:
       files:
         - path: ~/.ssh
           mode: deny
         - path: ~/.config/gh/hosts.yml
-          mode: mask
-          extract: "oauth_token:\\s*(\\S+)"
-          maskDuplicates: true
-          onExtractNoMatch: deny
-          injectHosts:
-            - api.github.com
+          mode: deny
         - path: ~/.claude/.credentials.json
           mode: deny
         - path: ~/.config/claude-code/oauth-token
@@ -488,11 +485,6 @@ claude:
       # macOS certificate validation; the generator omits Mach services on Linux.
       allowMachLookup:
         - com.apple.trustd.agent
-      # Terminates TLS at the sandbox proxy so the hosts-file mask can put the
-      # real token back; the proxy points sandboxed tools at a bundle holding
-      # its CA plus the host roots. Rendered on Linux only: macOS denies a
-      # masked file instead, so terminating TLS there would substitute nothing.
-      tlsTerminate: {}
       # No allowUnixSockets: a socket a sandboxed command may reach is a way
       # out of the sandbox (the herdr socket starts host processes), so herdr
       # calls fail inside the macOS sandbox and are not retried (U68). On Linux

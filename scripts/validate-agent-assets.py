@@ -318,9 +318,13 @@ def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None
         )
 
 
-# Credential stores every sandboxed command is denied (U68): SSH keys, the agents' login stores, the age key.
+# Credential stores every sandboxed command is denied (U68): SSH keys, the gh token, the agents' login stores, the
+# age key. Every credential entry is a plain deny: a `mask` lets the sandbox proxy put the real value into any request
+# body to its injectHosts, so a sandboxed client can send the placeholder to an endpoint that echoes it (GitHub's
+# POST /markdown) and read the real token back (audit round 6, on the installed Claude Code 2.1.310 transformer).
 SANDBOX_CREDENTIAL_DENIES = (
     "~/.ssh",
+    "~/.config/gh/hosts.yml",
     "~/.claude/.credentials.json",
     "~/.config/claude-code/oauth-token",
     "~/.codex/auth.json",
@@ -328,66 +332,20 @@ SANDBOX_CREDENTIAL_DENIES = (
     "~/.omp/profiles/*/agent/agent.db*",
     "~/.config/age/key.txt",
 )
-GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
-# The only hosts the sandbox proxy may send the real gh token to (U68): an exact list, like the write roots.
-GH_MASK_INJECT_HOSTS = ("api.github.com",)
-# The gh mask's complete key set: no `decode`, `maskClaims` or other field may change what it substitutes.
-GH_MASK_KEYS = frozenset({"path", "mode", "extract", "maskDuplicates", "onExtractNoMatch", "injectHosts"})
 SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
 # Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
-# `dangerouslyDisableSandbox` retry, and only these exclusions run outside the sandbox, each behind an identical
-# `Bash(<pattern>)` ask rule. Claude Code 2.1.310 parses a `Bash(dangerouslyDisableSandbox:true)` rule as a literal
-# command, so no rule may name the parameter.
-SANDBOX_EXCLUSIONS = ("git push *",)
+# `dangerouslyDisableSandbox` retry, and exactly these exclusions run outside the sandbox, each behind an identical
+# `Bash(<pattern>)` ask rule. `git push` needs ~/.ssh and `gh` needs its hosts file, both denied inside. Claude Code
+# 2.1.310 parses a `Bash(dangerouslyDisableSandbox:true)` rule as a literal command, so no rule may name the parameter.
+SANDBOX_EXCLUSIONS = ("git push *", "gh *")
 RETRY_PARAMETER = "dangerouslyDisableSandbox"
-# A synthetic gh hosts file in the layout `gh auth login` writes (a host block with a per-user entry, two token
-# shapes), never a real token. A hosts-file mask holds only when its `extract` group 1 is exactly each token value.
-GH_HOSTS_SAMPLE_TOKENS = ("gho_SyntheticToken0123456789AB", "github_pat_SYNTH_0123")
-GH_HOSTS_SAMPLE = (
-    "github.com:\n"
-    "    users:\n"
-    "        octocat:\n"
-    f"            oauth_token: {GH_HOSTS_SAMPLE_TOKENS[0]}\n"
-    "    git_protocol: https\n"
-    f"    oauth_token: {GH_HOSTS_SAMPLE_TOKENS[0]}\n"
-    "    user: octocat\n"
-    "ghe.example.com:\n"
-    f"    oauth_token: {GH_HOSTS_SAMPLE_TOKENS[1]}\n"
-    "    user: octocat\n"
-)
 
 
-def mask_extracts_every_token(extract: Any) -> bool:
-    """True when `extract` compiles, and on the sample hosts file its group 1 is exactly every token occurrence (U68).
+def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str) -> None:
+    """Require every credential store denied, each entry exactly `{path|name, mode: deny}`, each named once (U68).
 
-    A capture of whitespace, a prefix of the token or the `oauth_token:` key leaves the secret readable inside the
-    sandbox; so does a pattern that misses one token occurrence or one token shape.
-    """
-    if not isinstance(extract, str) or not extract:
-        return False
-    try:
-        pattern = re.compile(extract)
-    except re.error:
-        return False
-    if pattern.groups < 1:
-        return False
-    captured = []
-    for match in pattern.finditer(GH_HOSTS_SAMPLE):
-        if match.group(1) is not None:
-            captured.append(match.span(1))
-    expected = [
-        (match.start(), match.end())
-        for token in GH_HOSTS_SAMPLE_TOKENS
-        for match in re.finditer(re.escape(token), GH_HOSTS_SAMPLE)
-    ]
-    return sorted(captured) == sorted(expected)
-
-
-def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_name: str) -> None:
-    """Require the credential denies, the gh hosts-file mask and the TLS termination a Linux mask needs (U68).
-
-    Every entry is checked, not the first match: Claude Code 2.1.310 merges credential entries and keeps the later of
-    two entries for one path, so a duplicate path is refused outright, in `files` and in `envVars`.
+    Every entry is checked: Claude Code 2.1.310 merges credential entries and keeps the later of two entries for one
+    path, so a duplicate is refused outright. No mask is accepted, and so no TLS termination either.
     """
     credentials = sandbox.get("credentials", {})
     files = credentials.get("files") if isinstance(credentials, dict) else None
@@ -397,40 +355,12 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
     duplicated = sorted({path for path in paths if paths.count(path) > 1})
     if duplicated:
         fail(f"{label}.credentials.files must name each path once (Claude Code keeps the later entry): {duplicated}")
-    modes = {entry["path"]: entry.get("mode") for entry in files}
-    missing = [path for path in SANDBOX_CREDENTIAL_DENIES if modes.get(path) != "deny"]
+    not_deny = [entry for entry in files if entry.get("mode") != "deny" or set(entry) != {"path", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.files entries must all be exactly path and deny (no mask): {not_deny}")
+    missing = [path for path in SANDBOX_CREDENTIAL_DENIES if path not in paths]  # lint-comparisons: allow settings text
     if missing:
         fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
-    if GH_HOSTS_FILE not in modes:  # lint-comparisons: allow settings text
-        fail(f"{label}.credentials.files must deny or mask {GH_HOSTS_FILE}: {files!r}")
-    # A mask authorises the proxy to send the real credential, so its destinations are an exact list too (U68): only
-    # the gh hosts file may be masked, and only toward GH_MASK_INJECT_HOSTS, compared byte for byte. Every other entry
-    # is a plain deny with no further keys.
-    domains = sandbox.get("network", {}).get("allowedDomains", [])
-    for entry in files:
-        gh = entry["path"] == GH_HOSTS_FILE  # lint-comparisons: allow settings text
-        if entry.get("mode") == "deny" and set(entry) == {"path", "mode"}:
-            continue
-        if entry.get("mode") == "mask" and not gh:
-            fail(f"{label}.credentials.files may mask only {GH_HOSTS_FILE}; deny the others: {entry!r}")
-        if not gh:
-            fail(
-                f"{label}.credentials.files entries other than {GH_HOSTS_FILE} must be exactly path and deny: {entry!r}"
-            )
-        if (
-            entry.get("mode") != "mask"
-            or set(entry) != GH_MASK_KEYS
-            or not mask_extracts_every_token(entry.get("extract"))
-            or entry.get("maskDuplicates") is not True
-            or entry.get("onExtractNoMatch") != "deny"
-            or entry.get("injectHosts") != list(GH_MASK_INJECT_HOSTS)
-            or not set(GH_MASK_INJECT_HOSTS) <= set(domains)
-        ):
-            fail(
-                f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with an extract whose group 1 "
-                f"captures each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts exactly "
-                f"{list(GH_MASK_INJECT_HOSTS)} (also in allowedDomains), and no other key: {entry!r}"
-            )
     env_vars = credentials.get("envVars", [])
     if not isinstance(env_vars, list) or not all(
         isinstance(e, dict) and isinstance(e.get("name"), str) for e in env_vars
@@ -442,17 +372,16 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
         fail(
             f"{label}.credentials.envVars must name each variable once (Claude Code keeps the later entry): {duplicated}"
         )
-    masked_env = [entry for entry in env_vars if entry.get("mode") != "deny" or set(entry) != {"name", "mode"}]
-    if masked_env:
-        fail(f"{label}.credentials.envVars entries must all be deny (no mask sends a variable anywhere): {masked_env}")
+    not_deny = [entry for entry in env_vars if entry.get("mode") != "deny" or set(entry) != {"name", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.envVars entries must all be exactly name and deny (no mask): {not_deny}")
     if not set(SANDBOX_ENV_DENIES) <= set(names):
         fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
-    tls = sandbox.get("network", {}).get("tlsTerminate")
-    masks = any(entry.get("mode") == "mask" for entry in files)
-    if os_name == "darwin" and tls is not None:
-        fail(f"{label}.network.tlsTerminate must not render on macOS, where a file mask is applied as a deny")
-    if os_name != "darwin" and masks and not isinstance(tls, dict):
-        fail(f"{label}.network.tlsTerminate must be set on Linux, where a file mask substitutes through the proxy")
+    for key in ("allowPlaintextInject", "awsPairs", "sigv4"):
+        if key in credentials:
+            fail(f"{label}.credentials.{key} must not be set: no credential is ever injected")
+    if "tlsTerminate" in sandbox.get("network", {}):
+        fail(f"{label}.network.tlsTerminate must not be set: no mask needs it")
 
 
 def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str, os_name: str = "darwin") -> None:
@@ -486,7 +415,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
     if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
         fail(f"{label} must not allow telemetry or metadata domains")
-    validate_claude_sandbox_credentials(sandbox, label, os_name)
+    validate_claude_sandbox_credentials(sandbox, label)
     network = sandbox.get("network", {})
     mach = network.get("allowMachLookup", [])
     if not isinstance(mach, list) or any(
@@ -498,9 +427,10 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     if sandbox.get("allowUnsandboxedCommands") is not False:
         fail(f"{label}.allowUnsandboxedCommands must be false: no command may leave the sandbox by an unprompted retry")
     exclusions = sandbox.get("excludedCommands", [])
-    if not isinstance(exclusions, list) or any(entry not in SANDBOX_EXCLUSIONS for entry in exclusions):
+    exact = isinstance(exclusions, list) and sorted(map(str, exclusions)) == sorted(SANDBOX_EXCLUSIONS)
+    if not exact:
         fail(
-            f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must stay within "
+            f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be exactly "
             f"{list(SANDBOX_EXCLUSIONS)}: {exclusions!r}"
         )
     # Each reachable socket is a way out of the sandbox (the herdr socket starts host processes), and Linux ignores

@@ -942,31 +942,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assert_hook_composition_fails("sessionstart-order source=compactiondb")
 
     def valid_claude_sandbox(self, os_name: str = "darwin") -> dict:
-        files = [{"path": path, "mode": "deny"} for path in self.module.SANDBOX_CREDENTIAL_DENIES]
-        files.append(
-            {
-                "path": "~/.config/gh/hosts.yml",
-                "mode": "mask",
-                "extract": "oauth_token:\\s*(\\S+)",
-                "maskDuplicates": True,
-                "onExtractNoMatch": "deny",
-                "injectHosts": ["api.github.com"],
-            }
-        )
-        network = {"allowedDomains": ["github.com", "api.github.com"]}
-        if os_name != "darwin":
-            network["tlsTerminate"] = {}
         return {
             "enabled": True,
             "failIfUnavailable": True,
             "allowUnsandboxedCommands": False,
             "autoAllowBashIfSandboxed": True,
+            "excludedCommands": list(self.module.SANDBOX_EXCLUSIONS),
             "filesystem": {
                 "allowWrite": list(self.codex_writable_roots),
                 "denyRead": ["~/**/.env", "~/**/.env.*"],
             },
-            "credentials": {"files": files, "envVars": [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}]},
-            "network": network,
+            "credentials": {
+                "files": [{"path": path, "mode": "deny"} for path in self.module.SANDBOX_CREDENTIAL_DENIES],
+                "envVars": [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}],
+            },
+            "network": {"allowedDomains": ["github.com", "api.github.com"]},
         }
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
@@ -1026,6 +1016,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         def without_push_ask(candidate: dict) -> None:
             candidate["claude"]["permissions"]["ask"].remove("Bash(git push *)")
 
+        def without_gh_ask(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].remove("Bash(gh *)")
+
         def with_retry(candidate: dict) -> None:
             candidate["claude"]["sandbox"]["allowUnsandboxedCommands"] = True
 
@@ -1035,32 +1028,23 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         def with_lever_excluded(candidate: dict) -> None:
             candidate["claude"]["sandbox"]["excludedCommands"].append("~/.local/bin/common/hcom-seat *")
 
-        def with_token_to_pypi(candidate: dict) -> None:
-            # Round 4: pypi.org is an allowed domain, so a subset check let the gh token be injected there.
+        def with_gh_hosts_masked(candidate: dict) -> None:
+            # Round 6: a mask lets the proxy write the real token into a body api.github.com echoes back (/markdown).
             for entry in candidate["claude"]["sandbox"]["credentials"]["files"]:
                 if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
-                    entry["injectHosts"] = ["pypi.org"]
+                    entry.update(mode="mask", extract="oauth_token:\\s*(\\S+)", injectHosts=["api.github.com"])
 
-        def with_appended_gh_mask(candidate: dict) -> None:
-            # Round 5: Claude Code keeps the later of two entries for one path, so an appended mask overrides the first.
-            candidate["claude"]["sandbox"]["credentials"]["files"].append(
-                {
-                    "path": "~/.config/gh/hosts.yml",
-                    "mode": "mask",
-                    "extract": "oauth_token:\\s*(\\S+)",
-                    "maskDuplicates": True,
-                    "onExtractNoMatch": "deny",
-                    "injectHosts": ["pypi.org"],
-                }
-            )
+        def with_tls_termination(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["network"]["tlsTerminate"] = {}
 
         for name, mutate, message in (
-            ("unprompted exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
+            ("unprompted git push exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
+            ("unprompted gh exclusion", without_gh_ask, "Bash(<pattern>) for each excluded command"),
             ("unsandboxed retry", with_retry, "allowUnsandboxedCommands must be false"),
             ("literal retry rule", with_dead_rule, "must not name dangerouslyDisableSandbox"),
-            ("allowed lever excluded", with_lever_excluded, "excludedCommands must stay within"),
-            ("gh token injected into pypi.org", with_token_to_pypi, "injectHosts exactly ['api.github.com']"),
-            ("appended gh mask to pypi.org", with_appended_gh_mask, "must name each path once"),
+            ("allowed lever excluded", with_lever_excluded, "excludedCommands must be exactly"),
+            ("gh hosts file masked", with_gh_hosts_masked, "must all be exactly path and deny (no mask)"),
+            ("TLS termination", with_tls_termination, "tlsTerminate must not be set"),
         ):
             with self.subTest(form=name):
                 candidate = copy.deepcopy(manifest)
@@ -1286,7 +1270,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "no credentials": (lambda sandbox: sandbox.pop("credentials"), "credentials.files must contain"),
             "ssh allowed": (
                 lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.ssh", "mode": "allow"}]),
-                "credentials.files must contain",
+                "credentials.files entries must all be exactly path and deny",
             ),
             "other directory only": (
                 lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.gnupg", "mode": "deny"}]),
@@ -1352,65 +1336,37 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "age key readable": (without_file("~/.config/age/key.txt"), "deny entry for each credential store"),
             "codex login readable": (without_file("~/.codex/auth.json"), "deny entry for each credential store"),
             "gh hosts unlisted": (without_file("~/.config/gh/hosts.yml"), "~/.config/gh/hosts.yml"),
-            "gh mask fails open": (hosts(onExtractNoMatch="warn"), "onExtractNoMatch=deny"),
-            "gh mask injects anywhere": (
-                hosts(injectHosts=["evil.example.com"]),
-                "injectHosts exactly ['api.github.com']",
+            # Round 6: no mask of any kind, on any OS: the proxy would write the real token into an echoed body.
+            "gh hosts masked": (
+                hosts(mode="mask", extract="oauth_token:\\s*(\\S+)", injectHosts=["api.github.com"]),
+                "must all be exactly path and deny (no mask)",
             ),
-            # Round 4: an allowed domain is not an allowed destination for the token.
-            "gh mask injects into pypi.org": (
-                lambda sandbox: (
-                    sandbox["network"]["allowedDomains"].append("pypi.org"),
-                    hosts(injectHosts=["pypi.org"])(sandbox),
-                ),
-                "injectHosts exactly ['api.github.com']",
-            ),
-            "gh mask injects into an extra host": (
-                hosts(injectHosts=["api.github.com", "github.com"]),
-                "injectHosts exactly ['api.github.com']",
-            ),
-            "gh mask injects into every allowed domain": (
-                lambda sandbox: [e.pop("injectHosts", None) for e in sandbox["credentials"]["files"]],
-                "injectHosts exactly ['api.github.com']",
-            ),
-            "gh mask allow": (hosts(mode="allow"), "~/.config/gh/hosts.yml"),
+            "gh hosts allowed": (hosts(mode="allow"), "must all be exactly path and deny (no mask)"),
+            "deny with mask fields": (hosts(injectHosts=["api.github.com"]), "must all be exactly path and deny"),
             "another file masked": (
-                lambda sandbox: sandbox["credentials"]["files"].append(
-                    {"path": "~/.netrc", "mode": "mask", "injectHosts": ["api.github.com"]}
-                ),
-                "may mask only ~/.config/gh/hosts.yml",
+                lambda sandbox: sandbox["credentials"]["files"].append({"path": "~/.netrc", "mode": "mask"}),
+                "must all be exactly path and deny (no mask)",
             ),
             "a variable masked": (
                 lambda sandbox: sandbox["credentials"]["envVars"].append({"name": "GH_TOKEN", "mode": "mask"}),
-                "envVars entries must all be deny",
+                "envVars entries must all be exactly name and deny",
             ),
-            # Round 5: every entry is checked and no path or variable may appear twice.
-            "appended gh mask to pypi.org": (
-                lambda sandbox: (
-                    sandbox["network"]["allowedDomains"].append("pypi.org"),
-                    sandbox["credentials"]["files"].append(
-                        {
-                            **next(e for e in sandbox["credentials"]["files"] if e["mode"] == "mask"),
-                            "injectHosts": ["pypi.org"],
-                        }
-                    ),
-                ),
+            "plaintext injection": (
+                lambda sandbox: sandbox["credentials"].update(allowPlaintextInject=True),
+                "allowPlaintextInject must not be set",
+            ),
+            "TLS termination": (
+                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
+                "tlsTerminate must not be set",
+            ),
+            # Round 5: every entry is checked and no path or variable may appear twice (Claude keeps the later).
+            "a path listed twice": (
+                lambda sandbox: sandbox["credentials"]["files"].append({"path": "~/.codex/auth.json", "mode": "deny"}),
                 "must name each path once",
             ),
-            "deny then mask of one store": (
-                lambda sandbox: sandbox["credentials"]["files"].append(
-                    {"path": "~/.codex/auth.json", "mode": "mask", "injectHosts": ["api.github.com"]}
-                ),
-                "must name each path once",
-            ),
-            "gh mask with decode": (hosts(decode="jwt"), "and no other key"),
-            "deny with mask fields": (
-                lambda sandbox: sandbox["credentials"]["files"][0].update(injectHosts=["pypi.org"]),
-                "must be exactly path and deny",
-            ),
-            "token variable denied then masked": (
+            "a variable listed twice": (
                 lambda sandbox: sandbox["credentials"]["envVars"].append(
-                    {"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "mask", "injectHosts": ["api.github.com"]}
+                    {"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}
                 ),
                 "must name each variable once",
             ),
@@ -1422,10 +1378,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 lambda sandbox: sandbox["network"].update(allowUnixSockets=["~/.config/herdr/herdr.sock"]),
                 "allowUnixSockets must not list a socket",
             ),
-            "macOS TLS termination": (
-                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
-                "tlsTerminate must not render on macOS",
-            ),
         }
         for name, (breaks, message) in cases.items():
             with self.subTest(rule=name):
@@ -1435,9 +1387,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
                 self.assertIn(message, stderr.getvalue())
         linux_cases = {
-            "Linux mask without TLS termination": (
-                lambda sandbox: sandbox["network"].pop("tlsTerminate"),
-                "tlsTerminate must be set on Linux",
+            "Linux TLS termination": (
+                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
+                "tlsTerminate must not be set",
             ),
             "Linux socket list": (
                 lambda sandbox: sandbox["network"].update(allowUnixSockets=[]),
@@ -1650,37 +1602,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
         self.assertIn("sandbox_workspace_write.writable_roots entries must be exactly one of", stderr.getvalue())
-
-    def test_the_gh_hosts_mask_must_capture_each_token_value_and_mask_duplicates(self) -> None:
-        """U68 audit: an extract that captures whitespace, a key or part of a token exposes the secret."""
-        weak = {
-            "whitespace": "oauth_token:( )",
-            "the key": "(oauth_token):",
-            "a prefix": "oauth_token:\\s*(\\S{4})",
-            "one token shape": "oauth_token:\\s*(gho_\\S+)",
-            "the line": "(oauth_token:\\s*\\S+)",
-            "no group": "oauth_token:\\s*\\S+",
-            "invalid": "oauth_token:(",
-            "empty": "",
-        }
-        for name, extract in weak.items():
-            with self.subTest(extract=name):
-                self.assertFalse(self.module.mask_extracts_every_token(extract))
-                sandbox = self.valid_claude_sandbox()
-                sandbox["credentials"]["files"][-1]["extract"] = extract
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("group 1 captures each oauth_token value", stderr.getvalue())
-        for change in ({"maskDuplicates": False}, {"maskDuplicates": None}):
-            with self.subTest(change=change):
-                sandbox = self.valid_claude_sandbox()
-                sandbox["credentials"]["files"][-1].update(change)
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("maskDuplicates=true", stderr.getvalue())
-        for extract in ("oauth_token:\\s*(\\S+)", "oauth_token: ([A-Za-z0-9_]+)"):
-            with self.subTest(accepts=extract):
-                self.assertTrue(self.module.mask_extracts_every_token(extract))
 
     def test_codex_command_hooks_accept_the_declared_tables(self) -> None:
         self.module.validate_codex_command_hooks(

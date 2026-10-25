@@ -958,6 +958,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         return {
             "enabled": True,
             "failIfUnavailable": True,
+            "allowUnsandboxedCommands": False,
             "autoAllowBashIfSandboxed": True,
             "filesystem": {
                 "allowWrite": list(self.codex_writable_roots),
@@ -1019,15 +1020,36 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_claude_settings(candidate)
                 self.assertRegex(stderr.getvalue(), message)
 
-        candidate = copy.deepcopy(manifest)
-        candidate["claude"]["permissions"]["ask"].remove("Bash(dangerouslyDisableSandbox:true)")
-        self.write_text_file(
-            "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(candidate)
-        )
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_claude_settings(candidate)
-        self.assertIn("permissions.ask must contain Bash(dangerouslyDisableSandbox:true)", stderr.getvalue())
+        # U68 round 2: Claude Code 2.1.310 reads `Bash(dangerouslyDisableSandbox:true)` as a literal command and keeps
+        # an allow on the retry, so the boundary is strict mode plus a prompted exclusion, never that rule.
+        def without_push_ask(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].remove("Bash(git push *)")
+
+        def with_retry(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["allowUnsandboxedCommands"] = True
+
+        def with_dead_rule(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].append("Bash(dangerouslyDisableSandbox:true)")
+
+        def with_lever_excluded(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["excludedCommands"].append("~/.local/bin/common/hcom-seat *")
+
+        for name, mutate, message in (
+            ("unprompted exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
+            ("unsandboxed retry", with_retry, "allowUnsandboxedCommands must be false"),
+            ("literal retry rule", with_dead_rule, "must not name dangerouslyDisableSandbox"),
+            ("allowed lever excluded", with_lever_excluded, "excludedCommands must stay within"),
+        ):
+            with self.subTest(form=name):
+                candidate = copy.deepcopy(manifest)
+                mutate(candidate)
+                self.write_text_file(
+                    "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(candidate)
+                )
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_claude_settings(candidate)
+                self.assertIn(message, stderr.getvalue())
 
         template = generator.render_claude_settings(manifest)
         widened = template.replace(
@@ -1468,6 +1490,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "/home/someone",
             "/home/someone/.local/state/mise/trusted-configs",
             str(Path.home() / ".local/share/uv"),
+            # Round 2: `..` resolved after the home token expands (`~/../<user>` is a home again) and above it.
+            f"~/../{Path.home().name}/.local/share/uv",
+            "~/../someone/.local/bin",
+            "$HOME/../someone/.local/state/mise",
+            "{{ .chezmoi.homeDir }}/../someone/.local/share/mise",
+            "~/..",
+            "~/../..",
+            "~/../../Users/someone/.local/bin",
+            "/Users/someone/../someone/.local/share/uv",
+            "/home/someone/../someone/.local/bin",
+            "/home/someone/../../Users/other/.local/share/mise",
         ]
         for root in reaching:
             with self.subTest(list="claude allowWrite", root=root):

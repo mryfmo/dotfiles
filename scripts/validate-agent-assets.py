@@ -291,6 +291,9 @@ SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
 # one of them, lies under one, or contains one (`/`, `~`, `~/.local`), compared after normalisation.
 SANDBOX_WRITE_FORBIDDEN = ("~/.local/bin", "~/.local/share/uv", "~/.local/share/mise", "~/.local/state/mise")
 HOME_ANCHORS = ("{{ .chezmoi.homeDir }}", "${HOME}", "$HOME", "~")
+# A home token expands to this stand-in, itself a `/home/<name>` path, so `..` resolves against a real home depth:
+# `~/../<user>/...` lands in another home, which is mapped back to `/HOME` like any other.
+SYNTHETIC_HOME = "/home/home-anchor"
 # A home itself and the directories above every home contain the forbidden paths of some user.
 HOME_PARENTS = frozenset(PurePosixPath(path) for path in ("/", "/HOME", "/Users", "/home", "/var"))
 
@@ -298,15 +301,16 @@ HOME_PARENTS = frozenset(PurePosixPath(path) for path in ("/", "/HOME", "/Users"
 def canonical_write_root(path: str) -> PurePosixPath:
     """Return `path` absolute and normalised, with any home directory spelled `/HOME` (U68).
 
-    `~`, `$HOME`, `${HOME}` and `{{ .chezmoi.homeDir }}` become `/HOME`, so does a literal `/Users/<name>`,
-    `/home/<name>`, `/root` or `/var/root` and this host's own home; `..`, `.`, repeated and trailing slashes are
-    folded by `posixpath.normpath`.
+    `~`, `$HOME`, `${HOME}` and `{{ .chezmoi.homeDir }}` first expand to an absolute home (`SYNTHETIC_HOME`), then
+    `..`, `.`, repeated and trailing slashes are folded lexically on that absolute path by `posixpath.normpath`, and
+    only then is a home directory (`/Users/<name>`, `/home/<name>`, `/root`, `/var/root`, this host's own home)
+    spelled `/HOME`. Folding before mapping keeps `~/../<user>/.local/bin` from escaping the comparison.
     """
     text = path.strip()
     for anchor in HOME_ANCHORS:
         # The anchors are template and shell tokens, not paths, so they are matched as text.
         if text == anchor or text.startswith(anchor + "/"):  # lint-comparisons: allow template token text
-            text = "/HOME" + text[len(anchor) :]
+            text = SYNTHETIC_HOME + text[len(anchor) :]
             break
     canonical = PurePosixPath(posixpath.normpath(re.sub(r"^/+", "/", text)))
     home = PurePosixPath(posixpath.normpath(str(Path.home())))
@@ -341,9 +345,8 @@ def validate_write_roots(roots: Any, label: str) -> None:
     reaching = []
     for root in roots:
         canonical = canonical_write_root(root)
-        if canonical in HOME_PARENTS:  # lint-comparisons: allow PurePosixPath membership, already normalised
-            reaching.append(root)
-        elif any(canonical.is_relative_to(gone) or gone.is_relative_to(canonical) for gone in forbidden):
+        parent = canonical in HOME_PARENTS  # lint-comparisons: allow PurePosixPath membership, already normalised
+        if parent or any(canonical.is_relative_to(gone) or gone.is_relative_to(canonical) for gone in forbidden):
             reaching.append(root)
     if reaching:
         fail(
@@ -364,7 +367,12 @@ SANDBOX_CREDENTIAL_DENIES = (
 )
 GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
 SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
-RETRY_ASK_RULE = "Bash(dangerouslyDisableSandbox:true)"
+# Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
+# `dangerouslyDisableSandbox` retry, and only these exclusions run outside the sandbox, each behind an identical
+# `Bash(<pattern>)` ask rule. Claude Code 2.1.310 parses a `Bash(dangerouslyDisableSandbox:true)` rule as a literal
+# command, so no rule may name the parameter.
+SANDBOX_EXCLUSIONS = ("git push *",)
+RETRY_PARAMETER = "dangerouslyDisableSandbox"
 # A synthetic gh hosts file in the layout `gh auth login` writes (a host block with a per-user entry, two token
 # shapes), never a real token. A hosts-file mask holds only when its `extract` group 1 is exactly each token value.
 GH_HOSTS_SAMPLE_TOKENS = ("gho_SyntheticToken0123456789AB", "github_pat_SYNTH_0123")
@@ -500,9 +508,14 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label} Mach services must stay within the macOS trustd allowlist")
     if network.get("allowAllUnixSockets") is True:
         fail(f"{label}.network.allowAllUnixSockets must not be true")
+    if sandbox.get("allowUnsandboxedCommands") is not False:
+        fail(f"{label}.allowUnsandboxedCommands must be false: no command may leave the sandbox by an unprompted retry")
     exclusions = sandbox.get("excludedCommands", [])
-    if not isinstance(exclusions, list) or exclusions:
-        fail(f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be []: {exclusions!r}")
+    if not isinstance(exclusions, list) or any(entry not in SANDBOX_EXCLUSIONS for entry in exclusions):
+        fail(
+            f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must stay within "
+            f"{list(SANDBOX_EXCLUSIONS)}: {exclusions!r}"
+        )
     # Each reachable socket is a way out of the sandbox (the herdr socket starts host processes), and Linux ignores
     # the list (U68): no socket is listed.
     if "allowUnixSockets" in network and (os_name != "darwin" or network["allowUnixSockets"] != []):
@@ -671,9 +684,23 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
         f"{settings_path} {os_name} sandbox",
         os_name,
     )
-    ask = (settings.get("permissions") or {}).get("ask") or []
-    if settings["sandbox"].get("allowUnsandboxedCommands") is not False and RETRY_ASK_RULE not in ask:
-        fail(f"{settings_path} {os_name} permissions.ask must contain {RETRY_ASK_RULE} while unsandboxed retries exist")
+    permissions = settings.get("permissions") or {}
+    ask = permissions.get("ask") or []
+    unprompted = [entry for entry in settings["sandbox"].get("excludedCommands", []) if f"Bash({entry})" not in ask]
+    if unprompted:
+        fail(
+            f"{settings_path} {os_name} permissions.ask must hold Bash(<pattern>) for each excluded command: {unprompted}"
+        )
+    named = [
+        rule
+        for kind in ("allow", "ask", "deny")
+        for rule in permissions.get(kind) or []
+        if isinstance(rule, str) and RETRY_PARAMETER in rule
+    ]
+    if named:
+        fail(
+            f"{settings_path} {os_name} permissions must not name {RETRY_PARAMETER}, a literal command to Claude Code: {named}"
+        )
     # additionalDirectories grant sandboxed commands write access like allowWrite (code.claude.com/docs/en/sandboxing).
     validate_write_roots(
         (settings.get("permissions") or {}).get("additionalDirectories", []),

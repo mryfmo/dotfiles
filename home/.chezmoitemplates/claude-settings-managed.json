@@ -65,7 +65,7 @@
       "Bash(gh api -F*)",
       "Bash(gh api --raw-field=*)",
       "Bash(gh api --field=*)",
-      "Bash(dangerouslyDisableSandbox:true)"
+      "Bash(git push *)"
     ]
   },
   "sandbox": {{ if eq .chezmoi.os "darwin" }}
@@ -73,8 +73,10 @@
   "enabled": true,
   "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
-  "allowUnsandboxedCommands": true,
-  "excludedCommands": [],
+  "allowUnsandboxedCommands": false,
+  "excludedCommands": [
+    "git push *"
+  ],
   "filesystem": {
     "allowWrite": [
       "~/.cache/uv",
@@ -161,8 +163,10 @@
   "enabled": true,
   "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
-  "allowUnsandboxedCommands": true,
-  "excludedCommands": [],
+  "allowUnsandboxedCommands": false,
+  "excludedCommands": [
+    "git push *"
+  ],
   "filesystem": {
     "allowWrite": [
       "~/.cache/uv",

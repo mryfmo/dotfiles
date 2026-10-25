@@ -517,7 +517,7 @@ trusted-configs); `/`, `~` and `~/.local` are refused for that reason.
 Sandboxed `uv run` and `mise exec` work without them; in a
 checkout mise has not seen yet, mise prints `mise WARN tracking config:
 failed to ln -sf …` and carries on. `uv tool install`, `uv python install`
-and `mise trust` fail inside the sandbox and go through the retry prompt.
+and `mise trust` fail inside the sandbox; run them in a terminal.
 
 Network access from sandboxed commands is limited to the GitHub hosts
 (including `release-assets.githubusercontent.com`, where GitHub release
@@ -526,13 +526,15 @@ prompt, or in auto mode are refused unless the classifier approves the
 command's own host list. No Unix socket is allowed: a reachable socket is a way
 out of the sandbox (the herdr socket starts host processes, the Docker socket
 is root), so `herdr` and `hcom-seat` (which starts the seat through herdr)
-fail inside the sandbox on macOS and run as an unsandboxed retry.
+fail inside the sandbox on macOS, with no retry: launch seats from the omp
+orchestrator seat or a terminal.
 On Linux and WSL2 Claude Code ignores `allowUnixSockets` and blocks Unix
 sockets only when the optional seccomp filter from
 `npm install -g @anthropic-ai/sandbox-runtime` is installed; `/sandbox` shows
 a Dependencies tab while it is missing. This repository does not install it, so
 on a Linux host without it sandboxed commands can reach every Unix socket,
-the herdr socket included. `sandbox.excludedCommands` is empty. The managed
+the herdr socket included. `sandbox.excludedCommands` holds only `git push *`
+(below). The managed
 `permissions.allow` rules, the coordinator's levers with their `env` and
 writable directories, are described in `scripts/orchestrator/README.md`,
 "Pre-authorized levers"; they name the copies chezmoi installs read-only under
@@ -548,11 +550,22 @@ turns the auto-approved sandbox into an escape (see the upstream
 exits at startup instead of running commands unsandboxed.
 `autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed
 commands, while deny rules and content-scoped ask rules such as
-`Bash(git push:*)` still apply. A command that fails under the sandbox can
-be retried unsandboxed (`allowUnsandboxedCommands` is `true`), and every such
-retry prompts: `permissions.ask` carries `Bash(dangerouslyDisableSandbox:true)`,
-which prompts in auto mode too and outranks a matching allow rule, the lever
-rules included ([sandboxing](https://code.claude.com/docs/en/sandboxing#the-unsandboxed-retry-escape-hatch)).
+`Bash(git push *)` still apply. Strict sandbox mode is on
+(`allowUnsandboxedCommands` is `false`): Claude Code ignores the
+`dangerouslyDisableSandbox` retry, so a command that fails in the sandbox is
+not rerun outside it, and an allow rule (a lever's included) only ever
+approves a sandboxed run. The one command that runs outside the sandbox is
+`git push`, through `sandbox.excludedCommands: ["git push *"]`; an excluded
+command goes through the regular permission flow, and the `Bash(git push *)`
+ask rule makes every push prompt, in auto mode too, because ask rules are
+evaluated before allow rules. A push written with a `cd`, `git -C`, a
+redirect or a command substitution is not excluded, stays sandboxed and
+fails. `validate-agent-assets.py` refuses `allowUnsandboxedCommands` other
+than `false`, any exclusion other than `git push *`, an exclusion without
+its identical `Bash(...)` ask rule, and any rule naming
+`dangerouslyDisableSandbox`, which Claude Code 2.1.310 reads as a literal
+command ([sandboxing](https://code.claude.com/docs/en/sandboxing#turn-off-the-retry-with-strict-sandbox-mode),
+[permissions](https://code.claude.com/docs/en/permissions)).
 
 Secret files are guarded at two layers. The `Read(...)` and `Edit(...)` rules
 in `permissions.deny` (`Read(.env)`, `Read(.env.*)`, `Edit(.env*)`,
@@ -587,8 +600,8 @@ subprocess:
 
 Sandboxed `ssh` and `scp` cannot read `~/.ssh` (its keys or its config). The
 git config rewrites GitHub pushes to SSH (`pushInsteadOf`), so a `git push`
-from a Claude session fails inside the sandbox and runs as an unsandboxed
-retry behind the prompt; `chezmoi apply` and `make update` run outside the
+from a Claude session cannot run sandboxed; it is the excluded command above
+and prompts each time; `chezmoi apply` and `make update` run outside the
 sandbox. On Linux `claude doctor` still names `Read(.env.*)` and `Edit(.env*)`
 under "Glob patterns in sandbox permission rules are not fully supported on
 Linux": the Linux sandbox drops those globs when it builds its own lists
@@ -619,13 +632,13 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite`. A command that needs a push, a uv tool or Python install, a
-`mise trust`, or the agents' login stores fails inside the sandbox, and so
-does one that needs a Unix socket on macOS, or on Linux only where the
-seccomp filter is installed (without it, sandboxed commands reach every Unix
-socket). Each such command's unsandboxed retry always prompts. Network hosts
-other than the listed domains prompt. Claude Code refuses to start when the
-sandbox cannot.
+`allowWrite`, and a command that fails there is not retried outside it. A
+uv tool or Python install, a `mise trust`, or a read of the agents' login
+stores fails inside the sandbox, and so does one that needs a Unix socket on
+macOS, or on Linux only where the seccomp filter is installed (without it,
+sandboxed commands reach every Unix socket). `git push` runs outside the
+sandbox and prompts every time. Network hosts other than the listed domains
+prompt. Claude Code refuses to start when the sandbox cannot.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

@@ -225,9 +225,10 @@ claude:
     # chezmoi installs under ~/.local/bin/common (claude.levers below), which a
     # sandboxed session cannot write and which checks its own sha256 at start
     # (U31), never the rewritable checkout path; so the rules render on Linux
-    # and WSL2 too. An unsandboxed retry of a lever still prompts: the
-    # `Bash(dangerouslyDisableSandbox:true)` ask rule outranks these allow rules
-    # (U68). Not `Bash(hcom *)` (hcom launches agents), no interpreter prefix;
+    # and WSL2 too. No lever leaves the sandbox: `allowUnsandboxedCommands` is
+    # false and no lever is in `sandbox.excludedCommands`, so an allow rule only
+    # ever approves a sandboxed run (U68). Not `Bash(hcom *)` (hcom launches
+    # agents), no interpreter prefix;
     # validate-agent-assets.py refuses anything else, a checkout path included.
     # No rule authorises chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
@@ -305,9 +306,10 @@ claude:
       - Bash(gh api -F*)
       - Bash(gh api --raw-field=*)
       - Bash(gh api --field=*)
-      # Every unsandboxed retry prompts, in auto mode too, ahead of any allow
-      # rule (code.claude.com/docs/en/sandboxing, "An ask rule for the parameter").
-      - Bash(dangerouslyDisableSandbox:true)
+      # The one command that runs outside the sandbox (sandbox.excludedCommands
+      # below) prompts every time, in auto mode too: ask rules are evaluated
+      # before allow rules (code.claude.com/docs/en/permissions) (U68).
+      - Bash(git push *)
   env:
     GH_TELEMETRY: "false"
     DO_NOT_TRACK: "1"
@@ -367,12 +369,20 @@ claude:
     # Seatbelt (code.claude.com/docs/en/settings-reference, failIfUnavailable).
     failIfUnavailable: true
     autoAllowBashIfSandboxed: true
-    # The unsandboxed retry stays available (a push or a herdr call has no
-    # sandboxed route), but every retry prompts: `Bash(dangerouslyDisableSandbox:true)`
-    # in claude.permissions.ask "takes precedence over a matching allow rule"
-    # and prompts in auto mode too (code.claude.com/docs/en/sandboxing).
-    allowUnsandboxedCommands: true
-    excludedCommands: []
+    # Strict sandbox mode: Claude Code ignores the `dangerouslyDisableSandbox`
+    # retry, so a command runs sandboxed unless it matches excludedCommands
+    # (code.claude.com/docs/en/sandboxing, "Turn off the retry with strict
+    # sandbox mode"; measured in the installed 2.1.310 code, U68).
+    allowUnsandboxedCommands: false
+    # Only `git push`: the git config rewrites GitHub pushes to SSH
+    # (pushInsteadOf) and the sandbox denies ~/.ssh, so a push cannot run
+    # sandboxed. An excluded command goes through the regular permission flow,
+    # and the `Bash(git push *)` ask rule makes each push prompt. A call with a
+    # `cd`, `git -C`, a redirect or a command substitution stays sandboxed
+    # and fails. herdr calls and `hcom-seat` on macOS need the herdr socket and
+    # are not excluded: launch seats from the omp orchestrator or a terminal.
+    excludedCommands:
+      - git push *
     linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
@@ -421,10 +431,9 @@ claude:
     # settings-reference, sandbox.credentials.files). Every agent login store
     # and the chezmoi age key are denied (U68).
     # The ~/.ssh deny means a sandboxed `git push` cannot authenticate: the git
-    # config rewrites GitHub pushes to SSH (pushInsteadOf), so a push from a
-    # Claude session runs as an unsandboxed retry, behind the ask rule above.
-    # All sandbox denies hold for sandboxed runs only; the retry prompt is the
-    # gate for everything else (D-024-148).
+    # config rewrites GitHub pushes to SSH (pushInsteadOf), so `git push` is the
+    # one excluded command, behind its ask rule. All sandbox denies hold for
+    # sandboxed runs only; that prompt is the gate for the push (D-024-148).
     credentials:
       files:
         - path: ~/.ssh
@@ -475,7 +484,7 @@ claude:
       tlsTerminate: {}
       # No allowUnixSockets: a socket a sandboxed command may reach is a way
       # out of the sandbox (the herdr socket starts host processes), so herdr
-      # calls run as an unsandboxed retry behind the ask rule (U68). On Linux
+      # calls fail inside the macOS sandbox and are not retried (U68). On Linux
       # Claude Code ignores that list, and Unix sockets are blocked only when the
       # optional seccomp filter is installed (README "Claude Code sandbox").
       # The allow-all Unix socket switch is deliberately not set: with a

@@ -790,3 +790,28 @@ claude() {
             'CLAUDE_CONVERGED=" pstack@cursor-plugins "; converge_claude_plugins', installs, enabled
         )
         self.assertEqual([], calls)
+
+    def test_a_failed_marketplace_setup_never_skips_the_pin_check(self):
+        # Failure injection: no marketplace is registered and `marketplace add` fails. Under the script's own
+        # set -e, each wrapper still reaches the convergence, disables its off-pin plugin, and the run fails.
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+        for step, plugin_id in (
+            ("update_claude_superpowers", "superpowers@claude-plugins-official"),
+            ("update_claude_crit", "crit@crit"),
+            ("update_claude_ponytail", "ponytail@ponytail"),
+            ("update_claude_understand_anything", "understand-anything@understand-anything"),
+        ):
+            with self.subTest(step=step):
+                installs = {plugin_id: [{"scope": "user", "version": "999.0.0"}]}
+                gate = (
+                    "ensure_crit_cli() { return 1; }; "
+                    f'{step}; printf "reached failures=%s\\n" "${{CLAUDE_PIN_FAILURES}}"; fail_on_claude_pin_failures'
+                )
+                result, calls, state = self.converge_listed(
+                    gate, installs, {plugin_id: True}, markets=[], ADD_FAILS="1"
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("reached failures=", result.stdout)
+                self.assertIn(f"plugin disable {plugin_id} --scope user @neutral", calls)
+                self.assertIs(False, state["user"][plugin_id])
+                self.assertIn(f"{pins[plugin_id]['pin']}", result.stderr)

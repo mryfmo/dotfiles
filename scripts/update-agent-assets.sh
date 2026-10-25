@@ -547,6 +547,16 @@ CLAUDE_CONVERGED=" "
 CLAUDE_PIN_FAILURES=0
 
 #
+# @description Count a failed Claude Code plugin setup step and keep going, so the run still reaches the
+#   convergence of every pinned plugin and fail_on_claude_pin_failures still fails it at the end.
+# @arg $1 string What failed.
+#
+function record_claude_failure() {
+    printf 'ERROR: %s failed; continuing so every pinned plugin is still checked, and the run will fail.\n' "$1" >&2
+    CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
+}
+
+#
 # @description Converge one Claude Code plugin once per run; any failure of converge_claude_plugin is counted.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 0 When the plugin is at its pin or proven disabled; nonzero otherwise, counted in CLAUDE_PIN_FAILURES.
@@ -663,12 +673,13 @@ function update_claude_superpowers() {
     fi
 
     section "Claude Code plugins"
-    ensure_claude_superpowers_marketplace
+    ensure_claude_superpowers_marketplace || record_claude_failure "the superpowers marketplace registration"
     claude_outside_projects plugin marketplace update claude-plugins-official || true
     converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
     local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" || return 1
-    manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
+    plugin_version="$(claude_user_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")"
+    manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}" ||
+        record_claude_failure "recording update_claude_superpowers in the installed asset manifest"
 }
 
 #
@@ -681,15 +692,15 @@ function update_claude_crit() {
     fi
 
     section "Claude Code Crit plugin"
-    if ! ensure_crit_cli; then
-        return 0
-    fi
-    ensure_claude_crit_marketplace
+    # The Crit CLI is optional for the plugin; its failure never skips the pin check below.
+    ensure_crit_cli || printf 'WARN: the Crit CLI is not installed; the Claude Code Crit plugin is still checked against its pin.\n' >&2
+    ensure_claude_crit_marketplace || record_claude_failure "the crit marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
     local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_CRIT_PLUGIN}")" || return 1
-    manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}"
+    plugin_version="$(claude_user_plugin_version "${CLAUDE_CRIT_PLUGIN}")"
+    manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" ||
+        record_claude_failure "recording update_claude_crit in the installed asset manifest"
 }
 
 #
@@ -702,13 +713,14 @@ function update_claude_ponytail() {
     fi
 
     section "Claude Code Ponytail plugin"
-    ensure_claude_ponytail_marketplace
+    ensure_claude_ponytail_marketplace || record_claude_failure "the ponytail marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
     local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" || return 1
-    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}"
+    plugin_version="$(claude_user_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")"
+    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" ||
+        record_claude_failure "recording update_claude_ponytail in the installed asset manifest"
 }
 
 #
@@ -721,12 +733,13 @@ function update_claude_understand_anything() {
     fi
 
     section "Claude Code Understand-Anything plugin"
-    ensure_claude_understand_anything_marketplace
+    ensure_claude_understand_anything_marketplace || record_claude_failure "the understand-anything marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
     local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" || return 1
-    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
+    plugin_version="$(claude_user_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")"
+    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" ||
+        record_claude_failure "recording update_claude_understand_anything in the installed asset manifest"
 }
 
 #
@@ -1492,13 +1505,15 @@ function main() {
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
-    ensure_mise_npm_agent_cli codex "npm:@openai/codex"
-    ensure_gh_extensions
+    # Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned
+    # plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail
     update_claude_understand_anything
     converge_claude_plugins
+    ensure_mise_npm_agent_cli codex "npm:@openai/codex"
+    ensure_gh_extensions
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail

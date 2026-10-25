@@ -279,7 +279,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "[features]",
                     "plugins = true",
                     "hooks = true",
-                    "plugin_hooks = true",
                     "",
                     "[shell_environment_policy]",
                     'inherit = "core"',
@@ -1762,6 +1761,36 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_codex_config_with_a_key_codex_removed_is_refused(self) -> None:
+        """`personality` and `features.plugin_hooks` set nothing on Codex 0.163.0; the validator refuses them (U79)."""
+        self.write_codex_config(f"network_access = false\nwritable_roots = {json.dumps(self.codex_writable_roots)}")
+        config = self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml"
+        valid = config.read_text()
+        manifest = {
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
+            "interactive_profile": "standard",
+            "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
+                "sandbox_workspace_write": {"network_access": False, "writable_roots": self.codex_writable_roots},
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+            },
+        }
+        for removed in (
+            valid.replace(
+                'sandbox_mode = "workspace-write"', 'sandbox_mode = "workspace-write"\npersonality = "pragmatic"'
+            ),
+            valid.replace("hooks = true", "hooks = true\nplugin_hooks = true"),
+        ):
+            with self.subTest(removed=removed):
+                config.write_text(removed)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_codex_config(manifest)
+                self.assertIn("which Codex 0.163.0 removed", stderr.getvalue())
 
     def test_every_write_root_list_accepts_only_the_exact_allowlisted_spellings(self) -> None:
         """U68 audits 1-3: an exact allowlist on Claude allowWrite, Codex roots and additionalDirectories."""

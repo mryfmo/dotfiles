@@ -639,28 +639,38 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertNotIn("async", staleness[0])
         self.assertEqual(self.merge(managed, once), once)
 
-    def test_retired_update_keys_leave_settings_the_old_template_installed(self) -> None:
-        """The former managed defaults go; every other installed key stays; a second run is a no-op (U18, D-024-150)."""
+    def test_retired_managed_keys_leave_settings_the_old_template_installed(self) -> None:
+        """The former managed defaults go; every other installed key stays; a second run is a no-op (U18, U79)."""
         render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
         with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
             managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
         self.assertNotIn("autoUpdatesChannel", managed, "the current template names no release channel")
+        self.assertNotIn("alwaysThinkingEnabled", managed, "the current template leaves thinking at its default")
+        retired = {"alwaysThinkingEnabled": True, "autoUpdates": False, "autoUpdatesChannel": "stable"}
         old_template = {}
         for key, value in managed.items():
             old_template[key] = value
-            if key == "alwaysThinkingEnabled":
-                old_template |= {"autoUpdates": False, "autoUpdatesChannel": "stable"}
+            if key == "effortLevel":
+                old_template |= retired
         installed = json.loads(self.merge(old_template, ""))
-        self.assertEqual((installed["autoUpdates"], installed["autoUpdatesChannel"]), (False, "stable"))
+        self.assertEqual({key: installed[key] for key in retired}, retired)
         installed |= {"operatorOnly": {"kept": True}, "enabledPlugins": {"crit@crit": True}}
 
         after = self.merge(managed, json.dumps(installed))
         merged = json.loads(after)
-        self.assertNotIn("autoUpdates", merged)
-        self.assertNotIn("autoUpdatesChannel", merged)
-        expected = {key: value for key, value in installed.items() if key not in ("autoUpdates", "autoUpdatesChannel")}
-        self.assertEqual(merged, expected, "only the two retired keys change")
+        for key in retired:
+            self.assertNotIn(key, merged)
+        expected = {key: value for key, value in installed.items() if key not in retired}
+        self.assertEqual(merged, expected, "only the retired keys change")
         self.assertEqual(self.merge(managed, after), after)
+
+    def test_an_operator_thinking_override_stays(self) -> None:
+        """`alwaysThinkingEnabled: false` is not the former managed value, so the merge keeps it (U79)."""
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        merged = json.loads(self.merge(managed, json.dumps({"alwaysThinkingEnabled": False})))
+        self.assertIs(merged["alwaysThinkingEnabled"], False)
 
     def test_installed_checkout_path_lever_rules_are_replaced_by_the_installed_path_rules(self) -> None:
         """`make update` moves an installed settings file off the checkout-path lever rules (regime-cutover U31)."""

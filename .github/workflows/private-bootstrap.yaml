@@ -43,8 +43,11 @@ jobs:
   private-bootstrap:
     needs: secrets
     if: ${{ needs.secrets.outputs.available == 'true' }}
-    # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
-    # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
+    # A failing matrix job never cancels its siblings: each matrix context reports its own conclusion (none of them
+    # is a required check), and scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
+    # The "decide" step below is byte-identical to public-bootstrap's in remote.yaml (test_workflow_orchestration_skip
+    # compares the two); its pull_request branch and "required context" wording serve that workflow, since this one
+    # never runs on a pull request and always bootstraps.
     strategy:
       fail-fast: false
       matrix:

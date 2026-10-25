@@ -22,13 +22,15 @@ const row = (id: string, name: string): ProviderModelConfig => ({
 });
 
 /**
- * `GET /v1/models` returned no entries on this route (pilot facts #S0), so the ids are static
- * (`openai-siwc/<id>`). Limits are omp 18.11.3's catalog rows for `openai/<id>` (pi-catalog
- * src/models.json). `gpt-6.1-sol` completed on this route (#S0); `gpt-6-astra` is an assumption.
+ * Static ids (`openai-siwc/<id>`): #S0 read `GET /v1/models` as `data[].id` and listed nothing, but the SIWC
+ * docs return a `models` array of `{slug, visibility}`, so discovery is unmeasured and `fetchDynamicModels`
+ * waits for a re-probe (docs/openai-siwc.md, open questions). Limits are omp 18.11.3's catalog rows for
+ * `openai/<id>` (pi-catalog src/models.json). Both completed on this route: `gpt-6.1-sol` in #S0 and G2,
+ * `gpt-6-astra` in the audit verdicts from 2026-10-23 on (pilot facts, done predicate (3)).
  */
 export const MODELS: ProviderModelConfig[] = [
 	row("gpt-6.1-sol", "GPT-6.1 Sol (ChatGPT plan)"),
-	row("gpt-6-astra", "GPT-6 Astra (ChatGPT plan, unverified)"),
+	row("gpt-6-astra", "GPT-6 Astra (ChatGPT plan)"),
 ];
 
 export default function openaiSiwc(pi: ExtensionAPI): void {

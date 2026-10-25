@@ -531,7 +531,7 @@ command_policy:
 model_profiles:
   express:
     claude: { model: haiku, effort: low }
-    codex: { model: gpt-5.6-luna, model_reasoning_effort: low }
+    codex: { model: gpt-6-luna, model_reasoning_effort: low }
     omp: { model: "claude-bridge/claude-haiku-5-5", effort: low }
   standard:
     claude: { model: claude-opus-5-5, effort: xhigh, advisor: fable }
@@ -580,7 +580,6 @@ codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
   model_reasoning_summary: concise
   model_verbosity: low
-  personality: pragmatic
   approval_policy: on-request
   sandbox_mode: workspace-write
   web_search: cached
@@ -588,6 +587,8 @@ codex:
   project_doc_max_bytes: 65536
   project_doc_fallback_filenames:
     - CLAUDE.md
+  # tui.model_availability_nux is Codex's own startup-tooltip state: the merge keeps the installed
+  # table (RUNTIME_PREFIXES in home/dot_codex/modify_private_config.toml) and the manifest seeds none.
   tui:
     status_line:
       - model-with-reasoning
@@ -598,8 +599,6 @@ codex:
       - five-hour-limit
       - weekly-limit
       - git-branch
-    model_availability_nux:
-      gpt-5.6-sol: 2
   sandbox_workspace_write:
     network_access: false
     writable_roots: []
@@ -612,7 +611,6 @@ codex:
   features:
     plugins: true
     hooks: true
-    plugin_hooks: true
   plugins:
     superpowers@openai-curated:
       enabled: true
@@ -678,9 +676,10 @@ codex:
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
   schema: https://json.schemastore.org/claude-code-settings.json
-  # No effect on Fable 5 (thinking cannot be disabled there); applies when the
-  # interactive profile maps to Sonnet or below.
-  alwaysThinkingEnabled: true
+  # No alwaysThinkingEnabled: thinking is on by default and `true` "changes nothing"
+  # (code.claude.com/docs/en/settings-reference, alwaysThinkingEnabled), and Claude
+  # Code ignores a saved `false` on every model_profiles model (Fable, Opus 5.5,
+  # Haiku 5.5). The settings merge drops the `true` the template used to set.
   # No update keys (regime-cutover U18): mise's `npm:@anthropic-ai/claude-code`
   # entry is the only version channel, and DISABLE_UPDATES/DISABLE_AUTOUPDATER in
   # home/dot_zshenv and home/dot_profile block Claude Code's own updater.
@@ -693,7 +692,7 @@ claude:
   permissions:
     # This must be user-level: project settings do not honour auto; the Stop gate and deny list are the boundaries.
     defaultMode: auto
-    # The five rules are the coordinator's levers (regime-cutover U16,
+    # The rules are the coordinator's levers (regime-cutover U16,
     # scripts/orchestrator/README.md
     # "Pre-authorized levers"): deterministic wrappers that validate their own
     # input, plus the read-only `hcom list`. Each lever rule names the copy

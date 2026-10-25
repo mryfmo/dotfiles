@@ -83,7 +83,6 @@ def sample_manifest() -> dict:
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
             "model_reasoning_summary": "concise",
             "model_verbosity": "low",
-            "personality": "pragmatic",
             "approval_policy": "on-request",
             "sandbox_mode": "workspace-write",
             "web_search": "cached",
@@ -108,7 +107,6 @@ def sample_manifest() -> dict:
         "claude": {
             "settings_path": "home/.chezmoitemplates/claude-settings-managed.json",
             "schema": "https://json.schemastore.org/claude-code-settings.json",
-            "alwaysThinkingEnabled": True,
             "plansDirectory": "./.agents/worklog/claude",
             "permissions": {"deny": [], "defaultMode": "plan", "ask": []},
             "hooks": {
@@ -657,7 +655,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('model_reasoning_effort = "high"', outputs[codex_path])
         self.assertIn('model_reasoning_summary = "concise"', outputs[codex_path])
         self.assertIn('model_verbosity = "low"', outputs[codex_path])
-        self.assertIn('personality = "pragmatic"', outputs[codex_path])
+        self.assertNotIn("personality", outputs[codex_path])
         self.assertIn("check_for_update_on_startup = false", outputs[codex_path])
         self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
 

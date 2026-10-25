@@ -67,6 +67,14 @@ class RuntimeHealthTest(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
 
+    def link_real_jq(self, bin_dir: Path) -> None:
+        """Put the host's jq on a hermetic PATH: the updater parses every record with it, and /usr/bin has no jq
+        on every runner (macOS 14), so without it a step fails for a reason the test is not about."""
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq)
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        (bin_dir / "jq").symlink_to(jq)
+
     def executable(self, path: Path, body: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("#!/bin/bash\n" + textwrap.dedent(body))
@@ -218,6 +226,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 {FAKE_MARKETPLACE_LIST if command == "claude" else ""}
                 """,
             )
+        self.link_real_jq(bin_dir)
         log = repo / "commands.log"
 
         result = self.run_test_command(
@@ -317,6 +326,7 @@ EOF
             fi
             """,
         )
+        self.link_real_jq(bin_dir)
         log = repo / "commands.log"
 
         result = self.run_test_command(
@@ -509,9 +519,7 @@ EOF
             esac
             """,
         )
-        jq = shutil.which("jq")
-        self.assertIsNotNone(jq)
-        (bin_dir / "jq").symlink_to(jq)
+        self.link_real_jq(bin_dir)
         if installed_version is not None:
             self.executable(
                 home / ".local/bin/crit",
@@ -785,9 +793,7 @@ EOF
             repo / "scripts/update-agent-assets.sh",
             "printf 'assets\\n' >> \"$TEST_LOG\"\n",
         )
-        jq = shutil.which("jq")
-        self.assertIsNotNone(jq)
-        (bin_dir / "jq").symlink_to(jq)
+        self.link_real_jq(bin_dir)
         log = repo / "calls"
         result = self.run_test_command(
             ["make", "update"],

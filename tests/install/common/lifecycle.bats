@@ -97,9 +97,10 @@ EOF
 @test "[common] update reports unmerged files before the dirty notice" {
     run_update_fixture running 0 0 0 0 0 "" main origin/main 1 0 1
     [ "$status" -eq 0 ]
-    run ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
     [[ "$output" == *"index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"* ]]
     [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
+    # Last: `run` replaces $output, which the assertions above read.
+    run ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

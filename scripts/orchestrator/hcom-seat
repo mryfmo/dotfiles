@@ -58,7 +58,9 @@
 #   Every executable is checked with its interpreter chain, and hcom-seat, the shim and the wrappers run
 #   under `#!/bin/bash`. The git state host git reads for this repository's worktrees (config,
 #   config.worktree, info, hooks, commondir, gitdir, the worktree's .git file) is denied to every seat,
-#   and a launch over such state holding a key host git would act on is refused (git_state_check).
+#   and a launch over such state holding a key host git would act on is refused (git_state_check) before
+#   the first git command; every git command hcom-seat runs has hooks, fsmonitor and worktree config off.
+#   Every program's seats root is read-denied but the seat's own paths.
 #   No seat launches a seat: the orchestrator's sandbox, like the worker's, has no herdr socket and no
 #   write to the seats root, and a launch from inside a seat is refused; seats are started from a
 #   terminal outside every seat (the operator or the coordinator, as gate G7 was).
@@ -510,6 +512,86 @@ IFS=: read -r -a caller_dirs <<< "${caller_path}"
 for caller_dir in "${caller_dirs[@]}"; do
     if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
 done
+
+# @description Collect the git state host git reads for the worktrees of this repository into `git_state`, make sure
+#   each file exists, and refuse (exit 2) a launch over state a seat may have written. The set: the common `config`,
+#   `config.worktree`, `info/` and `hooks/`; for every linked worktree `worktrees/<n>/config.worktree`, `info/`,
+#   `commondir` and `gitdir`; and the seat worktree's own `.git` file. None may be a symbolic link. Every
+#   `config.worktree` may hold only the keys `git sparse-checkout` writes (`core.sparseCheckout`,
+#   `core.sparseCheckoutCone`): anything else (`core.fsmonitor`, `core.hooksPath`, `filter.*`, `diff.*.textconv`,
+#   `include.*`, `includeIf.*`, `extensions.*` among them) is a refusal, read with `git config --no-includes`, which
+#   runs nothing the file names. Every `commondir` must lead to this common directory, and the seat worktree's
+#   `.git` file into its `worktrees/`. An absent `config.worktree` is created empty and an absent `info/` or `hooks/`
+#   empty, which git reads as no setting.
+#   It runs before the first host git command (with the seat directory empty) and again before each git command in
+#   the seat directory and when the settings are written.
+# @arg $1 string The physical git common directory.
+# @arg $2 string The physical seat directory, or empty.
+# @set git_state The paths, for the seat's write denies.
+git_state_check() {
+    local common_real=$1 dir_real=$2 wt f names name line target
+    git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
+    for wt in "${common_real}"/worktrees/*/; do
+        [[ -d ${wt} ]] || continue
+        wt=${wt%/}
+        git_state+=("${wt}/config.worktree" "${wt}/info")
+        for f in commondir gitdir; do
+            if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
+        done
+        if [[ -e ${wt}/commondir ]]; then
+            IFS= read -r line < "${wt}/commondir" || [[ -n ${line:-} ]] || refuse "cannot read ${wt}/commondir"
+            case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+            /*) target=${line} ;;
+            *) target=${wt}/${line} ;;
+            esac
+            [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
+        fi
+    done
+    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then
+        git_state+=("${dir_real}/.git")
+        IFS= read -r line < "${dir_real}/.git" || [[ -n ${line:-} ]] || refuse "cannot read ${dir_real}/.git"
+        target=${line#gitdir: }
+        [[ ${target%/*} -ef ${common_real}/worktrees ]] ||
+            refuse "${dir_real}/.git leads to ${target}, outside ${common_real}/worktrees"
+    fi
+    for f in "${git_state[@]}"; do
+        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
+        case ${f##*/} in
+        info | hooks) [[ -d ${f} ]] || /bin/mkdir -p "${f}" || refuse "cannot create ${f}" ;;
+        config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
+        esac
+    done
+    for f in "${git_state[@]}"; do
+        [[ ${f##*/} == config.worktree ]] || continue
+        # From /, so no repository around the cwd is discovered or read; git() adds the overrides.
+        names=$(cd / && git config --file "${f}" --no-includes --name-only --list) ||
+            refuse "cannot read the git config ${f}"
+        while IFS= read -r name; do
+            case ${name} in
+            '' | core.sparsecheckout | core.sparsecheckoutcone) ;;
+            *) refuse "the git config ${f} sets ${name}, which host git would act on; a seat may have written it" ;;
+            esac
+        done <<< "${names}"
+    done
+}
+
+# @description Run git with nothing a repository's config or hooks name: no hooks (`core.hooksPath=/dev/null`), no
+#   fsmonitor program, no per-worktree config, no transport, and no system config (regime-cutover U85). Every host git
+#   command of hcom-seat and the sourced regime-env goes through this function, before and after the git state is
+#   checked.
+# @arg $@ string git's arguments.
+git() {
+    GIT_CONFIG_NOSYSTEM=1 command git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+        -c extensions.worktreeConfig=false -c protocol.allow=never "$@"
+}
+
+# The git state is checked before the first git command: the common directory found with builtins above.
+if [[ -n ${top} || -e /.git ]]; then
+    early_common=$(physical_path "${common_guess}") || refuse "cannot resolve the git common directory ${common_guess}"
+    [[ -d ${early_common} ]] || refuse "the git common directory ${early_common} is not a directory"
+    git_state_check "${early_common}" ''
+fi
+
 # HCOM_DIR, HCOM_TEAM and the seats root come from the environment when set, else from this checkout (regime-env,
 # regime-cutover U33). hcom passes HCOM_DIR into the seat but not HCOM_TEAM, so the team rides --hcom-team below.
 [[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
@@ -656,64 +738,6 @@ Linux)
     ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
-
-# @description Collect the git state host git reads for the worktrees of this repository into `git_state`, make sure
-#   each file exists, and refuse (exit 2) a launch over state a seat may have written. The set: the common `config`,
-#   `config.worktree`, `info/` and `hooks/`; for every linked worktree `worktrees/<n>/config.worktree`, `info/`,
-#   `commondir` and `gitdir`; and the seat worktree's own `.git` file. None may be a symbolic link. Every
-#   `config.worktree` may hold only the keys `git sparse-checkout` writes (`core.sparseCheckout`,
-#   `core.sparseCheckoutCone`): anything else (`core.fsmonitor`, `core.hooksPath`, `filter.*`, `diff.*.textconv`,
-#   `include.*`, `includeIf.*`, `extensions.*` among them) is a refusal, read with `git config --no-includes`, which
-#   runs nothing the file names. Every `commondir` must lead to this common directory, and the seat worktree's
-#   `.git` file into its `worktrees/`. An absent `config.worktree` is created empty and an absent `info/` or `hooks/`
-#   empty, which git reads as no setting.
-# @noargs
-# @set git_state The paths, for the seat's write denies.
-git_state_check() {
-    local wt f names name line target
-    git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
-    for wt in "${common_real}"/worktrees/*/; do
-        [[ -d ${wt} ]] || continue
-        wt=${wt%/}
-        git_state+=("${wt}/config.worktree" "${wt}/info")
-        for f in commondir gitdir; do
-            if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
-        done
-        if [[ -e ${wt}/commondir ]]; then
-            IFS= read -r line < "${wt}/commondir" || [[ -n ${line:-} ]] || refuse "cannot read ${wt}/commondir"
-            case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-            /*) target=${line} ;;
-            *) target=${wt}/${line} ;;
-            esac
-            [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
-        fi
-    done
-    if [[ -f ${dir_real}/.git ]]; then
-        git_state+=("${dir_real}/.git")
-        IFS= read -r line < "${dir_real}/.git" || [[ -n ${line:-} ]] || refuse "cannot read ${dir_real}/.git"
-        target=${line#gitdir: }
-        [[ ${target%/*} -ef ${common_real}/worktrees ]] ||
-            refuse "${dir_real}/.git leads to ${target}, outside ${common_real}/worktrees"
-    fi
-    for f in "${git_state[@]}"; do
-        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
-        case ${f##*/} in
-        info | hooks) [[ -d ${f} ]] || /bin/mkdir -p "${f}" || refuse "cannot create ${f}" ;;
-        config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
-        esac
-    done
-    for f in "${git_state[@]}"; do
-        [[ ${f##*/} == config.worktree ]] || continue
-        names=$(git config --file "${f}" --no-includes --name-only --list) || refuse "cannot read the git config ${f}"
-        while IFS= read -r name; do
-            case ${name} in
-            '' | core.sparsecheckout | core.sparsecheckoutcone) ;;
-            *) refuse "the git config ${f} sets ${name}, which host git would act on; a seat may have written it" ;;
-            esac
-        done <<< "${names}"
-    done
-}
-
 # @description Write the seat's srt settings and its `omp` shim under `<seats-root>/.sandbox/<name>` (regime-cutover
 #   U85), afresh on every launch, after the seat directory exists. The settings name what the seat may write (its
 #   directory, the repository's git common directory, the program's hcom store, its own omp profile and the omp
@@ -753,7 +777,7 @@ seat_sandbox_write() {
     # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,
     # filter and textconv drivers, includes). git_state_check refuses a launch over such state and creates the files
     # that are absent, so each deny below names an existing path (srt on Linux binds only existing paths).
-    git_state_check
+    git_state_check "${common_real}" "${dir_real}"
     deny_write+=("${git_state[@]}")
     # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
     # write denies only, and the next launch's git_state_check covers it.
@@ -769,12 +793,20 @@ seat_sandbox_write() {
         "${h}/.codex" "${h}/.omp/agent" "${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
         "${h}/.local/share/chezmoi" "${h}/.local/share/chezmoi-private" "${h}/.config/chezmoi"
         "${h}/.config/chezmoi-private" "${h}/Workspace" "${seats_real}/.sandbox")
-    allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}")
+    # Every program's seats root is unreadable but this seat's own paths: the whole ~/.local/state/omp-seats tree
+    # and every configured seats root. srt keeps a deeper deny under an allow (measured, 0.0.81), so each
+    # `.sandbox` stays unreadable inside an allowed root.
+    deny_read+=("${h}/.local/state/omp-seats" "${seats_real}")
+    if [[ -n ${REGIME_SEATS_ROOT:-} ]]; then
+        root=$(physical_path "${REGIME_SEATS_ROOT}") || refuse "cannot resolve the seats root ${REGIME_SEATS_ROOT}"
+        deny_read+=("${root}")
+    fi
+    allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}")
     # The coordinator's records (briefs, verdict files) are read by absolute path in the main checkout; nothing else
     # of it, or of ~/Workspace, is readable to a worker.
     allow_read+=("${common_real%/.git}/.orchestration/orchestrate")
-    # The orchestrator reads the worker clones it reviews; a worker reads no other seat.
-    [[ ${role} == orchestrator ]] || deny_read+=("${seats_real}")
+    # The orchestrator reads the worker clones of its own program, which it reviews; a worker reads no other seat.
+    if [[ ${role} == orchestrator ]]; then allow_read+=("${seats_real}"); fi
     settings=${sandbox_real}/srt-settings.json
     write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${write[@]}") || refuse 'jq failed on the seat write roots'
     deny_write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${deny_write[@]}") || refuse 'jq failed on the seat write denies'
@@ -913,7 +945,9 @@ if [[ ! -e ${dir} ]]; then
     *) refuse "refs/remotes/origin/main in ${repo} does not resolve to a commit: ${origin_main}" ;;
     esac
     git -C "${repo}" worktree add --detach "${dir}" "${base}"
-elif ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
+elif seat_common='' && [[ -d ${dir} ]] && dir_phys=$(physical_path "${dir}") &&
+    common_phys=$(physical_path "${common}") && git_state_check "${common_phys}" "${dir_phys}" &&
+    ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
     ! [[ -d ${dir} && ${seat_common} -ef ${common} ]]; then
     # A stale or foreign directory at the seat path would seat omp in the wrong tree.
     refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"

@@ -726,6 +726,53 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
         self.assertFalse(Path(self.seats).exists())
 
+    def test_no_host_git_command_runs_a_hook_or_a_worktree_config(self):
+        """U85 round 7: hcom-seat's own git runs no hook and reads no `config.worktree`, and the git state is checked
+        before its first git command, so neither a planted `post-checkout` nor a poisoned main `config.worktree`
+        runs anything on the host."""
+        marker = Path(self.temp.name) / "hook-ran"
+        hooks = self.repo / ".git/hooks"
+        hooks.mkdir(exist_ok=True)
+        (hooks / "post-checkout").write_text(f"#!/bin/sh\necho post-checkout >> {shlex.quote(str(marker))}\n")
+        (hooks / "post-checkout").chmod(0o755)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(Path(self.seats, "worker/.git").is_file(), "the worktree was added")
+        self.assertFalse(marker.exists(), "the post-checkout hook ran on the host")
+        self.git("config", "extensions.worktreeConfig", "true")
+        evil = Path(self.temp.name) / "evil-hooks"
+        evil.mkdir()
+        (evil / "post-checkout").write_text((hooks / "post-checkout").read_text())
+        (evil / "post-checkout").chmod(0o755)
+        (self.repo / ".git/config.worktree").write_text(f"[core]\n\thooksPath = {evil}\n")
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "worker-2")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"the git config {(self.repo / '.git/config.worktree').resolve()} sets core.hookspath", run.stderr
+        )
+        self.assertFalse(Path(self.seats, "worker-2").exists(), "no git command ran before the check")
+        self.assertFalse(marker.exists(), "a hook ran on the host")
+
+    def test_no_seat_reads_another_programs_seats_root(self):
+        """U85 round 7: the whole ~/.local/state/omp-seats tree and every configured seats root are read-denied but the
+        seat's own paths; the orchestrator keeps its own program's worker clones, never a `.sandbox`."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        worker = self.settings_of("worker")["filesystem"]
+        omp_seats = str(self.home.resolve() / ".local/state/omp-seats")
+        self.assertIn(omp_seats, worker["denyRead"])
+        self.assertIn(str(Path(self.seats).resolve()), worker["denyRead"])
+        self.assertIn(str(Path(self.seats, "worker").resolve()), worker["allowRead"])
+        self.assertIn(str(Path(self.seats, ".state/worker").resolve()), worker["allowRead"])
+        self.assertNotIn(str(Path(self.seats).resolve()), worker["allowRead"])
+        self.assertFalse(any(Path(omp_seats) in (Path(p), *Path(p).parents) for p in worker["allowRead"]))
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        orchestrator = self.settings_of("orchestrator")["filesystem"]
+        self.assertIn(omp_seats, orchestrator["denyRead"])
+        self.assertIn(str(Path(self.seats).resolve()), orchestrator["allowRead"])
+        self.assertIn(str(Path(self.seats, ".sandbox").resolve()), orchestrator["denyRead"])
+
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)

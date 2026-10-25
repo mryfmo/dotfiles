@@ -518,7 +518,9 @@ class CiRerunTest(unittest.TestCase):
                 (directory / tool).chmod(0o755)
         Path(f"{planted}:").mkdir()  # mktemp creates only the last component, so the split parent must exist
         (checkout / ":x").mkdir()
-        for name, tmpdir in (("a named directory", f"{planted}:"), ("the cwd", ":x")):
+        Path(f"{planted}\n").mkdir()
+        cases = (("a named directory", f"{planted}:"), ("the cwd", ":x"), ("a control character", f"{planted}\n"))
+        for name, tmpdir in cases:  # each is dropped for mktemp's own default, which the run then uses
             with self.subTest(name):
                 self.reset()
                 marker.unlink(missing_ok=True)

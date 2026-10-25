@@ -22,9 +22,9 @@
 #   directory named shims in any letter case, as found or as resolved. An answer (captured with its own trailing
 #   newlines), link or directory whose path holds a control character is refused too; otherwise the script exits 1.
 #   Only the checked physical file is ever run: all but python3 are linked by it into a private directory, created
-#   under TMPDIR when it is absolute and has no ':', else /tmp, then used only by its physical path, which must have no
-#   ':' either (else exit 1) and be this user's with mode 0700 (removed on exit and on HUP, INT or TERM), and PATH
-#   becomes those links then /usr/bin:/bin.
+#   under TMPDIR when it is absolute with no ':' or control character, else wherever mktemp puts it with TMPDIR unset,
+#   then used only by its physical path, which must have no ':' either (else exit 1) and be this user's with mode 0700
+#   (removed on exit and on HUP, INT or TERM), and PATH becomes those links then /usr/bin:/bin.
 #   python3 is always started by its physical path, never a link (CPython reads a pyvenv.cfg beside and above the
 #   path it starts by), as `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i
 #   from the root, so no checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or
@@ -49,10 +49,13 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
 fi
 run_id=$1
 # The private directory heads the pinned PATH, so a relative TMPDIR or one with a ':' (which would split it into
-# entries the caller chose, an empty one being the cwd) falls back to /tmp.
-base=${TMPDIR:-/tmp}
-[[ ${base} == /* && ${base} != *:* ]] || base=/tmp        # lint-comparisons: allow an absolute-path and ':' content test, not a comparison of two paths
-bin="$(/usr/bin/mktemp -d "${base}/ci-rerun-bin.XXXXXX")" # system paths: PATH is not pinned yet
+# entries the caller chose, an empty one being the cwd) or a control character is dropped for mktemp's own default.
+# System paths: PATH is not pinned yet. macOS's -t ignores TMPDIR, so a usable one is named in the template.
+if [[ ${TMPDIR-} == /* && ${TMPDIR} != *:* && ${TMPDIR} != *[[:cntrl:]]* ]]; then # lint-comparisons: allow an absolute-path and content test, not a comparison of two paths
+    bin=$(/usr/bin/mktemp -d "${TMPDIR}/ci-rerun-bin.XXXXXX")
+else
+    bin=$(/usr/bin/env -u TMPDIR /usr/bin/mktemp -d -t ci-rerun-bin.XXXXXX)
+fi
 trap '/bin/rm -rf -- "${bin}"' EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT

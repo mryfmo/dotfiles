@@ -773,6 +773,57 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(str(Path(self.seats).resolve()), orchestrator["allowRead"])
         self.assertIn(str(Path(self.seats, ".sandbox").resolve()), orchestrator["denyRead"])
 
+    def test_overlapping_seat_roots_are_refused(self):
+        """U85 round 8: a seats root inside the checkout (or the hcom store inside one) would nest one seat's write
+        roots inside another's, so the launch is refused before anything is created."""
+        inside = self.repo / "seats"
+        run = self.seat("worker", "--seats-root", str(inside))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"the seats root {inside.resolve()} lies inside the main checkout {self.repo.resolve()}", run.stderr
+        )
+        self.assertFalse(inside.exists())
+        run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("seat write roots must not overlap", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_a_worker_reads_only_the_records_of_a_checkout_outside_workspace(self):
+        """U85 round 8: the worker's read deny is the main checkout itself, wherever it lives (here outside
+        ~/Workspace), re-opening its git directory and `.orchestration/orchestrate` only."""
+        self.assertNotIn(self.home / "Workspace", self.repo.parents)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        worker = self.settings_of("worker")["filesystem"]
+        checkout = self.repo.resolve()
+        self.assertIn(str(checkout), worker["denyRead"])
+        self.assertIn(str(checkout / ".orchestration/orchestrate"), worker["allowRead"])
+        self.assertIn(str(checkout / ".git"), worker["allowRead"])
+        self.assertNotIn(str(checkout), worker["allowRead"])
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        orchestrator = self.settings_of("orchestrator")["filesystem"]
+        self.assertNotIn(str(checkout), orchestrator["denyRead"])
+        self.assertIn(str(checkout), orchestrator["allowRead"])
+
+    def test_the_login_helper_is_on_the_path_the_preflight_runs_with(self):
+        """U85 round 8: seat-login-preflight hands an SSH login's URL to `regime-open-url` by name, so the private tool
+        directory carries it (with its python3) and the PATH hcom-seat runs the preflight with finds it."""
+        shutil.copy(ROOT / "home/dot_local/bin/common/executable_regime-open-url", self.bindir / "regime-open-url")
+        (self.bindir / "regime-open-url").chmod(0o755)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (hcom,) = self.calls_of("hcom")
+        path = hcom["path"].split(":", 1)[1]  # what the preflight ran with: the shim directory comes after it
+        self.assertEqual(path, f"{self.tools}:/usr/bin:/bin:/usr/sbin:/sbin")
+        found = subprocess.run(
+            ["/bin/bash", "-c", "command -v regime-open-url && command -v python3"],
+            env={"PATH": path}, capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual(found.returncode, 0, found.stderr)
+        self.assertEqual(found.stdout.splitlines(), [str(self.tools / "regime-open-url"), str(self.tools / "python3")])
+        self.assertEqual(Path(found.stdout.splitlines()[0]).resolve(), (self.bindir / "regime-open-url").resolve())
+
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)

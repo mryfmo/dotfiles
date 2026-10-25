@@ -319,7 +319,7 @@ claude:
   # ~/.agents/omp/policies, never by a claude.permissions rule.
   levers:
     sha256:
-      hcom-seat: 4793d3e0bf44255090e1c4dab0fbe270aa7c30667e677636b482a24d527f61a9
+      hcom-seat: ddad5fedb153b13fae2b30658728bca50dc855c648772a29a14afd3c32171854
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

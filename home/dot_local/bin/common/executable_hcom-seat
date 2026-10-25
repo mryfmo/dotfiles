@@ -469,7 +469,8 @@ fi
 # jq is the system's (/usr/bin/jq), not a resolved tool, so a stale link of an earlier launch is dropped.
 /bin/rm -f "${tools_dir}/jq" || refuse "cannot clear ${tools_dir}/jq"
 required_tools=(git hcom herdr omp srt)
-optional_tools=(node bun claude)
+# claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37).
+optional_tools=(node bun claude python3 regime-open-url)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac
@@ -648,6 +649,50 @@ orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
+# @description Succeed when `$2` is `$1` or lies under it. An existing `$1` is compared by (device, inode) identity
+#   with `$2` and every existing directory above it; a `$1` that does not exist yet, by the physical forms of both
+#   (physical_path), whose existing parts are as the file system spells them.
+# @arg $1 string A physical path.
+# @arg $2 string A physical path.
+# @exitcode 1 `$2` is outside `$1`.
+within() {
+    local outer_id p=$2 ids probe=()
+    if [[ ! -e $1 ]]; then
+        [[ $2 == "$1" || $2 == "$1"/* ]] # lint-comparisons: allow both sides are physical_path forms of paths that do not exist yet
+        return
+    fi
+    outer_id=$(/usr/bin/stat "${stat_args[@]}" -- "$1") || refuse "cannot read the identity of $1"
+    while :; do
+        if [[ -e ${p} ]]; then probe+=("${p}"); fi
+        [[ ${p} != / ]] || break # lint-comparisons: allow the walk ends at the root, no path compare
+        p=${p%/*}
+        [[ -n ${p} ]] || p=/
+    done
+    ids=$(/usr/bin/stat "${stat_args[@]}" -- "${probe[@]}") || refuse "cannot read the identity of $2 or a directory above it"
+    [[ $'\n'${ids}$'\n' == *$'\n'"${outer_id}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
+}
+
+# The seats' write regions must not overlap (regime-cutover U85): the main checkout (with its git directory), the
+# seats root, the hcom store, omp's state and Claude Code's. A seats root inside the checkout would put every
+# worker's clone inside the orchestrator's write grant, and a checkout inside a seats root the checkout inside every
+# worker's; any such nesting, either way, is refused.
+checkout=$(physical_path "${common%/.git}") || refuse "cannot resolve the main checkout of ${common}"
+[[ ${common} == */.git ]] || checkout=$(physical_path "${repo}") || refuse "cannot resolve the checkout ${repo}" # lint-comparisons: allow a name test on the git directory, no path compare
+regions=("the main checkout" "${checkout}")
+for pair in "the seats root=${seats_root}" "the hcom store=${HCOM_DIR}" "omp's state=${HOME}/.omp" \
+    "the Claude Code state=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"; do
+    region=$(physical_path "${pair#*=}") || refuse "cannot resolve ${pair%%=*} ${pair#*=}"
+    regions+=("${pair%%=*}" "${region}")
+done
+for ((i = 1; i < ${#regions[@]}; i += 2)); do
+    for ((j = 1; j < ${#regions[@]}; j += 2)); do
+        ((i != j)) || continue
+        if within "${regions[i]}" "${regions[j]}"; then
+            refuse "${regions[j - 1]} ${regions[j]} lies inside ${regions[i - 1]} ${regions[i]}; seat write roots must not overlap (choose another --seats-root or HCOM_DIR)"
+        fi
+    done
+done
+
 # OS containment (regime-cutover U85): the seat's omp runs under Anthropic's sandbox-runtime (`srt`, sandbox-exec on
 # macOS, bubblewrap on Linux). hcom pins the `omp` it finds first on this process's PATH as the runner's
 # --hcom-tool-path, so a per-seat shim placed first on PATH is what the pane runs; the shim never falls back to an
@@ -802,9 +847,10 @@ seat_sandbox_write() {
         deny_read+=("${root}")
     fi
     allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${sandbox_state}")
-    # The coordinator's records (briefs, verdict files) are read by absolute path in the main checkout; nothing else
-    # of it, or of ~/Workspace, is readable to a worker.
-    allow_read+=("${common_real%/.git}/.orchestration/orchestrate")
+    # The main checkout is unreadable to a worker wherever it lives, but for its git directory (the worktree's objects
+    # and refs) and the coordinator's records (briefs, verdict files), read by absolute path.
+    if [[ ${role} != orchestrator ]]; then deny_read+=("${checkout}"); fi
+    allow_read+=("${checkout}/.orchestration/orchestrate")
     # The orchestrator reads the worker clones of its own program, which it reviews; a worker reads no other seat.
     if [[ ${role} == orchestrator ]]; then allow_read+=("${seats_real}"); fi
     settings=${sandbox_real}/srt-settings.json

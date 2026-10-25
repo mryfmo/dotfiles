@@ -334,6 +334,29 @@ class PrAuditTest(unittest.TestCase):
         for path in stores.values():
             self.assertIn(str(path), reads)
 
+    def test_a_relative_store_inside_an_allowed_root_refuses(self):
+        """U71b audit round 8: a relative GH_CONFIG_DIR resolving under an allowed read root (here the mise installs
+        under the real HOME) would be readable through the allowlist; it was skipped, now the run is refused."""
+        store = self.home / ".local/share/mise/installs/gh-store"
+        store.mkdir(parents=True)
+        (store / "hosts.yml").write_text("token\n")
+        for value in ("../home/.local/share/mise/installs/gh-store", "~/.local/share/mise/installs/gh-store"):
+            with self.subTest(value=value):
+                self.assert_stopped(self.run_lever("7", GH_CONFIG_DIR=value), 2, "inside the allowed root")
+                self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+
+    def test_a_relative_store_elsewhere_is_probed_and_denied(self):
+        store = self.root / "stores/gh"
+        store.mkdir(parents=True)
+        (store / "hosts.yml").write_text("token\n")
+        run = self.run_lever("7", GH_CONFIG_DIR="../stores/gh", CLAUDE_CONFIG_DIR="../stores/../stores/gh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        sandbox = self.codex_calls()[0]
+        _, reads, _ = probe_sections(sandbox["probe_paths"])
+        self.assertIn(str(store), reads)
+        self.assertIn(f"{self.repo}/../stores/gh", reads)
+        self.assertEqual(sandbox["probe_output"], "pr-audit-probe: all denied\n")
+
     def test_a_config_that_does_not_select_the_audit_profile_is_refused(self):
         cases = (
             (lambda text: text.replace('default_permissions = "audit"\n', ""), "does not make the permission profile"),

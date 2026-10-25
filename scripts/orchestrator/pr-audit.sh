@@ -53,7 +53,9 @@
 #   Before the audit, two launch-time probes run with that scratch CODEX_HOME through `codex sandbox` (the same default
 #   profile): every denied path that exists (the login, its resolved file, the scratch link, each deny path), a
 #   canary the lever writes in the run directory outside the allowlist, the real HOME, and each store the caller's
-#   CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and XDG base-directory variables name must be unreadable to `/bin/sh` there,
+#   CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and XDG base-directory variables name (`~` under the real HOME, a relative path
+#   against the caller's cwd; a store whose physical path lies inside an allowed root refuses the run) must be
+#   unreadable to `/bin/sh` there,
 #   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail
 #   to resolve or connect (exit 6 or 7). A read or write denial counts only when the tool ran and its error names it
 #   (`Operation not permitted`, `Permission denied`, `Read-only file system`), after positive controls in the same run
@@ -157,6 +159,12 @@ while IFS= read -r git_name; do
 done <<< "${git_names}"
 unset git_names git_name
 export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
+# The caller's cwd, against which a relative store path the caller's environment names is resolved (U71b audit round
+# 8), the way the tool that reads the variable resolves it.
+caller_cwd=$(pwd -P) || {
+    echo "pr-audit.sh: refused: cannot resolve the current directory" >&2
+    exit 2
+}
 
 lever='pr-audit.sh'
 usage='usage: pr-audit.sh <pr>'
@@ -297,6 +305,12 @@ codex_pid=''
 trap 'on_signal INT 2' INT
 trap 'on_signal TERM 15' TERM
 trap 'on_signal HUP 1' HUP
+
+# @description Print the physical path of the existing path $1 (perl `realpath`); exit 1 when it cannot be resolved.
+# @arg $1 path An existing path.
+physical() {
+    perl -MCwd=realpath -e 'my $p = realpath($ARGV[0]); defined $p or exit 1; print $p' "$1"
+}
 
 # @description Print the absolute path $1 and, when it differs, its form with the longest existing prefix resolved by
 #   `pwd -P` (macOS spells /tmp as /private/tmp), one per line. A path holding a quote, a backslash or a control
@@ -531,11 +545,35 @@ ln -s "${login}" "${codex_home}/auth.json" || fail 'cannot link the Codex login'
 # `mkdir` in the scratch TMPDIR must succeed, before any denial is believed.
 printf 'pr-audit canary\n' > "${run}/canary" || fail "cannot write the canary ${run}/canary"
 probes+=("${run}/canary" "${home_dir}")
+# The allowed roots by physical path: every read or write entry of the written config that exists.
+read_roots=()
+while IFS=' ' read -r access path; do
+    [[ ${access} == read || ${access} == write ]] || continue
+    [[ -e ${path} ]] || continue
+    real=$(physical "${path}") || refuse "cannot resolve the allowed path ${path}"
+    read_roots+=("${real}")
+done <<< "${seen}"
+# Each store the caller's environment names (U71b audit round 8: a relative GH_CONFIG_DIR was skipped): `~` and `~/`
+# resolve under the real HOME, a relative path against the caller's cwd, then the physical path. A store inside an
+# allowed root would be readable through the allowlist, so the run is refused; any other existing store is probed in
+# both spellings.
 for name in CLAUDE_CONFIG_DIR GH_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME; do
     value=${!name:-}
-    if [[ ${value} == /* && -e ${value} ]]; then # lint-comparisons: allow a shape check, not a comparison of paths
-        probes+=("${value}")
-    fi
+    [[ -n ${value} ]] || continue
+    case ${value} in
+    \~) value=${home_dir} ;;
+    \~/*) value=${home_dir}/${value#\~/} ;;
+    /*) ;;
+    *) value=${caller_cwd%/}/${value} ;;
+    esac
+    [[ -e ${value} ]] || continue
+    store=$(physical "${value}") || refuse "cannot resolve ${name} (${value})"
+    for root in "${read_roots[@]}"; do
+        if [[ ${store} == "${root}" || ${store} == "${root%/}/"* ]]; then # lint-comparisons: allow both sides are realpath forms
+            refuse "${name} names ${store}, inside the allowed root ${root} of the audit profile, which would expose it"
+        fi
+    done
+    probes+=("${value}" "${store}")
 done
 controls=("${clone}/.git/HEAD" "${clone}")
 # The single quotes keep the probe script for the sandboxed shell, never this one.

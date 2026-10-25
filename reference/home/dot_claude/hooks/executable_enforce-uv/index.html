@@ -4885,7 +4885,7 @@
 
 
 <h1 id="homedot_claudehooksexecutable_enforce-uvsh">home/dot_claude/hooks/executable_enforce-uv.sh<a class="headerlink" href="#homedot_claudehooksexecutable_enforce-uvsh" title="Permanent link">&para;</a></h1>
-<p>Emit PreToolUse permissionDecision deny for direct <code>pip</code> or <code>python</code> usage; other input exits successfully without output. Contract verified 2026-10-05.</p>
+<p>Emit PreToolUse permissionDecision deny for direct <code>pip</code> or <code>python</code> usage; other input exits successfully without output. Contract verified 2026-10-05. Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config) into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot parse the line, the hook decides nothing and exits 0 (fail open).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_claude/hooks/executable_enforce-uv.sh</code></li>
@@ -4894,6 +4894,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>classify_segment</code></li>
 <li><code>deny_command</code></li>
 <li><code>handle_pip_install</code></li>
 <li><code>handle_pip_list</code></li>
@@ -4903,6 +4904,7 @@
 <li><code>handle_python_m_pip</code></li>
 <li><code>handle_python_run</code></li>
 <li><code>main</code></li>
+<li><code>split_segments</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
@@ -4912,6 +4914,9 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Emit PreToolUse permissionDecision deny for direct `pip` or `python` usage;</span>
 <span class="c1">#   other input exits successfully without output. Contract verified 2026-10-05.</span>
+<span class="c1">#   Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config)</span>
+<span class="c1">#   into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot</span>
+<span class="c1">#   parse the line, the hook decides nothing and exits 0 (fail open).</span>
 <span class="c1"># @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control</span>
 
 <span class="c1"># @description Encode the denial reason from stdin using the current hook contract.</span>
@@ -5080,20 +5085,98 @@
 <span class="o">}</span>
 
 <span class="c1"># @description Rewrite direct Python execution to `uv run`.</span>
-<span class="c1"># @arg $1 string Original Python arguments.</span>
+<span class="c1"># @arg $1 string The simple command as written (interpreter and arguments, quotes kept).</span>
 <span class="k">function</span><span class="w"> </span>handle_python_run<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">args</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">segment</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span>deny_command<span class="w"> </span><span class="s">&lt;&lt;- EOF</span>
 <span class="s">    uvでPythonを実行:</span>
 
-<span class="s">    uv run $args</span>
+<span class="s">    uv run $segment</span>
 
 <span class="s">    ✅ 仮想環境のアクティベーションは不要です！</span>
 <span class="s">    EOF</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Read hook input JSON, classify the command, and emit a decision.</span>
+<span class="c1"># @description Collect the simple commands of a Bash line from shfmt's syntax tree (`shfmt -ln bash --to-json`):</span>
+<span class="c1">#   every statement whose command is a call (`CallExpr`), in tree order, nested ones (in a pipeline, a list, a</span>
+<span class="c1">#   subshell, `$(...)`) included, each as its source text from the statement's start to its end offset, so the</span>
+<span class="c1">#   suggestion keeps its quotes and redirections. Comments and here-document bodies are no statements, and quoting,</span>
+<span class="c1">#   escapes and line continuations are shfmt's, not this script's.</span>
+<span class="c1"># @arg $1 string The command line.</span>
+<span class="c1"># @set SEGMENTS array The simple commands, in order.</span>
+<span class="c1"># @exitcode 0 The line parsed.</span>
+<span class="c1"># @exitcode 1 shfmt or jq is absent, or the line does not parse.</span>
+<span class="k">function</span><span class="w"> </span>split_segments<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">line</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>tree<span class="w"> </span>spans<span class="w"> </span>start<span class="w"> </span>end
+<span class="w">    </span><span class="nv">SEGMENTS</span><span class="o">=()</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>shfmt<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>shfmt<span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">spans</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># shfmt's offsets count bytes, so slice the line byte-wise.</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>start<span class="w"> </span>end<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$start</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$end</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">SEGMENTS</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="p">:</span><span class="nv">start</span><span class="p">:</span><span class="nv">end</span><span class="p">-start</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$spans</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Emit the deny for one simple command that runs pip or Python directly; return for any other.</span>
+<span class="c1"># @arg $1 string One simple command.</span>
+<span class="k">function</span><span class="w"> </span>classify_segment<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">segment</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="c1"># ===== pip関連コマンド =====</span>
+<span class="w">    </span>pip<span class="se">\ </span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>pip3<span class="se">\ </span>*<span class="o">)</span>
+<span class="w">        </span><span class="c1"># pipコマンドの詳細な解析</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>pip_cmd
+<span class="w">        </span><span class="nv">pip_cmd</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^pip[0-9]? *//'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="k">)</span>
+
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>install<span class="se">\ </span>*<span class="o">)</span>
+<span class="w">            </span>handle_pip_install<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>uninstall<span class="se">\ </span>*<span class="o">)</span>
+<span class="w">            </span>handle_pip_uninstall<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>list*<span class="w"> </span><span class="p">|</span><span class="w"> </span>freeze*<span class="o">)</span>
+<span class="w">            </span>handle_pip_list
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span>handle_pip_other<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">        </span><span class="p">;;</span>
+
+<span class="w">    </span><span class="c1"># ===== 直接的なPython実行の処理 =====</span>
+<span class="w">    </span>python*<span class="w"> </span><span class="p">|</span><span class="w"> </span>py<span class="se">\ </span>*<span class="o">)</span>
+<span class="w">        </span><span class="c1"># -m オプションの特別処理</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>args
+<span class="w">        </span><span class="nv">args</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^python[0-9]? //'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$args</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^-m<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">local</span><span class="w"> </span>module
+<span class="w">            </span><span class="nv">module</span><span class="o">=</span><span class="si">${</span><span class="nv">args</span><span class="p">/-m /</span><span class="si">}</span>
+
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$module</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">            </span>pip<span class="se">\ </span>*<span class="o">)</span>
+<span class="w">                </span><span class="nb">local</span><span class="w"> </span>pip_cmd
+<span class="w">                </span><span class="nv">pip_cmd</span><span class="o">=</span><span class="si">${</span><span class="nv">module</span><span class="p">/pip /</span><span class="si">}</span>
+<span class="w">                </span>handle_python_m_pip<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span>*<span class="o">)</span>
+<span class="w">                </span>handle_python_m_module<span class="w"> </span><span class="s2">"</span><span class="nv">$module</span><span class="s2">"</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span><span class="k">esac</span>
+<span class="w">        </span><span class="k">fi</span>
+
+<span class="w">        </span><span class="c1"># 基本的なPython実行: the command as written, so `python3 -c 'print(1)'` keeps its quotes.</span>
+<span class="w">        </span>handle_python_run<span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Read hook input JSON, classify each simple command of a Bash call, and emit a decision.</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>input
 <span class="w">    </span><span class="nv">input</span><span class="o">=</span><span class="k">$(</span>cat<span class="k">)</span>
@@ -5109,57 +5192,13 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nb">command</span>
 <span class="w">    </span><span class="nv">command</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$input</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.command // ""'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">""</span><span class="k">)</span>
 
-<span class="w">    </span><span class="c1"># ===== pip関連コマンド =====</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tool_name</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">        </span>pip<span class="se">\ </span>*<span class="w"> </span><span class="p">|</span><span class="w"> </span>pip3<span class="se">\ </span>*<span class="o">)</span>
-<span class="w">            </span><span class="c1"># pipコマンドの詳細な解析</span>
-<span class="w">            </span><span class="nb">local</span><span class="w"> </span>pip_cmd
-<span class="w">            </span><span class="nv">pip_cmd</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^pip[0-9]? *//'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="k">)</span>
-
-<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">            </span>install<span class="se">\ </span>*<span class="o">)</span>
-<span class="w">                </span>handle_pip_install<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
-<span class="w">                </span><span class="p">;;</span>
-<span class="w">            </span>uninstall<span class="se">\ </span>*<span class="o">)</span>
-<span class="w">                </span>handle_pip_uninstall<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
-<span class="w">                </span><span class="p">;;</span>
-<span class="w">            </span>list*<span class="w"> </span><span class="p">|</span><span class="w"> </span>freeze*<span class="o">)</span>
-<span class="w">                </span>handle_pip_list
-<span class="w">                </span><span class="p">;;</span>
-<span class="w">            </span>*<span class="o">)</span>
-<span class="w">                </span>handle_pip_other<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
-<span class="w">                </span><span class="p">;;</span>
-<span class="w">            </span><span class="k">esac</span>
-<span class="w">            </span><span class="p">;;</span>
-
-<span class="w">        </span><span class="c1"># ===== 直接的なPython実行の処理 =====</span>
-<span class="w">        </span>python*<span class="w"> </span><span class="p">|</span><span class="w"> </span>py<span class="se">\ </span>*<span class="o">)</span>
-<span class="w">            </span><span class="c1"># 通常のuvへの変換</span>
-<span class="w">            </span><span class="nb">local</span><span class="w"> </span>args
-<span class="w">            </span><span class="nv">args</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^python[0-9]? //'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="k">)</span>
-
-<span class="w">            </span><span class="c1"># -m オプションの特別処理</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$args</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^-m<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="nb">local</span><span class="w"> </span>module
-<span class="w">                </span><span class="nv">module</span><span class="o">=</span><span class="si">${</span><span class="nv">args</span><span class="p">/-m /</span><span class="si">}</span>
-
-<span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$module</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">                </span>pip<span class="se">\ </span>*<span class="o">)</span>
-<span class="w">                    </span><span class="nb">local</span><span class="w"> </span>pip_cmd
-<span class="w">                    </span><span class="nv">pip_cmd</span><span class="o">=</span><span class="si">${</span><span class="nv">module</span><span class="p">/pip /</span><span class="si">}</span>
-<span class="w">                    </span>handle_python_m_pip<span class="w"> </span><span class="s2">"</span><span class="nv">$pip_cmd</span><span class="s2">"</span>
-<span class="w">                    </span><span class="p">;;</span>
-<span class="w">                </span>*<span class="o">)</span>
-<span class="w">                    </span>handle_python_m_module<span class="w"> </span><span class="s2">"</span><span class="nv">$module</span><span class="s2">"</span>
-<span class="w">                    </span><span class="p">;;</span>
-<span class="w">                </span><span class="k">esac</span>
-<span class="w">            </span><span class="k">fi</span>
-
-<span class="w">            </span><span class="c1"># 基本的なPython実行</span>
-<span class="w">            </span>handle_python_run<span class="w"> </span><span class="s2">"</span><span class="nv">$args</span><span class="s2">"</span>
-<span class="w">            </span><span class="p">;;</span>
-<span class="w">        </span><span class="k">esac</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>segment
+<span class="w">        </span><span class="c1"># Advisory: a line shfmt cannot parse (or no shfmt) gets no decision.</span>
+<span class="w">        </span>split_segments<span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>segment<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SEGMENTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span>classify_segment<span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">done</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>

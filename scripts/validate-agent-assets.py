@@ -1291,14 +1291,25 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
             fail(f"{claude_rule} must document model profile token {token!r}")
 
 
+GIT_SIGNING_GUARD = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}'
+GIT_SIGNING_IF = "{{- if $signing }}"
+TEMPLATE_ACTION_LINE = re.compile(r"^\s*\{\{.*\}\}\s*$")
+
+
 def validate_git_config() -> None:
-    """Validate managed Git commit signing configuration."""
+    """Validate managed Git commit signing configuration.
+
+    The template renders the signing keys only when the SSH key exists at apply time, so its
+    whole-line template actions are dropped before the INI parse, and each signing key must sit
+    inside an `if $signing` block whose condition stats that key.
+    """
     path = ROOT / "home/dot_config/git/config.tmpl"
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:
         fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    config = configparser.ConfigParser(strict=False)
-    config.read_string(text)
+    lines = text.splitlines()
+    config = configparser.ConfigParser(strict=False, interpolation=None)
+    config.read_string("\n".join(line for line in lines if not TEMPLATE_ACTION_LINE.match(line)) + "\n")
     expected = {
         ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
         ("gpg", "format"): "ssh",
@@ -1310,6 +1321,14 @@ def validate_git_config() -> None:
             fail(
                 f"{path.relative_to(ROOT)} must configure SSH commit signing with [{section}] {key} = {expected_value}"
             )
+    if GIT_SIGNING_GUARD not in (line.strip() for line in lines):
+        fail(f"{path.relative_to(ROOT)} must gate commit signing on the key existing: {GIT_SIGNING_GUARD}")
+    for key_line in ("\tsigningkey = ", "\tgpgsign = ", "\tformat = ssh"):
+        index = next((i for i, line in enumerate(lines) if line.startswith(key_line)), None)
+        actions = [line.strip() for line in lines[:index] if TEMPLATE_ACTION_LINE.match(line)] if index else []
+        opened = [action for action in actions if action.startswith(("{{- if", "{{ if", "{{- end", "{{ end"))]
+        if not opened or opened[-1] != GIT_SIGNING_IF:
+            fail(f"{path.relative_to(ROOT)} must render {key_line.strip()!r} only inside {GIT_SIGNING_IF}")
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

@@ -83,17 +83,24 @@ function ensure_default_ssh_key() {
     chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }
 
-# The one-off login's GH_CONFIG_DIR while it exists; empty once cleaned up.
+# The one-off login's GH_CONFIG_DIR until it is removed; empty once cleaned up.
 KEY_CONFIG=""
+# Set once the logout has started, so a cleanup re-entered from a signal trap skips it.
+KEY_LOGOUT_STARTED=""
 
-# @description Log out the one-off login and delete its config directory. Idempotent: a second call
-#   (the EXIT trap after a signal trap, or after the normal path) does nothing.
+# @description Log out the one-off login and delete its config directory. KEY_CONFIG is cleared
+#   only after the directory is gone, so a signal during the logout or the removal re-enters this
+#   function from its trap, skips the logout already started, and still removes the directory.
+#   Idempotent: a call after a finished cleanup does nothing.
 function cleanup_key_login() {
     local dir="${KEY_CONFIG}"
     [ -n "${dir}" ] || return 0
-    KEY_CONFIG=""
-    GH_CONFIG_DIR="${dir}" gh auth logout -h github.com > /dev/null 2>&1 || true
+    if [ -z "${KEY_LOGOUT_STARTED}" ]; then
+        KEY_LOGOUT_STARTED=1
+        GH_CONFIG_DIR="${dir}" gh auth logout -h github.com > /dev/null 2>&1 || true
+    fi
     rm -rf "${dir}"
+    KEY_CONFIG=""
 }
 
 # @description Upload the local public SSH key under a one-off login that holds the key-admin scopes.

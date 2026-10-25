@@ -13,11 +13,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_setup-gh"
 # The fake gh logs each call with the config directory it saw; `auth login` fails when FAIL_LOGIN is set;
-# `ssh-key add` touches $HANG_MARKER and hangs when that is set (an interrupt after authentication).
+# `ssh-key add` touches $HANG_MARKER and hangs when that is set (an interrupt after authentication), and
+# `auth logout` does the same with $HANG_LOGOUT_MARKER (an interrupt during the cleanup's logout).
 FAKE_GH = """#!/bin/sh
 printf '%s|%s\\n' "${GH_CONFIG_DIR-default}" "$*" >> "$GH_CALLS"
 case "$1 $2" in
 "ssh-key add") [ -z "${HANG_MARKER-}" ] || { : > "$HANG_MARKER"; exec sleep 30; } ;;
+"auth logout") [ -z "${HANG_LOGOUT_MARKER-}" ] || { : > "$HANG_LOGOUT_MARKER"; exec sleep 30; } ;;
 "auth login") [ -z "${FAIL_LOGIN-}" ] || exit 1; [ -d "$GH_CONFIG_DIR" ] && : > "$GH_CONFIG_DIR/hosts.yml" ;;
 esac
 exit 0
@@ -90,17 +92,19 @@ class SetupGhTest(unittest.TestCase):
         self.assertFalse(any("ssh-key add" in command for _, command in calls))
         self.assertEqual([], list(self.tmpdir.iterdir()))
 
-    def test_a_signal_after_authentication_still_logs_out_and_removes_the_token(self):
+    def interrupt_at(self, marker_variable: str) -> None:
+        """Send TERM, INT and HUP to setup-gh's process group once the fake gh touches the marker; each
+        must exit 128 + the signal number with the one-off login's directory removed."""
         for name, number in (("TERM", signal.SIGTERM), ("INT", signal.SIGINT), ("HUP", signal.SIGHUP)):
             with self.subTest(signal=name):
                 self.calls.unlink(missing_ok=True)
-                marker = self.temp / f"hang-{name}"
+                marker = self.temp / f"hang-{marker_variable}-{name}"
                 process = subprocess.Popen(
                     ["bash", str(SCRIPT)],
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    env={**self.env, "HANG_MARKER": str(marker)},
+                    env={**self.env, marker_variable: str(marker)},
                     start_new_session=True,
                 )
                 try:
@@ -108,7 +112,7 @@ class SetupGhTest(unittest.TestCase):
                         if marker.exists() or process.poll() is not None:
                             break
                         subprocess.run(["sleep", "0.05"], check=True)
-                    self.assertTrue(marker.exists(), "the fake login never reached the key upload")
+                    self.assertTrue(marker.exists(), f"the fake gh never reached the {marker_variable} point")
                     # The one-off token is on disk now; the terminal's interrupt reaches the whole group.
                     self.assertEqual(1, len(list(self.tmpdir.glob("*/hosts.yml"))))
                     os.killpg(process.pid, number)
@@ -121,6 +125,14 @@ class SetupGhTest(unittest.TestCase):
                 self.assertEqual([], list(self.tmpdir.iterdir()))
                 commands = self.calls.read_text().splitlines()
                 self.assertTrue(commands[-1].endswith("|auth logout -h github.com"), commands)
+                # The logout runs once: a cleanup re-entered from the trap does not start it again.
+                self.assertEqual(1, sum(command.endswith("|auth logout -h github.com") for command in commands))
+
+    def test_a_signal_after_authentication_still_logs_out_and_removes_the_token(self):
+        self.interrupt_at("HANG_MARKER")
+
+    def test_a_signal_during_the_logout_still_removes_the_token(self):
+        self.interrupt_at("HANG_LOGOUT_MARKER")
 
     def test_missing_gh_auth_script_stops_before_any_gh_call(self):
         result, calls = self.run_setup_gh(DOTFILES_GH_AUTH_SCRIPT=str(self.temp / "absent.sh"))

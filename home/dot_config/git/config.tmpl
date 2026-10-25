@@ -2,10 +2,9 @@
 	name = {{ get . "name" | default "Fumio Moriya" }}
 	email = {{ .email | quote }}
 {{- /* Signing is rendered only when the key exists at apply time: gpgsign with a missing key makes every commit fail. */}}
-{{- $signingKey := joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub" }}
-{{- $signing := stat $signingKey }}
+{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}
 {{- if $signing }}
-	signingkey = {{ $signingKey }}
+	signingkey = {{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub
 {{- end }}
 [color]
 	ui = auto

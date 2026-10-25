@@ -340,6 +340,38 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def git_config_failure(self, template: str) -> str | None:
+        """Run validate_git_config on a template beside the real setup-gh; return its error or None."""
+        self.write_text_file("home/dot_config/git/config.tmpl", template)
+        setup_gh = "home/dot_local/bin/common/executable_setup-gh"
+        self.write_text_file(setup_gh, (ROOT / setup_gh).read_text())
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                self.module.validate_git_config()
+        except SystemExit:
+            return stderr.getvalue()
+        return None
+
+    def test_git_config_accepts_the_managed_template_with_its_signing_guard(self) -> None:
+        # The template's whole-line actions ({{- if $signing }}) used to raise configparser.ParsingError.
+        self.assertIsNone(self.git_config_failure((ROOT / "home/dot_config/git/config.tmpl").read_text()))
+
+    def test_git_config_refuses_unguarded_or_misplaced_signing(self) -> None:
+        managed = (ROOT / "home/dot_config/git/config.tmpl").read_text()
+        guard = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}\n'
+        self.assertIn(guard, managed)
+        unguarded = managed.replace(guard, "")
+        self.assertIn("must gate commit signing", self.git_config_failure(unguarded) or "")
+        # gpgsign moved out of the if block: signing would be on without the key.
+        outside = managed.replace(
+            "{{- if $signing }}\n[commit]\n\tgpgsign = true\n", "[commit]\n\tgpgsign = true\n{{- if $signing }}\n"
+        )
+        self.assertNotEqual(managed, outside)
+        self.assertIn("'gpgsign =' only inside", self.git_config_failure(outside) or "")
+        dropped = managed.replace("\tformat = ssh\n", "")
+        self.assertIn("[gpg] format = ssh", self.git_config_failure(dropped) or "")
+
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())

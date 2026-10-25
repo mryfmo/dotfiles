@@ -141,6 +141,14 @@ TABLE = {
             'd=$(hcom list audit-tuba directory) && git -C "$d" fetch origin fix/x && git -C "$d" switch --detach abc',
             "allow",
         ),
+        # U57: the audit is one fresh omp-run.sh per head, run by the orchestrator on its own worktree (SKILL step 4).
+        ("bash", "git worktree add --detach /tmp/audit-U1-abc abc", "allow"),
+        (
+            "bash",
+            "scripts/orchestrator/omp-run.sh --role audit --prompt-file /tmp/U1.md --cwd /tmp/audit-U1-abc "
+            "--max-time 1800 > .orchestration/orchestrate/p/verdicts/U1-abc.md",
+            "allow",
+        ),
         # U28: each lever line is allowed; the raw gh forms stay denied; no other spelling, form or chain passes.
         *[("bash", line, "allow") for line in ORCHESTRATOR_LEVERS],
         ("bash", "gh pr close 378 --comment x", "deny"),

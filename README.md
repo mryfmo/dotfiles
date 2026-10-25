@@ -922,10 +922,15 @@ merge.
 }
 ```
 
-Who merges is decided outside GitHub. The orchestrator merges with
-`gh pr merge <pr> --squash --match-head-commit <audited head sha>` only after
-the `hcom-orchestration` SKILL's loop (a verdict row for that head, CI
-green), so GitHub refuses the merge if the head moved after the audit.
+Who merges is decided outside GitHub. The orchestrator seat's policy denies
+the `gh pr merge` command text (a speed bump, not a boundary); its merge path is
+`~/.local/bin/common/pr-merge.sh <pr> --records <program store>`, which
+refuses unless the newest `ledger.tsv` row for the full head sha is `correct`
+and every check on that head passed, then runs
+`gh pr merge <pr> --squash --match-head-commit <head sha>`, so GitHub refuses
+the merge if the head moved after the checks (regime-cutover U71). GitHub
+itself enforces none of this until the ruleset requires the `regime` check
+(gate G10).
 
 Codex worker seats are denied merge commands natively. The Codex execpolicy
 forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or

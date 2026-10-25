@@ -26,8 +26,9 @@ REFUSAL = "regime-ci: no target: {n} changed path(s) outside .orchestration/ and
 
 class RegimeCiTest(unittest.TestCase):
     def setUp(self):
-        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "PR_BODY")}
-        self.env = env | GIT_ENV | {"GITHUB_HEAD_REF": "tools/t1"}
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_HEAD_REF", "PR_BODY", "PR_AUTHOR_ASSOCIATION")}
+        # a collaborator's pull request, as the program's own are; the author test varies it
+        self.env = env | GIT_ENV | {"GITHUB_HEAD_REF": "tools/t1", "PR_AUTHOR_ASSOCIATION": "COLLABORATOR"}
 
     def git(self, *args):
         cmd = ["git", "-c", "commit.gpgsign=false", *args]
@@ -49,7 +50,8 @@ class RegimeCiTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.repo = Path(temp.name).resolve()
         self.git("init", "-q", "-b", "main")
-        self.commit({VERIFIER: (ROOT / VERIFIER).read_text(), "README": "base\n"}, "base")
+        stores = {f".orchestration/orchestrate/{p}/units.tsv": "id\n" for p in ("regime-cutover", "other-program")}
+        self.commit({VERIFIER: (ROOT / VERIFIER).read_text(), "README": "base\n"} | stores, "base")
         self.git("switch", "-q", "-c", branch)
         self.head = self.commit(code, "head")
         self.git("switch", "-q", "main")
@@ -88,17 +90,26 @@ class RegimeCiTest(unittest.TestCase):
         for accepted in (body, body.replace("\n", "\r\n")):  # a body edited on github.com carries CRLF
             result = self.regime(PR_BODY=accepted)
             self.assertEqual(
-                (0, "regime-ci: no target (program unit U3, D-024-131)\n"),
+                (0, "regime-ci: no target (program unit regime-cutover/U3, D-024-131)\n"),
                 (result.returncode, result.stdout),
                 result.stderr,
             )
+        # U71 (F063): any program whose store the base holds, not only regime-cutover
+        result = self.regime(PR_BODY="Program-Unit: other-program/U3")
+        self.assertEqual(
+            (0, "regime-ci: no target (program unit other-program/U3, D-024-131)\n"),
+            (result.returncode, result.stdout),
+            result.stderr,
+        )
         rejected = (
             "",
             "Program-Unit: regime-cutover/U",
             "Program-Unit: regime-cutover/U3a",
             "Program-Unit: regime-cutover/u3",
             "program-unit: regime-cutover/U3",
-            "Program-Unit: other-program/U3",
+            "Program-Unit: /U3",
+            "Program-Unit: Regime-cutover/U3",
+            "Program-Unit: ../U3",
             "Program-Unit:  regime-cutover/U3",
             " Program-Unit: regime-cutover/U3",
             "Program-Unit: regime-cutover/U3 ",
@@ -108,6 +119,23 @@ class RegimeCiTest(unittest.TestCase):
         for text in rejected:
             result = self.regime(PR_BODY=text)
             self.assertEqual((1, True), (result.returncode, refusal in result.stdout), (text, result.stdout))
+        # a well-formed line for a program the base has no store for grants nothing
+        result = self.regime(PR_BODY="Program-Unit: no-such-program/U3")
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(
+            "names no-such-program, but the base holds no .orchestration/orchestrate/no-such-program/", result.stdout
+        )
+
+    def test_regime_ci_grants_the_program_unit_line_only_to_an_owner_member_or_collaborator(self):
+        # U71 (F152): before, anyone who wrote the line passed; the payload's author_association now decides
+        self.build({"src/tool.sh": "a\n"})
+        for author in ("OWNER", "MEMBER", "COLLABORATOR"):
+            result = self.regime(PR_BODY="Program-Unit: regime-cutover/U3", PR_AUTHOR_ASSOCIATION=author)
+            self.assertEqual(0, result.returncode, (author, result.stdout))
+        for author in ("CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE", "MANNEQUIN", "collaborator", ""):
+            result = self.regime(PR_BODY="Program-Unit: regime-cutover/U3", PR_AUTHOR_ASSOCIATION=author)
+            self.assertEqual(1, result.returncode, (author, result.stdout))
+            self.assertIn("the Program-Unit line grants nothing to an author whose association is", result.stdout)
 
     def test_regime_ci_warns_when_the_diff_changes_the_verifier_and_still_runs_the_base_s(self):
         result = self.build({VERIFIER: "import sys\nsys.exit(0)\n"})
@@ -143,8 +171,11 @@ class RegimeCiTest(unittest.TestCase):
         read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
         cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
         doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
-        types = ["opened", "synchronize", "reopened", "ready_for_review"]
-        self.assertEqual({"pull_request_target": {"types": types}}, doc.get("on", doc.get("true")))
+        # U71 (F155): a body edit re-runs the check, and only pull requests into main run it
+        types = ["opened", "edited", "synchronize", "reopened", "ready_for_review"]
+        self.assertEqual(
+            {"pull_request_target": {"types": types, "branches": ["main"]}}, doc.get("on", doc.get("true"))
+        )
         self.assertEqual(({"contents": "read"}, ["regime"]), (doc["permissions"], list(doc["jobs"])))
         job = doc["jobs"]["regime"]
         self.assertEqual(("ubuntu-24.04", 10, None), (job["runs-on"], job["timeout-minutes"], job.get("permissions")))
@@ -170,7 +201,8 @@ class RegimeCiTest(unittest.TestCase):
         head = "${{ github.event.pull_request.head.sha }}"
         token = {"GH_TOKEN": "${{ github.token }}"}
         body = {"PR_BODY": "${{ github.event.pull_request.body }}"}  # the program marker's source (D-024-131)
-        self.assertEqual(({"HEAD_SHA": head} | token | body, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        author = {"PR_AUTHOR_ASSOCIATION": "${{ github.event.pull_request.author_association }}"}  # U71, F152
+        self.assertEqual(({"HEAD_SHA": head} | token | body | author, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")

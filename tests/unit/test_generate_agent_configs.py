@@ -218,6 +218,7 @@ LEVERS = (
     "omp-run.sh",
     "pr-body-edit.sh",
     "pr-close.sh",
+    "pr-merge.sh",
     "pr-thread-reply.sh",
     "pr-thread-resolve.sh",
     "pr-threads-check.sh",

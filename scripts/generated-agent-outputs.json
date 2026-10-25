@@ -280,7 +280,7 @@
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf"
+      "sha256": "23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-close.sh",
@@ -288,6 +288,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-merge.sh",
+      "target": ".local/bin/common/pr-merge.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -315,7 +322,7 @@
       "target": ".local/bin/common/pr-update-branch.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "7892eecf70f1ffacc8045f8b016f7d0efde68ab44fa734ba0ca0f606bdac075f"
+      "sha256": "c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae"
     },
     {
       "source": "home/dot_local/bin/common/executable_records-sync.sh",
@@ -460,6 +467,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "pr-close.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-merge.sh"
     },
     {
       "source": "home/dot_local/bin/common",

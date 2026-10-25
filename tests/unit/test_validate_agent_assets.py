@@ -1337,9 +1337,55 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 + " | toJson }}",
                 self.temp_dir,
             )
-            for role in self.module.OMP_WRITING_POLICIES
+            for role in self.module.omp_policy_roles()
         }
+        self.assertEqual(["audit", "orchestrator", "worker"], sorted(policies))
         self.module.validate_omp_policies(manifest, policies)
+        # U71 audit rounds 3, 8 and 9: in every policy file an allow row that reaches GitHub must be on its role's
+        # allowlist; merge spellings are not enumerated, so the GraphQL mutation and any gh write are refused too.
+        allowed = self.module.OMP_GITHUB_ALLOWLIST
+        self.assertEqual(sorted(allowed), sorted(policies))
+        for role, policy in policies.items():
+            reaching = [
+                rule["match"]
+                for rule in policy["bash"]["patterns"]
+                if rule["approval"] == "allow" and self.module.OMP_GITHUB_REACH.search(rule["match"])
+            ]
+            self.assertEqual(sorted(reaching), sorted(allowed[role]), role)
+        for role in sorted(policies):
+            for row in (
+                "gh pr merge 541 --squash --match-head-commit *",
+                "gh api repos/o/r/pulls/541/merge *",
+                "gh api repos/o/r/merges *",
+                "curl -X POST https://api.github.com/repos/o/r/merges *",
+                "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+                "gh api graphql *",
+                "gh issue create *",
+                "gh pr view 1 --json body && gh pr close 1",
+                "GH_TOKEN=x gh api user",
+                "wget -qO- https://example.com",
+                "gh api repos/* ",
+            ):
+                with self.subTest(role=role, row=row):
+                    injected = json.loads(json.dumps(policies))
+                    injected[role]["bash"]["patterns"].insert(0, {"match": row, "approval": "allow"})
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_omp_policies(manifest, injected)
+                    self.assertIn(f"reaches GitHub and is not on the {role} allowlist", stderr.getvalue())
+        # each allowlisted row passes in its own role, and only there
+        for role, rows in allowed.items():
+            for row in rows:
+                for other in sorted(policies):
+                    with self.subTest(row=row, into=other):
+                        injected = json.loads(json.dumps(policies))
+                        patterns = injected[other]["bash"]["patterns"]
+                        patterns[:] = [rule for rule in patterns if rule["match"] != row]
+                        patterns.append({"match": row, "approval": "allow"})
+                        if other == role:
+                            self.module.validate_omp_policies(manifest, injected)
+                        else:
+                            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                                self.module.validate_omp_policies(manifest, injected)
         if self.module.yaml is None:
             with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                 self.module.validate_omp_policies(manifest)
@@ -1353,31 +1399,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         merge = "gh pr merge * --squash --match-head-commit *"
         installed = "~/.local/bin/common/pr-close.sh --from-table *"
-        self.module.validate_omp_policy_allow(policy(merge, installed), "orchestrator.yml", pinned, merge=True)
+        self.module.validate_omp_policy_allow(policy(installed), "orchestrator.yml", pinned)
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh *"), "worker.yml", pinned)
         # U28b F3: the exact bare form of a lever that acts without arguments.
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh"), "orchestrator.yml", pinned)
         cases = {
-            (merge, False): "is not ~/.local/bin/common/<lever>",
-            ("gh pr close *", True): "is not 'gh pr merge",
-            ("gh api *", True): "is not 'gh pr merge",
-            ("*", True): "is not 'gh pr merge",
-            ("bash *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh x", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh*", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh --from-table x *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh * && *", True): "is not 'gh pr merge",
-            ("/Users/x/.local/bin/common/pr-close.sh *", True): "is not 'gh pr merge",
-            ("scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("./scripts/orchestrator/pr-close.sh --from-table *", True): "names a lever inside the rewritable checkout",
-            ("*scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("~/.local/bin/common/absent.sh *", True): "absent.sh is not a regular file",
-            ("~/.local/bin/common/python3 *", True): "python3 is named as an interpreter",
+            merge: "is not ~/.local/bin/common/<lever>",  # U71: no raw merge allow, even for the orchestrator
+            "gh pr close *": "is not ~/.local/bin/common/<lever>",
+            "gh api *": "is not ~/.local/bin/common/<lever>",
+            "*": "is not ~/.local/bin/common/<lever>",
+            "bash *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh x": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh*": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh --from-table x *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh * && *": "is not ~/.local/bin/common/<lever>",
+            "/Users/x/.local/bin/common/pr-close.sh *": "is not ~/.local/bin/common/<lever>",
+            "scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "./scripts/orchestrator/pr-close.sh --from-table *": "names a lever inside the rewritable checkout",
+            "*scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "~/.local/bin/common/absent.sh *": "absent.sh is not a regular file",
+            "~/.local/bin/common/python3 *": "python3 is named as an interpreter",
         }
-        for (match, merge_allowed), message in cases.items():
-            with self.subTest(rejects=match, merge=merge_allowed):
+        for match, message in cases.items():
+            with self.subTest(rejects=match):
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned, merge=merge_allowed)
+                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned)
                 self.assertIn(message, stderr.getvalue())
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_omp_policy_allow(policy(installed), "seat.yml", {})

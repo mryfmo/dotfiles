@@ -1487,7 +1487,7 @@ EOF
 
     def test_rebuild_skips_with_a_reason_when_the_release_age_cannot_be_told(self) -> None:
         # Fail closed: a failed or unreadable npm answer is "cannot tell", never "old enough", and is decided before
-        # the install directory moves. Only the last case reaches the install, which npm refuses.
+        # the install directory moves. Only "npm still refuses a dependency" reaches the install, which npm refuses.
         version, window, times = "not one exact version", "not a number of days", "no publish time for 20.0.0"
         cases = [
             ("npm config get fails", {"FAKE_MIN_AGE": "fail"}, "npm config get min-release-age failed", False),

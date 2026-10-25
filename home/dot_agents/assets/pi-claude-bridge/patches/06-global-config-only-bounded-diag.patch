@@ -1,0 +1,74 @@
+diff -r a/src/config.ts b/src/config.ts
+--- a/src/config.ts	2026-10-25 17:11:46.453519000 +0900
++++ b/src/config.ts	2026-10-25 17:12:05.467678648 +0900
+@@ -1,10 +1,13 @@
+ // User-facing extension config. Loaded once at extension registration from
+-// the global agent dir (getAgentDir(), e.g. ~/.pi/agent/claude-bridge.json)
+-// and the project Pi config directory, project overriding global. Missing or
++// the global agent dir only (getAgentDir(), e.g. ~/.pi/agent/claude-bridge.json).
++// Patched for omp: upstream also merged <cwd>/.omp/claude-bridge.json over the
++// global file, so a checked-out repository could name the Claude Code
++// executable, enable AskClaude in full (bypassPermissions) mode or drop
++// --strict-mcp-config. The project file is now never read. Missing or
+ // unparseable files are ignored (error to console.error, empty object
+ // returned) so the extension always starts.
+ 
+-import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
++import { getAgentDir } from "@earendil-works/pi-coding-agent";
+ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+ import { dirname, join } from "path";
+ 
+@@ -103,13 +106,13 @@
+ 	return path;
+ }
+ 
+-export function loadConfig(cwd: string): Config {
++/** `_cwd` is kept so callers stay unpatched; the project directory is not consulted (see header). */
++export function loadConfig(_cwd: string): Config {
+ 	const global = tryParseJson(globalConfigPath());
+-	const project = tryParseJson(join(cwd, CONFIG_DIR_NAME, "claude-bridge.json"));
+ 	return {
+-		startupNoticeShown: project.startupNoticeShown ?? global.startupNoticeShown,
+-		askClaudeDeprecationShown: project.askClaudeDeprecationShown ?? global.askClaudeDeprecationShown,
+-		askClaude: { ...global.askClaude, ...project.askClaude },
+-		provider: { ...global.provider, ...project.provider },
++		startupNoticeShown: global.startupNoticeShown,
++		askClaudeDeprecationShown: global.askClaudeDeprecationShown,
++		askClaude: { ...global.askClaude },
++		provider: { ...global.provider },
+ 	};
+ }
+diff -r a/src/index.ts b/src/index.ts
+--- a/src/index.ts	2026-10-25 17:11:46.578452571 +0900
++++ b/src/index.ts	2026-10-25 17:12:05.467997399 +0900
+@@ -5,7 +5,7 @@
+ import type { Base64ImageSource, ContentBlockParam } from "@anthropic-ai/sdk/resources";
+ import { Text } from "@earendil-works/pi-tui";
+ import { createSession, deleteSession, openSession, repairToolPairing } from "cc-session-io";
+-import { appendFileSync, mkdirSync, realpathSync, statSync } from "fs";
++import { appendFileSync, mkdirSync, realpathSync, renameSync, statSync } from "fs";
+ import { dirname, join } from "path";
+ import { PROVIDER_ID, messageContentToText, convertPiMessages } from "./convert.js";
+ import { debugLogPath, diagLogPath } from "./log-paths.js";
+@@ -106,6 +106,8 @@
+ 	};
+ }
+ 
++const DIAG_LOG_MAX_BYTES = 512 * 1024;
++
+ /** Unconditional diagnostic dump — for "should never happen" paths. Creates pi's agent
+  *  dir itself: callers run inside streamSimple, where a missing dir must not throw. */
+ function diagDump(label: string, data: Record<string, unknown>) {
+@@ -113,6 +115,12 @@
+ 	const entry = { ts, moduleInstanceId, label, ...data };
+ 	const logPath = diagLogPath();
+ 	mkdirSync(dirname(logPath), { recursive: true });
++	// Patched for omp: upstream appended without a bound (a worker seat's log reached 1 MB). Once the
++	// log holds DIAG_LOG_MAX_BYTES it moves to <log>.1, replacing the older one, so the pair stays near
++	// twice the cap. A failed stat or rename leaves the append as it was.
++	try {
++		if (statSync(logPath).size >= DIAG_LOG_MAX_BYTES) renameSync(logPath, `${logPath}.1`);
++	} catch { /* no log yet, or it could not be rotated */ }
+ 	appendFileSync(logPath, JSON.stringify(entry) + "\n");
+ 	debug(`DIAG: ${label} (see ${logPath})`);
+ }

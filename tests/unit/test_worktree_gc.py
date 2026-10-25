@@ -3,8 +3,9 @@
 Each test builds a bare `origin` and a checkout under a temporary directory, with worktrees under
 `.claude/worktrees/` in every state the lever tells apart. A fake `gh` written into the scratch PATH answers the two
 `gh pr list --state merged` queries from a JSON table and records its argv; a `git` wrapper records every argv and
-execs the real git, so the tests can assert that no git call carries `--force` or runs `git worktree prune`. The real `gh` is never called and the
-real worktrees of this repository are never read.
+execs the real git, so the tests can assert that no git call carries `--force` or runs `git worktree prune`, and that
+`--apply` only moves trees into `.claude/worktrees/.gc-quarantine/` while `--purge` alone removes. The real `gh` is
+never called and the real worktrees of this repository are never read.
 """
 
 import json
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GC = ROOT / "scripts/orchestrator/worktree-gc.sh"
 
 FAKE_GH = """#!/usr/bin/env python3
-import json, os, sys
+import json, os, subprocess, sys
 argv = sys.argv[1:]
 with open(os.environ["FAKE_GH_CALLS"], "a", encoding="utf-8") as calls:
     calls.write(json.dumps(argv) + "\\n")
@@ -31,6 +32,9 @@ if os.environ.get("FAKE_GH_TOUCH"):
     # A file written into a worktree while the lever waits on gh, after that tree's clean check.
     with open(os.environ["FAKE_GH_TOUCH"], "w", encoding="utf-8") as late:
         late.write("TOKEN=late\\n")
+if os.environ.get("FAKE_GH_COMMIT"):
+    # A commit made in a worktree while the lever waits on gh, after that tree's head was read.
+    subprocess.run(["git", "-C", os.environ["FAKE_GH_COMMIT"], "commit", "-q", "--allow-empty", "-m", "late"], check=True)
 table = json.load(open(os.environ["FAKE_GH_MERGED"], encoding="utf-8"))
 flag, value = argv[4], argv[5]
 print(json.dumps(table["head" if flag == "--head" else "search"].get(value, [])))
@@ -173,7 +177,24 @@ class WorktreeGcTest(unittest.TestCase):
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
     def remaining(self):
-        return sorted(path.name for path in self.trees.iterdir())
+        return sorted(path.name for path in self.trees.iterdir() if path.name != ".gc-quarantine")
+
+    def quarantined(self):
+        """The quarantined trees by name, each in its own `.gc-quarantine/<random>/` directory."""
+        return sorted(path.name for path in (self.trees / ".gc-quarantine").glob("*/*"))
+
+    def marker(self, path):
+        return Path(self.git("rev-parse", "--absolute-git-dir", cwd=path)) / "gc-quarantined-at"
+
+    def apply_one(self, name, **overrides):
+        """`--apply` on a tree landed in origin/main; returns its quarantine path and the run's rows."""
+        path, _ = self.add_tree(name, f"feat/{name}", commit=False)
+        result = self.run_gc("--apply", **overrides)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        moved = [row for row in rows if row[0] == "quarantined"]
+        self.assertEqual([row[1] for row in moved], [str(path)], rows)
+        return Path(moved[0][2]), rows
 
     def test_the_dry_run_prints_one_row_per_worktree_and_removes_nothing(self):
         expected = self.build_states()
@@ -187,32 +208,44 @@ class WorktreeGcTest(unittest.TestCase):
                 self.assertEqual(verdicts[name][0], verdict)
                 self.assertIn(reason, verdicts[name][1])
         self.assertEqual(rows[-1][0], "summary")
-        self.assertIn("3 qualify, 6 kept; dry run", rows[-1][1])
+        self.assertIn("3 qualify, 6 kept, 0 in quarantine; dry run", rows[-1][1])
         self.assertEqual(self.remaining(), sorted(expected))
         self.assertTrue((self.root / "outside").is_dir())
         removals = [argv for argv in self.calls(self.git_calls) if "remove" in argv or "prune" in argv]
         self.assertEqual(removals, [])
 
-    def test_apply_removes_only_the_clean_landed_worktrees_and_never_forces(self):
+    def test_apply_quarantines_only_the_clean_landed_worktrees_and_deletes_nothing(self):
         expected = self.build_states()
+        files = {name: sorted(p.name for p in (self.trees / name).iterdir()) for name in expected}
         result = self.run_gc("--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
         landed = sorted(name for name, (verdict, _) in expected.items() if verdict == "gc")
         self.assertEqual(landed, ["detached-landed", "in-main", "landed-branch"])
         self.assertEqual(self.remaining(), sorted(set(expected) - set(landed)))
+        self.assertEqual(self.quarantined(), landed)
         self.assertTrue((self.root / "outside").is_dir())
-        removed = [row[1] for row in self.rows(result.stdout) if row[0] == "removed"]
-        self.assertEqual(sorted(Path(path).name for path in removed), landed)
+        rows = self.rows(result.stdout)
+        moved = {Path(row[1]).name: Path(row[2]) for row in rows if row[0] == "quarantined"}
+        self.assertEqual(sorted(moved), landed)
+        self.assertEqual(rows[-1], ["summary", "3 quarantined, 0 held, 0 failed, 6 kept"])
+        for name, dest in moved.items():
+            with self.subTest(worktree=name):
+                self.assertEqual(dest.parent.parent, self.trees / ".gc-quarantine")
+                self.assertEqual(sorted(p.name for p in dest.iterdir()), files[name], "the tree moved whole")
+                stamp, head = self.marker(dest).read_text().split()
+                self.assertEqual(head, self.git("rev-parse", "HEAD", cwd=dest))
+                self.assertTrue(stamp.isdigit())
         git_calls = self.calls(self.git_calls)
-        self.assertEqual(
-            sorted(Path(argv[-1]).name for argv in git_calls if argv[-3:-1] == ["worktree", "remove"]), landed
-        )
+        self.assertEqual(sorted(Path(argv[-2]).name for argv in git_calls if argv[2:4] == ["worktree", "move"]), landed)
         for argv in git_calls:
             self.assertNotIn("--force", argv)
             self.assertNotIn("prune", argv)
-            if "remove" in argv:
-                self.assertEqual(argv, ["-C", str(self.checkout), "worktree", "remove", argv[-1]])
+            self.assertNotIn("remove", argv, "--apply deletes nothing")
+            if "move" in argv:
+                self.assertEqual(argv[:4], ["-C", str(self.checkout), "worktree", "move"])
+                self.assertEqual(len(argv), 6)
         self.assertIn("feat/landed", self.git("branch", "--list", "feat/landed"), "the branch ref stays")
+        self.assertTrue((self.trees / "locked").is_dir(), "a locked tree is not moved")
 
     def test_the_gh_queries_are_the_documented_ones(self):
         self.build_states()
@@ -247,9 +280,9 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         rows = self.rows(result.stdout)
         self.assertIn("error", [row[0] for row in rows])
-        self.assertIn("nothing removed", rows[-1][1])
+        self.assertIn("nothing moved", rows[-1][1])
         self.assertEqual(self.remaining(), sorted(expected))
-        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv or "move" in argv], [])
 
     def test_a_newline_in_a_path_cannot_forge_a_landed_record(self):
         """A path `a<LF>worktree <victim>` must not lend its landed head to the victim (audit row 679, U16c)."""
@@ -264,7 +297,7 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertIn("path contains a newline", {row[3] for row in rows if row[0] == "error"})
         victim_rows = [row for row in rows if row[1] == str(victim)]
         self.assertEqual([row[0] for row in victim_rows], ["keep"], "the victim is listed once, from its own record")
-        self.assertIn("nothing removed", rows[-1][1])
+        self.assertIn("nothing moved", rows[-1][1])
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=victim), victim_head)
         self.assertTrue(forged.is_dir())
         self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv or "prune" in argv], [])
@@ -292,14 +325,14 @@ class WorktreeGcTest(unittest.TestCase):
         self.build_states()
         result = self.run_gc("--apply", str(self.trees / "in-main"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "quarantined", "summary"])
         self.assertNotIn("in-main", self.remaining())
         self.assertIn("landed-branch", self.remaining())
 
     def test_nothing_to_collect_exits_0(self):
         result = self.run_gc("--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.rows(result.stdout), [["summary", "0 removed, 0 failed, 0 kept"]])
+        self.assertEqual(self.rows(result.stdout), [["summary", "0 quarantined, 0 held, 0 failed, 0 kept"]])
         self.assertEqual(self.calls(self.gh_calls), [])
 
     def test_an_ignored_file_keeps_the_tree(self):
@@ -313,7 +346,7 @@ class WorktreeGcTest(unittest.TestCase):
         rows = self.rows(result.stdout)
         self.assertEqual(rows[0][:2], ["keep", str(path)])
         self.assertIn("ignored files", rows[0][3])
-        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 1 kept"])
+        self.assertEqual(rows[-1], ["summary", "0 quarantined, 0 held, 0 failed, 1 kept"])
         self.assertEqual((path / ".env").read_text(), "TOKEN=secret\n")
 
     def test_a_squash_merged_branch_is_landed_until_it_gets_a_later_commit(self):
@@ -392,7 +425,7 @@ class WorktreeGcTest(unittest.TestCase):
             verdicts.append(self.rows(result.stdout)[0][0])
         self.assertEqual(verdicts, ["keep", "keep", "gc"])
         result = self.run_gc("--apply")
-        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "quarantined", "summary"])
         self.assertFalse(path.exists())
 
     def test_a_mode_change_alone_is_not_landed_by_the_same_blob(self):
@@ -413,22 +446,124 @@ class WorktreeGcTest(unittest.TestCase):
         rows = self.rows(result.stdout)
         self.assertEqual(rows[0][0], "error", rows)
         self.assertIn("with origin/main failed", rows[0][3])
-        self.assertIn("nothing removed", rows[-1][1])
+        self.assertIn("nothing moved", rows[-1][1])
         self.assertTrue(path.is_dir())
 
-    def test_an_ignored_file_written_after_the_check_keeps_the_tree(self):
-        """The clean check runs again right before the removal (U56b F2); here gh writes `.env` mid-run."""
+    def test_an_ignored_file_written_after_the_check_is_held_in_quarantine(self):
+        """The tree is moved, then checked again (U56c); gh writes `.env` mid-run, so it is held with the file."""
         self.land_on_main(".gitignore", ".env\n")
         path, head = self.add_tree("late-env", "feat/late-env")
         self.merged.write_text(json.dumps({"head": {"feat/late-env": [{"number": 31, "headRefOid": head}]}}))
         result = self.run_gc("--apply", FAKE_GH_TOUCH=str(path / ".env"))
         self.assertEqual(result.returncode, 0, result.stderr)
         rows = self.rows(result.stdout)
-        self.assertEqual([row[0] for row in rows], ["gc", "skipped", "summary"], rows)
-        self.assertEqual(rows[1][:2], ["skipped", str(path)])
-        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 1 kept"])
-        self.assertEqual((path / ".env").read_text(), "TOKEN=late\n")
+        self.assertEqual([row[0] for row in rows], ["gc", "held", "summary"], rows)
+        self.assertEqual(rows[1][:2], ["held", str(path)])
+        self.assertIn("ignored files", rows[1][3])
+        self.assertEqual(rows[-1], ["summary", "0 quarantined, 1 held, 0 failed, 0 kept"])
+        held = Path(rows[1][2])
+        self.assertEqual((held / ".env").read_text(), "TOKEN=late\n")
+        self.assertFalse(path.exists(), "a held tree is never moved back")
         self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
+    def test_a_commit_made_after_the_check_is_held_in_quarantine(self):
+        """A detached tree whose head moves after its classification (U56c F1) is held with its new commit."""
+        path, head = self.add_tree("late-commit")
+        self.merged.write_text(json.dumps({"head": {}, "search": {head: [{"number": 41, "headRefOid": head}]}}))
+        result = self.run_gc("--apply", FAKE_GH_COMMIT=str(path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["gc", "held", "summary"], rows)
+        self.assertIn(f"head moved from {head[:12]}", rows[1][3])
+        held = Path(rows[1][2])
+        new_head = self.git("rev-parse", "HEAD", cwd=held)
+        self.assertNotEqual(new_head, head)
+        self.assertEqual(self.git("log", "-1", "--format=%s", new_head, cwd=held), "late")
+        self.assertEqual(self.git("rev-parse", "HEAD^", cwd=held), head)
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
+    def test_purge_removes_a_quarantined_tree_that_still_qualifies(self):
+        dest, _ = self.apply_one("done")
+        result = self.run_gc("--purge", "1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(rows[0][0], "keep", rows)
+        self.assertIn("younger than 1 days", rows[0][3])
+        self.assertTrue(dest.is_dir())
+
+        result = self.run_gc("--purge", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["gc", "removed", "summary"], rows)
+        self.assertEqual(rows[1], ["removed", str(dest)])
+        self.assertEqual(rows[-1], ["summary", "1 removed, 0 failed, 0 kept"])
+        self.assertFalse(dest.exists())
+        self.assertFalse(dest.parent.exists(), "the empty quarantine slot goes too")
+        self.assertIn("feat/done", self.git("branch", "--list", "feat/done"), "the branch ref stays")
+        removals = [argv for argv in self.calls(self.git_calls) if "remove" in argv]
+        self.assertEqual(removals, [["-C", str(self.checkout), "worktree", "remove", str(dest)]])
+
+    def test_purge_keeps_a_quarantined_tree_that_gained_an_ignored_file(self):
+        self.land_on_main(".gitignore", ".env\n")
+        dest, _ = self.apply_one("gained-env")
+        (dest / ".env").write_text("TOKEN=written-in-quarantine\n")
+        result = self.run_gc("--purge", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(rows[0][:2], ["keep", str(dest)], rows)
+        self.assertIn("ignored files", rows[0][3])
+        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 1 kept"])
+        self.assertEqual((dest / ".env").read_text(), "TOKEN=written-in-quarantine\n")
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
+    def test_purge_keeps_a_locked_or_unmarked_quarantined_tree(self):
+        dest, _ = self.apply_one("locked-later")
+        self.git("worktree", "lock", str(dest))
+        other, _ = self.apply_one("unmarked")
+        self.marker(other).unlink()
+        result = self.run_gc("--purge", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        reasons = {Path(row[1]).name: (row[0], row[3]) for row in self.rows(result.stdout) if row[0] != "summary"}
+        self.assertEqual(reasons["locked-later"], ("keep", "locked"))
+        self.assertEqual(reasons["unmarked"][0], "keep")
+        self.assertIn("no gc-quarantined-at marker", reasons["unmarked"][1])
+        self.assertTrue(dest.is_dir() and other.is_dir())
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
+    def test_the_quarantine_is_never_a_candidate(self):
+        dest, _ = self.apply_one("parked")
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["quarantine", "summary"], rows)
+        self.assertEqual(rows[0][1], str(dest))
+        self.assertRegex(rows[0][3], r"^quarantined 0d 0h ago$")
+        self.assertEqual(rows[-1], ["summary", "0 quarantined, 0 held, 0 failed, 0 kept"])
+        self.assertEqual(self.quarantined(), ["parked"])
+        result = self.run_gc()
+        self.assertEqual(
+            self.rows(result.stdout)[-1][1],
+            "0 qualify, 0 kept, 1 in quarantine; dry run, rerun with --apply to quarantine",
+        )
+        for path in (dest, dest.parent, self.trees / ".gc-quarantine"):
+            with self.subTest(path=path):
+                result = self.run_gc("--apply", str(path))
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("in the quarantine", result.stderr)
+        self.assertTrue(dest.is_dir())
+
+    def test_purge_takes_a_day_count_and_nothing_else(self):
+        for args in (
+            ["--purge"],
+            ["--purge", "x"],
+            ["--purge", "-1"],
+            ["--purge", "1", "--apply"],
+            ["--purge", "1", str(self.trees)],
+        ):
+            with self.subTest(args=args):
+                result = self.run_gc(*args)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("usage", result.stderr)
 
     def test_a_merged_pr_with_the_branch_name_but_another_head_does_not_land_the_tree(self):
         path, head = self.add_tree("same-name", "feat/same-name")
@@ -441,7 +576,7 @@ class WorktreeGcTest(unittest.TestCase):
         self.merged.write_text(json.dumps({"head": {"feat/same-name": [{"number": 21, "headRefOid": head}]}}))
         result = self.run_gc("--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "quarantined", "summary"])
         self.assertFalse(path.exists())
 
     def test_the_admin_data_of_a_sibling_worktree_whose_directory_is_missing_survives(self):
@@ -452,7 +587,7 @@ class WorktreeGcTest(unittest.TestCase):
         self.add_tree("in-main", "feat/in-main", commit=False)
         result = self.run_gc("--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "quarantined", "summary"])
         listing = self.git("worktree", "list", "--porcelain")
         self.assertIn(f"worktree {seat}", listing)
 

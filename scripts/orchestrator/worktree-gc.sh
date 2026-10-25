@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # @file worktree-gc.sh
-# @brief List, and with --apply remove, the clean agent worktrees under .claude/worktrees/ whose work landed.
+# @brief List the clean agent worktrees under .claude/worktrees/ whose work landed; quarantine them with --apply, delete old quarantined ones with --purge.
 # @description
 #   Regime-cutover U16, a coordinator lever pre-authorized by
 #   `Bash(scripts/orchestrator/worktree-gc.sh *)` (scripts/orchestrator/README.md,
 #   "Pre-authorized levers"). The candidates are the worktrees of this checkout
-#   (`git worktree list --porcelain -z`) under `<toplevel>/.claude/worktrees/`;
-#   every other worktree, the main one and the omp seats included, is never
-#   listed. A candidate qualifies when its tree is clean (`git status --porcelain
+#   (`git worktree list --porcelain -z`) under `<toplevel>/.claude/worktrees/`,
+#   except the quarantine `<toplevel>/.claude/worktrees/.gc-quarantine/`; every
+#   other worktree, the main one and the omp seats included, is never listed.
+#   A candidate qualifies when its tree is clean (`git status --porcelain
 #   --ignored=matching --untracked-files=all` prints nothing: `git worktree
 #   remove` deletes ignored files without asking, so a tree holding one, an
 #   `.env` say, is kept) and its work landed, the first of: its head is
@@ -26,32 +27,51 @@
 #   separators, so a path cannot forge a record; a candidate whose path
 #   contains a newline is an `error` row. Each candidate prints one row
 #   `<verdict>\t<path>\t<ref>\t<reason>` (a newline in the path printed as
-#   `\n`), verdict `gc` (qualifies), `keep` or `error`, then one `summary` row.
-#   Nothing is removed without `--apply`; with it each qualifying path is
-#   checked clean again (the same `git status`) right before `git worktree
-#   remove <path>`, never forced, and a tree that changed since the
-#   classification prints a `skipped` row and is kept; each other prints a
-#   `removed` or `failed` row. Residual: git has no atomic check-and-remove, so
-#   a file written between that re-check and the removal (an ignored one,
-#   which the unforced remove deletes) is lost. `git worktree prune` is never
-#   run: it would drop the admin data of every worktree whose directory is
-#   missing, an
-#   unlocked omp seat included. A `gh` error fails closed: the run removes
-#   nothing and exits 1. `origin/main` is read as it is; run `git fetch origin`
-#   first for a current answer. Every `gh` call is bounded by
-#   WORKTREE_GC_GH_TIMEOUT seconds (perl `alarm`, because `timeout` is not on
-#   every host). A path argument narrows the run to those worktrees and is
-#   refused unless it is one of them.
-# @arg $@ path Optional worktree paths under .claude/worktrees/; default: all of them.
-# @option --apply Remove the qualifying worktrees (default: list only).
+#   `\n`), verdict `gc` (qualifies), `keep` or `error`, then each quarantined
+#   worktree a `quarantine` row with its age, then one `summary` row.
+#
+#   No check can be made atomic with a deletion, so taking a tree out of use
+#   and deleting it are two runs. `--apply` deletes nothing: it renames each
+#   qualifying tree with `git worktree move <path>
+#   .gc-quarantine/<random>/<name>` (one rename on the same filesystem; git
+#   refuses a locked tree), writes `<epoch> <classified head>` to
+#   `gc-quarantined-at` in the tree's admin directory (`git rev-parse
+#   --absolute-git-dir`), then checks the moved tree clean again and its HEAD
+#   equal to the classified one. Both hold: a `quarantined` row. Either fails
+#   (a file or commit made after the classification moved with the tree): a
+#   `held` row with the reason; the tree stays in the quarantine, is never
+#   moved back and never deleted by this run. A refused move is a `failed`
+#   row, exit 1. `--purge <days>` lists only the quarantine: each entry whose
+#   marker is at least <days> days old (0: any age) is classified again by the
+#   same rules (clean, ignored files included; HEAD read again and landed by
+#   ancestry, content or a merged PR's exact head) and then removed with `git
+#   worktree remove <path>`; an entry without a marker, younger, locked, or
+#   no longer qualifying is kept, a refused removal is a `failed` row, exit 1.
+#   Residual: purge, too, cannot check and remove atomically, so a file
+#   written into the quarantined tree between its re-check and the removal is
+#   lost; nothing has the quarantine path as its own, so that takes a process
+#   still writing through its old working directory into the renamed tree
+#   <days> days after the move. Nothing ever passes `--force`, and branch refs
+#   stay. `git worktree prune` is never run: it would drop the admin data of
+#   every worktree whose directory is missing, an unlocked omp seat included.
+#   A `gh` error fails closed: the run moves and removes nothing and exits 1.
+#   `origin/main` is read as it is; run `git fetch origin` first for a current
+#   answer. Every `gh` call is bounded by WORKTREE_GC_GH_TIMEOUT seconds (perl
+#   `alarm`, because `timeout` is not on every host). A path argument narrows
+#   the listing and `--apply` to those worktrees and is refused unless it is
+#   one of the candidates; `--purge` takes none.
+# @arg $@ path Optional worktree paths under .claude/worktrees/ (not in the quarantine); default: all of them.
+# @option --apply Move the qualifying worktrees into the quarantine (default: list only).
+# @option --purge <days> Remove the quarantined worktrees quarantined at least <days> days ago that still qualify.
 # @env WORKTREE_GC_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One TSV row per candidate, the removal rows with --apply, then `summary`.
-# @exitcode 0 Listed (and removed with --apply), including when nothing qualifies.
-# @exitcode 1 A git or gh query failed, a path holds a newline, or a removal failed.
-# @exitcode 2 Usage error, not in a git checkout, or a path outside .claude/worktrees/.
+# @stdout One TSV row per candidate and quarantined worktree, the move or removal rows, then `summary`.
+# @exitcode 0 Listed (and quarantined or purged), including when nothing qualifies or a moved tree is held.
+# @exitcode 1 A git or gh query failed, a path holds a newline, or a move or removal failed.
+# @exitcode 2 Usage error, not in a git checkout, a path outside .claude/worktrees/ or in the quarantine, or a quarantine that is a symlink.
 # @example
 #   scripts/orchestrator/worktree-gc.sh
 #   scripts/orchestrator/worktree-gc.sh --apply
+#   scripts/orchestrator/worktree-gc.sh --purge 7
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -109,12 +129,20 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: worktree-gc.sh [--apply] [<path>...]'
-apply=0
+usage='usage: worktree-gc.sh [--apply] [<path>...] | --purge <days>'
+apply=0 purge=''
 paths=()
 while (($#)); do
     case $1 in
     --apply) apply=1 ;;
+    --purge)
+        (($# > 1)) && [[ $2 =~ ^(0|[1-9][0-9]{0,4})$ ]] || {
+            echo "${usage}" >&2
+            exit 2
+        }
+        purge=$2
+        shift
+        ;;
     --) ;;
     -*)
         echo "${usage}" >&2
@@ -124,6 +152,10 @@ while (($#)); do
     esac
     shift
 done
+if [[ -n ${purge} ]] && ((apply || ${#paths[@]})); then
+    echo "${usage}" >&2
+    exit 2
+fi
 gh_timeout=${WORKTREE_GC_GH_TIMEOUT:-60}
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || {
     echo 'worktree-gc: WORKTREE_GC_GH_TIMEOUT must be a positive integer' >&2
@@ -136,6 +168,12 @@ toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || {
 }
 toplevel=$(cd "${toplevel}" && pwd -P)
 base=${toplevel}/.claude/worktrees
+quarantine=${base}/.gc-quarantine
+if ! common_dir=$(git -C "${toplevel}" rev-parse --path-format=absolute --git-common-dir) ||
+    ! common_dir=$(cd "${common_dir}" && pwd -P); then
+    echo 'worktree-gc: cannot resolve the git common directory' >&2
+    exit 1
+fi
 git -C "${toplevel}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null || {
     echo 'worktree-gc: origin/main is absent; run git fetch origin' >&2
     exit 1
@@ -150,7 +188,23 @@ physical() {
 # @description Succeed when a physical path lies strictly under .claude/worktrees/ of this checkout.
 # @arg $1 path A physical path.
 under_base() {
-    [[ $1 == "${base}/"?* ]]
+    [[ $1 == "${base}/"?* ]] # lint-comparisons: allow both sides are pwd -P forms
+}
+
+# @description Succeed when a physical path is the quarantine or lies under it.
+# @arg $1 path A physical path.
+in_quarantine() {
+    [[ $1 == "${quarantine}" || $1 == "${quarantine}/"* ]] # lint-comparisons: allow both sides are pwd -P forms
+}
+
+# @description Print the admin directory of a worktree, refusing one outside `<common dir>/worktrees/`.
+# @arg $1 path The worktree.
+# @exitcode 1 git failed or the admin directory is elsewhere.
+admin_dir() {
+    local dir
+    dir=$(git -C "$1" rev-parse --absolute-git-dir) && dir=$(cd "${dir}" && pwd -P) || return 1
+    [[ ${dir} == "${common_dir}/worktrees/"?* && ${dir} != "${common_dir}/worktrees/"*/* ]] || return 1 # lint-comparisons: allow both sides are pwd -P forms
+    printf '%s\n' "${dir}"
 }
 
 # @description Run gh in the checkout, killed after WORKTREE_GC_GH_TIMEOUT seconds.
@@ -166,23 +220,34 @@ for path in "${paths[@]+"${paths[@]}"}"; do
         echo "worktree-gc: refused: ${path} is outside ${base}/" >&2
         exit 2
     }
+    ! in_quarantine "${resolved}" || {
+        echo "worktree-gc: refused: ${path} is in the quarantine ${quarantine}/; --purge handles it" >&2
+        exit 2
+    }
     selected+=("${resolved}")
 done
 
-# Candidates as parallel arrays: path, head, branch (empty when detached), state (`locked`, `missing`, `newline` or empty).
+# Candidates and quarantined worktrees as parallel arrays: path, head, branch (empty when detached), state (`locked`,
+# `missing`, `newline` or empty).
 cand_path=() cand_head=() cand_branch=() cand_state=()
+q_path=() q_head=() q_branch=() q_state=()
 record() {
     [[ -n ${wt_path} ]] || return 0
-    local resolved
+    local resolved state=${wt_state}
     resolved=$(physical "${wt_path}")
     under_base "${resolved}" || return 0
+    if [[ ${wt_path} == *$'\n'* ]]; then state=newline; fi # lint-comparisons: allow a newline-content test, not a path comparison
+    if in_quarantine "${resolved}"; then
+        ((${#selected[@]})) && return 0
+        q_path+=("${resolved}") q_head+=("${wt_head}") q_branch+=("${wt_branch}") q_state+=("${state}")
+        return 0
+    fi
     if ((${#selected[@]})); then
         local wanted='' item
-        for item in "${selected[@]}"; do [[ ${item} == "${resolved}" ]] && wanted=1; done
+        for item in "${selected[@]}"; do [[ ${item} == "${resolved}" ]] && wanted=1; done # lint-comparisons: allow both operands are pwd -P forms from physical()
         [[ -n ${wanted} ]] || return 0
     fi
-    cand_path+=("${resolved}") cand_head+=("${wt_head}") cand_branch+=("${wt_branch}")
-    if [[ ${wt_path} == *$'\n'* ]]; then cand_state+=(newline); else cand_state+=("${wt_state}"); fi # lint-comparisons: allow a newline-content test, not a path comparison
+    cand_path+=("${resolved}") cand_head+=("${wt_head}") cand_branch+=("${wt_branch}") cand_state+=("${state}")
 }
 # The producer writes to a file, not a pipe or a process substitution, so its exit status is checked; the NUL-separated
 # fields are read as they are (`read -d ''`), never turned into lines, so a newline inside a path stays in its field.
@@ -316,51 +381,165 @@ classify() {
     fi
 }
 
+marker='gc-quarantined-at'
+now=$(date +%s)
+
+# @description Set `quarantined_at` to the epoch the quarantine marker of a worktree records, empty without a readable one.
+# @arg $1 path The quarantined worktree.
+read_marker() {
+    local dir line=''
+    quarantined_at=''
+    dir=$(admin_dir "$1") || return 0
+    [[ -f ${dir}/${marker} && ! -L ${dir}/${marker} ]] || return 0
+    IFS= read -r line < "${dir}/${marker}" || [[ -n ${line} ]] || return 0
+    if [[ ${line} =~ ^([0-9]{1,12})\ [0-9a-f]{40}([0-9a-f]{24})?$ ]]; then quarantined_at=${BASH_REMATCH[1]}; fi
+}
+
+# @description Print an age in seconds as `<d>d <h>h`.
+# @arg $1 number Seconds.
+age() {
+    printf '%dd %dh' $(($1 / 86400)) $(($1 % 86400 / 3600))
+}
+
+if [[ -n ${purge} ]]; then
+    doomed=() errors=0 kept=0
+    for ((i = 0; i < ${#q_path[@]}; i++)); do
+        path=${q_path[i]} state=${q_state[i]} verdict=keep
+        if [[ ${state} == newline ]]; then
+            verdict=error reason='path contains a newline'
+        elif [[ ${state} == locked ]]; then
+            reason='locked'
+        elif [[ ${state} == missing || ! -d ${path} ]]; then
+            reason='missing (its admin data is left for the operator)'
+        else
+            read_marker "${path}"
+            if [[ -z ${quarantined_at} ]]; then
+                reason="no ${marker} marker in its admin directory"
+            elif ((now - quarantined_at < purge * 86400)); then
+                reason="quarantined $(age $((now - quarantined_at))) ago, younger than ${purge} days"
+            elif ! head=$(git -C "${path}" rev-parse --verify --quiet 'HEAD^{commit}'); then
+                verdict=error reason='cannot read HEAD'
+            elif [[ ${head} != "${q_head[i]}" ]]; then
+                reason="head moved to ${head:0:12} during the run"
+            else
+                # The same rules as a candidate's: clean (ignored files included) and landed by ancestry, content or a
+                # merged PR's exact head.
+                classify "${path}" "${head}" "${q_branch[i]}" "${state}"
+            fi
+        fi
+        printf '%s\t%s\t%s\t%s\n' "${verdict}" "${path//$'\n'/\\n}" "${q_branch[i]:-(detached ${q_head[i]:0:12})}" "${reason}"
+        case ${verdict} in
+        gc) doomed+=("${path}") ;;
+        error) errors=$((errors + 1)) ;;
+        *) kept=$((kept + 1)) ;;
+        esac
+    done
+    if ((errors)); then
+        printf 'summary\t%d qualify, %d kept, %d errors; nothing removed\n' "${#doomed[@]}" "${kept}" "${errors}"
+        exit 1
+    fi
+    removed=0 failed=0
+    for path in "${doomed[@]+"${doomed[@]}"}"; do
+        in_quarantine "${path}" || {
+            echo "worktree-gc: refused: ${path} is outside ${quarantine}/" >&2
+            exit 2
+        }
+        # Residual: no check is atomic with the removal; the tree has sat renamed for at least the purge age.
+        if git -C "${toplevel}" worktree remove "${path}"; then
+            printf 'removed\t%s\n' "${path}"
+            removed=$((removed + 1))
+            slot=${path%/*}
+            if [[ ${slot} != "${quarantine}" ]] && in_quarantine "${slot}"; then rmdir "${slot}" 2> /dev/null || true; fi # lint-comparisons: allow both sides are pwd -P forms
+        else
+            printf 'failed\t%s\tgit worktree remove refused\n' "${path}"
+            failed=$((failed + 1))
+        fi
+    done
+    printf 'summary\t%d removed, %d failed, %d kept\n' "${removed}" "${failed}" "${kept}"
+    ((! failed)) || exit 1
+    exit 0
+fi
+
 gc=() errors=0 kept=0
 for ((i = 0; i < ${#cand_path[@]}; i++)); do
     classify "${cand_path[i]}" "${cand_head[i]}" "${cand_branch[i]}" "${cand_state[i]}"
     shown=${cand_path[i]//$'\n'/\\n}
     printf '%s\t%s\t%s\t%s\n' "${verdict}" "${shown}" "${cand_branch[i]:-(detached ${cand_head[i]:0:12})}" "${reason}"
     case ${verdict} in
-    gc) gc+=("${cand_path[i]}") ;;
+    gc) gc+=("${i}") ;;
     error) errors=$((errors + 1)) ;;
     *) kept=$((kept + 1)) ;;
     esac
 done
+for ((i = 0; i < ${#q_path[@]}; i++)); do
+    read_marker "${q_path[i]}"
+    if [[ -n ${quarantined_at} ]]; then
+        reason="quarantined $(age $((now - quarantined_at))) ago"
+    else
+        reason="no ${marker} marker in its admin directory (--purge keeps it)"
+    fi
+    printf 'quarantine\t%s\t%s\t%s%s\n' "${q_path[i]//$'\n'/\\n}" "${q_branch[i]:-(detached ${q_head[i]:0:12})}" "${reason}" "${q_state[i]:+, ${q_state[i]}}"
+done
 
 if ((errors)); then
-    printf 'summary\t%d qualify, %d kept, %d errors; nothing removed\n' "${#gc[@]}" "${kept}" "${errors}"
+    printf 'summary\t%d qualify, %d kept, %d errors; nothing moved\n' "${#gc[@]}" "${kept}" "${errors}"
     exit 1
 fi
 if ((! apply)); then
-    printf 'summary\t%d qualify, %d kept; dry run, rerun with --apply to remove\n' "${#gc[@]}" "${kept}"
+    printf 'summary\t%d qualify, %d kept, %d in quarantine; dry run, rerun with --apply to quarantine\n' "${#gc[@]}" "${kept}" "${#q_path[@]}"
     exit 0
 fi
 
-removed=0 failed=0
-for path in "${gc[@]+"${gc[@]}"}"; do
-    under_base "${path}" || {
-        echo "worktree-gc: refused: ${path} is outside ${base}/" >&2
+if ((${#gc[@]})); then
+    resolved=''
+    if mkdir -p "${quarantine}" && [[ ! -L ${quarantine} ]]; then resolved=$(physical "${quarantine}"); fi
+    [[ ${resolved} == "${quarantine}" ]] || { # lint-comparisons: allow both sides are pwd -P forms
+        echo "worktree-gc: refused: the quarantine ${quarantine} is not a plain directory" >&2
         exit 2
     }
-    # The classification may be minutes old (gh calls); a file written since, an ignored one included, keeps the tree.
-    if ! tree_status "${path}"; then
-        printf 'failed\t%s\tgit status failed before the removal\n' "${path}"
+fi
+quarantined=0 held=0 failed=0
+for i in "${gc[@]+"${gc[@]}"}"; do
+    path=${cand_path[i]} head=${cand_head[i]}
+    if ! under_base "${path}" || in_quarantine "${path}"; then
+        echo "worktree-gc: refused: ${path} is outside ${base}/ or in the quarantine" >&2
+        exit 2
+    fi
+    # A fresh directory per tree, so the destination never exists (git moves into an existing directory) and two trees
+    # of the same name never meet.
+    if ! slot=$(mktemp -d "${quarantine}/XXXXXXXX"); then
+        printf 'failed\t%s\tcannot create a directory in the quarantine\n' "${path}"
         failed=$((failed + 1))
         continue
     fi
-    if [[ -n ${status} ]]; then
-        printf 'skipped\t%s\tchanged since the check: dirty, untracked or ignored files\n' "${path}"
-        kept=$((kept + 1))
+    dest=${slot}/${path##*/}
+    # One rename: a process inside the tree keeps its working directory, now in the quarantine; nothing is deleted.
+    if ! git -C "${toplevel}" worktree move "${path}" "${dest}"; then
+        rmdir "${slot}" 2> /dev/null || true
+        printf 'failed\t%s\tgit worktree move refused\n' "${path}"
+        failed=$((failed + 1))
         continue
     fi
-    if git -C "${toplevel}" worktree remove "${path}"; then
-        printf 'removed\t%s\n' "${path}"
-        removed=$((removed + 1))
+    # The classification may be minutes old (gh calls); whatever changed since moved with the tree and holds it.
+    reason=''
+    if ! dir=$(admin_dir "${dest}") || ! printf '%s %s\n' "${now}" "${head}" > "${dir}/${marker}"; then
+        reason="cannot write ${marker} in its admin directory"
+    elif ! tree_status "${dest}"; then
+        reason='git status failed after the move'
+    elif [[ -n ${status} ]]; then
+        reason='changed since the check: dirty, untracked or ignored files'
+    elif ! moved_head=$(git -C "${dest}" rev-parse --verify --quiet 'HEAD^{commit}'); then
+        reason='cannot read HEAD after the move'
+    elif [[ ${moved_head} != "${head}" ]]; then
+        reason="head moved from ${head:0:12} to ${moved_head:0:12} since the check"
+    fi
+    if [[ -n ${reason} ]]; then
+        printf 'held\t%s\t%s\t%s\n' "${path}" "${dest}" "${reason}"
+        held=$((held + 1))
     else
-        printf 'failed\t%s\tgit worktree remove refused\n' "${path}"
-        failed=$((failed + 1))
+        printf 'quarantined\t%s\t%s\n' "${path}" "${dest}"
+        quarantined=$((quarantined + 1))
     fi
 done
-printf 'summary\t%d removed, %d failed, %d kept\n' "${removed}" "${failed}" "${kept}"
+printf 'summary\t%d quarantined, %d held, %d failed, %d kept\n' "${quarantined}" "${held}" "${failed}" "${kept}"
 ((! failed)) || exit 1

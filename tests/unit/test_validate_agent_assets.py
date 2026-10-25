@@ -502,7 +502,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.GENERATOR.model_profiles(manifest)
+            self.module.generator().model_profiles(manifest)
 
     def test_agent_manifest_requires_the_extension_that_registers_the_interactive_omp_provider(self) -> None:
         bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"

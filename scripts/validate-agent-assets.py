@@ -27,8 +27,13 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load_generator() -> Any:
-    """scripts/generate-agent-configs.py, the one owner of the manifest's rendering rules and expected outputs."""
+@cache
+def generator() -> Any:
+    """scripts/generate-agent-configs.py, the one owner of the manifest's rendering rules and expected outputs.
+
+    Loaded on first use, never at import: `--mask-secrets` is a standalone mode that records-sync.sh runs from a tree
+    holding this script alone, and it needs nothing from the generator.
+    """
     path = Path(__file__).resolve().parent / "generate-agent-configs.py"
     spec = importlib.util.spec_from_file_location("generate_agent_configs", path)
     if spec is None or spec.loader is None:
@@ -38,7 +43,6 @@ def load_generator() -> Any:
     return module
 
 
-GENERATOR = load_generator()
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
@@ -296,10 +300,10 @@ def validate_codex_plugins(manifest: dict[str, Any]) -> None:
             if plugin.get("name") in unmanaged:
                 continue
             plugin_dir = path_value.removeprefix("./")
-            manifest_path = ROOT / "home/dot_agents" / plugin_dir / GENERATOR.CODEX_PLUGIN_MANIFEST
+            manifest_path = ROOT / "home/dot_agents" / plugin_dir / generator().CODEX_PLUGIN_MANIFEST
             # Codex reads <plugin>/.codex-plugin/plugin.json under the marketplace root (~/.agents); a source path
             # chezmoi skips or deploys elsewhere leaves the marketplace pointing at an empty plugin (F054).
-            deployed = GENERATOR.chezmoi_target(GENERATOR.ROOT / manifest_path.relative_to(ROOT))
+            deployed = generator().chezmoi_target(generator().ROOT / manifest_path.relative_to(ROOT))
             expected_target = f".agents/{plugin_dir}/.codex-plugin/plugin.json"
             if deployed is None or deployed["target"] != expected_target:
                 fail(f"{manifest_path} must deploy to ~/{expected_target}: {deployed}")
@@ -1072,7 +1076,7 @@ def omp_extension_providers(manifest_path: Path, manifest: dict[str, Any]) -> di
         fail(f"{manifest_path} omp.extension_providers must map omp provider ids to extension directories")
     # Exact set: every model route omp does not provide itself, and nothing else, so a route can never lose the entry
     # that says which extension a plain launch must load for it.
-    expected_routes = set(GENERATOR.OMP_MODEL_ROUTES) - set(GENERATOR.OMP_BUILTIN_ROUTES)
+    expected_routes = set(generator().OMP_MODEL_ROUTES) - set(generator().OMP_BUILTIN_ROUTES)
     if set(providers) != expected_routes:
         fail(
             f"{manifest_path} omp.extension_providers must name exactly the extension-registered model routes "
@@ -1100,7 +1104,7 @@ def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, A
     model = manifest["model_profiles"][manifest["interactive_profile"]]["omp"]["model"]
     provider = model.split("/", 1)[0]
     providers = omp_extension_providers(manifest_path, manifest)
-    if provider in GENERATOR.OMP_BUILTIN_ROUTES:
+    if provider in generator().OMP_BUILTIN_ROUTES:
         return
     needed = providers.get(provider)
     extensions = manifest["omp"].get("extensions", [])
@@ -1118,7 +1122,7 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"{manifest_path} schema_version must be 1")
     # Each model profile's keys and values follow the generator's rules (scripts/generate-agent-configs.py
     # model_profiles): one implementation for both the renderer and this check.
-    GENERATOR.model_profiles(manifest)
+    generator().model_profiles(manifest)
     codex_plugins = manifest.get("codex", {}).get("plugins", {})
     if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
         fail(f"{manifest_path} must enable the Crit Codex plugin")

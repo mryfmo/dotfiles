@@ -30,16 +30,12 @@ REQUIRED_CONTEXTS = frozenset(
         "validate",
         "test (ubuntu-24.04, server)",
         "test (ubuntu-24.04, client)",
-        "test (macos-14, client)",
+        "test (macos-15, client)",
         "public-bootstrap (ubuntu-24.04, server)",
         "public-bootstrap (ubuntu-24.04, client)",
-        "public-bootstrap (macos-14, client)",
+        "public-bootstrap (macos-15, client)",
     }
 )
-# The macos-15 jobs that run beside the macos-14 required contexts, so the
-# operator can swap the ruleset to them before GitHub retires macos-14 on
-# 2026-11-02 (U64). When the ruleset moves, these join REQUIRED_CONTEXTS.
-SUCCESSOR_CONTEXTS = frozenset({"test (macos-15, client)", "public-bootstrap (macos-15, client)"})
 BOOTSTRAP_DECISION = "Decide whether the diff needs a bootstrap"
 QUOTED_CHARS = {"double-quote": '"', "backslash": "\\", "tab": "\t", "newline": "\n"}
 TEST_DECISION = "Decide whether the diff needs the unit tests"
@@ -258,7 +254,7 @@ class RequiredContextsTest(unittest.TestCase):
     def test_the_required_contexts_are_the_workflows_jobs(self) -> None:
         actual = {"validate"} if "validate" in jobs(AGENT_ASSETS) else set()
         actual |= matrix_contexts(TEST, "test") | matrix_contexts(REMOTE, "public-bootstrap")
-        self.assertEqual(actual, REQUIRED_CONTEXTS | SUCCESSOR_CONTEXTS)
+        self.assertEqual(actual, REQUIRED_CONTEXTS)
 
     def test_no_required_contexts_job_has_a_job_level_if_or_needs(self) -> None:
         # A skipped job reports Success even as a required check, and so does a job skipped because
@@ -431,7 +427,7 @@ class DecisionTest(unittest.TestCase):
             ".orchestration/a\nb": "true",
             ".ua/a\tb": "true",
         }
-        rows = ("ubuntu-24.04", "macos-14", "macos-15")
+        rows = ("ubuntu-24.04", "macos-15")
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
             heads = {
@@ -667,10 +663,8 @@ class DecisionTest(unittest.TestCase):
             ):
                 head = pull_request_head(clone, git, f"m-{name}", writes)
                 for event, os_name, expected in (
-                    ("pull_request", "macos-14", macos),
                     ("pull_request", "macos-15", macos),
                     ("pull_request", "ubuntu-24.04", "true"),
-                    ("push", "macos-14", "true"),
                     ("push", "macos-15", "true"),
                 ):
                     with self.subTest(case=name, event=event, os=os_name):

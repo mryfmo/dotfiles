@@ -14,8 +14,10 @@
 #   head itself. With `--carry-from <sha>` (`preferences.md` standing order 18: a `pr-update-branch.sh` merge from main
 #   does not void a verdict while the diff against main is unchanged) the row is the one for `<sha>`, which must be an
 #   ancestor of the head, and the lever fetches `main` and `refs/pull/<pr>/head` into `refs/pr-merge/<pr>/` and
-#   compares `git diff --full-index --binary` of each commit against its merge base with main: any byte of difference
-#   is a refusal. CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
+#   compares the raw tree diff (`git diff-tree -r --raw --no-abbrev`, full blob ids and modes of every changed path,
+#   run at the top level with `--no-relative` and the other settings-sensitive options pinned) of each commit against
+#   its merge base with main: any byte of difference is a refusal, whatever the caller's cwd or git configuration.
+#   CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head: at least one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
 #   cancelled check is a refusal. The one write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
 #   refuses the merge if the head moved after these reads; it never passes `--admin`, `--auto` or
@@ -153,13 +155,25 @@ require_correct_row() {
         refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is not correct: ${verdict}"
 }
 
-# @description Write `git diff --full-index --binary <merge base with main> <commit>` to file $2.
+# @description Run git at the repository's top level, whatever the caller's cwd.
+# @arg $@ string The git arguments.
+git_top() {
+    git -C "${toplevel}" "$@"
+}
+
+# @description Write the raw tree diff from the merge base with main to commit $1 (NUL-separated, full object ids:
+#   modes, blob ids, status and path of every changed entry) to file $2. It is plumbing (`diff-tree`) run at the top
+#   level with every option that a user or repository setting could change spelled out (`--no-relative`,
+#   `--no-renames`, `--ignore-submodules=none`, `-O/dev/null` against `diff.orderFile`), so neither `diff.relative`,
+#   a subdirectory cwd, rename detection, an external diff nor a textconv driver can hide a changed path
+#   (U71 audit round 2).
 # @arg $1 string The commit.
 # @arg $2 path The output file.
 diff_against_main() {
     local base
-    base=$(git merge-base "refs/pr-merge/${pr}/main" "$1") || fail "git merge-base main $1 failed"
-    git diff --full-index --binary "${base}" "$1" > "$2" || fail "git diff ${base} $1 failed"
+    base=$(git_top merge-base "refs/pr-merge/${pr}/main" "$1") || fail "git merge-base main $1 failed"
+    git_top diff-tree -r -z --raw --no-abbrev --no-renames --no-relative --ignore-submodules=none -O/dev/null \
+        "${base}" "$1" > "$2" || fail "git diff-tree ${base} $1 failed"
 }
 
 [[ $# -ge 1 ]] || refuse "${usage}"
@@ -197,15 +211,16 @@ if [[ -z ${carry} ]]; then
 else
     [[ ${carry} != "${head}" ]] || refuse "--carry-from ${carry} is the head itself; drop --carry-from"
     require_correct_row "${carry}"
-    git rev-parse --git-dir > /dev/null 2>&1 || refuse 'a carry needs a git checkout of the repository'
-    perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git fetch -q --no-tags origin \
+    toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'a carry needs a git checkout of the repository'
+    [[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'a carry needs a git checkout of the repository'
+    perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git -C "${toplevel}" fetch -q --no-tags origin \
         "+refs/heads/main:refs/pr-merge/${pr}/main" "+refs/pull/${pr}/head:refs/pr-merge/${pr}/head" ||
         fail "git fetch of main and refs/pull/${pr}/head failed"
-    fetched=$(git rev-parse --verify --quiet "refs/pr-merge/${pr}/head^{commit}") || fetched=''
+    fetched=$(git_top rev-parse --verify --quiet "refs/pr-merge/${pr}/head^{commit}") || fetched=''
     [[ ${fetched} == "${head}" ]] || refuse "refs/pull/${pr}/head is ${fetched:-unreadable}, the pull request's head is ${head}"
-    git cat-file -e "${carry}^{commit}" 2> /dev/null || refuse "--carry-from ${carry} is no commit in this checkout"
+    git_top cat-file -e "${carry}^{commit}" 2> /dev/null || refuse "--carry-from ${carry} is no commit in this checkout"
     status=0
-    git merge-base --is-ancestor "${carry}" "${head}" || status=$?
+    git_top merge-base --is-ancestor "${carry}" "${head}" || status=$?
     case ${status} in
     0) ;;
     1) refuse "--carry-from ${carry} is not an ancestor of the head ${head}" ;;

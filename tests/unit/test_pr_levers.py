@@ -973,6 +973,26 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(self.merge("--carry-from", audited), "differs from the audited")
         self.assert_refused(self.merge("--carry-from", SHA_B), f"--carry-from {SHA_B} is no commit")
 
+    def test_a_carry_compares_the_whole_tree_whatever_the_cwd_and_git_config(self):
+        # U71 audit round 2 (P1): `git diff` under diff.relative=true, run from an unchanged subdirectory, saw neither
+        # side's change, so an unaudited commit after the audited one carried the verdict.
+        (self.repo / "sub").mkdir()
+        (self.repo / "sub/keep.txt").write_text("unchanged\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "a subdirectory")
+        self.git("config", "diff.relative", "true")
+        self.git("config", "diff.external", "false")
+        audited, head = self.carry_repo(extra_commit=True)
+        self.ledger(ledger_row(audited))
+        self.github(head=head)
+        self.assert_refused(
+            self.run_lever(
+                "pr-merge.sh", "7", "--records", str(self.records), "--carry-from", audited, cwd=self.repo / "sub"
+            ),
+            "differs from the audited",
+        )
+        self.assertEqual(self.writes(), [])
+
 
 FAKE_CODEX = """#!/bin/sh
 # A fake codex for PrAuditTest: records what the audit run sees, then answers with FAKE_CODEX_VERDICT.
@@ -988,6 +1008,9 @@ cd "$dir" || exit 7
 printf '%s\\n' "$@" > "$FAKE_CODEX_LOG/argv"
 ls -A "$CODEX_HOME" > "$FAKE_CODEX_LOG/codex-home"
 readlink "$CODEX_HOME/auth.json" > "$FAKE_CODEX_LOG/login"
+printf '%s\\n' "$HOME" > "$FAKE_CODEX_LOG/home"
+ls -A "$HOME" > "$FAKE_CODEX_LOG/home-ls"
+env | grep '^XDG_' > "$FAKE_CODEX_LOG/xdg"
 cat "$CODEX_HOME/config.toml" > "$FAKE_CODEX_LOG/config"
 ls -A . > "$FAKE_CODEX_LOG/cwd"
 cat > "$FAKE_CODEX_LOG/prompt"
@@ -1015,7 +1038,11 @@ class PrAuditTest(PrLeverTestCase):
             "PR_AUDIT_CODEX_LOGIN": str(self.login),
             "PR_AUDIT_WAIT_TRIES": "2",
             "PR_AUDIT_WAIT_SECONDS": "0",
+            "XDG_CONFIG_HOME": str(self.root / "home/.config"),
         }
+        skill = self.root / "home/.agents/skills/leak"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("---\nname: leak\ndescription: a user skill\n---\n")
         self.records = self.root / "store"
         (self.records / "verdicts").mkdir(parents=True)
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER)
@@ -1066,12 +1093,14 @@ class PrAuditTest(PrLeverTestCase):
         self.assertEqual(run.stdout, f"audited pr=7 unit=U71 head={self.head} round=1 verdict=correct file={verdict}\n")
         self.assertTrue(verdict.read_text().endswith("Verdict: correct\n"))
         argv = (self.seen / "argv").read_text().splitlines()
-        self.assertEqual(argv[:4], ["exec", "--skip-git-repo-check", "-s", "read-only"])
+        self.assertEqual(argv[:5], ["exec", "--strict-config", "--skip-git-repo-check", "-s", "read-only"])
         self.assertEqual(argv[-1], "-")
         self.assertEqual((self.seen / "codex-home").read_text().split(), ["auth.json", "config.toml"])
         self.assertEqual((self.seen / "login").read_text().strip(), str(self.login))
         self.assertEqual(
-            (self.seen / "config").read_text(), 'model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\n'
+            (self.seen / "config").read_text(),
+            'model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\n\n[skills]\ninclude_instructions = false\n\n'
+            "[skills.bundled]\nenabled = false\n",
         )
         self.assertEqual((self.seen / "cwd").read_text(), "", "the auditor's cwd is empty")
         prompt = (self.seen / "prompt").read_text()
@@ -1083,9 +1112,20 @@ class PrAuditTest(PrLeverTestCase):
         self.assertEqual(row[1:4], ["U71", "7", self.head])
         self.assertEqual(row[4], f"correct (pr-audit.sh round 1; verdicts/U71-{self.head[:8]}.md, log {self.log(1)})")
         self.assertEqual(self.log(1).read_text(), "codex log \n")
-        self.assertIn("read-only, scratch cwd, scratch CODEX_HOME", row[5])
+        self.assertIn("read-only, scratch cwd, scratch HOME and CODEX_HOME", row[5])
         self.assertEqual(row[6], "https://github.com/acme/widgets/pull/7")
         self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1, "the worktree is removed")
+
+    def test_the_auditor_gets_an_empty_scratch_home(self):
+        self.github()
+        self.assertEqual(self.audit().returncode, 0)
+        # U71 audit round 2 (P2): codex reads user skills under $HOME/.agents/skills, so its HOME is an empty scratch
+        # directory, never the caller's (whose skills directory the fixture fills), and no XDG variable survives.
+        home = (self.seen / "home").read_text().strip()
+        self.assertNotEqual(home, self.env["HOME"])
+        self.assertTrue(home.startswith(str(self.tmp)), home)
+        self.assertEqual((self.seen / "home-ls").read_text(), "", "the auditor's HOME is empty")
+        self.assertEqual((self.seen / "xdg").read_text(), "")
 
     def test_every_round_gets_its_own_row_and_an_incorrect_or_silent_round_exits_3(self):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_B, "incorrect"))
@@ -1108,7 +1148,8 @@ class PrAuditTest(PrLeverTestCase):
             self.rows()[-1][4],
             f"correct (pr-audit.sh round 2; verdicts/U71b-{self.head[:8]}-r2.md, log {self.log(2, 'U71b')})",
         )
-        self.assertEqual((self.records / f"verdicts/U71b-{self.head[:8]}.md").read_text(), "no verdict\n")
+        kept = (self.records / f"verdicts/U71b-{self.head[:8]}.md").read_text()
+        self.assertTrue(kept.startswith("no verdict\n") and kept.endswith("Verdict: blocked\n"), kept)
         self.assertEqual(len(self.rows()), 4)
 
     def test_a_silent_round_keeps_its_own_verdict_and_log_and_a_rerun_truncates_nothing(self):
@@ -1118,7 +1159,7 @@ class PrAuditTest(PrLeverTestCase):
         run = self.audit()
         self.assertEqual(run.returncode, 3, run.stderr)
         first = self.records / f"verdicts/U71-{self.head[:8]}.md"
-        self.assertIn(f"wrote no final message (exit 0); its log is {self.log(1)}", first.read_text())
+        self.assertIn(f"is blocked: no output; codex exit status 0; its log is {self.log(1)}", first.read_text())
         self.assertTrue(first.read_text().endswith("Verdict: blocked\n"))
         self.assertEqual(
             self.rows()[-1][4], f"blocked (no output; pr-audit.sh round 1; verdicts/{first.name}, log {self.log(1)})"
@@ -1127,16 +1168,28 @@ class PrAuditTest(PrLeverTestCase):
         run = self.audit()
         self.assertEqual(run.returncode, 3, run.stderr)
         second = self.records / f"verdicts/U71-{self.head[:8]}-r2.md"
-        self.assertIn(f"(exit 4); its log is {self.log(2)}", second.read_text())
+        self.assertIn(f"codex exec exited 4; codex exit status 4; its log is {self.log(2)}", second.read_text())
         self.assertTrue(self.rows()[-1][4].startswith("blocked (no output; codex exec exited 4; pr-audit.sh round 2;"))
         self.assertEqual(self.log(1).read_text(), "codex log first\n", "the first round's log is untouched")
         self.assertEqual(self.log(2).read_text(), "codex log second\n")
-        self.assertIn("wrote no final message (exit 0)", first.read_text(), "the first round's verdict is untouched")
+        self.assertIn("codex exit status 0;", first.read_text(), "the first round's verdict is untouched")
         # a log at the next round's name (a round the ledger lacks) is a refusal, never a truncation
         self.log(3).write_text("kept\n")
         self.assert_refused(self.audit(), "already exists")
         self.assertEqual(self.log(3).read_text(), "kept\n")
         self.assertEqual(len(self.rows()), 2)
+
+    def test_a_verdict_followed_by_a_failed_exit_ends_blocked_in_the_file_and_the_row(self):
+        # U71 audit round 2 (P2): the file kept `Verdict: correct` while the ledger said blocked.
+        self.github()
+        self.env |= {"FAKE_CODEX_VERDICT": "Findings: none.\n\nVerdict: correct", "FAKE_CODEX_EXIT": "5"}
+        run = self.audit()
+        self.assertEqual(run.returncode, 3, run.stderr)
+        text = (self.records / f"verdicts/U71-{self.head[:8]}.md").read_text()
+        self.assertTrue(text.startswith("Findings: none.\n\nVerdict: correct\n"), text)
+        self.assertIn(f"codex exec exited 5; codex exit status 5; its log is {self.log(1)}", text)
+        self.assertTrue(text.endswith("\nVerdict: blocked\n"), text)
+        self.assertTrue(self.rows()[-1][4].startswith("blocked (codex exec exited 5; pr-audit.sh round 1;"))
 
     def test_refusals(self):
         self.github(head=SHA_A)

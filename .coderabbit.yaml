@@ -1,20 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# Review prose in Japanese; code, identifiers, and suggestions stay in English.
-language: ja-JP
-tone_instructions: >-
-  Write review prose in Japanese. Keep code, identifiers, commands, commit
-  messages, and suggestion blocks in English.
+# The CodeRabbit app is installed on this repository, and this file is what keeps it from reviewing: CodeRabbit's
+# default is an automatic review on every pull request and push (docs.coderabbit.ai/configuration/auto-review), so
+# deleting this file turns reviews on. Pull requests are reviewed by the Codex bot and the orchestrator's audit.
 reviews:
-  request_changes_workflow: true
-  path_filters:
-    - "!.orchestration/**"
-    - "!.ua/**"
   auto_review:
-    # Each review event spends one of the plan's per-developer reviews
-    # (docs.coderabbit.ai/management/rate-limits). One automatic review per pull
-    # request, when it opens or leaves draft; later pushes are reviewed only on an
-    # explicit `@coderabbitai review` for the head. A rate-limited review posts a
-    # passing "Review rate limited" check and a comment, never a blocking status.
-    enabled: true
-    drafts: false
-    auto_incremental_review: false
+    enabled: false

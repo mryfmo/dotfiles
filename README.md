@@ -709,19 +709,14 @@ Before a pull request is merged, the orchestrator follows the
 `hcom-orchestration` SKILL's loop (`AGENTS.md`): a verdict row for the head
 sha, CI green, every bot finding fixed at root cause or dismissed with a pasted
 refutation, then the squash merge pinned to that head sha
-(`--match-head-commit`). CodeRabbit reviews each pull request once, when it
-opens or leaves draft; a later push is reviewed only on request, and a review
-that exists is dispositioned like any other finding:
+(`--match-head-commit`). The Codex bot reviews each pull request, and the
+orchestrator's fresh-context audit judges its head.
 
-```bash
-gh pr comment <pr> --body '@coderabbitai review'
-```
-
-`.coderabbit.yaml` writes reviews in Japanese, excludes `.orchestration/` and
-`.ua/`, turns off incremental reviews (per push) because every review event
-spends one of the plan's per-developer reviews, and lets CodeRabbit request
-changes. When the allowance is spent, CodeRabbit posts a passing "Review rate
-limited" check and a comment instead of a review.
+The CodeRabbit app is installed on this repository but does not review:
+`.coderabbit.yaml` only sets `reviews.auto_review.enabled: false`. CodeRabbit's
+default is an automatic review on every pull request and push, so deleting that
+file turns reviews on. Its status on a pull request reads "Review skipped:
+automatic reviews are disabled".
 
 `main` has one ruleset, the **integrity ruleset** `main integration gate`,
 saved as `main-integrity.json`. Committing the payload does not apply it. In
@@ -872,8 +867,8 @@ runs `gh`, `git push` and an authenticated `git fetch` outside the sandbox,
 through the permission prompt. SSH pushes use SSH keys instead.
 
 Bot-review presence is not gated. The `CodeRabbit` status is not a required
-check (it reports success even when it skipped or rate-limited the review); the
-ruleset's resolved-threads rule and the orchestrator's loop cover its findings.
+check (it reports success while it skips the review); the ruleset's
+resolved-threads rule and the orchestrator's loop cover every bot finding.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

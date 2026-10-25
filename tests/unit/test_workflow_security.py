@@ -246,6 +246,15 @@ class WorkflowSecurityTest(unittest.TestCase):
         self.assertEqual(deploy | {".github/workflows/docs-check.yml"}, check)
         self.assertIn("run: make docs", (WORKFLOWS / "docs-check.yml").read_text())
 
+    def test_the_installed_coderabbit_app_stays_off(self):
+        # F189: the app is installed and its default reviews every pull request and push, so the file must exist
+        # and hold only the switch that turns automatic reviews off.
+        settings = [
+            line for line in (WORKFLOWS.parents[1] / ".coderabbit.yaml").read_text().splitlines() if line.strip()
+        ]
+        settings = [line for line in settings if not line.lstrip().startswith("#")]
+        self.assertEqual(["reviews:", "  auto_review:", "    enabled: false"], settings)
+
 
 def run_expressions(path: Path) -> list[int]:
     """Line numbers of `${{` inside a step's `run:` value, inline or block."""

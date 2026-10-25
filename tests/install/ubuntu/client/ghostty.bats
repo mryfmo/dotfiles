@@ -2,28 +2,54 @@
 
 readonly SCRIPT_PATH="./install/ubuntu/client/ghostty.sh"
 readonly RETRY="the next make update retries"
+readonly SKIPPED="ghostty not installed: its PPA is unreachable: "
 
-# Fakes for sudo, dpkg-query, add-apt-repository and apt-get that answer with exit codes and recorded argv only.
-# FAIL picks the failing step: ppa-add (the registration), ppa-update (the PPA-only refresh), download
-# (--download-only), install (--no-download) or archive (the dependency install). SPC and STATUS are the dpkg
-# status of software-properties-common (default installed; empty is absent) and of ghostty (default absent).
-# Every add-apt-repository and apt-get call is logged, and an install that completes is logged as installed.
+# Fakes for sudo, curl, dpkg-query, add-apt-repository and apt-get that answer with exit codes and recorded argv only.
+# PROBE picks curl's answer for every URL: dns (exit 6), timeout (exit 28), http503, or local (exit 2, a usage error,
+# not evidence of the network); an api- prefix applies it to the Launchpad API URL only. Default: HTTP 200.
+# FAIL picks the failing step once the probe answered: ppa-add (registration), ppa-permission (registration cannot
+# write the source), lock (apt-get update cannot take its lock), resolve or download (the ghostty install), or archive
+# (the dependency install). SPC and STATUS are the dpkg status of software-properties-common (default installed;
+# empty is absent) and of ghostty (default absent). Every curl, add-apt-repository and apt-get call is logged, an
+# install that completes is logged as installed, and the ERR trap logs ERR when it fires in the script's own shell
+# (a fake that returns non-zero inside a command substitution is not a script failure).
 readonly APT_FAKES='
     source "'"${SCRIPT_PATH}"'"
     export APT_SOURCES_DIR="${HOME}/sources"
     mkdir -p "${APT_SOURCES_DIR}"
+    trap "[ \${BASH_SUBSHELL} -gt 0 ] || echo ERR >> \"${HOME}/calls.log\"" ERR
     sudo() { shift; "$@"; }
     dpkg-query() { local s="${STATUS-}"; [ "$4" = ghostty ] || s="${SPC-installed}"; printf "%s" "${s}"; [ -n "${s}" ]; }
+    curl() {
+        local url="${*: -1}" mode="${PROBE-}"
+        printf "curl %s\n" "${url}" >> "${HOME}/calls.log"
+        if [[ ${mode} == api-* ]]; then
+            mode="${mode#api-}"
+            [[ ${url} == https://api.launchpad.net/* ]] || mode=
+        fi
+        case "${mode}" in
+            dns) echo "curl: (6) Could not resolve host" >&2; printf 000; return 6 ;;
+            timeout) echo "curl: (28) Connection timed out" >&2; printf 000; return 28 ;;
+            http503) printf 503 ;;
+            local) echo "curl: (2) option unknown" >&2; return 2 ;;
+            *) printf 200 ;;
+        esac
+    }
     add-apt-repository() {
         printf "add-apt-repository %s\n" "$*" >> "${HOME}/calls.log"
-        [ "${FAIL-}" != ppa-add ] || return 1
+        case "${FAIL-}" in
+            ppa-add) return 1 ;;
+            ppa-permission) echo "PermissionError: [Errno 13] Permission denied" >&2; return 1 ;;
+        esac
         printf "URIs: https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu/\n" > "${APT_SOURCES_DIR}/ghostty.sources"
     }
     apt-get() {
         printf "apt-get %s\n" "$*" >> "${HOME}/calls.log"
         case "${FAIL-}:$*" in
-            ppa-update:"update -o Dir::Etc::sourcelist="* | download:*--download-only* | install:*--no-download* | archive:*software-properties-common) return 100 ;;
-            *:"install -y --download-only "*) ;;
+            lock:update) echo "E: Could not get lock /var/lib/apt/lists/lock" >&2; return 100 ;;
+            resolve:"install -y ghostty") echo "E: Unable to correct problems, you have held broken packages." >&2; return 100 ;;
+            download:"install -y ghostty") echo "E: Failed to fetch ghostty.deb" >&2; return 100 ;;
+            archive:*software-properties-common) return 100 ;;
             *:"install "*) printf "installed %s\n" "${*: -1}" >> "${HOME}/calls.log" ;;
         esac
     }
@@ -41,8 +67,16 @@ function teardown() {
     remove_real_packages
 }
 
-function retry_line() {
-    printf "ghostty not installed: %s (apt's output above); %s" "$1" "${RETRY}"
+# @description Run main under the fakes with a fresh HOME.
+# @arg $1 string The directory name under BATS_TEST_TMPDIR.
+# @arg $@ string Environment assignments for the fakes (PROBE, FAIL, SPC, STATUS).
+function run_fakes() {
+    local home="${BATS_TEST_TMPDIR}/$1"
+    shift
+    mkdir -p "${home}"
+    run env HOME="${home}" "$@" bash -c "${APT_FAKES}"'
+        main
+    '
 }
 
 @test "[ubuntu-client] PACKAGES for ghostty" {
@@ -70,7 +104,7 @@ function retry_line() {
 }
 
 @test "[ubuntu-client] ghostty" {
-    # The installer's own outcome is the oracle: its retry line means a stage that fetches from the PPA failed.
+    # The installer's own outcome is the oracle: its retry line means the probe found the PPA unreachable.
     # Not under `run`: its subshell would drop REAL_PACKAGES_NEW, and the teardown would leave ghostty installed.
     local installer_status=0 installer absent=0
     install_real_packages "${PACKAGES[@]}" > "${BATS_TEST_TMPDIR}/installer.log" 2>&1 || installer_status=$?
@@ -93,87 +127,73 @@ function retry_line() {
 }
 
 @test "[ubuntu-client] the dependency phase runs only when software-properties-common is absent" {
-    mkdir -p "${BATS_TEST_TMPDIR}/absent"
-    run env HOME="${BATS_TEST_TMPDIR}/absent" SPC= bash -c "${APT_FAKES}"'
-        main
-    '
-    [ "$(sed -n 1,2p "${BATS_TEST_TMPDIR}/absent/calls.log")" = $'apt-get update\napt-get install -y software-properties-common' ]
-    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${APT_FAKES}"'
-        main
-    '
+    run_fakes absent SPC=
     [ "${status}" -eq 0 ]
-    ! sed '/Dir::Etc::sourcelist=/,$d' "${BATS_TEST_TMPDIR}/calls.log" | grep -qx 'apt-get update'
+    [ "$(grep '^apt-get' "${BATS_TEST_TMPDIR}/absent/calls.log" | sed -n 1,2p)" = $'apt-get update\napt-get install -y software-properties-common' ]
+    run_fakes present
+    [ "${status}" -eq 0 ]
+    [ -z "$(sed '/^add-apt-repository/,$d' "${BATS_TEST_TMPDIR}/present/calls.log" | grep '^apt-get')" ]
 }
 
 @test "[ubuntu-client] an installed ghostty is left as it is" {
-    run env HOME="${BATS_TEST_TMPDIR}" STATUS=installed bash -c "${APT_FAKES}"'
-        main
-    '
+    run_fakes home STATUS=installed
     [ "${status}" -eq 0 ]
-    [ ! -e "${BATS_TEST_TMPDIR}/calls.log" ]
+    [ ! -e "${BATS_TEST_TMPDIR}/home/calls.log" ]
 }
 
 @test "[ubuntu-client] a half-configured ghostty is installed, not skipped" {
-    run env HOME="${BATS_TEST_TMPDIR}" STATUS=half-configured bash -c "${APT_FAKES}"'
-        main
-    '
+    run_fakes home STATUS=half-configured
     [ "${status}" -eq 0 ]
-    grep -q 'installed ghostty' "${BATS_TEST_TMPDIR}/calls.log"
+    grep -qx 'installed ghostty' "${BATS_TEST_TMPDIR}/home/calls.log"
 }
 
-@test "[ubuntu-client] a failed PPA registration never fails the apply" {
-    run env HOME="${BATS_TEST_TMPDIR}" FAIL=ppa-add SPC= bash -c "${APT_FAKES}"'
-        main
-    '
+@test "[ubuntu-client] a reachable PPA probes the archive and the API, then registers and installs" {
+    run_fakes home
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *"$(retry_line "its PPA could not be registered")"* ]]
-    [ "$(grep '^apt-get' "${BATS_TEST_TMPDIR}/calls.log")" = $'apt-get update\napt-get install -y software-properties-common' ]
+    [ "$(grep '^curl' "${BATS_TEST_TMPDIR}/home/calls.log")" = $'curl https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu/\ncurl https://api.launchpad.net/devel/~mkasberg/+archive/ubuntu/ghostty-ubuntu' ]
+    grep -qx 'add-apt-repository -y -n ppa:mkasberg/ghostty-ubuntu' "${BATS_TEST_TMPDIR}/home/calls.log"
+    [ "$(tail -n 2 "${BATS_TEST_TMPDIR}/home/calls.log")" = $'apt-get install -y ghostty\ninstalled ghostty' ]
+    ! grep -qx ERR "${BATS_TEST_TMPDIR}/home/calls.log"
 }
 
-@test "[ubuntu-client] an existing PPA source is not re-added" {
-    mkdir -p "${BATS_TEST_TMPDIR}/sources"
-    echo "deb https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu noble main" > "${BATS_TEST_TMPDIR}/sources/ghostty.list"
-    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${APT_FAKES}"'
-        main
-    '
+@test "[ubuntu-client] an existing PPA source is not re-added and the API is not probed" {
+    mkdir -p "${BATS_TEST_TMPDIR}/home/sources"
+    echo "deb https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu noble main" > "${BATS_TEST_TMPDIR}/home/sources/ghostty.list"
+    run_fakes home PROBE=api-dns
     [ "${status}" -eq 0 ]
-    grep -q 'installed ghostty' "${BATS_TEST_TMPDIR}/calls.log"
-    ! grep -q add-apt-repository "${BATS_TEST_TMPDIR}/calls.log"
+    grep -qx 'installed ghostty' "${BATS_TEST_TMPDIR}/home/calls.log"
+    ! grep -q -e add-apt-repository -e api.launchpad.net "${BATS_TEST_TMPDIR}/home/calls.log"
 }
 
-@test "[ubuntu-client] an unreachable PPA never fails the apply" {
-    run env HOME="${BATS_TEST_TMPDIR}" FAIL=ppa-update bash -c "${APT_FAKES}"'
-        main
-    '
-    [ "${status}" -eq 0 ]
-    [[ "${output}" == *"$(retry_line "its PPA index could not be refreshed")"* ]]
-    # The PPA-only refresh is the last call, with its four options.
-    [ "$(tail -n 1 "${BATS_TEST_TMPDIR}/calls.log")" = "apt-get update -o Dir::Etc::sourcelist=${BATS_TEST_TMPDIR}/sources/ghostty.sources -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o APT::Update::Error-Mode=any" ]
+@test "[ubuntu-client] an unreachable PPA skips Ghostty before any apt call" {
+    local probe
+    for probe in dns timeout http503 api-dns; do
+        run_fakes "${probe}" PROBE="${probe}"
+        [ "${status}" -eq 0 ]
+        [[ "${output}" == *"${SKIPPED}"*"${RETRY}"* ]]
+        run ! grep -q -e '^apt-get' -e '^add-apt-repository' -e '^ERR' "${BATS_TEST_TMPDIR}/${probe}/calls.log"
+    done
 }
 
-@test "[ubuntu-client] a failed PPA package download never fails the apply" {
-    run env HOME="${BATS_TEST_TMPDIR}" FAIL=download bash -c "${APT_FAKES}"'
-        main
-    '
-    [ "${status}" -eq 0 ]
-    [[ "${output}" == *"$(retry_line "its package could not be downloaded")"* ]]
-    ! grep -q -- --no-download "${BATS_TEST_TMPDIR}/calls.log"
-}
-
-@test "[ubuntu-client] a failed local install stays fatal" {
-    run env HOME="${BATS_TEST_TMPDIR}" FAIL=install bash -c "${APT_FAKES}"'
-        main
-    '
-    [ "${status}" -eq 100 ]
-    [[ "${output}" != *"${RETRY}"* ]]
-}
-
-@test "[ubuntu-client] a non-PPA apt failure still fails the apply" {
-    run env HOME="${BATS_TEST_TMPDIR}" FAIL=archive SPC= bash -c "${APT_FAKES}"'
-        main
-    '
+@test "[ubuntu-client] a probe that fails locally is fatal, not a skip" {
+    run_fakes home PROBE=local
     [ "${status}" -ne 0 ]
     [[ "${output}" != *"${RETRY}"* ]]
+    grep -qx ERR "${BATS_TEST_TMPDIR}/home/calls.log"
+    ! grep -q -e '^apt-get' -e '^add-apt-repository' "${BATS_TEST_TMPDIR}/home/calls.log"
+}
+
+@test "[ubuntu-client] once the PPA answers, every later failure is fatal" {
+    local fail spc
+    for fail in ppa-add ppa-permission lock resolve download archive; do
+        spc=installed
+        [ "${fail}" != archive ] || spc=
+        run_fakes "${fail}" FAIL="${fail}" SPC="${spc}"
+        [ "${status}" -ne 0 ]
+        [[ "${output}" != *"${RETRY}"* ]]
+        grep -qx ERR "${BATS_TEST_TMPDIR}/${fail}/calls.log"
+        run ! grep -qx 'installed ghostty' "${BATS_TEST_TMPDIR}/${fail}/calls.log"
+    done
 }
 
 @test "[ubuntu-client] the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it" {

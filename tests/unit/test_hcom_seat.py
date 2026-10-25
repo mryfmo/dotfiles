@@ -774,7 +774,8 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_pointer_value_reads_the_whole_file(self):
-        """U85 round 18: pointer_value gives a value only for a single line free of control characters."""
+        """U85 round 18: pointer_value gives a value only for a single line free of control characters; round 19: a
+        NUL byte, which bash drops from a command substitution, refuses too."""
         text = SEAT.read_text()
         function = text[text.index("pointer_value() {") : text.index("\n}\n", text.index("pointer_value() {")) + 3]
         scratch = Path(self.temp.name)
@@ -782,6 +783,8 @@ class HcomSeatTest(unittest.TestCase):
             "../..\n": (0, "../..\n"),
             "gitdir: /a/b": (0, "gitdir: /a/b\n"),
             "../..\n/../../attacker\n": (1, ""),
+            "/r/.git/objects\0/..\n": (1, ""),
+            "../\0..\n": (1, ""),
             "../..\r\n": (1, ""),
             "../..\n\n": (1, ""),
             "": (1, ""),
@@ -800,6 +803,50 @@ class HcomSeatTest(unittest.TestCase):
             capture_output=True, text=True, check=False,
         )  # fmt: skip
         self.assertEqual((run.returncode, run.stdout), (1, ""))
+
+    def test_a_relative_interpreter_is_refused_promptly(self):
+        """U85 round 19: an interpreter line naming a relative path (`#!sh`, `#!bin/sh`) is refused (exit 2) before
+        any ancestor walk, which never reached `/` from a relative path; every walk goes through ancestors_of."""
+        text = SEAT.read_text()
+        names = ("refuse", "ancestors_of", "physical_path", "physical_file", "refuse_if_seat_writable", "root_named")
+        names += ("refuse_if_link_chain_writable", "find_on_path", "pin_exec")
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
+        )
+        stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
+        scratch = Path(self.temp.name).resolve()
+        for line in ("#!sh", "#!bin/sh", "#!./sh"):
+            with self.subTest(line=line):
+                tool = scratch / "tool"
+                tool.write_text(f"{line}\nexit 0\n")
+                tool.chmod(0o755)
+                script = (
+                    f"set -euo pipefail\nstat_args={stat_args}\nroot_ids=$'\\n' root_id_list=() root_path_list=()\n"
+                    f'{functions}\npin_exec tool "$1"\n'
+                )
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script, "_", str(tool)], capture_output=True, text=True, check=False, timeout=20
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("names no absolute path", run.stderr)
+        for path in ("sh", "bin/sh"):
+            with self.subTest(walk=path):
+                script = f"set -euo pipefail\n{functions}\nancestors_of {path}\n"
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script], capture_output=True, text=True, check=False, timeout=20
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        # A launch whose git is such a script is refused, not hung.
+        outside = scratch / "git-bin"
+        outside.mkdir()
+        (outside / "git").write_text("#!sh\nexit 0\n")
+        (outside / "git").chmod(0o755)
+        run = subprocess.run(
+            [str(SEAT), "worker", "--seats-root", self.seats], cwd=self.repo, capture_output=True, text=True,
+            env={**self.env, "PATH": f"{outside}:{self.env['PATH']}"}, check=False, timeout=120,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("names no absolute path", run.stderr)
 
     def test_git_must_resolve_the_directories_checked_before_it_ran(self):
         """U85 round 18: the checkout and git directories git names are the ones found before git ran, by identity;

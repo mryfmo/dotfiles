@@ -287,6 +287,26 @@ allow_write_list() {
     esac
 }
 
+# @description Set `ancestors` to the absolute path `$1` and every directory above it, up to `/` (regime-cutover
+#   U85). Every ancestor walk of hcom-seat goes through this: a relative path (a `#!sh` interpreter line) would never
+#   reach `/`, so it is refused before the walk, and the walk itself stops at `/` and refuses after 4096 steps.
+# @arg $1 string An absolute path.
+# @set ancestors The paths, `$1` first.
+ancestors_of() {
+    local p=$1 n=0
+    [[ ${p} == /* && ${p} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
+        refuse "'${p}' is not an absolute path free of control characters"
+    ancestors=()
+    while :; do
+        ancestors+=("${p}")
+        [[ ${p} != / ]] || return 0 # lint-comparisons: allow the walk ends at the root, no path compare
+        n=$((n + 1))
+        ((n <= 4096)) || refuse "the path ${1} has more than 4096 components"
+        p=${p%/*}
+        [[ -n ${p} ]] || p=/
+    done
+}
+
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 in all) and the
 #   directory in its `pwd -P` form. A path that does not exist yet is its nearest existing ancestor's physical form
 #   with the rest appended, so a write root a launch has not created yet still compares with what it will be. Only
@@ -298,6 +318,7 @@ allow_write_list() {
 physical_path() {
     local p=$1 tail='' link dir n=0
     [[ ${p} == /* && ${p} != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow an absolute-path and content test
+    # p is absolute, so each step shortens it and the walk ends at `/`, which exists.
     while [[ ! -e ${p} && ! -L ${p} ]]; do
         tail=/${p##*/}${tail}
         p=${p%/*}
@@ -345,15 +366,11 @@ physical_file() {
 # @arg $1 string A label for the refusal.
 # @arg $2 string A physical path.
 refuse_if_seat_writable() {
-    local p=$2 ids id i named probe=()
+    local ids id i named probe=()
     # The physical file and every directory above it, up to /, each compared by (device, inode): a case alias on a
     # case-insensitive file system or a hardlink of a writable file has the identity of what it aliases.
-    while :; do
-        probe+=("${p}")
-        [[ ${p} != / ]] || break # lint-comparisons: allow the walk ends at the root, no path compare
-        p=${p%/*}
-        [[ -n ${p} ]] || p=/
-    done
+    ancestors_of "$2"
+    probe=("${ancestors[@]}")
     ids=$(/usr/bin/stat "${stat_args[@]}" -- "${probe[@]}") || refuse "cannot read the identity of $1 $2 or a directory above it"
     i=0
     while IFS= read -r id; do
@@ -436,14 +453,20 @@ find_on_path() {
 #   (regime-cutover U85). git consumes the complete content less its trailing newlines, so only a single line is a
 #   value: content that cannot be read, is empty, or holds any control character once one final newline is dropped (a
 #   second line, a carriage return) fails, and the caller refuses. Pointer files are read this way only where git
-#   cannot be asked yet (before the git state is checked); everywhere after, git answers (git_paths_of).
+#   cannot be asked yet (before the git state is checked); everywhere after, git answers (git_paths_of). A NUL
+#   byte, or a byte count other than the file's size, fails too.
 # @arg $1 string The file.
 # @stdout The value.
 # @exitcode 1 It cannot be read, is empty, or is not a single line free of control characters.
 pointer_value() {
-    local content
-    content=$(/bin/cat -- "$1" && printf .) || return 1
+    local LC_ALL=C content size
+    # Bash drops NUL bytes from a command substitution, so they are made \001 (a control character, refused) in the
+    # same pass, and the bytes read must number the file's size: what is checked is what git reads.
+    content=$({ /bin/cat -- "$1" | /usr/bin/tr '\000' '\001'; } && printf .) || return 1
     content=${content%.}
+    size=$(/usr/bin/wc -c < "$1") || return 1
+    size=${size//[[:space:]]/}
+    [[ ${size} =~ ^[0-9]+$ ]] && ((${#content} == size)) || return 1
     content=${content%$'\n'}
     [[ -n ${content} && ${content} != *[[:cntrl:]]* ]] || return 1
     printf '%s\n' "${content}"
@@ -483,6 +506,9 @@ pin_exec() {
             interp_path=$(find_on_path "${name}") || refuse "${label}: interpreter ${name} not found on PATH"
         else
             [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            # The kernel would not run a relative interpreter as written; it is refused before any walk over it.
+            [[ ${interp} == /* ]] || # lint-comparisons: allow an absolute-path test
+                refuse "${label}: interpreter line '${first}' in ${file} names no absolute path"
             interp_path=${interp}
         fi
         refuse_if_link_chain_writable "the interpreter of ${label}" "${interp_path}"
@@ -503,6 +529,7 @@ pin_exec() {
 # @arg $2 string An absolute path.
 refuse_if_link_chain_writable() {
     local p=$2 link n=0
+    [[ ${p} == /* ]] || refuse "$1 ${p} is not an absolute path" # lint-comparisons: allow an absolute-path test
     while :; do
         # The hop as spelled: stat follows it to its target, and every directory above the spelling is compared too.
         refuse_if_seat_writable "$1" "${p}"
@@ -854,6 +881,8 @@ esac
 # @arg $1 string A physical path.
 deepest_existing() {
     local p=$1
+    # Absolute, so each step shortens it and the walk ends at `/`, which exists.
+    [[ ${p} == /* ]] || return 1 # lint-comparisons: allow an absolute-path test
     while [[ ! -e ${p} && ! -L ${p} ]]; do
         p=${p%/*}
         [[ -n ${p} ]] || p=/
@@ -885,12 +914,8 @@ within() {
     fi
     outer_id=$(/usr/bin/stat "${stat_args[@]}" -- "$1") || refuse "cannot read the identity of $1"
     p=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
-    while :; do
-        probe+=("${p}")
-        [[ ${p} != / ]] || break # lint-comparisons: allow the walk ends at the root, no path compare
-        p=${p%/*}
-        [[ -n ${p} ]] || p=/
-    done
+    ancestors_of "${p}"
+    probe=("${ancestors[@]}")
     ids=$(/usr/bin/stat "${stat_args[@]}" -- "${probe[@]}") || refuse "cannot read the identity of $2 or a directory above it"
     [[ $'\n'${ids}$'\n' == *$'\n'"${outer_id}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
 }

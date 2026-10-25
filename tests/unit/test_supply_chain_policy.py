@@ -383,6 +383,33 @@ main
             packages = re.search(pattern, text, re.MULTILINE | re.DOTALL)
             self.assertIn("cmake", packages[1].split(), installer)
 
+    def test_npm_release_age_exclusion_is_only_the_rebuild_of_the_installed_version(self):
+        # U89: npm's release-age exclusion is set in one place, the node rebuild's install of the exact installed
+        # version (scripts/upgrade-tools.sh rebuild_mise_npm_tool; test_runtime_health shows what it names). No
+        # npmrc, installer or other script exempts a package from the window.
+        tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
+        setting = re.compile(
+            r"npm_config_min_release_age_exclude=|min-release-age-exclude(\[\])?=|--min-release-age-exclude"
+        )
+        hits = []
+        for name in tracked.decode().split("\0"):
+            path = ROOT / name
+            if not name or name.startswith(("tests/", ".orchestration/")) or name.endswith(".md") or not path.is_file():
+                continue
+            try:
+                lines = path.read_text().splitlines()
+            except UnicodeDecodeError:
+                continue
+            hits += [(name, number, line) for number, line in enumerate(lines) if setting.search(line)]
+        self.assertEqual(["scripts/upgrade-tools.sh"], [name for name, _, _ in hits])
+        _, number, line = hits[0]
+        script = (ROOT / "scripts/upgrade-tools.sh").read_text().splitlines()
+        self.assertEqual("    if npm_config_min_release_age_exclude=\"${exclusions//$'\\n'/$'\\n\\n'}\" \\", line)
+        self.assertEqual(
+            '        run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then',
+            script[number + 1],
+        )
+
     def test_mise_tools_track_latest_behind_the_cooldown(self):
         text = (ROOT / "home/dot_mise/config.toml").read_text()
         config = tomllib.loads(text)

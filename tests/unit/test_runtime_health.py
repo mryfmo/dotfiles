@@ -1056,6 +1056,8 @@ EOF
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
             printf 'MISE_CONFIG_DIR=%s\n' "$MISE_CONFIG_DIR" >> "$TEST_LOG"
             printf 'MISE_CEILING_PATHS=%s\n' "$MISE_CEILING_PATHS" >> "$TEST_LOG"
+            # npm reads its list setting from the environment; logged per call, so its reach is visible.
+            printf 'exclude %s: %q\n' "$*" "${npm_config_min_release_age_exclude-unset}" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
                 ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'node 26.0.0 fixture\npython 3.13 fixture\nnpm:ccusage 20.0.0 fixture\nfd 10.3.0 fixture\nhttp:bats 1.13.0 fixture\nhttp:gcloud 575.0.1 fixture\n' ;;
@@ -1064,6 +1066,15 @@ EOF
                     # The bare install moves a "latest" node that is not installed yet.
                     [[ "$FAIL_PHASE:$*" != "node_by_install:install --yes" ]] || touch "$NODE_MOVED"
                     case "$FAIL_PHASE:$*" in
+                        young*:"install --yes npm:ccusage@20.0.0")
+                            # As npm under min-release-age=3: the installed version is younger than the window, so
+                            # only an exclusion naming the package lets that exact version through.
+                            exclusions=$'\n'"${npm_config_min_release_age_exclude-}"$'\n'
+                            if [[ "$FAIL_PHASE" == young_dependency || "$exclusions" != *$'\n'ccusage$'\n'* ]]; then
+                                echo "npm error notarget No matching version found with a date before the window." >&2
+                                exit 1
+                            fi
+                            ;;
                         npm_reinstall*:"install --yes npm:ccusage@20.0.0")
                             # The download fails after mise created a partial install directory.
                             mkdir -p "$CCUSAGE_DIR/partial"
@@ -1104,6 +1115,8 @@ EOF
                     ;;
                 # Like mise, where fails for a tool whose install is not in place.
                 where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
+                # The current node's npm; FAKE_NPM_VERSION stands for an older one.
+                exec) [[ "$*" == "exec -- npm --version" ]] && printf '%s\n' "${FAKE_NPM_VERSION:-11.20.0}" ;;
             esac
             """,
         )
@@ -1147,6 +1160,23 @@ EOF
         }
         (Path(env["CCUSAGE_DIR"]) / "original").parent.mkdir(parents=True)
         (Path(env["CCUSAGE_DIR"]) / "original").touch()
+        # The installed copy, as npm lays out a global install under mise's prefix: one platform package of the same
+        # release (pinned to the exact version), one of another version and one range, which the rebuild must tell apart.
+        package_json = Path(env["CCUSAGE_DIR"]) / "lib/node_modules/ccusage/package.json"
+        package_json.parent.mkdir(parents=True)
+        package_json.write_text(
+            json.dumps(
+                {
+                    "name": "ccusage",
+                    "version": "20.0.0",
+                    "optionalDependencies": {
+                        "@ccusage/ccusage-linux-x64": "20.0.0",
+                        "@ccusage/ccusage-linux-arm64": "20.0.1",
+                        "fsevents": "~2.3.3",
+                    },
+                }
+            )
+        )
         # A GitHub Actions runner makes the script skip every phase; these tests stand for a host.
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME", "GITHUB_ACTIONS", "RUNNER_TEMP"):
             env.pop(name, None)
@@ -1408,6 +1438,65 @@ EOF
                     self.assertFalse(marker_file.exists())
                 else:
                     self.assertEqual(f"{recorded}\n", marker_file.read_text())
+
+    def test_rebuild_takes_the_installed_exact_version_past_npm_release_age(self) -> None:
+        # U89: npm's min-release-age refused the exact version a host already ran (ETARGET for
+        # @anthropic-ai/claude-code@2.1.310 on spark). The rebuild exempts only that package and the platform packages
+        # its installed copy pins to the same version, on that one install; no other mise call carries the exclusion.
+        repo, env = self.upgrade_fixture("young")
+        marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+        marker_file.parent.mkdir(parents=True)
+        marker_file.write_text("26.0.0\n")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        excluded = [line for line in log if line.startswith("exclude ") and not line.endswith(": unset")]
+        self.assertEqual(
+            ["exclude install --yes npm:ccusage@20.0.0: $'ccusage\\n\\n@ccusage/ccusage-linux-x64'"], excluded
+        )
+        self.assertTrue((Path(env["CCUSAGE_DIR"]) / "rebuilt").exists())
+        self.assertNotIn("skip:", result.stderr)
+        self.assertIn("required failures: 0; optional warnings: 0", result.stdout)
+        self.assertEqual("27.0.0\n", marker_file.read_text())
+
+    def test_rebuild_skips_with_a_reason_and_keeps_the_install_when_the_version_is_not_proven(self) -> None:
+        # Each case leaves the working install, prints why, and leaves the marker so the next run tries again.
+        for name, phase, change, reason, attempted in (
+            ("installed copy names another version", "young-other-version", "version", "does not prove version", False),
+            ("installed copy unreadable", "young-unreadable", "remove", "does not prove version", False),
+            ("npm without min-release-age-exclude", "young-old-npm", "npm", "predates min-release-age-exclude", False),
+            ("npm still refuses a dependency", "young_dependency", None, "npm refused or could not fetch", True),
+        ):
+            with self.subTest(name):
+                repo, env = self.upgrade_fixture(phase)
+                tool = Path(env["CCUSAGE_DIR"])
+                package_json = tool / "lib/node_modules/ccusage/package.json"
+                if change == "version":
+                    package_json.write_text(json.dumps({"name": "ccusage", "version": "20.0.1"}))
+                elif change == "remove":
+                    package_json.unlink()
+                elif change == "npm":
+                    env["FAKE_NPM_VERSION"] = "11.16.0"
+                marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+                marker_file.parent.mkdir(parents=True)
+                marker_file.write_text("26.0.0\n")
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                skips = [line for line in result.stderr.splitlines() if line.startswith("skip: npm:ccusage")]
+                self.assertEqual(1, len(skips), result.stderr)
+                self.assertIn(reason, skips[0])
+                self.assertIn("its previous install stays", skips[0])
+                self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual(attempted, "mise install --yes npm:ccusage@20.0.0" in log)
+                self.assertTrue((tool / "original").exists())
+                self.assertFalse((tool / "rebuilt").exists())
+                self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())
+                self.assertEqual("26.0.0\n", marker_file.read_text())
 
     def test_upgrade_fails_when_the_final_install_fails_after_a_rebuild(self) -> None:
         # The rebuild restored the previous install, but the final bare install fails: not converged.

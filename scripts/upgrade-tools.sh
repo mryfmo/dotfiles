@@ -325,23 +325,127 @@ function run_mise_tool_command() {
 }
 
 #
+# @description Print the npm package names a rebuild of one installed npm: tool may take past npm's own release-age
+#   window (min-release-age in ~/.npmrc), one per line: the package itself and each optional dependency its installed
+#   package.json pins to exactly the installed version (the platform binaries released with it, such as
+#   @anthropic-ai/claude-code-darwin-arm64). Those are the bytes already on the host; every other dependency keeps
+#   the window. The installed copy is read strictly: it must be <install dir>/lib/node_modules/<package>/package.json
+#   naming that package at that exact version.
+# @arg $1 string npm package name, for example @anthropic-ai/claude-code.
+# @arg $2 string The version mise reports as installed.
+# @arg $3 path The tool's install directory.
+# @stdout One package name per line.
+# @stderr The reason when the installed copy does not prove that exact version.
+# @exitcode 1 When the version is not one exact version or the installed copy cannot be read or names another one.
+#
+function npm_rebuild_exclusions() {
+    python3 -I - "$@" << 'PY'
+import json
+import re
+import sys
+
+package, version, install_dir = sys.argv[1:]
+# An npm package name (lowercase, an optional scope) and one exact semver version: never a range or a tag.
+NAME = re.compile(r"(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*")
+VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?")
+if not NAME.fullmatch(package):
+    sys.exit(f"{package!r} is not an npm package name")
+if not VERSION.fullmatch(version):
+    sys.exit(f"mise reports {version!r}, not one exact version")
+path = f"{install_dir}/lib/node_modules/{package}/package.json"
+try:
+    with open(path, encoding="utf-8") as handle:
+        manifest = json.load(handle)
+except (OSError, ValueError) as error:
+    sys.exit(f"cannot read the installed {path}: {error}")
+if not isinstance(manifest, dict) or manifest.get("name") != package or manifest.get("version") != version:
+    sys.exit(f"{path} does not name {package} at {version}")
+optional = manifest.get("optionalDependencies", {})
+if not isinstance(optional, dict):
+    sys.exit(f"{path}: optionalDependencies is not an object")
+names = [package]
+for name, spec in optional.items():
+    if spec == version and NAME.fullmatch(name) and name not in names:
+        names.append(name)
+print("\n".join(names))
+PY
+}
+
+#
+# @description Return success when an npm version has min-release-age-exclude: npm 11.17.0 added it
+#   (https://github.com/npm/cli/releases/tag/v11.17.0, #9534). An older npm ignores the setting, so its rebuild is
+#   skipped rather than run without it.
+# @arg $1 string npm version, as `npm --version` prints it.
+#
+function npm_has_release_age_exclude() {
+    [[ "$1" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]] || return 1
+    ((BASH_REMATCH[1] > 11 || (BASH_REMATCH[1] == 11 && BASH_REMATCH[2] >= 17)))
+}
+
+#
+# @description Report that one npm: tool keeps its previous install instead of being rebuilt on the current node.
+# @arg $1 string mise npm tool name.
+# @arg $2 string The reason.
+# @stderr One skip line.
+#
+function npm_rebuild_skipped() {
+    printf 'skip: %s is not rebuilt on the current node (%s); its previous install stays, and the next make update tries again\n' "$1" "$2" >&2
+}
+
+#
 # @description Rebuild one npm: tool on the current node, keeping its working install until the new one succeeds.
 #   mise install --force would delete the install before downloading its
 #   replacement, so a rebuild without a network would leave the tool missing.
+#   The rebuild reinstalls the exact version already installed. npm's min-release-age would refuse that version
+#   while it is younger than the window (ETARGET), although the host already runs it, so for this one command
+#   npm_config_min_release_age_exclude names that package and its same-version platform packages
+#   (npm_rebuild_exclusions); every other dependency still resolves under the window. A version the installed copy
+#   does not prove, an npm without the setting, or an install npm still refuses leaves the previous install.
 # @arg $1 string mise npm tool name, for example npm:ccusage.
+# @stderr A skip line naming the reason when the tool is not rebuilt.
+# @exitcode 1 When the tool was not rebuilt.
 #
 function rebuild_mise_npm_tool() {
     local mise_tool="$1"
-    local version install_dir backup
+    local version install_dir backup exclusions npm_version
 
-    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || return 1
-    install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || return 1
+    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || {
+        npm_rebuild_skipped "${mise_tool}" "mise cannot name its current version"
+        return 1
+    }
+    install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || {
+        npm_rebuild_skipped "${mise_tool}" "mise cannot name its install directory"
+        return 1
+    }
     # Only an existing absolute install directory is moved or removed.
-    [[ -n "${version}" && "${install_dir}" == /* ]] || return 1
+    [[ -n "${version}" && "${install_dir}" == /* ]] || {
+        npm_rebuild_skipped "${mise_tool}" "no version or no absolute install directory"
+        return 1
+    }
     backup="${install_dir}.before-node-rebuild"
     # restore_interrupted_npm_rebuilds put any leftover backup back; never move an install into one.
-    [[ -d "${install_dir}" && ! -e "${backup}" ]] || return 1
-    mv "${install_dir}" "${backup}" || return 1
+    [[ -d "${install_dir}" && ! -e "${backup}" ]] || {
+        npm_rebuild_skipped "${mise_tool}" "${install_dir} is missing or a backup of it exists"
+        return 1
+    }
+    # Read before anything moves: the exclusion reaches only the version the installed copy proves.
+    exclusions="$(npm_rebuild_exclusions "${mise_tool#npm:}" "${version}" "${install_dir}")" || {
+        npm_rebuild_skipped "${mise_tool}" "its installed copy does not prove version ${version}"
+        return 1
+    }
+    # The npm mise's npm backend runs: the current node's.
+    npm_version="$(run_mise_with_isolated_git_config exec -- npm --version)" || {
+        npm_rebuild_skipped "${mise_tool}" "npm --version failed"
+        return 1
+    }
+    npm_has_release_age_exclude "${npm_version}" || {
+        npm_rebuild_skipped "${mise_tool}" "npm ${npm_version} predates min-release-age-exclude (npm 11.17.0)"
+        return 1
+    }
+    mv "${install_dir}" "${backup}" || {
+        npm_rebuild_skipped "${mise_tool}" "${install_dir} cannot be moved aside"
+        return 1
+    }
     # Until the new install succeeds, an interruption or exit puts the working install back.
     local restore
     restore="$(printf 'restore_npm_install %q %q' "${install_dir}" "${backup}")"
@@ -351,18 +455,24 @@ function rebuild_mise_npm_tool() {
     trap "${restore}; exit 143" TERM
     # shellcheck disable=SC2064
     trap "${restore}" EXIT
-    if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
+    # npm reads a list setting from the environment as values separated by a blank line.
+    if npm_config_min_release_age_exclude="${exclusions//$'\n'/$'\n\n'}" \
+        run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
         trap - INT TERM EXIT
         # Renamed before it is deleted, so a backup that cannot be fully deleted is never restored over this
         # install; the dot keeps a leftover out of mise's installed versions.
         local discard="${install_dir%/*}/.${install_dir##*/}.discarded-after-rebuild"
         rm -rf "${discard}"
-        mv "${backup}" "${discard}" || return 1
+        mv "${backup}" "${discard}" || {
+            printf 'warning: %s was rebuilt, but its previous install %s cannot be set aside\n' "${mise_tool}" "${backup}" >&2
+            return 1
+        }
         rm -rf "${discard}" || printf 'warning: could not delete %s; nothing uses it\n' "${discard}" >&2
         return 0
     fi
     trap - INT TERM EXIT
-    restore_npm_install "${install_dir}" "${backup}"
+    restore_npm_install "${install_dir}" "${backup}" &&
+        npm_rebuild_skipped "${mise_tool}" "npm refused or could not fetch ${mise_tool#npm:}@${version}, its error is above; a dependency younger than npm's min-release-age is still refused"
     return 1
 }
 
@@ -399,7 +509,8 @@ function restore_npm_install() {
 }
 
 #
-# @description Rebuild the current npm: tools so they run on the current node.
+# @description Rebuild the current npm: tools so they run on the current node; each one not rebuilt says why.
+# @exitcode 1 When the tools cannot be listed or at least one was not rebuilt.
 #
 function reinstall_mise_npm_tools() {
     local mise_tool
@@ -409,10 +520,7 @@ function reinstall_mise_npm_tools() {
     mise_tools="$(current_mise_tools)" || return 1
     while IFS= read -r mise_tool; do
         [[ "${mise_tool}" == npm:* ]] || continue
-        if ! rebuild_mise_npm_tool "${mise_tool}"; then
-            printf 'warning: rebuilding %s on the current node failed; its previous install stays; continuing\n' "${mise_tool}" >&2
-            failed=1
-        fi
+        rebuild_mise_npm_tool "${mise_tool}" || failed=1
     done <<< "${mise_tools}"
 
     return "${failed}"

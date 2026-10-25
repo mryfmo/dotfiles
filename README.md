@@ -458,7 +458,8 @@ installer never prompts: it leaves the profile pending, and `make doctor`
 reports it missing. Install it with
 `sudo -v && bash install/ubuntu/common/apparmor_userns.sh` from the repository
 root, or run `sudo -v` before the next `make update`: every `chezmoi apply`
-retries it until the installed copy equals the repository's. To remove it, run
+loads it again until the installed copy equals the repository's and `bwrap`
+can create a user namespace (the `make doctor` probe). To remove it, run
 `sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns` and then
 `sudo rm /etc/apparmor.d/bwrap-userns`; a later apply with cached `sudo` installs
 it again while the host still needs it.

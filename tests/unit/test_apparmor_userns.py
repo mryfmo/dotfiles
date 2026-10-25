@@ -156,7 +156,7 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.assertEqual(["sudo -n true", f"sudo -n apparmor_parser -r {PROFILE}"], self.calls())
         self.assertNotIn("Loaded AppArmor profile", result.stdout)
 
-    def test_installer_is_silent_without_sudo_when_the_installed_profile_equals_the_source(self) -> None:
+    def test_installer_is_silent_without_sudo_when_the_loaded_profile_equals_the_source(self) -> None:
         self.fake("apparmor_parser")
         self.fake("sudo")
         self.profile_target.parent.mkdir(parents=True)
@@ -164,8 +164,21 @@ class AppArmorUsernsTest(unittest.TestCase):
         result = self.run_installer(self.env("1", self.fake("bwrap")))
 
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual([], self.calls())
+        self.assertEqual([], [c for c in self.calls() if c.startswith("sudo")])
         self.assertEqual("", result.stdout + result.stderr)
+
+    def test_installer_loads_an_installed_copy_that_bwrap_shows_is_not_loaded(self) -> None:
+        # An earlier run copied the profile and then failed to load it: the file equals the source,
+        # but bwrap still cannot create a user namespace, so the profile must be loaded again.
+        self.fake("apparmor_parser")
+        self.fake("sudo")
+        self.profile_target.parent.mkdir(parents=True)
+        shutil.copy(PROFILE, self.profile_target)
+        result = self.run_installer(self.env("1", self.fake("bwrap", exit_code=1)))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"sudo -n apparmor_parser -r {PROFILE}", self.calls())
+        self.assertIn("Loaded AppArmor profile bwrap-userns", result.stdout)
 
     def test_installer_reinstalls_a_profile_that_differs_from_the_source(self) -> None:
         self.fake("apparmor_parser")

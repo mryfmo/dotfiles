@@ -1587,34 +1587,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/home/dot_local/bin/common/executable_hcom-reply/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_hcom-reply
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_hcom-seat/" class="md-nav__link">
         
   
@@ -5025,16 +4997,18 @@ only extra CLI arguments are <code>model</code>, <code>strict-mcp-config</code> 
 <h2 id="load-check">Load check<a class="headerlink" href="#load-check" title="Permanent link">&para;</a></h2>
 <p><code>omp models</code> never evaluates extension modules, so the only instrument is a
 session:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">HOME</span><span class="o">=</span>&lt;scratch<span class="w"> </span>dir&gt;<span class="w"> </span>scripts/update-agent-assets.sh<span class="w"> </span>check_pi_claude_bridge
+<div class="highlight"><pre><span></span><code>scripts/update-agent-assets.sh<span class="w"> </span>check_pi_claude_bridge
 </code></pre></div>
 <p>It runs
 <code>omp --no-extensions -e &lt;install dir&gt; --no-session --model claude-bridge/claude-haiku-4-5 --max-time 60 -p "Reply with the single word PONG."</code>,
 fails when stderr or the omp log files written by that run contain
 <code>Failed to load extension</code>, and passes when the output reaches the model
-(<code>PONG</code> with a login, <code>Not logged in</code> without). Point <code>HOME</code> at a scratch
-directory to keep the session out of the real <code>~/.omp</code>; under the real HOME a
-logged-in host spends one short model turn. The function is callable from
-<code>make doctor</code> once the Makefile wires it (follow-up).</p>
+(<code>PONG</code> with a login, <code>Not logged in</code> without). It runs under the real HOME and
+spends one short model turn on a logged-in host; <code>make doctor</code> calls it. On
+Linux a scratch <code>HOME</code> keeps the session out of the real <code>~/.omp</code>. Do not do
+that on macOS: the child Claude Code asks the login keychain for its
+credentials, and with no keychain search list under the scratch HOME macOS
+shows a "keychain unknown cannot be found" dialog for every run.</p>
 <h2 id="subagents">Subagents<a class="headerlink" href="#subagents" title="Permanent link">&para;</a></h2>
 <p>An omp Task subagent on the claude-bridge route broke the seat that spawned it before
 <code>05-register-on-reactivation.patch</code>. Measured on

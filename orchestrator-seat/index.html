@@ -1593,34 +1593,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/home/dot_local/bin/common/executable_hcom-reply/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_hcom-reply
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_hcom-seat/" class="md-nav__link">
         
   
@@ -4938,17 +4910,13 @@
 <td>closed</td>
 </tr>
 <tr>
-<td><code>VERDICT</code> on a <code>U&lt;n&gt;-audit</code> id from the seat named in the <code>to</code> column of the seat's newest TASK under that id, while that TASK still awaits</td>
-<td>closed: the audit seat's answer (U9b, U9c)</td>
-</tr>
-<tr>
-<td>anything else (PING, every PONG, <code>status=measure-request</code>, <code>status=measured</code>, <code>status=measure-refused</code> and <code>status=question</code> included, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat or on any other id, …)</td>
+<td>anything else (PING, every PONG, <code>status=question</code> included, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat, …)</td>
 <td>no effect; the previous moving row keeps the state</td>
 </tr>
 </tbody>
 </table>
-<p>The line kinds are the first word of a bus line: <code>TASK</code>, <code>RESULT</code>, <code>VERDICT</code>, <code>PONG</code>, <code>MERGED</code> and <code>HOLD</code> (plus <code>PING</code>, which moves nothing). A seat that still writes the retired <code>AGMSG-</code> prefix (<code>AGMSG-TASK</code> and so on) is read the same, because the gate strips the prefix before it looks the kind up (U35). Three <code>PONG</code> statuses belong to the audit loop: the audit seat's <code>status=measure-request</code> names one entry of a closed measurement menu (<code>measure=&lt;entry&gt;</code>, a runtime claim it may not run itself), and the orchestrator answers <code>status=measured</code> after running that entry's fixed command in a <code>git archive</code> copy of the head, or <code>status=measure-refused</code> for anything else, without running it (the <code>hcom-orchestration</code> skill, step 4); none of them moves a task, and the audit seat's VERDICT still closes it.</p>
-<p>Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker or audit seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.</p>
+<p>The line kinds are the first word of a bus line: <code>TASK</code>, <code>RESULT</code>, <code>VERDICT</code>, <code>PONG</code>, <code>MERGED</code> and <code>HOLD</code> (plus <code>PING</code>, which moves nothing). A seat that still writes the retired <code>AGMSG-</code> prefix (<code>AGMSG-TASK</code> and so on) is read the same, because the gate strips the prefix before it looks the kind up (U35). There is no audit seat on the bus: every audit is one fresh <code>omp-run.sh --role audit</code> run that the orchestrator starts and reads (the <code>hcom-orchestration</code> skill, step 4), so its verdict reaches the bus only as the orchestrator's own VERDICT line, and another seat's VERDICT closes nothing, on an <code>-audit</code> id or any other (U58).</p>
+<p>Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.</p>
 <p>One message lists the open items with their row ids and the ways out: answer them, wait with <code>hcom listen</code>, or send <code>HOLD v1 task_id=&lt;id&gt; note=&lt;why&gt;</code>, the auditable override that the skill names. <code>OMP_STOP_GATE_ALLOW_OPEN=1</code> ends the turn with the warning instead of the block.</p>
 <h3 id="the-seats-environment">The seat's environment<a class="headerlink" href="#the-seats-environment" title="Permanent link">&para;</a></h3>
 <table>
@@ -5002,7 +4970,7 @@
 <tbody>
 <tr>
 <td><code>stop-gate.ts</code>, the decision</td>
-<td>closed: <code>openItems</code> is a pure function over the TSV; the transition tests assert each row of the table above, including that a worker's VERDICT on its own unit and a stranger's VERDICT on the audit id leave the debt open (U9c)</td>
+<td>closed: <code>openItems</code> is a pure function over the TSV; the transition tests assert each row of the table above, including that a worker's VERDICT on its own unit, a VERDICT on an id never tasked and, since U58, one from the seat an <code>-audit</code> TASK went to leave the debt open (U9c)</td>
 </tr>
 <tr>
 <td><code>stop-gate.ts</code>, the message reaching the model</td>
@@ -5076,7 +5044,7 @@ says <code>no stop record</code> because the first parser read the wrong form of
 2026-10-24T11:03:47Z regime-stop: stopped orchestrator-nene
 </code></pre></div>
 <h2 id="the-skill">The skill<a class="headerlink" href="#the-skill" title="Permanent link">&para;</a></h2>
-<p><code>home/dot_agents/skills/hcom-orchestration/SKILL.md</code> (36 lines), reachable in every seat through <code>skills.customDirectories</code> (<code>docs/omp-skills.md</code>). It compresses the program's own method, <code>.orchestration/orchestrate/regime-cutover/preferences.md</code> and the briefs, into the loop brief → TASK → RESULT → verdict → merge with <code>gh pr merge --squash --match-head-commit</code>, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the <code>hcom-worker</code> skill (U7) and the audit seat's the <code>hcom-audit</code> skill (U6b).</p>
+<p><code>home/dot_agents/skills/hcom-orchestration/SKILL.md</code> (36 lines), reachable in every seat through <code>skills.customDirectories</code> (<code>docs/omp-skills.md</code>). It compresses the program's own method, <code>.orchestration/orchestrate/regime-cutover/preferences.md</code> and the briefs, into the loop brief → TASK → RESULT → verdict → merge with <code>gh pr merge --squash --match-head-commit</code>, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the <code>hcom-worker</code> skill (U7). The audit has no seat and no skill: each audit is one fresh <code>omp-run.sh --role audit</code> run (step 4; U57), and the <code>hcom-audit</code> skill, its <code>hcom-reply</code> lever and the stop gate's audit-VERDICT clause were removed with the seat (U58).</p>
 <h2 id="doctor-wiring">Doctor wiring<a class="headerlink" href="#doctor-wiring" title="Permanent link">&para;</a></h2>
 <p><code>make doctor</code> now runs <code>./scripts/update-agent-assets.sh check_pi_claude_bridge</code> when <code>~/.local/bin/omp</code> exists and counts its failure in <code>tools=</code>; without omp it prints <code>optional warning: pi-claude-bridge check skipped because omp is not installed</code>, in line with <code>check_omp</code> and <code>check_hcom</code> in <code>scripts/check-tools.sh</code>. The check spends one short model turn on a logged-in host (<code>update-agent-assets.sh</code>, the function's shdoc), which is why it lives in the manual doctor and not in CI.</p>
 <h2 id="agentsmd">AGENTS.md<a class="headerlink" href="#agentsmd" title="Permanent link">&para;</a></h2>

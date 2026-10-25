@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -118,7 +119,7 @@ class PrAuditTest(unittest.TestCase):
             ["git", *args], cwd=cwd or self.repo, env=self.env, check=True, capture_output=True, text=True
         ).stdout.strip()
 
-    def answer(self, head=None, base="main", body=BODY):
+    def answer(self, head=None, base="main", body=BODY, fail=None):
         responses = [
             {"match": r"^repo view --json nameWithOwner$", "json": {"nameWithOwner": "acme/widgets"}},
             {
@@ -132,7 +133,32 @@ class PrAuditTest(unittest.TestCase):
             },
             {"match": r"^pr view 7 --repo acme/widgets --json body$", "json": {"body": body}},
         ]
+        if fail is not None:
+            responses.insert(0, {"match": fail, "exit": 1, "stderr": "gh: injected failure\n"})
         (self.rec / "gh-responses.json").write_text(json.dumps(responses))
+
+    def failing_tool(self, name, pattern, action="exit 2"):
+        """PATH for a run where NAME runs ACTION when its arguments match the sh case PATTERN, else the real NAME."""
+        real = shutil.which(name, path=self.env["PATH"])
+        fakes = Path(tempfile.mkdtemp(dir=self.root, prefix="fakes-"))
+        tool = fakes / name
+        tool.write_text(f'#!/bin/sh\nREAL={real}\ncase "$*" in {pattern}) {action} ;; esac\nexec "$REAL" "$@"\n')
+        tool.chmod(0o755)
+        return f"{fakes}:{self.env['PATH']}"
+
+    def set_main_agents(self, text):
+        """Move main (in the checkout and origin) to a commit whose AGENTS.md is TEXT; the head's merge base stays."""
+        (self.repo / "AGENTS.md").write_text(text)
+        self.git("commit", "-q", "-am", "main rules")
+        self.git("push", "-q", "origin", "main")
+
+    def assert_stopped(self, run, code, message):
+        """Exit CODE naming MESSAGE, no `codex exec`, and no run directory left."""
+        self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+        self.assertIn(message, run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.assertEqual([c for c in self.codex_calls() if c["argv"][:1] == ["exec"]], [], "no audit ran")
+        self.assertEqual(list(self.tmp.iterdir()), [], "no run directory is left")
 
     def run_lever(self, *args, lever=LEVER, **env):
         return subprocess.run(
@@ -358,13 +384,98 @@ class PrAuditTest(unittest.TestCase):
                 self.assertFalse((self.rec / "gh-calls").exists())
 
     def test_a_failed_run_or_a_message_without_a_verdict_line_exits_1(self):
-        for env in ({"FAKE_CODEX_EXEC_EXIT": "1"}, {"FAKE_CODEX_VERDICT": "Verdict: correct\n\nmore text\n"}):
+        awk = self.failing_tool("awk", "*", "exit 2")
+        for env in (
+            {"FAKE_CODEX_EXEC_EXIT": "1"},
+            {"FAKE_CODEX_VERDICT": "Verdict: correct\n\nmore text\n"},
+            {"PATH": awk},  # the read of the verdict's last line fails: no verdict is printed
+        ):
             with self.subTest(env=env):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
                 run = self.run_lever("7", **env)
                 self.assertEqual(run.returncode, 1, run.stderr)
                 self.assertEqual(run.stdout, "")
+
+    def test_the_timeout_stops_every_process_codex_started(self):
+        """PR_AUDIT_TIMEOUT ends the audit, not just the launcher: a child codex left behind would keep running on the
+        login after the lever reported the run failed."""
+        marker = self.root / "child-still-ran"
+        started = time.monotonic()
+        run = self.run_lever("7", PR_AUDIT_TIMEOUT="1", FAKE_CODEX_HANG=str(marker))
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertLess(time.monotonic() - started, 30)
+        time.sleep(4)
+        self.assertFalse(marker.exists(), "a process codex started outlived the deadline")
+        self.assertIn("codex exec exited 124", run.stderr)
+
+    def test_main_audit_rules_that_cannot_be_read_whole_refuse_before_codex(self):
+        """main:AGENTS.md is read once and whole (U71b audit round 3): a failed or short read never yields rules."""
+        for pattern, action, message in (
+            ("*cat-file\\ blob*:AGENTS.md*", "exit 128", "cannot read AGENTS.md of main"),
+            ("*cat-file\\ -s*:AGENTS.md*", "exit 128", "cannot read the size of AGENTS.md"),
+            ("*cat-file\\ blob*:AGENTS.md*", '"$REAL" "$@" | head -c 20; exit 0', "read 20 of the"),
+        ):
+            with self.subTest(action=action, pattern=pattern):
+                path = self.failing_tool("git", pattern, action)
+                self.assert_stopped(self.run_lever("7", PATH=path), 2, message)
+                self.assertEqual(self.codex_calls(), [], "no probe either")
+
+    def test_main_without_one_nonempty_audit_section_refuses_before_codex(self):
+        for text, message in (
+            ("# Rules\n\n## Other\n\nNot audit rules.\n", "has 0 '## Audit' headings"),
+            ("## Audit\n\nOne.\n\n## Audit\n\nTwo.\n", "has 2 '## Audit' headings"),
+            ("# Rules\n\n## Audit\n\n   \n\n## Other\n\nText.\n", "an empty '## Audit' section"),
+            ("# Rules\n\n## Audit\n", "an empty '## Audit' section"),  # a section cut before its body
+            ("# Rules\n\n## Audit \n\nTrailing space is another heading.\n", "has 0 '## Audit' headings"),
+        ):
+            with self.subTest(text=text):
+                self.set_main_agents(text)
+                self.assert_stopped(self.run_lever("7"), 2, message)
+                self.assertEqual(self.codex_calls(), [])
+
+    def test_every_other_safety_read_that_fails_stops_before_the_audit(self):
+        """Each producer a safety decision reads (preferences 21): its failure is a stop, never an empty answer."""
+        grep = lambda pattern: {"PATH": self.failing_tool("grep", pattern)}
+        git = lambda pattern: {"PATH": self.failing_tool("git", pattern, "exit 128")}
+        cases = (
+            ("profile default", grep("*default_permissions*"), 1, "cannot search"),
+            ("sandbox_mode", grep("*sandbox_mode*"), 1, "cannot search"),
+            ("profile table", grep("*permissions.audit*"), 1, "cannot search"),
+            ("deny lines", grep("*'\"deny\"[[:space:]]'*"), 1, "cannot search"),
+            ("contract", grep("*Contract*"), 1, "cannot read"),
+            ("rendered denies", grep("*'^\"/'*"), 1, "cannot search the rendered config"),
+            ("resolved denies", grep("-c\\ ."), 1, "cannot count the resolved deny paths"),
+            ("login realpath", {"PATH": self.failing_tool("perl", "*realpath*")}, 2, "cannot resolve the Codex login"),
+            ("gh repository", {"FAIL": "^repo view"}, 1, "cannot read the repository"),
+            ("gh head and base", {"FAIL": "^pr view 7 .*headRefOid"}, 1, "cannot read pull request 7"),
+            ("gh body", {"FAIL": "^pr view 7 .*--json body$"}, 1, "cannot read the body"),
+            ("fetch", git("*fetch*"), 1, "git fetch of refs/pull/7/head"),
+            ("fetched head", git("*'refs/audit/head^{commit}'*"), 2, "the head moved"),
+            ("fetched main", git("*'refs/audit/main^{commit}'*"), 1, "cannot resolve the fetched main"),
+            ("merge base", git("*merge-base*"), 1, "git merge-base"),
+            ("probe runner", {"FAKE_CODEX_PROBE": "failrun"}, 2, "the sandbox read probe did not pass"),
+            ("nonce", {"PATH": self.failing_tool("od", "*")}, 1, "cannot read /dev/urandom"),
+            (
+                "prompt body copy",
+                {"PATH": self.failing_tool("cat", "*body.md*", "exit 1")},
+                1,
+                "cannot write the prompt",
+            ),
+        )
+        for name, env, code, message in cases:
+            with self.subTest(read=name):
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                self.answer(fail=env.pop("FAIL", None))
+                self.assert_stopped(self.run_lever("7", **env), code, message)
+
+    def test_a_deny_path_that_cannot_be_resolved_refuses(self):
+        locked = self.home / "locked"
+        locked.mkdir()
+        locked.chmod(0)
+        self.addCleanup(locked.chmod, 0o755)
+        lever = self.lever_copy(lambda text: text + '"~/locked/inner" = "deny"\n')
+        self.assert_stopped(self.run_lever("7", lever=lever), 2, f"cannot resolve {locked}")
 
 
 class AuditConfigSourceTest(unittest.TestCase):

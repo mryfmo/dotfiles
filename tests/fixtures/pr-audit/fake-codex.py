@@ -5,16 +5,21 @@ FAKE_CODEX_CALLS names the file that gets one JSON object per call: the argv, th
 XDG base-directory variables it saw, the text of `$CODEX_HOME/config.toml` and the target of `$CODEX_HOME/auth.json`.
 `sandbox` answers the lever's two probes by FAKE_CODEX_PROBE: `denied` (default; every path unreadable, curl exit 6),
 `readable` (the read probe finds its first path readable and exits 3), `curl<n>` (curl exits n, e.g. `curl0` for a
-reachable network or `curl127` for a curl that could not run) or `nocurl`. `exec`
+reachable network or `curl127` for a curl that could not run), `nocurl`, or `failrun` (both probes print a passing
+line but `codex sandbox` itself exits 1). `exec`
 reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
 `Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
-codex-cli 0.163.0 saves the login) with that value.
+codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming a marker path, `exec` plays the
+launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
+and sleeps 60 seconds.
 """
 
 import json
 import os
+import subprocess
 import sys
+import time
 
 argv = sys.argv[1:]
 codex_home = os.environ.get("CODEX_HOME", "")
@@ -52,8 +57,16 @@ if argv[:1] == ["sandbox"]:
             print("pr-audit-probe: no curl")
         else:
             print(f"pr-audit-probe: curl {mode[4:] if mode.startswith('curl') else 6}")
+    if mode == "failrun":
+        status = 1
 elif argv[:1] == ["exec"]:
     record["prompt"] = sys.stdin.read()
+    marker = os.environ.get("FAKE_CODEX_HANG")
+    if marker:
+        subprocess.Popen(["/bin/sh", "-c", 'sleep 3; touch "$1"', "sh", marker])
+        with open(os.environ["FAKE_CODEX_CALLS"], "a", encoding="utf-8") as calls:
+            calls.write(json.dumps(record) + "\n")
+        time.sleep(60)
     refreshed = os.environ.get("FAKE_CODEX_REFRESH")
     if refreshed is not None:
         with open(auth, "w", encoding="utf-8") as handle:

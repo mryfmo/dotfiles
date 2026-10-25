@@ -47,35 +47,9 @@ SHELL_CONTROL = set("\n\r;&|<>`$()")  # bash.ts:79-91
 APPROVAL_MODES = ("always-ask", "write", "yolo")  # tools/settings.ts:314
 POLICIES_VALUES = ("allow", "deny", "prompt")  # approval.ts:99
 
-COMMON_DENIES = [
-    "*sudo *",
-    "*rm -rf *",
-    "*curl *|*sh",
-    "*curl *|*sh *",
-    "*wget *|*sh",
-    "*wget *|*sh *",
-    "*gh release*",
-    "*npm publish*",
-    "*uv publish*",
-    "*terraform apply*",
-    "*kubectl apply*",
-    "*gh pr merge*",
-    "*gh pr edit*",
-    "*gh pr close*",
-    "*gh pr review*",
-    "*gh pr update-branch*",
-    "*gh issue*",
-    *[
-        f"*gh api* {form}*"
-        for method in ("POST", "PATCH", "PUT", "DELETE")
-        for form in (f"-X {method}", f"--method {method}", f"-X{method}", f"--method={method}")
-    ],
-    "*gh api* -f*",
-    "*gh api* -F*",
-    "*gh api* --field*",
-    "*gh api* --raw-field*",
-    "*gh api* --input*",
-]
+# The plain launch's bash denies are the command_policy block every seat policy carries (U76); setUpClass reads them
+# from the rendered plain-launch config, and tests/unit/test_command_policy.py checks them against the manifest.
+PLAIN_LAUNCH = ROOT / "home/.chezmoitemplates/omp-config-managed.yml"
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
@@ -115,6 +89,24 @@ EVERY_SEAT = [
     ("bash", "gh api graphql --input=q.json", "deny"),
     ("bash", "sudo ls", "deny"),
     ("bash", "cd w; rm -rf build", "deny"),
+    # U76 (F002): the GitHub writes a yolo seat used to run unasked, and the spellings the old list missed.
+    ("bash", "gh run rerun 1 --failed", "deny"),
+    ("bash", "gh run cancel 1", "deny"),
+    ("bash", "gh workflow run ci.yml", "deny"),
+    ("bash", "gh secret set TOKEN", "deny"),
+    ("bash", "gh variable set NAME --body x", "deny"),
+    ("bash", "gh repo edit --visibility public", "deny"),
+    ("bash", "gh repo delete o/r --yes", "deny"),
+    ("bash", "gh label create bug", "deny"),
+    ("bash", "gh alias set m 'pr merge'", "deny"),
+    ("bash", "gh api --method=PUT repos/o/r/pulls/1/merge", "deny"),
+    ("bash", "gh api -XPUT repos/o/r/pulls/1/merge", "deny"),
+    ("bash", "rm -fr build", "deny"),
+    ("bash", "rm -r -f build", "deny"),
+    ("bash", "/bin/rm -rf build", "deny"),
+    ("bash", "pnpm publish", "deny"),
+    ("bash", "terraform destroy -auto-approve", "deny"),
+    ("bash", "gh run view 1 --log-failed", "allow"),
     ("bash", "gh api repos/o/r/pulls/1/files", "allow"),
     ("bash", "git status", "allow"),
     ("eval", None, "deny"),
@@ -186,6 +178,14 @@ TABLE = {
         ("bash", "git push origin feat/omp-seat-policy", "allow"),
         ("bash", "git push -u origin feat/x", "allow"),
         ("bash", f"{PUSH_RECIPE} feat/omp-seat-policy", "allow"),
+        # F002: no push that deletes or prunes a remote branch.
+        ("bash", "git push origin --delete feat/x", "deny"),
+        ("bash", "git push origin -d feat/x", "deny"),
+        ("bash", "git push origin :feat/x", "deny"),
+        ("bash", "git push --prune origin", "deny"),
+        ("bash", "git push --mirror origin", "deny"),
+        ("bash", "git push origin HEAD:feat/x", "allow"),
+        ("bash", "rm -f build/out.txt", "allow"),
         ("bash", 'git commit -m "fix the main loop"', "allow"),
         ("bash", "gh pr create --title t --body b", "allow"),
         ("bash", "gh pr ready 1", "allow"),
@@ -362,6 +362,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.policies = {role: load_policy(POLICIES / f"{role}.yml") for role in ROLES}
+        cls.common = [rule["match"] for rule in load_policy(PLAIN_LAUNCH)["bash"]["patterns"]]
 
     def test_the_overlays_fit_the_schema(self):
         for role, policy in self.policies.items():
@@ -382,19 +383,23 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 self.assertEqual(len(matches), len(set(matches)), "a duplicate rule is dead")
 
     def test_every_overlay_carries_the_common_denies(self):
+        """The plain launch's list is one contiguous block in every overlay, in the same order."""
+        self.assertTrue(self.common)
         for role, policy in self.policies.items():
             with self.subTest(role=role):
-                denies = [rule["match"] for rule in policy["bash"]["patterns"] if rule["approval"] == "deny"]
-                self.assertEqual([match for match in denies if match in COMMON_DENIES], COMMON_DENIES)
+                matches = [rule["match"] for rule in policy["bash"]["patterns"]]
+                start = matches.index(self.common[0])
+                self.assertEqual(matches[start : start + len(self.common)], self.common)
+                block = policy["bash"]["patterns"][start : start + len(self.common)]
+                self.assertTrue(all(rule["approval"] == "deny" for rule in block))
 
     def test_a_plain_launch_keeps_its_mode_and_denies_the_common_list(self):
         """U66 F043: the plain-launch config sets no approval mode (omp's default yolo stays, operator-driven sessions
         are gate-free by design) and denies the common bash list, `debug` and `AskClaude` outright."""
-        managed = load_policy(ROOT / "home/.chezmoitemplates/omp-config-managed.yml")
+        managed = load_policy(PLAIN_LAUNCH)
         self.assertNotIn("approvalMode", managed["tools"])
         self.assertEqual(managed["tools"]["approval"], {"debug": "deny", "AskClaude": "deny"})
         policy = {"tools": {"approvalMode": "yolo", **managed["tools"]}, "bash": managed["bash"]}
-        self.assertEqual([rule["match"] for rule in policy["bash"]["patterns"]], COMMON_DENIES)
         self.assertTrue(all(rule["approval"] == "deny" for rule in policy["bash"]["patterns"]))
         for command, expected in (
             ("git status", "allow"),
@@ -433,7 +438,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
         before the first common deny."""
         for role in ("orchestrator", "worker"):
             rules = self.policies[role]["bash"]["patterns"]
-            first_common = next(index for index, rule in enumerate(rules) if rule["match"] in COMMON_DENIES)
+            first_common = next(index for index, rule in enumerate(rules) if rule["match"] in self.common)
             for index, rule in enumerate(rules):
                 if rule["approval"] != "allow" or rule["match"] == rules[1]["match"] and role == "orchestrator":
                     continue

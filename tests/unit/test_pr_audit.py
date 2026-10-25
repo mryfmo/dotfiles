@@ -15,6 +15,7 @@ import io
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -247,7 +248,7 @@ class PrAuditTest(unittest.TestCase):
         (rundir,) = self.tmp.iterdir()
         self.assertFalse((rundir / "work").exists(), "the scratch CODEX_HOME and its link are gone")
 
-    def test_the_config_is_the_generated_source_with_every_deny_resolved(self):
+    def test_the_config_is_the_generated_source_with_every_path_resolved(self):
         link = self.root / "homelink"
         link.symlink_to(self.home)
         env = scratch_env(link)
@@ -256,16 +257,35 @@ class PrAuditTest(unittest.TestCase):
         sandbox, _, exec_call = self.codex_calls()
         config = exec_call["config"]
         codex_home = exec_call["env"]["CODEX_HOME"]
+        work = Path(codex_home).parent
         source = TEMPLATE.read_text()
-        kept = [line for line in source.splitlines() if not line.endswith('= "deny"')]
-        self.assertEqual([line for line in config.splitlines() if not line.endswith('= "deny"')], kept)
+
+        def entry(line):
+            return line.startswith('"') and line.endswith(('" = "read"', '" = "write"', '" = "deny"'))
+
+        self.assertEqual(
+            [line for line in config.splitlines() if not entry(line)],
+            [line for line in source.splitlines() if not entry(line)],
+        )
         self.assertIn('default_permissions = "audit"', config.splitlines())
         self.assertNotIn("sandbox_mode", config)
-        denied = [line[1 : -len('" = "deny"')] for line in config.splitlines() if line.endswith('" = "deny"')]
-        self.assertEqual(len(denied), len(set(denied)), "no path is denied twice")
-        for path in denied:
-            self.assertTrue(os.path.isabs(path), path)
+        access = {}
+        for line in filter(entry, config.splitlines()):
+            key, _, value = line[1:-1].partition('" = "')
+            self.assertNotIn(key, access, "no path is named twice")
+            access[key] = value
+        # The allowlist: nothing readable by default; the special names pass through unchanged.
+        self.assertEqual(access[":root"], "deny")
+        self.assertEqual(access[":minimal"], "read")
+        self.assertEqual(access[":tmpdir"], "write")
+        self.assertEqual([key for key, value in access.items() if value == "write"], [":tmpdir"])
+        self.assertEqual(access[str(work / "repo")], "read")
+        self.assertEqual(access[str(work / "cwd")], "read")
+        self.assertEqual(access["/var/tmp"], "deny")
+        for key in access:
+            self.assertTrue(key.startswith(":") or os.path.isabs(key), key)
         for spelling in (link, self.home):  # the HOME as given and its resolved form
+            self.assertEqual(access[f"{spelling}/.local/share/mise/installs"], "read")
             for rel in (
                 ".ssh",
                 ".codex",
@@ -275,15 +295,32 @@ class PrAuditTest(unittest.TestCase):
                 ".netrc",
                 "Library/Keychains",
             ):
-                self.assertIn(f"{spelling}/{rel}", denied)
-        self.assertIn(codex_home, denied)
-        self.assertIn(str(self.auth), denied)
+                self.assertEqual(access[f"{spelling}/{rel}"], "deny")
+        self.assertEqual(access[codex_home], "deny")
+        self.assertEqual(access[str(self.auth)], "deny")
         probes = sandbox["probe_paths"]
-        self.assertIn(f"{link}/.codex/auth.json", probes)
-        self.assertIn(str(self.auth), probes)
-        self.assertIn(f"{codex_home}/auth.json", probes)
-        self.assertIn(f"{self.home}/.ssh", probes)
-        self.assertNotIn(f"{self.home}/.aws", probes, "only paths that exist are probed")
+        reads, writes = probes[: probes.index("--write")], probes[probes.index("--write") + 1 :]
+        self.assertIn(f"{link}/.codex/auth.json", reads)
+        self.assertIn(str(self.auth), reads)
+        self.assertIn(f"{codex_home}/auth.json", reads)
+        self.assertIn(f"{self.home}/.ssh", reads)
+        self.assertIn(str(work.parent / "canary"), reads)
+        self.assertIn(str(link), reads)
+        self.assertNotIn(f"{self.home}/.aws", reads, "only paths that exist are probed")
+        self.assertEqual(writes[0], str(work.parent))
+        self.assertIn("/var/tmp", writes, "an absolute deny key that is a directory gets a write probe")
+        self.assertFalse((work.parent / "canary").exists(), "the canary is removed after the probe")
+
+    def test_every_store_the_callers_environment_names_is_probed(self):
+        stores = {name: self.root / "stores" / name.lower() for name in ("CLAUDE_CONFIG_DIR", "GH_CONFIG_DIR")}
+        stores |= {name: self.root / "stores" / name.lower() for name in ("XDG_CONFIG_HOME", "XDG_DATA_HOME")}
+        for path in stores.values():
+            path.mkdir(parents=True)
+        run = self.run_lever("7", **{name: str(path) for name, path in stores.items()})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        reads = self.codex_calls()[0]["probe_paths"]
+        for path in stores.values():
+            self.assertIn(str(path), reads)
 
     def test_a_config_that_does_not_select_the_audit_profile_is_refused(self):
         cases = (
@@ -294,8 +331,11 @@ class PrAuditTest(unittest.TestCase):
                 lambda text: text.replace("[permissions.audit]\n", "[permissions.other]\n"),
                 "no single [permissions.audit]",
             ),
-            (lambda text: text + '"/etc" = "deny"\n', "which is not ~/<path>"),
-            (lambda text: text.replace('"~/.ssh" = "deny"', '"~/.ssh"  =  "deny"'), "deny lines"),
+            (lambda text: text.replace('":root" = "deny"', '":root" = "read"'), "does not deny :root once"),
+            (lambda text: text + '"etc/x" = "deny"\n', "which is not ~/<path>"),
+            (lambda text: text + '"/opt/x" = "write"\n', "only :tmpdir"),
+            (lambda text: text + '"~/.ssh/x" = "read"\n"~/.ssh/x" = "deny"\n', "to both read and deny"),
+            (lambda text: text.replace('"~/.ssh" = "deny"', '"~/.ssh"  =  "deny"'), "filesystem lines"),
         )
         for edit, message in cases:
             with self.subTest(message=message):
@@ -409,6 +449,43 @@ class PrAuditTest(unittest.TestCase):
         self.assertFalse(marker.exists(), "a process codex started outlived the deadline")
         self.assertIn("codex exec exited 124", run.stderr)
 
+    def test_a_signal_to_the_lever_stops_every_process_codex_started(self):
+        """INT, TERM or HUP while codex runs stops codex's whole process group, not just the lever (U71b audit round 4:
+        the supervisor died and the audit outlived it). INT goes to the lever's process group, as a terminal sends it;
+        TERM and HUP go to the lever alone, as `kill` sends them."""
+        for signum, to_group in ((signal.SIGINT, True), (signal.SIGTERM, False), (signal.SIGHUP, False)):
+            with self.subTest(signal=signum.name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                marker = self.root / f"child-still-ran-{signum.name}"
+                lever = subprocess.Popen(
+                    [str(LEVER), "7"],
+                    cwd=self.repo,
+                    env={**self.env, "PR_AUDIT_TIMEOUT": "600", "FAKE_CODEX_HANG": str(marker)},
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    start_new_session=True,
+                )
+                deadline = time.monotonic() + 60
+                while not any(c["argv"][:1] == ["exec"] for c in self.codex_calls()):
+                    self.assertIsNone(lever.poll(), "the lever ended before codex exec ran")
+                    self.assertLess(time.monotonic(), deadline)
+                    time.sleep(0.1)
+                if to_group:
+                    os.killpg(lever.pid, signum)
+                else:
+                    lever.send_signal(signum)
+                stdout, stderr = lever.communicate(timeout=30)
+                self.assertEqual(lever.returncode, 128 + signum, stderr)
+                self.assertEqual(stdout, "")
+                self.assertIn(f"stopped by SIG{signum.name[3:]}", stderr)
+                time.sleep(4)
+                self.assertFalse(marker.exists(), "a process codex started outlived the signal")
+                (rundir,) = self.tmp.iterdir()
+                self.assertFalse((rundir / "work").exists(), "the scratch tree is removed")
+
     def test_main_audit_rules_that_cannot_be_read_whole_refuse_before_codex(self):
         """main:AGENTS.md is read once and whole (U71b audit round 3): a failed or short read never yields rules."""
         for pattern, action, message in (
@@ -442,10 +519,21 @@ class PrAuditTest(unittest.TestCase):
             ("profile default", grep("*default_permissions*"), 1, "cannot search"),
             ("sandbox_mode", grep("*sandbox_mode*"), 1, "cannot search"),
             ("profile table", grep("*permissions.audit*"), 1, "cannot search"),
-            ("deny lines", grep("*'\"deny\"[[:space:]]'*"), 1, "cannot search"),
+            ("filesystem lines", grep("*'\"(read|write|deny)\"'*"), 1, "cannot search"),
+            ("root deny", grep('*\':root" = "deny"\'*'), 1, "cannot search"),
             ("contract", grep("*Contract*"), 1, "cannot read"),
-            ("rendered denies", grep("*'^\"/'*"), 1, "cannot search the rendered config"),
-            ("resolved denies", grep("-c\\ ."), 1, "cannot count the resolved deny paths"),
+            ("rendered paths", grep("*'^\"/'*"), 1, "cannot search the rendered config"),
+            ("resolved paths", grep("-c\\ ."), 1, "cannot count the resolved paths"),
+            ("repository root", git("*--show-toplevel*"), 2, "run from the repository checkout"),
+            ("common directory", git("*--git-common-dir*"), 1, "cannot read the git common directory"),
+            ("origin url", git("*remote\\ get-url*"), 1, "has no origin remote"),
+            ("repack", git("*repack*"), 1, "git repack"),
+            ("repack that copies nothing", {"PATH": self.failing_tool("git", "*repack*", "exit 0")}, 1, "on its own"),
+            ("self-contained objects", git("*rev-list*"), 1, "on its own"),
+            ("alternates removal", {"PATH": self.failing_tool("rm", "*alternates*", "exit 1")}, 1, "alternates"),
+            ("checkout", git("*checkout*"), 1, "git checkout"),
+            ("probe output", {"PATH": self.failing_tool("cat", "*probe.out*", "exit 1")}, 1, "cannot read"),
+            ("canary removal", {"PATH": self.failing_tool("rm", "*canary*", "exit 1")}, 1, "cannot remove the canary"),
             ("login realpath", {"PATH": self.failing_tool("perl", "*realpath*")}, 2, "cannot resolve the Codex login"),
             ("gh repository", {"FAIL": "^repo view"}, 1, "cannot read the repository"),
             ("gh head and base", {"FAIL": "^pr view 7 .*headRefOid"}, 1, "cannot read pull request 7"),
@@ -465,6 +553,8 @@ class PrAuditTest(unittest.TestCase):
         )
         for name, env, code, message in cases:
             with self.subTest(read=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
                 (self.rec / "codex-calls").unlink(missing_ok=True)
                 self.answer(fail=env.pop("FAIL", None))
                 self.assert_stopped(self.run_lever("7", **env), code, message)
@@ -479,28 +569,36 @@ class PrAuditTest(unittest.TestCase):
 
 
 class AuditConfigSourceTest(unittest.TestCase):
-    """The generator renders codex.audit only with deny entries the lever can resolve, and both login tokens.
+    """The generator renders codex.audit only as an allowlist whose keys the lever can resolve.
 
     The committed file equals the render of the real manifest through `generate-agent-configs.py --check`."""
 
-    def test_a_deny_entry_the_lever_cannot_resolve_fails_the_render(self):
+    def test_a_filesystem_entry_the_lever_cannot_resolve_fails_the_render(self):
         module = load_generator()
         manifest = sample_manifest()
         text = module.render_codex_audit_config(manifest)
         self.assertIn('default_permissions = "audit"\n', text)
+        self.assertIn('":root" = "deny"\n', text)
         self.assertIn('"~/.ssh" = "deny"\n', text)
-        deny = manifest["codex"]["audit"]["deny"]
-        for entries in (
-            [*deny, "/etc"],
-            [*deny, "~/../x"],
-            [*deny, "~/a/./b"],
-            [*deny, '~/a"b'],
-            [*deny, "~/.ssh"],
-            [entry for entry in deny if entry != "$CODEX_HOME"],
-            [entry for entry in deny if entry != "$CODEX_LOGIN_HOME"],
+        good = dict(manifest["codex"]["audit"]["filesystem"])
+        for change in (
+            {"etc/x": "deny"},
+            {"~/../x": "deny"},
+            {"~/a/./b": "read"},
+            {'~/a"b': "deny"},
+            {"$OTHER": "read"},
+            {":workspace_roots": "read"},
+            {"/opt/x": "write"},
+            {"/opt/x": "allow"},
+            {":root": "read"},
+            {"$AUDIT_TREE": "deny"},
+            {"$CODEX_HOME": None},
+            {"$CODEX_LOGIN_HOME": None},
         ):
-            with self.subTest(entries=entries):
-                manifest["codex"]["audit"]["deny"] = entries
+            with self.subTest(change=change):
+                filesystem = {**good, **change}
+                filesystem = {key: value for key, value in filesystem.items() if value is not None}
+                manifest["codex"]["audit"]["filesystem"] = filesystem
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     module.render_codex_audit_config(manifest)
 

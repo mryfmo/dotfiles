@@ -14,13 +14,15 @@
 #   machine or serialized job stream will use a given `auth.json` copy"): a copy in the run directory would rotate the
 #   refresh token on refresh and leave the caller's file with a token that refresh may have rotated out, and two
 #   copies would be two job streams on one login. The commands the auditor runs can neither read nor write that file
-#   (a deny entry in a profile that extends `:read-only`; the read probe below measures the read). In the run directory
-#   a fresh repository borrows the checkout's objects (`objects/info/alternates`, no refs, no hooks) and fetches
+#   (outside the allowlist below and denied again; the read probe measures the read). In the run directory a fresh
+#   repository borrows the checkout's objects (`objects/info/alternates`, no refs, no hooks) to fetch
 #   `refs/pull/<pr>/head` and `main` from the checkout's `origin` URL; the fetched head must equal `headRefOid`
-#   (PR_AUDIT_WAIT_TRIES fetches, PR_AUDIT_WAIT_SECONDS apart), else the head moved and the run is refused. That
-#   repository is checked out detached at the head, by a git that reads no global or system config or attributes
-#   file, so no filter driver the caller installed runs on the pull request's `.gitattributes`: the changeset the
-#   auditor reads. The prompt holds the `## Audit`
+#   (PR_AUDIT_WAIT_TRIES fetches, PR_AUDIT_WAIT_SECONDS apart), else the head moved and the run is refused. It then
+#   copies the objects it needs into its own pack (`git repack -a -d`), drops the borrowing and checks that both
+#   commits are complete without it, so the auditor reads one self-contained repository. That repository is checked
+#   out detached at the head, by a git that reads no global or system config or attributes file, so no filter
+#   driver the caller installed runs on the pull request's `.gitattributes`: the changeset the auditor reads. The
+#   prompt holds the `## Audit`
 #   section of the fetched `main:AGENTS.md` as the rules (the blob read once and whole, size checked, the section cut
 #   out by the lever in one pass; a failed or short read, a missing or doubled heading or an empty section refuses),
 #   the pull request body (whose `## Contract` section is the
@@ -31,23 +33,32 @@
 #   scratch TMPDIR, and a scratch CODEX_HOME holding only `auth.json`, a symlink to the login
 #   `${CODEX_HOME:-~/.codex}/auth.json` (which must be a regular file; it is never copied), and `config.toml`, written
 #   from the generator-owned `codex-audit/config.toml` beside the manifest the self-check read (rendered from
-#   `codex.audit` in the manifest; read once and whole, a failed read is exit 1, and every deny line of it must be
+#   `codex.audit` in the manifest; read once and whole, a failed read is exit 1, and every entry line of it must be
 #   resolved into the written config).
 #   That file pins the model, turns skills and web search off, limits the commands'
 #   environment to the core names, and makes the permission profile `audit` (https://learn.chatgpt.com/docs/permissions)
-#   the default: `:read-only` with the whole filesystem readable, no network, and the credential stores denied. Each
-#   deny key is resolved here: `~/<path>` under the real HOME (both its spelling and its `pwd -P` form),
-#   `$CODEX_HOME` to the scratch CODEX_HOME and `$CODEX_LOGIN_HOME` to the login's directory (both forms), plus the
-#   login file's own resolved path. A profile does not compose with `--sandbox`/`sandbox_mode`, so the lever never
-#   passes `-s` and refuses a config whose `default_permissions` is not `audit` or that names `sandbox_mode`.
+#   the default: it extends `:read-only`, has no network, and its filesystem is an allowlist (U71b audit round 4: a
+#   deny list misses every store a caller configures elsewhere). `":root" = "deny"` is required; the manifest opens
+#   `:minimal`, the head's tree, the empty cwd, the tool installs, and the scratch TMPDIR for writes (only `:tmpdir`
+#   may be `write`), and denies /tmp, /var/tmp and the credential stores again. Each path key is resolved here:
+#   `~/<path>` under the real HOME (both its spelling and its `pwd -P` form; Codex's own `~` would be the scratch
+#   HOME), `/<path>` in both forms, `$AUDIT_TREE` to the run's repository, `$AUDIT_CWD` to the empty cwd,
+#   `$CODEX_HOME` to the scratch CODEX_HOME and `$CODEX_LOGIN_HOME` to the login's directory (both forms) plus the
+#   login file's own resolved path; a path resolved to two accesses is a refusal. A profile does not compose with
+#   `--sandbox`/`sandbox_mode`, so the lever never passes `-s` and refuses a config whose `default_permissions` is not
+#   `audit`, that names `sandbox_mode`, or that does not deny `:root`.
 #
 #   Before the audit, two launch-time probes run with that scratch CODEX_HOME through `codex sandbox` (the same default
-#   profile): every denied path that exists (the login, its resolved file, the scratch link, each deny path) must be
-#   unreadable to `/bin/sh` there, and `curl https://github.com` must exist and fail to resolve or connect (exit 6 or
-#   7). Either probe failing, any other curl status (0, a timeout, 126/127), or a probe that
-#   cannot run, is a refusal: the measured property is a precondition of every run. Then
+#   profile): every denied path that exists (the login, its resolved file, the scratch link, each deny path), a
+#   canary the lever writes in the run directory outside the allowlist, the real HOME, and each store the caller's
+#   CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and XDG base-directory variables name must be unreadable to `/bin/sh` there,
+#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail
+#   to resolve or connect (exit 6 or 7). Either probe failing, any other curl status (0, a timeout, 126/127), or a
+#   probe that cannot run, is a refusal: the measured property is a precondition of every run. Then
 #   `codex exec --strict-config --skip-git-repo-check --ephemeral -C <empty cwd> -o <verdict> -` reads the prompt,
-#   bounded by PR_AUDIT_TIMEOUT seconds. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
+#   bounded by PR_AUDIT_TIMEOUT seconds. Every codex call runs in a process group of its own under a supervisor that
+#   stops the whole group on its deadline and on INT, TERM or HUP; the lever forwards those signals to it and exits
+#   128 + the signal's number. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
 #   run directory keeps `prompt.md`, `codex.log` and `verdict.md`, or is removed whole when codex never started.
 # @arg $1 int The pull request number.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
@@ -58,10 +69,11 @@
 # @env PR_AUDIT_WAIT_SECONDS Seconds between those fetches (default 10).
 # @stdout Two lines: the verdict file's path, then its last line (`Verdict: correct|incorrect|blocked`).
 # @exitcode 0 The verdict file is written and ends with a `Verdict:` line.
-# @exitcode 1 A read, the fetch or the codex run failed, or the run left no `Verdict:` last line.
+# @exitcode 1 A read, the fetch, the repack or the codex run failed, or the run left no `Verdict:` last line.
 # @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, the
-#   login missing or not a regular file, a config that does not select the `audit` profile, or a probe that read a
-#   denied path, reached the network or could not run.
+#   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
+#   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run.
+# @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.
 # @example
 #   ~/.local/bin/common/pr-audit.sh 547
 set -euo pipefail
@@ -182,42 +194,91 @@ git_tree() {
         -c core.fsmonitor=false "$@"
 }
 
-# @description Run a command in a process group of its own, with its wait bounded by $1 seconds. The `codex` on PATH
-#   is a launcher that starts the native binary as a child, so a signal to the launcher alone left the native process
-#   running the audit on the login after the lever had reported the run failed (measured 2026-10-26 with codex-cli
-#   0.163.0 and PR_AUDIT_TIMEOUT=1). On the deadline the whole group gets TERM, then KILL after 5 seconds, and the
-#   status is 124; after a normal exit any process the group left behind gets KILL.
-# @arg $1 int Seconds.
-# @arg $@ string The command.
-bounded_group() {
-    perl -e '
-        my $seconds = shift;
-        defined(my $pid = fork) or die "fork: $!\n";
-        if ($pid == 0) { setpgrp(0, 0); exec @ARGV or die "exec $ARGV[0]: $!\n"; }
-        setpgrp($pid, $pid);
-        local $SIG{ALRM} = sub { kill "TERM", -$pid; sleep 5; kill "KILL", -$pid; waitpid($pid, 0); exit 124 };
-        alarm $seconds;
-        waitpid($pid, 0);
-        my $status = $?;
+# The supervisor of every codex run (perl): it starts the command in a process group of its own and waits, bounded by
+# its first argument in seconds. The `codex` on PATH is a launcher that starts the native binary as a child, so a
+# signal to the launcher alone left the native process running the audit on the login after the lever had reported
+# the run failed (measured 2026-10-26 with codex-cli 0.163.0 and PR_AUDIT_TIMEOUT=1). On the deadline, and on INT,
+# TERM or HUP to the supervisor (U71b audit round 4: those signals used to kill the supervisor and leave the group
+# running), the whole group gets TERM, then KILL once the leader has exited or after 5 seconds, and the supervisor
+# exits 124 (deadline) or 128 + the signal's number. The handlers are set before the fork, so no signal finds the
+# group unsupervised. After a normal exit any process the group left behind gets KILL.
+# The single quotes keep the perl variables for perl, never this shell.
+# shellcheck disable=SC2016
+group_supervisor='
+    use POSIX ":sys_wait_h";
+    my $seconds = shift;
+    my $pid;
+    my $stop = sub {
+        my ($code) = @_;
         alarm 0;
+        exit $code unless $pid;
+        kill "TERM", -$pid;
+        for (1 .. 50) { last if waitpid($pid, WNOHANG) != 0; select(undef, undef, undef, 0.1); }
         kill "KILL", -$pid;
-        exit($status & 127 ? 128 + ($status & 127) : $status >> 8);
-    ' "$@"
-}
+        waitpid($pid, 0);
+        exit $code;
+    };
+    $SIG{ALRM} = sub { $stop->(124) };
+    $SIG{HUP} = sub { $stop->(129) };
+    $SIG{INT} = sub { $stop->(130) };
+    $SIG{TERM} = sub { $stop->(143) };
+    defined($pid = fork) or die "fork: $!\n";
+    if ($pid == 0) {
+        $SIG{$_} = "DEFAULT" for qw(ALRM HUP INT TERM);
+        setpgrp(0, 0);
+        exec @ARGV or die "exec $ARGV[0]: $!\n";
+    }
+    setpgrp($pid, $pid);
+    alarm $seconds;
+    waitpid($pid, 0);
+    my $status = $?;
+    alarm 0;
+    kill "KILL", -$pid;
+    exit($status & 127 ? 128 + ($status & 127) : $status >> 8);
+'
 
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
-#   no XDG base directories, in a process group bounded by $1 seconds (bounded_group).
+#   no XDG base directories, under the group supervisor bounded by $1 seconds. The supervisor runs in the background
+#   and the shell waits for it, so the INT, TERM and HUP traps of the lever run while it is running and stop it.
 # @arg $1 int Seconds the run may take.
+# @arg $2 path The file codex reads as stdin.
+# @arg $3 path The file that gets codex's stdout and stderr.
 # @arg $@ string The codex arguments.
+# @set codex_pid The supervisor's pid while it runs, empty after.
 codex_scratch() {
-    local seconds=$1
-    shift
+    local seconds=$1 input=$2 output=$3 status=0
+    shift 3
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
-        HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir bounded_group "${seconds}" codex "$@"
-    )
+        HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir \
+            exec perl -e "${group_supervisor}" "${seconds}" codex "$@" < "${input}" > "${output}" 2>&1
+    ) &
+    codex_pid=$!
+    wait "${codex_pid}" || status=$?
+    codex_pid=''
+    return "${status}"
 }
+
+# @description On INT, TERM or HUP: stop the running supervisor (which stops codex's whole process group) and wait for
+#   it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be caught: a KILL
+#   to the lever leaves the supervisor running, which still stops the group at its deadline; a KILL to the supervisor
+#   itself leaves the group unsupervised (residual).
+# @arg $1 string The signal's name.
+# @arg $2 int The signal's number.
+on_signal() {
+    trap '' INT TERM HUP
+    if [[ -n ${codex_pid:-} ]]; then
+        kill -TERM "${codex_pid}" 2> /dev/null || true
+        wait "${codex_pid}" 2> /dev/null || true
+    fi
+    echo "${lever}: stopped by SIG$1; codex was stopped and no verdict was written" >&2
+    exit $((128 + $2))
+}
+codex_pid=''
+trap 'on_signal INT 2' INT
+trap 'on_signal TERM 15' TERM
+trap 'on_signal HUP 1' HUP
 
 # @description Print the absolute path $1 and, when it differs, its form with the longest existing prefix resolved by
 #   `pwd -P` (macOS spells /tmp as /private/tmp), one per line. A path holding a quote, a backslash or a control
@@ -226,7 +287,7 @@ codex_scratch() {
 spellings() {
     local path=$1 dir rest real
     [[ ${path} == /* && ${path} != *[\"\\]* && ${path} != *[[:cntrl:]]* ]] || # lint-comparisons: allow a character shape check
-        refuse "deny path ${path} is not an absolute path without quotes, backslashes or control characters"
+        refuse "path ${path} is not an absolute path without quotes, backslashes or control characters"
     printf '%s\n' "${path}"
     dir=${path}
     rest=''
@@ -316,9 +377,12 @@ sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${te
 [[ ${sandbox_keys} == 0 ]] || refuse "${template} names sandbox_mode, which replaces the permission profile"
 profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
 [[ ${profiles} == 1 ]] || refuse "${template} defines no single [permissions.audit] profile"
-template_denies=$(grep -c -E '"deny"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] ||
+template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] ||
     fail "cannot search ${template}"
-[[ ${template_denies} -gt 0 ]] || refuse "${template} denies nothing"
+[[ ${template_entries} -gt 0 ]] || refuse "${template} has no filesystem entries"
+# The allowlist (U71b audit round 4): nothing is readable unless an entry opens it.
+root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
+((root_denies == 1)) || refuse "${template} does not deny :root once; the audit profile must be an allowlist"
 
 repo=$(git_safe rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout'
 common=$(git_safe -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
@@ -347,7 +411,9 @@ gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/bod
 contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md"
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"
 
-# The audited tree: a fresh repository that borrows the checkout's objects and holds only the two fetched refs.
+# The audited tree: a fresh repository that borrows the checkout's objects for the fetch and holds only the two fetched
+# refs. It then copies every object it needs into its own pack and drops the borrowing (U71b audit round 4), so the
+# auditor reads one self-contained repository and the checkout's object store stays outside the allowlist.
 git_tree init -q --template= "${clone}" || fail "git init ${clone} failed"
 printf '%s\n' "${common}/objects" > "${clone}/.git/objects/info/alternates" || fail 'cannot write the alternates file'
 head=''
@@ -362,63 +428,114 @@ done
 [[ ${head} == "${want}" ]] || refuse "the head moved: refs/pull/${pr}/head is ${head:-unreadable}, gh reports ${want}"
 main=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
 mergebase=$(git_tree -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
+git_tree -C "${clone}" repack -a -d -q || fail "git repack in ${clone} failed"
+rm -f -- "${clone}/.git/objects/info/alternates" || fail "cannot remove the alternates file of ${clone}"
+git_tree -C "${clone}" rev-list --objects --quiet "${head}" "${main}" ||
+    fail "${clone} does not hold every object of ${head} and ${main} on its own"
 git_tree -C "${clone}" -c advice.detachedHead=false checkout -q --detach "${head}" || fail "git checkout ${head} failed"
 # The rules (U71b audit round 3): main's AGENTS.md is read once and whole, its size checked against the blob's, and
 # its `## Audit` section cut out by this shell in one pass, so no producer can fail midway unseen; codex never runs
 # with partial rules.
 audit_rules "${main}"
 
-# The config: the source's lines as they are, each deny key replaced by its resolved absolute paths, no path twice.
+# The config: the source's lines as they are, each path key replaced by its resolved absolute paths, no path twice.
 home_dir=${HOME%/}
+seen=$'\n'
 denied=$'\n'
 probes=("${login}" "${login_real}" "${codex_home}/auth.json")
+# The write probe's targets: the run directory, then each directory an absolute `/<path>` deny key of the template names.
+writes=("${run}")
 config=''
-keys=0
+entries=0
 while IFS= read -r line; do
-    if [[ ${line} =~ ^\"([^\"]+)\"\ =\ \"deny\"$ ]]; then
+    if [[ ${line} =~ ^\"([^\"]+)\"\ =\ \"(read|write|deny)\"$ ]]; then
         key=${BASH_REMATCH[1]}
-        keys=$((keys + 1))
+        access=${BASH_REMATCH[2]}
+        entries=$((entries + 1))
+        [[ ${access} != write || ${key} == :tmpdir ]] ||
+            refuse "${template} makes ${key} writable; only :tmpdir (the run's scratch TMPDIR) may be"
         case ${key} in
+        :root | :minimal | :tmpdir | :slash_tmp)
+            config+=${line}$'\n'
+            continue
+            ;;
+        \$AUDIT_TREE) paths=$(spellings "${clone}") ;;
+        \$AUDIT_CWD) paths=$(spellings "${work}/cwd") ;;
         \$CODEX_HOME) paths=$(spellings "${codex_home}") ;;
         \$CODEX_LOGIN_HOME) paths=$(spellings "${login_home}") && paths+=$'\n'${login_real} ;;
         \~/*) paths=$(spellings "${home_dir}/${key#\~/}") ;;
-        *) refuse "${template} denies ${key}, which is not ~/<path>, \$CODEX_HOME or \$CODEX_LOGIN_HOME" ;;
+        /*) paths=$(spellings "${key}") ;;
+        *) refuse "${template} names ${key}, which is not ~/<path>, /<path>, a \$ token of the lever or a Codex :name" ;;
         esac || exit 2
         while IFS= read -r path; do
-            [[ ${denied} != *$'\n'"${path}"$'\n'* ]] || continue # lint-comparisons: allow set membership of spellings
-            denied+=${path}$'\n'
-            config+="\"${path}\" = \"deny\""$'\n'
-            [[ ! -e ${path} && ! -L ${path} ]] || probes+=("${path}")
+            [[ ${seen} != *$'\n'"${access} ${path}"$'\n'* ]] || continue # lint-comparisons: allow set membership of spellings
+            for other in read write deny; do
+                [[ ${other} == "${access}" || ${seen} != *$'\n'"${other} ${path}"$'\n'* ]] || # lint-comparisons: allow set membership of spellings
+                    refuse "${template} resolves ${path} to both ${other} and ${access}"
+            done
+            seen+="${access} ${path}"$'\n'
+            config+="\"${path}\" = \"${access}\""$'\n'
+            if [[ ${access} == deny ]]; then
+                denied+=${path}$'\n'
+                [[ ! -e ${path} && ! -L ${path} ]] || probes+=("${path}")
+                [[ ${key} != /* || ! -d ${path} ]] || writes+=("${path}") # lint-comparisons: allow a shape check
+            fi
         done <<< "${paths}"
     else
         config+=${line}$'\n'
     fi
 done <<< "${template_text}"
-# Every deny line of the template was resolved (none skipped or unparsed), and every path resolved is in the config.
-((keys == template_denies)) ||
-    refuse "${template} has ${template_denies} deny lines, but ${keys} are of the form \"<key>\" = \"deny\""
-rendered=$(grep -c -E '^"/[^"]*" = "deny"$' <<< "${config}") || fail 'cannot search the rendered config'
-resolved=$(grep -c . <<< "${denied}") || fail 'cannot count the resolved deny paths'
-((rendered == resolved)) || fail "the rendered config denies ${rendered} paths, but ${resolved} were resolved"
+# Every entry line of the template was parsed (none skipped), and every path resolved is in the config.
+((entries == template_entries)) ||
+    refuse "${template} has ${template_entries} filesystem lines, but ${entries} are of the form \"<key>\" = \"<access>\""
+rendered=$(grep -c -E '^"/[^"]*" = "(read|write|deny)"$' <<< "${config}") || fail 'cannot search the rendered config'
+resolved=$(grep -c . <<< "${seen}") || fail 'cannot count the resolved paths'
+((rendered == resolved)) || fail "the rendered config names ${rendered} paths, but ${resolved} were resolved"
 for path in "${codex_home}" "${login_home}" "${login_real}"; do
     [[ ${denied} == *$'\n'"${path}"$'\n'* ]] || refuse "${template} does not deny ${path}" # lint-comparisons: allow set membership of spellings
 done
 printf '%s' "${config}" > "${codex_home}/config.toml" || fail 'cannot write the scratch config'
 ln -s "${login}" "${codex_home}/auth.json" || fail 'cannot link the Codex login'
 
-# The launch-time precondition: the measured property, measured again on this host with this config.
+# The launch-time precondition: the measured property, measured again on this host with this config. Besides the
+# denied paths, the read probe covers what the allowlist must keep out without naming it (U71b audit round 4): a
+# canary the lever writes in the run directory outside the allowlist, the real HOME itself, and every store the
+# caller's environment names (CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and the XDG base directories) that exists. After
+# `--write`, the run directory and each directory an absolute deny key names (/var/tmp: `:minimal` alone makes it
+# writable) must not take a new directory.
+printf 'pr-audit canary\n' > "${run}/canary" || fail "cannot write the canary ${run}/canary"
+probes+=("${run}/canary" "${home_dir}")
+for name in CLAUDE_CONFIG_DIR GH_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME; do
+    value=${!name:-}
+    if [[ ${value} == /* && -e ${value} ]]; then # lint-comparisons: allow a shape check, not a comparison of paths
+        probes+=("${value}")
+    fi
+done
 # The single quotes keep the probe script for the sandboxed shell, never this one.
 # shellcheck disable=SC2016
-read_probe='for p do
-    if test -r "$p" || { test -f "$p" && head -c 1 "$p" > /dev/null 2>&1; } || { test -d "$p" && ls "$p" > /dev/null 2>&1; }; then
-        echo "pr-audit-probe: readable $p"
+read_probe='mode=read
+for p do
+    if [ "$p" = --write ]; then
+        mode=write
+    elif [ "$mode" = read ]; then
+        if test -r "$p" || { test -f "$p" && head -c 1 "$p" > /dev/null 2>&1; } || { test -d "$p" && ls "$p" > /dev/null 2>&1; }; then
+            echo "pr-audit-probe: readable $p"
+            exit 3
+        fi
+    elif d=$(mktemp -d "$p/pr-audit-probe.XXXXXX" 2> /dev/null); then
+        rmdir "$d"
+        echo "pr-audit-probe: writable $p"
         exit 3
     fi
 done
 echo "pr-audit-probe: all denied"'
-probe_out=$(codex_scratch "${probe_timeout}" sandbox -- /bin/sh -c "${read_probe}" sh "${probes[@]}" < /dev/null 2>&1) ||
-    refuse "the sandbox read probe did not pass: ${probe_out:-no output}"
-[[ ${probe_out} == "${probe_done}" ]] || refuse "the sandbox read probe did not pass: ${probe_out:-no output}"
+status=0
+codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${read_probe}" sh "${probes[@]}" \
+    --write "${writes[@]}" || status=$?
+probe_out=$(cat -- "${work}/probe.out") || fail "cannot read ${work}/probe.out"
+((status == 0)) && [[ ${probe_out} == "${probe_done}" ]] ||
+    refuse "the sandbox read probe did not pass (exit ${status}): ${probe_out:-no output}"
+rm -f -- "${run}/canary" || fail "cannot remove the canary ${run}/canary"
 # Only curl's own resolve or connect failures show the network denied: 6 (could not resolve host, measured with the
 # profile on macOS) and 7 (could not connect). Anything else refuses: 0 reached the network, 28 is a timeout that
 # proves no denial, 126/127 or a missing curl mean the probe never ran.
@@ -426,11 +543,13 @@ probe_out=$(codex_scratch "${probe_timeout}" sandbox -- /bin/sh -c "${read_probe
 net_probe='command -v curl > /dev/null 2>&1 || { echo "pr-audit-probe: no curl"; exit 0; }
 curl -sS -m 10 -o /dev/null https://github.com > /dev/null 2>&1
 echo "pr-audit-probe: curl $?"'
-probe_out=$(codex_scratch "${probe_timeout}" sandbox -- /bin/sh -c "${net_probe}" < /dev/null 2>&1) ||
-    refuse "the sandbox network probe did not run: ${probe_out:-no output}"
+status=0
+codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${net_probe}" || status=$?
+probe_out=$(cat -- "${work}/probe.out") || fail "cannot read ${work}/probe.out"
+((status == 0)) || refuse "the sandbox network probe did not run (exit ${status}): ${probe_out:-no output}"
 [[ ${probe_out} =~ ^pr-audit-probe:\ curl\ (6|7)$ ]] ||
     refuse "the sandbox network probe did not show the network denied (curl exit 6 or 7): ${probe_out:-no output}"
-echo "${lever}: sandbox probes passed: ${#probes[@]} paths unreadable, network denied (${probe_out#pr-audit-probe: })" >&2
+echo "${lever}: sandbox probes passed: ${#probes[@]} paths unreadable, ${#writes[@]} unwritable, network denied (${probe_out#pr-audit-probe: })" >&2
 
 # The prompt: the rules from main, the pull request body as data inside a nonce tag, the changeset.
 nonce=$(od -An -N8 -tx1 /dev/urandom) || fail 'cannot read /dev/urandom'
@@ -458,8 +577,8 @@ rm -f "${run}/body.md" || fail "cannot remove ${run}/body.md"
 verdict=${run}/verdict.md
 codex_started=1
 status=0
-codex_scratch "${audit_timeout}" exec --strict-config --skip-git-repo-check --ephemeral -C "${work}/cwd" \
-    -o "${verdict}" - < "${prompt}" > "${run}/codex.log" 2>&1 || status=$?
+codex_scratch "${audit_timeout}" "${prompt}" "${run}/codex.log" exec --strict-config --skip-git-repo-check --ephemeral \
+    -C "${work}/cwd" -o "${verdict}" - || status=$?
 ((status == 0)) || fail "codex exec exited ${status}; its log is ${run}/codex.log"
 [[ -s ${verdict} ]] || fail "codex exec wrote no final message; its log is ${run}/codex.log"
 last=$(awk 'NF { line = $0 } END { sub(/\r$/, "", line); print line }' "${verdict}") || fail "cannot read ${verdict}"

@@ -345,36 +345,53 @@ def codex_command_hook_lines(event: str, hook: dict[str, Any]) -> list[str]:
 
 # The Codex audit route's config (regime-cutover U71b, operator decision G18): scripts/orchestrator/pr-audit.sh reads
 # it beside the manifest (~/.agents/codex-audit/config.toml installed, else the checkout's copy) and writes it into
-# each run's scratch CODEX_HOME, replacing every deny key with absolute paths.
+# each run's scratch CODEX_HOME, replacing every path key with absolute paths. The filesystem is an allowlist
+# (`":root" = "deny"`, U71b audit round 4).
 AUDIT_CODEX_CONFIG = "home/dot_agents/codex-audit/config.toml"
-AUDIT_DENY_TOKENS = ("$CODEX_LOGIN_HOME", "$CODEX_HOME")
-AUDIT_DENY_HOME = re.compile(r"^~/(?!(?:.*/)?\.\.?(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+AUDIT_TOKENS = ("$AUDIT_TREE", "$AUDIT_CWD", "$CODEX_HOME", "$CODEX_LOGIN_HOME")
+AUDIT_SPECIAL = (":root", ":minimal", ":tmpdir", ":slash_tmp")
+AUDIT_PATH = re.compile(r"^(?:~/|/)(?!(?:.*/)?\.\.?(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+# The entries the lever's guarantees rest on: nothing readable by default, the head's tree readable, the login denied.
+AUDIT_REQUIRED = {
+    ":root": "deny",
+    "$AUDIT_TREE": "read",
+    "$CODEX_HOME": "deny",
+    "$CODEX_LOGIN_HOME": "deny",
+}
 
 
 def render_codex_audit_config(manifest: dict[str, Any]) -> str:
     """pr-audit.sh's CODEX_HOME config: model pin, no skills or web search, the `audit` permission profile as default.
 
-    The deny keys keep their manifest spelling (`~/<path>`, `$CODEX_HOME`, `$CODEX_LOGIN_HOME`); the lever resolves
-    them per run, so the file is the same on every host.
+    The path keys keep their manifest spelling (`~/<path>`, `/<path>`, `$AUDIT_TREE`, `$AUDIT_CWD`, `$CODEX_HOME`,
+    `$CODEX_LOGIN_HOME`, or one of Codex's `:root`, `:minimal`, `:tmpdir`, `:slash_tmp`); the lever resolves them per
+    run, so the file is the same on every host. Only `:tmpdir` may be `write`.
     """
     audit = manifest["codex"].get("audit")
     if not isinstance(audit, dict):
-        fail("codex.audit must be a mapping with model_profile and deny")
+        fail("codex.audit must be a mapping with model_profile and filesystem")
     profile = model_profiles(manifest).get(audit.get("model_profile"))
     if profile is None:
         fail(f"codex.audit.model_profile names no model_profiles entry: {audit.get('model_profile')!r}")
-    deny = audit.get("deny")
-    if not isinstance(deny, list) or not deny or len(set(deny)) != len(deny):
-        fail("codex.audit.deny must be a non-empty list without duplicates")
-    for entry in deny:
-        if not isinstance(entry, str) or not (entry in AUDIT_DENY_TOKENS or AUDIT_DENY_HOME.match(entry)):
-            fail(f"codex.audit.deny entry {entry!r} is not ~/<relative path>, $CODEX_HOME or $CODEX_LOGIN_HOME")
-    for token in AUDIT_DENY_TOKENS:
-        if token not in deny:
-            fail(f"codex.audit.deny must name {token}: the login reaches the run through it")
+    filesystem = audit.get("filesystem")
+    if not isinstance(filesystem, dict) or not filesystem:
+        fail("codex.audit.filesystem must be a non-empty mapping of path keys to read, write or deny")
+    for key, access in filesystem.items():
+        if not isinstance(key, str) or not (key in AUDIT_TOKENS or key in AUDIT_SPECIAL or AUDIT_PATH.match(key)):
+            fail(
+                f"codex.audit.filesystem key {key!r} is not ~/<path>, /<path>, one of {AUDIT_TOKENS}"
+                f" or one of {AUDIT_SPECIAL}"
+            )
+        if access not in ("read", "write", "deny"):
+            fail(f"codex.audit.filesystem.{key} must be read, write or deny, not {access!r}")
+        if access == "write" and key != ":tmpdir":
+            fail(f"codex.audit.filesystem.{key}: only :tmpdir (the run's scratch TMPDIR) may be write")
+    for key, access in AUDIT_REQUIRED.items():
+        if filesystem.get(key) != access:
+            fail(f"codex.audit.filesystem must set {key} to {access}")
     lines = [
         f"# {GENERATED_HEADER} Change codex.audit there.",
-        "# scripts/orchestrator/pr-audit.sh writes this file into each audit run's scratch CODEX_HOME, with every deny",
+        "# scripts/orchestrator/pr-audit.sh writes this file into each audit run's scratch CODEX_HOME, with every path",
         "# key resolved to absolute paths; the run refuses unless `audit` is the default permission profile.",
         "",
         'default_permissions = "audit"',
@@ -393,12 +410,11 @@ def render_codex_audit_config(manifest: dict[str, Any]) -> str:
         "ignore_default_excludes = false",
         "",
         "[permissions.audit]",
-        'description = "Read-only audit: no network, credential stores denied to commands."',
+        'description = "Audit: reads only the head and the tools, no network, credential stores denied."',
         'extends = ":read-only"',
         "",
         "[permissions.audit.filesystem]",
-        '":root" = "read"',
-        *(f'{quote_toml(entry)} = "deny"' for entry in deny),
+        *(f"{quote_toml(key)} = {quote_toml(access)}" for key, access in filesystem.items()),
         "",
         "[permissions.audit.network]",
         "enabled = false",

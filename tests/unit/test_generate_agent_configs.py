@@ -81,7 +81,19 @@ def sample_manifest() -> dict:
         },
         "codex": {
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
-            "audit": {"model_profile": "standard", "deny": ["$CODEX_LOGIN_HOME", "$CODEX_HOME", "~/.ssh"]},
+            "audit": {
+                "model_profile": "standard",
+                "filesystem": {
+                    ":root": "deny",
+                    ":minimal": "read",
+                    "$AUDIT_TREE": "read",
+                    ":tmpdir": "write",
+                    "/opt/homebrew": "read",
+                    "$CODEX_LOGIN_HOME": "deny",
+                    "$CODEX_HOME": "deny",
+                    "~/.ssh": "deny",
+                },
+            },
             "model_reasoning_summary": "concise",
             "model_verbosity": "low",
             "approval_policy": "on-request",

@@ -677,32 +677,57 @@ codex:
   # The Codex audit route, scripts/orchestrator/pr-audit.sh (regime-cutover U71b; operator decision G18,
   # 2026-10-26: keep the ChatGPT login, keep the auditor from reading credentials). The generator renders
   # home/dot_agents/codex-audit/config.toml from this entry and the model profile it names; the lever copies
-  # that file into each run's scratch CODEX_HOME with every deny path resolved. The commands the auditor runs
-  # get the permission profile `audit` (https://learn.chatgpt.com/docs/permissions): `:read-only` with the
-  # whole filesystem readable, no network, these paths denied, and only the core environment names. `~/` is
-  # the real HOME, `$CODEX_HOME` the run's scratch CODEX_HOME (which links the login), `$CODEX_LOGIN_HOME`
-  # the directory of the login it links to (`${CODEX_HOME:-~/.codex}` of the caller).
+  # that file into each run's scratch CODEX_HOME with every path key resolved. The commands the auditor runs
+  # get the permission profile `audit` (https://learn.chatgpt.com/docs/permissions), extending `:read-only`
+  # with no network and only the core environment names. Its filesystem is an allowlist (U71b audit round 4:
+  # a deny list misses every store a caller configures elsewhere, such as CLAUDE_CONFIG_DIR, GH_CONFIG_DIR or
+  # an XDG directory): nothing is readable unless an entry below opens it. Measured on macOS with codex-cli
+  # 0.163.0 (`codex sandbox`): with these entries `git log`, `python3 -c`, `bash -n`, shellcheck and a
+  # unittest module run in the tree, and a canary under a fake CLAUDE_CONFIG_DIR, GH_CONFIG_DIR or
+  # XDG_CONFIG_HOME is unreadable. Keys: `~/` is the real HOME (the run's HOME is a scratch one, so Codex's own
+  # `~/` would name that), `$AUDIT_TREE` the run's checkout of the head, `$AUDIT_CWD` the run's empty cwd,
+  # `$CODEX_HOME` the run's scratch CODEX_HOME (which links the login), `$CODEX_LOGIN_HOME` the directory of
+  # the login it links to (`${CODEX_HOME:-~/.codex}` of the caller); `:`-names are Codex's.
   audit:
     model_profile: review
-    deny:
-      - $CODEX_LOGIN_HOME
-      - $CODEX_HOME
-      - ~/.codex
-      - ~/.ssh
-      - ~/.gnupg
-      - ~/.config/gh
-      - ~/.local/share/gh
-      - ~/.claude
-      - ~/.claude.json
-      - ~/.omp
-      - ~/.config/chezmoi-private
-      - ~/.local/share/chezmoi-private
-      - ~/.aws
-      - ~/.netrc
-      - ~/.docker
-      - ~/Library/Keychains
-      - ~/.local/state/hcom-regime
-      - ~/.local/state/hcom
+    filesystem:
+      # Nothing is readable unless named below.
+      ":root": deny
+      # Codex's platform and runtime set (/bin, /usr, /etc, /Library/Preferences, /opt/homebrew/lib, dyld).
+      ":minimal": read
+      # The head's tree, the only repository the auditor reads (the lever copies the objects it needs into it).
+      $AUDIT_TREE: read
+      # The empty cwd: without it every shell fails `getcwd`.
+      $AUDIT_CWD: read
+      # The run's scratch TMPDIR, inside the run directory and removed with it: unit tests make temp files.
+      ":tmpdir": write
+      # git (/usr/bin/git is an xcrun shim that needs a writable cache) and the libraries mise's python links.
+      /opt/homebrew: read
+      # python3, uv, shellcheck, shfmt, ruff and node on PATH, ahead of the mise shims (not needed).
+      ~/.local/share/mise/installs: read
+      # `:minimal` reads /tmp, so a store a caller keeps under /tmp would be readable; denied.
+      ":slash_tmp": deny
+      # `:minimal` makes /var/tmp writable (measured: `mktemp -d /var/tmp/x.XXXX` succeeded); denied.
+      /var/tmp: deny
+      # The credential stores, denied again as a second layer under the allowlist.
+      $CODEX_LOGIN_HOME: deny
+      $CODEX_HOME: deny
+      ~/.codex: deny
+      ~/.ssh: deny
+      ~/.gnupg: deny
+      ~/.config/gh: deny
+      ~/.local/share/gh: deny
+      ~/.claude: deny
+      ~/.claude.json: deny
+      ~/.omp: deny
+      ~/.config/chezmoi-private: deny
+      ~/.local/share/chezmoi-private: deny
+      ~/.aws: deny
+      ~/.netrc: deny
+      ~/.docker: deny
+      ~/Library/Keychains: deny
+      ~/.local/state/hcom-regime: deny
+      ~/.local/state/hcom: deny
 
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
@@ -829,7 +854,7 @@ claude:
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
       omp-run.sh: 3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5
-      pr-audit.sh: cff4f549dddec5bfdd456eb48b96efb4d3f66b61796114c8fe170b9c3a7615e4
+      pr-audit.sh: dd9455f4d6e53fd2f8a6ea57493c830bf0a2cd407f2e2581e1848e1dc49ad3bc
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

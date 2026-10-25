@@ -261,7 +261,7 @@
   <span class="md-ellipsis">
     
   
-    omp skills: the pstack skills inside every seat
+    omp skills: which skills each omp launch and seat loads
   
 
     
@@ -4919,6 +4919,8 @@
 <li><code>refresh_codex_hook_trust</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>resolve_dotfiles_source_dir</code></li>
+<li><code>retire_marketplace_dev_workflows</code></li>
+<li><code>retire_shared_pstack_copies</code></li>
 <li><code>run_pinned_installer</code></li>
 <li><code>section</code></li>
 <li><code>uname_platform</code></li>
@@ -6192,18 +6194,18 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Confirm the pstack skills chezmoi places under ~/.agents/skills reach an omp seat.</span>
+<span class="c1"># @description Confirm the pstack skills chezmoi places under ~/.agents/pstack/skills reach the plain omp launch.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   No installer step runs for pstack: the two externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl</span>
-<span class="c1">#   deploy the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply. The check</span>
-<span class="c1">#   fails when the poteto-mode skill or the Claude Code adapter its first paragraph links is missing, or when</span>
-<span class="c1">#   `omp skill list`, run from an empty directory so no project skill tree takes part, does not name poteto-mode.</span>
-<span class="c1">#   Without omp the file check alone decides.</span>
+<span class="c1">#   No installer step runs for pstack: the external in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl</span>
+<span class="c1">#   deploys the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply, into a</span>
+<span class="c1">#   root only the omp consumers skills.pstack.audience names load. The check fails when the poteto-mode skill or the</span>
+<span class="c1">#   Claude Code adapter its first paragraph links is missing, or when `omp skill list`, run from an empty directory</span>
+<span class="c1">#   so no project skill tree takes part, does not name poteto-mode. Without omp the file check alone decides.</span>
 <span class="c1"># @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_pstack<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>file<span class="w"> </span>cwd<span class="w"> </span>listing<span class="w"> </span>count<span class="w"> </span>version
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/poteto-mode/SKILL.md"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/docs/harness/claude-code.md"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/pstack/skills/poteto-mode/SKILL.md"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/pstack/docs/harness/claude-code.md"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: %s is missing; run make update.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -6227,6 +6229,177 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Remove the copies of the pstack skills the retired ~/.agents/skills external left there.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Until U87 the pstack external extracted into ~/.agents/skills, which Codex and omp's agents provider list for</span>
+<span class="c1">#   every agent; it now extracts into ~/.agents/pstack/skills, and chezmoi does not delete what the old external</span>
+<span class="c1">#   placed. A directory ~/.agents/skills/&lt;name&gt; goes only when ~/.agents/pstack/skills/&lt;name&gt; exists and the two</span>
+<span class="c1">#   trees are byte-identical (`diff -r`), so a skill with the same name and other content stays; make doctor then</span>
+<span class="c1">#   reports it as listed outside its audience. Every path component below $HOME on the way to a removal</span>
+<span class="c1">#   (~/.agents, ~/.agents/skills and the skill directory) must be a real directory, not a symlink, and the</span>
+<span class="c1">#   directory's physical path must equal $HOME's physical path plus .agents/skills/&lt;name&gt;; otherwise the step</span>
+<span class="c1">#   refuses before it removes anything. Every pair is checked first and removal starts only when all passed, so a</span>
+<span class="c1">#   refusal deletes nothing. Without the pstack root (chezmoi apply has not run) nothing is touched.</span>
+<span class="c1"># @exitcode 1 A component is a symlink, a physical path differs, diff could not compare a pair (exit 2), or a</span>
+<span class="c1">#   removal failed; the path is named.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>retire_shared_pstack_copies<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">pstack_root</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/pstack/skills"</span><span class="w"> </span><span class="nv">shared_root</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>name<span class="w"> </span>target<span class="w"> </span>status<span class="w"> </span>physical_home<span class="w"> </span>physical<span class="w"> </span>dir
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">remove</span><span class="o">=()</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pstack_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>dir<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shared_root</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: %s is a symlink; refusing to remove anything under it.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shared_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">physical_home</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>-P<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: cannot resolve the physical path of %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pstack_root</span><span class="si">}</span><span class="s2">"</span>/*/<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="p">%/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">shared_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: %s is a symlink; refusing to remove anything.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span>diff<span class="w"> </span>-r<span class="w"> </span>-q<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span><span class="m">0</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">physical</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>-P<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: cannot resolve the physical path of %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical_home</span><span class="si">}</span><span class="s2">/.agents/skills/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P physical paths</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: %s resolves to %s, not under %s/.agents/skills; refusing to remove anything.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                    </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">            </span><span class="nv">remove</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: kept %s: it differs from %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="p">%/</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: cannot compare %s with %s (diff exit %s).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="p">%/</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>physical<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remove</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">remove</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span>rm<span class="w"> </span>-r<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: cannot remove the retired copy %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: removed the retired copy %s (identical to %s/%s).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pstack_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">physical</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Remove the retired mryfmo-dev-workflows entry from the live ~/.agents/plugins/marketplace.json.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   The marketplace is a create_ seed: chezmoi writes it once and never again, so a host that has it keeps the entry</span>
+<span class="c1">#   U87 retired while .chezmoiremove deletes the plugin directory it points at. The step parses the file strictly</span>
+<span class="c1">#   (JSON only, no duplicate keys, no NaN or Infinity, no number that overflows or underflows a float, a top-level</span>
+<span class="c1">#   object whose plugins is a list), removes exactly the entry named mryfmo-dev-workflows whose source is the local</span>
+<span class="c1">#   ./plugins/mryfmo-dev-workflows, keeps every other entry and key in its order, and replaces the file atomically</span>
+<span class="c1">#   with its mode kept. Before the replace, the new text is parsed again with every number read exactly</span>
+<span class="c1">#   (decimal.Decimal for fractions and exponents) and must equal the old file's exact parse minus the removed entry;</span>
+<span class="c1">#   any difference (a number the rewrite would change) refuses. A file without that entry is not rewritten, so a</span>
+<span class="c1">#   second run changes nothing. An entry with that name and another source is kept and named. A missing file is</span>
+<span class="c1">#   nothing to do.</span>
+<span class="c1"># @exitcode 1 The file is a symlink, is not valid JSON of that shape, holds a number the rewrite would change, or</span>
+<span class="c1">#   cannot be rewritten; it is left unchanged.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>retire_marketplace_dev_workflows<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marketplace</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/plugins/marketplace.json"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'marketplace: %s is a symlink; left unchanged.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
+<span class="s">import decimal</span>
+<span class="s">import json</span>
+<span class="s">import math</span>
+<span class="s">import os</span>
+<span class="s">import shutil</span>
+<span class="s">import sys</span>
+<span class="s">import tempfile</span>
+
+<span class="s">path = sys.argv[1]</span>
+<span class="s">RETIRED = {"name": "mryfmo-dev-workflows", "source": {"path": "./plugins/mryfmo-dev-workflows", "source": "local"}}</span>
+
+
+<span class="s">def unique_keys(pairs):</span>
+<span class="s">    keys = [key for key, _ in pairs]</span>
+<span class="s">    if len(set(keys)) != len(keys):</span>
+<span class="s">        raise ValueError(f"duplicate key in {keys}")</span>
+<span class="s">    return dict(pairs)</span>
+
+
+<span class="s">def no_constant(name):</span>
+<span class="s">    raise ValueError(f"{name} is not JSON")</span>
+
+
+<span class="s">def finite_float(text):</span>
+<span class="s">    value = float(text)</span>
+<span class="s">    if not math.isfinite(value):</span>
+<span class="s">        raise ValueError(f"{text} overflows a float")</span>
+<span class="s">    return value</span>
+
+
+<span class="s">def load(text, parse_float):</span>
+<span class="s">    return json.loads(text, object_pairs_hook=unique_keys, parse_constant=no_constant, parse_float=parse_float)</span>
+
+
+<span class="s">try:</span>
+<span class="s">    with open(path, encoding="utf-8") as handle:</span>
+<span class="s">        text = handle.read()</span>
+<span class="s">    data = load(text, finite_float)</span>
+<span class="s">    exact = load(text, decimal.Decimal)</span>
+<span class="s">except (OSError, UnicodeDecodeError, ValueError) as error:</span>
+<span class="s">    sys.exit(f"marketplace: cannot read {path} ({error}); left unchanged.")</span>
+<span class="s">if not isinstance(data, dict) or not isinstance(data.get("plugins"), list):</span>
+<span class="s">    sys.exit(f"marketplace: {path} is not an object with a plugins list; left unchanged.")</span>
+<span class="s">removed = set()</span>
+<span class="s">for index, entry in enumerate(data["plugins"]):</span>
+<span class="s">    if isinstance(entry, dict) and entry.get("name") == RETIRED["name"]:</span>
+<span class="s">        if entry.get("source") == RETIRED["source"]:</span>
+<span class="s">            removed.add(index)</span>
+<span class="s">            continue</span>
+<span class="s">        print(f"marketplace: kept {RETIRED['name']} in {path}: its source is not {RETIRED['source']}", file=sys.stderr)</span>
+<span class="s">if not removed:</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">data["plugins"] = [entry for index, entry in enumerate(data["plugins"]) if index not in removed]</span>
+<span class="s">exact["plugins"] = [entry for index, entry in enumerate(exact["plugins"]) if index not in removed]</span>
+<span class="s">new_text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"</span>
+<span class="s">try:</span>
+<span class="s">    same = load(new_text, decimal.Decimal) == exact</span>
+<span class="s">except ValueError:</span>
+<span class="s">    same = False</span>
+<span class="s">if not same:</span>
+<span class="s">    sys.exit(f"marketplace: removing the entry would change other values in {path}; left unchanged.")</span>
+<span class="s">handle = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=os.path.dirname(path), delete=False)</span>
+<span class="s">try:</span>
+<span class="s">    with handle:</span>
+<span class="s">        handle.write(new_text)</span>
+<span class="s">    shutil.copymode(path, handle.name)</span>
+<span class="s">    os.replace(handle.name, path)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    if os.path.exists(handle.name):</span>
+<span class="s">        os.unlink(handle.name)</span>
+<span class="s">    sys.exit(f"marketplace: cannot rewrite {path} ({error}); left unchanged.")</span>
+<span class="s">print(f"marketplace: removed the retired {RETIRED['name']} entry from {path}.")</span>
+<span class="s">PY</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Sync the vendored CompactionDB tree without deleting project runtime state.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_compactiondb<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -6242,23 +6415,25 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
-<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge or check_pstack.</span>
+<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">:</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pstack<span class="o">)</span>
+<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pstack<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_shared_pstack_copies<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_marketplace_dev_workflows<span class="o">)</span>
 <span class="w">            </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">return</span>
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span>remove_node_global_agent_cli_shadows
+<span class="w">    </span>retire_shared_pstack_copies
+<span class="w">    </span>retire_marketplace_dev_workflows
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>claude<span class="w"> </span><span class="s2">"npm:@anthropic-ai/claude-code"</span>
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>codex<span class="w"> </span><span class="s2">"npm:@openai/codex"</span>
 <span class="w">    </span>ensure_gh_extensions

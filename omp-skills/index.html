@@ -25,7 +25,7 @@
     
     
       
-        <title>omp skills: the pstack skills inside every seat - Dotfiles Docs</title>
+        <title>omp skills: which skills each omp launch and seat loads - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#omp-skills-the-pstack-skills-inside-every-seat" class="md-skip">
+        <a href="#omp-skills-which-skills-each-omp-launch-and-seat-loads" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              omp skills: the pstack skills inside every seat
+              omp skills: which skills each omp launch and seat loads
             
           </span>
         </div>
@@ -270,7 +270,7 @@
   <span class="md-ellipsis">
     
   
-    omp skills: the pstack skills inside every seat
+    omp skills: which skills each omp launch and seat loads
   
 
     
@@ -288,7 +288,7 @@
   <span class="md-ellipsis">
     
   
-    omp skills: the pstack skills inside every seat
+    omp skills: which skills each omp launch and seat loads
   
 
     
@@ -329,6 +329,17 @@
     <span class="md-ellipsis">
       
         Per-role overlays
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-consumer-audience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-consumer audience
       
     </span>
   </a>
@@ -4882,6 +4893,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#per-consumer-audience" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-consumer audience
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4942,8 +4964,8 @@
 
 
 
-<h1 id="omp-skills-the-pstack-skills-inside-every-seat">omp skills: the pstack skills inside every seat<a class="headerlink" href="#omp-skills-the-pstack-skills-inside-every-seat" title="Permanent link">&para;</a></h1>
-<p>omp 18.11.3 (<code>@oh-my-pi/pi-coding-agent</code>, installed under <code>~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent</code>; paths below are relative to it) loads the skills under <code>~/.agents/skills</code> into every seat. This page names the setting that pins that, where the skills come from, how to prove what a seat loads, and how a seat's own skill coexists with the pstack set. Facts marked "measured" come from the U10 dry run of 2026-10-23 under a scratch <code>HOME</code>.</p>
+<h1 id="omp-skills-which-skills-each-omp-launch-and-seat-loads">omp skills: which skills each omp launch and seat loads<a class="headerlink" href="#omp-skills-which-skills-each-omp-launch-and-seat-loads" title="Permanent link">&para;</a></h1>
+<p>omp 18.11.3 (<code>@oh-my-pi/pi-coding-agent</code>, installed under <code>~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent</code>; paths below are relative to it) loads the shared skills under <code>~/.agents/skills</code> and the pstack skills under <code>~/.agents/pstack/skills</code> into the plain launch and the seats that <code>skills.audience</code> and <code>skills.pstack.audience</code> in the manifest name. This page names the settings that pin that, where the skills come from, how to prove what a seat loads, and how a seat's own skill coexists with the pstack set. Facts marked "measured" come from the U10 dry run of 2026-10-23 and the U87 dry run of 2026-10-25 under a scratch <code>HOME</code>.</p>
 <h2 id="the-key">The key<a class="headerlink" href="#the-key" title="Permanent link">&para;</a></h2>
 <p><code>skills.customDirectories</code> in <code>~/.omp/agent/config.yml</code>.</p>
 <ul>
@@ -4996,8 +5018,47 @@
 </tr>
 </tbody>
 </table>
+<h2 id="per-consumer-audience">Per-consumer audience<a class="headerlink" href="#per-consumer-audience" title="Permanent link">&para;</a></h2>
+<p><code>skills.audience</code> in <code>home/dot_agents/agent-config.yaml</code> names, for every skill under <code>home/dot_agents/skills</code> and every installer-owned skill under <code>~/.agents/skills</code> (crit, understand-*, terminal-browser), the agents that list it: <code>claude</code>, <code>codex</code>, <code>omp</code> (the plain launch) and <code>omp-&lt;role&gt;</code>. <code>skills.pstack</code> names the pstack audience and <code>exclude</code>, the pstack skills no agent lists (<code>setup-pstack</code>, which writes Cursor's <code>~/.cursor/rules</code>). The generator refuses an unknown name, an empty or repeated audience, an undeclared <code>home/dot_agents/skills</code> directory, and a pstack audience naming Claude Code or Codex (neither reads the pstack root). For omp it renders, into the plain-launch config and each role overlay:</p>
+<ul>
+<li><code>skills.ignoredSkills</code>: every declared name the consumer is not given, and the pstack <code>exclude</code> list when it loads pstack. omp matches it against each skill's raw name from every source, custom directories included (<code>src/extensibility/skills.ts:354-375</code>, <code>:495-496</code>).</li>
+<li><code>skills.customDirectories</code>: <code>omp.skills_directories</code>, then <code>~/.agents/pstack/skills</code> for a consumer in the pstack audience.</li>
+<li><code>skills.enabled: false</code> for a seat no skill names, the audit: it loads no skill from any source (<code>:307-310</code>).</li>
+</ul>
+<p>Measured 2026-10-25 under a scratch <code>HOME</code> holding a copy of the deployed <code>~/.agents/skills</code> (79 skills, the 57 pstack ones included), with the overlays rendered by <code>chezmoi execute-template</code> and the plain config by the modify script, <code>omp --no-extensions skill list --json</code> from an empty directory (<code>PI_CONFIG_FILES=&lt;overlay&gt;</code> for a seat):</p>
+<table>
+<thead>
+<tr>
+<th>consumer</th>
+<th>before: loaded, listed</th>
+<th>after: loaded, listed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>plain launch</td>
+<td>79, 23 (<code>hcom-*</code>, <code>project-map</code>, <code>setup-pstack</code> listed)</td>
+<td>75, 19 (none of those four)</td>
+</tr>
+<tr>
+<td>orchestrator</td>
+<td>79, 23</td>
+<td>76, 20 (<code>hcom-orchestration</code>, not <code>hcom-worker</code>)</td>
+</tr>
+<tr>
+<td>worker</td>
+<td>79, 23</td>
+<td>76, 20 (<code>hcom-worker</code>, not <code>hcom-orchestration</code>)</td>
+</tr>
+<tr>
+<td>audit</td>
+<td>79, 23</td>
+<td>0, 0</td>
+</tr>
+</tbody>
+</table>
 <h2 id="the-directory">The directory<a class="headerlink" href="#the-directory" title="Permanent link">&para;</a></h2>
-<p><code>~/.agents/skills</code> (the shared skill tree, <code>home/dot_agents/skills</code>). omp scans it on two routes:</p>
+<p><code>~/.agents/skills</code> (the shared skill tree, <code>home/dot_agents/skills</code>, and the installer-owned skills). omp scans it on two routes:</p>
 <ul>
 <li>The <code>agents</code> provider (<code>src/discovery/agents.ts:30</code> and <code>:124-127</code>, loader <code>:158-174</code>) scans <code>~/.agent/skills</code> and <code>~/.agents/skills</code> at the user level and <code>.agent/skills</code> and <code>.agents/skills</code> on the walk up from the project. Its user level is on by default: <code>skills.enableAgentsUser</code> defaults to <code>true</code> (<code>src/extensibility/settings.ts:57</code>, gate at <code>src/extensibility/skills.ts:322</code>), and <code>.agents</code> is not a foreign provider, so <code>enabledProviders</code> does not apply to it (<code>src/capability/index.ts:363-373</code>; upstream <code>docs/skills.md</code>, "Source toggles and filtering"). <code>enabledProviders</code> opts the foreign user roots in (<code>~/.claude</code>, <code>~/.codex</code>, <code>~/.cursor</code>; default off), but the <code>agent-plugins</code> provider, which reads the Claude Code marketplace registry under <code>~/.claude</code> and refused pstack's plugin copy with 56 warnings, is not one of them: the seat overlays switch it off with <code>disabledProviders: [agent-plugins]</code> (<code>omp.disabled_providers</code> in the manifest, regime-cutover U22).</li>
 <li><code>skills.customDirectories</code>, the key above. It pins the root against a seat setting that turns the provider off (<code>skills.enableAgentsUser: false</code>, or <code>disabledProviders</code> naming <code>agents</code>).</li>
@@ -5034,10 +5095,10 @@
 </table>
 <p>Both skills list with <code>"hide":true</code>: their front matter sets <code>disable-model-invocation: true</code>, which omp maps to <code>hide</code> (<code>src/extensibility/skills.ts:463</code>). A hidden skill is left out of the system prompt's <code>&lt;skills&gt;</code> listing and stays reachable through <code>/skill:&lt;name&gt;</code> and <code>skill://&lt;name&gt;</code> (<code>:37-42</code>). 56 of the 57 skills in pstack 0.15.30 set that flag.</p>
 <h2 id="the-pin">The pin<a class="headerlink" href="#the-pin" title="Permanent link">&para;</a></h2>
-<p><code>assets.pstack</code> in <code>home/dot_agents/agent-config.yaml</code>: <code>pin</code> is a commit of <code>cursor/plugins</code> and <code>sha256</code> the digest of GitHub's source archive of that commit (<code>https://github.com/cursor/plugins/archive/&lt;pin&gt;.tar.gz</code>). Two chezmoi externals in <code>home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl</code> read both values from the manifest (<code>include</code> + <code>fromYaml</code>, so the pin lives in one place) and extract <code>harness/pstack/claude-code/skills/*</code> into <code>~/.agents/skills</code> and <code>harness/pstack/claude-code/docs/**</code> into <code>~/.agents/docs</code> at every <code>chezmoi apply</code>, which <code>make update</code> runs. <code>harness/pstack/claude-code</code> is the Claude Code build of the plugin, the tree the <code>cursor-plugins</code> marketplace entry points at, so a seat reads the same bytes as the Claude Code plugin install; the docs land beside the skills because every skill's first paragraph links <code>../../docs/harness/claude-code.md</code>. No installer step, clone or receipt exists. chezmoi checks the download against <code>sha256</code> and fetches the archive again only when the URL, that is the pin, changes, since <code>refreshPeriod</code> stays at its default of zero (chezmoi reference, <code>.chezmoiexternal</code> format: <code>checksum.sha256</code>, <code>stripComponents</code>, <code>include</code>, <code>exact</code>, <code>refreshPeriod</code>); <code>chezmoi status</code> reports drift in the deployed files.</p>
-<p>Measured 2026-10-23 under <code>HOME=$TMPDIR/u10b-home</code> with the rendered externals pointed at the downloaded archive (<code>tests/unit/test_pstack_asset.py</code> repeats the run with a fixture archive): <code>chezmoi apply</code> placed the 57 skill directories beside a source skill, <code>~/.agents/docs/harness/claude-code.md</code> included; a second apply changed nothing; <code>omp --no-session skill list --json</code> from an empty directory listed 58 skills with <code>"warnings":[]</code>, <code>poteto-mode</code> among them with <code>"hide":true</code>. A pstack skill named like a skill under <code>home/dot_agents/skills</code> makes chezmoi refuse the whole apply (<code>inconsistent state</code>, both sources named) instead of overwriting either copy; the test also keeps the two name sets disjoint. <code>make doctor</code> runs <code>scripts/update-agent-assets.sh check_pstack</code>, which fails when <code>poteto-mode/SKILL.md</code> or the adapter file is missing or when <code>omp skill list</code> does not name <code>poteto-mode</code>. A skill upstream drops stays deployed until a <code>.chezmoiremove</code> entry removes it, because <code>~/.agents/skills</code> is not an exact directory (other installers own siblings there); <code>~/.agents/docs</code> is exact.</p>
+<p><code>assets.pstack</code> in <code>home/dot_agents/agent-config.yaml</code>: <code>pin</code> is a commit of <code>cursor/plugins</code> and <code>sha256</code> the digest of GitHub's source archive of that commit (<code>https://github.com/cursor/plugins/archive/&lt;pin&gt;.tar.gz</code>). One chezmoi external in <code>home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl</code> reads both values from the manifest (<code>include</code> + <code>fromYaml</code>, so the pin lives in one place) and extracts <code>harness/pstack/claude-code/skills/*</code> into <code>~/.agents/pstack/skills</code> and <code>harness/pstack/claude-code/docs/**</code> into <code>~/.agents/pstack/docs</code> at every <code>chezmoi apply</code>, which <code>make update</code> runs. <code>harness/pstack/claude-code</code> is the Claude Code build of the plugin, the tree the <code>cursor-plugins</code> marketplace entry points at, so a seat reads the same bytes as the Claude Code plugin install; the docs land beside the skills because every skill's first paragraph links <code>../../docs/harness/claude-code.md</code>. The directory is exact, so it holds the pinned archive's skills and nothing else: the pstack names are the archive's own at every apply, never a list kept in the repository, and a skill upstream drops is removed. No agent scans <code>~/.agents/pstack/skills</code> by default, so Codex (whose listing budget the 56 manual-only skills would spend: it ignores <code>disable-model-invocation</code>) and Claude Code (which has the pstack plugin) never list them. <code>skills.pstack.exclude</code> is rendered as <code>skills.ignoredSkills</code>, not as an archive <code>exclude</code>: with both an <code>include</code> and an <code>exclude</code> list, chezmoi extracts every member that matches neither (chezmoiexternal-format, rule 5; measured, the other trees of the archive collided under the root and the apply failed with <code>inconsistent state</code>). No installer step, clone or receipt exists. chezmoi checks the download against <code>sha256</code> and fetches the archive again only when the URL, that is the pin, changes, since <code>refreshPeriod</code> stays at its default of zero (chezmoi reference, <code>.chezmoiexternal</code> format: <code>checksum.sha256</code>, <code>stripComponents</code>, <code>include</code>, <code>exact</code>, <code>refreshPeriod</code>); <code>chezmoi status</code> reports drift in the deployed files.</p>
+<p>Measured 2026-10-25 with the rendered external pointed at the pinned archive (its sha256 equal to <code>assets.pstack.sha256</code>; <code>tests/unit/test_pstack_asset.py</code> repeats the run with a fixture archive): <code>chezmoi apply</code> placed the 57 skill directories under <code>~/.agents/pstack/skills</code> and the adapter at <code>~/.agents/pstack/docs/harness/claude-code.md</code>; a second apply changed nothing; a stray directory under the root was removed at the next apply. The pstack skills used to land in <code>~/.agents/skills</code>, and chezmoi does not delete what the retired external placed: <code>scripts/update-agent-assets.sh</code> (<code>retire_shared_pstack_copies</code>, run by <code>make update</code>) removes a <code>~/.agents/skills/&lt;name&gt;</code> only when <code>~/.agents/pstack/skills/&lt;name&gt;</code> exists and <code>diff -r</code> finds the trees identical (measured on a copy of this host's deployed tree: all 57 removed), and keeps a differing one, which <code>make doctor</code> then reports as listed by Codex outside its audience. <code>make doctor</code> runs <code>scripts/update-agent-assets.sh check_pstack</code>, which fails when <code>poteto-mode/SKILL.md</code> or the adapter file under <code>~/.agents/pstack</code> is missing or when <code>omp skill list</code> does not name <code>poteto-mode</code>. A pstack name that <code>skills.audience</code> also declared would be listed twice by omp (the second copy namespaced, with a warning); <code>tests/unit/test_pstack_asset.py</code> keeps the two name sets disjoint.</p>
 <h2 id="a-seats-skill-beside-the-pstack-skills">A seat's skill beside the pstack skills<a class="headerlink" href="#a-seats-skill-beside-the-pstack-skills" title="Permanent link">&para;</a></h2>
-<p>A seat's own skill (the planned <code>hcom-worker</code>, for example) is one more <code>&lt;name&gt;/SKILL.md</code> under the same <code>~/.agents/skills</code> root, or under the project's <code>.agents/skills</code>, and needs no further setting. omp resolves the two sets by name (<code>src/extensibility/skills.ts:120-139</code>; upstream <code>docs/skills.md</code>, "Collision and duplicate handling"):</p>
+<p>A seat's own skill (<code>hcom-worker</code>, for example) is one more <code>&lt;name&gt;/SKILL.md</code> under <code>home/dot_agents/skills</code>, deployed to <code>~/.agents/skills</code>, with a <code>skills.audience</code> entry naming the seat role (<code>hcom-worker: [omp-worker]</code>); the generator refuses the directory without one, and every other consumer ignores it. omp resolves same-named skills from its sources by name (<code>src/extensibility/skills.ts:120-139</code>; upstream <code>docs/skills.md</code>, "Collision and duplicate handling"):</p>
 <ul>
 <li>Different names coexist. This is the normal case: pstack names are <code>principle-*</code>, <code>correct</code>, <code>sharpen</code>, <code>unslop</code> and so on; a seat skill carries the seat's name.</li>
 <li>The same name with identical content is loaded once.</li>

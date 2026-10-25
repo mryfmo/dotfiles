@@ -25,7 +25,7 @@ tool = os.path.basename(sys.argv[0])
 argv = sys.argv[1:]
 with open(os.path.join(os.environ["FAKE_CALLS"], tool), "a", encoding="utf-8") as calls:
     hcom_env = {key: value for key, value in os.environ.items() if key.startswith("HCOM_")}
-    record = {"argv": argv, "argv0": sys.argv[0], "cwd": os.getcwd(), "env": hcom_env}
+    record = {"argv": argv, "argv0": sys.argv[0], "cwd": os.getcwd(), "env": hcom_env, "path": os.environ.get("PATH")}
     calls.write(json.dumps(record) + "\n")
 
 if tool == "hcom" and argv[:1] == ["omp"] and "--" in argv:

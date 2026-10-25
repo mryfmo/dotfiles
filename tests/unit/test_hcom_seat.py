@@ -20,6 +20,22 @@ SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 FAKE = ROOT / "tests/fixtures/hcom-seat/fake-tool.py"
 GATE_DRIVER = ROOT / "home/dot_agents/omp/hooks/tests/launch-driver.ts"
 BUN = shutil.which("bun")
+
+
+def real_tool(name):
+    """The physical file of a host tool, past any mise shim: `mise which` when mise knows it, else PATH."""
+    mise = shutil.which("mise")
+    if mise:
+        found = subprocess.run([mise, "which", name], cwd="/", capture_output=True, text=True, check=False)
+        if found.returncode == 0 and found.stdout.strip():
+            return os.path.realpath(found.stdout.strip())
+    path = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if "shims" not in d.lower())
+    found = shutil.which(name, path=path)
+    if found is None:
+        raise unittest.SkipTest(f"{name} is not installed outside a shims directory")
+    return os.path.realpath(found)
+
+
 GIT_IDENTITY = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
     "GIT_CONFIG_NOSYSTEM": "1",
@@ -56,6 +72,9 @@ class HcomSeatTest(unittest.TestCase):
         # links: hcom-seat runs srt and omp by their physical file, and the fake reads its role from its own name.
         for tool in ("hcom", "herdr", "omp", "srt", "bwrap", "socat", "rg"):
             shutil.copy(FAKE, bindir / tool)
+        # hcom-seat refuses a jq that is a mise shim (U85 round 4); link the real file, wherever this host keeps it.
+        (bindir / "jq").symlink_to(real_tool("jq"))
+        self.tools = (root / "home/.local/state/hcom-seat/tools").resolve()
         self.calls = root / "calls"
         self.calls.mkdir()
         self.seats = str(root / "seats")
@@ -215,14 +234,17 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(self.calls_of("hcom"), [])
 
     def test_an_unreadable_or_missing_allow_list_is_a_refusal(self):
-        """A failed read of the allow-list refuses the launch instead of reading as an empty list (preferences 21)."""
+        """A missing allow-list refuses the launch instead of reading as an empty list (preferences 21).
+
+        The allow-list is read by the system awk (U85 round 4: no caller PATH entry runs anything), so a failing awk
+        planted on the caller's PATH is never consulted; the read keeps its refusal on a failed status.
+        """
         bindir = Path(self.temp.name) / "bad-awk"
         bindir.mkdir()
         (bindir / "awk").write_text("#!/bin/sh\nexit 2\n")
         (bindir / "awk").chmod(0o755)
         run = self.seat("worker", "--dry-run", PATH=f"{bindir}:{self.env['PATH']}")
-        self.assertEqual(run.returncode, 2, run.stdout)
-        self.assertIn("cannot read the extension allow-list", run.stderr)
+        self.assertEqual(run.returncode, 0, run.stderr)
 
         checkout = Path(self.temp.name) / "checkout"
         (checkout / "scripts/orchestrator").mkdir(parents=True)
@@ -423,8 +445,11 @@ class HcomSeatTest(unittest.TestCase):
         (omp,) = self.calls_of("omp")
         # Both run by their physical argv: the fake's interpreter, then the file itself (U85 round 2).
         self.assertEqual(launch["argv"][:3], ["--settings", str(settings), "--"])
-        self.assertEqual(launch["argv"][3], os.path.realpath(launch["argv"][3]))
-        self.assertEqual(launch["argv"][4:], [str(self.bindir / "omp"), *omp["argv"]])
+        # Inside the sandbox /usr/bin/env gives omp the seat's working PATH (U85 round 4).
+        self.assertEqual(launch["argv"][3], "/usr/bin/env")
+        self.assertTrue(launch["argv"][4].startswith(f"PATH={self.tools}:/usr/bin:/bin:/usr/sbin:/sbin:"))
+        self.assertEqual(launch["argv"][5], os.path.realpath(launch["argv"][5]))
+        self.assertEqual(launch["argv"][6:], [str(self.bindir / "omp"), *omp["argv"]])
         worker = self.settings_of("worker")
         clone = str(Path(self.seats, "worker"))
         write, deny_read = worker["filesystem"]["allowWrite"], worker["filesystem"]["denyRead"]
@@ -493,7 +518,7 @@ class HcomSeatTest(unittest.TestCase):
         (self.bindir / "srt").unlink()
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("srt (@anthropic-ai/sandbox-runtime) not found on PATH", run.stderr)
+        self.assertIn("srt not found (mise which, then the caller's PATH)", run.stderr)
         self.assertFalse(Path(self.seats).exists())
         # An srt whose physical file a seat could rewrite would run the next launch uncontained: a copy inside the
         # checkout (the orchestrator's root), and a link outside every root whose target is in the hcom store.
@@ -512,17 +537,22 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn(f"srt {target.resolve()} is or lies under the seat write root {self.store.resolve()}", run.stderr)
-        # The interpreter a `#!/usr/bin/env` line names is held to the same rule.
+        # The interpreter of a `#!` line is held to the same rule: an absolute one in the hcom store is refused, and
+        # a `#!/usr/bin/env` name is looked up only in the private tool directory and the system directories.
         interp = self.store / "u85interp"
         shutil.copy("/bin/sh", interp)
         self.addCleanup(interp.unlink)
         (outside / "srt").unlink()
-        (outside / "srt").write_text("#!/usr/bin/env u85interp\n" + FAKE.read_text().split("\n", 1)[1])
+        (outside / "srt").write_text(f"#!{interp}\n" + FAKE.read_text().split("\n", 1)[1])
         (outside / "srt").chmod(0o755)
-        (outside / "u85interp").symlink_to(interp)
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn(f"srt {interp.resolve()} is or lies under the seat write root {self.store.resolve()}", run.stderr)
+        (outside / "srt").write_text("#!/usr/bin/env u85interp\n" + FAKE.read_text().split("\n", 1)[1])
+        (outside / "u85interp").symlink_to(interp)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn("srt: interpreter u85interp not found on PATH", run.stderr)
         # A writable file root, not only a directory: an executable at ~/.claude.json reached through a PATH link.
         claude_json = self.home / ".claude.json"
         shutil.copy(FAKE, claude_json)
@@ -532,10 +562,6 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(run.returncode, 2, run.stderr)
         real = claude_json.resolve()
         self.assertIn(f"srt {real} is or lies under the seat write root {real}", run.stderr)
-        # A PATH entry a seat can write is refused, since srt and hcom look tools up on PATH.
-        run = self.seat("orchestrator", "--seats-root", self.seats, PATH=f"{self.repo}/bin:{self.env['PATH']}")
-        self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(f"the PATH entry {self.repo.resolve()}/bin is or lies under the seat write root", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
 
     def test_hcom_and_herdr_run_by_the_physical_argv_that_was_checked(self):
@@ -557,6 +583,50 @@ class HcomSeatTest(unittest.TestCase):
         for tool in ("hcom", "herdr"):
             wrapper = Path(self.seats, ".sandbox/worker/bin", tool).read_text()
             self.assertIn(shlex.quote(str(real / tool)), wrapper)
+
+    def plant(self, directory, *names):
+        """Executables that record their own run in `<temp>/planted-ran` and fail, as a seat's planted helper would."""
+        directory.mkdir(parents=True, exist_ok=True)
+        marker = Path(self.temp.name) / "planted-ran"
+        for tool in names:
+            (directory / tool).write_text(f'#!/bin/sh\necho "{tool} $*" >> {shlex.quote(str(marker))}\nexit 1\n')
+            (directory / tool).chmod(0o755)
+        return marker
+
+    def test_no_caller_path_entry_runs_a_helper(self):
+        """U85 round 4: helpers planted in a seat-writable directory on the caller's PATH never run.
+
+        The system tools hcom-seat and its children call by name (sed, awk, git's helpers, uname, mkdir, mv, ls)
+        come from the fixed system directories; a tool resolved from the caller's PATH (jq) inside a seat write root
+        is refused before it runs.
+        """
+        planted = self.repo / "bin"  # the checkout, which the orchestrator seat writes
+        marker = self.plant(planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink")
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.plant(planted, "jq")
+        run = self.seat(
+            "worker", "--seats-root", self.seats, "--name", "worker-2", PATH=f"{planted}:{self.env['PATH']}"
+        )
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"jq {planted.resolve()}/jq is or lies under the seat write root {self.repo.resolve()}", run.stderr
+        )
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertFalse(Path(self.seats, "worker-2").exists())
+
+    def test_the_launch_path_never_inherits_a_caller_path_entry(self):
+        """U85 round 4: a trailing `:` (the cwd) or any caller entry never reaches hcom, the shim or srt."""
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{self.env['PATH']}:")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        sandbox_bin = Path(self.seats, ".sandbox/worker/bin").resolve()
+        fixed = f"{self.tools}:/usr/bin:/bin:/usr/sbin:/sbin"
+        (hcom,) = self.calls_of("hcom")
+        self.assertEqual(hcom["path"], f"{sandbox_bin}:{fixed}")
+        for call in self.calls_of("srt"):
+            self.assertEqual(call["path"], f"{sandbox_bin}:{fixed}")
+        self.assertEqual(Path(self.seats, ".sandbox/worker/bin/omp").read_text().count(f"outer_path={sandbox_bin}:"), 1)
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

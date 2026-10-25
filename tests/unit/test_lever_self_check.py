@@ -119,15 +119,22 @@ class LeverSelfCheckTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(name), "manifest unreadable")
 
     def test_a_failing_producer_refuses_instead_of_passing(self):
-        """Each read the decision rests on fails closed (preferences 21): the hash tools, then sed."""
+        """Each read the decision rests on fails closed (preferences 21): the hash tools, then sed.
+
+        hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
+        round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
+        """
+        path_levers = [name for name in LEVERS if name != "hcom-seat"]
         env = self.fake_tools("sha256sum", "shasum")
-        for name in LEVERS:
+        for name in path_levers:
             with self.subTest(lever=name, producer="hash"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot hash")
+        self.assert_passed(self.run_lever("hcom-seat", env=env))
         env = self.fake_tools("sed")
-        for name in LEVERS:
+        for name in path_levers:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
+        self.assert_passed(self.run_lever("hcom-seat", env=env))
 
     def test_a_failing_dirname_is_not_consulted(self):
         """The script directory is split in the shell (U31b, audit row 2586): a dirname that prints an existing

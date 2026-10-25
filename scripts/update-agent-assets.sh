@@ -387,9 +387,10 @@ function claude_outside_projects() {
 }
 
 #
-# @description Print `true` when ~/.claude/settings.json (user scope) enables a plugin explicitly, `false`
-#   when it disables it explicitly, and `unset` when it names neither (Claude Code then applies the
-#   plugin's default, which may be enabled). A missing file names nothing.
+# @description Print `enabled` when ~/.claude/settings.json (user scope) holds the boolean true for a plugin,
+#   `disabled` only for the boolean false, `unset` when it names the plugin not at all (Claude Code then
+#   applies the plugin's default, which may be enabled), and `invalid:<type>` for any other value (a string
+#   "false" included). Only `disabled` proves a plugin off. A missing file names nothing.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 1 When the settings file exists but is not a readable JSON object.
 #
@@ -400,7 +401,7 @@ function claude_user_enabled() {
         printf 'unset\n'
         return 0
     fi
-    jq -r --arg id "$1" 'if type == "object" then ((.enabledPlugins // {})[$id] | if . == null then "unset" else tostring end) else error("not an object") end' "${settings}" 2> /dev/null
+    jq -r --arg id "$1" 'if type == "object" then ((.enabledPlugins // {})[$id] | if . == null then "unset" elif . == false then "disabled" elif . == true then "enabled" else "invalid:\(type)" end) else error("not an object") end' "${settings}" 2> /dev/null
 }
 
 #
@@ -413,7 +414,7 @@ function claude_plugin_installs() {
     local record="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/plugins/installed_plugins.json"
 
     [ -e "${record}" ] || return 0
-    jq -er --arg id "$1" 'if (.plugins | type) == "object" then ([(.plugins[$id] // [])[] | [(.scope // "user"), .version, (.projectPath // "")] | @tsv] | join("\n")) else error end' "${record}" 2> /dev/null
+    jq -er --arg id "$1" 'if (.plugins | type) == "object" then ([(.plugins[$id] // [])[] | [(.scope // "user"), (.version | if type == "string" then . else "invalid:\(type)" end), (.projectPath // "")] | @tsv] | join("\n")) else error end' "${record}" 2> /dev/null
 }
 
 #
@@ -534,7 +535,7 @@ function converge_claude_plugin() {
         printf 'ERROR: cannot read ~/.claude/settings.json; cannot prove %s is disabled.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ "${enabled}" != "false" ]; then
+    if [ "${enabled}" != "disabled" ]; then
         printf 'ERROR: Claude Code plugin %s is off its pin %s and ~/.claude/settings.json does not disable it (enabledPlugins: %s).\n' "${plugin_id}" "${pin}" "${enabled}" >&2
         return 1
     fi
@@ -751,7 +752,7 @@ function codex_plugin_cache_versions() {
 
     for manifest in "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/${marketplace}/${plugin}"/*/.codex-plugin/plugin.json; do
         [ -f "${manifest}" ] || continue
-        jq -r '.version // "no version"' "${manifest}" 2> /dev/null || printf 'unreadable %s\n' "${manifest}"
+        jq -r '.version | if type == "string" then . else "invalid:\(type)" end' "${manifest}" 2> /dev/null || printf 'unreadable %s\n' "${manifest}"
     done
 }
 

@@ -1216,6 +1216,26 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(any("installed_plugins.json is missing" in finding for finding in findings), findings)
         self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
 
+    def test_doctor_compares_versions_by_type(self) -> None:
+        # A version recorded as a JSON number never equals its string pin, even when it prints the same.
+        pins = self.plugin_pins_fixture()
+        data = json.loads(pins.read_text())
+        data["claude"]["demo@market"]["pin"] = "2.0"
+        data["codex"]["tail@tail"]["pin"] = "5.0"
+        pins.write_text(json.dumps(data))
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
+            json.dumps({"plugins": {"demo@market": [{"scope": "user", "version": 2.0}]}})
+        )
+        (self.target_root / ".codex/plugins/cache/tail/tail/5.0.0/.codex-plugin/plugin.json").write_text(
+            json.dumps({"version": 5.0})
+        )
+
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+
+        self.assertEqual(2, len(errors), errors)
+        self.assertTrue(all("invalid:float" in error for error in errors), errors)
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

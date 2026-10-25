@@ -677,8 +677,9 @@ claude() {
     def test_an_off_pin_plugin_counts_as_disabled_only_when_the_user_settings_disable_it(self):
         step = 'converge_claude_plugin "crit@crit"'
         installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
-        # A disable that changes nothing: still enabled, or not named at all (the plugin's default applies).
-        for enabled in ({"crit@crit": True}, {}):
+        # A disable that changes nothing: still enabled, not named at all (the plugin's default applies), or a
+        # value that only looks false: the JSON string "false", 0 or null is not the boolean false.
+        for enabled in ({"crit@crit": True}, {}, {"crit@crit": "false"}, {"crit@crit": 0}, {"crit@crit": None}):
             with self.subTest(enabled=enabled):
                 result, calls, _ = self.converge_listed(step, installs, enabled, DISABLE_NOOP="1")
                 self.assertEqual(1, result.returncode, result.stderr)

@@ -659,7 +659,9 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
         entries = installed.get(plugin_id, [])
         versions = sorted(
             {
-                str(entry.get("version"))
+                entry["version"]
+                if isinstance(entry.get("version"), str)
+                else f"invalid:{type(entry.get('version')).__name__}"
                 for entry in (entries if isinstance(entries, list) else [])
                 if isinstance(entry, dict) and entry.get("scope", "user") == "user"
             }
@@ -800,7 +802,9 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
                 "cannot verify its pin"
             )
             continue
-        version = str(manifest.get("version"))
+        raw = manifest.get("version")
+        # Type-exact: only a JSON string is a version; 5.3 or null never equals the pin "5.3".
+        version = raw if isinstance(raw, str) else f"invalid:{type(raw).__name__}"
         if version != pin["pin"]:
             findings.append(
                 f"Codex plugin {plugin_id} is installed at {version}, not its pin {pin['pin']} "

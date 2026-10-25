@@ -435,7 +435,7 @@ function rebuild_mise_npm_tool() {
         return 1
     }
     # Only an existing absolute install directory is moved or removed.
-    [[ -n "${version}" && "${install_dir}" == /* ]] || {
+    [[ -n "${version}" && "${install_dir}" == /* ]] || { # lint-comparisons: allow an absolute-path prefix test
         npm_rebuild_skipped "${mise_tool}" "no version or no absolute install directory"
         return 1
     }

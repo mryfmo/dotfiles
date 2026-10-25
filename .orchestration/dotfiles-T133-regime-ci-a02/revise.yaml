@@ -1,5 +1,0 @@
-# The revise round of 2026-10-18T22:59:08Z (AGMSG-ACCEPTANCE status=revise), as the message contract asks.
-previous_head: f7d2c48dad9fcf37b7111003b609e80d320f666a
-reason: "the task-level audit of f7d2c48: two P2 (supersession without byte equality; the bootstrap on a head before the final one) and one P3 (the stale PR description, an owner row)"
-checks:
-  - tests/unit/test_regime_ci.py::test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base

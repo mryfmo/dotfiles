@@ -149,6 +149,7 @@ class OmpRunTest(unittest.TestCase):
             [
                 {
                     "argv": [
+                        "--no-extensions",
                         "--profile",
                         "audit",
                         "--config",
@@ -260,6 +261,7 @@ class OmpRunTest(unittest.TestCase):
         self.assertEqual(
             self.omp_calls()[0]["argv"],
             [
+                "--no-extensions",
                 "--profile",
                 "worker",
                 "--config",
@@ -302,6 +304,30 @@ class OmpRunTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.omp_calls()[0]["cwd"], str(self.work))
         self.assertFalse((self.calls / "decoy").exists())
+
+    def test_a_seat_shim_first_on_path_is_skipped_for_the_real_omp(self):
+        """U66: inside a seat PATH starts with `<seats-root>/.sandbox/<name>/bin` (U85); the run uses the package's omp."""
+        shim = self.root / "seats/.sandbox/worker/bin/omp"
+        shim.parent.mkdir(parents=True)
+        shim.write_text('#!/bin/sh\ntouch "$FAKE_OMP_CALLS/shim"\nexit 99\n')
+        shim.chmod(0o755)
+        run = self.run_script(
+            "--role",
+            "audit",
+            "--prompt-file",
+            str(self.prompt),
+            "--cwd",
+            str(self.work),
+            PATH=f"{shim.parent}:{self.env['PATH']}",
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse((self.calls / "shim").exists())
+        self.assertEqual(self.omp_calls()[0]["argv"][0], "--no-extensions")
+        run = self.run_script(
+            "--role", "worker", "--prompt-file", str(self.prompt), PATH=f"{shim.parent}:/usr/bin:/bin"
+        )
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("omp-run: omp not found on PATH outside a seat shim directory", run.stderr)
 
     def test_a_relative_extension_path_is_made_absolute_before_the_chdir(self):
         run = self.run_script(

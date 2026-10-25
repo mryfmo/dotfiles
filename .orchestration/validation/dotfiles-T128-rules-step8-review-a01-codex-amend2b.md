@@ -1,2 +1,0 @@
-[P3] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:92 The replacement yields 449 words (447 − 38 + 40), not exactly 450, and 449 is not the test’s 450-word cap; all four premises replayed and no other pre-amendment content changed.
-Task-file verdict: dotfiles-T128-rules-step8-a01: revise

@@ -9,6 +9,8 @@ using the generated source state.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import re
@@ -570,6 +572,30 @@ def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
     return []
 
 
+def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = None) -> list[str]:
+    """Warn for each declared Codex plugin hook whose installed definition differs from its manifest pin.
+
+    The base modify script trusts such a hook nowhere, so it does not run until it is reviewed. The
+    decision comes from the script's own generated hook-trust block, so doctor and apply never disagree.
+    """
+    home = home or HOME
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    stderr = io.StringIO()
+    try:
+        block = script.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace: dict[str, object] = {"sys": sys, "Path": Path}
+        # The block's refuse() exits for the modify script; here that exit is a finding, never doctor's own exit.
+        with contextlib.redirect_stderr(stderr):
+            exec(block.split("\n", 1)[1], namespace)
+            results = namespace["declared_hook_trust"](str(home))
+    except (Exception, SystemExit) as error:  # A broken block must surface, not read as "every hook matches its pin".
+        detail = stderr.getvalue().strip() or repr(error)
+        return [f"WARN: Codex hook trust: cannot evaluate {script}: {detail}"]
+    return [
+        f"WARN: Codex hook trust: {warning}" for _key, _entry, _digest, kind, warning in results if kind == "changed"
+    ]
+
+
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 GH_LOGIN_HINT = "run make gh-auth"
 
@@ -743,12 +769,6 @@ def check() -> list[str]:
     failures: list[str] = []
     checks = [
         (
-            SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl",
-            HOME / ".claude/mcp.json",
-            True,
-            "Claude MCP config",
-        ),
-        (
             SOURCE_ROOT / "dot_agents/model-profiles.env",
             HOME / ".agents/model-profiles.env",
             False,
@@ -816,6 +836,7 @@ def check() -> list[str]:
         failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
+    failures.extend(codex_hook_trust_warnings())
     failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures

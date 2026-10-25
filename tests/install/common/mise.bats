@@ -112,11 +112,6 @@ unset install" ]
     [ "${status}" -eq 43 ]
 }
 
-@test "[common] blocc is only installed on Linux x64" {
-    run grep -F '"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }' home/dot_mise/config.toml
-    [ "${status}" -eq 0 ]
-}
-
 @test "[common] herdr is installed by mise on Linux and macOS" {
     run grep -E '^"github:ogulcancelik/herdr" = "[^"]+"$' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]

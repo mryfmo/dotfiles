@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-task-checkers-a01.md:60 Premise 1 claims ten outputs but records only three; the missing rerun lines are process-rules-a04 through ci-skip-orchestration-a02, so the required byte-for-byte comparison fails.
-[P1] high .orchestration/tasks/dotfiles-T128-task-checkers-a01.md:35 The closed SKILL row covers two sentence changes but names only test_rule_changes_travel_as_task_amendments, leaving the line-71 change closed only by test_threat_table_rows_have_a_fixed_unit and violating the closed-row stop condition.
-Task-file verdict: dotfiles-T128-task-checkers-a01: revise

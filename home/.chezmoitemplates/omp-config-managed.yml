@@ -9,3 +9,85 @@ extensions:
 disabledProviders:
   - agent-plugins
   - openai-codex
+tools:
+  approval:
+    debug: deny
+    AskClaude: deny
+bash:
+  patterns:
+    - match: "*sudo *"
+      approval: deny
+    - match: "*rm -rf *"
+      approval: deny
+    - match: "*curl *|*sh"
+      approval: deny
+    - match: "*curl *|*sh *"
+      approval: deny
+    - match: "*wget *|*sh"
+      approval: deny
+    - match: "*wget *|*sh *"
+      approval: deny
+    - match: "*gh release*"
+      approval: deny
+    - match: "*npm publish*"
+      approval: deny
+    - match: "*uv publish*"
+      approval: deny
+    - match: "*terraform apply*"
+      approval: deny
+    - match: "*kubectl apply*"
+      approval: deny
+    - match: "*gh pr merge*"
+      approval: deny
+    - match: "*gh pr edit*"
+      approval: deny
+    - match: "*gh pr close*"
+      approval: deny
+    - match: "*gh pr review*"
+      approval: deny
+    - match: "*gh pr update-branch*"
+      approval: deny
+    - match: "*gh issue*"
+      approval: deny
+    - match: "*gh api* -X POST*"
+      approval: deny
+    - match: "*gh api* --method POST*"
+      approval: deny
+    - match: "*gh api* -XPOST*"
+      approval: deny
+    - match: "*gh api* --method=POST*"
+      approval: deny
+    - match: "*gh api* -X PATCH*"
+      approval: deny
+    - match: "*gh api* --method PATCH*"
+      approval: deny
+    - match: "*gh api* -XPATCH*"
+      approval: deny
+    - match: "*gh api* --method=PATCH*"
+      approval: deny
+    - match: "*gh api* -X PUT*"
+      approval: deny
+    - match: "*gh api* --method PUT*"
+      approval: deny
+    - match: "*gh api* -XPUT*"
+      approval: deny
+    - match: "*gh api* --method=PUT*"
+      approval: deny
+    - match: "*gh api* -X DELETE*"
+      approval: deny
+    - match: "*gh api* --method DELETE*"
+      approval: deny
+    - match: "*gh api* -XDELETE*"
+      approval: deny
+    - match: "*gh api* --method=DELETE*"
+      approval: deny
+    - match: "*gh api* -f*"
+      approval: deny
+    - match: "*gh api* -F*"
+      approval: deny
+    - match: "*gh api* --field*"
+      approval: deny
+    - match: "*gh api* --raw-field*"
+      approval: deny
+    - match: "*gh api* --input*"
+      approval: deny

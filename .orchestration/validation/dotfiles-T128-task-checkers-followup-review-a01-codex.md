@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-task-checkers-followup-a01.md:78 Completion omits plan 020 step 4’s explicit requirements that required checks are green, threads are resolved, and audit P0/P1 findings are dispositioned before merge.
-Task-file verdict: dotfiles-T128-task-checkers-followup-a01: revise

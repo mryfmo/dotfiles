@@ -3,7 +3,7 @@
 # @brief Run one non-interactive omp turn in a seat role and fail closed on any missing input.
 # @description
 #   Plan 025 W6a (U8). Composes, for `--role <role>`,
-#   `omp --profile <role> --config ~/.agents/omp/policies/<role>.yml
+#   `omp --no-extensions --profile <role> --config ~/.agents/omp/policies/<role>.yml
 #   --config ~/.agents/omp/profiles/<role>.yml -e <dir>... --no-session --max-time <s>
 #   [--model <provider/id>] --mode <text|json> -p <prompt>`
 #   (omp 18.11.3 `omp --help`: `--mode` is "text (default), json, rpc, or rpc-ui",
@@ -17,6 +17,16 @@
 #   (`home/dot_agents/omp/policies/README.md`), so `--approval-mode` is never passed.
 #   Extensions default to the bridge `~/.local/lib/omp-extensions/pi-claude-bridge`
 #   and the SIWC `~/.agents/omp/extensions/openai-siwc`; `--ext` replaces that list.
+#   `--no-extensions` is passed for every role (regime-cutover U66, F005): the `-e`
+#   directories still load, and no ambient module does (the cwd's `.omp/extensions`,
+#   `.omp/hooks`, `.omp/plugins`, a settings `extensions` entry, the profile's plugin
+#   store; `docs/extension-loading.md` "Disable discovery", measured under a scratch
+#   HOME). Installed as the lever `~/.local/bin/common/omp-run.sh` with its
+#   `claude.levers.sha256` pin, it refuses to run when its own bytes differ (U31).
+#   omp is the first `omp` on PATH whose physical directory lies outside every
+#   `.sandbox` directory: a seat's PATH starts with the seat shim
+#   `<seats-root>/.sandbox/<name>/bin/omp` (U85), and the package beside the real
+#   executable holds the discovery registry the audit reads.
 #   Every input is checked before omp starts: an unknown role, an absent or empty
 #   prompt file, an absent overlay, extension directory or cwd is exit 2 with the
 #   path. omp's stderr is held and replayed after the run; a `Failed to load
@@ -65,8 +75,63 @@
 # @exitcode 2 A refusal: usage, omp absent from PATH, unknown role, missing prompt file, policy or profile overlay, extension directory or cwd; for `--role audit` a cwd outside git, no `refs/remotes/origin/main` or no `AGENTS.md` in it, bun absent, no provider list from omp's registry, a `TMPDIR` that cannot be made absolute or a scratch directory that cannot be made; or an extension failed to load.
 # @exitcode * omp's own status otherwise.
 # @example
-#   omp-run.sh --role audit --prompt-file review.md --cwd /path/to/worktree --mode json --max-time 900
+#   ~/.local/bin/common/omp-run.sh --role audit --prompt-file review.md --cwd /path/to/worktree --mode json --max-time 900
 set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
 
 usage='usage: omp-run.sh --role <orchestrator|worker|audit> --prompt-file <file> [--cwd <dir>] [--model <provider/id>] [--mode <text|json>] [--max-time <s>] [--ext <dir>]...'
 refuse() {
@@ -97,16 +162,28 @@ orchestrator | worker | audit) ;;
 esac
 [[ ${mode} == text || ${mode} == json ]] || refuse "mode must be text or json, not '${mode}'"
 # omp and the extension paths are resolved with realpath before the cd, so a relative PATH entry cannot pick
-# <cwd>/bin/omp from a PR head and omp loads the directories that were checked.
-omp_bin=$(command -v omp) || refuse 'omp not found on PATH'
-omp_bin=$(realpath "${omp_bin}")
+# <cwd>/bin/omp from a PR head and omp loads the directories that were checked. A PATH directory whose physical path
+# lies under a `.sandbox` directory holds a seat shim (U85), never the omp package, so it is skipped.
+omp_bin=''
+IFS=: read -r -a path_dirs <<< "${PATH}"
+for path_dir in "${path_dirs[@]}"; do
+    [[ -n ${path_dir} && -f ${path_dir}/omp && -x ${path_dir}/omp ]] || continue
+    real_dir=$(cd "${path_dir}" && pwd -P) || continue
+    case "${real_dir}/" in # lint-comparisons: allow real_dir is a pwd -P form; a glob match on its components
+    */.sandbox/*) continue ;;
+    esac
+    omp_bin=${real_dir}/omp
+    break
+done
+[[ -n ${omp_bin} ]] || refuse 'omp not found on PATH outside a seat shim directory'
+omp_bin=$(realpath "${omp_bin}") || refuse "cannot resolve ${omp_bin}"
 [[ -s ${prompt_file} ]] || refuse "prompt file missing or empty: ${prompt_file}"
 policy=${HOME}/.agents/omp/policies/${role}.yml
 profile=${HOME}/.agents/omp/profiles/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay not found: ${policy}"
 [[ -f ${profile} ]] || refuse "profile overlay not found: ${profile}"
 ((${#exts[@]})) || exts=("${HOME}/.local/lib/omp-extensions/pi-claude-bridge" "${HOME}/.agents/omp/extensions/openai-siwc")
-argv=(--profile "${role}" --config "${policy}" --config "${profile}")
+argv=(--no-extensions --profile "${role}" --config "${policy}" --config "${profile}")
 for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory not found: ${ext}"
     argv+=(-e "$(realpath "${ext}")")

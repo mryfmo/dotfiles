@@ -16,10 +16,14 @@ tools:
     # then on every hcom delivery into the seat failed (`Extension sendUserMessage failed`), so the seat was
     # dead to the loop. A seat does its reading with its own tools.
     task: deny
+    # A DAP launch starts any program outside bash.patterns, and the bridge's AskClaude runs a Claude Code child
+    # with its own tools outside this overlay (U66, findings F040 and F006).
+    debug: deny
+    AskClaude: deny
 bash:
   patterns:
     # The worker's one GitHub-write lever (U28, scripts/orchestrator/README.md "Seat levers for GitHub writes"): the
-    # body of its own branch's pull request, by the read-only copy chezmoi installs, as one simple command; the deny
+    # body of its own branch's pull request, by the sha256-pinned copy chezmoi installs, as one simple command; the deny
     # after it catches every other spelling with arguments and the lever chained to anything.
     - match: "~/.local/bin/common/pr-body-edit.sh --body-file *"
       approval: allow

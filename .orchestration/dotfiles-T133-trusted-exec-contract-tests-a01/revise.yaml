@@ -1,8 +1,0 @@
-task_id: dotfiles-T133-trusted-exec-contract-tests-a01
-round: 1
-revise: 1
-previous_head: 9545e59f4a91aae36cd850c4645d29c366845844
-check:
-  - tests/unit/test_trusted_exec_contract.py::TrustedExecContractTest::test_worker_root_probe_detects_a_same_length_overwrite
-  - tests/unit/test_trusted_exec_contract.py::TrustedExecContractTest::test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check
-reason: the task-level audit of 9545e59f (P2 a same-length worker-root overwrite unseen; P2 mutation M16 never ran; P3 the Python 3.10 claim; P3 the macOS CI claim) and the orchestrator's measured finding that dscl fails in both seat sandboxes while pwd.getpwuid returns the passwd home; C-61 round 2 of 2

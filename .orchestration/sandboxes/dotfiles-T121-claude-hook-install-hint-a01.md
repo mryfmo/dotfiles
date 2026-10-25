@@ -1,1 +1,0 @@
-worker-d worktree; local branch `t121/hook-hint`; explicit push refspec `HEAD:feat/rolling-tools-single-update`; sandbox preserved; uv cache redirected to allowed `/private/tmp/uv-dotfiles-t121`; worklogs waived by Amendment 1.

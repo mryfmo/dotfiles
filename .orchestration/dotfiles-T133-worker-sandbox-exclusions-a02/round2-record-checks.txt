@@ -1,9 +1,0 @@
-Round2 records-only checks
-
-Task SHA256=9313f2cc72f6b522a5eafe5762cb5697a7d9fc3d9a0401a5a59848f59dc01a3f
-Parent=2d1d095d286e5378986aad457069d0b8a1c62d8b
-Implementation source hashes match original worker-reviewed-source-hashes.json.
-Actual repository masker on selected top-level records: exit0; full output round2-mask.txt.
-Second pass: exit0; all pre-existing record hashes unchanged; output round2-mask-idempotence.txt.
-JSON parse validation: 6 files, success. Existing Crit evidence is a nonempty resolved review record list.
-Selection: all top-level task evidence records except committed unchanged task.md and local private-cache.path; no worklog directory files. No source/test/task text change.

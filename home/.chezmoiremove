@@ -25,3 +25,4 @@
 .agents/skills/hcom-audit
 .claude/skills/hcom-audit
 .local/bin/common/hcom-reply
+.claude/mcp.json

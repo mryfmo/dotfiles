@@ -101,7 +101,6 @@ def sample_manifest() -> dict:
         },
         "claude": {
             "settings_path": "home/.chezmoitemplates/claude-settings-managed.json",
-            "mcp_config_path": "home/dot_claude/private_mcp.json.tmpl",
             "schema": "https://json.schemastore.org/claude-code-settings.json",
             "alwaysThinkingEnabled": True,
             "plansDirectory": "./.agents/worklog/claude",
@@ -216,6 +215,7 @@ LEVERS = (
     "bus-history.sh",
     "hcom-dispatch",
     "hcom-seat",
+    "omp-run.sh",
     "pr-body-edit.sh",
     "pr-close.sh",
     "pr-thread-reply.sh",
@@ -771,7 +771,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "api --raw-field",
                 "api --field",
             )
-        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        ] + [
+            "Bash(gh api -f*)",
+            "Bash(gh api -F*)",
+            "Bash(gh api --raw-field=*)",
+            "Bash(gh api --field=*)",
+            "Bash(git push *)",
+            "Bash(gh *)",
+        ]
         template = self.module.render_claude_settings(manifest)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
@@ -785,10 +792,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     path.replace("{{ .chezmoi.homeDir }}", "/render-home")
                     for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
                 ]
+                # Cache and state only: no uv tool tree (the hcom binary) and no mise trust state (U68).
                 extras = [
                     "~/.cache/uv",
-                    "~/.local/state/mise",
-                    "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
                     "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
@@ -803,16 +809,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "api.github.com",
                         "uploads.github.com",
                         "objects.githubusercontent.com",
+                        "release-assets.githubusercontent.com",
                         "codeload.github.com",
                         "pypi.org",
                         "files.pythonhosted.org",
                     ],
                     sandbox["network"]["allowedDomains"],
                 )
-                self.assertEqual(
-                    [],
-                    sandbox["excludedCommands"],
-                )
+                # Strict sandbox mode: no retry, and the two excluded commands prompt (U68).
+                self.assertIs(False, sandbox["allowUnsandboxedCommands"])
+                self.assertEqual(["git push *", "gh *"], sandbox["excludedCommands"])
+                ask = settings["permissions"]["ask"]
+                self.assertTrue(all(f"Bash({entry})" in ask for entry in sandbox["excludedCommands"]))
+                self.assertFalse(any("dangerouslyDisableSandbox" in rule for rule in ask))
                 self.assertEqual(expected_ask, settings["permissions"]["ask"])
                 self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
                 self.assertEqual(
@@ -825,8 +834,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     settings["env"],
                 )
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
-                self.assertEqual({"files": [{"path": "~/.ssh", "mode": "deny"}]}, sandbox["credentials"])
-                self.assertEqual(["~/**/.env", "~/**/.env.*"], sandbox["filesystem"]["denyRead"])
+                self.assertNotIn("allowUnixSockets", sandbox["network"])
+                self.assertNotIn("tlsTerminate", sandbox["network"])
+                self.assertTrue(sandbox["failIfUnavailable"])
+                # Round 6: every credential entry is a plain deny, the gh hosts file included; no mask on any OS.
+                self.assertEqual(
+                    [
+                        {"path": path, "mode": "deny"}
+                        for path in (
+                            "~/.ssh",
+                            "~/.config/gh/hosts.yml",
+                            "~/.claude/.credentials.json",
+                            "~/.config/claude-code/oauth-token",
+                            "~/.codex/auth.json",
+                            "~/.omp/agent/agent.db*",
+                            "~/.omp/profiles/*/agent/agent.db*",
+                            "~/.config/age/key.txt",
+                        )
+                    ],
+                    sandbox["credentials"]["files"],
+                )
+                self.assertEqual(
+                    [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}], sandbox["credentials"]["envVars"]
+                )
+                tmp = ["/tmp/**/.env", "/tmp/**/.env.*"]
+                darwin_tmp = ["/private/tmp/**/.env", "/private/tmp/**/.env.*"] if os_name == "darwin" else []
+                self.assertEqual(["~/**/.env", "~/**/.env.*", *tmp, *darwin_tmp], sandbox["filesystem"]["denyRead"])
                 deny = settings["permissions"]["deny"]
                 self.assertIn("Read(.env)", deny)
                 self.assertIn("Read(~/.ssh/**)", deny)
@@ -836,10 +869,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_linux_sandbox_confines_the_top_level_herdr_agents_invocation(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
         settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
-        self.assertEqual(
-            [],
-            settings["sandbox"]["excludedCommands"],
-        )
+        self.assertEqual(["git push *", "gh *"], settings["sandbox"]["excludedCommands"])
+        # No lever is excluded, so a lever's allow rule only ever approves a sandboxed run (U68).
+        self.assertFalse(any(rule.startswith("Bash(git") for rule in MANAGED_ALLOW))
         self.assertEqual(MANAGED_ALLOW, settings["permissions"]["allow"])
         darwin = self.render_claude_template(self.module.render_claude_settings(manifest), "darwin")
         self.assertEqual(MANAGED_ALLOW, darwin["permissions"]["allow"])
@@ -899,37 +931,60 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), stale.replace("0" * 64, pin))
 
-    def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
+    def test_sandbox_exclusions_render_only_git_push_and_gh_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
-                self.assertEqual([], self.module.render_claude_sandbox(manifest, os_name)["excludedCommands"])
+                self.assertEqual(
+                    ["git push *", "gh *"], self.module.render_claude_sandbox(manifest, os_name)["excludedCommands"]
+                )
 
-    def test_managed_sandbox_exclusions_are_empty_for_all_os(self) -> None:
+    def test_managed_sandbox_exclusions_are_only_git_push_and_gh_for_all_os(self) -> None:
         template = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
-                self.assertEqual([], self.render_claude_template(template, os_name)["sandbox"]["excludedCommands"])
+                sandbox = self.render_claude_template(template, os_name)["sandbox"]
+                self.assertEqual(["git push *", "gh *"], sandbox["excludedCommands"])
+                self.assertIs(False, sandbox["allowUnsandboxedCommands"])
 
-    def test_sandbox_validator_requires_empty_exclusions(self) -> None:
+    def test_sandbox_validator_requires_strict_mode_and_the_allowlisted_exclusions(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
         )
         validator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(validator)
         manifest = load_manifest_fixture(self.temp_dir)
-        cases = [({}, True), ({"excludedCommands": []}, True)]
-        patterns = ["gh *", "git push *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        cases = [
+            ({"excludedCommands": ["git push *", "gh *"]}, True),
+            ({"excludedCommands": ["gh *", "git push *"]}, True),
+        ]
+        patterns = ["git *", "git push", "gh", "herdr *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        levers = ["~/.local/bin/common/hcom-seat *", "hcom *"]
         legacy = ["gh *", "herdr-agents *"]
         cases += [
             ({"excludedCommands": value}, False)
-            for value in (None, False, 0, "", {}, (), [None], [""], legacy, *([p] for p in patterns))
+            for value in (
+                None,
+                False,
+                0,
+                "",
+                {},
+                (),
+                [],
+                [None],
+                [""],
+                ["git push *"],
+                ["gh *"],
+                ["git push *", "gh *", "gh *"],
+                legacy,
+                *(["git push *", "gh *", p] for p in patterns + levers),
+            )
         ]
+        cases += [({"allowUnsandboxedCommands": value}, False) for value in (True, None, "false", 0)]
         for os_name in ("darwin", "linux"):
             for patch, expected in cases:
                 with self.subTest(os=os_name, patch=patch), contextlib.redirect_stderr(io.StringIO()):
                     sandbox = self.module.render_claude_sandbox(manifest, os_name)
-                    sandbox.pop("excludedCommands")
                     sandbox.update(patch)
                     try:
                         validator.validate_claude_sandbox(
@@ -1171,16 +1226,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(again.stdout, result.stdout)
         self.assertNotIn("divergence", again.stderr)
 
-    def test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin(self) -> None:
+    def test_profile_modify_scripts_trust_a_plugin_hook_only_at_its_pin(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
+        key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
 
         missing = self.run_profile(manifest, home, "")
 
         self.assertEqual(missing.returncode, 0, missing.stderr)
-        self.assertIn(
-            '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:pinned"', missing.stdout
-        )
+        self.assertIn(f'{key}\ntrusted_hash = "sha256:pinned"', missing.stdout)
         self.assertIn(
             "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (no installed copy",
             missing.stderr,
@@ -1189,15 +1243,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
         plugin.parent.mkdir(parents=True)
         plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
-        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+        installed = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
 
-        installed = self.run_profile(manifest, home, "")
+        # The installed hook is not the pinned one: it stays untrusted, even over an entry that trusted it.
+        changed = self.run_profile(manifest, home, f'[hooks.state]\n\n{key}\ntrusted_hash = "{installed}"\n')
 
-        self.assertEqual(installed.returncode, 0, installed.stderr)
-        self.assertIn(
-            f'[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "{expected}"', installed.stdout
-        )
-        self.assertNotIn("cannot compute hook trust for demo@market", installed.stderr)
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        self.assertIn(f"{key}\nenabled = true\n", changed.stdout)
+        self.assertNotIn(f'trusted_hash = "{installed}"', changed.stdout)
+        self.assertIn(installed, changed.stderr)
+        self.assertIn("sha256:pinned", changed.stderr)
+
+        # Once the reviewed hash is the pin, the same hook is trusted.
+        manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"]["trusted_hash"] = installed
+        reviewed = self.run_profile(manifest, home, changed.stdout)
+
+        self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
+        self.assertIn(f'{key}\ntrusted_hash = "{installed}"', reviewed.stdout)
+
+    def test_plugin_hook_state_without_a_pin_is_refused(self) -> None:
+        manifest = self.hook_trust_manifest()
+        manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"] = {"enabled": True}
+
+        with self.assertRaises(SystemExit):
+            self.module.codex_hook_trust(manifest)
 
     def test_profile_modify_scripts_hash_the_plugin_version_codex_loads(self) -> None:
         manifest = self.hook_trust_manifest()
@@ -1209,6 +1278,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             plugin.parent.mkdir(parents=True)
             plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": version}]}]}}))
         key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
+        state = manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"]
         for active in ("1.12.0", "local"):
             if active == "local":
                 # Codex prefers a `local` copy over any released version.
@@ -1218,11 +1288,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "local"}]}]}})
                 )
             with self.subTest(active=active):
+                # Pinned to the copy Codex loads, the hook is trusted; any other copy would leave it untrusted.
+                state["trusted_hash"] = codex_hook_hash("stop", None, {"type": "command", "command": active})
                 result = self.run_profile(manifest, home, "")
-                expected = codex_hook_hash("stop", None, {"type": "command", "command": active})
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(f'{key}\ntrusted_hash = "{expected}"', result.stdout)
-                self.assertNotIn("cannot compute hook trust for demo@market", result.stderr)
+                self.assertIn(f'{key}\ntrusted_hash = "{state["trusted_hash"]}"', result.stdout)
+                self.assertNotIn("demo@market", result.stderr)
 
     def test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver(self) -> None:
         namespace = self.hook_trust_namespace(sample_manifest())
@@ -1384,7 +1455,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
-    def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
+    def test_profile_modify_scripts_refuse_an_invalid_merge(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
         self.module.write_outputs(self.module.expected_outputs(manifest))
@@ -1409,9 +1480,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, current)
-        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: codex config merge: the merged config is not valid TOML", result.stderr)
+
+    def test_profile_modify_scripts_revoke_an_unpinned_plugin_hook_in_inline_and_dotted_forms(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        handler = {"type": "command", "command": "demo stop", "timeout": 5}
+        plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
+        installed = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+        key = "demo@market:hooks/hooks.json:stop:0:0"
+        entry = f'"{key}" = {{ trusted_hash = "{installed}", enabled = true }}'
+        for form, current in (
+            ("inline table under [hooks]", f"[hooks]\nstate = {{ {entry} }}\n"),
+            ("inline table at the root", f"hooks.state = {{ {entry} }}\n"),
+            ("dotted keys under [hooks]", f'[hooks]\nstate."{key}".trusted_hash = "{installed}"\n'),
+        ):
+            with self.subTest(form=form):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(tomllib.loads(result.stdout)["hooks"]["state"][key], {"enabled": True})
+                self.assertNotIn(installed, result.stdout)
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
@@ -1518,13 +1611,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ],
         )
 
-    def test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map(self) -> None:
+    def test_an_empty_mcp_server_map_renders_no_tables(self) -> None:
         manifest = sample_manifest()
         self.assertEqual(manifest["mcp_servers"], {})
 
         self.assertNotIn("[mcp_servers.", self.module.render_codex(manifest))
-        claude_mcp = self.module.render_claude_mcp(manifest).split("*/}}", 1)[-1]
-        self.assertEqual(json.loads(claude_mcp), {"mcpServers": {}})
         self.assertNotIn("enabledPlugins", json.loads(self.module.render_claude_settings(manifest)))
 
     def test_codex_command_hooks_render_after_permission_request_in_manifest_order(self) -> None:
@@ -1630,7 +1721,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_managed_claude_settings_render_the_levers_and_the_regime_env(self) -> None:
         claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
-        self.assertEqual([], claude["sandbox"]["excludedCommands"])
+        self.assertEqual(["git push *", "gh *"], claude["sandbox"]["excludedCommands"])
         self.assertEqual(MANAGED_ALLOW, claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
         # No session-wide bus: the store and team are per repository, derived by the levers (regime-cutover U33).
@@ -1865,6 +1956,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "disabledProviders:\n  - agent-plugins\n"
             "setupVersion: 2\nstartup:\n  setupWizard: false\n",
         )
+
+    def test_only_the_seat_overlays_switch_off_the_seat_providers(self) -> None:
+        """U66 F005: seat_disabled_providers reach every role overlay after the shared list, never the plain config."""
+        manifest = sample_manifest()
+        manifest["omp"]["disabled_providers"] = ["agent-plugins"]
+        manifest["omp"]["seat_disabled_providers"] = ["native", "agent-plugins", "mcp-json"]
+        outputs = self.module.expected_outputs(manifest)
+
+        for role in manifest["omp"]["roles"]:
+            with self.subTest(role=role):
+                overlay = outputs[self.temp_dir / f"home/dot_agents/omp/profiles/{role}.yml.tmpl"]
+                self.assertIn("disabledProviders:\n  - agent-plugins\n  - native\n  - mcp-json\nsetupVersion", overlay)
+        plain = outputs[self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"]
+        self.assertIn("disabledProviders:\n  - agent-plugins\n", plain)
+        self.assertNotIn("native", plain)
+        manifest["omp"]["seat_disabled_providers"] = ["claude-bridge"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.expected_outputs(manifest)
+        self.assertIn("omp.seat_disabled_providers must not name the model route claude-bridge", stderr.getvalue())
 
     def test_omp_disabled_providers_refuse_non_ids_and_model_routes(self) -> None:
         for value, message in (

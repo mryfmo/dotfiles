@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "<stdin>", line 6, in <module>
-  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py", line 30, in merge
-    self.baseline_path.write_text(json.dumps(managed, indent=2) + "\n")
-    ^^^^^^^^^^^^^^^^^^
-AttributeError: 'ClaudeSettingsMergeTest' object has no attribute 'baseline_path'

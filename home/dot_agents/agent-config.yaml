@@ -43,6 +43,78 @@ omp:
   disabled_providers:
     - agent-plugins
     - openai-codex
+  # Discovery providers the seat role overlays (~/.agents/omp/profiles/<role>.yml) switch off on
+  # top of disabled_providers; the plain-launch config keeps them (regime-cutover U66, F005).
+  # --no-extensions stops only extension modules: measured on omp 18.11.3 under a scratch HOME,
+  # a cwd's .omp/tools/*.ts still ran and its .omp/mcp.json and .mcp.json still started their
+  # server process, and both stopped with these providers off, while the cwd's AGENTS.md
+  # (agents-md) and the skills.customDirectories skills still loaded. Each one reads code,
+  # MCP servers, hooks or settings from the project tree (getAllProvidersInfo). The seat
+  # profile directories hold no native user-level files, so native costs nothing there.
+  # omp still merges a cwd's .omp/config.yml at start whatever this list says (the list binds
+  # only after settings load), so hcom-seat refuses a seat directory that holds .omp.
+  seat_disabled_providers:
+    - native
+    - claude
+    - codex
+    - gemini
+    - opencode
+    - cursor
+    - windsurf
+    - vscode
+    - mcp-json
+  # A plain `omp` launch (~/.omp/agent/config.yml, merged by modify_private_config.yml) keeps omp's
+  # approval mode (default yolo): the operator drives those sessions, the coordinator among them, and
+  # they run gate-free by design (coordinator decision on U66 F043). It gets only outright denies,
+  # which omp honours in every mode: the debug tool and the bridge's AskClaude (both run programs
+  # outside bash.patterns), and the seat policies' common bash deny list
+  # (home/dot_agents/omp/policies/README.md), so a plain launch refuses the same commands a seat
+  # does; tests/unit/test_omp_seat_policy.py fails when the copies drift. eval stays allowed here
+  # (the operator's sessions use it), so a shell started through eval bypasses the bash list. The
+  # seats use named profiles and their own --config policy, never this file.
+  interactive_policy:
+    tool_deny:
+      - debug
+      - AskClaude
+    bash_deny:
+      - "*sudo *"
+      - "*rm -rf *"
+      - "*curl *|*sh"
+      - "*curl *|*sh *"
+      - "*wget *|*sh"
+      - "*wget *|*sh *"
+      - "*gh release*"
+      - "*npm publish*"
+      - "*uv publish*"
+      - "*terraform apply*"
+      - "*kubectl apply*"
+      - "*gh pr merge*"
+      - "*gh pr edit*"
+      - "*gh pr close*"
+      - "*gh pr review*"
+      - "*gh pr update-branch*"
+      - "*gh issue*"
+      - "*gh api* -X POST*"
+      - "*gh api* --method POST*"
+      - "*gh api* -XPOST*"
+      - "*gh api* --method=POST*"
+      - "*gh api* -X PATCH*"
+      - "*gh api* --method PATCH*"
+      - "*gh api* -XPATCH*"
+      - "*gh api* --method=PATCH*"
+      - "*gh api* -X PUT*"
+      - "*gh api* --method PUT*"
+      - "*gh api* -XPUT*"
+      - "*gh api* --method=PUT*"
+      - "*gh api* -X DELETE*"
+      - "*gh api* --method DELETE*"
+      - "*gh api* -XDELETE*"
+      - "*gh api* --method=DELETE*"
+      - "*gh api* -f*"
+      - "*gh api* -F*"
+      - "*gh api* --field*"
+      - "*gh api* --raw-field*"
+      - "*gh api* --input*"
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the
@@ -84,12 +156,14 @@ model_profiles:
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "claude-bridge/claude-fable-5-1" }
   security:
-    # Security-audit tier: specialist model for auditing pending changes.
+    # Security-audit tier: specialist model for auditing pending changes. An audit reads
+    # the changes and reports; it never edits, so it runs read-only like the audit tier.
     claude: { model: claude-fable-5, effort: high }
     codex:
       # gpt-daybreak-blue-latest requires API-key auth (rejected under ChatGPT login).
       model: gpt-6-astra
       model_reasoning_effort: high
+      sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "openai-siwc/gpt-6-astra" }
   audit:
@@ -134,7 +208,9 @@ codex:
   shell_environment_policy:
     inherit: core
     set:
-      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+      # mise shims resolve node from mise's config, so no per-version node directory goes first;
+      # /opt/homebrew/bin exists only on macOS (the base modify script renders the os conditional).
+      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:{{ if eq .chezmoi.os `darwin` }}/opt/homebrew/bin:{{ end }}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   features:
     plugins: true
     hooks: true
@@ -171,9 +247,11 @@ codex:
         command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
         timeout: 3
         status_message: Recording to CompactionDB
-    # The hooks this repository ships or installs, trusted by `make update`: the modify scripts hash each
-    # one at apply time (a config hook from its manifest definition embedded in the modify script, a plugin
-    # hook from the installed plugin file). trusted_hash is only the fallback when a plugin file is absent.
+    # The hooks this repository ships or installs. The modify scripts hash each one at apply time: a config
+    # hook from its manifest definition embedded in the modify script is trusted at that hash; a plugin hook
+    # from the installed plugin file is trusted only when that hash equals its trusted_hash pin, so a plugin
+    # release `make update` installed stays untrusted (apply and `make doctor` warn) until it is reviewed in
+    # /hooks and its hash is recorded here. The pin is written as is when the plugin file is absent.
     state:
       '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':
         enabled: true
@@ -201,7 +279,6 @@ codex:
 
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
-  mcp_config_path: home/dot_claude/private_mcp.json.tmpl
   schema: https://json.schemastore.org/claude-code-settings.json
   # No effect on Fable 5 (thinking cannot be disabled there); applies when the
   # interactive profile maps to Sonnet or below.
@@ -225,8 +302,10 @@ claude:
     # chezmoi installs under ~/.local/bin/common (claude.levers below), which a
     # sandboxed session cannot write and which checks its own sha256 at start
     # (U31), never the rewritable checkout path; so the rules render on Linux
-    # and WSL2 too, where an allow rule approves an unsandboxed retry without a
-    # prompt. Not `Bash(hcom *)` (hcom launches agents), no interpreter prefix;
+    # and WSL2 too. No lever leaves the sandbox: `allowUnsandboxedCommands` is
+    # false and no lever is in `sandbox.excludedCommands`, so an allow rule only
+    # ever approves a sandboxed run (U68). Not `Bash(hcom *)` (hcom launches
+    # agents), no interpreter prefix;
     # validate-agent-assets.py refuses anything else, a checkout path included.
     # No rule authorises chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
@@ -244,11 +323,16 @@ claude:
     # recognises in Bash; they "don't apply to … arbitrary subprocesses"
     # (code.claude.com/docs/en/permissions). `sandbox.credentials` and
     # `sandbox.filesystem.denyRead` below guard every sandboxed subprocess.
-    # The Linux sandbox ignores a Read/Edit rule whose last segment is a glob,
-    # so validate-agent-assets.py refuses one except the `.env` pair. The pair
-    # keeps its glob because the Read tool must refuse `.env.local` and the like
-    # in every project, which only a glob expresses; for sandboxed subprocesses
-    # on Linux the `denyRead` entries `~/**/.env` and `~/**/.env.*` cover it.
+    # The Linux sandbox ignores a Read/Edit rule whose last segment is a glob
+    # when it builds its own read and write lists ("Those wildcards don't work
+    # for sandboxed commands", code.claude.com/docs/en/sandboxing), so
+    # validate-agent-assets.py refuses one except the `.env` pair. The pair
+    # keeps its glob because the Read and Edit tools must refuse `.env.local`
+    # and the like in every project, which only a glob expresses; the tools
+    # apply it on every OS. For sandboxed subprocesses on Linux the `denyRead`
+    # globs below cover reads; a sandboxed write to a `.env*` file inside the
+    # working directory is not blocked there, since Linux `denyWrite` accepts
+    # only a trailing `/**` (known limit, U68).
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)
@@ -299,27 +383,35 @@ claude:
       - Bash(gh api -F*)
       - Bash(gh api --raw-field=*)
       - Bash(gh api --field=*)
+      # The two commands that run outside the sandbox (sandbox.excludedCommands
+      # below) prompt every time, in auto mode too: ask rules are evaluated
+      # before allow rules (code.claude.com/docs/en/permissions) (U68).
+      - Bash(git push *)
+      - Bash(gh *)
   env:
     GH_TELEMETRY: "false"
     DO_NOT_TRACK: "1"
     CHECKPOINT_DISABLE: "1"
     AWS_EC2_METADATA_DISABLED: "true"
-  # The coordinator's levers, installed read-only (regime-cutover U31). The
-  # generator renders home/dot_local/bin/common/executable_<name> from
-  # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
-  # ~/.local/bin/common/<name>, outside every sandbox write root) and
-  # refreshes the pins below; each lever refuses to run (exit 2)
-  # when its own sha256 differs from its line here, read from the deployed
-  # ~/.agents/agent-config.yaml for the installed copy. regime-env is the
+  # The coordinator's levers (regime-cutover U31). The generator renders
+  # home/dot_local/bin/common/executable_<name> from scripts/orchestrator/<name>
+  # (same bytes; chezmoi installs it as ~/.local/bin/common/<name>, mode 0755,
+  # outside every Claude sandbox write root) and refreshes the pins below. The
+  # copy is not read-only: its owner can rewrite it and this manifest. The guard
+  # is detection: each lever refuses to run (exit 2) when its own sha256 differs
+  # from its line here, read from the deployed ~/.agents/agent-config.yaml for
+  # the installed copy. regime-env is the
   # helper the levers source for the per-repository derivation (U33): pinned
   # and self-checked like a lever, but sourced, never run, so no allow rule;
   # regime-init reads its templates from ~/.agents/regime beside this manifest.
   # The pr-*.sh and records-sync.sh pins are the omp seats' GitHub-write levers
   # (U28): the same install and self-check, allowed by the seat policies under
-  # ~/.agents/omp/policies, never by a claude.permissions rule.
+  # ~/.agents/omp/policies, never by a claude.permissions rule. omp-run.sh is
+  # the one-turn omp runner the audit path uses (U66): installed and
+  # self-checked the same way, so every repository runs the same pinned copy.
   levers:
     sha256:
-      hcom-seat: 7c50219d65e20378acbb413a3ddabde08c75bc938cd7348423142c742424029f
+      hcom-seat: fc4265bad5af8bb490e182db286151479dfad31b4b684ab649d4f8eee4852cd9
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -335,9 +427,14 @@ claude:
       pr-body-edit.sh: cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
-    # The only extension directories `hcom-seat` loads, by default or through
-    # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
-    # gate's directory, which every launch loads (regime-cutover U33c).
+      omp-run.sh: dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e
+    # The only extension directories `hcom-seat` passes with `-e`, by default or
+    # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
+    # stop gate's directory, which every launch loads (regime-cutover U33c).
+    # hcom's own delivery extension is the one other `-e` (hcom adds it). The
+    # seat shim runs omp with --no-extensions, so no ambient module (the cwd's
+    # .omp/extensions, .omp/hooks, .omp/plugins, a settings `extensions` entry,
+    # an installed plugin) loads beside them (U85, U66 F005).
     extensions:
       - ~/.local/lib/omp-extensions/pi-claude-bridge
       - ~/.agents/omp/extensions/openai-siwc
@@ -353,23 +450,44 @@ claude:
   # create user namespaces.
   sandbox:
     enabled: true
-    # Two-stage rollout: warn and run unsandboxed while bwrap/socat are missing;
-    # flip to true only after live E2E.
-    failIfUnavailable: false
+    # Refuse to start rather than run commands unsandboxed: bwrap, socat and the
+    # bwrap-userns AppArmor profile are in place on the Ubuntu host and macOS uses
+    # Seatbelt (code.claude.com/docs/en/settings-reference, failIfUnavailable).
+    failIfUnavailable: true
     autoAllowBashIfSandboxed: true
-    allowUnsandboxedCommands: true
-    # T39 recorded Herdr PermissionDenied on 2026-10-01; T130 added $HOME/.config/herdr/herdr.sock to allowUnixSockets; the orchestrator sent sandboxed Bash messages 2827 and 2830 on 2026-10-20.
-    excludedCommands: []
+    # Strict sandbox mode: Claude Code ignores the `dangerouslyDisableSandbox`
+    # retry, so a command runs sandboxed unless it matches excludedCommands
+    # (code.claude.com/docs/en/sandboxing, "Turn off the retry with strict
+    # sandbox mode"; measured in the installed 2.1.310 code, U68).
+    allowUnsandboxedCommands: false
+    # Two exclusions, each behind its identical ask rule above. An excluded
+    # command goes through the regular permission flow, so each one prompts.
+    # `git push`: the git config rewrites GitHub pushes to SSH (pushInsteadOf)
+    # and the sandbox denies ~/.ssh, so a push cannot run sandboxed. `gh`: the
+    # gh hosts file is denied to sandboxed commands, so gh authenticates only
+    # outside the sandbox. A call with a `cd`, `-C`, a redirect or a command
+    # substitution stays sandboxed and fails. herdr calls and `hcom-seat` on
+    # macOS need the herdr socket and are not excluded: launch seats from the
+    # omp orchestrator or a terminal.
+    excludedCommands:
+      - git push *
+      - gh *
     linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
-      # roots. ~/.cache/uv: every `uv run` target (make unit-test,
-      # validate-agent-assets, render-check) needs the uv cache writable; a
-      # filesystem relaxation limited to that directory (T39 live E2E leg 1).
+      # roots. Each entry must be byte-identical to validate-agent-assets.py
+      # SANDBOX_WRITE_ROOTS (DARWIN_SANDBOX_WRITE_ROOTS for the darwin list):
+      # a new root is a reviewed change to that allowlist (U68). Cache and state
+      # directories only: nothing on PATH and nothing a later unsandboxed run
+      # trusts as configuration. ~/.cache/uv: every
+      # `uv run` target (make unit-test, validate-agent-assets, render-check)
+      # needs the uv cache writable (T39 live E2E leg 1). ~/.local/share/uv
+      # (uv tools and Pythons, the hcom binary on PATH) and ~/.local/state/mise
+      # (mise's trusted-configs) are not writable: measured under Seatbelt, `uv
+      # run --with pyyaml`, `uv run --no-project` and `mise exec` succeed without
+      # them; mise only warns that it could not track a new checkout's mise.toml.
       extra_allow_write:
         - ~/.cache/uv
-        - ~/.local/state/mise
-        - ~/.local/share/uv
         # The dotfiles program's hcom store until its one-time move (U16; README "Run a program in another repository").
         - ~/.local/state/hcom-regime
         # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
@@ -381,21 +499,62 @@ claude:
       # Rendered as sandbox.filesystem.denyRead on every OS: the sandbox's
       # default read policy "still allows reading credential files" and the
       # Linux sandbox drops the glob Read rules above, while `denyRead` globs
-      # are enforced there (code.claude.com/docs/en/sandboxing; U17).
+      # are enforced there (code.claude.com/docs/en/sandboxing; U17). The /tmp
+      # pair covers checkouts outside $HOME (the audit worktrees, Claude's own
+      # /tmp/claude-<uid>); Linux honours a wildcard after the first directory
+      # name, so `/tmp/**` works where `/**` would cover nothing (U68).
       deny_read:
         - ~/**/.env
         - ~/**/.env.*
-    # Rendered as sandbox.credentials: a `deny` entry denies reads inside the
-    # sandbox like denyRead; the SSH keys and config stay unreadable to
-    # sandboxed commands (git pushes from sessions go over HTTPS; U17).
-    # Both sandbox denies hold for sandboxed runs only: an unsandboxed retry
-    # after the auto-mode classifier keeps only the tool-layer rules, which miss
-    # arbitrary Python or Node reads (ask rule for the retry: D-024-148 follow-up).
-    # denyRead is home-anchored, so managed hosts keep project checkouts under
-    # $HOME (deployment restriction, D-024-148) until the root form is measured.
+        - /tmp/**/.env
+        - /tmp/**/.env.*
+      # macOS /tmp is a link to /private/tmp; the Seatbelt rule names the real path.
+      darwin_deny_read:
+        - /private/tmp/**/.env
+        - /private/tmp/**/.env.*
+    # Rendered as sandbox.credentials. A `deny` file entry denies reads inside
+    # the sandbox like denyRead; a `deny` envVars entry unsets the variable for
+    # sandboxed commands. Every entry is a deny: a `mask` lets the sandbox proxy
+    # put the real value into any request body to its injectHosts, so a
+    # sandboxed client can send the placeholder to an endpoint that echoes it
+    # (GitHub's POST /markdown) and read the real token back (audit round 6,
+    # reproduced on the installed 2.1.310 transformer). The gh hosts file, the
+    # file-based agent login stores and the chezmoi age key are denied (U68).
+    # Each path appears once: Claude Code keeps the later of two entries.
+    # Known limit, macOS: these entries cover files only. Claude Code's own
+    # login and the gh token live in the login Keychain there, and the Claude
+    # Code 2.1.310 Seatbelt profile always allows mach-lookup of
+    # com.apple.SecurityServer and com.apple.securityd.xpc, with no setting to
+    # remove them (allowMachLookup only adds services), so a sandboxed command
+    # can ask securityd for those items (`security find-generic-password`).
+    # On Linux the Claude login is the denied ~/.claude/.credentials.json.
+    # The ~/.ssh and gh hosts denies mean a sandboxed `git push` or `gh` cannot
+    # authenticate, so both are excluded commands behind their ask rules. All
+    # sandbox denies hold for sandboxed runs only; the prompt is the gate for
+    # the excluded commands (D-024-148).
     credentials:
       files:
         - path: ~/.ssh
+          mode: deny
+        - path: ~/.config/gh/hosts.yml
+          mode: deny
+        - path: ~/.claude/.credentials.json
+          mode: deny
+        - path: ~/.config/claude-code/oauth-token
+          mode: deny
+        - path: ~/.codex/auth.json
+          mode: deny
+        # The omp login stores, with their SQLite -wal and -shm companions.
+        - path: ~/.omp/agent/agent.db*
+          mode: deny
+        - path: ~/.omp/profiles/*/agent/agent.db*
+          mode: deny
+        - path: ~/.config/age/key.txt
+          mode: deny
+      # The remote seat host's `claude setup-token` login, which ~/.zshenv
+      # exports to every zsh (docs/remote-host-logins.md).
+      envVars:
+        - name: CLAUDE_CODE_OAUTH_TOKEN
           mode: deny
     network:
       allowedDomains:
@@ -403,18 +562,19 @@ claude:
         - api.github.com
         - uploads.github.com
         - objects.githubusercontent.com
+        # GitHub release downloads (uv, mise, gh) redirect here.
+        - release-assets.githubusercontent.com
         - codeload.github.com
         - pypi.org
         - files.pythonhosted.org
       # macOS certificate validation; the generator omits Mach services on Linux.
       allowMachLookup:
         - com.apple.trustd.agent
-      # macOS only: Claude Code ignores this list on Linux and WSL2, where the
-      # seccomp filter can't inspect socket paths. The Claude messaging socket
-      # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot
-      # be listed without a glob, so it is not.
-      allowUnixSockets:
-        - ~/.config/herdr/herdr.sock
+      # No allowUnixSockets: a socket a sandboxed command may reach is a way
+      # out of the sandbox (the herdr socket starts host processes), so herdr
+      # calls fail inside the macOS sandbox and are not retried (U68). On Linux
+      # Claude Code ignores that list, and Unix sockets are blocked only when the
+      # optional seccomp filter is installed (README "Claude Code sandbox").
       # The allow-all Unix socket switch is deliberately not set: with a
       # docker-group user or a reachable `systemd --user` bus it turns the
       # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
@@ -437,10 +597,12 @@ claude:
             timeout: 10
       - matcher: "*"
         hooks:
+          # Synchronous so the restart notice's systemMessage is shown to the user (an async
+          # hook's output reaches only Claude). The scan stops at its own 2 s wall limit and
+          # exits 0 silently, so it returns before this timeout; a timeout is non-blocking.
           - type: command
             command: "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook"
-            async: true
-            timeout: 5
+            timeout: 3
   statusLine:
     type: command
     command: ccstatusline
@@ -547,9 +709,9 @@ assets:
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
-    installer: install/ubuntu/common/aws_cli.sh
+    installer: install/common/aws_cli.sh
     render:
-      file: install/ubuntu/common/aws_cli.sh
+      file: install/common/aws_cli.sh
       constants: {AWS_CLI_FINGERPRINT: gpg_fingerprint}
   homebrew-installer:
     source: git-commit

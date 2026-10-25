@@ -12,7 +12,7 @@ function setup() {
     [ -x "$(command -v brew)" ]
 }
 
-@test "[macos] brew resolves untrusted runner taps only when CI is exactly true" {
+@test "[macos] brew resolves untrusted runner taps only on a GitHub Actions runner" {
     function brew() {
         printf '%s\n' "$*" >> "${BATS_TEST_TMPDIR}/brew-calls"
         case "$*" in
@@ -22,17 +22,17 @@ function setup() {
         esac
     }
 
-    local ci_value
+    # Off the runner, an agent shell's CI=true included, no tap is touched.
     (
-        unset CI
-        handle_ci_untrusted_taps
+        unset GITHUB_ACTIONS RUNNER_TEMP
+        CI=true handle_ci_untrusted_taps
+        GITHUB_ACTIONS=true handle_ci_untrusted_taps
+        GITHUB_ACTIONS=false RUNNER_TEMP="${BATS_TEST_TMPDIR}" handle_ci_untrusted_taps
+        GITHUB_ACTIONS=1 RUNNER_TEMP="${BATS_TEST_TMPDIR}" handle_ci_untrusted_taps
     )
-    for ci_value in "" false 1 yes; do
-        CI="${ci_value}" handle_ci_untrusted_taps
-    done
     [ ! -e "${BATS_TEST_TMPDIR}/brew-calls" ]
 
-    CI=true handle_ci_untrusted_taps
+    GITHUB_ACTIONS=true RUNNER_TEMP="${BATS_TEST_TMPDIR}" handle_ci_untrusted_taps
 
     run cat "${BATS_TEST_TMPDIR}/brew-calls"
     [ "${status}" -eq 0 ]

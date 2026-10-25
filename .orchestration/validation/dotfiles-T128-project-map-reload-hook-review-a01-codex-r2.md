@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:75 Premise 3 fails with exit 1 and no output, and its recorded empty `browsers` array does not establish the browser-key, tab-id, or tab-URL shape required by item 1.
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:105 The named hook test cannot close its threat row: a successful reload requires separate `ls` and `action` invocations, while the test requires the stub to be called only once, and it does not exercise a successful listing with no matching tab or an `action`-only failure.
-Task-file verdict: dotfiles-T128-project-map-reload-hook-a01: revise

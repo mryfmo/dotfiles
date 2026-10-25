@@ -23,6 +23,8 @@ function teardown() {
     [ "${status}" -eq 0 ]
     run dpkg -s 'containerd.io'
     [ "${status}" -eq 0 ]
+    run dpkg -s 'docker-buildx-plugin'
+    [ "${status}" -eq 0 ]
     run dpkg -s 'docker-compose-plugin'
     [ "${status}" -eq 0 ]
 
@@ -31,14 +33,12 @@ function teardown() {
     [[ "${output}" == *"$(id -un)"* ]]
 }
 
-@test "[ubuntu-client] setup_repository replaces an existing keyring non-interactively" {
+@test "[ubuntu-client] setup_repository writes docker.asc and a deb822 docker.sources and drops the legacy files" {
     local calls_path="${BATS_TEST_TMPDIR}/docker-repository-calls.txt"
+    local sources_path="${BATS_TEST_TMPDIR}/docker.sources"
 
-    run env CALLS_PATH="${calls_path}" bash -c '
+    run env CALLS_PATH="${calls_path}" SOURCES_PATH="${sources_path}" bash -c '
         source "'"${SCRIPT_PATH}"'"
-        curl() {
-            printf "docker signing key\n"
-        }
         dpkg() {
             printf "amd64\n"
         }
@@ -47,17 +47,27 @@ function teardown() {
         }
         sudo() {
             printf "%s\n" "$*" >> "${CALLS_PATH}"
-            if [ "$1" = "gpg" ] || [ "$1" = "tee" ]; then
-                cat > /dev/null
+            if [ "$1" = "tee" ]; then
+                cat > "${SOURCES_PATH}"
             fi
         }
 
         setup_repository
-        setup_repository
     '
 
     [ "${status}" -eq 0 ]
-    [ "$(grep -c '^gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg$' "${calls_path}")" -eq 2 ]
+    grep -qxF 'rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg' "${calls_path}"
+    grep -qxF 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc' "${calls_path}"
+    grep -qxF 'tee /etc/apt/sources.list.d/docker.sources' "${calls_path}"
+    grep -qxF 'Types: deb' "${sources_path}"
+    grep -qxF 'URIs: https://download.docker.com/linux/ubuntu' "${sources_path}"
+    grep -qxF 'Suites: noble' "${sources_path}"
+    grep -qxF 'Components: stable' "${sources_path}"
+    grep -qxF 'Architectures: amd64' "${sources_path}"
+    grep -qxF 'Signed-By: /etc/apt/keyrings/docker.asc' "${sources_path}"
+    if grep -qE '(gpg --dearmor|sources.list.d/docker.list$)' <(grep -v '^rm -f ' "${calls_path}"); then
+        false
+    fi
 }
 
 @test "[ubuntu-client] install_docker_engine asks apt-get for every package in PACKAGES at once" {
@@ -90,12 +100,11 @@ function teardown() {
 
         run env CALLS_PATH="${calls_path}" FAILING="${producer}" bash -c '
             source "'"${SCRIPT_PATH}"'"
-            curl() { printf "docker signing key\n"; }
             dpkg() { [ "${FAILING}" != dpkg ] && printf "amd64\n"; }
             lsb_release() { [ "${FAILING}" != lsb_release ] && printf "noble\n"; }
             sudo() {
                 printf "%s\n" "$*" >> "${CALLS_PATH}"
-                if [ "$1" = "gpg" ] || [ "$1" = "tee" ]; then
+                if [ "$1" = "tee" ]; then
                     cat > /dev/null
                 fi
             }
@@ -105,7 +114,7 @@ function teardown() {
 
         [ "${status}" -eq 1 ]
         grep -qE -- "^${producer} .* failed; the Docker repository was not configured$" <<< "${output}"
-        if grep -qE '^(tee /etc/apt/sources.list.d/docker.list|gpg )' "${calls_path}"; then
+        if grep -qE '^(tee /etc/apt/sources.list.d/docker.sources|curl )' "${calls_path}"; then
             false
         fi
     done
@@ -133,9 +142,9 @@ function teardown() {
 
     run record_apt_calls "${SCRIPT_PATH}" uninstall_old_docker installed
     [ "${status}" -eq 0 ]
-    [ "$(grep -c '^apt-get remove -y [^ ]*$' <<< "${output}")" -eq 5 ]
+    [ "$(grep -c '^apt-get remove -y [^ ]*$' <<< "${output}")" -eq 8 ]
     removed="$(apt_call_packages remove <<< "${output}")"
-    [ "${removed}" = "$(printf '%s\n' docker docker-engine docker.io containerd runc)" ]
+    [ "${removed}" = "$(printf '%s\n' docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd runc)" ]
 
     run record_apt_calls "${SCRIPT_PATH}" install_docker_engine
     [ "${status}" -eq 0 ]
@@ -161,6 +170,6 @@ function teardown() {
     removed="$(apt_call_packages remove <<< "${output}")"
 
     # The recorder saw the mutant's calls, and the comparison above would refuse them.
-    [ "${removed}" = "$(printf '%s\n' docker docker-engine docker.io containerd)" ]
-    [ "${removed}" != "$(printf '%s\n' docker docker-engine docker.io containerd runc)" ]
+    [ "${removed}" = "$(printf '%s\n' docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd)" ]
+    [ "${removed}" != "$(printf '%s\n' docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd runc)" ]
 }

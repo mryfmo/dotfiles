@@ -948,6 +948,8 @@ EOF
         (repo / "scripts").mkdir(parents=True)
         home.mkdir()
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
+        (repo / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
         self.executable(
             bin_dir / "brew",
@@ -1043,8 +1045,6 @@ EOF
         log = repo / "commands.log"
         env = {
             **os.environ,
-            # GitHub Actions sets CI=true, which makes the script skip every phase.
-            "CI": "false",
             "FAIL_PHASE": fail_phase,
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
@@ -1060,7 +1060,8 @@ EOF
         }
         (Path(env["CCUSAGE_DIR"]) / "original").parent.mkdir(parents=True)
         (Path(env["CCUSAGE_DIR"]) / "original").touch()
-        for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME"):
+        # A GitHub Actions runner makes the script skip every phase; these tests stand for a host.
+        for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME", "GITHUB_ACTIONS", "RUNNER_TEMP"):
             env.pop(name, None)
         return repo, env
 
@@ -1088,15 +1089,26 @@ EOF
                 self.assertEqual(before | {Path("commands.log")}, after)
                 self.assertNotIn("chezmoi", "\n".join(log))
 
-    def test_upgrade_skips_every_phase_when_ci_is_true(self) -> None:
+    def test_upgrade_skips_every_phase_on_a_github_actions_runner(self) -> None:
         repo, env = self.upgrade_fixture("none")
-        env["CI"] = "true"
+        env.update({"CI": "true", "GITHUB_ACTIONS": "true", "RUNNER_TEMP": str(self.temp_dir)})
 
         result = self.run_test_command(["bash", "scripts/upgrade-tools.sh", "--system"], cwd=repo, env=env)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertEqual("CI=true: skipping installed-tool updates.\n", result.stdout)
+        self.assertIn("skipping installed-tool updates", result.stdout)
         self.assertFalse((repo / "commands.log").exists())
+
+    def test_upgrade_updates_tools_in_an_agent_shell_that_exports_ci_true(self) -> None:
+        # omp's bash tool exports these into every command; make update from it must still update the host.
+        repo, env = self.upgrade_fixture("agent-shell")
+        env.update({"CI": "true", "npm_config_yes": "true", "GIT_EDITOR": "true", "GIT_TERMINAL_PROMPT": "0"})
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("skipping installed-tool updates", result.stdout)
+        self.assertIn("mise install --yes", (repo / "commands.log").read_text())
 
     def test_upgrade_homebrew_verifies_attestations_when_gh_is_present(self) -> None:
         for with_gh in (True, False):

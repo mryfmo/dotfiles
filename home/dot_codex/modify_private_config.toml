@@ -4,13 +4,9 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python < 3.11 cannot read a chunk, so nothing is purged.
-    tomllib = None
 
 RUNTIME_PREFIXES = (
     "hooks.state",
@@ -41,7 +37,18 @@ def working_tree_dir() -> Path:
     return source_dir().parent
 
 
+def target_os() -> str:
+    # chezmoi exports its .chezmoi.os (Go's GOOS) to modify scripts; sys.platform names darwin and linux alike.
+    return os.environ.get("CHEZMOI_OS") or sys.platform
+
+
+# The one template action the managed baseline uses besides the path variables:
+# {{ if eq .chezmoi.os `<os>` }}...{{ end }} (a raw string, so the TOML string needs no escapes).
+OS_CONDITIONAL = re.compile(r"\{\{ if eq \.chezmoi\.os `([a-z]+)` \}\}(.*?)\{\{ end \}\}")
+
+
 def render_managed_template(text: str) -> str:
+    text = OS_CONDITIONAL.sub(lambda match: match.group(2) if match.group(1) == target_os() else "", text)
     return (
         text.replace("{{ .chezmoi.sourceDir }}", str(source_dir()))
         .replace("{{ .chezmoi.homeDir }}", str(home_dir()))
@@ -168,11 +175,12 @@ def runtime_prefix(name: str | None) -> str | None:
 
 def retired_and_disabled(name: str | None, chunk: str) -> bool:
     """True for a retired MCP server table whose parsed `enabled` is false; an unreadable chunk is kept."""
-    if name not in RETIRED_MCP_TABLES or tomllib is None:
+    if name not in RETIRED_MCP_TABLES:
         return False
     try:
-        table = tomllib.loads(chunk)
-    except tomllib.TOMLDecodeError:
+        # hook_trust_toml is the generated block's guarded tomllib import below, which refuses without it.
+        table = hook_trust_toml.loads(chunk)
+    except hook_trust_toml.TOMLDecodeError:
         return False
     return table["mcp_servers"][name.removeprefix("mcp_servers.")].get("enabled") is False
 
@@ -375,18 +383,44 @@ def declared_hook(home: str, key: str):
         return f"no {event} hook {group_index}:{handler_index}"
 
 
-def declared_hook_state(home: str) -> list:
-    """[hooks.state] chunks for the hooks the manifest trusts, hashed from their definitions on this host."""
-    chunks = []
+def declared_hook_trust(home: str) -> list:
+    """(key, entry, trusted hash or None, kind, warning or None) for each hook the manifest declares.
+
+    A config hook is trusted at the hash of its manifest definition. A plugin hook is trusted only at its
+    manifest pin: `make update` upgrades plugins, so an installed hook whose hash differs from the pin is a
+    release nobody reviewed and stays untrusted (kind "changed") until it is reviewed in /hooks and the
+    reviewed hash is recorded as the pin. When the hash cannot be computed, the pin is written as is
+    (kind "fallback"): Codex trusts only content with that hash, so the pin never trusts anything else.
+    """
+    results = []
     for entry in HOOK_TRUST["declared"]:
         key = entry["key"].replace(HOOK_TRUST_HOME, home)
+        pin = entry.get("trusted_hash")
         found = declared_hook(home, key)
         digest = codex_hook_hash(*found) if isinstance(found, tuple) else None
+        kind, warning = "trusted", None
         if digest is None:
-            digest = entry.get("trusted_hash")
             reason = found if isinstance(found, str) else "not a command hook"
-            fallback = "using the manifest's pinned hash" if digest else "leaving it untrusted"
-            print(f"warning: cannot compute hook trust for {key} ({reason}); {fallback}", file=sys.stderr)
+            fallback = "using the manifest's pinned hash" if pin else "leaving it untrusted"
+            kind, warning = "fallback", f"cannot compute hook trust for {key} ({reason}); {fallback}"
+            digest = pin
+        elif not key.startswith(home + "/.codex/config.toml:") and digest != pin:
+            kind = "changed"
+            warning = (
+                f"hook {key} is not trusted: the installed hook hashes to {digest}, not the manifest pin {pin}; "
+                "review it with /hooks in Codex and record the reviewed hash as its trusted_hash in agent-config.yaml"
+            )
+            digest = None
+        results.append((key, entry, digest, kind, warning))
+    return results
+
+
+def declared_hook_state(home: str) -> list:
+    """[hooks.state] chunks for the hooks the manifest declares, trusted as declared_hook_trust decides."""
+    chunks = []
+    for key, entry, digest, _, warning in declared_hook_trust(home):
+        if warning:
+            print(f"warning: {warning}", file=sys.stderr)
         quoted = json.dumps(key, ensure_ascii=False)
         lines = [f"[hooks.state.{quoted}]"]
         if digest:
@@ -397,39 +431,29 @@ def declared_hook_state(home: str) -> list:
     return chunks
 
 
+def refuse(message: str):
+    """Stop the apply of this Codex config: a merge that cannot read hook trust never writes or keeps it."""
+    print(f"ERROR: codex config merge: {message}; refusing to apply this file", file=sys.stderr)
+    raise SystemExit(1)
+
+
 try:
     import tomllib as hook_trust_toml
-except ModuleNotFoundError:  # Python < 3.11: fall back to the key grammar below.
-    hook_trust_toml = None
-HOOK_STATE_TABLE = re.compile(
-    r"""^hooks\s*\.\s*state\s*\.\s*(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([A-Za-z0-9_-]+))\s*$"""
-)
+except ModuleNotFoundError:
+    refuse("reading hook trust needs Python 3.11 or later (tomllib)")
+
+
+def parse_config(text: str, label: str) -> dict:
+    try:
+        return hook_trust_toml.loads(text)
+    except ValueError as error:  # tomllib.TOMLDecodeError is a ValueError.
+        refuse(f"{label} is not valid TOML ({error})")
 
 
 def hook_state_key(name):
     """The decoded TOML key of a `hooks.state.<key>` table name, however it is quoted, else None."""
-    if not name:
-        return None
-    if hook_trust_toml is not None:
-        try:
-            data = hook_trust_toml.loads(f"[{name}]\n")
-        except ValueError:
-            return None
-        hooks = data.get("hooks") if list(data) == ["hooks"] else None
-        state = hooks.get("state") if isinstance(hooks, dict) and list(hooks) == ["state"] else None
-        if isinstance(state, dict) and len(state) == 1:
-            key, value = next(iter(state.items()))
-            return key if value == {} else None
-        return None
-    match = HOOK_STATE_TABLE.match(name)
-    if not match:
-        return None
-    if match.group(1) is not None:
-        try:
-            return json.loads('"' + match.group(1) + '"')
-        except ValueError:
-            return None
-    return match.group(2) if match.group(2) is not None else match.group(3)
+    path = key_path(name) if name else None
+    return path[2] if path and len(path) == 3 and path[:2] == ["hooks", "state"] else None
 
 
 def declared_trusted_hash(chunk: str):
@@ -440,9 +464,7 @@ def declared_trusted_hash(chunk: str):
 DOTTED_KEY_ASSIGNMENT = re.compile(
     r"""^\s*((?:"(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)(?:\s*\.\s*(?:"(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+))*)\s*="""
 )
-# The key path each chunk opens (the root, [hooks], [hooks.state]); an assignment's dotted key extends it.
-HOOK_STATE_SCOPES = {None: [], "hooks": ["hooks"], "hooks.state": ["hooks", "state"]}
-INLINE_TRUSTED_HASH = re.compile(r'trusted_hash\s*=\s*"([^"]+)"')
+BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
 
 
 def report_divergence(name: str, old, new) -> None:
@@ -450,38 +472,21 @@ def report_divergence(name: str, old, new) -> None:
         print(f"warning: hook trust divergence for {name}: replacing {old} with {new}", file=sys.stderr)
 
 
-KEY_SEGMENT = re.compile(r"""\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*(?:\.|$)""")
-BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
-
-
 def key_path(raw: str):
     """The decoded segments of a dotted TOML key, bare or quoted, else None."""
-    if hook_trust_toml is not None:
-        try:
-            node = hook_trust_toml.loads(f"[{raw}]\n")
-        except ValueError:
-            return None
-        segments = []
-        while isinstance(node, dict) and len(node) == 1:
-            key, node = next(iter(node.items()))
-            segments.append(key)
-        return segments if node == {} and segments else None
-    segments, index = [], 0
-    while index < len(raw):
-        match = KEY_SEGMENT.match(raw, index)
-        if not match:
-            return None
-        token = match.group(1)
-        if token.startswith('"'):
-            try:
-                token = json.loads(token)
-            except ValueError:
-                return None
-        elif token.startswith("'"):
-            token = token[1:-1]
-        segments.append(token)
-        index = match.end()
-    return segments or None
+    try:
+        node = hook_trust_toml.loads(f"[{raw}]\n")
+    except ValueError:
+        return None
+    segments = []
+    while isinstance(node, dict) and len(node) == 1:
+        key, node = next(iter(node.items()))
+        segments.append(key)
+    return segments if node == {} and segments else None
+
+
+def toml_key(segment: str) -> str:
+    return segment if BARE_KEY.fullmatch(segment) else json.dumps(segment, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def canonical_table_name(raw: str) -> str:
@@ -489,38 +494,95 @@ def canonical_table_name(raw: str) -> str:
     segments = key_path(raw)
     if segments is None:
         return raw
-    return ".".join(
-        segment if BARE_KEY.fullmatch(segment) else json.dumps(segment, ensure_ascii=False).replace("\x7f", "\\u007f")
-        for segment in segments
-    )
+    return ".".join(toml_key(segment) for segment in segments)
 
 
-def drop_declared_assignments(chunk: str, declared: dict, scope: list) -> str:
-    """Drop the assignments of declared keys (inline tables or dotted keys) from a chunk whose key path is scope."""
-    kept, removed = [], {}
-    string = removing = None
+def defines_hook_state(path: list) -> bool:
+    """An assignment at this key path writes hook state: `hooks = {…}`, `hooks.state = {…}` or below it."""
+    return bool(path) and path[0] == "hooks" and (len(path) == 1 or path[1] == "state")
+
+
+def drop_hook_state_assignments(chunk: str, scope: list):
+    """The chunk without its assignments that write hook state, and whether it had any."""
+    kept, found = [], False
+    string = None
     for line in chunk.splitlines(keepends=True):
-        if removing is None and string is None:
-            match = DOTTED_KEY_ASSIGNMENT.match(line)
-            path = scope + (key_path(match.group(1)) or []) if match else []
-            key = path[2] if len(path) > 2 and path[:2] == ["hooks", "state"] else None
-            removing = key if key in declared else None
-        if removing is None:
-            kept.append(line)
-        else:
-            removed.setdefault(removing, []).append(line)
-        string = multiline_string_after(line, string)
         if string is None:
-            removing = None
-    for key, lines in removed.items():
-        name, declared_chunk = declared[key]
-        match = INLINE_TRUSTED_HASH.search("".join(lines))
-        report_divergence(name, match.group(1) if match else None, declared_trusted_hash(declared_chunk))
-    return "".join(kept)
+            match = DOTTED_KEY_ASSIGNMENT.match(line)
+            if match and defines_hook_state(scope + (key_path(match.group(1)) or [""])):
+                # TOML 1.0 keeps an inline table on one line, so the assignment is this line.
+                found = True
+                continue
+        kept.append(line)
+        string = multiline_string_after(line, string)
+    return "".join(kept), found
+
+
+def toml_value(value, label: str) -> str:
+    """A parsed TOML value written back as TOML; a date or time refuses (nothing hook state holds)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
+    if isinstance(value, list):
+        return "[" + ", ".join(toml_value(item, label) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item, label)}" for key, item in value.items()) + " }"
+    refuse(f"cannot rewrite a {type(value).__name__} value in hooks.state of {label}")
+
+
+def normalize_hook_state(text: str, label: str = "the current file") -> str:
+    """The config with every hook-state entry in its own [hooks.state."<key>"] table, whatever valid TOML form held it.
+
+    Inline tables and dotted keys (under [hooks.state], under [hooks], at the root) are rewritten as tables, so the
+    merge reads one spelling and replaces declared entries wherever they were written. Text already in table form is
+    returned unchanged. Invalid TOML, or hook state that cannot be rewritten without changing any other setting,
+    stops the apply: the merge never keeps or writes trust it could not read.
+    """
+    if not text.strip():
+        return text
+    data = parse_config(text, label)
+    hooks = data.get("hooks", {})
+    state = hooks.get("state", {}) if isinstance(hooks, dict) else None
+    if not isinstance(state, dict):
+        refuse(f"hooks.state in {label} is not a table")
+    chunks, inline = [], False
+    for name, chunk in split_chunks(text):
+        scope = [] if name is None else key_path(name)
+        if scope is None:
+            refuse(f"cannot read the table name [{name}] in {label}")
+        if scope in ([], ["hooks"], ["hooks", "state"]):
+            chunk, found = drop_hook_state_assignments(chunk, scope)
+            inline = inline or found
+        chunks.append((scope, chunk))
+    if not inline:
+        return text
+    body = "".join(chunk for scope, chunk in chunks if scope[:2] != ["hooks", "state"]).rstrip("\n")
+    header = ["[hooks.state]"] + [f"{toml_key(key)} = {toml_value(value, label)}" for key, value in state.items() if not isinstance(value, dict)]
+    tables = ["\n".join(header)] if "state" in hooks else []
+    for key, fields in state.items():
+        if isinstance(fields, dict):
+            lines = [f"[hooks.state.{toml_key(key)}]"]
+            lines.extend(f"{toml_key(field)} = {toml_value(value, label)}" for field, value in fields.items())
+            tables.append("\n".join(lines))
+    normalized = "\n\n".join(([body] if body.strip() else []) + tables) + "\n"
+    if parse_config(normalized, label) != data:
+        refuse(f"cannot rewrite hooks.state in {label} without changing its other settings")
+    return normalized
+
+
+def declared_trusted_hash(chunk: str):
+    match = re.search(r'^trusted_hash = "([^"]+)"$', chunk, re.MULTILINE)
+    return match.group(1) if match else None
 
 
 def drop_declared_hook_state(chunks: list, declared: list) -> list:
-    """Drop existing entries for declared keys (the managed ones replace them), reporting each change once."""
+    """Drop existing entries for declared keys (the managed ones replace them), reporting each change once.
+
+    The chunks come from normalize_hook_state's output, so every entry is its own table.
+    """
     by_key = {hook_state_key(name): (name, chunk) for name, chunk in declared}
     kept = []
     for name, chunk in chunks:
@@ -528,31 +590,26 @@ def drop_declared_hook_state(chunks: list, declared: list) -> list:
         if key is not None and key in by_key:
             report_divergence(name, declared_trusted_hash(chunk), declared_trusted_hash(by_key[key][1]))
             continue
-        if name in HOOK_STATE_SCOPES:
-            chunk = drop_declared_assignments(chunk, by_key, HOOK_STATE_SCOPES[name])
         kept.append((name, chunk))
     return kept
 
 
-def guarded_merge(merged: str, current: str, declared_keys) -> str:
-    """The merged config, or the current content unchanged unless it is valid TOML holding every declared key."""
-    if hook_trust_toml is None:
-        return merged
-    try:
-        state = hook_trust_toml.loads(merged).get("hooks", {}).get("state", {})
-        valid = isinstance(state, dict) and all(key in state for key in declared_keys)
-    except (ValueError, AttributeError):  # tomllib.TOMLDecodeError is a ValueError.
-        valid = False
-    if valid:
-        return merged
-    print("WARN: codex config merge produced invalid TOML; keeping the existing file", file=sys.stderr)
-    return current
+def verified_merge(merged: str, declared) -> str:
+    """The merged config once it parses and every declared key holds exactly the managed entry; else refuse."""
+    hooks = parse_config(merged, "the merged config").get("hooks", {})
+    state = hooks.get("state", {}) if isinstance(hooks, dict) else None
+    for name, chunk in declared:
+        key = hook_state_key(name)
+        expected = hook_trust_toml.loads(chunk)["hooks"]["state"][key]
+        if not isinstance(state, dict) or state.get(key) != expected:
+            refuse(f"the merged hooks.state entry for {key} is not the managed one")
+    return merged
 # <<< codex hook trust <<<
 
 
 def merge_config(managed: str, current: str) -> str:
-    # Declared hook trust is hashed on this host and replaces the managed literal and any existing entry;
-    # only keys the managed template declares are touched.
+    # Declared hook trust is hashed on this host and replaces the managed literal and any existing entry,
+    # whatever TOML form holds it; only keys the managed template declares are touched.
     managed_chunks = split_chunks(managed)
     managed_keys = {hook_state_key(name) for name, _ in managed_chunks} - {None}
     declared = [(name, chunk) for name, chunk in declared_hook_state(str(home_dir())) if hook_state_key(name) in managed_keys]
@@ -560,9 +617,9 @@ def merge_config(managed: str, current: str) -> str:
     managed_chunks = [by_declared_key.get(hook_state_key(name), (name, chunk)) for name, chunk in managed_chunks]
     if not current.strip():
         merged = "".join(chunk for _, chunk in managed_chunks)
-        return guarded_merge(merged if merged.endswith("\n") else merged + "\n", current, by_declared_key)
+        return verified_merge(merged if merged.endswith("\n") else merged + "\n", declared)
 
-    current_chunks = drop_declared_hook_state(split_chunks(current), declared)
+    current_chunks = drop_declared_hook_state(split_chunks(normalize_hook_state(current)), declared)
     current_by_name: dict[str, list[str]] = {}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {}
     managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {}
@@ -623,7 +680,7 @@ def merge_config(managed: str, current: str) -> str:
             output.append(chunk)
 
     merged = "".join(output)
-    return guarded_merge(merged if merged.endswith("\n") else merged + "\n", current, by_declared_key)
+    return verified_merge(merged if merged.endswith("\n") else merged + "\n", declared)
 
 
 def main() -> int:

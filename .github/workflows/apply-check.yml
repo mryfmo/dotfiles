@@ -1,0 +1,38 @@
+name: Apply check
+
+# make apply-check, the command an agent runs before a change reaches a real host, run as is (U82): the working
+# tree applied as a fresh Ubuntu client and then a fresh server, each in a throwaway container with no network and
+# no credential, followed by the credential-free doctor checks of scripts/apply-check.sh. Not a required check.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A pull request's newer head cancels its older run. A main push or dispatch run is grouped by its commit, never
+# with a pull request, and is never cancelled while it runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  apply-container:
+    runs-on: ubuntu-24.04
+    # The image build installs build-essential; three times a normal run of about five minutes.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run make apply-check
+        env:
+          # For the host side of the image build only: github-release.sh resolves the chezmoi release, and gh
+          # verifies its attestation. make apply-check passes no variable of this step into the container.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make apply-check

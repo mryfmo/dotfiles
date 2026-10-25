@@ -1,1 +1,0 @@
-Task-file verdict: dotfiles-T128-task-checkers-followup-a01: confirm

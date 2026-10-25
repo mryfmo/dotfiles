@@ -23,9 +23,18 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # entry invoking this script is managed, whatever home path it was rendered with.
 # herdr-agents no longer has a managed hook (its --attach mode left with the
 # old regime's tooling, regime-cutover U26); the name stays so an installed
-# entry is still managed and leaves on the next merge.
-MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
+# entry is still managed and leaves on the next merge. agent-session-staleness
+# changed from async to synchronous (regime-cutover U69); without it here the
+# installed async variant stayed next to the new entry and the hook ran twice.
+MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents", "agent-session-staleness")
+# A SessionStart hook is managed when it runs one of those scripts, directly or as
+# `<interpreter> <script>` (the herdr entry is `bash '<home>/.claude/hooks/herdr-agent-state.sh' session`).
+SCRIPT_INTERPRETERS = ("bash", "sh", "zsh")
+ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
+# Without a predicate a mixed entry (enforce-uv.sh next to an unmanaged hook)
+# differs from the managed entry, so the additive merge appended it again.
+MANAGED_PRE_TOOL_USE_SCRIPTS = ("enforce-uv.sh",)
 # Keys the managed template used to set and no longer does (regime-cutover U18,
 # D-024-150): a current value still equal to the former managed default came from
 # the template, so the merge drops it; a different value is an operator override
@@ -60,10 +69,10 @@ def merge_env(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any
     return kept | managed
 
 
-def managed_post_tool_use_paths() -> set[str]:
+def managed_hook_paths(names: tuple[str, ...]) -> set[str]:
     return {
         path
-        for name in MANAGED_POST_TOOL_USE_SCRIPTS
+        for name in names
         for path in (f"~/.claude/hooks/{name}", str(home_dir() / ".claude" / "hooks" / name))
     }
 
@@ -114,21 +123,40 @@ def is_managed_permission_hook(hook: Any) -> bool:
     )
 
 
+def invoked_script(command: str) -> str | None:
+    """Basename of the program a hook command runs: its first word after NAME=value
+    assignments, or the script an interpreter in SCRIPT_INTERPRETERS is given. An
+    argument that merely names a managed script (`logger -t <name>`) is not it."""
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return None
+    while parts and ENV_ASSIGNMENT.fullmatch(parts[0]):
+        parts = parts[1:]
+    if len(parts) > 1 and Path(parts[0]).name in SCRIPT_INTERPRETERS:
+        parts = parts[1:]
+    return Path(parts[0]).name if parts else None
+
+
 def is_managed_session_start_hook(hook: Any) -> bool:
     if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
         return False
-    try:
-        parts = shlex.split(hook["command"])
-    except ValueError:
-        return False
-    return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
+    return invoked_script(hook["command"]) in MANAGED_SESSION_START_SCRIPTS
 
 
-def is_managed_post_tool_use_hook(hook: Any) -> bool:
+def is_managed_script_hook(hook: Any, names: tuple[str, ...]) -> bool:
     if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
         return False
     # The whole command, not shlex's words: a quoted or escaped ~ is a literal directory, not the home path.
-    return hook["command"].strip() in managed_post_tool_use_paths()
+    return hook["command"].strip() in managed_hook_paths(names)
+
+
+def is_managed_post_tool_use_hook(hook: Any) -> bool:
+    return is_managed_script_hook(hook, MANAGED_POST_TOOL_USE_SCRIPTS)
+
+
+def is_managed_pre_tool_use_hook(hook: Any) -> bool:
+    return is_managed_script_hook(hook, MANAGED_PRE_TOOL_USE_SCRIPTS)
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
@@ -167,6 +195,7 @@ MANAGED_HOOK_PREDICATES = {
     "PermissionRequest": is_managed_permission_hook,
     "SessionStart": is_managed_session_start_hook,
     "PostToolUse": is_managed_post_tool_use_hook,
+    "PreToolUse": is_managed_pre_tool_use_hook,
 }
 
 

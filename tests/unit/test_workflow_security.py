@@ -1,4 +1,5 @@
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -6,7 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
 EXPECTED_PERMISSIONS = {
+    "apply-check.yml": {"contents": "read"},
     "agent-assets.yml": {"contents": "read"},
+    "docs-check.yml": {"contents": "read"},
     "docs.yml": {"contents": "write"},
     "macos.yaml": {"contents": "read"},
     "private-bootstrap.yaml": {"contents": "read"},
@@ -204,6 +207,100 @@ class WorkflowSecurityTest(unittest.TestCase):
           {settings}
 """
                 self.assertFalse(checkout_step_disables_credentials(block))
+
+    def test_no_run_script_interpolates_an_expression(self):
+        # F190 (docs.github.com secure-use, "Use an intermediate environment variable"): a `${{ }}` inside run: is
+        # pasted into the script before the shell parses it, so every value reaches a script through env:.
+        found = [
+            f"{path.name}:{number}" for path in sorted(WORKFLOWS.glob("*.y*ml")) for number in run_expressions(path)
+        ]
+        self.assertEqual([], found)
+
+    def test_the_run_expression_reader_sees_inline_and_block_scripts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "w.yml"
+            path.write_text(
+                "jobs:\n  a:\n    steps:\n"
+                "      - run: echo ${{ github.ref }}\n"
+                "      - name: b\n        env:\n          X: ${{ github.ref }}\n        run: |\n"
+                "          echo ok\n          echo ${{ github.sha }}\n"
+                "      - name: c\n        if: ${{ always() }}\n        run: echo fine\n"
+            )
+            self.assertEqual([4, 10], run_expressions(path))
+
+    def test_every_job_has_a_timeout(self):
+        # F191: a hung job otherwise runs for GitHub's default 360 minutes.
+        missing = [
+            f"{path.name}: {name}"
+            for path in sorted(WORKFLOWS.glob("*.y*ml"))
+            for name, block in job_blocks(path.read_text()).items()
+            if not re.search(r"^    timeout-minutes: [1-9][0-9]*$", block, re.MULTILINE)
+        ]
+        self.assertEqual([], missing)
+        self.assertIn("build", job_blocks((WORKFLOWS / "macos.yaml").read_text()))
+
+    def test_the_pull_request_docs_build_watches_the_deploys_paths(self):
+        # F151: a docs/-only change rebuilds the site on main, and a pull request gets the strict build first.
+        deploy = workflow_paths((WORKFLOWS / "docs.yml").read_text(), "push")
+        check = workflow_paths((WORKFLOWS / "docs-check.yml").read_text(), "pull_request")
+        self.assertIn("docs/**", deploy)
+        self.assertEqual(deploy | {".github/workflows/docs-check.yml"}, check)
+        self.assertIn("run: make docs", (WORKFLOWS / "docs-check.yml").read_text())
+
+    def test_the_installed_coderabbit_app_stays_off(self):
+        # F189: the app is installed and its default reviews every pull request and push, so the file must exist
+        # and hold only the switch that turns automatic reviews off.
+        settings = [
+            line for line in (WORKFLOWS.parents[1] / ".coderabbit.yaml").read_text().splitlines() if line.strip()
+        ]
+        settings = [line for line in settings if not line.lstrip().startswith("#")]
+        self.assertEqual(["reviews:", "  auto_review:", "    enabled: false"], settings)
+
+
+def run_expressions(path: Path) -> list[int]:
+    """Line numbers of `${{` inside a step's `run:` value, inline or block."""
+    found = []
+    block_indent = None
+    for number, line in enumerate(path.read_text().splitlines(), 1):
+        indent = len(line) - len(line.lstrip())
+        if block_indent is not None:
+            if not line.strip() or indent > block_indent:
+                if "${{" in line:
+                    found.append(number)
+                continue
+            block_indent = None
+        match = re.match(r"(\s*)(- )?run:\s*(.*)$", line)
+        if not match:
+            continue
+        value = match.group(3)
+        if value in ("|", ">", "|-", ">-"):
+            block_indent = len(match.group(1)) + (2 if match.group(2) else 0)
+        elif "${{" in value:
+            found.append(number)
+    return found
+
+
+def job_blocks(text: str) -> dict[str, str]:
+    """Each job's text under `jobs:`, keyed by its two-space name."""
+    body = text.split("\njobs:\n", 1)[1]
+    blocks: dict[str, str] = {}
+    name = None
+    for line in body.splitlines():
+        match = re.fullmatch(r"  ([A-Za-z0-9_-]+):\s*", line)
+        if match:
+            name = match.group(1)
+            blocks[name] = ""
+        elif line and not line.startswith(" "):
+            break
+        elif name is not None:
+            blocks[name] += line + "\n"
+    return blocks
+
+
+def workflow_paths(text: str, event: str) -> set[str]:
+    """The `paths:` filter of one `on:` event."""
+    section = text.split(f"\n  {event}:\n", 1)[1].split("\n    paths:\n", 1)[1]
+    return set(re.findall(r'^      - "([^"]+)"$', section.split("\n\n", 1)[0], re.MULTILINE))
 
 
 if __name__ == "__main__":

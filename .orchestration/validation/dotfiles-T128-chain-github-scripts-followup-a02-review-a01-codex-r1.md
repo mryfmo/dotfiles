@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02.md:62 Item 1 prevalidates only TSV dispositions and item 2 tests only TSV cases, so a backtick or newline in a sweep-JSON disposition can still be posted and truncated despite the threat-table claim that no lossy disposition reaches a reply.
-Task-file verdict: dotfiles-T128-chain-github-scripts-followup-a02: revise

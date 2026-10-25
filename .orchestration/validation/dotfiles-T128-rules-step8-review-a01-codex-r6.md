@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:23 The closed selector names only `test_skill_names_no_unlanded_mechanism`, which covers items 1(c)–1(d) but does not close the SKILL row’s risks for items 1(a), 1(b), 1(e), and 1(f); listing their separate tests in `control` does not satisfy the rule that the single `closed:` test closes the row.
-Task-file verdict: dotfiles-T128-rules-step8-a01: revise

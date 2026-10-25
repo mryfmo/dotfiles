@@ -1,3 +1,0 @@
-[P2] High — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a02.md:111` — Numeric or missing `id` rows must invalidate the ledger, but none of the permitted reason slugs (`ledger-row-not-object`, `class-not-slug`, `block-not-json`) describes an object with an absent or non-string `id`, leaving the required fixed output undefined.
-
-Task-file verdict: dotfiles-T128-orchestrator-tools-a02: revise

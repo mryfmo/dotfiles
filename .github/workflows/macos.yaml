@@ -58,13 +58,13 @@ jobs:
   build:
     needs: secrets
     if: ${{ needs.secrets.outputs.available == 'true' }}
-    # macos-15 runs beside macos-14, which is retired on 2026-11-02 (U64). One
-    # at a time: both jobs push to the same benchmark repository.
+    # One matrix row per macOS image; one at a time, because every row pushes to
+    # the same benchmark repository.
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        os: [macos-14, macos-15]
+        os: [macos-15]
     runs-on: ${{ matrix.os }} # Apple silicon
     # Two full setup.sh runs, the benchmark and the file tests; a hung install cancels the job instead of running 6 h.
     timeout-minutes: 60
@@ -144,8 +144,9 @@ jobs:
         if: ${{ env.HAS_BENCHMARK_TOKEN == 'true' }}
         uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
-          # macos-14 keeps the existing series; another image starts its own, so runner hardware never mixes in one.
-          name: ${{ matrix.os == 'macos-14' && 'MacOS benchmark' || format('MacOS benchmark ({0})', matrix.os) }}
+          # Each image keeps its own series, so runner hardware never mixes in one; the historic
+          # "MacOS benchmark" series holds macos-14 data and ends with that image's retirement (U64b).
+          name: ${{ format('MacOS benchmark ({0})', matrix.os) }}
           tool: customSmallerIsBetter
           output-file-path: result.json
           github-token: ${{ secrets.MY_DOTFILES_BENCHMARK }}

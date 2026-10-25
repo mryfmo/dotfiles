@@ -31,9 +31,6 @@ jobs:
             system: client
           - os: ubuntu-24.04
             system: server
-          - os: macos-14
-            system: client
-          # Runs beside macos-14 until the ruleset's required context moves to it (U64).
           - os: macos-15
             system: client
 

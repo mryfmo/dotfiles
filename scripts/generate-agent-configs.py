@@ -1484,6 +1484,124 @@ def render_claude_project_map_agent(manifest: dict[str, Any]) -> str:
     )
 
 
+STANDING_RULE_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+STANDING_RULE_AGENTS = ("claude", "codex")
+# Generated roots that hold nothing but rendered standing rules, so a file there outside the expected outputs is stale.
+CLAUDE_RULES_DIR = "home/dot_claude/rules"
+OMP_PROFILES_DIR = "home/dot_omp/private_profiles"
+PSTACK_ALIASES = ("opus", "sonnet", "haiku", "fable")
+PSTACK_PARENT_VALUES = ("inherit-parent", "auto")
+
+
+def standing_rule_audiences(manifest: dict[str, Any]) -> list[str]:
+    """Every audience a standing rule may name: the two agents and each omp seat role except the audit."""
+    return [*STANDING_RULE_AGENTS, *(f"omp-{role}" for role in omp_roles(manifest) if role != "audit")]
+
+
+def standing_rules(manifest: dict[str, Any]) -> tuple[str, dict[str, list[str]]]:
+    """The rule source directory and rule name -> audience, refusing a rule that could reach an agent it is not for."""
+    section = manifest.get("standing_rules")
+    if not isinstance(section, dict):
+        fail("standing_rules must be a mapping")
+    source_dir = section.get("source_dir")
+    if not isinstance(source_dir, str) or not source_dir.startswith("home/"):
+        fail("standing_rules.source_dir must be a path under home/")
+    rules = section.get("rules")
+    if not isinstance(rules, dict) or not rules:
+        fail("standing_rules.rules must be a non-empty mapping")
+    allowed = standing_rule_audiences(manifest)
+    for name, audience in rules.items():
+        if not isinstance(name, str) or not STANDING_RULE_NAME_RE.match(name):
+            fail(f"standing rule name must match {STANDING_RULE_NAME_RE.pattern}: {name!r}")
+        if not isinstance(audience, list) or not audience or len(set(audience)) != len(audience):
+            fail(f"standing rule {name} needs a non-empty audience list without repeats")
+        if "omp-audit" in audience:
+            fail(f"standing rule {name} cannot reach omp-audit: the audit's rules are origin/main AGENTS.md alone")
+        unknown = [agent for agent in audience if agent not in allowed]
+        if unknown:
+            fail(f"standing rule {name} names unknown audience {unknown}; expected some of {allowed}")
+        source = ROOT / source_dir / f"{name}.md"
+        if not source.is_file():
+            fail(f"standing rule {name} has no source file {source.relative_to(ROOT)}")
+        if source.read_text().startswith("---") and audience != ["claude"]:
+            fail(f"standing rule {name} has front matter, which only Claude Code reads; its audience must be [claude]")
+    sources = {path.stem for path in (ROOT / source_dir).glob("*.md")}
+    undeclared = sorted(sources - set(rules))
+    if undeclared:
+        fail(f"files in {source_dir} are not declared in standing_rules.rules: {undeclared}")
+    return source_dir, rules
+
+
+def render_rule_includes(source_dir: str, names: list[str]) -> str:
+    """A chezmoi template whose output is the named rule sources, read from the source state at apply time.
+
+    A blank line separates two rules; the last include trims the template's own final newline, so a one-rule
+    file renders byte for byte as its source.
+    """
+    include_root = source_dir.removeprefix("home/")
+    includes = "\n".join(f'{{{{ include "{include_root}/{name}.md" }}}}' for name in names)
+    return "{{- /* " + GENERATED_HEADER + " */ -}}\n" + includes.removesuffix("}}") + "-}}\n"
+
+
+def render_standing_rules(manifest: dict[str, Any]) -> dict[Path, str]:
+    """Each agent's rendered standing rules; none when the manifest declares no standing_rules section."""
+    if "standing_rules" not in manifest:
+        return {}
+    source_dir, rules = standing_rules(manifest)
+    outputs: dict[Path, str] = {}
+    for name, audience in rules.items():
+        if "claude" in audience:
+            outputs[ROOT / CLAUDE_RULES_DIR / f"{name}.md.tmpl"] = render_rule_includes(source_dir, [name])
+    codex = [name for name, audience in rules.items() if "codex" in audience]
+    if codex:
+        outputs[ROOT / "home/dot_codex/AGENTS.md.tmpl"] = render_rule_includes(source_dir, codex)
+    for role in omp_roles(manifest):
+        names = [name for name, audience in rules.items() if f"omp-{role}" in audience]
+        if names:
+            path = ROOT / OMP_PROFILES_DIR / f"private_{role}/private_agent/AGENTS.md.tmpl"
+            outputs[path] = render_rule_includes(source_dir, names)
+    return outputs
+
+
+def pstack_model_value(manifest: dict[str, Any], role: str, value: Any) -> str:
+    if isinstance(value, list) and value:
+        return ", ".join(pstack_model_value(manifest, role, item) for item in value)
+    if not isinstance(value, str):
+        fail(f"standing_rules.pstack_models role {role!r} must be a profile name, inherit-parent, auto or a list")
+    if value in PSTACK_PARENT_VALUES:
+        return value
+    profile = model_profiles(manifest).get(value)
+    if profile is None:
+        fail(f"standing_rules.pstack_models role {role!r} names no model_profiles entry: {value!r}")
+    model = profile["claude"]["model"]
+    alias = model if model in PSTACK_ALIASES else re.sub(r"^claude-([a-z]+)-.*$", r"\1", model)
+    if alias not in PSTACK_ALIASES:
+        fail(f"model_profiles.{value}.claude.model {model!r} has no Claude Code alias among {PSTACK_ALIASES}")
+    return f"{alias} {profile['claude']['effort']}"
+
+
+def render_pstack_models(manifest: dict[str, Any]) -> str:
+    """pstack's per-role model rule for Claude Code, in the shape setup-pstack writes (no front matter)."""
+    section = manifest["standing_rules"].get("pstack_models")
+    if not isinstance(section, dict) or not isinstance(section.get("roles"), dict) or not section["roles"]:
+        fail("standing_rules.pstack_models needs a budget and a non-empty roles mapping")
+    lines = [
+        "# pstack model configuration. One line per role; a role without a line falls back to the skill default.",
+        "",
+        f"# {GENERATED_HEADER} Change standing_rules.pstack_models there; chezmoi apply replaces any other write.",
+        "",
+        (
+            "# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit the Agent tool's"
+            " `model`). Alias entries in a panel list still count toward its fan-out."
+        ),
+        "",
+        f"# budget: {section['budget']}",
+        "",
+    ]
+    lines += [f"{role}: {pstack_model_value(manifest, role, value)}" for role, value in section["roles"].items()]
+    return "\n".join(lines) + "\n"
+
+
 def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
@@ -1510,11 +1628,25 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
     outputs.update(render_lever_installs(manifest))
+    outputs.update(render_standing_rules(manifest))
+    if "pstack_models" in manifest.get("standing_rules", {}):
+        outputs[ROOT / CLAUDE_RULES_DIR / "pstack-models.md"] = render_pstack_models(manifest)
     return outputs
 
 
+def stale_standing_rule_outputs(outputs: dict[Path, str]) -> list[Path]:
+    """Files in the rule roots no expected output names: every file there is rendered, so any other one is stale."""
+    stale: list[Path] = []
+    for root in (ROOT / CLAUDE_RULES_DIR, ROOT / OMP_PROFILES_DIR):
+        if root.is_dir():
+            stale += [path for path in sorted(root.rglob("*")) if path.is_file() and path not in outputs]
+    return stale
+
+
 def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
-    generated_roots = [ROOT / "home/dot_claude/skills"]
+    for path in stale_standing_rule_outputs(outputs):
+        path.unlink()
+    generated_roots = [ROOT / "home/dot_claude/skills", ROOT / OMP_PROFILES_DIR]
     output_set = set(outputs)
     for generated_root in generated_roots:
         if not generated_root.exists():
@@ -1612,6 +1744,7 @@ def main() -> None:
                 stale.append(path.relative_to(ROOT))
     if args.check:
         stale.extend(path.relative_to(ROOT) for path in stale_profiles)
+        stale.extend(path.relative_to(ROOT) for path in stale_standing_rule_outputs(outputs))
     if not args.check:
         write_outputs(outputs)
         for path in stale_profiles:

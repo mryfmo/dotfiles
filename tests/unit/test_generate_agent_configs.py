@@ -2780,5 +2780,120 @@ class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
         self.assertEqual((managed[0], sorted(managed[1])), (2, sorted(["Read(.env.*)", "Edit(.env*)"])))
 
 
+class StandingRulesTest(unittest.TestCase):
+    """Each agent gets exactly the standing rules its audience names, rendered from one source (regime-cutover U75)."""
+
+    SHARED = "## Shared\n\n- Applies to every audience.\n"
+    CLAUDE_ONLY = "---\npaths: '**/*.py'\n---\n\n## Claude only\n"
+    CODEX_ONLY = "## Codex only\n\n- `{{ not a template }}` stays literal.\n"
+
+    def setUp(self) -> None:
+        self.module = load_generator()
+        self.old_root = self.module.ROOT
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="standing-rules-test-"))
+        self.module.ROOT = self.temp_dir
+        (self.temp_dir / ".chezmoiroot").write_text("home\n")
+        self.rules = self.temp_dir / "home/rules"
+        self.rules.mkdir(parents=True)
+        (self.rules / "shared.md").write_text(self.SHARED)
+        (self.rules / "claude-only.md").write_text(self.CLAUDE_ONLY)
+        (self.rules / "codex-only.md").write_text(self.CODEX_ONLY)
+        self.manifest = sample_manifest()
+        self.manifest["omp"]["roles"] = {"orchestrator": "standard", "worker": "standard", "audit": "standard"}
+        self.manifest["standing_rules"] = {
+            "source_dir": "home/rules",
+            "rules": {
+                "codex-only": ["codex"],
+                "shared": ["claude", "codex", "omp-worker"],
+                "claude-only": ["claude"],
+            },
+        }
+
+    def tearDown(self) -> None:
+        self.module.ROOT = self.old_root
+        shutil.rmtree(self.temp_dir)
+
+    def rendered(self) -> dict[str, str]:
+        """Each output's home-relative path and the text chezmoi renders from it, with the source state in place."""
+        outputs = self.module.render_standing_rules(self.manifest)
+        self.module.write_outputs(outputs)
+        return {
+            str(path.relative_to(self.temp_dir / "home")): execute_chezmoi_template(text, self.temp_dir)
+            for path, text in outputs.items()
+        }
+
+    def refused(self) -> str:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.render_standing_rules(self.manifest)
+        return stderr.getvalue()
+
+    def test_each_agent_gets_exactly_the_rules_its_audience_names(self) -> None:
+        self.assertEqual(
+            self.rendered(),
+            {
+                "dot_claude/rules/shared.md.tmpl": self.SHARED,
+                "dot_claude/rules/claude-only.md.tmpl": self.CLAUDE_ONLY,
+                "dot_codex/AGENTS.md.tmpl": self.CODEX_ONLY + "\n" + self.SHARED,
+                "dot_omp/private_profiles/private_worker/private_agent/AGENTS.md.tmpl": self.SHARED,
+            },
+        )
+
+    def test_a_rule_that_could_reach_an_agent_it_is_not_for_is_refused(self) -> None:
+        rules = self.manifest["standing_rules"]["rules"]
+        cases = {
+            "front matter outside claude": ("claude-only", ["claude", "codex"], "front matter"),
+            "the audit seat": ("shared", ["claude", "omp-audit"], "origin/main AGENTS.md"),
+            "an unknown audience": ("shared", ["claude", "cursor"], "unknown audience"),
+            "an empty audience": ("shared", [], "non-empty audience"),
+        }
+        for label, (name, audience, message) in cases.items():
+            with self.subTest(label):
+                saved = rules[name]
+                rules[name] = audience
+                self.assertIn(message, self.refused())
+                rules[name] = saved
+        del rules["codex-only"]
+        self.assertIn("not declared in standing_rules.rules: ['codex-only']", self.refused())
+        rules["missing"] = ["claude"]
+        rules["codex-only"] = ["codex"]
+        self.assertIn("no source file home/rules/missing.md", self.refused())
+
+    def test_a_rule_file_left_from_an_old_audience_is_stale_and_removed(self) -> None:
+        outputs = self.module.render_standing_rules(self.manifest)
+        self.module.write_outputs(outputs)
+        old_link = self.temp_dir / "home/dot_claude/rules/symlink_shared.md.tmpl"
+        old_seat = self.temp_dir / "home/dot_omp/private_profiles/private_orchestrator/private_agent/AGENTS.md.tmpl"
+        for path in (old_link, old_seat):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("old\n")
+        self.assertEqual(self.module.stale_standing_rule_outputs(outputs), [old_link, old_seat])
+        self.module.remove_stale_generated_outputs(outputs)
+        self.assertFalse(old_link.exists())
+        self.assertFalse(old_seat.parent.parent.exists())
+        self.assertEqual(self.module.stale_standing_rule_outputs(outputs), [])
+
+    def test_pstack_models_render_from_the_model_profiles_they_name(self) -> None:
+        self.manifest["standing_rules"]["pstack_models"] = {
+            "budget": "medium (high)",
+            "roles": {"bug-fix": "inherit-parent", "arena runners": ["standard", "auto"], "how explainer": "express"},
+        }
+        lines = self.module.render_pstack_models(self.manifest).splitlines()
+        self.assertIn("# budget: medium (high)", lines)
+        self.assertEqual(
+            [line for line in lines if line and not line.startswith("#")],
+            ["bug-fix: inherit-parent", "arena runners: sonnet high, auto", "how explainer: haiku low"],
+        )
+        self.manifest["model_profiles"]["standard"]["claude"]["model"] = "claude-opus-5-5"
+        self.assertIn("arena runners: opus high, auto", self.module.render_pstack_models(self.manifest))
+        for value, message in (("nope", "names no model_profiles entry"), (3, "must be a profile name")):
+            with self.subTest(value=value):
+                self.manifest["standing_rules"]["pstack_models"]["roles"]["bug-fix"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_pstack_models(self.manifest)
+                self.assertIn(message, stderr.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

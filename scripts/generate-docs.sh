@@ -9,6 +9,9 @@
 
 set -Eeuo pipefail
 
+# shellcheck source=scripts/lib/ci-runner.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/ci-runner.sh"
+
 readonly DOCS_DIR="docs"
 readonly REFERENCE_DIR="${DOCS_DIR}/reference"
 readonly LANDING_PAGE="${DOCS_DIR}/index.md"
@@ -48,7 +51,7 @@ function ensure_shdoc_plugin_installed() {
         return
     fi
 
-    if [[ "${CI:-}" == "true" ]]; then
+    if is_ci_runner; then
         printf 'info: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n' >&2
         return
     fi

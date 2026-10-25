@@ -150,13 +150,13 @@ class GhAuthTest(unittest.TestCase):
         self.assertIn('gh is not installed; install it, then run "make gh-auth"', result.stderr)
 
     def test_setup_skips_the_login_in_ci_without_calling_gh(self) -> None:
-        # The public-bootstrap CI jobs run setup.sh with CI=true and no terminal: nothing may prompt.
+        # The public-bootstrap jobs run setup.sh on a GitHub Actions runner with no terminal: nothing may prompt.
         self.install_setup_copy()
 
         result = self.run_command(
             ["bash", "-c", f'source "{ROOT}/setup.sh"; authenticate_github'],
             subprocess.DEVNULL,
-            {**self.env, "CI": "true"},
+            {**self.env, "GITHUB_ACTIONS": "true", "RUNNER_TEMP": str(self.home)},
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)

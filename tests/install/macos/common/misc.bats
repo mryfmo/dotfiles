@@ -49,7 +49,7 @@ function setup() {
     local calls_path="${BATS_TEST_TMPDIR}/brew_calls.txt"
     : > "${calls_path}"
 
-    run env CALLS_PATH="${calls_path}" CI=false bash -c '
+    run env -u GITHUB_ACTIONS -u RUNNER_TEMP CALLS_PATH="${calls_path}" bash -c '
         source "'"${SCRIPT_PATH}"'"
 
         whoami() {

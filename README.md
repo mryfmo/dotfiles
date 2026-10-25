@@ -41,7 +41,7 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on MacOS Client machine](.github/screenshot-macos-client.png)
 
-On CI runners (`CI=true`), the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; outside CI it leaves your taps alone.
+On a GitHub Actions runner, the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; anywhere else, an agent shell that exports `CI=true` included, it leaves your taps alone.
 
 ### 🖥️ `Ubuntu` [![Ubuntu](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml)
 
@@ -290,12 +290,28 @@ changes reach the host only through a merged pull request; git-ignored untracked
 files are not checked. `make update` then runs `scripts/upgrade-tools.sh`, which
 installs missing mise tools and upgrades outdated ones from the applied
 `~/.config/mise/config.toml`, then Homebrew packages, uv tools and GitHub CLI
-extensions (apt with `SYSTEM=1`); it exits 0 without changes when `CI=true`.
+extensions (apt with `SYSTEM=1`); it exits 0 without changes on a GitHub Actions
+runner.
 The network-only phases (Homebrew, `mise self-update`, uv tools, GitHub CLI
 extensions) only warn when they fail, so an offline host with its tools
 installed still converges; `make update` stops before the asset refresh only
 when a declared mise tool cannot be installed, or apt fails with `SYSTEM=1`.
 `make apply` is the same target.
+Every CI-only path (the guard skip above, `brew info` instead of `brew install`
+in the macOS installers, the runner's tap trust, the `upgrade-tools.sh` skip,
+the chezmoi config without age encryption) is taken only on a GitHub Actions
+runner: `GITHUB_ACTIONS=true` with `RUNNER_TEMP` set, as decided by
+`scripts/lib/ci-runner.sh`, never by `CI`. An agent shell does not count: omp's
+bash tool exports `CI=true`, `npm_config_yes=true`, `GIT_EDITOR=true` (and
+`EDITOR`/`VISUAL=true`) and `GIT_TERMINAL_PROMPT=0` into every command, so
+`make update` or `chezmoi apply` run from it behaves as on the host. The other
+variables change nothing these targets do: none runs `npx` or `npm exec`, the
+pull is `--ff-only`, and a fetch that would need credentials fails instead of
+prompting, which `make update` reports and continues with the local source.
+`chezmoi apply` retries what an apply without a terminal could not finish: the
+age identity restore asks for its passphrase on the next interactive apply, and
+on Ubuntu the bwrap AppArmor profile installs on the next apply with cached
+`sudo`.
 The asset refresh also converges configured GitHub CLI extensions, and syncs the
 vendored CompactionDB tree. It then reloads a
 running Herdr server, skips reload
@@ -441,9 +457,12 @@ probes `bwrap` to confirm it works. Without cached sudo credentials the
 installer never prompts: it leaves the profile pending, and `make doctor`
 reports it missing. Install it with
 `sudo -v && bash install/ubuntu/common/apparmor_userns.sh` from the repository
-root; `make update` does not retry it. To remove it, run
+root, or run `sudo -v` before the next `make update`: every `chezmoi apply`
+loads it again until the installed copy equals the repository's and `bwrap`
+can create a user namespace (the `make doctor` probe). To remove it, run
 `sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns` and then
-`sudo rm /etc/apparmor.d/bwrap-userns`.
+`sudo rm /etc/apparmor.d/bwrap-userns`; a later apply with cached `sudo` installs
+it again while the host still needs it.
 
 `permgate` handles Claude Code and Codex PermissionRequest hooks from the
 repo-owned policy at `~/.agents/permgate-policy.yaml` and is deterministic

@@ -3,11 +3,13 @@
 # @file install/ubuntu/common/apparmor_userns.sh
 # @brief Install the AppArmor profile that lets bwrap create user namespaces.
 # @description
-#   Copies install/ubuntu/common/apparmor/bwrap-userns to /etc/apparmor.d and
-#   loads it with apparmor_parser, so sandboxed Codex runs keep working under
+#   Loads install/ubuntu/common/apparmor/bwrap-userns with apparmor_parser and
+#   copies it to /etc/apparmor.d, so sandboxed Codex runs keep working under
 #   kernel.apparmor_restrict_unprivileged_userns=1. It is a no-op when the
-#   restriction is off or absent, or when apparmor_parser or /usr/bin/bwrap is
-#   missing. The global sysctl is never changed.
+#   restriction is off or absent, when apparmor_parser or /usr/bin/bwrap is
+#   missing, or when the installed copy equals the source and bwrap can already
+#   create a user namespace (the profile is loaded). The global sysctl is never
+#   changed.
 #   Remove with: sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns &&
 #   sudo rm /etc/apparmor.d/bwrap-userns
 
@@ -59,34 +61,49 @@ function skip_reason() {
 }
 
 #
-# @description Copy the profile into place and (re)load it; both steps are idempotent.
+# @description Load the profile, then copy it into place; both steps are idempotent.
 #   Never prompts: without cached sudo credentials it leaves the profile pending.
 # @exitcode 0 Profile loaded, or left pending without cached sudo credentials.
 # @stderr Pending notice with the manual remedy when sudo would prompt.
 #
 function install_profile() {
-    local source
+    local source="$1"
     sudo -n true 2> /dev/null || {
-        echo "apparmor bwrap-userns profile pending: run 'sudo -v && bash install/ubuntu/common/apparmor_userns.sh'" >&2
+        echo "apparmor bwrap-userns profile pending: run 'sudo -v && bash install/ubuntu/common/apparmor_userns.sh', or cache sudo before the next chezmoi apply, which retries" >&2
         return 0
     }
-    source="$(profile_source)"
+    sudo -n apparmor_parser -r "${source}"
     sudo -n install -m 0644 "${source}" "${PROFILE_TARGET}"
-    sudo -n apparmor_parser -r "${PROFILE_TARGET}"
     printf 'Loaded AppArmor profile bwrap-userns from %s.\n' "${PROFILE_TARGET}"
 }
 
 #
-# @description Install the bwrap user-namespace profile when the host needs it.
+# @description Succeed when bwrap can create a user namespace, the effect the loaded profile
+#   grants; the same unprivileged probe `make doctor` runs. A profile file in /etc/apparmor.d
+#   proves nothing: a copy whose load failed sits there unloaded.
+#
+function profile_is_effective() {
+    "${BWRAP_PATH}" --ro-bind / / true > /dev/null 2>&1
+}
+
+#
+# @description Install the bwrap user-namespace profile when the host needs it, unless the
+#   installed copy equals the source and bwrap already works under it. chezmoi runs this on every
+#   apply (run_after_), so a pending or failed install is retried without the operator
+#   remembering it; a working host costs one cmp and one bwrap probe.
 #
 function main() {
-    local reason
+    local reason source
     reason="$(skip_reason)" || return 1
     if [ -n "${reason}" ]; then
         printf 'Skipping bwrap AppArmor userns profile: %s.\n' "${reason}"
         return 0
     fi
-    install_profile
+    source="$(profile_source)"
+    if cmp -s "${source}" "${PROFILE_TARGET}" && profile_is_effective; then
+        return 0
+    fi
+    install_profile "${source}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

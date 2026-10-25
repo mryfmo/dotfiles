@@ -833,8 +833,8 @@ class GithubReleaseTest(unittest.TestCase):
                 "PATH": f"{self.bin_dir}:/usr/bin:/bin",
                 "HOME": str(home),
                 "TMPDIR": str(self.temp_dir / "tmp"),
-                # setup.sh applies in CI only under RUNNER_TEMP.
-                "CI": "true",
+                # setup.sh applies on a GitHub Actions runner only under RUNNER_TEMP.
+                "GITHUB_ACTIONS": "true",
                 "RUNNER_TEMP": str(self.temp_dir),
             },
             text=True,

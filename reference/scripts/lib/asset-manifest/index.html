@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.57a0d79d.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -4883,7 +4883,7 @@
 
 
 <h1 id="scriptslibasset-manifestsh">scripts/lib/asset-manifest.sh<a class="headerlink" href="#scriptslibasset-manifestsh" title="Permanent link">&para;</a></h1>
-<p>list cannot be read or does not name it: the manifest records what it could not read as such.</p>
+<p>cannot be read or does not name it.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/lib/asset-manifest.sh</code></li>
@@ -4895,7 +4895,6 @@
 <li><code>_manifest_prune_retired</code></li>
 <li><code>_manifest_record</code></li>
 <li><code>manifest_brew_formula_version</code></li>
-<li><code>manifest_claude_plugin_version</code></li>
 <li><code>manifest_codex_plugin_version</code></li>
 <li><code>manifest_prune_retired</code></li>
 <li><code>manifest_record</code></li>
@@ -4905,23 +4904,6 @@
 
 <span class="c1"># @file scripts/lib/asset-manifest.sh</span>
 <span class="c1"># @brief Record installed agent assets in a private atomic JSON manifest.</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Return the installed version of a Claude Code plugin, or `unknown` when the plugin</span>
-<span class="c1">#   list cannot be read or does not name it: the manifest records what it could not read as such.</span>
-<span class="c1"># @arg $1 string Fully qualified Claude Code plugin ID.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>manifest_claude_plugin_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>version
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'first(.[] | select(.id == $id) | .version)'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unknown\n'</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Return the installed version of a Codex plugin, or `unknown` when the plugin list</span>
@@ -5043,20 +5025,23 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Record one install step without propagating manifest failures.</span>
+<span class="c1"># @description Record one install step in the manifest (an atomic replace: a temporary file, then mv) and</span>
+<span class="c1">#   return the write's real status, so a step whose record was not written fails like any other failure of it</span>
+<span class="c1">#   (make doctor reads this manifest; a missing or stale record is not a recorded install).</span>
 <span class="c1"># @arg $1 string Install step name.</span>
 <span class="c1"># @arg $2 string Asset kind.</span>
 <span class="c1"># @arg $3 string Installed source version.</span>
 <span class="c1"># @arg $@ string Absolute paths followed by an optional `--` and command lines.</span>
-<span class="c1"># @stderr Prints one warning line when recording fails.</span>
+<span class="c1"># @stderr Prints one error line when recording fails.</span>
+<span class="c1"># @exitcode 1 When the record was not written; the manifest is then left as it was.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>manifest_record<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">step</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>_manifest_record<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: failed to record asset manifest step %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: failed to record asset manifest step %s in ~/.agents/.installed-manifest.json\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5166,10 +5151,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

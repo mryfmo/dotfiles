@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.57a0d79d.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -4883,7 +4883,7 @@
 
 
 <h1 id="installcommongh_extensionssh">install/common/gh_extensions.sh<a class="headerlink" href="#installcommongh_extensionssh" title="Permanent link">&para;</a></h1>
-<p>Activates <code>mise</code> when available and installs the configured <code>gh</code> extensions only when GitHub CLI is already authenticated.</p>
+<p>Activates <code>mise</code> when available and installs the configured <code>gh</code> extensions at their reviewed tags, only when GitHub CLI is already authenticated. An extension at another tag is reinstalled at the pin.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/gh_extensions.sh</code></li>
@@ -4893,8 +4893,11 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>activate_mise</code></li>
+<li><code>gh_extension_state</code></li>
 <li><code>install_gh_extensions</code></li>
 <li><code>main</code></li>
+<li><code>pin_records_path</code></li>
+<li><code>replace_gh_extension</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4903,7 +4906,8 @@
 <span class="c1"># @brief Install GitHub CLI extensions used by the dotfiles.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Activates `mise` when available and installs the configured `gh`</span>
-<span class="c1">#   extensions only when GitHub CLI is already authenticated.</span>
+<span class="c1">#   extensions at their reviewed tags, only when GitHub CLI is already</span>
+<span class="c1">#   authenticated. An extension at another tag is reinstalled at the pin.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4913,8 +4917,11 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise"</span>
 
+<span class="c1"># Rendered from assets.gh-extensions in home/dot_agents/agent-config.yaml; change the pin there.</span>
+<span class="nv">GH_POI_PIN_VERSION</span><span class="o">=</span><span class="s2">"v0.18.5"</span>
+
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">GH_EXTENSIONS</span><span class="o">=(</span>
-<span class="w">    </span>seachicken/gh-poi
+<span class="w">    </span><span class="s2">"seachicken/gh-poi=</span><span class="si">${</span><span class="nv">GH_POI_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">)</span>
 
 <span class="c1">#</span>
@@ -4932,20 +4939,121 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install every configured extension, or skip when unauthenticated.</span>
+<span class="c1"># @description Print the path of scripts/pin_records.py, the strict reader of gh's extension manifest: from</span>
+<span class="c1">#   the dotfiles checkout (update-agent-assets.sh), chezmoi's source directory (the run_once script), or this</span>
+<span class="c1">#   file's own repository.</span>
+<span class="c1"># @exitcode 1 When none of them holds it.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>pin_records_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>root
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>root<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_REPO_SOURCE_DIR</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHEZMOI_SOURCE_DIR</span><span class="p">:+</span><span class="si">${</span><span class="nv">CHEZMOI_SOURCE_DIR</span><span class="si">}</span><span class="p">/..</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/../.."</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/scripts/pin_records.py"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/scripts/pin_records.py"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print gh's record of an installed extension as `&lt;tag&gt; &lt;pinned&gt;`, or `absent`.</span>
+<span class="c1"># @arg $1 string Extension repository, for example seachicken/gh-poi.</span>
+<span class="c1"># @exitcode 2 When the record cannot be read, has an unknown shape, or names another owner (a fork):</span>
+<span class="c1">#   such a copy cannot be verified, so the caller reinstalls it pinned.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>gh_extension_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>reader<span class="w"> </span>gh_dir
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">reader</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>pin_records_path<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="nv">gh_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reader</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>agent-home<span class="w"> </span>gh<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Cannot find scripts/pin_records.py or the gh data directory; cannot verify %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reader</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh-extension<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gh_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install one extension pinned at its tag without losing the copy it replaces.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   The installed copy (gh's directory for it) is moved aside under the gh extensions directory with a</span>
+<span class="c1">#   dot name, which `gh extension list` does not read as an extension; the pinned copy is installed;</span>
+<span class="c1">#   on success the old copy is deleted, on failure the partial install is removed and the old copy put</span>
+<span class="c1">#   back, so a failed install never leaves the extension missing.</span>
+<span class="c1"># @arg $1 string Extension repository, for example seachicken/gh-poi.</span>
+<span class="c1"># @arg $2 string Pinned tag.</span>
+<span class="c1"># @exitcode 1 When the pinned install fails (the previous copy is restored) or the old copy cannot be moved.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>replace_gh_extension<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">extension</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>reader<span class="w"> </span>gh_dir<span class="w"> </span>root<span class="w"> </span>current<span class="w"> </span>previous
+
+<span class="w">    </span><span class="c1"># Its name becomes a directory under gh's extensions directory that is moved and removed: one strict</span>
+<span class="w">    </span><span class="c1"># component only (pin_records.py COMPONENT), never empty, `.`, `..` or another path.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>A-Za-z0-9<span class="o">][</span>A-Za-z0-9._-<span class="o">]</span>*/<span class="o">[</span>A-Za-z0-9<span class="o">][</span>A-Za-z0-9._-<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s is not &lt;owner&gt;/&lt;repository&gt;; nothing was changed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># gh's extension directory, resolved as make doctor resolves it (pin_records.py agent-home gh).</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">reader</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>pin_records_path<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="nv">gh_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reader</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>agent-home<span class="w"> </span>gh<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Cannot resolve the gh extension directory; %s was not changed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">gh_dir</span><span class="si">}</span><span class="s2">/extensions"</span>
+<span class="w">    </span><span class="nv">current</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">1</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">previous</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/.</span><span class="si">${</span><span class="nv">1</span><span class="p">##*/</span><span class="si">}</span><span class="s2">.previous"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Cannot move %s aside; %s was not changed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>gh<span class="w"> </span>extension<span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pin<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'gh extension install %s --pin %s failed; restoring the previous copy.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">previous</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install every configured extension pinned at its tag, or skip when unauthenticated.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   An extension at its tag and pinned is left alone; one at another tag, or installed unpinned (an earlier</span>
+<span class="c1">#   plain install, which `gh extension upgrade` could move), is installed again with --pin, keeping the old</span>
+<span class="c1">#   copy until the new one is in place (replace_gh_extension).</span>
+<span class="c1"># @exitcode 1 When `gh extension list` fails (an unreadable list is never read as "not installed") or a</span>
+<span class="c1">#   pinned install fails; every other extension is still processed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>entry<span class="w"> </span>extension<span class="w"> </span>pin<span class="w"> </span>listing<span class="w"> </span>installed<span class="w"> </span>state<span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>extension<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_EXTENSIONS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>gh<span class="w"> </span>extension<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$2 == expected { found = 1 } END { exit !found }'</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>extension<span class="w"> </span>list<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'gh extension list failed; gh extensions were not changed.'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>entry<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_EXTENSIONS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">extension</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="p">%=*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="p">##*=</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$2 == expected { print $3; exit }'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="c1"># gh's own record decides, read strictly; one it cannot verify (unreadable, foreign) is reinstalled.</span>
+<span class="w">        </span><span class="nv">state</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh_extension_state<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">state</span><span class="o">=</span><span class="s2">"unverifiable"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2"> true"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span>gh<span class="w"> </span>extension<span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"absent"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s is %s (listed at %s); reinstalling it pinned at %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="k">:-</span><span class="nv">no</span><span class="p"> tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>replace_gh_extension<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5015,10 +5123,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

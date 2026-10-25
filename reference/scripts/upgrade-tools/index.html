@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.57a0d79d.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -4881,7 +4881,7 @@
 
 
 <h1 id="scriptsupgrade-toolssh">scripts/upgrade-tools.sh<a class="headerlink" href="#scriptsupgrade-toolssh" title="Permanent link">&para;</a></h1>
-<p>Each manager's own safety features decide what the latest safe version is: mise's minimum_release_age and verification settings in the applied ~/.config/mise/config.toml, and a manager's own hold (an exact version in that config, brew pin, uv tool install <pkg>==<version>, apt-mark hold). The default mode updates user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. The network-only phases (Homebrew, mise self-update, uv tools, gh extensions) only warn when they fail, so an offline host still converges; installing the declared mise tools stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.</p>
+<p>Each manager's own safety features decide what the latest safe version is: mise's minimum_release_age and verification settings in the applied ~/.config/mise/config.toml, and a manager's own hold (an exact version in that config, brew pin, uv tool install <pkg>==<version>, apt-mark hold). The default mode updates user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. The network-only phases (Homebrew, mise self-update, uv tools, unpinned gh extensions) only warn when they fail, so an offline host still converges; installing the declared mise tools stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/upgrade-tools.sh</code></li>
@@ -4892,11 +4892,13 @@
 <ul>
 <li><code>current_mise_tools</code></li>
 <li><code>has_command</code></li>
+<li><code>held_mise_tools</code></li>
 <li><code>is_forbidden_homebrew_formula</code></li>
 <li><code>is_linux</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>manifest_wheel_pin</code></li>
+<li><code>mise_tool_is_held</code></li>
 <li><code>parse_args</code></li>
 <li><code>rebuild_mise_npm_tool</code></li>
 <li><code>reinstall_mise_npm_tools</code></li>
@@ -4927,7 +4929,7 @@
 <span class="c1">#   The default mode updates user-level tooling and Homebrew-managed packages</span>
 <span class="c1">#   when those managers are available. Pass `--system` to include</span>
 <span class="c1">#   operating-system package upgrades such as apt. The network-only phases</span>
-<span class="c1">#   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they</span>
+<span class="c1">#   (Homebrew, mise self-update, uv tools, unpinned gh extensions) only warn when they</span>
 <span class="c1">#   fail, so an offline host still converges; installing the declared mise tools</span>
 <span class="c1">#   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes</span>
 <span class="c1">#   on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.</span>
@@ -5161,7 +5163,33 @@
 <span class="c1"># @stdout One tool name per line.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>current_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>run_mise_with_isolated_git_config<span class="w"> </span>ls<span class="w"> </span>--current<span class="w"> </span>--no-header<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{print $1}'</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing
+
+<span class="w">    </span><span class="c1"># Captured first: a failed `mise ls` is a failure of the inventory, never an empty one.</span>
+<span class="w">    </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>run_mise_with_isolated_git_config<span class="w"> </span>ls<span class="w"> </span>--current<span class="w"> </span>--no-header<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>awk<span class="w"> </span><span class="s1">'{print $1}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the tools the applied mise config holds, one per line: an entry whose comment block</span>
+<span class="c1">#   directly above it says "Held" (home/dot_mise/config.toml keeps every hold reason there). The config is</span>
+<span class="c1">#   the one source, so a hold released there leaves no skip behind here. scripts/pin_records.py reads it</span>
+<span class="c1">#   strictly: the config must be valid TOML and every Held entry a tool.</span>
+<span class="c1"># @exitcode 2 When the applied config cannot be read or a Held comment names no tool.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>held_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/pin_records.py"</span><span class="w"> </span>mise-holds<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="si">}</span><span class="s2">/config.toml"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Ask scripts/pin_records.py whether the applied mise config holds one tool.</span>
+<span class="c1"># @arg $1 string mise tool name.</span>
+<span class="c1"># @exitcode 0 Held.</span>
+<span class="c1"># @exitcode 1 Not held.</span>
+<span class="c1"># @exitcode 2 The config cannot be read or has an unknown shape: never read as "not held".</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>mise_tool_is_held<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/pin_records.py"</span><span class="w"> </span>is-held<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5174,10 +5202,16 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_command</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tool
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tools
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>held
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">mise_tools</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>current_mise_tools<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to list current mise tools for %s; continuing\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># Read once up front, so an unreadable config stops the phase before any tool moves.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>held_mise_tools<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to read the held tools from %s/config.toml; no mise tool was upgraded\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 
@@ -5190,10 +5224,14 @@
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping mise upgrade for pinned HTTP tool: %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span><span class="c1"># ponytail: keep fd pinned until upstream publishes macOS x64 assets again.</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"fd"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'</span>
+<span class="w">        </span><span class="nv">held</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span>mise_tool_is_held<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">held</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">held</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping mise upgrade for held tool: %s (see its Held comment in the mise config).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">held</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: cannot tell whether %s is held; no further mise tool was upgraded\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="c1"># A plain upgrade keeps the config's "latest" or exact request as written.</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>run_mise_with_isolated_git_config<span class="w"> </span>upgrade<span class="w"> </span>--yes<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -5391,15 +5429,41 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Upgrade GitHub CLI extensions when gh is available.</span>
+<span class="c1"># @description Upgrade the GitHub CLI extensions this repository does not pin, one by one, when gh is available.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   An extension recorded in scripts/plugin-pins.json (assets.gh-extensions) stays at its reviewed tag:</span>
+<span class="c1">#   install/common/gh_extensions.sh installs it with --pin, and no blanket `gh extension upgrade --all` runs.</span>
+<span class="c1"># @exitcode 1 When the pins or the extension list cannot be read (nothing is upgraded), or an upgrade fails.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>repository<span class="w"> </span>pinned<span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>gh<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub CLI extensions"</span>
-<span class="w">    </span>gh<span class="w"> </span>extension<span class="w"> </span>upgrade<span class="w"> </span>--all
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>extension<span class="w"> </span>list<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: gh extension list failed; no extension was upgraded\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>_<span class="w"> </span>repository<span class="w"> </span>_<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repository</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="c1"># pin_records.py answers exit 0 pinned, 1 not pinned; anything else (unreadable pins, a row that is not</span>
+<span class="w">        </span><span class="c1"># &lt;owner&gt;/&lt;name&gt;) is a failure, and the extension is not upgraded.</span>
+<span class="w">        </span><span class="nv">pinned</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/pin_records.py"</span><span class="w"> </span>is-pinned-extension<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/plugin-pins.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repository</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">pinned</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pinned</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping gh extension %s: pinned in assets.gh-extensions.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repository</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pinned</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: cannot tell whether gh extension %s is pinned; it was not upgraded\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repository</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>gh<span class="w"> </span>extension<span class="w"> </span>upgrade<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repository</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5530,10 +5594,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

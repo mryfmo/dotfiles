@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.57a0d79d.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -4926,7 +4926,7 @@ The site is rebuilt from tracked shell sources every time.
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
 - `mkdocs-toc-md` writes the full navigation tree to [catalog/](catalog/)
-- `uv run --with` keeps the MkDocs toolchain ephemeral
+- `uv run --with-requirements` keeps the MkDocs toolchain ephemeral, at the exact versions in `scripts/mkdocs-requirements.txt`
 
 </div>
 <div class="landing-card" markdown="1">
@@ -4981,7 +4981,7 @@ _29 documented entries_
 - [`install/common/aws_cli.sh`](reference/install/common/aws_cli.md): On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the XDG roots; ...
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
 - [`install/common/credential_dirs.sh`](reference/install/common/credential_dirs.md): Ubuntu's default umask 002 creates directories group-writable, so gh, age, the AWS CLI and `chezmoi init` leave their...
-- [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions only when GitHub CLI is already authentic...
+- [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions at their reviewed tags, only when GitHub ...
 - [`install/common/mise.sh`](reference/install/common/mise.md): Nothing runs before a check independent of the release page passes. With gpg and gpgv (the release key's signature on...
 - [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the newest crates.io release with its packaged Cargo.lock; cargo checks the crate against the registry index c...
 
@@ -5112,10 +5112,10 @@ _1 documented entries_
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.top", "content.code.copy"], "search": "assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.top", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

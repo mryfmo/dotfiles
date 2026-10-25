@@ -36,6 +36,18 @@ MULTILINE_PROFILE = (
 )
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class CodexConfigMergeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory(prefix="codex-config-merge-test-")

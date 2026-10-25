@@ -22,6 +22,18 @@ CHECKER = ROOT / "scripts/check-agent-runtime.py"
 VERSION = "2.9.7"
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class UnderstandAnythingCoreBuildTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="ua-core-build-test-"))
@@ -69,7 +81,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         )
 
     def provision(self) -> subprocess.CompletedProcess[str]:
-        env = {"HOME": str(self.home), "PATH": str(self.bin)}
+        env = scratch_env(self.home) | {"PATH": str(self.bin)}
         return subprocess.run(
             [
                 "/bin/bash",

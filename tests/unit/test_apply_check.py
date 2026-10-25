@@ -24,6 +24,20 @@ CHEZMOI = shutil.which("chezmoi")
 STEP_CREDENTIAL = "credential-of-the-ci-step"
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def published_hours_ago(hours: float) -> str:
     moment = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")

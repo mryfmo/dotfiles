@@ -53,6 +53,18 @@ with open(os.environ["CALLS"], "a") as log:
 """
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class UpdateAgentAssetsTest(unittest.TestCase):
     def exercise_update(self, tool, platform="Linux/x86_64", *, unsupported=False, shadow_version=None):
         with tempfile.TemporaryDirectory() as directory:
@@ -442,7 +454,7 @@ class ProducerFailureTest(unittest.TestCase):
     def run_updater(self, body, home, **env):
         return subprocess.run(
             ["bash", "-c", 'source "$1"; ' + body, "bash", str(UPDATER)],
-            env=os.environ | {"HOME": str(home), "CALLS": str(home / "calls")} | env,
+            env=os.environ | scratch_env(home) | {"CALLS": str(home / "calls")} | env,
             capture_output=True,
             text=True,
             timeout=30,
@@ -599,7 +611,7 @@ claude() {
                 "bash",
                 str(UPDATER),
             ],
-            env=os.environ | {name: "" for name in variables} | {"WORK": str(work), "HOME": str(home)} | flags,
+            env=os.environ | {name: "" for name in variables} | scratch_env(home) | {"WORK": str(work)} | flags,
             cwd=project_dir if cwd == "project" else work,  # lint-comparisons: allow cwd is a mode keyword, not a path
             text=True,
             capture_output=True,
@@ -760,7 +772,7 @@ claude() {
                 "bash",
                 str(UPDATER),
             ],
-            env=os.environ | {"WORK": str(work), "HOME": str(work / "home"), "CODEX_HOME": ""},
+            env=os.environ | scratch_env(work / "home") | {"WORK": str(work)},
             text=True,
             capture_output=True,
             check=False,
@@ -953,10 +965,10 @@ claude() {
                 str(ROOT / "install/common/gh_extensions.sh"),
             ],
             env=os.environ
+            | scratch_env(work / "home", XDG_DATA_HOME=str(work / "data"))
             | {
                 "WORK": str(work),
                 "TAG": tag,
-                "XDG_DATA_HOME": str(work / "data"),
                 "INSTALL_FAILS": "1" if install_fails else "",
             },
             text=True,
@@ -1047,7 +1059,7 @@ class MaskedStatusTest(unittest.TestCase):
         )
         result = subprocess.run(
             ["bash", "-c", f'source "$1"; {fake}\nensure_codex_ponytail_marketplace', "bash", str(UPDATER)],
-            env=os.environ | {"WORK": str(work), "HOME": str(work / "home"), "CODEX_HOME": ""},
+            env=os.environ | scratch_env(work / "home") | {"WORK": str(work)},
             text=True,
             capture_output=True,
             check=False,

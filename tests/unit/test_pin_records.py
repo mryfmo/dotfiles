@@ -21,6 +21,18 @@ MODIFY = ROOT / "home/dot_codex/modify_private_config.toml"
 COMMIT = "a" * 40
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class PinRecordsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = Path(tempfile.mkdtemp(prefix="pin-records-"))

@@ -19,6 +19,20 @@ STARSHIP_PIN = re.search(
 ).group(1)
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class SupplyChainPolicyTest(unittest.TestCase):
     def test_installer_cleanup_survives_mock_function_returns(self):
         cases = {

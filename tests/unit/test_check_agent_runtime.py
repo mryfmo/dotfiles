@@ -21,6 +21,18 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECKER = ROOT / "scripts/check-agent-runtime.py"
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class CheckAgentRuntimeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="check-agent-runtime-test-"))
@@ -1404,12 +1416,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             f"path: {extension / 'gh-tool'}\n"
         )
 
-    AGENT_HOME_VARIABLES = ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "GH_DATA_DIR", "XDG_DATA_HOME")
-
     def plugin_findings(self, pins: Path, **env: str) -> list[str]:
-        # The host's own agent-home variables never take part; ENV sets one for a test.
-        clear = dict.fromkeys(self.AGENT_HOME_VARIABLES, "")
-        with mock.patch.dict(os.environ, {**clear, **env}):
+        # The host's own agent-home variables never take part: all six point under the fixture; ENV moves one.
+        with mock.patch.dict(os.environ, scratch_env(self.target_root, **env)):
             return self.module.plugin_pin_findings(self.target_root, pins)
 
     def test_doctor_fails_on_every_plugin_and_extension_off_its_recorded_pin(self) -> None:

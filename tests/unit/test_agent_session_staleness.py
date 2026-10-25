@@ -27,6 +27,18 @@ MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
 MANAGED_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def load_script():
     loader = SourceFileLoader("agent_session_staleness", str(SCRIPT))
     spec = importlib.util.spec_from_loader(loader.name, loader)

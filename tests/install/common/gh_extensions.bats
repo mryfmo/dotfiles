@@ -2,9 +2,22 @@
 
 readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 
-@test "[common] gh_extensions installs extensions when authenticated" {
-    # No installed copy: the host's own gh extensions never take part.
+#
+# @description Point every directory agent_home and gh resolve into this test's scratch tree. GH_DATA_DIR beats
+#   XDG_DATA_HOME, so an inherited one would let a fake install move or delete the operator's real extensions.
+#
+setup() {
+    export HOME="${BATS_TEST_TMPDIR}/home"
     export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
+    export GH_DATA_DIR="${XDG_DATA_HOME}/gh"
+    export GH_CONFIG_DIR="${HOME}/.config/gh"
+    export CLAUDE_CONFIG_DIR="${HOME}/.claude"
+    export CODEX_HOME="${HOME}/.codex"
+    mkdir -p "${HOME}"
+}
+
+@test "[common] gh_extensions installs extensions when authenticated" {
+    # No installed copy: setup points GH_DATA_DIR into the scratch tree.
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }

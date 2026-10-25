@@ -17,6 +17,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import complete_env, isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def install_pinned_claude_plugins(home: Path) -> None:
     """A host whose Claude Code runs every pinned plugin at its pin (installed_plugins.json, the file the
     updater reads), so the plugin convergence has nothing to change."""
@@ -70,7 +84,7 @@ class RuntimeHealthTest(unittest.TestCase):
         return subprocess.run(
             command,
             cwd=cwd,
-            env=env,
+            env=complete_env(os.environ if env is None else env),
             text=True,
             capture_output=True,
             check=check,

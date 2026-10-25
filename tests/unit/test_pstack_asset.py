@@ -38,6 +38,20 @@ PSTACK_SKILLS_AT_PIN = frozenset(
 )
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def chezmoi_template(expression: str) -> str:
     result = subprocess.run(
         [

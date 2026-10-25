@@ -19,6 +19,20 @@ UPDATER = ROOT / "scripts/update-agent-assets.sh"
 WRAPPER = ROOT / "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class AssetManifestTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="asset-manifest-test-"))

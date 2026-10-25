@@ -383,40 +383,23 @@ main
             packages = re.search(pattern, text, re.MULTILINE | re.DOTALL)
             self.assertIn("cmake", packages[1].split(), installer)
 
-    def test_npm_release_age_exclusion_is_only_the_rebuild_of_the_installed_version(self):
-        # U89: npm's release-age exclusion is set in one place, the node rebuild's install of the exact installed
-        # version (scripts/upgrade-tools.sh rebuild_mise_npm_tool; test_runtime_health shows what it names). No
-        # npmrc, installer or other script exempts a package from the window.
+    def test_no_package_is_exempt_from_the_npm_release_age_window(self):
+        # U89: npm matches min-release-age-exclude by package name, so any name it exempts also reaches versions no
+        # check saw (three audit rounds on PR #561). No tracked file sets or documents that exemption; the records
+        # under .orchestration/ and these tests only name it.
         tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
-        setting = re.compile(
-            r"npm_config_min_release_age_exclude=|min-release-age-exclude(\[\])?=|--min-release-age-exclude"
-        )
+        setting = re.compile(r"min[-_]release[-_]age[-_]exclude", re.IGNORECASE)
         hits = []
         for name in tracked.decode().split("\0"):
             path = ROOT / name
-            if not name or name.startswith(("tests/", ".orchestration/")) or name.endswith(".md") or not path.is_file():
+            if not name or name.startswith(("tests/", ".orchestration/")) or not path.is_file():
                 continue
             try:
-                lines = path.read_text().splitlines()
+                text = path.read_text()
             except UnicodeDecodeError:
                 continue
-            hits += [(name, number, line) for number, line in enumerate(lines) if setting.search(line)]
-        self.assertEqual(["scripts/upgrade-tools.sh"], [name for name, _, _ in hits])
-        _, number, line = hits[0]
-        script = (ROOT / "scripts/upgrade-tools.sh").read_text().splitlines()
-        self.assertEqual(
-            "        local -x npm_config_min_release_age_exclude=\"${exclusions//$'\\n'/$'\\n\\n'}\"", line
-        )
-        # Set only when exclusions is not empty, and the one command in its scope that runs npm is the install.
-        self.assertEqual('    if [ -n "${exclusions}" ]; then', script[number - 3])
-        self.assertEqual(
-            ["    fi", '    if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then'],
-            script[number + 1 : number + 3],
-        )
-        body = [text.strip() for text in script[number + 3 : script.index("}", number)]]
-        self.assertFalse(
-            [text for text in body if text.startswith(("mise ", "npm ", "run_mise_with_isolated_git_config"))]
-        )
+            hits += [name for line in text.splitlines() if setting.search(line)]
+        self.assertEqual([], hits)
 
     def test_mise_tools_track_latest_behind_the_cooldown(self):
         text = (ROOT / "home/dot_mise/config.toml").read_text()

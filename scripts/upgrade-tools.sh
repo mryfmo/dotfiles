@@ -325,34 +325,31 @@ function run_mise_tool_command() {
 }
 
 #
-# @description Print the npm package names a rebuild of one installed npm: tool may take past npm's own release-age
-#   window (min-release-age in ~/.npmrc), one per line: the package itself and each optional dependency its installed
-#   package.json pins to exactly the installed version and that is installed at that version beside it (the platform
-#   binary released with it, such as @anthropic-ai/claude-code-darwin-arm64). Those are the releases already on the
-#   host; every other dependency keeps the window. The installed copy is read strictly: it must be
-#   <install dir>/lib/node_modules/<package>/package.json naming that package at that exact version.
-#   npm applies the exclusion by registry name, so an npm: alias in the package's dependencies or optionalDependencies
-#   whose target is one of those names (as @openai/codex's platform builds alias @openai/codex@<version>-<platform>)
-#   would be exempt too. Each such alias must name one exact version that is installed beside the package under the
-#   alias (its package.json naming the target at that version); otherwise no package is exempt (exit 3).
-# @arg $1 string npm package name, for example @anthropic-ai/claude-code.
-# @arg $2 string The version mise reports as installed.
-# @arg $3 path The tool's install directory.
-# @stdout One package name per line.
-# @stderr The reason when the installed copy does not prove that exact version, or when no package may be exempt.
-# @exitcode 1 When the version is not one exact version, or an installed package.json cannot be read or names
-#   another package or version.
-# @exitcode 3 When an alias of an exempt name is not proven installed: the rebuild runs under the full window.
+# @description Decide whether npm's own release-age window (min-release-age, ~/.npmrc) lets npm install one exact
+#   version again, from the window npm reports and the version's publish time in the registry. The rebuild of an
+#   installed version asks this first, so a version younger than the window is skipped before its install is moved,
+#   instead of failing in npm (ETARGET) after it. Every read is strict: an answer that is not exactly what npm prints
+#   is "cannot tell", never "old enough".
+# @arg $1 string The version mise reports as installed: one SemVer 2.0.0 version without build metadata.
+# @arg $2 string `npm config get min-release-age` output: a number of days, or `null` when npm sets no window.
+# @stdin `npm view --json <package> time`: the registry's map of version to publish time.
+# @stdout The reason, when the version is not old enough or the answer cannot be told.
+# @exitcode 0 The version is at least min-release-age days old, or npm sets no window.
+# @exitcode 1 The version is younger than the window.
+# @exitcode 2 The version, the window or the publish time cannot be read.
 #
-function npm_rebuild_exclusions() {
-    python3 -I - "$@" << 'PY'
+function npm_release_age_verdict() {
+    # The program is read into a variable, so stdin stays npm view's answer; read -d '' ends with status 1 at the end
+    # of the here-document by design, so an empty program is the failure checked. (A here-document inside $(...)
+    # breaks bash 3.2, the /bin/bash of macOS.)
+    local code=""
+    IFS= read -r -d '' code << 'PY' || [ -n "${code}" ] || return 2
+import datetime
 import json
 import re
 import sys
 
-package, version, install_dir = sys.argv[1:]
-# An npm package name (lowercase, an optional scope) and one exact version: never a range or a tag.
-NAME = re.compile(r"(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*")
+version, age = sys.argv[1:]
 # The SemVer 2.0.0 regular expression, verbatim from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 # (ASCII digits only; fullmatch, so no trailing newline). npm reads anything else, such as 20.0.0-a..b, as a tag.
 SEMVER = re.compile(
@@ -361,93 +358,44 @@ SEMVER = re.compile(
     r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",
     re.ASCII,
 )
-# An npm alias spec, npm:<registry name>@<spec> (https://docs.npmjs.com/cli/v11/using-npm/package-spec#aliases).
-ALIAS = re.compile(rf"npm:({NAME.pattern})@(.*)", re.DOTALL)
+# The registry's publish times, as npm view prints them: UTC with optional fractional seconds.
+PUBLISHED = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?Z", re.ASCII)
 
 
-def exact(text):
-    """True for one exact version npm fetches as written: SemVer 2.0.0 without build metadata, which npm drops."""
-    match = SEMVER.fullmatch(text) if isinstance(text, str) else None
-    return match is not None and match.group(5) is None
+def cannot_tell(reason):
+    print(reason)
+    sys.exit(2)
 
 
-if not NAME.fullmatch(package):
-    sys.exit(f"{package!r} is not an npm package name")
-if not exact(version):
-    sys.exit(f"mise reports {version!r}, not one exact version")
-modules = f"{install_dir}/lib/node_modules"
-
-
-class Unproven(Exception):
-    pass
-
-
-def installed(path, name, at):
-    """The package.json at path, which must name name at version at; None only when the file is absent."""
-    try:
-        with open(path, encoding="utf-8") as handle:
-            manifest = json.load(handle)
-    except FileNotFoundError:
-        return None
-    except (OSError, ValueError) as error:
-        raise Unproven(f"cannot read the installed {path}: {error}") from error
-    if not isinstance(manifest, dict) or manifest.get("name") != name or manifest.get("version") != at:
-        raise Unproven(f"{path} does not name {name} at {at}")
-    return manifest
-
-
-def beside(directory, name, at):
-    """True when name is installed at version at under directory, nested under the package or hoisted beside it."""
-    nested = installed(f"{modules}/{package}/node_modules/{directory}/package.json", name, at)
-    return nested is not None or installed(f"{modules}/{directory}/package.json", name, at) is not None
-
-
+exact = SEMVER.fullmatch(version)
+# npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.
+if exact is None or exact.group(5) is not None:
+    cannot_tell(f"mise reports {version!r}, not one exact version")
+if age == "null":
+    sys.exit(0)
+if not re.fullmatch(r"(?:0|[1-9]\d{0,5})(?:\.\d{1,6})?", age, re.ASCII):
+    cannot_tell(f"npm config get min-release-age printed {age!r}, not a number of days")
 try:
-    manifest = installed(f"{modules}/{package}/package.json", package, version)
-    if manifest is None:
-        raise Unproven(f"{modules}/{package}/package.json is missing")
-    fields = {field: manifest.get(field, {}) for field in ("dependencies", "optionalDependencies")}
-    for field, entries in fields.items():
-        if not isinstance(entries, dict) or not all(isinstance(spec, str) for spec in entries.values()):
-            raise Unproven(f"{modules}/{package}/package.json: {field} is not an object of strings")
-    names = [package]
-    for name, spec in fields["optionalDependencies"].items():
-        if spec == version and NAME.fullmatch(name) and name not in names and beside(name, name, version):
-            names.append(name)
-except Unproven as error:
-    sys.exit(str(error))
-for field, entries in fields.items():
-    for key, spec in entries.items():
-        if not spec.startswith("npm:"):
-            continue
-        alias = ALIAS.fullmatch(spec)
-        try:
-            if alias is None:
-                raise Unproven(f"cannot read the alias {key}: {spec!r}")
-            target, at = alias.groups()
-            if target not in names:
-                continue
-            if not (NAME.fullmatch(key) and exact(at) and beside(key, target, at)):
-                raise Unproven(f"{field} alias {key} ({spec}) is not installed beside {package}")
-        except Unproven as error:
-            print(f"no package is exempt from min-release-age: {error}", file=sys.stderr)
-            sys.exit(3)
-print("\n".join(names))
+    times = json.load(sys.stdin)
+except ValueError:
+    cannot_tell("npm view printed no JSON publish times")
+published = times.get(version) if isinstance(times, dict) else None
+match = PUBLISHED.fullmatch(published) if isinstance(published, str) else None
+if match is None:
+    cannot_tell(f"npm view lists no publish time for {version}")
+try:
+    when = datetime.datetime(*map(int, match.groups()), tzinfo=datetime.timezone.utc)
+except ValueError:
+    cannot_tell(f"npm view lists {published!r} for {version}, not a date")
+clears = when + datetime.timedelta(days=float(age))
+if datetime.datetime.now(datetime.timezone.utc) < clears:
+    print(
+        f"{version} was published {when:%Y-%m-%dT%H:%MZ}, younger than npm's min-release-age of {age} days;"
+        f" it can be rebuilt from {clears:%Y-%m-%dT%H:%MZ}"
+    )
+    sys.exit(1)
 PY
-}
-
-#
-# @description Tell whether an npm version has min-release-age-exclude: npm 11.17.0 added it
-#   (https://github.com/npm/cli/releases/tag/v11.17.0, #9534). An older npm ignores the setting, so its rebuild is
-#   skipped rather than run without it.
-# @arg $1 string npm version, as `npm --version` prints it.
-# @exitcode 0 npm 11.17.0 or later.
-# @exitcode 1 An older npm.
-# @exitcode 2 Not a plain major.minor.patch version (no leading zero, at most nine digits each): never read as either.
-#
-function npm_has_release_age_exclude() {
-    [[ "$1" =~ ^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$ ]] || return 2
-    ((BASH_REMATCH[1] > 11 || (BASH_REMATCH[1] == 11 && BASH_REMATCH[2] >= 17))) || return 1
+    python3 -I -c "${code}" "$@"
 }
 
 #
@@ -464,20 +412,18 @@ function npm_rebuild_skipped() {
 # @description Rebuild one npm: tool on the current node, keeping its working install until the new one succeeds.
 #   mise install --force would delete the install before downloading its
 #   replacement, so a rebuild without a network would leave the tool missing.
-#   The rebuild reinstalls the exact version already installed. npm's min-release-age would refuse that version
-#   while it is younger than the window (ETARGET), although the host already runs it, so for this one command
-#   npm_config_min_release_age_exclude names that package and its same-version platform packages
-#   (npm_rebuild_exclusions); every other dependency still resolves under the window. A version the installed copy
-#   does not prove, an npm without the setting, or an install npm still refuses leaves the previous install. When an
-#   npm: alias of an exempt name is not proven installed (exit 3), no package is exempt and the rebuild runs under
-#   npm's full window, as every other install does.
+#   The rebuild reinstalls the exact version already installed, under npm's own min-release-age like every other
+#   install: no package is exempt from it. npm refuses a version younger than that window (ETARGET), although the
+#   host already runs it, so the rebuild first asks npm for the window and the version's publish time
+#   (npm_release_age_verdict) and skips a version that is younger, or whose age it cannot tell, before anything
+#   moves. An install npm still refuses (a dependency younger than the window) restores the previous install.
 # @arg $1 string mise npm tool name, for example npm:ccusage.
 # @stderr A skip line naming the reason when the tool is not rebuilt.
 # @exitcode 1 When the tool was not rebuilt.
 #
 function rebuild_mise_npm_tool() {
     local mise_tool="$1"
-    local version install_dir backup exclusions npm_version
+    local version install_dir backup min_age times verdict
 
     version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || {
         npm_rebuild_skipped "${mise_tool}" "mise cannot name its current version"
@@ -498,31 +444,20 @@ function rebuild_mise_npm_tool() {
         npm_rebuild_skipped "${mise_tool}" "${install_dir} is missing or a backup of it exists"
         return 1
     }
-    # Read before anything moves: the exclusion reaches only the version the installed copy proves.
-    local proven=0
-    exclusions="$(npm_rebuild_exclusions "${mise_tool#npm:}" "${version}" "${install_dir}")" || proven=$?
-    if [ "${proven}" -eq 3 ]; then
-        printf 'note: %s is rebuilt under the full npm min-release-age window (the reason is above)\n' "${mise_tool}" >&2
-        exclusions=""
-    elif [ "${proven}" -ne 0 ]; then
-        npm_rebuild_skipped "${mise_tool}" "its installed copy does not prove version ${version}"
+    # Decided before anything moves, with the npm that mise's npm backend runs (the current node's).
+    min_age="$(run_mise_with_isolated_git_config exec -- npm config get min-release-age)" || {
+        npm_rebuild_skipped "${mise_tool}" "npm config get min-release-age failed"
         return 1
-    fi
-    if [ -n "${exclusions}" ]; then
-        # The npm mise's npm backend runs: the current node's. A failed or unreadable answer skips before anything moves.
-        npm_version="$(run_mise_with_isolated_git_config exec -- npm --version)" || {
-            npm_rebuild_skipped "${mise_tool}" "npm --version failed"
-            return 1
-        }
-        local capable=0
-        npm_has_release_age_exclude "${npm_version}" || capable=$?
-        if [ "${capable}" -eq 1 ]; then
-            npm_rebuild_skipped "${mise_tool}" "npm ${npm_version} predates min-release-age-exclude (npm 11.17.0)"
-            return 1
-        elif [ "${capable}" -ne 0 ]; then
-            npm_rebuild_skipped "${mise_tool}" "npm --version printed no major.minor.patch version"
-            return 1
-        fi
+    }
+    times="$(run_mise_with_isolated_git_config exec -- npm view --json "${mise_tool#npm:}" time)" || {
+        npm_rebuild_skipped "${mise_tool}" "npm view cannot read the publish time of ${version}"
+        return 1
+    }
+    local age_status=0
+    verdict="$(npm_release_age_verdict "${version}" "${min_age}" <<< "${times}")" || age_status=$?
+    if [ "${age_status}" -ne 0 ]; then
+        npm_rebuild_skipped "${mise_tool}" "${verdict:-its release age cannot be told}"
+        return 1
     fi
     mv "${install_dir}" "${backup}" || {
         npm_rebuild_skipped "${mise_tool}" "${install_dir} cannot be moved aside"
@@ -537,11 +472,6 @@ function rebuild_mise_npm_tool() {
     trap "${restore}; exit 143" TERM
     # shellcheck disable=SC2064
     trap "${restore}" EXIT
-    if [ -n "${exclusions}" ]; then
-        # Exported to the one install below only: npm reads a list setting from the environment as values separated
-        # by a blank line.
-        local -x npm_config_min_release_age_exclude="${exclusions//$'\n'/$'\n\n'}"
-    fi
     if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
         trap - INT TERM EXIT
         # Renamed before it is deleted, so a backup that cannot be fully deleted is never restored over this

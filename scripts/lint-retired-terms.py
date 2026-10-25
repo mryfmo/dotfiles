@@ -68,15 +68,20 @@ def parse_list(path: Path) -> dict[str, list[tuple[int, list[str]]]]:
 
 
 def git_paths(root: Path, *args: str) -> list[str]:
-    """Return the NUL-separated paths `git ls-files <args>` prints in root, refusing on a git failure."""
+    """Return the NUL-separated paths `git ls-files <args>` prints in root, refusing on a git failure.
+
+    git exits 0 while it warns that it could not open an untracked directory or lstat a tracked path, and the listing
+    then misses what it could not read, so any stderr output is a failure to check too, never a partial clean scan.
+    """
     try:
         run = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", *args], capture_output=True, check=False, timeout=60
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise Refusal(f"git ls-files {' '.join(args)} could not run: {error}") from error
-    if run.returncode != 0:
-        raise Refusal(f"git ls-files {' '.join(args)} exited {run.returncode}: {run.stderr.decode(errors='replace')}")
+    message = run.stderr.decode(errors="replace").strip()
+    if run.returncode != 0 or message:
+        raise Refusal(f"git ls-files {' '.join(args)} exited {run.returncode}: {message}")
     return [path for path in run.stdout.decode("utf-8", errors="surrogateescape").split("\0") if path]
 
 

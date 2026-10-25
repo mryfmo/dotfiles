@@ -197,7 +197,23 @@ class LintTest(unittest.TestCase):
         self.addCleanup(locked.chmod, 0o755)
         result = run_lint("--root", str(self.repo))
         self.assertEqual(("", 2), (result.stdout, result.returncode), result.stderr)
-        self.assertIn("cannot check docs/locked/a.md", result.stderr)
+        # git itself warns (`cannot lstat ...`) and the lint refuses on that; either way the path is named.
+        self.assertIn("docs/locked/a.md", result.stderr)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads through directory permissions")
+    def test_an_untracked_directory_git_cannot_open_refuses_with_exit_2(self) -> None:
+        # Audit b98984d7 P2: git exits 0 with `could not open directory ... Permission denied` and lists nothing from
+        # that directory, so the lint read the partial scan as clean.
+        self.write("docs/a.md", "clean\n")
+        self.write("scripts/retired-terms.tsv", TERM)
+        self.git("add", "-A")
+        self.write("drafts/b.md", "oldname\n")
+        drafts = self.repo / "drafts"
+        drafts.chmod(0)
+        self.addCleanup(drafts.chmod, 0o755)
+        result = run_lint("--root", str(self.repo))
+        self.assertEqual(("", 2), (result.stdout, result.returncode), result.stderr)
+        self.assertIn("could not open directory 'drafts/'", result.stderr)
 
     def test_a_gone_path_that_cannot_be_checked_refuses_with_exit_2(self) -> None:
         # Audit 033c461f P2: exists() and is_symlink() read a symlink loop on the way to a `gone` path as absent.

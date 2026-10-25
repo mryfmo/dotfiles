@@ -196,9 +196,9 @@ make doctor
 upgrades. Other values, including `SYSTEM=0`, keep `make update` in user-level
 tooling mode.
 
-**Tool versions.** No tool version is committed. `home/dot_mise/config.toml`
-requests `"latest"` for every tool not held back (below) and there is no
-`mise.lock`, so `make update` moves each installed tool to the newest release
+**Tool versions.** Only a held tool commits a version. `home/dot_mise/config.toml`
+requests `"latest"` for every tool that is not held back (below), and there is no
+`mise.lock`, so `make update` moves each of those tools to the newest release
 its manager allows and changes no file in the repository. The safety comes from
 each manager's own features. mise skips releases younger than
 `minimum_release_age = "72h"` ("Skip versions published more recently than this
@@ -213,10 +213,10 @@ and `node.verify`, which need no lockfile, and `mise upgrade` without `--bump`
 "keeps the range specified in mise.toml"
 ([mise upgrade](https://mise.jdx.dev/cli/upgrade)), so a held exact version
 stays exact. Per the settings page the cooldown covers every backend this
-config uses except `http:` (`bats` and `gcloud`, which are exact anyway); a live
+config uses except `http:` (whose tools that file pins exactly, with a checksum); a live
 probe on 2026-10-09 showed the setting acting on core `node` (26.11.1 without
 it, 26.10.0 with it). `mise self-update` waits the same 72 hours through
-`self_update.minimum_release_age = "72h"` (its own default is 24h), and Codex
+`self_update.minimum_release_age = "72h"` (unset, it would inherit the global `minimum_release_age`, else 24h; it is set explicitly all the same), and Codex
 and Claude Code follow the same cooldown. The managed `~/.npmrc` sets npm's own
 `min-release-age=3`, the same 72 hours, so every npm install on the host agrees
 with the release mise chose. A `node` major bump can leave `npm:` tool installs
@@ -262,8 +262,9 @@ mise entry instead of `latest` (see Holding a tool back below).
 
 **Holding a tool back** uses the manager's own feature:
 
-- mise: an exact version in `home/dot_mise/config.toml` with a one-line reason
-  (today `fd`, `npm:pnpm`, and the `http:` tools `bats` and `gcloud`);
+- mise: an exact version in `home/dot_mise/config.toml` with a `# Held:` comment
+  that says why; those comments are the current list of held tools, and the
+  `http:` tables pin their version with a checksum;
 - Homebrew: `brew pin <formula>`;
 - uv: `uv tool install <package>==<version>`;
 - apt: `sudo apt-mark hold <package>`.
@@ -428,22 +429,27 @@ launchers, and the low-cost `express-explorer` Claude subagent.
 --check` to confirm every rendered file matches the manifest; tasks and docs
 name that one command, since a bare `python3` run fails without PyYAML.
 
-Agent work runs as a three-role constellation. The orchestrator uses the
-`deep` profile (Claude `claude-fable-5-1`, xhigh effort, advisor fable) to
-author tasks, review results, and own acceptance. The worker uses the
-`standard` profile (Claude `claude-opus-5-5` at xhigh effort, or Codex
-`gpt-6.1-sol` at xhigh) to implement one task at a time. Reviews of plans
-and task texts run on the `review` profile, the same model and effort as
-`deep` in a fresh context (INV-7). The auditor uses the
-`audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
-sandbox)
-for one independent task-level audit of each final head, run as one fresh `~/.local/bin/common/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
-boundaries live in `home/dot_config/claude/rules/model-selection.md`,
-`home/dot_config/claude/rules/regime.md`, and the `## Audit`
-section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
-answered under the ChatGPT login (probe 2026-10-05). Both xhigh settings
-answered on 2026-10-09: the Codex audit probe under the ChatGPT login, the
-Claude worker probe under the Anthropic login.
+Agent work runs as a three-role constellation, each role on a `model_profiles`
+entry (the model IDs and efforts live there, not in this page). The
+orchestrator uses the `deep` profile to author tasks, review results, and own
+acceptance. The worker uses the `standard` profile to implement one task at a
+time. Reviews of plans and task texts run on the `review` profile, the same
+Claude model and effort as `deep` in a fresh context (INV-7). The auditor runs
+one independent task-level audit of each final head as one fresh
+`~/.local/bin/common/omp-run.sh --role audit` per head (`hcom-orchestration`
+SKILL, step 4): omp on the omp model of the `audit` profile, through the
+`openai-siwc` extension, under omp's approval policy
+`home/dot_agents/omp/policies/audit.yml` (`always-ask`, the write tools
+denied). That policy gates tools; it is not an operating-system read-only
+sandbox, and the run's account stays the containment boundary. When that route
+cannot run, the `## Audit` section of `AGENTS.md` names the fallback review.
+The responsibility boundaries live in
+`home/dot_config/claude/rules/model-selection.md`,
+`home/dot_config/claude/rules/regime.md`, and the `## Audit` section of
+`AGENTS.md`. The Codex models of the `standard` and `audit` profiles need no
+API-key authentication: both answered under the ChatGPT login (probe
+2026-10-05). Both xhigh settings answered on 2026-10-09: the Codex audit probe
+under the ChatGPT login, the Claude worker probe under the Anthropic login.
 
 On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
 stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex
@@ -886,8 +892,9 @@ default is an automatic review on every pull request and push, so deleting that
 file turns reviews on. Its status on a pull request reads "Review skipped:
 automatic reviews are disabled".
 
-`main` has one ruleset, the **integrity ruleset** `main integration gate`,
-saved as `main-integrity.json`. Committing the payload does not apply it. In
+`main` has one ruleset, the **integrity ruleset** `main integration gate`. Its
+payload is the JSON block below, not a file in the repository, and editing it
+here does not apply it. In
 the repository settings, keep squash-only merging (so history stays linear),
 auto-merge enabled, and `delete_branch_on_merge` off.
 
@@ -989,7 +996,7 @@ bus records make the rest visible afterwards, but they cannot prevent it. The de
 To apply the payload:
 
 1. Find the `main integration gate` ID with `gh api repos/mryfmo/dotfiles/rulesets`.
-2. Update it with
+2. Save the JSON block above as `main-integrity.json` outside the checkout and update the ruleset with
    `gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id> -H 'X-GitHub-Api-Version: 2026-03-10' --input main-integrity.json`.
 3. Read it back and check: no bypass actors, the seven strict checks, zero approvals, thread resolution, and deletion and non-fast-forward protection.
 4. Delete an earlier `main merge control` ruleset if one exists. Its approval and bypass rules need two accounts.
@@ -1087,7 +1094,7 @@ One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` run once per
 content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
-Tool versions are not committed: `home/dot_mise/config.toml` requests `"latest"` behind mise's 72-hour cooldown and `make update` moves the installed tools, as the Tool versions paragraph under Lifecycle above describes.
+Only held tools commit a version: `home/dot_mise/config.toml` requests `"latest"` behind mise's 72-hour cooldown for every other tool and `make update` moves the installed tools, as the Tool versions paragraph under Lifecycle above describes.
 A held tool keeps an exact version and its reason in that file, and `~/.config/mise` is its applied copy, not a live symlink into the source tree.
 A worker seat carries every repository change as a PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 For `npm:` tools, mise owns the version and isolated install prefix, while the npm CLI performs installation through

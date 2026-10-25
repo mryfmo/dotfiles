@@ -3,7 +3,6 @@
   "model": "claude-fable-5-1",
   "effortLevel": "xhigh",
   "advisorModel": "fable",
-  "alwaysThinkingEnabled": true,
   "plansDirectory": "./.agents/worklog/claude",
   "permissions": {
     "allow": [

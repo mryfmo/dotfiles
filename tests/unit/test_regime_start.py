@@ -51,6 +51,10 @@ class RegimeStartTest(unittest.TestCase):
                 path = self.home / f".agents/omp/{kind}/{role}.yml"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(body)
+            # U75: hcom-seat passes the role's standing rules as --append-system-prompt and refuses without them.
+            rules = self.home / f".agents/omp/rules/{role}.md"
+            rules.parent.mkdir(parents=True, exist_ok=True)
+            rules.write_text("## Regime\n")
         for ext in (
             ".local/lib/omp-extensions/pi-claude-bridge",
             ".agents/omp/extensions/openai-siwc",
@@ -183,6 +187,23 @@ class RegimeStartTest(unittest.TestCase):
         self.assertTrue(again.stdout.startswith("orchestrator-rafa is already alive on team pilot."), again.stdout)
         self.assertEqual(len(self.launches()), 1, "an alive orchestrator is reported, never duplicated")
         self.assertIn("regime-start launched orchestrator-rafa", self.log())
+
+    def test_a_seat_without_its_standing_rules_launches_nothing(self):
+        """U75: the orchestrator's rules file is required; regime-start reports hcom-seat's refusal, and no omp starts."""
+        rules = self.home / ".agents/omp/rules/orchestrator.md"
+        for content in (None, ""):
+            with self.subTest(rules=content):
+                rules.unlink(missing_ok=True)
+                if content is not None:
+                    rules.write_text(content)
+                run = self.run_lever(START)
+                self.assertNotEqual(run.returncode, 0, run.stdout)
+                self.assertIn(f"standing rules absent or empty: {rules}", run.stderr)
+                self.assertEqual(self.launches(), [])
+        rules.write_text("## Regime\n")
+        started = self.run_lever(START)
+        self.assertEqual(started.returncode, 0, started.stderr)
+        self.assertIn(str(rules), self.launches()[0]["argv"])
 
     def test_a_program_names_its_store_and_must_exist(self):
         refused = self.run_lever(START, "pilot")

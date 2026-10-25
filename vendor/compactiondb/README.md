@@ -51,7 +51,7 @@ Claude Code の Compaction 復旧ログを、**消えにくい短期イベント
 明示登録例:
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py memory add \
+uv run --no-project .claude/hooks/contextdb_cli.py memory add \
   --kind decision \
   --content "認証方式はOAuth2に統一する" \
   --scope project
@@ -172,8 +172,8 @@ python3 migrate_legacy.py --project /path/to/project
 
 ```bash
 cd /path/to/project
-python3 .claude/hooks/contextdb_cli.py health
-python3 .claude/hooks/contextdb_cli.py verify
+uv run --no-project .claude/hooks/contextdb_cli.py health
+uv run --no-project .claude/hooks/contextdb_cli.py verify
 ```
 
 手動hook試験:
@@ -186,8 +186,8 @@ printf '%s' '{
   "prompt":"[memory:decision] APIはv2へ統一する"
 }' | python3 .claude/hooks/contextdb_hook.py
 
-python3 .claude/hooks/contextdb_cli.py recent 30 --session test-session
-python3 .claude/hooks/contextdb_cli.py memory list --session test-session
+uv run --no-project .claude/hooks/contextdb_cli.py recent 30 --session test-session
+uv run --no-project .claude/hooks/contextdb_cli.py memory list --session test-session
 ```
 
 ## CLI
@@ -195,12 +195,12 @@ python3 .claude/hooks/contextdb_cli.py memory list --session test-session
 ### raw event ledger
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py sessions
-python3 .claude/hooks/contextdb_cli.py recent 30 --session <session_id>
-python3 .claude/hooks/contextdb_cli.py prompts 10 --session <session_id>
-python3 .claude/hooks/contextdb_cli.py files --session <session_id>
-python3 .claude/hooks/contextdb_cli.py search <query> --session <session_id>
-python3 .claude/hooks/contextdb_cli.py show <event_id> --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py sessions
+uv run --no-project .claude/hooks/contextdb_cli.py recent 30 --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py prompts 10 --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py files --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py search <query> --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py show <event_id> --session <session_id>
 ```
 
 安全上、raw event commandはsession scopeがdefaultです。project全体を読む場合だけ `--scope project` を明示します。
@@ -210,7 +210,7 @@ python3 .claude/hooks/contextdb_cli.py show <event_id> --session <session_id>
 台帳からrecall / artifact / decision / continuationの質問とground truthを決定論的に生成します。対象データがない型は出力しません。
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py probe --session <session_id> --json
+uv run --no-project .claude/hooks/contextdb_cli.py probe --session <session_id> --json
 ```
 
 採点はreview profileのlow effortを使い、CLIとは別contextで実行します。
@@ -221,8 +221,8 @@ python3 .claude/hooks/contextdb_cli.py probe --session <session_id> --json
 FTS5のevent/memory検索と、保存済みmemory embeddingがある場合だけsemantic similarityを融合し、関連eventのtool use・隣接・共有fileも取得します。既定は上位5件、`rho=0.6`です。
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py recall "authentication failure" --session <session_id>
-python3 .claude/hooks/contextdb_cli.py recall "src/cache.py" --session <session_id> --k 10 --json
+uv run --no-project .claude/hooks/contextdb_cli.py recall "authentication failure" --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py recall "src/cache.py" --session <session_id> --k 10 --json
 ```
 
 - workerはタスク開始時に、対象sessionの過去contextを再取得するために使います。
@@ -231,13 +231,13 @@ python3 .claude/hooks/contextdb_cli.py recall "src/cache.py" --session <session_
 ### durable memory
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py memory list --session <session_id>
-python3 .claude/hooks/contextdb_cli.py memory search <query> --session <session_id>
-python3 .claude/hooks/contextdb_cli.py memory candidates
-python3 .claude/hooks/contextdb_cli.py memory promote <candidate_id> --scope project
-python3 .claude/hooks/contextdb_cli.py memory add --kind constraint --content "..." --scope project
-python3 .claude/hooks/contextdb_cli.py memory retract <memory_uuid> --reason "obsolete"
-python3 .claude/hooks/contextdb_cli.py memory compact
+uv run --no-project .claude/hooks/contextdb_cli.py memory list --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py memory search <query> --session <session_id>
+uv run --no-project .claude/hooks/contextdb_cli.py memory candidates
+uv run --no-project .claude/hooks/contextdb_cli.py memory promote <candidate_id> --scope project
+uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind constraint --content "..." --scope project
+uv run --no-project .claude/hooks/contextdb_cli.py memory retract <memory_uuid> --reason "obsolete"
+uv run --no-project .claude/hooks/contextdb_cli.py memory compact
 ```
 
 ### optional semantic search
@@ -273,18 +273,18 @@ command output:
 実行:
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py memory embed
-python3 .claude/hooks/contextdb_cli.py memory semantic-search "過去の認証方針"
+uv run --no-project .claude/hooks/contextdb_cli.py memory embed
+uv run --no-project .claude/hooks/contextdb_cli.py memory semantic-search "過去の認証方針"
 ```
 
 ## 運用
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py drain
-python3 .claude/hooks/contextdb_cli.py health
-python3 .claude/hooks/contextdb_cli.py verify
-python3 .claude/hooks/contextdb_cli.py prune
-python3 .claude/hooks/contextdb_cli.py export --session <session_id> --output events.jsonl
+uv run --no-project .claude/hooks/contextdb_cli.py drain
+uv run --no-project .claude/hooks/contextdb_cli.py health
+uv run --no-project .claude/hooks/contextdb_cli.py verify
+uv run --no-project .claude/hooks/contextdb_cli.py prune
+uv run --no-project .claude/hooks/contextdb_cli.py export --session <session_id> --output events.jsonl
 ```
 
 raw eventは既定30日で期限切れになります。`prune`は期限切れイベントを削除しますが、昇格済みdurable memoryは維持します。

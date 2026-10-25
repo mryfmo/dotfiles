@@ -14,6 +14,59 @@
 
 schema_version: 1
 
+# Standing rules: the user-level instructions every session of an agent starts with. Each rule is one
+# Markdown file, source_dir/<name>.md, and reaches exactly the agents its audience names; every file in
+# source_dir is declared here and nothing else renders to an agent (scripts/generate-agent-configs.py).
+# The rendered files include the source at chezmoi apply time, so a checkout alone changes no agent's
+# instructions:
+# - claude: ~/.claude/rules/<name>.md, one file per rule (Claude Code loads every file there).
+# - codex: ~/.codex/AGENTS.md, the codex rules in the order below.
+# - omp-<role>: ~/.agents/omp/rules/<role>.md, which hcom-seat and omp-run.sh pass as
+#   `--append-system-prompt` (omp docs system-prompt-customization.md). The seat overlays disable the
+#   native provider (seat_disabled_providers), so no profile context file loads, and omp reads no
+#   ~/.claude rule and no ~/.codex file; the explicit flag also wins over any project APPEND_SYSTEM.md.
+#   The audit role takes none: its rules are origin/main AGENTS.md alone.
+# A rule with front matter (Claude's `paths:` scoping) is Claude-only; the generator refuses it elsewhere.
+standing_rules:
+  source_dir: home/dot_config/claude/rules
+  rules:
+    codex: [codex]
+    regime: [claude, omp-orchestrator, omp-worker]
+    model-selection: [claude, codex, omp-orchestrator, omp-worker]
+    compactiondb: [claude, codex, omp-orchestrator, omp-worker]
+    ponytail: [claude, codex]
+    understand-anything: [claude, codex]
+    ask-user-question: [claude]
+    project-map: [claude]
+    python: [claude]
+    gpu: [claude]
+    latex: [claude]
+  # pstack's per-role models in Claude Code: ~/.claude/rules/pstack-models.md, the file the pstack Claude
+  # Code adapter (~/.agents/docs/harness/claude-code.md "Models") reads in place of Cursor's
+  # ~/.cursor/rules/pstack-models.mdc. A role names a model_profiles entry, rendered as `<alias> <effort>`
+  # from its claude model and effort, or inherit-parent / auto (the parent chat model); a list is a panel.
+  # setup-pstack's own write to that file is replaced at the next chezmoi apply: change the roles here.
+  pstack_models:
+    budget: large (xhigh)
+    roles:
+      feature, refactoring: inherit-parent
+      bug-fix: inherit-parent
+      perf-issue: inherit-parent
+      hillclimb: inherit-parent
+      judgment and prose: standard
+      hardest tasks: standard
+      how explorer: inherit-parent
+      how explainer: standard
+      why investigators: inherit-parent
+      why synthesizer: standard
+      reflect tooling: inherit-parent
+      reflect judgment, divergent, synthesizer: standard
+      arena runners: [standard, inherit-parent]
+      arena cross-judge pool: [standard, inherit-parent]
+      swarm workers: inherit-parent
+      architect runners: [standard, inherit-parent]
+      interrogate reviewers: [standard, inherit-parent]
+
 # omp seats load skills from these roots through skills.customDirectories in
 # ~/.omp/agent/config.yml (docs/omp-skills.md). omp 18.11.3 also scans
 # ~/.agents/skills by default; the key pins that against a settings change.
@@ -416,7 +469,7 @@ claude:
   # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: 98774f2a4d63f973e8943612b9726bfd7c08069091f63529a1319cae941361a1
+      hcom-seat: d0a64890fc3f4c7e695e21f9802a8d90f05a86077e348cd1768f0bba633f0415
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -433,7 +486,7 @@ claude:
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
-      omp-run.sh: dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e
+      omp-run.sh: 3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -1252,7 +1252,17 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
             fail(f"{path} must preserve hook trust state for the {name} profile")
 
 
-def validate_crit_install_assets() -> None:
+def standing_rule_text(manifest: dict[str, Any], agent: str) -> str:
+    """The rule sources generate-agent-configs.py renders for one audience, in manifest order."""
+    section = manifest.get("standing_rules", {})
+    source_dir = ROOT / section.get("source_dir", "")
+    names = [name for name, audience in section.get("rules", {}).items() if agent in audience]
+    if not names:
+        fail(f"standing_rules declares no rule for {agent}")
+    return "\n".join((source_dir / f"{name}.md").read_text() for name in names)
+
+
+def validate_crit_install_assets(manifest: dict[str, Any]) -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
         "crit-darwin-amd64",
@@ -1266,7 +1276,7 @@ def validate_crit_install_assets() -> None:
     ):
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in (
         "$crit",
         "Crit plugin",
@@ -1275,7 +1285,7 @@ def validate_crit_install_assets() -> None:
         "http://localhost",
     ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Codex Crit rule token {token!r}")
 
 
 def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) -> None:
@@ -1312,10 +1322,10 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         if not hook_state.get(key, {}).get("trusted_hash", "").startswith("sha256:"):
             fail(f"home/.chezmoitemplates/codex-config-managed.toml must render trusted Ponytail hook state for {key}")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("Ponytail", "/hooks", "ponytail@ponytail", "YAGNI", "stdlib"):
+    codex_agents = standing_rule_text(manifest, "codex")
+    for token in ("Ponytail", "ponytail@ponytail", "YAGNI", "standard library"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Ponytail token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Ponytail token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/ponytail.md"
     if not claude_rule.exists():
@@ -1331,10 +1341,8 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         if token not in claude_rule_text:
             fail(f"{claude_rule} must document Ponytail token {token!r}")
 
-    claude_symlink = ROOT / "home/dot_claude/rules/symlink_ponytail.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/ponytail.md\n"
-    if not claude_symlink.is_file() or claude_symlink.read_bytes() != expected_target.encode():
-        fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
+    if "claude" not in manifest.get("standing_rules", {}).get("rules", {}).get("ponytail", []):
+        fail("standing_rules.rules.ponytail must reach claude")
 
     readme = (ROOT / "README.md").read_text()
     for token in (
@@ -1347,7 +1355,7 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
-def validate_understand_anything_assets() -> None:
+def validate_understand_anything_assets(manifest: dict[str, Any]) -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
         "Egonex-AI/Understand-Anything",
@@ -1368,7 +1376,7 @@ def validate_understand_anything_assets() -> None:
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in (
         "Understand-Anything",
         "$understand",
@@ -1377,7 +1385,7 @@ def validate_understand_anything_assets() -> None:
         ".ua/diff-overlay.json",
     ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Understand-Anything token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/understand-anything.md"
     if not claude_rule.exists():
@@ -1394,10 +1402,8 @@ def validate_understand_anything_assets() -> None:
         if token not in claude_rule_text:
             fail(f"{claude_rule} must document Understand-Anything token {token!r}")
 
-    claude_symlink = ROOT / "home/dot_claude/rules/symlink_understand-anything.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
-    if not claude_symlink.is_file() or claude_symlink.read_bytes() != expected_target.encode():
-        fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
+    if "claude" not in manifest.get("standing_rules", {}).get("rules", {}).get("understand-anything", []):
+        fail("standing_rules.rules.understand-anything must reach claude")
 
     readme = (ROOT / "README.md").read_text()
     for token in (
@@ -1486,10 +1492,10 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     if not express_agent.exists() or "model:" not in express_agent.read_text():
         fail(f"{express_agent} must define the low-cost explorer subagent")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in ("model_profiles", "--profile standard", "model-profiles.env"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document model profile token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document model profile token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/model-selection.md"
     if not claude_rule.exists():
@@ -2006,9 +2012,9 @@ def main() -> None:
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)
     validate_mcp_parity(codex, manifest)
-    validate_crit_install_assets()
+    validate_crit_install_assets(manifest)
     validate_ponytail_assets(manifest, codex)
-    validate_understand_anything_assets()
+    validate_understand_anything_assets(manifest)
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

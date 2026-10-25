@@ -118,8 +118,10 @@ Plan 024 P1-3 (T133). `scripts/orchestrator/ci-rerun.sh <run-id>` reruns a workf
 Plan 025 W5b (U7), the minimal form before X. `hcom-seat <role> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run]` starts one omp process for `orchestrator` or `worker` through `hcom omp`, which opens the herdr pane and gives the seat `HCOM_LAUNCHED=1`, `HCOM_TAG` and `HCOM_DIR` (`hcom omp --help`). There is no audit seat: `hcom-seat audit` is refused as an unknown role, and every audit is one `omp-run.sh --role audit` run (U57, U58). The launch line is
 
 ```text
-hcom omp --tag <name> --dir <dir> --terminal herdr --go -- --profile <role> --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml -e <ext>...
+hcom omp --tag <name> --dir <dir> --terminal herdr --go -- --profile <role> --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml --append-system-prompt ~/.agents/omp/rules/<role>.md -e <ext>...
 ```
+
+`--append-system-prompt` carries the seat's standing rules, rendered per role from `standing_rules` in the manifest (U75). The overlays disable the native provider (U66), so no profile context file loads; the explicit flag is the one route no disabled provider drops, and it wins over any project `APPEND_SYSTEM.md`. omp reads a missing path as literal text, so `hcom-seat` and `omp-run.sh` (orchestrator and worker roles) refuse an absent or empty rules file.
 
 The profile equals the role, and two overlays follow it (`--config` is repeatable). The policy overlay owns the approval mode (U6, `home/dot_agents/omp/policies/README.md`). The profile overlay carries the manifest's `modelRoles.default` (U4) and `skills.customDirectories` (U10), because a named profile reads its own `~/.omp/profiles/<role>/agent/config.yml` (pi-utils `src/dirs.ts:312-315`, measured in U10) and the default profile's rendered config never reaches a seat; U14 renders it per role. Both files are required, so no `--model` is passed. `<name>` defaults to the role and is the hcom tag; hcom derives the participant name from it (`hcom omp --help`: "names become tag-\*"), and `--name <role>-<n>` seats a second seat of a role. The `--` ends hcom's flags: hcom 0.7.30 and 0.7.31 drop it and forward every later argument to omp verbatim (`extract_launch_flags`, `src/commands/launch.rs:572-581` at tag `v0.7.30`), so the omp flags never collide with the flags hcom claims by name, including `--name`, `--system` and `--go`, which `hcom omp --help` does not list. `--go` is hcom's launch gate and the launcher always passes it, before the `--`: inside an AI tool, hcom 0.7.30 without it prints `== LAUNCH PREVIEW ==`, `Add --go to proceed.` and `[Preview Mode] Add --go to proceed with launch.` and starts nothing (`launch.rs:48`, `388-389` and `423`; the first run on the real host did exactly that for all three roles on 2026-10-23, `hcom list -v`: `No active agents`). The router sets the flag (`src/router.rs:255-256`) and `extract_launch_flags` consumes it before the `--` (`launch.rs:650-652`); after the `--` it would reach omp as a positional.
 
@@ -231,7 +233,7 @@ $ ~/.local/bin/common/bus-history.sh regime --limit 3
 $ hcom list -v
 ◉ <seat name> now: listening                                 one block per running seat
 $ ~/.local/bin/common/hcom-seat worker --dry-run
-hcom omp --tag worker --dir ~/.local/state/omp-seats/worker --terminal herdr --go -- --profile worker --config ~/.agents/omp/policies/worker.yml --config ~/.agents/omp/profiles/worker.yml -e ~/.local/lib/omp-extensions/pi-claude-bridge -e ~/.agents/omp/extensions/openai-siwc
+hcom omp --tag worker --dir ~/.local/state/omp-seats/worker --terminal herdr --go -- --profile worker --config ~/.agents/omp/policies/worker.yml --config ~/.agents/omp/profiles/worker.yml --append-system-prompt ~/.agents/omp/rules/worker.md -e ~/.local/lib/omp-extensions/pi-claude-bridge -e ~/.agents/omp/extensions/openai-siwc
 ```
 
 `hcom-seat` prints the paths expanded (`/Users/<user>/...`). Paste the three outputs into the ledger row.

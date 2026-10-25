@@ -2,6 +2,10 @@
   "generated_by": "Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.",
   "outputs": [
     {
+      "source": "home/.chezmoiremove",
+      "target": null
+    },
+    {
       "source": "home/.chezmoitemplates/claude-settings-managed.json",
       "target": null
     },
@@ -50,6 +54,18 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/omp/rules/orchestrator.md.tmpl",
+      "target": ".agents/omp/rules/orchestrator.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/rules/worker.md.tmpl",
+      "target": ".agents/omp/rules/worker.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
       "source": "home/dot_agents/plugins/create_marketplace.json",
       "target": ".agents/plugins/marketplace.json",
       "kind": "create",
@@ -71,6 +87,72 @@
       "source": "home/dot_claude/agents/project-map.md",
       "target": ".claude/agents/project-map.md",
       "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/ask-user-question.md.tmpl",
+      "target": ".claude/rules/ask-user-question.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/compactiondb.md.tmpl",
+      "target": ".claude/rules/compactiondb.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/gpu.md.tmpl",
+      "target": ".claude/rules/gpu.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/latex.md.tmpl",
+      "target": ".claude/rules/latex.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/model-selection.md.tmpl",
+      "target": ".claude/rules/model-selection.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/ponytail.md.tmpl",
+      "target": ".claude/rules/ponytail.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/project-map.md.tmpl",
+      "target": ".claude/rules/project-map.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/pstack-models.md",
+      "target": ".claude/rules/pstack-models.md",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/python.md.tmpl",
+      "target": ".claude/rules/python.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/regime.md.tmpl",
+      "target": ".claude/rules/regime.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/rules/understand-anything.md.tmpl",
+      "target": ".claude/rules/understand-anything.md",
+      "kind": "template",
       "executable": false
     },
     {
@@ -206,6 +288,12 @@
       "executable": false
     },
     {
+      "source": "home/dot_codex/AGENTS.md.tmpl",
+      "target": ".codex/AGENTS.md",
+      "kind": "template",
+      "executable": false
+    },
+    {
       "source": "home/dot_codex/modify_private_audit.config.toml",
       "target": ".codex/audit.config.toml",
       "kind": "modify",
@@ -266,14 +354,14 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "98774f2a4d63f973e8943612b9726bfd7c08069091f63529a1319cae941361a1"
+      "sha256": "d0a64890fc3f4c7e695e21f9802a8d90f05a86077e348cd1768f0bba633f0415"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
       "target": ".local/bin/common/omp-run.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e"
+      "sha256": "3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",

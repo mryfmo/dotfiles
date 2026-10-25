@@ -48,6 +48,10 @@ class HcomSeatTest(unittest.TestCase):
         for role in ("orchestrator", "worker", "audit"):
             (self.policies / f"{role}.yml").write_text("tools: {}\n")
             (self.profiles / f"{role}.yml").write_text("modelRoles: {}\n")
+        self.rules = self.home / ".agents/omp/rules"
+        self.rules.mkdir(parents=True)
+        for role in ("orchestrator", "worker"):
+            (self.rules / f"{role}.md").write_text("## Regime\n")
         self.bridge = self.home / ".local/lib/omp-extensions/pi-claude-bridge"
         self.siwc = self.home / ".agents/omp/extensions/openai-siwc"
         self.gate = self.home / ".agents/omp/hooks"
@@ -113,6 +117,7 @@ class HcomSeatTest(unittest.TestCase):
         return [
             "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--go", "--",
             "--profile", role, "--config", str(self.policies / f"{role}.yml"), "--config", str(self.profiles / f"{role}.yml"),
+            "--append-system-prompt", str(self.rules / f"{role}.md"),
             *(flag for ext in (*exts, self.gate) for flag in ("-e", str(ext))), "--hcom-team", team,
         ]  # fmt: skip
 
@@ -428,6 +433,19 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("profile overlay absent", run.stderr)
+        (self.profiles / "orchestrator.yml").write_text("modelRoles: {}\n")
+        # U75: the seat's standing rules ride --append-system-prompt; omp reads a missing path as literal text, so an
+        # absent or empty rules file is refused before anything starts.
+        for content in (None, ""):
+            with self.subTest(rules=content):
+                rules = self.rules / "orchestrator.md"
+                rules.unlink()
+                if content is not None:
+                    rules.write_text(content)
+                run = self.seat("orchestrator", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"standing rules absent or empty: {rules}", run.stderr)
+                rules.write_text("## Regime\n")
         shutil.rmtree(self.bridge)
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -817,6 +835,25 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn("seat write roots must not overlap", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
 
+    def test_both_roles_launch_from_a_linked_worktree_and_the_main_checkout_stays_protected(self):
+        """U85 round 13: the orchestrator's own directory is the launch checkout, so both roles launch from a linked
+        worktree (and from the main checkout), while a worker grant inside the main checkout is still refused."""
+        linked = Path(self.temp.name).resolve() / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked), "HEAD")
+        for role in ("orchestrator", "worker"):
+            with self.subTest(role=role, cwd="linked worktree"):
+                run = self.seat(role, "--seats-root", self.seats, cwd=linked)
+                self.assertEqual(run.returncode, 0, run.stderr)
+            with self.subTest(role=role, cwd="main checkout"):
+                run = self.seat(role, "--seats-root", self.seats, "--name", f"{role}-main")
+                self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(str(linked), self.settings_of("orchestrator")["filesystem"]["allowWrite"])
+        run = self.seat(
+            "worker", "--seats-root", self.seats, "--name", "worker-3", cwd=linked, HCOM_DIR=str(self.repo / "hcom")
+        )
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"lies inside the main checkout {self.repo.resolve()}", run.stderr)
+
     def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
         """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout
         (`--separate-git-dir`) that holds the seats root would grant every worker its siblings, so it is refused."""
@@ -841,8 +878,10 @@ class HcomSeatTest(unittest.TestCase):
         in a dry run as well."""
         checkout = Path(self.temp.name).resolve() / "has space" / "repo"
         checkout.mkdir(parents=True)
+        # No background maintenance after the commit: its lock and pack files would race the comparison below.
+        quiet = ["-c", "maintenance.auto=false", "-c", "gc.auto=0"]
         for args in (["init", "-q"], ["commit", "-q", "--allow-empty", "-m", "init"]):
-            subprocess.run(["git", *args], cwd=checkout, env=self.env, check=True)
+            subprocess.run(["git", *quiet, *args], cwd=checkout, env=self.env, check=True)
         before = sorted(str(path) for path in (checkout / ".git").rglob("*"))
         for extra in ([], ["--dry-run"]):
             with self.subTest(extra=extra):

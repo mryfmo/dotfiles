@@ -1,0 +1,96 @@
+name: drift-watch
+
+# Weekly drift watch (regime-cutover U81): scripts/drift-watch.py reads this tree and GitHub's public API (runner
+# image announcements, releases, marketplaces) and reports what has aged: open runner-image announcements that mention
+# a label in use, pins behind the newest release past the 72h window, plugin pins behind their marketplace, and the
+# retired-term lint. `make drift` runs the same script locally. The job keeps one tracking issue: titled "Drift watch",
+# labelled `drift-watch`, opened by github-actions[bot]. It opens it on drift, rewrites its body on every run, and
+# closes it when a run finds none. It runs only on the schedule and by hand, from the default branch's code, and reads
+# no pull-request input and no secret; the token reads the GitHub API and writes that one issue and its label.
+on:
+  schedule:
+    - cron: "23 1 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: drift-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - name: Run the drift watch
+        id: watch
+        env:
+          # Raises the API rate limit; the script sends it to api.github.com only.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          status=0
+          uv run --no-config --no-project --with 'pyyaml==6.0.3' python -I scripts/drift-watch.py > "${RUNNER_TEMP}/drift.md" || status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat "${RUNNER_TEMP}/drift.md" >> "${GITHUB_STEP_SUMMARY}"
+          case "${status}" in
+          0 | 3 | 4) ;;
+          *) echo "::error::drift-watch.py exited ${status} without a report" && exit 1 ;;
+          esac
+      - name: Keep the tracking issue current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATUS: ${{ steps.watch.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          report="${RUNNER_TEMP}/drift.md"
+          printf '\nRun: %s\n' "${RUN_URL}" >> "${report}"
+          # The tracking issue is the one open issue labelled drift-watch, created by github-actions[bot] and titled
+          # "Drift watch". The label and creator filters run on the server and --paginate reads every page, so no
+          # number of other issues can hide it; the jq filter re-checks each field. Someone else's issue is never
+          # rewritten, and more than one match fails the job instead of picking one.
+          numbers="$(gh api --paginate \
+            "repos/${GH_REPO}/issues?state=open&labels=drift-watch&creator=github-actions%5Bbot%5D&per_page=100" \
+            --jq '.[] | select(.title == "Drift watch" and .user.login == "github-actions[bot]"
+              and (.pull_request | not) and ([.labels[].name] | index("drift-watch"))) | .number')"
+          if [ -z "${numbers}" ]; then
+            count=0
+          else
+            count="$(printf '%s\n' "${numbers}" | wc -l | tr -d ' ')"
+          fi
+          if [ "${count}" -gt 1 ]; then
+            echo "::error::${count} open drift-watch tracking issues (${numbers//$'\n'/, }); close all but one"
+            exit 1
+          fi
+          number="${numbers}"
+          if [ -n "${number}" ] && ! [[ "${number}" =~ ^[0-9]+$ ]]; then
+            echo "::error::the issue lookup returned a non-numeric issue number"
+            exit 1
+          fi
+          if [ "${STATUS}" = 0 ]; then
+            if [ -n "${number}" ]; then
+              gh issue edit "${number}" --body-file "${report}"
+              gh issue close "${number}" --comment "No drift found: ${RUN_URL}"
+            fi
+          elif [ -n "${number}" ]; then
+            gh issue edit "${number}" --body-file "${report}"
+          else
+            gh label create drift-watch --color BFD4F2 --description "Tracking issue of the weekly drift watch" --force
+            gh issue create --title "Drift watch" --label drift-watch --body-file "${report}"
+          fi
+      - name: Fail on an upstream read failure
+        if: steps.watch.outputs.status == '4'
+        run: |
+          echo "::error::an upstream read failed; the tracking issue lists it under Read failures"
+          exit 1

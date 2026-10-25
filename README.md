@@ -1105,6 +1105,27 @@ The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/m
 
 [![Codecov icicle graph for mryfmo/dotfiles](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graphs/icicle.svg)](https://app.codecov.io/gh/mryfmo/dotfiles)
 
+### 🔭 Drift watch [![drift-watch](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml)
+
+[`scripts/drift-watch.py`](scripts/drift-watch.py) reports what has aged in this tree against public upstream metadata. No LLM and no host state are involved:
+
+- **runner-image**: a runner label in `.github/workflows` whose image an [actions/runner-images](https://github.com/actions/runner-images/issues?q=label%3AAnnouncement) announcement deprecates or retires.
+- **mise-pin**: an exact version in `home/dot_mise/config.toml` behind the newest stable release that is at least `minimum_release_age` old (72h, read from the same file).
+- **manifest-pin**: a `pin` or `fallback.pin` in `home/dot_agents/agent-config.yaml` behind upstream under the same window. A git-commit pin counts as behind when the default branch has commits past it that are older than the window.
+- **plugin-pin**: a Claude or Codex plugin pin that differs from the `plugin.json` version its marketplace serves now.
+- **unrecorded**: a `pin: unknown`.
+- **retired-term**: each hit of the retired-term lint, `scripts/lint-retired-terms.py`, once the tree has it.
+
+A pin whose upstream it cannot read is listed under "Not watched". A failed upstream read is listed under "Read failures" and never counts as current.
+
+```shell
+# Print the report: exit 0 means no drift, 3 means drift, 4 means an upstream read failed.
+# An exported GITHUB_TOKEN raises GitHub's anonymous limit of 60 API requests an hour.
+make drift
+```
+
+[`.github/workflows/drift-watch.yml`](.github/workflows/drift-watch.yml) runs the same script every Monday, and you can also start it by hand. It has a read-only contents token, `issues: write`, and no secrets. It keeps one tracking issue titled "Drift watch", opened by `github-actions[bot]`: it opens the issue when it finds drift, rewrites the body on every run, and closes the issue when a run finds nothing. A read failure also fails the run.
+
 ## 📊 Measure the startup speed of the dotfiles
 
 The startup speed of zsh on MacOS with this dotfile is continuously measured at [mryfmo.me/my-dotfiles-benchmarks](https://mryfmo.me/my-dotfiles-benchmarks/) using [benchmark-action/github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark).

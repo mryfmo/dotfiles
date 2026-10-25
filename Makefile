@@ -220,6 +220,13 @@ codex-hook-trust:
 render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
 
+.PHONY: drift
+# The weekly drift watch (.github/workflows/drift-watch.yml) on this tree: prints its Markdown report and exits 3 on
+# drift, 4 when an upstream read failed. Reads public upstream metadata only; an exported GITHUB_TOKEN raises the
+# GitHub API's 60-requests-an-hour anonymous limit and is sent to api.github.com only.
+drift:
+	$(UV_PYYAML) python -I scripts/drift-watch.py
+
 # ShellCheck groups (regime-cutover U38, U38b), git pathspecs; CI's ShellCheck step runs this target and nothing else
 # (tests/unit/test_shellcheck_target.py pins the step, the groups and the checks). Each group's bash scripts (by
 # shebang) are linted with the root .shellcheckrc, which turns on check-extra-masked-returns (SC2312), and with

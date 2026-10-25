@@ -7,9 +7,9 @@
 #   (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). `<pr>` is decimal and checked before the
 #   first `gh` call. `gh pr view <pr> --json state,baseRefName,headRefOid` must report `OPEN` and base `main`,
 #   else the lever refuses; the one write is `gh pr update-branch <pr>`, GitHub's merge form (never `--rebase`,
-#   which rewrites the worker's branch), and the head is read again afterwards. A merge commit from main does not
-#   void a verdict while `gh pr diff` is unchanged (`preferences.md` standing order 18); the orchestrator checks
-#   that and CI on the new head before it merges with `--match-head-commit <new head>`. Each `gh` call is bounded
+#   which rewrites the worker's branch), and the head is read again afterwards. The new head needs its own audit
+#   and `correct` ledger row before `pr-merge.sh` merges it (U71: no verdict carries over from the old head). Each
+#   `gh` call is bounded
 #   by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).

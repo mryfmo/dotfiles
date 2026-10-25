@@ -37,9 +37,9 @@
 
 ## Agent Review Evidence
 
-- Review evidence for a unit is its verdict row in the program store's `ledger.tsv` (`.orchestration/orchestrate/<program>/`), written for the exact head sha, plus the audit's file under `verdicts/` when one was written; the loop that produces them is `home/dot_agents/skills/hcom-orchestration/SKILL.md`.
+- Review evidence for a unit is its verdict rows in the program store's `ledger.tsv` (`.orchestration/orchestrate/<program>/`), one row per audit round, each written for the full 40-hex head sha that round judged, plus that round's file under `verdicts/` (`<unit>-<head8>.md`) when one was written; a later round never overwrites an earlier round's row or file; the loop that produces them is `home/dot_agents/skills/hcom-orchestration/SKILL.md`.
 - A finding-free verdict row still names what was reproduced. The row's `verifier` column names who judged and on which route (the Audit section's run, or the fresh-context review that replaced it); this evidence is process evidence, not reviewer authentication.
-- Before merging a pull request, follow the hcom-orchestration SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then `gh pr merge --squash --match-head-commit <head sha>`.
+- Before merging a pull request, follow the hcom-orchestration SKILL's loop: a `correct` verdict row for the full head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then merge only through `~/.local/bin/common/pr-merge.sh <pr> --records <store>`, which refuses without that row and green checks and runs `gh pr merge --squash --match-head-commit <head sha>`.
 
 ## Audit
 

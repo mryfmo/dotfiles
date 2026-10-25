@@ -555,7 +555,7 @@ class ProducerFailureTest(unittest.TestCase):
         return result, calls
 
     def test_a_claude_plugin_stays_at_its_recorded_pin(self):
-        pin = json.loads((ROOT / "scripts/lib/plugin-pins.json").read_text())["claude"]["crit@crit"]["pin"]
+        pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]["crit@crit"]["pin"]
         at_pin = json.dumps([{"id": "crit@crit", "version": pin, "enabled": True}])
         newer = json.dumps([{"id": "crit@crit", "version": "999.0.0", "enabled": True}])
 
@@ -565,7 +565,8 @@ class ProducerFailureTest(unittest.TestCase):
         self.assertEqual([], calls)
 
         # Off its pin and still off after the update: the unreviewed release is left disabled.
-        result, calls = self.converge_claude([newer, newer])
+        disabled = json.dumps([{"id": "crit@crit", "version": "999.0.0", "enabled": False}])
+        result, calls = self.converge_claude([newer, newer, disabled])
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(["plugin update crit@crit", "plugin disable crit@crit"], calls)
         self.assertIn(f"not its pin {pin}", result.stderr)
@@ -580,3 +581,61 @@ class ProducerFailureTest(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         self.assertEqual([], calls)
         self.assertIn("claude plugin list --json failed", result.stderr)
+
+    def converge_listed(self, step: str, listing: list[dict], disable_fails: bool = False):
+        # STEP against a fake claude whose `plugin list --json` reads a file `plugin disable` rewrites (unless it fails).
+        work = Path(tempfile.mkdtemp(prefix="converge-listed-"))
+        self.addCleanup(shutil.rmtree, work)
+        (work / "listing.json").write_text(json.dumps(listing))
+        fake = (
+            'claude() { printf "%s\\n" "$*" >> "${WORK}/calls"; case "$1 $2" in '
+            '"plugin list") cat "${WORK}/listing.json" ;; '
+            '"plugin disable") [ -z "${DISABLE_FAILS}" ] || return 1; '
+            'jq --arg id "$3" \'map(if .id == $id then .enabled = false else . end)\' "${WORK}/listing.json" > "${WORK}/next" '
+            '&& mv "${WORK}/next" "${WORK}/listing.json" ;; esac; }'
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; has_command() {{ return 0; }}; {fake}; {step}', "bash", str(UPDATER)],
+            env=os.environ | {"WORK": str(work), "DISABLE_FAILS": "1" if disable_fails else ""},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = [call for call in (work / "calls").read_text().splitlines() if not call.startswith("plugin list")]
+        return result, calls, json.loads((work / "listing.json").read_text())
+
+    def pinned_listing(self, off_pin: str) -> list[dict]:
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+        return [
+            {"id": plugin_id, "version": "999.0.0" if plugin_id == off_pin else pin["pin"], "enabled": True}
+            for plugin_id, pin in pins.items()
+        ]
+
+    def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
+        listing = [{"id": "crit@crit", "version": "999.0.0", "enabled": True}]
+        result, calls, after = self.converge_listed('converge_claude_plugin "crit@crit"', listing, disable_fails=True)
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("plugin disable crit@crit", calls)
+        self.assertIn("ERROR: claude plugin disable crit@crit failed", result.stderr)
+        self.assertIs(True, after[0]["enabled"])
+
+        # The run counts it, so main exits non-zero instead of reporting success.
+        step = 'converge_claude_step "crit@crit" || true; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        result, _, _ = self.converge_listed(step, listing, disable_fails=True)
+        self.assertIn("failures=1", result.stdout)
+
+    def test_every_pinned_claude_plugin_is_checked_from_the_manifest_list(self):
+        # pstack has no setup step of its own; the manifest-driven loop still converges it.
+        step = 'converge_claude_plugins; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        result, calls, after = self.converge_listed(step, self.pinned_listing("pstack@cursor-plugins"))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["plugin update pstack@cursor-plugins", "plugin disable pstack@cursor-plugins"], calls)
+        self.assertEqual(
+            {"pstack@cursor-plugins": False}, {row["id"]: row["enabled"] for row in after if not row["enabled"]}
+        )
+        self.assertIn("failures=0", result.stdout)
+        # A plugin a setup step already converged is not converged twice.
+        step = 'CLAUDE_CONVERGED=" pstack@cursor-plugins "; converge_claude_plugins'
+        _, calls, _ = self.converge_listed(step, self.pinned_listing("pstack@cursor-plugins"))
+        self.assertEqual([], calls)

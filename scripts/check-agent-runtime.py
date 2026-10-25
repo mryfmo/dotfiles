@@ -597,7 +597,7 @@ def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = No
     ]
 
 
-PLUGIN_PINS = ROOT / "scripts/lib/plugin-pins.json"
+PLUGIN_PINS = ROOT / "scripts/plugin-pins.json"
 # Marketplaces whose plugins this repository does not pin: the ones OpenAI ships with Codex, and this
 # repository's own (crit@mryfmo-personal-plugins is the copy the pinned crit CLI writes, assets.crit).
 UNPINNED_CODEX_MARKETPLACES = frozenset(
@@ -671,10 +671,32 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
         plugin, _, marketplace = plugin_id.partition("@")
         root = home / ".codex/plugins/cache" / marketplace / plugin
         version_dir = active_plugin_version(root) if root.is_dir() else None
-        if version_dir is None:
+        copy = root / version_dir if version_dir is not None else None
+        ref = pin.get("ref")
+        if ref is not None:
+            # The marketplace revision is recorded beside its clone, whether or not a plugin copy is cached:
+            # a clone off its pin is an error even with no copy, and an unreadable record is never a pass.
+            install_record = home / ".codex/.tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
+            if install_record.exists():
+                try:
+                    revision = read_json(install_record).get("revision")
+                except (OSError, ValueError, AttributeError) as error:
+                    revision = None
+                    findings.append(f"Codex marketplace {marketplace}: cannot read {install_record} ({error!r})")
+                else:
+                    if revision != ref:
+                        findings.append(
+                            f"Codex marketplace {marketplace} is at {revision}, not its pinned ref {ref}; "
+                            "run chezmoi apply, then make update"
+                        )
+            elif copy is not None or install_record.parent.exists():
+                findings.append(
+                    f"Codex marketplace {marketplace}: {install_record} is missing, so its pinned ref {ref} "
+                    "cannot be checked; run make update"
+                )
+        if copy is None:
             findings.append(f"WARN: Codex plugin {plugin_id} is not installed (pin {pin['pin']})")
             continue
-        copy = root / version_dir
         try:
             version = str(read_json(copy / ".codex-plugin/plugin.json").get("version"))
         except (OSError, ValueError, AttributeError) as error:
@@ -685,30 +707,13 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
                 f"Codex plugin {plugin_id} is installed at {version}, not its pin {pin['pin']} "
                 "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
             )
-        ref = pin.get("ref")
-        if ref is None:
-            continue
-        install_record = home / ".codex/.tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
-        try:
-            revision = read_json(install_record).get("revision")
-        except (OSError, ValueError, AttributeError) as error:
-            findings.append(
-                f"Codex marketplace {marketplace}: cannot read {install_record} ({error!r}); its pin is not checked"
-            )
-            continue
-        if revision != ref:
-            findings.append(
-                f"Codex marketplace {marketplace} is at {revision}, not its pinned ref {ref}; run chezmoi apply, then make update"
-            )
         head = copy / ".git/HEAD"
-        if (
-            head.is_file()
-            and re.fullmatch(r"[0-9a-f]{40}", head.read_text().strip())
-            and head.read_text().strip() != ref
-        ):
-            findings.append(
-                f"Codex plugin {plugin_id} copy {copy} was installed from {head.read_text().strip()}, not the pinned ref {ref}"
-            )
+        if ref is not None and head.is_file():
+            commit = head.read_text().strip()
+            if re.fullmatch(r"[0-9a-f]{40}", commit) and commit != ref:
+                findings.append(
+                    f"Codex plugin {plugin_id} copy {copy} was installed from {commit}, not the pinned ref {ref}"
+                )
     config_path = home / ".codex/config.toml"
     if config_path.exists():
         try:

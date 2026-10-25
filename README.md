@@ -1011,7 +1011,7 @@ version.
 
 Plugin and gh extension pins (`assets.claude-plugins`, `assets.codex-plugins`,
 `assets.gh-extensions`) are the versions both hosts run, rendered into
-`scripts/lib/plugin-pins.json`. `make update` keeps each one there instead of
+`scripts/plugin-pins.json`. `make update` keeps each one there instead of
 taking the newest release:
 
 - Claude Code takes no plugin version, so a plugin at its pin is left alone; a

@@ -99,6 +99,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_claude_crit() { :; }
                     update_claude_ponytail() { :; }
                     update_claude_understand_anything() { :; }
+                    converge_claude_plugins() { :; }
                     update_codex_superpowers() { :; }
                     update_codex_crit() { :; }
                     update_codex_ponytail() { :; }
@@ -137,6 +138,7 @@ class RuntimeHealthTest(unittest.TestCase):
             repo / "scripts/update-agent-assets.sh",
         )
         (repo / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
@@ -206,6 +208,7 @@ class RuntimeHealthTest(unittest.TestCase):
             repo / "scripts/update-agent-assets.sh",
         )
         (repo / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",

@@ -1090,6 +1090,26 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         for expected in ("demo@market is installed at 2.1.0", "tail@tail is installed at 5.1.0", "b" * 40, "v1.1.0"):
             self.assertTrue(any(expected in error for error in errors), (expected, errors))
 
+    def test_doctor_fails_on_an_off_pin_marketplace_without_a_cached_copy(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "b" * 40, "v1.0.0")
+        shutil.rmtree(self.target_root / ".codex/plugins/cache")
+
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn(f"Codex marketplace tail is at {'b' * 40}, not its pinned ref {'a' * 40}", errors[0])
+        # A clone without its install record cannot be checked: that is an error too, never a pass.
+        (self.target_root / ".codex/.tmp/marketplaces/tail/.codex-marketplace-install.json").unlink()
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("is missing, so its pinned ref", errors[0])
+        # Neither a clone nor a copy: the plugin is not installed, which is only a warning.
+        shutil.rmtree(self.target_root / ".codex/.tmp/marketplaces/tail")
+        findings = self.plugin_findings(pins)
+        self.assertEqual([], [finding for finding in findings if not self.module.is_warning(finding)], findings)
+        self.assertTrue(any("tail@tail is not installed" in finding for finding in findings), findings)
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

@@ -1055,7 +1055,7 @@ def validate_crit_install_assets() -> None:
         "crit-darwin-arm64",
         "crit@crit",
         "claude plugin enable",
-        'converge_claude_plugin "${CLAUDE_CRIT_PLUGIN}"',
+        'converge_claude_step "${CLAUDE_CRIT_PLUGIN}"',
         "crit install codex-plugin --force",
         "tomasz-tomczyk/crit",
     ):
@@ -1149,7 +1149,7 @@ def validate_understand_anything_assets() -> None:
         "understand-anything@understand-anything",
         "CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL",
         "CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256",
-        'converge_claude_plugin "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
+        'converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
         "update_claude_understand_anything",
         "update_codex_understand_anything",
         "provision_codex_understand_anything_runtime",

@@ -201,7 +201,7 @@ def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str,
     return {"ref": refs.pop()} if refs else {}
 
 
-PLUGIN_PINS_PATH = "scripts/lib/plugin-pins.json"
+PLUGIN_PINS_PATH = "scripts/plugin-pins.json"
 
 
 def render_plugin_pins(manifest: dict[str, Any]) -> str:

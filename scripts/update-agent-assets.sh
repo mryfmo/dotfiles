@@ -51,7 +51,7 @@ fi
 source "${AGENT_ASSET_SCRIPT_DIR}/lib/installer-pins.sh"
 # Rendered from assets.claude-plugins, assets.codex-plugins and assets.gh-extensions in
 # home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
-readonly AGENT_PLUGIN_PINS="${AGENT_ASSET_SCRIPT_DIR}/lib/plugin-pins.json"
+readonly AGENT_PLUGIN_PINS="${AGENT_ASSET_SCRIPT_DIR}/plugin-pins.json"
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
@@ -361,7 +361,7 @@ function ensure_claude_understand_anything_marketplace() {
 }
 
 #
-# @description Print one recorded field of a plugin pin from scripts/lib/plugin-pins.json.
+# @description Print one recorded field of a plugin pin from scripts/plugin-pins.json.
 # @arg $1 string Agent: `claude` or `codex`.
 # @arg $2 string Fully qualified plugin ID.
 # @arg $3 string Field: `pin` or `ref`.
@@ -385,15 +385,40 @@ function claude_plugin_state() {
 }
 
 #
+# @description Disable a Claude Code plugin that is off its pin, then prove it is disabled.
+# @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 0 When the re-read plugin list shows the plugin disabled.
+# @exitcode 2 When the disable fails, the list cannot be re-read, or the plugin is still enabled.
+#
+function disable_off_pin_claude_plugin() {
+    local plugin_id="$1"
+    local state
+
+    if ! claude plugin disable "${plugin_id}"; then
+        printf 'ERROR: claude plugin disable %s failed; the plugin stays enabled off its pin.\n' "${plugin_id}" >&2
+        return 2
+    fi
+    if ! state="$(claude_plugin_state "${plugin_id}")"; then
+        printf 'ERROR: claude plugin list --json failed after disabling %s; cannot prove it is disabled.\n' "${plugin_id}" >&2
+        return 2
+    fi
+    if [ "${state#* }" = "true" ]; then
+        printf 'ERROR: Claude Code plugin %s is still enabled off its pin after claude plugin disable.\n' "${plugin_id}" >&2
+        return 2
+    fi
+}
+
+#
 # @description Keep a Claude Code plugin at its recorded pin (assets.claude-plugins in agent-config.yaml).
 # @description
 #   Claude Code installs only a marketplace's current release and takes no version, so a plugin at its
 #   pin is left alone (and enabled), a missing one is installed and one at another version is updated.
-#   A plugin still off its pin afterwards is disabled: Claude Code runs a plugin's hooks with no trust
-#   step, so only the reviewed version stays enabled. `make doctor` reports the difference.
+#   A plugin still off its pin afterwards is disabled and re-read: Claude Code runs a plugin's hooks with
+#   no trust step, so only the reviewed version may stay enabled. `make doctor` reports the difference.
 # @arg $1 string Fully qualified Claude Code plugin ID.
-# @exitcode 0 When the plugin is at its pin, or was left disabled because it is not.
-# @exitcode 1 When the pin or the plugin list cannot be read; the plugin is then not changed further.
+# @exitcode 0 When the plugin is at its pin, or is proven disabled because it is not.
+# @exitcode 1 When the pin or the plugin list cannot be read first; the plugin is then not changed.
+# @exitcode 2 When a plugin off its pin, or one this run changed and cannot re-read, may still be enabled.
 #
 function converge_claude_plugin() {
     local plugin_id="$1"
@@ -415,13 +440,13 @@ function converge_claude_plugin() {
     if ! state="$(claude_plugin_state "${plugin_id}")"; then
         printf 'claude plugin list --json failed after installing %s; disabling it until make update can compare it with its pin.\n' "${plugin_id}" >&2
         claude plugin disable "${plugin_id}" || true
-        return 1
+        return 2
     fi
     installed="${state% *}"
     if [ "${installed}" != "${pin}" ]; then
         printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; it stays disabled until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${installed:-no version (not installed)}" "${pin}" >&2
         if [ "${state#* }" = "true" ]; then
-            claude plugin disable "${plugin_id}" || true
+            disable_off_pin_claude_plugin "${plugin_id}" || return 2
         fi
         return 0
     fi
@@ -429,6 +454,65 @@ function converge_claude_plugin() {
     if [ "${state#* }" != "true" ]; then
         claude plugin enable "${plugin_id}" || true
     fi
+}
+
+# Plugin IDs converged in this run, space-delimited (bash 3.2 has no associative arrays), and the
+# count of plugins that may still be enabled off their pin; main fails the run when it is not zero.
+CLAUDE_CONVERGED=" "
+CLAUDE_PIN_FAILURES=0
+
+#
+# @description Converge one Claude Code plugin once per run and count a plugin that may stay enabled off its pin.
+# @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 0 When the plugin is at its pin or proven disabled; nonzero otherwise (the caller records nothing).
+#
+function converge_claude_step() {
+    local plugin_id="$1"
+    local status=0
+
+    CLAUDE_CONVERGED="${CLAUDE_CONVERGED}${plugin_id} "
+    converge_claude_plugin "${plugin_id}" || status=$?
+    if [ "${status}" -eq 2 ]; then
+        CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
+    fi
+    return "${status}"
+}
+
+#
+# @description Fail the run when a Claude Code plugin may still be enabled off its pin (counted by converge_claude_step).
+# @exitcode 1 When CLAUDE_PIN_FAILURES is not zero.
+#
+function fail_on_claude_pin_failures() {
+    if [ "${CLAUDE_PIN_FAILURES}" -gt 0 ]; then
+        printf 'ERROR: %s Claude Code plugin(s) may still be enabled off their pin; see the errors above.\n' "${CLAUDE_PIN_FAILURES}" >&2
+        return 1
+    fi
+}
+
+#
+# @description Converge every Claude Code plugin scripts/plugin-pins.json records that no step above handled.
+# @description
+#   The pinned list in assets.claude-plugins is the one source: a plugin with a setup step of its own
+#   (marketplace, Crit CLI) was converged there, and every other one, pstack included, is converged here,
+#   so each pinned plugin is checked and disabled when it is off its pin.
+# @exitcode 0 Always; a pins file that cannot be read counts as a failure that main reports.
+#
+function converge_claude_plugins() {
+    local ids plugin_id
+
+    has_command claude || return 0
+    if ! ids="$(jq -er '.claude | keys[]' "${AGENT_PLUGIN_PINS}" 2> /dev/null)"; then
+        printf 'ERROR: cannot read the Claude Code plugin pins from %s; no plugin was checked against its pin.\n' "${AGENT_PLUGIN_PINS}" >&2
+        CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
+        return 0
+    fi
+    section "Claude Code plugin pins"
+    while IFS= read -r plugin_id; do
+        case "${CLAUDE_CONVERGED}" in
+        *" ${plugin_id} "*) continue ;;
+        esac
+        converge_claude_step "${plugin_id}" || true
+    done <<< "${ids}"
 }
 
 #
@@ -496,7 +580,7 @@ function update_claude_superpowers() {
     section "Claude Code plugins"
     ensure_claude_superpowers_marketplace
     claude plugin marketplace update claude-plugins-official || true
-    converge_claude_plugin "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
+    converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" || return 1
     manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
@@ -517,7 +601,7 @@ function update_claude_crit() {
     fi
     ensure_claude_crit_marketplace
     claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
-    converge_claude_plugin "${CLAUDE_CRIT_PLUGIN}" || return 0
+    converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" || return 1
     manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
@@ -535,7 +619,7 @@ function update_claude_ponytail() {
     section "Claude Code Ponytail plugin"
     ensure_claude_ponytail_marketplace
     claude plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
-    converge_claude_plugin "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
+    converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" || return 1
@@ -554,7 +638,7 @@ function update_claude_understand_anything() {
     section "Claude Code Understand-Anything plugin"
     ensure_claude_understand_anything_marketplace
     claude plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
-    converge_claude_plugin "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
+    converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" || return 1
     manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
@@ -1329,6 +1413,7 @@ function main() {
     update_claude_crit
     update_claude_ponytail
     update_claude_understand_anything
+    converge_claude_plugins
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail
@@ -1343,6 +1428,8 @@ function main() {
     manifest_prune_retired
     # After every plugin update above, so the trust hashes follow the plugin content of this run.
     refresh_codex_hook_trust
+    # Last, so every other step still ran: a plugin that may stay enabled off its pin fails the whole run.
+    fail_on_claude_pin_failures
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

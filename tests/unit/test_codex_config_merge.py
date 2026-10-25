@@ -777,9 +777,9 @@ class CodexConfigMergeTest(unittest.TestCase):
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()
         main = script.split("\nfunction main() {\n", 1)[1].split("\n}\n", 1)[0]
-        steps = [line.strip() for line in main.splitlines()]
-        # The refresh is the last step of the asset update, after every Codex plugin update.
-        self.assertEqual(steps[-1], "refresh_codex_hook_trust")
+        steps = [line.strip() for line in main.splitlines() if not line.strip().startswith("#")]
+        # The refresh is the last update step, after every Codex plugin update; only the pin-failure gate follows it.
+        self.assertEqual(steps[-2:], ["refresh_codex_hook_trust", "fail_on_claude_pin_failures"])
         for plugin_step in ("update_codex_superpowers", "update_codex_crit", "update_codex_ponytail"):
             with self.subTest(step=plugin_step):
                 self.assertLess(steps.index(plugin_step), steps.index("refresh_codex_hook_trust"))

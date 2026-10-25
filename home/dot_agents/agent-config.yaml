@@ -767,10 +767,11 @@ assets:
       on macOS and spark-9e8d). Claude Code installs a plugin only at its marketplace's current
       release and takes no version, so scripts/update-agent-assets.sh leaves a plugin at its pin
       alone, installs or updates one that is not, and disables a plugin that is still off its pin
-      afterwards: Claude Code runs a plugin's hooks with no trust step, so only a reviewed version
-      stays enabled. make doctor fails when an installed version differs from its pin and warns
-      for an enabled plugin this list does not name. pstack is installed by hand from the
-      cursor/plugins marketplace (assets.pstack deploys its skills); make update only checks it.
+      afterwards, failing the run when it cannot prove the plugin disabled: Claude Code runs a
+      plugin's hooks with no trust step, so only a reviewed version stays enabled. This list drives
+      that loop, so every plugin here is converged, pstack included (installed by hand from the
+      cursor/plugins marketplace; assets.pstack deploys its skills). make doctor fails when an
+      installed version differs from its pin and warns for an enabled plugin this list does not name.
       To move a plugin, review the upstream release, set its pin here, regenerate, then make update.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}

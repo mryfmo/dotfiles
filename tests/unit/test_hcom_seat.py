@@ -122,20 +122,39 @@ class HcomSeatTest(unittest.TestCase):
         ]  # fmt: skip
 
     def test_a_remote_seat_without_a_login_starts_nothing(self):
-        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything."""
+        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything. U85 round 28: the
+        preflight reads the Keychain only through `security`, a tool hcom-seat resolves, so the test's fake answers
+        and no test queries the host's real Keychain."""
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         fakes = Path(self.temp.name) / "no-keychain"
         fakes.mkdir()
-        (fakes / "security").write_text("#!/bin/sh\nexit 44\n")  # the host's real Keychain login never counts
+        # security is a resolved tool (U85 round 28), the preflight's one Keychain reader: this fake on the caller's PATH
+        # is what it runs, so the host's real Keychain is never queried and its login never counts.
+        queries = Path(self.temp.name) / "keychain-queries"
+        (fakes / "security").write_text(
+            f'#!/bin/sh\necho "$*" >> {shlex.quote(str(queries))}\nexit "${{FAKE_KEYCHAIN_STATUS:-44}}"\n'
+        )
         (fakes / "security").chmod(0o755)
-        run = self.seat(
-            "worker", "--seats-root", self.seats, SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22",
-            PATH=f"{fakes}:{self.env['PATH']}", CLAUDE_CODE_OAUTH_TOKEN=None, CLAUDE_CONFIG_DIR=None,
-        )  # fmt: skip
+
+        def launch(**extra):
+            return self.seat(
+                "worker", "--seats-root", self.seats, SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22",
+                PATH=f"{fakes}:{self.env['PATH']}", CLAUDE_CODE_OAUTH_TOKEN=None, CLAUDE_CONFIG_DIR=None, **extra,
+            )  # fmt: skip
+
+        run = launch()
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn("worker claude-bridge: absent; a login is the operator's step", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertFalse(Path(self.seats, "worker").exists())
+        self.assertEqual((self.tools / "security").resolve(), (fakes / "security").resolve())
+        if sys.platform == "darwin":
+            # The Keychain answer is the fake's, whatever the host's Keychain holds: a login there launches the seat.
+            self.assertEqual(queries.read_text(), "find-generic-password -s Claude Code-credentials\n")
+            run = launch(FAKE_KEYCHAIN_STATUS="0")
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("worker claude-bridge: login present (Keychain item)", run.stderr)
+            self.assertEqual(len(self.calls_of("hcom")), 1)
 
     def test_a_remote_siwc_seat_reads_its_registration_with_the_resolved_jq(self):
         """U85 round 22: seat-login-preflight reads the openai-siwc registration with jq, and macOS 14 has no

@@ -697,8 +697,9 @@ fi
 required_tools=(git hcom herdr omp srt)
 # claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37); jq reads the
 # openai-siwc registration there (macOS 14 ships no /usr/bin/jq, so a mise or Homebrew jq is resolved and checked
-# like every tool). hcom-seat itself never runs it: the settings are read by plutil or /usr/bin/jq.
-optional_tools=(node bun claude python3 regime-open-url jq)
+# like every tool). hcom-seat itself never runs it: the settings are read by plutil or /usr/bin/jq. security (macOS)
+# is the preflight's one Keychain reader, resolved like every tool, so the preflight's login check has one seam.
+optional_tools=(node bun claude python3 regime-open-url jq security)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
 esac

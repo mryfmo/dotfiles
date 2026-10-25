@@ -547,9 +547,10 @@ claude() {
                 | if ($p | has($id)) then $p[$id] else ($u[$id] == true) end)}]' "${record}" ;;
     "plugin marketplace list") cat "${WORK}/markets.json" ;;
     "plugin marketplace add") [ -z "${ADD_FAILS}" ] || return 1
-        jq --arg name "${ADD_NAME}" '. + [{name: $name}]' "${WORK}/markets.json" > "${WORK}/next" && mv "${WORK}/next" "${WORK}/markets.json" ;;
+        jq --arg name "${ADD_NAME}" --arg repo "$4" '. + [{name: $name, source: "github", repo: $repo}]' "${WORK}/markets.json" > "${WORK}/next" && mv "${WORK}/next" "${WORK}/markets.json" ;;
     "plugin install "*) [ -z "${INSTALL_FAILS}" ] || return 1
-        jq --arg id "$3" --arg version "${INSTALL_VERSION}" '.plugins[$id] += [{scope: "user", version: $version}]' \
+        jq --arg id "$3" --arg version "${INSTALL_VERSION}" --arg home "${HOME}" \
+            '.plugins[$id] += [{scope: "user", version: $version, installPath: "\($home)/.claude/plugins/cache/\($id | split("@")[1])/\($id | split("@")[0])/\($version)"}]' \
             "${record}" > "${WORK}/next" && mv "${WORK}/next" "${record}"
         jq --arg id "$3" '.enabledPlugins[$id] = true' "${user}" > "${WORK}/next" && mv "${WORK}/next" "${user}" ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS}" ] || return 1; [ -z "${DISABLE_NOOP}" ] || return 0
@@ -569,16 +570,23 @@ claude() {
         project_dir = work / "project"
         (project_dir / ".claude").mkdir(parents=True)
         (project_dir / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": project or {}}))
-        for entries in installs.values() if isinstance(installs, dict) else []:
+        for plugin_id, entries in installs.items() if isinstance(installs, dict) else []:
+            plugin, marketplace = plugin_id.split("@", 1)
             for entry in entries:
+                # The shape Claude Code writes: installPath names the plugin's own cache directory.
+                entry.setdefault(
+                    "installPath", f"{home}/.claude/plugins/cache/{marketplace}/{plugin}/{entry['version']}"
+                )
                 if entry.get("projectPath") == "PROJECT":
                     entry["projectPath"] = str(project_dir)
         record = home / ".claude/plugins/installed_plugins.json"
         record.write_text(installs if isinstance(installs, str) else json.dumps({"version": 2, "plugins": installs}))
         (home / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": enabled}))
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
-        names = [plugin_id.split("@", 1)[1] for plugin_id in pins] if markets is None else markets
-        (work / "markets.json").write_text(json.dumps([{"name": name} for name in names]))
+        sources = {plugin_id.split("@", 1)[1]: pin["marketplace"] for plugin_id, pin in pins.items()}
+        names = list(sources) if markets is None else markets
+        listing = [{"name": name, "source": "github", "repo": sources[name]} for name in names]
+        (work / "markets.json").write_text(json.dumps(listing))
         variables = ("ADD_FAILS", "ADD_NAME", "INSTALL_FAILS", "INSTALL_VERSION", "DISABLE_FAILS", "DISABLE_NOOP")
         result = subprocess.run(
             [
@@ -684,7 +692,8 @@ claude() {
                 result, calls, _ = self.converge_listed(step, installs, enabled, DISABLE_NOOP="1")
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("plugin disable crit@crit --scope user @neutral", calls)
-                self.assertIn("does not disable it", result.stderr)
+                # Not the boolean false: either not disabled, or a value the strict reader refuses.
+                self.assertRegex(result.stderr, "does not disable it|enabledPlugins.crit@crit: must be a boolean")
 
     def test_a_marketplace_that_cannot_be_registered_fails_an_off_pin_plugin(self):
         # Failure injection: the existing off-pin installation is still disabled, and the run fails.
@@ -830,7 +839,7 @@ claude() {
         (directory / "gh-poi").write_text("old binary\n")
         if pinned is not None:
             (directory / "manifest.yml").write_text(
-                f"owner: seachicken\nname: gh-poi\ntag: {tag}\nispinned: {pinned}\n"
+                f"owner: seachicken\nname: gh-poi\nhost: github.com\ntag: {tag}\nispinned: {pinned}\npath: {directory}/gh-poi\n"
             )
         fake = (
             'gh() { case "$1 $2" in "auth status") return 0 ;; '
@@ -838,7 +847,7 @@ claude() {
             '"extension install") printf "%s\\n" "$*" >> "${WORK}/calls"; '
             'd="${XDG_DATA_HOME}/gh/extensions/gh-poi"; [ ! -e "$d" ] || return 7; mkdir -p "$d"; '
             'if [ -n "${INSTALL_FAILS}" ]; then echo partial > "$d/gh-poi"; return 1; fi; '
-            'echo new > "$d/gh-poi"; printf "tag: %s\\nispinned: true\\n" "$5" > "$d/manifest.yml" ;; '
+            'echo new > "$d/gh-poi"; printf "owner: seachicken\\nname: gh-poi\\nhost: github.com\\ntag: %s\\nispinned: true\\npath: %s\\n" "$5" "$d/gh-poi" > "$d/manifest.yml" ;; '
             '"extension remove") printf "%s\\n" "$*" >> "${WORK}/calls"; rm -rf "${XDG_DATA_HOME}/gh/extensions/$3" ;; '
             '*) printf "%s\\n" "$*" >> "${WORK}/calls" ;; esac; }'
         )

@@ -9,6 +9,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -1055,11 +1056,16 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
         return pins
 
+    def claude_entry(self, version: object, scope: str = "user", **extra: object) -> dict:
+        """An installed_plugins.json entry for demo@market in the shape Claude Code writes."""
+        path = f"{self.target_root}/.claude/plugins/cache/market/demo/{version}"
+        return {"scope": scope, "version": version, "installPath": path, **extra}
+
     def install_plugin_fixture(self, claude: str, codex: str, revision: str, tag: str, pinned: bool = True) -> None:
         home = self.target_root
         (home / ".claude/plugins").mkdir(parents=True, exist_ok=True)
         (home / ".claude/plugins/installed_plugins.json").write_text(
-            json.dumps({"version": 2, "plugins": {"demo@market": [{"scope": "user", "version": claude}]}})
+            json.dumps({"version": 2, "plugins": {"demo@market": [self.claude_entry(claude)]}})
         )
         (home / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": {"demo@market": True}}))
         copy = home / ".codex/plugins/cache/tail/tail" / codex / ".codex-plugin"
@@ -1067,11 +1073,14 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         (copy / "plugin.json").write_text(json.dumps({"name": "tail", "version": codex}))
         record = home / ".codex/.tmp/marketplaces/tail"
         record.mkdir(parents=True, exist_ok=True)
-        (record / ".codex-marketplace-install.json").write_text(json.dumps({"revision": revision}))
+        (record / ".codex-marketplace-install.json").write_text(
+            json.dumps({"source_type": "git", "source": "https://example.invalid/tail.git", "revision": revision})
+        )
         extension = home / ".local/share/gh/extensions/gh-tool"
         extension.mkdir(parents=True, exist_ok=True)
         (extension / "manifest.yml").write_text(
-            f"owner: owner\nname: gh-tool\ntag: {tag}\nispinned: {'true' if pinned else 'false'}\n"
+            f"owner: owner\nname: gh-tool\nhost: github.com\ntag: {tag}\nispinned: {'true' if pinned else 'false'}\n"
+            f"path: {extension / 'gh-tool'}\n"
         )
 
     def plugin_findings(self, pins: Path) -> list[str]:
@@ -1116,8 +1125,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         record = self.target_root / ".claude/plugins/installed_plugins.json"
-        project = {"scope": "project", "version": "9.9.9", "projectPath": "/work/app"}
-        record.write_text(json.dumps({"plugins": {"demo@market": [{"scope": "user", "version": "2.0.0"}, project]}}))
+        project = self.claude_entry("9.9.9", "project", projectPath="/work/app")
+        record.write_text(json.dumps({"plugins": {"demo@market": [self.claude_entry("2.0.0"), project]}}))
 
         findings = self.plugin_findings(pins)
 
@@ -1126,7 +1135,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertIn("WARN: plugin demo@market installed in project scope at /work/app: not managed", findings)
 
         # Only a project copy: the pinned plugin is not installed where make update manages it.
-        record.write_text(json.dumps({"plugins": {"demo@market": [project], "other@elsewhere": [project]}}))
+        other = {**project, "installPath": f"{self.target_root}/.claude/plugins/cache/elsewhere/other/9.9.9"}
+        record.write_text(json.dumps({"plugins": {"demo@market": [project], "other@elsewhere": [other]}}))
         findings = self.plugin_findings(pins)
         self.assertTrue(all(self.module.is_warning(finding) for finding in findings), findings)
         self.assertTrue(any("demo@market is not installed" in finding for finding in findings), findings)
@@ -1171,7 +1181,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         # A stat failure other than "absent" on any record propagates instead of reading as missing.
         with mock.patch.object(Path, "stat", side_effect=PermissionError("denied")):
-            with self.assertRaises(PermissionError):
+            with self.assertRaises(self.module.RecordError):
                 self.module.present(self.target_root / "anything")
 
     def test_doctor_fails_on_a_listable_cache_with_an_unreadable_version_entry(self) -> None:
@@ -1185,7 +1195,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         finally:
             entry.chmod(0o755)
         errors = [finding for finding in findings if not self.module.is_warning(finding)]
-        self.assertTrue(any("tail@tail: cannot read its cache" in error for error in errors), findings)
+        self.assertTrue(any("tail@tail" in error and "cannot read" in error for error in errors), findings)
         self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
 
     def test_doctor_follows_codexs_active_version_rule(self) -> None:
@@ -1194,12 +1204,12 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         root = self.target_root / ".codex/plugins/cache/tail/tail"
         # The highest version wins; a symlinked entry and a name outside the segment are not versions.
         (root / "4.0.0/.codex-plugin").mkdir(parents=True)
-        (root / "4.0.0/.codex-plugin/plugin.json").write_text(json.dumps({"version": "4.0.0"}))
+        (root / "4.0.0/.codex-plugin/plugin.json").write_text(json.dumps({"name": "tail", "version": "4.0.0"}))
         (root / "9.0.0").symlink_to(root / "4.0.0")
         self.assertEqual([], [f for f in self.plugin_findings(pins) if not self.module.is_warning(f)])
         # `local` wins over any number.
         (root / "local/.codex-plugin").mkdir(parents=True)
-        (root / "local/.codex-plugin/plugin.json").write_text(json.dumps({"version": "local"}))
+        (root / "local/.codex-plugin/plugin.json").write_text(json.dumps({"name": "tail", "version": "local"}))
         errors = [f for f in self.plugin_findings(pins) if not self.module.is_warning(f)]
         self.assertEqual(1, len(errors), errors)
         self.assertIn("tail@tail is installed at local", errors[0])
@@ -1211,7 +1221,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             json.dumps({"enabledPlugins": {"extra@elsewhere": True}})
         )
 
-        findings = self.module.claude_plugin_pin_findings(self.target_root, json.loads(pins.read_text())["claude"])
+        findings = self.module.claude_plugin_pin_findings(
+            self.target_root, self.module.records.load_plugin_pins(pins).claude
+        )
 
         self.assertTrue(any("installed_plugins.json is missing" in finding for finding in findings), findings)
         self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
@@ -1225,16 +1237,49 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         pins.write_text(json.dumps(data))
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
-            json.dumps({"plugins": {"demo@market": [{"scope": "user", "version": 2.0}]}})
+            json.dumps({"plugins": {"demo@market": [self.claude_entry(2.0)]}})
         )
         (self.target_root / ".codex/plugins/cache/tail/tail/5.0.0/.codex-plugin/plugin.json").write_text(
-            json.dumps({"version": 5.0})
+            json.dumps({"name": "tail", "version": 5.0})
         )
 
         errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
 
         self.assertEqual(2, len(errors), errors)
-        self.assertTrue(all("invalid:float" in error for error in errors), errors)
+        self.assertTrue(all("version: must be str, not float" in error for error in errors), errors)
+
+    def test_doctor_refuses_malformed_and_foreign_records(self) -> None:
+        # Audit round 13: neither a malformed entry nor a fork's extension reads as "not installed" or a pass.
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        record = self.target_root / ".claude/plugins/installed_plugins.json"
+        record.write_text(json.dumps({"plugins": {"demo@market": [{"scope": "user", "version": "9.9.9"}]}}))
+        manifest = self.target_root / ".local/share/gh/extensions/gh-tool/manifest.yml"
+        manifest.write_text(manifest.read_text().replace("owner: owner", "owner: forker"))
+
+        findings = self.plugin_findings(pins)
+
+        errors = [finding for finding in findings if not self.module.is_warning(finding)]
+        self.assertTrue(any("installPath: is missing" in error for error in errors), findings)
+        self.assertTrue(any("forker/gh-tool is not owner/gh-tool" in error for error in errors), findings)
+        self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
+
+    def test_doctor_checks_the_commit_a_git_copy_came_from(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        copy = self.target_root / ".codex/plugins/cache/tail/tail/5.0.0"
+        git = ["git", "-C", str(copy), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+        subprocess.run([*git, "init", "-q", "-b", "main"], check=True)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+        # A branch HEAD (`ref: refs/heads/main`) is resolved by git; that commit is not the pinned ref.
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("was installed from", errors[0])
+        # A HEAD git cannot resolve is an error, never a pass.
+        (copy / ".git/HEAD").write_text("ref: refs/heads/missing\n")
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("git cannot resolve the commit", errors[0])
 
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()

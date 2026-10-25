@@ -23,8 +23,27 @@ def install_pinned_claude_plugins(home: Path) -> None:
     pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
     record = home / ".claude/plugins/installed_plugins.json"
     record.parent.mkdir(parents=True, exist_ok=True)
-    plugins = {plugin_id: [{"scope": "user", "version": pin["pin"]}] for plugin_id, pin in pins.items()}
+    plugins = {
+        plugin_id: [
+            {
+                "scope": "user",
+                "version": pin["pin"],
+                "installPath": f"{home}/.claude/plugins/cache/{plugin_id.split('@')[1]}/{plugin_id.split('@')[0]}/{pin['pin']}",
+            }
+        ]
+        for plugin_id, pin in pins.items()
+    }
     record.write_text(json.dumps({"version": 2, "plugins": plugins}))
+    # What `claude plugin marketplace list --json` prints on that host: every recorded marketplace, registered.
+    listing = [
+        {"name": plugin_id.split("@")[1], "source": "github", "repo": pin["marketplace"]}
+        for plugin_id, pin in pins.items()
+    ]
+    (home / ".fixture-marketplaces.json").write_text(json.dumps(listing))
+
+
+# The fake claude's answer to `plugin marketplace list --json` (install_pinned_claude_plugins writes it).
+FAKE_MARKETPLACE_LIST = '[ "$1 $2 $3" != "plugin marketplace list" ] || cat "$HOME/.fixture-marketplaces.json"'
 
 
 class RuntimeHealthTest(unittest.TestCase):
@@ -150,6 +169,7 @@ class RuntimeHealthTest(unittest.TestCase):
         )
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
@@ -181,6 +201,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 bin_dir / command,
                 f"""
                 printf '{command} %s\\n' "$*" >> "$TEST_LOG"
+                {FAKE_MARKETPLACE_LIST if command == "claude" else ""}
                 """,
             )
         log = repo / "commands.log"
@@ -221,6 +242,7 @@ class RuntimeHealthTest(unittest.TestCase):
         )
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
@@ -266,6 +288,9 @@ class RuntimeHealthTest(unittest.TestCase):
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash
 printf 'claude %s\n' "$*" >> "$TEST_LOG"
+"""
+            + FAKE_MARKETPLACE_LIST
+            + """
 EOF
                 chmod +x "$BROKEN_CLAUDE"
             fi
@@ -295,7 +320,7 @@ EOF
         repair = "mise npm  install --force npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
-        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list --json"))
 
     def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
         self,
@@ -970,6 +995,7 @@ EOF
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
         shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
         self.executable(
             bin_dir / "brew",

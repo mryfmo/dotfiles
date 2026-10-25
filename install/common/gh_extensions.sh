@@ -37,18 +37,36 @@ function activate_mise() {
 }
 
 #
-# @description Print `true` when gh recorded an installed extension as pinned (`ispinned: true` in its
-#   manifest.yml), else `false`; a missing or unreadable manifest is `false`, so it is reinstalled pinned.
-# @arg $1 string Extension repository name, for example gh-poi.
+# @description Print the path of scripts/pin_records.py, the strict reader of gh's extension manifest: from
+#   the dotfiles checkout (update-agent-assets.sh), chezmoi's source directory (the run_once script), or this
+#   file's own repository.
+# @exitcode 1 When none of them holds it.
 #
-function gh_extension_is_pinned() {
-    local manifest="${XDG_DATA_HOME:-${HOME}/.local/share}/gh/extensions/$1/manifest.yml"
+function pin_records_path() {
+    local root
+    for root in "${DOTFILES_REPO_SOURCE_DIR:-}" "${CHEZMOI_SOURCE_DIR:+${CHEZMOI_SOURCE_DIR}/..}" "${BASH_SOURCE[0]%/*}/../.."; do
+        if [ -n "${root}" ] && [ -f "${root}/scripts/pin_records.py" ]; then
+            printf '%s\n' "${root}/scripts/pin_records.py"
+            return 0
+        fi
+    done
+    return 1
+}
 
-    if grep -qx 'ispinned: true' "${manifest}" 2> /dev/null; then
-        printf 'true\n'
-    else
-        printf 'false\n'
-    fi
+#
+# @description Print gh's record of an installed extension as `<tag> <pinned>`, or `absent`.
+# @arg $1 string Extension repository, for example seachicken/gh-poi.
+# @exitcode 2 When the record cannot be read, has an unknown shape, or names another owner (a fork):
+#   such a copy cannot be verified, so the caller reinstalls it pinned.
+#
+function gh_extension_state() {
+    local reader
+
+    reader="$(pin_records_path)" || {
+        printf 'Cannot find scripts/pin_records.py; cannot verify %s.\n' "$1" >&2
+        return 2
+    }
+    python3 -I "${reader}" gh-extension "${XDG_DATA_HOME:-${HOME}/.local/share}" "$1"
 }
 
 #
@@ -94,7 +112,7 @@ function replace_gh_extension() {
 #   pinned install fails; every other extension is still processed.
 #
 function install_gh_extensions() {
-    local entry extension pin listing installed pinned failed=0
+    local entry extension pin listing installed state failed=0
 
     if ! gh auth status &> /dev/null; then
         printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
@@ -109,12 +127,13 @@ function install_gh_extensions() {
         extension="${entry%=*}"
         pin="${entry##*=}"
         installed="$(awk -F '\t' -v expected="${extension}" '$2 == expected { print $3; exit }' <<< "${listing}")"
-        pinned="$(gh_extension_is_pinned "${extension##*/}")"
-        if [ "${installed}" = "${pin}" ] && [ "${pinned}" = "true" ]; then
+        # gh's own record decides, read strictly; one it cannot verify (unreadable, foreign) is reinstalled.
+        state="$(gh_extension_state "${extension}")" || state="unverifiable"
+        if [ "${state}" = "${pin} true" ]; then
             continue
         fi
-        if [ -n "${installed}" ]; then
-            printf '%s is at %s (pinned: %s); reinstalling it pinned at %s.\n' "${extension}" "${installed}" "${pinned}" "${pin}"
+        if [ "${state}" != "absent" ]; then
+            printf '%s is %s (listed at %s); reinstalling it pinned at %s.\n' "${extension}" "${state}" "${installed:-no tag}" "${pin}"
         fi
         replace_gh_extension "${extension}" "${pin}" || failed=1
     done

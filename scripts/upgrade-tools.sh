@@ -250,19 +250,12 @@ function current_mise_tools() {
 #
 # @description Print the tools the applied mise config holds, one per line: an entry whose comment block
 #   directly above it says "Held" (home/dot_mise/config.toml keeps every hold reason there). The config is
-#   the one source, so a hold released there leaves no skip behind here.
-# @exitcode 1 When the applied config cannot be read.
+#   the one source, so a hold released there leaves no skip behind here. scripts/pin_records.py reads it
+#   strictly: the config must be valid TOML and every Held entry a tool.
+# @exitcode 2 When the applied config cannot be read or a Held comment names no tool.
 #
 function held_mise_tools() {
-    local config="${MISE_CONFIG_DIR}/config.toml"
-
-    [ -r "${config}" ] || return 1
-    awk '
-        /^[[:space:]]*#/ { if ($0 ~ /Held/) held = 1; next }
-        /^[[:space:]]*\[tools\."/ { if (held) { name = $0; sub(/^[[:space:]]*\[tools\."/, "", name); sub(/"\].*$/, "", name); print name } held = 0; next }
-        /^[[:space:]]*"?[A-Za-z0-9@:\/._-]+"?[[:space:]]*=/ { if (held) { name = $0; sub(/[[:space:]]*=.*$/, "", name); gsub(/^[[:space:]]*"?|"?$/, "", name); print name } held = 0; next }
-        { held = 0 }
-    ' "${config}"
+    python3 -I "${repo_root}/scripts/pin_records.py" mise-holds "${MISE_CONFIG_DIR}/config.toml"
 }
 
 #
@@ -510,7 +503,7 @@ function upgrade_gh_extensions() {
     fi
 
     section "GitHub CLI extensions"
-    if ! pinned="$(jq -r '.gh_extensions | keys[]' "${repo_root}/scripts/plugin-pins.json" 2> /dev/null)"; then
+    if ! pinned="$(python3 -I "${repo_root}/scripts/pin_records.py" plugin-ids "${repo_root}/scripts/plugin-pins.json" gh_extensions)"; then
         printf 'warning: cannot read the pinned gh extensions from %s; no extension was upgraded\n' "${repo_root}/scripts/plugin-pins.json" >&2
         return 1
     fi
@@ -520,7 +513,14 @@ function upgrade_gh_extensions() {
     fi
     while IFS=$'\t' read -r _ repository _; do
         [ -n "${repository}" ] || continue
-        if grep -qxF -- "${repository}" <<< "${pinned}"; then
+        # `gh extension upgrade` takes the name, so a fork with a pinned extension's name is skipped too;
+        # a row that is not <owner>/<name> cannot be told apart from a pinned one and is not upgraded.
+        if [[ ! "${repository}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            printf 'warning: skipping an unrecognised gh extension list row: %s\n' "${repository}" >&2
+            failed=1
+            continue
+        fi
+        if grep -qxF -- "${repository}" <<< "${pinned}" || awk -F/ -v name="${repository##*/}" '$2 == name { found = 1 } END { exit !found }' <<< "${pinned}"; then
             printf 'Skipping gh extension %s: pinned in assets.gh-extensions.\n' "${repository}"
             continue
         fi

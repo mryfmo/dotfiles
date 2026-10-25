@@ -222,15 +222,6 @@ function codex_marketplace_has_source() {
 #
 # @description Ensure the official Claude Code plugin marketplace is configured.
 #
-function ensure_claude_superpowers_marketplace() {
-    if command_output_contains "claude-plugins-official" claude_outside_projects plugin marketplace list; then
-        return 0
-    fi
-
-    claude_outside_projects plugin marketplace add "${CLAUDE_SUPERPOWERS_MARKETPLACE}"
-}
-
-#
 # @description Download the pinned Crit release binary, verify it against its reviewed sha256 and
 #   the release's checksums.txt, and atomically install it.
 # @arg $1 string Release artifact name.
@@ -330,34 +321,17 @@ function ensure_crit_cli() {
 #
 # @description Ensure the Crit Claude Code plugin marketplace is configured.
 #
-function ensure_claude_crit_marketplace() {
-    if command_output_contains "${CLAUDE_CRIT_MARKETPLACE_NAME}" claude_outside_projects plugin marketplace list; then
-        return 0
-    fi
-
-    claude_outside_projects plugin marketplace add "${CLAUDE_CRIT_MARKETPLACE}"
-}
-
-#
 # @description Ensure the Ponytail Claude Code plugin marketplace is configured.
-#
-function ensure_claude_ponytail_marketplace() {
-    if command_output_contains "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" claude_outside_projects plugin marketplace list; then
-        return 0
-    fi
-
-    claude_outside_projects plugin marketplace add "${CLAUDE_PONYTAIL_MARKETPLACE}"
-}
-
 #
 # @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.
 #
-function ensure_claude_understand_anything_marketplace() {
-    if command_output_contains "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" claude_outside_projects plugin marketplace list; then
-        return 0
-    fi
-
-    claude_outside_projects plugin marketplace add "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}"
+# @description Run scripts/pin_records.py, the one strict reader of every record the pin checks use: it prints
+#   the parsed value, or exits 2 with `ERROR: <record>: <field>: <why>` for a record it cannot read, one of an
+#   unknown shape, or one naming a foreign identity (an absent record is not an error).
+# @arg $@ string A pin_records.py command and its arguments.
+#
+function pin_record() {
+    python3 -I "${AGENT_ASSET_SCRIPT_DIR}/pin_records.py" "$@"
 }
 
 #
@@ -368,7 +342,7 @@ function ensure_claude_understand_anything_marketplace() {
 # @exitcode 1 When the pins file cannot be read or does not record the field.
 #
 function plugin_pin() {
-    jq -er --arg agent "$1" --arg id "$2" --arg field "$3" '.[$agent][$id][$field] | strings' "${AGENT_PLUGIN_PINS}" 2> /dev/null
+    pin_record plugin-pin "${AGENT_PLUGIN_PINS}" "$@"
 }
 
 #
@@ -395,13 +369,7 @@ function claude_outside_projects() {
 # @exitcode 1 When the settings file exists but is not a readable JSON object.
 #
 function claude_user_enabled() {
-    local settings="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/settings.json"
-
-    if [ ! -e "${settings}" ]; then
-        printf 'unset\n'
-        return 0
-    fi
-    jq -r --arg id "$1" 'if type == "object" then ((.enabledPlugins // {})[$id] | if . == null then "unset" elif . == false then "disabled" elif . == true then "enabled" else "invalid:\(type)" end) else error("not an object") end' "${settings}" 2> /dev/null
+    pin_record claude-enabled "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/settings.json" "$1"
 }
 
 #
@@ -411,10 +379,7 @@ function claude_user_enabled() {
 # @exitcode 1 When installed_plugins.json exists but cannot be parsed: a failed read is never "not installed".
 #
 function claude_plugin_installs() {
-    local record="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/plugins/installed_plugins.json"
-
-    [ -e "${record}" ] || return 0
-    jq -er --arg id "$1" 'if (.plugins | type) == "object" then ([(.plugins[$id] // [])[] | [(.scope // "user"), (.version | if type == "string" then . else "invalid:\(type)" end), (.projectPath // "")] | @tsv] | join("\n")) else error end' "${record}" 2> /dev/null
+    pin_record claude-installs "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/plugins/installed_plugins.json" "$1"
 }
 
 #
@@ -446,18 +411,21 @@ function claude_user_plugin_version() {
 #
 function ensure_claude_plugin_marketplace() {
     local plugin_id="$1"
-    local name="${1#*@}" source listing
+    local name="${1#*@}" source listing state
 
     if ! source="$(plugin_pin claude "${plugin_id}" marketplace)"; then
         printf 'ERROR: %s records no marketplace for %s.\n' "${AGENT_PLUGIN_PINS}" "${plugin_id}" >&2
         return 1
     fi
-    if ! listing="$(claude_outside_projects plugin marketplace list --json 2> /dev/null)" ||
-        ! jq -e 'type == "array"' <<< "${listing}" > /dev/null 2>&1; then
+    if ! listing="$(claude_outside_projects plugin marketplace list --json 2> /dev/null)"; then
         printf 'ERROR: claude plugin marketplace list --json failed; cannot register %s for %s.\n' "${source}" "${plugin_id}" >&2
         return 1
     fi
-    if jq -e --arg name "${name}" 'any(.[]; .name == $name)' <<< "${listing}" > /dev/null 2>&1; then
+    # A marketplace of that name registered from another source is foreign: an error, never "registered".
+    if ! state="$(pin_record claude-marketplace "${name}" "${source}" <<< "${listing}")"; then
+        return 1
+    fi
+    if [ "${state}" = "registered" ]; then
         return 0
     fi
     if ! claude_outside_projects plugin marketplace add "${source}"; then
@@ -597,7 +565,7 @@ function converge_claude_plugins() {
     local ids plugin_id
 
     has_command claude || return 0
-    if ! ids="$(jq -er '.claude | keys[]' "${AGENT_PLUGIN_PINS}" 2> /dev/null)"; then
+    if ! ids="$(pin_record plugin-ids "${AGENT_PLUGIN_PINS}" claude)"; then
         printf 'ERROR: cannot read the Claude Code plugin pins from %s; no plugin was checked against its pin.\n' "${AGENT_PLUGIN_PINS}" >&2
         CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
         return 0
@@ -674,7 +642,7 @@ function update_claude_superpowers() {
     fi
 
     section "Claude Code plugins"
-    ensure_claude_superpowers_marketplace || record_claude_failure "the superpowers marketplace registration"
+    ensure_claude_plugin_marketplace "${CLAUDE_SUPERPOWERS_PLUGIN}" || record_claude_failure "the superpowers marketplace registration"
     claude_outside_projects plugin marketplace update claude-plugins-official || true
     converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
     local plugin_version
@@ -695,7 +663,7 @@ function update_claude_crit() {
     section "Claude Code Crit plugin"
     # The Crit CLI is optional for the plugin; its failure never skips the pin check below.
     ensure_crit_cli || printf 'WARN: the Crit CLI is not installed; the Claude Code Crit plugin is still checked against its pin.\n' >&2
-    ensure_claude_crit_marketplace || record_claude_failure "the crit marketplace registration"
+    ensure_claude_plugin_marketplace "${CLAUDE_CRIT_PLUGIN}" || record_claude_failure "the crit marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
     local plugin_version
@@ -714,7 +682,7 @@ function update_claude_ponytail() {
     fi
 
     section "Claude Code Ponytail plugin"
-    ensure_claude_ponytail_marketplace || record_claude_failure "the ponytail marketplace registration"
+    ensure_claude_plugin_marketplace "${CLAUDE_PONYTAIL_PLUGIN}" || record_claude_failure "the ponytail marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
@@ -734,7 +702,7 @@ function update_claude_understand_anything() {
     fi
 
     section "Claude Code Understand-Anything plugin"
-    ensure_claude_understand_anything_marketplace || record_claude_failure "the understand-anything marketplace registration"
+    ensure_claude_plugin_marketplace "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || record_claude_failure "the understand-anything marketplace registration"
     claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
     local plugin_version
@@ -747,13 +715,16 @@ function update_claude_understand_anything() {
 # @description Print the versions in the plugin.json of every installed copy of a Codex plugin, one per line.
 # @arg $1 string Fully qualified Codex plugin ID.
 #
+# @description Print the version of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own
+#   choice among the cached versions, its plugin.json read strictly), nothing when no copy is cached.
+# @arg $1 string Fully qualified Codex plugin ID.
+# @exitcode 2 When the cache cannot be read or its copy names another plugin or holds no string version.
+#
 function codex_plugin_cache_versions() {
-    local plugin="${1%@*}" marketplace="${1#*@}" manifest
+    local plugin="${1%@*}" marketplace="${1#*@}"
 
-    for manifest in "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/${marketplace}/${plugin}"/*/.codex-plugin/plugin.json; do
-        [ -f "${manifest}" ] || continue
-        jq -r '.version | if type == "string" then . else "invalid:\(type)" end' "${manifest}" 2> /dev/null || printf 'unreadable %s\n' "${manifest}"
-    done
+    pin_record codex-copy "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/${marketplace}/${plugin}" "${plugin}" \
+        "${DOTFILES_REPO_SOURCE_DIR}/home/dot_codex/modify_private_config.toml"
 }
 
 #
@@ -771,7 +742,7 @@ function warn_codex_plugin_off_pin() {
         printf 'WARN: cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
         return 0
     fi
-    versions="$(codex_plugin_cache_versions "${plugin_id}")"
+    versions="$(codex_plugin_cache_versions "${plugin_id}")" || versions="an unreadable copy"
     if [ "${versions}" != "${pin}" ]; then
         printf 'WARN: Codex plugin %s is installed at [%s], not its pin %s; review that release and record its version in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${versions//$'\n'/, }" "${pin}" >&2
     fi
@@ -789,7 +760,7 @@ function update_codex_superpowers() {
     fi
 
     section "Codex plugins"
-    installed="$(codex_plugin_cache_versions "${CODEX_SUPERPOWERS_PLUGIN}")"
+    installed="$(codex_plugin_cache_versions "${CODEX_SUPERPOWERS_PLUGIN}")" || installed="an unreadable copy"
     if [ -n "${installed}" ]; then
         printf 'Codex Superpowers plugin is already installed.\n'
     elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
@@ -820,18 +791,19 @@ function update_codex_superpowers() {
 function ensure_codex_ponytail_marketplace() {
     local codex_home="${CODEX_HOME:-${HOME}/.codex}"
     local codex_config="${codex_home%/}/config.toml"
-    local ref
+    local ref state
 
     if ! ref="$(plugin_pin codex "${CODEX_PONYTAIL_PLUGIN}" ref)"; then
         printf 'Cannot read the marketplace ref of %s from %s.\n' "${CODEX_PONYTAIL_PLUGIN}" "${AGENT_PLUGIN_PINS}" >&2
         return 1
     fi
-    if [ -f "${codex_config}" ] && grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}"; then
-        if grep -Fq "source = \"${CODEX_PONYTAIL_MARKETPLACE_SOURCE}\"" "${codex_config}"; then
-            return 0
-        fi
-        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+    # config.toml's [marketplaces.ponytail], read strictly: another source there is an error, not "absent".
+    if ! state="$(pin_record codex-marketplace "${codex_config}" "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}")"; then
+        printf 'Codex Ponytail marketplace exists with an unexpected source or an unreadable config; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
         return 1
+    fi
+    if [ "${state}" = "registered" ]; then
+        return 0
     fi
 
     if codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"; then
@@ -860,14 +832,14 @@ function update_codex_ponytail() {
     ensure_codex_ponytail_marketplace || return 0
     codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
 
-    installed="$(codex_plugin_cache_versions "${CODEX_PONYTAIL_PLUGIN}")"
+    installed="$(codex_plugin_cache_versions "${CODEX_PONYTAIL_PLUGIN}")" || installed="an unreadable copy"
     if [ -n "${installed}" ]; then
         printf 'Codex Ponytail plugin is already installed.\n'
     else
         codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
     fi
     ref="$(plugin_pin codex "${CODEX_PONYTAIL_PLUGIN}" ref)" || ref=""
-    revision="$(jq -r '.revision // empty' "${CODEX_HOME:-${HOME}/.codex}/.tmp/marketplaces/${CODEX_PONYTAIL_MARKETPLACE_NAME}/.codex-marketplace-install.json" 2> /dev/null)" || revision=""
+    revision="$(pin_record marketplace-install "${CODEX_HOME:-${HOME}/.codex}/.tmp/marketplaces/${CODEX_PONYTAIL_MARKETPLACE_NAME}/.codex-marketplace-install.json" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}")" || revision=""
     if [ -z "${ref}" ] || [ "${revision}" != "${ref}" ]; then
         printf 'WARN: the Codex Ponytail marketplace is at %s, not its pinned ref %s; run chezmoi apply, then make update.\n' "${revision:-an unreadable revision}" "${ref:-(unreadable)}" >&2
     fi

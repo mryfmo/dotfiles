@@ -1154,6 +1154,16 @@ taking the newest release:
   the extensions this repository does not pin, one by one; it never runs
   `gh extension upgrade --all`.
 
+Every record these checks read (`installed_plugins.json`, `enabledPlugins` in
+`~/.claude/settings.json`, the Claude marketplace list, the Codex plugin cache's
+`plugin.json`, the marketplace install record, the Codex `config.toml` plugin
+and marketplace tables, gh's `manifest.yml`, the mise config's `Held`
+comments and `scripts/plugin-pins.json` itself) goes through one strict parser
+in `scripts/pin_records.py`: a record is absent only when its path is missing;
+an unreadable record, a missing or mistyped field, or a foreign identity (a
+fork's extension, another marketplace source) is an error, never "not
+installed" and never a pass.
+
 `make doctor` fails on any installed version, marketplace revision or extension
 tag that differs from its pin, and warns for an enabled plugin with no pin. To
 move a plugin, review the upstream release, set its pin (and, for a Codex

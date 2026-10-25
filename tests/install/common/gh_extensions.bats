@@ -41,7 +41,8 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 @test "[common] gh_extensions keeps an extension at its pinned tag unchanged" {
     export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
     mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
-    printf 'tag: %s\nispinned: true\n' "$(sed -n 's/^GH_POI_PIN_VERSION="\(.*\)"$/\1/p' "${SCRIPT_PATH}")" \
+    printf 'owner: seachicken\nname: gh-poi\nhost: github.com\ntag: %s\nispinned: true\npath: %s\n' \
+        "$(sed -n 's/^GH_POI_PIN_VERSION="\(.*\)"$/\1/p' "${SCRIPT_PATH}")" "${XDG_DATA_HOME}/gh/extensions/gh-poi/gh-poi" \
         > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
@@ -63,7 +64,9 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 @test "[common] gh_extensions reinstalls an unpinned extension at its tag with --pin" {
     export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
     mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
-    printf 'ispinned: false\n' > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
+    printf 'owner: seachicken\nname: gh-poi\nhost: github.com\ntag: %s\nispinned: false\npath: %s\n' \
+        "$(sed -n 's/^GH_POI_PIN_VERSION="\(.*\)"$/\1/p' "${SCRIPT_PATH}")" "${XDG_DATA_HOME}/gh/extensions/gh-poi/gh-poi" \
+        > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }

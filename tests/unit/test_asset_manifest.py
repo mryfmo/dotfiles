@@ -275,13 +275,17 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(17, updater.count('manifest_record "'))
+        # The four Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}").
+        claude = {step for step in steps if step.startswith("update_claude_")}
+        self.assertEqual(14, updater.count('manifest_record "'))
+        self.assertEqual(1, updater.count('manifest_record "${step}" plugin "${plugin_version}"'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),
         )
         for step in steps:
-            self.assertEqual(1, updater.count(f'manifest_record "{step}"'), step)
+            recorder = "record_claude_plugin_step" if step in claude else "manifest_record"
+            self.assertEqual(1, updater.count(f'{recorder} "{step}"'), step)
 
     def test_chezmoi_rendered_updater_uses_inlined_manifest_library(self) -> None:
         rendered = self.temp_dir / "06-install-agent-assets.sh"

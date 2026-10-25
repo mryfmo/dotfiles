@@ -879,6 +879,47 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertFalse(seats.exists())
         self.assertEqual(self.calls_of("hcom"), [])
 
+    def test_relative_path_worktrees_launch_for_both_roles(self):
+        """U85 round 15: `git worktree add --relative-paths` stores relative `gitdir` and `.git` values; they are
+        resolved against their own directories, so both roles launch from such a worktree and next to one."""
+        linked = Path(self.temp.name).resolve() / "relative"
+        self.git("worktree", "add", "-q", "--relative-paths", "--detach", str(linked), "HEAD")
+        gitdir = (self.repo / ".git/worktrees/relative/gitdir").read_text().strip()
+        self.assertFalse(Path(gitdir).is_absolute(), gitdir)
+        for role in ("orchestrator", "worker"):
+            with self.subTest(role=role, cwd="relative worktree"):
+                run = self.seat(role, "--seats-root", self.seats, cwd=linked)
+                self.assertEqual(run.returncode, 0, run.stderr)
+            with self.subTest(role=role, cwd="main checkout"):
+                run = self.seat(role, "--seats-root", self.seats, "--name", f"{role}-main")
+                self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
+        """U85 round 15: `within` runs inside `||` lists, where `set -e` does not apply, so each helper's status is
+        checked explicitly: a helper that prints a path and fails refuses instead of deciding."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "deepest_existing", "within")
+        )
+        stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
+        outer = Path(self.temp.name).resolve() / "outer"
+        outer.mkdir()
+        cases = {
+            "exists": f"within {shlex.quote(str(outer))} {shlex.quote(str(outer / 'a/b'))} || status=$?",
+            "neither exists": f"within {shlex.quote(str(outer / 'x'))} {shlex.quote(str(outer / 'x/y'))} || status=$?",
+        }
+        for label, call in cases.items():
+            with self.subTest(label):
+                script = (
+                    f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
+                    "deepest_existing() { printf '/\\n'; return 7; }\n"
+                    f"status=0\n{call}\necho decided=$status\n"
+                )
+                run = subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
+                self.assertIn("cannot find an existing directory above", run.stderr)
+
     def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
         """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout
         (`--separate-git-dir`) that holds the seats root would grant every worker its siblings, so it is refused."""

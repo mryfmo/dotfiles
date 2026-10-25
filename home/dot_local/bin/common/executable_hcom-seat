@@ -223,9 +223,9 @@ require_clean_path() {
 
 # Every input path that reaches the srt settings is clean before anything is created or run (regime-cutover U85).
 require_clean_path HOME "${HOME}"
-[[ -z ${seats_root} ]] || require_clean_path --seats-root "${seats_root}"
+if [[ -n ${seats_root} ]]; then require_clean_path --seats-root "${seats_root}"; fi
 for var in HCOM_DIR REGIME_SEATS_ROOT CLAUDE_CONFIG_DIR; do
-    [[ -z ${!var:-} ]] || require_clean_path "${var}" "${!var}"
+    if [[ -n ${!var:-} ]]; then require_clean_path "${var}" "${!var}"; fi
 done
 
 # @description Print a JSON array of the arguments, each a clean path (clean_path), so no JSON escaping is needed and
@@ -380,7 +380,7 @@ root_named() {
 #   no executable; one that exists and cannot be read is a refusal.
 # @arg $@ string Absolute paths.
 add_roots() {
-    local present=() path ids id i=0
+    local present=() path ids id i=0 named
     for path in "$@"; do
         [[ ${path} == /* && ${path} != *[[:cntrl:]]* ]] || refuse "the seat write root '${path}' is not an absolute path" # lint-comparisons: allow an absolute-path and content test
         [[ -e ${path} || -L ${path} ]] || continue
@@ -392,7 +392,8 @@ add_roots() {
         [[ ${id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "unexpected identity '${id}' of ${present[i]}"
         root_ids+=${id}$'\n'
         root_id_list+=("${id}")
-        root_path_list+=("$(physical_path "${present[i]}" || printf '%s' "${present[i]}")")
+        named=$(physical_path "${present[i]}") || refuse "cannot resolve the seat write root ${present[i]}"
+        root_path_list+=("${named}")
         i=$((i + 1))
     done <<< "${ids}"
 }
@@ -676,6 +677,11 @@ git_state_check() {
         git_state+=("${dir_real}/.git")
         IFS= read -r line < "${dir_real}/.git" || [[ -n ${line:-} ]] || refuse "cannot read ${dir_real}/.git"
         target=${line#gitdir: }
+        # `git worktree add --relative-paths` (worktree.useRelativePaths) writes it relative to the worktree.
+        case ${target} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) ;;
+        *) target=${dir_real}/${target} ;;
+        esac
         [[ ${target%/*} -ef ${common_real}/worktrees ]] ||
             refuse "${dir_real}/.git leads to ${target}, outside ${common_real}/worktrees"
     fi
@@ -732,7 +738,7 @@ fi
 regime_env hcom-seat || exit 2
 # The derived store and seats root reach the srt settings as well.
 for var in HCOM_DIR REGIME_SEATS_ROOT; do
-    [[ -z ${!var:-} ]] || require_clean_path "${var}" "${!var}"
+    if [[ -n ${!var:-} ]]; then require_clean_path "${var}" "${!var}"; fi
 done
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
@@ -809,17 +815,18 @@ deepest_existing() {
 # @exitcode 1 It does not.
 # @exitcode 2 Neither exists and identity cannot decide.
 within() {
+    # Every helper's status is checked where it is called: within runs inside `||` lists, where `set -e` does not apply.
     local outer_id p ids probe=() a1 a2
     if [[ ! -e $1 ]]; then
         [[ ! -e $2 ]] || return 1
-        a1=$(deepest_existing "$1")
-        a2=$(deepest_existing "$2")
+        a1=$(deepest_existing "$1") || refuse "cannot find an existing directory above $1"
+        a2=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
         ids=$(/usr/bin/stat "${stat_args[@]}" -- "${a1}" "${a2}") || refuse "cannot read the identity of ${a1} or ${a2}"
         [[ ${ids%%$'\n'*} == "${ids#*$'\n'}" ]] || return 1 # lint-comparisons: allow compares (device, inode) identities, not paths
         return 2
     fi
     outer_id=$(/usr/bin/stat "${stat_args[@]}" -- "$1") || refuse "cannot read the identity of $1"
-    p=$(deepest_existing "$2")
+    p=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
     while :; do
         probe+=("${p}")
         [[ ${p} != / ]] || break # lint-comparisons: allow the walk ends at the root, no path compare
@@ -899,6 +906,11 @@ seat_overlap_check() {
     for wt in "${common}"/worktrees/*/gitdir; do
         [[ -f ${wt} ]] || continue
         IFS= read -r line < "${wt}" || [[ -n ${line:-} ]] || refuse "cannot read ${wt}"
+        # A relative gitdir (`git worktree add --relative-paths`) is relative to worktrees/<name>/.
+        case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) ;;
+        *) line=${wt%/gitdir}/${line} ;;
+        esac
         target=$(physical_path "${line%/.git}") || refuse "cannot resolve the worktree ${line%/.git} named in ${wt}"
         labels+=("the worktree")
         protected+=("${target}")
@@ -953,7 +965,7 @@ for settings_file in "${seats_root}"/.sandbox/*/srt-settings.json; do
     done <<< "${listed}"
 done
 add_roots "${roots[@]}"
-[[ -z ${mise_real} ]] || PATH=${system_path} pin_exec mise "${mise_real}"
+if [[ -n ${mise_real} ]]; then PATH=${system_path} pin_exec mise "${mise_real}"; fi
 
 # Every link in the private tool directory, with its interpreter chain, is re-checked against the exact set, and PATH
 # is that directory and the system directories, so hcom's own lookups (`herdr`, `node`) and srt's (`env`, the shell)
@@ -1215,12 +1227,16 @@ if [[ ! -e ${dir} ]]; then
     *) refuse "refs/remotes/origin/main in ${repo} does not resolve to a commit: ${origin_main}" ;;
     esac
     git -C "${repo}" worktree add --detach "${dir}" "${base}"
-elif seat_common='' && [[ -d ${dir} ]] && dir_phys=$(physical_path "${dir}") &&
-    common_phys=$(physical_path "${common}") && git_state_check "${common_phys}" "${dir_phys}" &&
-    ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
-    ! [[ -d ${dir} && ${seat_common} -ef ${common} ]]; then
-    # A stale or foreign directory at the seat path would seat omp in the wrong tree.
-    refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
+else
+    # A stale or foreign directory at the seat path would seat omp in the wrong tree. Each step's status is checked
+    # on its own: the git state first (before git runs in the directory), then the directory's common directory.
+    [[ -d ${dir} ]] || refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
+    dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
+    common_phys=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
+    git_state_check "${common_phys}" "${dir_phys}"
+    seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
+        refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
+    [[ ${seat_common} -ef ${common} ]] || refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
 fi
 # U66 (F005): omp 18.11.3 merges the cwd's .omp/config.yml and .omp/settings.json at start whatever disabledProviders
 # says (the list binds only after settings load; measured under a scratch HOME), so a seat never starts in a directory

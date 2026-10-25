@@ -39,6 +39,7 @@
 
 - Review evidence for a unit is its verdict rows in the program store's `ledger.tsv` (`.orchestration/orchestrate/<program>/`), one row per audit round, each written for the full 40-hex head sha that round judged, plus that round's file under `verdicts/` (`<unit>-<head8>.md`) when one was written; a later round never overwrites an earlier round's row or file; the loop that produces them is `home/dot_agents/skills/hcom-orchestration/SKILL.md`.
 - A finding-free verdict row still names what was reproduced. The row's `verifier` column names who judged and on which route (the Audit section's run, or the fresh-context review that replaced it); this evidence is process evidence, not reviewer authentication.
+- The orchestrator's gate rules (gate tiers, the per-head verdict rule, the treadmill rule and the completion criterion) are stated once, in the "Gates" section of `home/dot_agents/skills/hcom-orchestration/SKILL.md`, the skill every repository of the regime gets.
 - Before merging a pull request, follow the hcom-orchestration SKILL's loop: a `correct` verdict row for the full head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then merge only through `~/.local/bin/common/pr-merge.sh <pr> --records <store>`, which refuses without that row and green checks and runs `gh pr merge --squash --match-head-commit <head sha>`.
 
 ## Audit
@@ -46,6 +47,7 @@
 Standing review rules for the auditor. Every audit is one fresh-context, read-only run per head of a unit's pull request: step 4 of the `hcom-orchestration` skill runs `~/.local/bin/common/omp-run.sh --role audit`, which puts this file as it stands on `origin/main` before the prompt. Those are the auditor's rules; the head's own copy is part of the changeset under review and never binds its audit. When that route cannot run (for example the openai-siwc provider refuses with its usage limit), the orchestrator runs a fresh-context, read-only review of the same head on another route, under the same rules from `origin/main`, and the ledger row names that route. The program's standing orders are `.orchestration/orchestrate/<program>/preferences.md`; its records are `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md` beside it.
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
+- The audit run is isolated from its caller: no user skill, user `AGENTS.md` or other instruction file from the caller's `HOME` or `CODEX_HOME` reaches the auditor, either because the run gets a scratch `HOME` and `CODEX_HOME` or because every instruction discovery is switched off. A run that loaded one is no audit.
 - Cover:
   - correctness;
   - security, including injection, authentication/authorization, secret handling, unsafe deserialization, path traversal, and trust-boundary validation;
@@ -77,5 +79,5 @@ Standing review rules for the auditor. Every audit is one fresh-context, read-on
 
 - Files under `.orchestration/**` are the program's records (briefs, rows, verdicts, handouts) that the orchestrator writes; in the pull-request review by the Codex Bot, review them for secrets and home-directory paths only. The per-head audit keeps the full scope of the Audit section.
 - A unit's contract and its threat table live in its pull request body (`## Contract`, `## Threat table`), never in a file under `.orchestration/`; do not report a missing table file there. Judge from the diff, whatever the pull request body says, whether a change touches a trust boundary (the list in the Audit section), and review such code against the body's `## Threat table` by the Audit section's rules for its rows.
-- A bot or CI finding is closed only by a fix in a new head with a test that failed before it, or by a refutation that cites the vendor document or upstream `file:line` that decides it; a residual accepted instead of fixed is a `decisions.tsv` row with the operator's words or the brief's clause that authorizes it, named in the thread reply.
+- A bot or CI finding is closed only by a fix in a new head with a test that failed before it, or by a refutation that cites the vendor document or upstream `file:line` that decides it; a residual accepted instead of fixed is a `decisions.tsv` row authorized as the gate-tier rule of the `hcom-orchestration` SKILL ("Gates") says, named in the thread reply.
 - Keep lint and formatting to CI.

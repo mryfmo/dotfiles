@@ -1889,29 +1889,33 @@ def main() -> None:
         print("asset pins updated: " + ", ".join(f"{name}.{path}" for name, path, _ in updates))
         return
 
-    # The lever pins live in the manifest itself; refresh them first so the outputs below read current pins. A test
-    # ROOT without a manifest file has no pins to refresh (load_manifest fails on its own when the real one is absent).
+    # The lever pins live in the manifest itself; the outputs below read the refreshed pins from the text in memory. A
+    # test ROOT without a manifest file has no pins to refresh (load_manifest fails on its own when the real one is
+    # absent). Nothing is written until every output has rendered and every refusal (an unknown file in a generated
+    # rule root, a bad audience) has had its chance to fail the run, so a refused run leaves every file as it was.
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
     stale: list[Path] = []
+    pinned_text: str | None = None
     if manifest_path.exists():
         manifest_text = manifest_path.read_text()
-        pinned_text = refresh_lever_pins(manifest_text)
-        if pinned_text != manifest_text:
-            if args.check:
-                stale.append(manifest_path.relative_to(ROOT))
-            else:
-                manifest_path.write_text(pinned_text)
-    manifest = load_manifest()
+        refreshed = refresh_lever_pins(manifest_text)
+        if refreshed != manifest_text:
+            pinned_text = refreshed
+            stale.append(manifest_path.relative_to(ROOT))
+    manifest = load_manifest() if pinned_text is None else parse_manifest(pinned_text)
     outputs = expected_outputs(manifest)
     stale_profiles = stale_profile_outputs(manifest)
-    for path, content in outputs.items():
-        if args.check:
+    stale_rules = stale_standing_rule_outputs(outputs)
+    if args.check:
+        for path, content in outputs.items():
             if not path.exists() or path.read_text() != content:
                 stale.append(path.relative_to(ROOT))
-    if args.check:
         stale.extend(path.relative_to(ROOT) for path in stale_profiles)
-        stale.extend(path.relative_to(ROOT) for path in stale_standing_rule_outputs(outputs))
-    if not args.check:
+        stale.extend(path.relative_to(ROOT) for path in stale_rules)
+    else:
+        stale = []
+        if pinned_text is not None:
+            manifest_path.write_text(pinned_text)
         write_outputs(outputs)
         for path in stale_profiles:
             path.unlink()

@@ -13,14 +13,10 @@
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
 #   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
-#   `incorrect` or `blocked` row for the same head voids an earlier `correct`. Without `--carry-from` that sha is the
-#   head itself. With `--carry-from <sha>` (`preferences.md` standing order 18: a `pr-update-branch.sh` merge from main
-#   does not void a verdict while the diff against main is unchanged) the row is the one for `<sha>`, which must be an
-#   ancestor of the head, and the lever fetches `main` and `refs/pull/<pr>/head` into `refs/pr-merge/<pr>/` and
-#   compares the raw tree diff (`git diff-tree -r --raw --no-abbrev`, full blob ids and modes of every changed path,
-#   run at the top level with `--no-relative` and the other settings-sensitive options pinned) of each commit against
-#   its merge base with main: any byte of difference is a refusal, whatever the caller's cwd or git configuration.
-#   CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
+#   `incorrect` or `blocked` row for the same head voids an earlier `correct`. That sha is always the current head:
+#   there is no carry-over (U71 audit round 10), so a head that `pr-update-branch.sh` moved gets a fresh audit. The
+#   lever reads no local git objects or refs; it decides from `gh` reads and the ledger alone, and git only names the
+#   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`). CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
 #   cancelled check is a refusal. The one write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
@@ -33,13 +29,12 @@
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv` (required; must be the checkout's own store, above).
-# @option --carry-from <sha> The audited earlier head (40 hex) whose `correct` row carries to the current head.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts> carried-from=<sha or ->`.
+# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>`.
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, a carry whose diff changed,
-#   or CI that is not green on the head.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, or CI that is not green on the
+#   head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
@@ -99,25 +94,12 @@ lever_self_check() {
 }
 lever_self_check
 
-# Object substitution (U71 audit round 6): the git common directory is shared with, and writable by, the worker seats
-# (U85), so a planted `refs/replace/*` ref, an `info/grafts` file, an alternate object store or a forged commit-graph
-# could make the objects git reads here differ from the sha GitHub reports. Every git call of this lever, and every
-# process it starts, runs with replace objects off (`GIT_NO_REPLACE_OBJECTS`, and `--no-replace-objects` through the
-# `git` function), grafts read from /dev/null, the commit-graph off, and none of the caller's object-store or
-# repository-location variables; `git_objects_guard` refuses a checkout that holds grafts, alternates or a shallow cut.
-unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_OBJECT_DIRECTORY GIT_REPLACE_REF_BASE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR \
-    GIT_INDEX_FILE GIT_NAMESPACE GIT_CONFIG_PARAMETERS
-export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null
-export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.commitGraph GIT_CONFIG_VALUE_0=false
-
-# @description Run git with replace objects and the commit-graph off, whatever the caller's environment or config.
-# @arg $@ string The git arguments.
-git() {
-    command git --no-replace-objects -c core.commitGraph=false "$@"
-}
+# The checkout is named from the cwd alone: a caller's repository-location variables could point git at another
+# checkout's store (U71).
+unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR
 
 lever='pr-merge.sh'
-usage='usage: pr-merge.sh <pr> --records <dir> [--carry-from <sha>]'
+usage='usage: pr-merge.sh <pr> --records <dir>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
 # The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read.
@@ -140,19 +122,6 @@ fail() {
     exit 1
 }
 
-# @description Refuse unless the git common directory of checkout $1 holds no grafts file, no non-empty alternates
-#   file and no shallow file: each would substitute or cut the objects this lever reads (U71 audit round 6).
-# @arg $1 path The checkout.
-git_objects_guard() {
-    local common path
-    common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of $1"
-    [[ -d ${common} ]] || refuse "the git common directory ${common} is no directory"
-    for path in "${common}/info/grafts" "${common}/shallow"; do
-        [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; it rewrites the history this lever reads"
-    done
-    path=${common}/objects/info/alternates
-    [[ ! -L ${path} && ! -s ${path} ]] || refuse "${path} names alternate object stores; this lever reads only the checkout's own objects"
-}
 # @description Run `gh` with its wait bounded by PR_LEVER_GH_TIMEOUT seconds.
 # @arg $@ string The `gh` arguments.
 gh_bounded() {
@@ -193,27 +162,6 @@ require_correct_row() {
         refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is not correct: ${verdict}"
 }
 
-# @description Run git at the repository's top level, whatever the caller's cwd.
-# @arg $@ string The git arguments.
-git_top() {
-    git -C "${toplevel}" "$@"
-}
-
-# @description Write the raw tree diff from the merge base with main to commit $1 (NUL-separated, full object ids:
-#   modes, blob ids, status and path of every changed entry) to file $2. It is plumbing (`diff-tree`) run at the top
-#   level with every option that a user or repository setting could change spelled out (`--no-relative`,
-#   `--no-renames`, `--ignore-submodules=none`, `-O/dev/null` against `diff.orderFile`), so neither `diff.relative`,
-#   a subdirectory cwd, rename detection, an external diff nor a textconv driver can hide a changed path
-#   (U71 audit round 2).
-# @arg $1 string The commit.
-# @arg $2 path The output file.
-diff_against_main() {
-    local base
-    base=$(git_top merge-base "refs/pr-merge/${pr}/main" "$1") || fail "git merge-base main $1 failed"
-    git_top diff-tree -r -z --raw --no-abbrev --no-renames --no-relative --ignore-submodules=none -O/dev/null \
-        "${base}" "$1" > "$2" || fail "git diff-tree ${base} $1 failed"
-}
-
 # @description Set `ledger` to the one store the merge may read (U71, bot P1 4370212009: a caller-chosen ledger.tsv
 #   could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv` of this main checkout,
 #   `<program>` taken from the pull request body's one `Program-Unit: <program>/U<n>` line. No directory from the
@@ -250,29 +198,17 @@ resolve_store() {
 pr=$1
 shift
 [[ ${pr} =~ ^[1-9][0-9]{0,9}$ ]] || refuse "the pull request is not a decimal number: ${pr}"
-records=''
-carry=''
-while [[ $# -gt 0 ]]; do
-    case $1 in
-    --records | --carry-from)
-        [[ $# -ge 2 && -n $2 ]] || refuse "${usage}"
-        if [[ $1 == --records ]]; then records=$2; else carry=$2; fi
-        shift 2
-        ;;
-    *) refuse "${usage}" ;;
-    esac
-done
-[[ -n ${records} ]] || refuse "${usage}"
+[[ $# -eq 2 && $1 == --records && -n $2 ]] || refuse "${usage}"
+records=$2
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-[[ -z ${carry} || ${carry} =~ ^[0-9a-f]{40}$ ]] || refuse "--carry-from must be a full 40-hex sha: ${carry}"
 # The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
 # worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
 toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
 [[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'run from the repository checkout that holds the program store'
 toplevel=$(cd "${toplevel}" && pwd -P) || refuse "cannot resolve ${toplevel}"
-git_objects_guard "${toplevel}"
-git_dir=$(git_top rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
-common_dir=$(git_top rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
+git_dir=$(git -C "${toplevel}" rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
+common_dir=$(git -C "${toplevel}" rev-parse --path-format=absolute --git-common-dir) ||
+    refuse 'cannot read the git common directory'
 git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
@@ -287,36 +223,7 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${head}"
 resolve_store
 
-if [[ -z ${carry} ]]; then
-    require_correct_row "${head}"
-else
-    [[ ${carry} != "${head}" ]] || refuse "--carry-from ${carry} is the head itself; drop --carry-from"
-    require_correct_row "${carry}"
-    perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git --no-replace-objects -C "${toplevel}" fetch -q --no-tags origin \
-        "+refs/heads/main:refs/pr-merge/${pr}/main" "+refs/pull/${pr}/head:refs/pr-merge/${pr}/head" ||
-        fail "git fetch of main and refs/pull/${pr}/head failed"
-    fetched=$(git_top rev-parse --verify --quiet "refs/pr-merge/${pr}/head^{commit}") || fetched=''
-    [[ ${fetched} == "${head}" ]] || refuse "refs/pull/${pr}/head is ${fetched:-unreadable}, the pull request's head is ${head}"
-    git_top cat-file -e "${carry}^{commit}" 2> /dev/null || refuse "--carry-from ${carry} is no commit in this checkout"
-    status=0
-    git_top merge-base --is-ancestor "${carry}" "${head}" || status=$?
-    case ${status} in
-    0) ;;
-    1) refuse "--carry-from ${carry} is not an ancestor of the head ${head}" ;;
-    *) fail "git merge-base --is-ancestor ${carry} ${head} failed" ;;
-    esac
-    scratch=$(mktemp -d "${TMPDIR:-/tmp}/pr-merge.XXXXXX") || fail 'mktemp failed'
-    trap 'rm -f "${scratch}/audited.diff" "${scratch}/head.diff"; rmdir "${scratch}"' EXIT
-    diff_against_main "${carry}" "${scratch}/audited.diff"
-    diff_against_main "${head}" "${scratch}/head.diff"
-    status=0
-    cmp -s "${scratch}/audited.diff" "${scratch}/head.diff" || status=$?
-    case ${status} in
-    0) ;;
-    1) refuse "the diff against main of ${head} differs from the audited ${carry}; the carry does not hold (standing order 18)" ;;
-    *) fail "cmp of the two diffs failed" ;;
-    esac
-fi
+require_correct_row "${head}"
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?
@@ -358,4 +265,4 @@ IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 [[ ${merged_base} == main ]] ||
     fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
 ((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2
-echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts} carried-from=${carry:--}"
+echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts}"

@@ -869,9 +869,7 @@ class PrMergeTest(PrLeverTestCase):
         self.github()
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(
-            run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z carried-from=-\n"
-        )
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
     def test_the_ledger_decides(self):
@@ -938,7 +936,7 @@ class PrMergeTest(PrLeverTestCase):
             ((), "usage:"),
             (("7",), "usage:"),
             (("x7", "--records", str(self.records)), "not a decimal number"),
-            (("7", "--records", str(self.records), "--carry-from", SHA_A[:8]), "full 40-hex sha"),
+            (("7", "--records", str(self.records), "--carry-from", SHA_A[:8]), "usage:"),
             (("7", "--records", str(self.records), "--auto"), "usage:"),
         ):
             with self.subTest(args=args):
@@ -1028,99 +1026,24 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 1, run.stderr)
         self.assertIn("is OPEN after the merge command (exit 1)", run.stderr)
 
-    def carry_repo(self, extra_commit=False):
-        """main, a branch head X (audited), main moves on, then main merged into the branch: head H."""
-        origin = self.root / "origin.git"
-        self.git("init", "-q", "--bare", str(origin))
-        self.git("remote", "add", "origin", str(origin))
-        self.git("switch", "-q", "-c", "feat")
-        (self.repo / "tool.sh").write_text("a\n")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", "x")
-        audited = self.git("rev-parse", "HEAD")
-        self.git("switch", "-q", "main")
-        (self.repo / "other.txt").write_text("main moved\n")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", "main")
-        self.git("switch", "-q", "feat")
-        self.git("merge", "-q", "--no-edit", "main")
-        if extra_commit:
-            (self.repo / "tool.sh").write_text("changed after the audit\n")
-            self.git("commit", "-q", "-am", "unaudited")
-        head = self.git("rev-parse", "HEAD")
-        self.git("push", "-q", "origin", "main", f"{head}:refs/pull/7/head")
-        return audited, head
-
-    def test_a_carry_holds_only_while_the_diff_against_main_is_unchanged(self):
-        audited, head = self.carry_repo()
-        self.ledger(ledger_row(audited))
-        self.github(head=head)
-        self.assert_refused(self.merge(), f"has no row for pull request 7 at head {head}")
-        self.calls.unlink()
-        run = self.merge("--carry-from", audited)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(f"head={head} commit={SHA_B} verdict=2026-10-25T09:00:00Z carried-from={audited}\n", run.stdout)
-        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", head]])
-
-    def test_a_carry_refuses_a_changed_diff_and_a_sha_off_the_branch(self):
-        audited, head = self.carry_repo(extra_commit=True)
-        self.ledger(ledger_row(audited), ledger_row(SHA_B))
-        self.github(head=head)
-        self.assert_refused(self.merge("--carry-from", audited), "differs from the audited")
-        self.assert_refused(self.merge("--carry-from", SHA_B), f"--carry-from {SHA_B} is no commit")
-
-    def test_a_planted_replace_ref_cannot_make_an_unaudited_head_carry(self):
-        # U71 audit round 6 (P1): the worker-writable git store's refs/replace made the unaudited head H read as the
-        # honest merge, whose diff against main equals the audited one, so the carry passed.
-        audited, honest = self.carry_repo()
-        (self.repo / "tool.sh").write_text("changed after the audit\n")
-        self.git("commit", "-q", "-am", "unaudited")
-        head = self.git("rev-parse", "HEAD")
-        self.git("push", "-q", "-f", "origin", f"{head}:refs/pull/7/head")
-        self.git("replace", head, honest)
-        self.ledger(ledger_row(audited))
-        self.github(head=head)
-        self.assert_refused(self.merge("--carry-from", audited), "differs from the audited")
+    def test_a_head_moved_by_update_branch_needs_its_own_row(self):
+        # U71 audit round 10: no carry-over from an earlier audited head; the moved head gets a fresh audit.
+        self.ledger(ledger_row(SHA_A))
+        self.github(head=SHA_B)
+        self.assert_refused(self.merge(), f"has no row for pull request 7 at head {SHA_B}")
+        self.assert_refused(self.merge("--carry-from", SHA_A), "usage:")
         self.assertEqual(self.writes(), [])
 
-    def test_grafts_alternates_and_a_shallow_cut_are_refused(self):
+    def test_the_lever_reads_no_local_git_objects(self):
+        # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.
         common = self.repo / ".git"
-        for path, text, message in (
-            (common / "info/grafts", f"{SHA_A}\n", "info/grafts exists"),
-            (common / "shallow", f"{SHA_A}\n", "shallow exists"),
-            (common / "objects/info/alternates", "/tmp/other/objects\n", "names alternate object stores"),
-        ):
-            with self.subTest(path.name):
-                self.calls.unlink(missing_ok=True)
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(text)
-                self.github()
-                self.assert_refused(self.merge(), message)
-                self.assertEqual(self.gh_calls(), [], "refused before any gh call")
-                path.unlink()
-        (common / "objects/info/alternates").write_text("")
+        (common / "info").mkdir(exist_ok=True)
+        (common / "info/grafts").write_text(f"{SHA_A}\n")
+        (common / "objects/info/alternates").write_text("/nonexistent/objects\n")
         self.github()
-        self.assertEqual(self.merge().returncode, 0, "an empty alternates file names no store")
-
-    def test_a_carry_compares_the_whole_tree_whatever_the_cwd_and_git_config(self):
-        # U71 audit round 2 (P1): `git diff` under diff.relative=true, run from an unchanged subdirectory, saw neither
-        # side's change, so an unaudited commit after the audited one carried the verdict.
-        (self.repo / "sub").mkdir()
-        (self.repo / "sub/keep.txt").write_text("unchanged\n")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", "a subdirectory")
-        self.git("config", "diff.relative", "true")
-        self.git("config", "diff.external", "false")
-        audited, head = self.carry_repo(extra_commit=True)
-        self.ledger(ledger_row(audited))
-        self.github(head=head)
-        self.assert_refused(
-            self.run_lever(
-                "pr-merge.sh", "7", "--records", str(self.records), "--carry-from", audited, cwd=self.repo / "sub"
-            ),
-            "differs from the audited",
-        )
-        self.assertEqual(self.writes(), [])
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
 
 class DispositionDriftTest(unittest.TestCase):

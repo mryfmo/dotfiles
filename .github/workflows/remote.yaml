@@ -231,36 +231,10 @@ jobs:
       - name: Apply home/ into a scratch HOME
         if: ${{ steps.decide.outputs.should_apply == 'true' }}
         shell: bash
+        # scripts/apply-check.sh is the one implementation of this scratch apply, shared with make apply-check (U82):
+        # a copy of the tree under RUNNER_TEMP applied into a scratch HOME there, so the job's HOME and the checkout
+        # stay untouched; externals, run_ scripts and encrypted_* targets left out (CI holds no key); init, apply,
+        # verify, the unmanaged-file and shell-rc checks, then chezmoi doctor --no-network and check-agent-runtime.py.
+        # It prints one summary line and fails when any step fails.
         run: |
-          set -euo pipefail
-          apply_home="${RUNNER_TEMP}/chezmoi-apply-home"
-          apply_source="${RUNNER_TEMP}/chezmoi-apply-source"
-          apply_config="${apply_home}/.config/chezmoi/chezmoi.yaml"
-          # A scratch HOME and a copy of the source: the job's HOME and the checkout stay untouched.
-          cp -R "${GITHUB_WORKSPACE}/home" "${apply_source}"
-          # Externals are downloads and scripts are installers: both belong to the bootstrap, which runs
-          # whenever a .chezmoi* or run_* path changes. As setup.sh does without a tty, age-encrypted targets
-          # leave the copy: CI holds no key.
-          rm -f "${apply_source}/.chezmoiexternal.yaml.tmpl"
-          rm -rf "${apply_source}/.chezmoitemplates/chezmoiexternal.d"
-          find "${apply_source}" -type f -name 'encrypted_*' -exec rm -f {} +
-          mkdir -p "${apply_home}" "$(dirname "${apply_config}")"
-          printf 'sourceDir: "%s"\ndata:\n  email: "ci@example.invalid"\n  system: "%s"\n' \
-            "${apply_source}" "${SYSTEM}" > "${apply_config}"
-          printf 'home-sentinel\n' > "${apply_home}/unmanaged-sentinel"
-          chezmoi=(
-            "${APPLY_CHEZMOI}" --source "${apply_source}" --destination "${apply_home}"
-            --config "${apply_config}" --no-tty
-          )
-          # init regenerates the config from home/.chezmoi.yaml.tmpl, as setup.sh's init does.
-          HOME="${apply_home}" "${chezmoi[@]}" init
-          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never apply --exclude=scripts,externals
-          # verify exits non-zero when any managed target differs from the source after the apply.
-          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never verify --exclude=scripts,externals
-          test "$(cat "${apply_home}/unmanaged-sentinel")" = home-sentinel
-          if [ "${SYSTEM}" = client ]; then
-            test -e "${apply_home}/.zshrc"
-          else
-            test -e "${apply_home}/.bashrc"
-          fi
-          printf 'Applied home/ of %s for %s on %s\n' "${GITHUB_SHA}" "${SYSTEM}" "${RUNNER_OS}"
+          scripts/apply-check.sh --system "${SYSTEM}" --chezmoi "${APPLY_CHEZMOI}"

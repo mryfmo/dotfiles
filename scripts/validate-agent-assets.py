@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-import configparser
 import json
 import os
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -284,6 +285,104 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
 
 
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
+# The only directories a sandboxed command may write beyond the working directory and its session TMPDIR (U68): an
+# exact allowlist, compared byte for byte, for every write-root list the manifest renders (Claude allowWrite, which
+# includes the Codex writable_roots, the Codex writable_roots themselves, Claude additionalDirectories). No spelling
+# is normalised, so a case variant, a `..` route, a symlink or another home anchor is refused because it is not on the
+# list, not because it was recognised as dangerous. Adding a root is a change to this list, reviewed as a
+# trust-boundary change; none may hold an executable on PATH (~/.local/bin, the uv tools, mise's installs) or state an
+# unsandboxed run trusts (mise's trusted-configs).
+SANDBOX_WRITE_ROOTS = (
+    # The uv cache: every `uv run` target needs it writable (T39 live E2E leg 1).
+    "~/.cache/uv",
+    # The hcom stores: the dotfiles program's store until its one-time move, and the derived per-repository stores.
+    "~/.local/state/hcom-regime",
+    "~/.local/state/hcom",
+    # The omp seat worktrees, which `hcom-seat worker` creates and reuses.
+    "~/.local/state/omp-seats",
+)
+# mise's macOS cache directory; Linux keeps mise's cache under ~/.cache/mise, which is not listed.
+DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
+
+
+def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None:
+    """Refuse a write root that is not byte-identical to an allowlisted spelling for `os_name` (U68)."""
+    if not isinstance(roots, list):
+        fail(f"{label} must be a list: {roots!r}")
+    permitted = (*SANDBOX_WRITE_ROOTS, *(DARWIN_SANDBOX_WRITE_ROOTS if os_name == "darwin" else ()))
+    # Byte-for-byte on purpose: any normalisation would re-open the spellings this list exists to refuse.
+    unlisted = [r for r in roots if not isinstance(r, str) or r not in permitted]  # lint-comparisons: allow exact text
+    if unlisted:
+        fail(
+            f"{label} entries must be exactly one of {list(permitted)} (an exact allowlist in "
+            f"validate-agent-assets.py; adding a root is a reviewed trust-boundary change): {unlisted}"
+        )
+
+
+# Credential stores every sandboxed command is denied (U68): SSH keys, the gh token, the agents' login stores, the
+# age key. Every credential entry is a plain deny: a `mask` lets the sandbox proxy put the real value into any request
+# body to its injectHosts, so a sandboxed client can send the placeholder to an endpoint that echoes it (GitHub's
+# POST /markdown) and read the real token back (audit round 6, on the installed Claude Code 2.1.310 transformer).
+SANDBOX_CREDENTIAL_DENIES = (
+    "~/.ssh",
+    "~/.config/gh/hosts.yml",
+    "~/.claude/.credentials.json",
+    "~/.config/claude-code/oauth-token",
+    "~/.codex/auth.json",
+    "~/.omp/agent/agent.db*",
+    "~/.omp/profiles/*/agent/agent.db*",
+    "~/.config/age/key.txt",
+)
+SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
+# Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
+# `dangerouslyDisableSandbox` retry, and exactly these exclusions run outside the sandbox, each behind an identical
+# `Bash(<pattern>)` ask rule. `git push` needs ~/.ssh and `gh` needs its hosts file, both denied inside. Claude Code
+# 2.1.310 parses a `Bash(dangerouslyDisableSandbox:true)` rule as a literal command, so no rule may name the parameter.
+SANDBOX_EXCLUSIONS = ("git push *", "gh *")
+RETRY_PARAMETER = "dangerouslyDisableSandbox"
+
+
+def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str) -> None:
+    """Require every credential store denied, each entry exactly `{path|name, mode: deny}`, each named once (U68).
+
+    Every entry is checked: Claude Code 2.1.310 merges credential entries and keeps the later of two entries for one
+    path, so a duplicate is refused outright. No mask is accepted, and so no TLS termination either.
+    """
+    credentials = sandbox.get("credentials", {})
+    files = credentials.get("files") if isinstance(credentials, dict) else None
+    if not isinstance(files, list) or not all(isinstance(e, dict) and isinstance(e.get("path"), str) for e in files):
+        fail(f"{label}.credentials.files must contain a list of entries: {files!r}")
+    paths = [entry["path"] for entry in files]
+    duplicated = sorted({path for path in paths if paths.count(path) > 1})
+    if duplicated:
+        fail(f"{label}.credentials.files must name each path once (Claude Code keeps the later entry): {duplicated}")
+    not_deny = [entry for entry in files if entry.get("mode") != "deny" or set(entry) != {"path", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.files entries must all be exactly path and deny (no mask): {not_deny}")
+    missing = [path for path in SANDBOX_CREDENTIAL_DENIES if path not in paths]  # lint-comparisons: allow settings text
+    if missing:
+        fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
+    env_vars = credentials.get("envVars", [])
+    if not isinstance(env_vars, list) or not all(
+        isinstance(e, dict) and isinstance(e.get("name"), str) for e in env_vars
+    ):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    names = [entry["name"] for entry in env_vars]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    if duplicated:
+        fail(
+            f"{label}.credentials.envVars must name each variable once (Claude Code keeps the later entry): {duplicated}"
+        )
+    not_deny = [entry for entry in env_vars if entry.get("mode") != "deny" or set(entry) != {"name", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.envVars entries must all be exactly name and deny (no mask): {not_deny}")
+    if not set(SANDBOX_ENV_DENIES) <= set(names):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    for key in ("allowPlaintextInject", "awsPairs", "sigv4"):
+        if key in credentials:
+            fail(f"{label}.credentials.{key} must not be set: no credential is ever injected")
+    if "tlsTerminate" in sandbox.get("network", {}):
+        fail(f"{label}.network.tlsTerminate must not be set: no mask needs it")
 
 
 def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str, os_name: str = "darwin") -> None:
@@ -293,20 +392,13 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     for key in ("enabled", "autoAllowBashIfSandboxed"):
         if sandbox.get(key) is not True:
             fail(f"{label}.{key} must be true")
-    if not isinstance(sandbox.get("failIfUnavailable"), bool):
-        fail(f"{label}.failIfUnavailable must be a boolean")
+    if sandbox.get("failIfUnavailable") is not True:
+        fail(f"{label}.failIfUnavailable must be true: a sandbox that cannot start must stop Claude Code")
     allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
     missing = set(writable_roots) - set(allow_write)
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
-    extra = [path for path in allow_write if path not in writable_roots]
-    invalid = [
-        path
-        for path in extra
-        if not isinstance(path, str) or not path.startswith(("/", "~/")) or any(char in path for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
+    validate_write_roots(allow_write, f"{label}.filesystem.allowWrite", os_name)
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -315,11 +407,6 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
             f"{label}.filesystem.denyRead must be a non-empty list of absolute or ~/ paths "
             f"(globs are allowed here, unlike allowWrite): {deny_read!r}"
         )
-    credentials = sandbox.get("credentials", {})
-    files = credentials.get("files") if isinstance(credentials, dict) else None
-    ssh_deny = {"path": "~/.ssh", "mode": "deny"}
-    if not isinstance(files, list) or ssh_deny not in files:  # lint-comparisons: allow the exact settings entry
-        fail(f"{label}.credentials.files must contain the ~/.ssh deny entry: {files!r}")
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")
@@ -329,6 +416,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
     if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
         fail(f"{label} must not allow telemetry or metadata domains")
+    validate_claude_sandbox_credentials(sandbox, label)
     network = sandbox.get("network", {})
     mach = network.get("allowMachLookup", [])
     if not isinstance(mach, list) or any(
@@ -337,19 +425,19 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label} Mach services must stay within the macOS trustd allowlist")
     if network.get("allowAllUnixSockets") is True:
         fail(f"{label}.network.allowAllUnixSockets must not be true")
+    if sandbox.get("allowUnsandboxedCommands") is not False:
+        fail(f"{label}.allowUnsandboxedCommands must be false: no command may leave the sandbox by an unprompted retry")
     exclusions = sandbox.get("excludedCommands", [])
-    if not isinstance(exclusions, list) or exclusions:
-        fail(f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be []: {exclusions!r}")
-    sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
-    if not isinstance(sockets, list):
-        fail(f"{label}.network.allowUnixSockets must be a list")
-    invalid = [
-        socket
-        for socket in sockets
-        if not isinstance(socket, str) or not socket.startswith(("/", "~/")) or any(char in socket for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
+    exact = isinstance(exclusions, list) and sorted(map(str, exclusions)) == sorted(SANDBOX_EXCLUSIONS)
+    if not exact:
+        fail(
+            f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be exactly "
+            f"{list(SANDBOX_EXCLUSIONS)}: {exclusions!r}"
+        )
+    # Each reachable socket is a way out of the sandbox (the herdr socket starts host processes), and Linux ignores
+    # the list (U68): no socket is listed.
+    if "allowUnixSockets" in network and (os_name != "darwin" or network["allowUnixSockets"] != []):
+        fail(f"{label}.network.allowUnixSockets must not list a socket: {network['allowUnixSockets']!r}")
 
 
 # The managed allow rules (regime-cutover U16, U31): the read-only `hcom list` and the coordinator
@@ -414,20 +502,31 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
             fail(f"{label}.allow rule {rule!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
-# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is the audited squash
-# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *`,
-# `~/.local/bin/common/<lever> --<flag> *` or the exact bare `~/.local/bin/common/<lever>` (U28b F3), held to the same
-# lever checks as a Claude allow rule. audit.yml keeps its read-only allows under `always-ask`;
-# tests/unit/test_omp_seat_policy.py holds its decision table.
+# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is one lever by its
+# installed path, `~/.local/bin/common/<lever> *`, `~/.local/bin/common/<lever> --<flag> *` or the exact bare
+# `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
+# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table.
+OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
-OMP_MERGE_ALLOW = "gh pr merge * --squash --match-head-commit *"
+# GitHub reach (U71, audit rounds 3, 8 and 9): enumerating merge spellings always missed one (`/merges`, then GraphQL
+# `mergePullRequest`), so in every policy file under OMP_POLICY_DIR, found by glob so a new or renamed file is covered
+# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an
+# entry of its role's list below; any other such row is refused. The lists are today's rows, small and exact, so the
+# single manifest list U76 renders the policies from can adopt them. The orchestrator merges only through pr-merge.sh.
+OMP_GITHUB_REACH = re.compile(r"\bgh\b|graphql|api\.github\.com|\bcurl\b|\bwget\b", re.IGNORECASE)
+OMP_GITHUB_ALLOWLIST = {
+    # the auditor's read-only GitHub reads, behind audit.yml's common and write-method denies
+    "audit": ("gh pr view *", "gh pr diff *", "gh pr checks *", "gh run view *", "gh api repos/*"),
+    # the orchestrator's GitHub writes go through its levers only; no raw gh row
+    "orchestrator": (),
+    # the worker's one GitHub-write lever; its gh pr create/ready/comment run under the yolo default, not an allow row
+    "worker": (),
+}
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
 
-def validate_omp_policy_allow(
-    policy: Any, label: str, pinned: Iterable[str] | None = None, merge: bool = False
-) -> None:
+def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | None = None) -> None:
     patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
     if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
         fail(f"{label} bash.patterns must be a list of rules")
@@ -435,8 +534,6 @@ def validate_omp_policy_allow(
         if rule.get("approval") != "allow":
             continue
         match = rule.get("match")
-        if merge and match == OMP_MERGE_ALLOW:
-            continue
         if not isinstance(match, str):
             fail(f"{label} allow rule {match!r} is not a string")
         if OMP_CHECKOUT_LEVER.match(match):
@@ -446,8 +543,7 @@ def validate_omp_policy_allow(
             )
         lever = OMP_LEVER_ALLOW.fullmatch(match)
         if not lever:
-            merge_form = f"{OMP_MERGE_ALLOW!r} or " if merge else ""
-            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
+            fail(f"{label} allow rule {match!r} is not {LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
         reason = lever_refusal(lever.group(1))
         if reason:
             fail(f"{label} allow rule {match!r}: scripts/orchestrator/{lever.group(1)} {reason}")
@@ -455,15 +551,46 @@ def validate_omp_policy_allow(
             fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
+def omp_policy_roles() -> list[str]:
+    """The role of every policy file under OMP_POLICY_DIR (`<role>.yml`), found by glob."""
+    roles = sorted(path.stem for path in (ROOT / OMP_POLICY_DIR).glob("*.yml"))
+    if not roles:
+        fail(f"{ROOT / OMP_POLICY_DIR} holds no omp seat policy")
+    return roles
+
+
+def validate_omp_github_allow(policy: Any, label: str, role: str) -> None:
+    """Refuse an allow rule that mentions GitHub reach unless it is byte-identical to an OMP_GITHUB_ALLOWLIST entry of
+    its role (U71); a role without a list allows no such row."""
+    patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
+    if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
+        fail(f"{label} bash.patterns must be a list of rules")
+    for rule in patterns:
+        match = rule.get("match")
+        if rule.get("approval") != "allow" or not isinstance(match, str) or not OMP_GITHUB_REACH.search(match):
+            continue
+        if match not in OMP_GITHUB_ALLOWLIST.get(role, ()):
+            fail(
+                f"{label} allow rule {match!r} reaches GitHub and is not on the {role} allowlist in "
+                f"validate-agent-assets.py; seats merge only through {LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
+            )
+
+
 def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
-    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    """Check every seat policy's GitHub-reaching allow rows against its allowlist and the writing seats' allow rows; `policies` maps each role of
+    omp_policy_roles() to its parsed overlay, else PyYAML reads the files."""
     if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
     pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    for role in OMP_WRITING_POLICIES:
-        path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
+    roles = omp_policy_roles()
+    if policies is not None and sorted(policies) != roles:
+        fail(f"the parsed omp policies {sorted(policies)} are not the policy files {roles}")
+    for role in roles:
+        path = ROOT / OMP_POLICY_DIR / f"{role}.yml"
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
-        validate_omp_policy_allow(policy, str(path), pinned, merge=role == "orchestrator")
+        validate_omp_github_allow(policy, str(path), role)
+        if role in OMP_WRITING_POLICIES:
+            validate_omp_policy_allow(policy, str(path), pinned)
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
@@ -512,6 +639,29 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),
         f"{settings_path} {os_name} sandbox",
+        os_name,
+    )
+    permissions = settings.get("permissions") or {}
+    ask = permissions.get("ask") or []
+    unprompted = [entry for entry in settings["sandbox"].get("excludedCommands", []) if f"Bash({entry})" not in ask]
+    if unprompted:
+        fail(
+            f"{settings_path} {os_name} permissions.ask must hold Bash(<pattern>) for each excluded command: {unprompted}"
+        )
+    named = [
+        rule
+        for kind in ("allow", "ask", "deny")
+        for rule in permissions.get(kind) or []
+        if isinstance(rule, str) and RETRY_PARAMETER in rule
+    ]
+    if named:
+        fail(
+            f"{settings_path} {os_name} permissions must not name {RETRY_PARAMETER}, a literal command to Claude Code: {named}"
+        )
+    # additionalDirectories grant sandboxed commands write access like allowWrite (code.claude.com/docs/en/sandboxing).
+    validate_write_roots(
+        (settings.get("permissions") or {}).get("additionalDirectories", []),
+        f"{settings_path} {os_name} permissions.additionalDirectories",
         os_name,
     )
     enabled_plugins = settings.get("enabledPlugins", {})
@@ -605,6 +755,11 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should keep sandbox command network access disabled")
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
+    # The Codex config is one file for both OSes, so its roots must be on the list shared by both.
+    validate_write_roots(
+        data.get("sandbox_workspace_write", {}).get("writable_roots", []),
+        f"{codex_path} sandbox_workspace_write.writable_roots",
+    )
     features = data.get("features", {})
     for feature in ("plugins", "hooks", "plugin_hooks"):
         if features.get(feature) is not True:
@@ -1275,25 +1430,136 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
             fail(f"{claude_rule} must document model profile token {token!r}")
 
 
+GIT_SIGNING_KEYS = ("user.signingkey", "gpg.format", "commit.gpgsign")
+# An [include] or [includeIf] section pulls in config the render check never sees.
+GIT_INCLUDE_SECTION = re.compile(r"^\s*\[\s*include(if)?\b", re.IGNORECASE | re.MULTILINE)
+
+
+def git_config_read(git: str, config_file: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run `git config --file <config_file> <args>` with no system or global config in play."""
+    try:
+        return subprocess.run(
+            [git, "config", "--file", str(config_file), *args],
+            env={
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "HOME": str(config_file.parent),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": os.devnull,
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f"git config could not read the rendered {config_file.name}: {error}")
+
+
+def render_git_config(template: Path, with_key: bool) -> tuple[dict[str, list[str]], str, str | None]:
+    """Render the git config template with chezmoi in a scratch HOME and read the output with git itself.
+
+    The scratch HOME holds `~/.ssh/id_ed25519.pub` only when `with_key` is set, so the two renders
+    show what the template does on a host with and without the signing key. Git parses the render
+    (`git config --file <render> --list`), so section and key names are matched the way git matches
+    them (case-insensitively). Returns every entry by canonical name, the scratch HOME, and
+    commit.gpgsign read as a git boolean (None when unset).
+    """
+    relative = template.relative_to(ROOT)
+    chezmoi = os.environ.get("DOTFILES_CHEZMOI") or shutil.which("chezmoi")
+    if not chezmoi:
+        fail(f"chezmoi is required to render {relative}; install it or set DOTFILES_CHEZMOI")
+    git = shutil.which("git")
+    if not git:
+        fail(f"git is required to read the rendered {relative}")
+    with tempfile.TemporaryDirectory(prefix="validate-git-config-") as temporary:
+        home = Path(temporary)
+        if with_key:
+            (home / ".ssh").mkdir()
+            (home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA validate-agent-assets\n")
+        config = home / "chezmoi.toml"
+        config.write_text('[data]\nemail = "validate@example.invalid"\n')
+        try:
+            result = subprocess.run(
+                [
+                    chezmoi,
+                    "execute-template",
+                    "--config",
+                    str(config),
+                    "--persistent-state",
+                    str(home / "chezmoistate.boltdb"),
+                    "--source",
+                    str(ROOT / "home"),
+                    "--destination",
+                    str(home),
+                    "--file",
+                    str(template),
+                ],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(home)},
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            fail(f"chezmoi could not render {relative}: {error}")
+        if result.returncode != 0:
+            fail(f"chezmoi could not render {relative}: {result.stderr.strip()}")
+        rendered = home / "gitconfig"
+        rendered.write_text(result.stdout)
+        listing = git_config_read(git, rendered, "--null", "--list")
+        if listing.returncode != 0:
+            fail(f"{relative} does not render to a valid git config: {listing.stderr.strip()}")
+        entries: dict[str, list[str]] = {}
+        for entry in listing.stdout.split("\0"):
+            if entry:
+                name, _, value = entry.partition("\n")
+                entries.setdefault(name, []).append(value)
+        gpgsign = None
+        if "commit.gpgsign" in entries:
+            boolean = git_config_read(git, rendered, "--type=bool", "--get-all", "commit.gpgsign")
+            if boolean.returncode != 0:
+                fail(f"{relative} renders a commit.gpgsign git cannot read as a boolean: {boolean.stderr.strip()}")
+            gpgsign = boolean.stdout.strip()
+        return entries, str(home), gpgsign
+
+
 def validate_git_config() -> None:
-    """Validate managed Git commit signing configuration."""
+    """Validate managed Git commit signing by rendering the template on a host with and without the key.
+
+    With `~/.ssh/id_ed25519.pub` present the rendered config signs commits with that key over SSH;
+    without it none of the three signing settings is rendered, so commits are unsigned instead of failing.
+    Git reads each render, and the template may carry no include directive the check could not follow.
+    """
     path = ROOT / "home/dot_config/git/config.tmpl"
+    relative = path.relative_to(ROOT)
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:
-        fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    config = configparser.ConfigParser(strict=False)
-    config.read_string(text)
-    expected = {
-        ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
-        ("gpg", "format"): "ssh",
-        ("commit", "gpgsign"): "true",
-    }
-    for (section, key), expected_value in expected.items():
-        actual_value = config.get(section, key, fallback="").strip()
-        if actual_value != expected_value:
-            fail(
-                f"{path.relative_to(ROOT)} must configure SSH commit signing with [{section}] {key} = {expected_value}"
-            )
+        fail(f"{relative} must not reference the removed GPG signing key")
+    if GIT_INCLUDE_SECTION.search(text):
+        fail(f"{relative} must not use [include] or [includeIf]: the render check cannot follow them")
+    for with_key in (True, False):
+        entries, home, gpgsign = render_git_config(path, with_key=with_key)
+        state = "with the signing key present" if with_key else "without the signing key"
+        includes = sorted(name for name in entries if name.startswith(("include.", "includeif.")))
+        if includes:
+            fail(f"{relative} rendered {state} must not include other config: {', '.join(includes)}")
+        if not with_key:
+            for name in GIT_SIGNING_KEYS:
+                if name in entries:
+                    fail(f"{relative} rendered {state} must not set {name}")
+            continue
+        expected = {
+            "user.signingkey": f"{home}/.ssh/id_ed25519.pub",
+            "gpg.format": "ssh",
+        }
+        for name in GIT_SIGNING_KEYS:
+            if len(entries.get(name, [])) != 1:
+                fail(f"{relative} rendered {state} must set {name} exactly once, not {entries.get(name, [])!r}")
+        for name, expected_value in expected.items():
+            if entries[name][0] != expected_value:
+                fail(f"{relative} rendered {state} must set {name} = {expected_value}, not {entries[name][0]!r}")
+        if gpgsign != "true":
+            fail(f"{relative} rendered {state} must set commit.gpgsign = true, not {gpgsign!r}")
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

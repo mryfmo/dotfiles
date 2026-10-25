@@ -302,8 +302,10 @@ claude:
     # chezmoi installs under ~/.local/bin/common (claude.levers below), which a
     # sandboxed session cannot write and which checks its own sha256 at start
     # (U31), never the rewritable checkout path; so the rules render on Linux
-    # and WSL2 too, where an allow rule approves an unsandboxed retry without a
-    # prompt. Not `Bash(hcom *)` (hcom launches agents), no interpreter prefix;
+    # and WSL2 too. No lever leaves the sandbox: `allowUnsandboxedCommands` is
+    # false and no lever is in `sandbox.excludedCommands`, so an allow rule only
+    # ever approves a sandboxed run (U68). Not `Bash(hcom *)` (hcom launches
+    # agents), no interpreter prefix;
     # validate-agent-assets.py refuses anything else, a checkout path included.
     # No rule authorises chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
@@ -321,11 +323,16 @@ claude:
     # recognises in Bash; they "don't apply to … arbitrary subprocesses"
     # (code.claude.com/docs/en/permissions). `sandbox.credentials` and
     # `sandbox.filesystem.denyRead` below guard every sandboxed subprocess.
-    # The Linux sandbox ignores a Read/Edit rule whose last segment is a glob,
-    # so validate-agent-assets.py refuses one except the `.env` pair. The pair
-    # keeps its glob because the Read tool must refuse `.env.local` and the like
-    # in every project, which only a glob expresses; for sandboxed subprocesses
-    # on Linux the `denyRead` entries `~/**/.env` and `~/**/.env.*` cover it.
+    # The Linux sandbox ignores a Read/Edit rule whose last segment is a glob
+    # when it builds its own read and write lists ("Those wildcards don't work
+    # for sandboxed commands", code.claude.com/docs/en/sandboxing), so
+    # validate-agent-assets.py refuses one except the `.env` pair. The pair
+    # keeps its glob because the Read and Edit tools must refuse `.env.local`
+    # and the like in every project, which only a glob expresses; the tools
+    # apply it on every OS. For sandboxed subprocesses on Linux the `denyRead`
+    # globs below cover reads; a sandboxed write to a `.env*` file inside the
+    # working directory is not blocked there, since Linux `denyWrite` accepts
+    # only a trailing `/**` (known limit, U68).
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)
@@ -376,6 +383,11 @@ claude:
       - Bash(gh api -F*)
       - Bash(gh api --raw-field=*)
       - Bash(gh api --field=*)
+      # The two commands that run outside the sandbox (sandbox.excludedCommands
+      # below) prompt every time, in auto mode too: ask rules are evaluated
+      # before allow rules (code.claude.com/docs/en/permissions) (U68).
+      - Bash(git push *)
+      - Bash(gh *)
   env:
     GH_TELEMETRY: "false"
     DO_NOT_TRACK: "1"
@@ -397,6 +409,8 @@ claude:
   # ~/.agents/omp/policies, never by a claude.permissions rule. omp-run.sh is
   # the one-turn omp runner the audit path uses (U66): installed and
   # self-checked the same way, so every repository runs the same pinned copy.
+  # pr-merge.sh is the orchestrator's only merge path (a `correct` ledger row
+  # for the exact head and green CI, U71).
   levers:
     sha256:
       hcom-seat: 43f5f617ecac078bb62cfd0a1d77686e80f4fc486a2d40a689f94439b8092309
@@ -410,11 +424,12 @@ claude:
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
       pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
-      pr-update-branch.sh: 7892eecf70f1ffacc8045f8b016f7d0efde68ab44fa734ba0ca0f606bdac075f
+      pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf
+      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
+      pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
       omp-run.sh: dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -438,23 +453,44 @@ claude:
   # create user namespaces.
   sandbox:
     enabled: true
-    # Two-stage rollout: warn and run unsandboxed while bwrap/socat are missing;
-    # flip to true only after live E2E.
-    failIfUnavailable: false
+    # Refuse to start rather than run commands unsandboxed: bwrap, socat and the
+    # bwrap-userns AppArmor profile are in place on the Ubuntu host and macOS uses
+    # Seatbelt (code.claude.com/docs/en/settings-reference, failIfUnavailable).
+    failIfUnavailable: true
     autoAllowBashIfSandboxed: true
-    allowUnsandboxedCommands: true
-    # T39 recorded Herdr PermissionDenied on 2026-10-01; T130 added $HOME/.config/herdr/herdr.sock to allowUnixSockets; the orchestrator sent sandboxed Bash messages 2827 and 2830 on 2026-10-20.
-    excludedCommands: []
+    # Strict sandbox mode: Claude Code ignores the `dangerouslyDisableSandbox`
+    # retry, so a command runs sandboxed unless it matches excludedCommands
+    # (code.claude.com/docs/en/sandboxing, "Turn off the retry with strict
+    # sandbox mode"; measured in the installed 2.1.310 code, U68).
+    allowUnsandboxedCommands: false
+    # Two exclusions, each behind its identical ask rule above. An excluded
+    # command goes through the regular permission flow, so each one prompts.
+    # `git push`: the git config rewrites GitHub pushes to SSH (pushInsteadOf)
+    # and the sandbox denies ~/.ssh, so a push cannot run sandboxed. `gh`: the
+    # gh hosts file is denied to sandboxed commands, so gh authenticates only
+    # outside the sandbox. A call with a `cd`, `-C`, a redirect or a command
+    # substitution stays sandboxed and fails. herdr calls and `hcom-seat` on
+    # macOS need the herdr socket and are not excluded: launch seats from the
+    # omp orchestrator or a terminal.
+    excludedCommands:
+      - git push *
+      - gh *
     linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
-      # roots. ~/.cache/uv: every `uv run` target (make unit-test,
-      # validate-agent-assets, render-check) needs the uv cache writable; a
-      # filesystem relaxation limited to that directory (T39 live E2E leg 1).
+      # roots. Each entry must be byte-identical to validate-agent-assets.py
+      # SANDBOX_WRITE_ROOTS (DARWIN_SANDBOX_WRITE_ROOTS for the darwin list):
+      # a new root is a reviewed change to that allowlist (U68). Cache and state
+      # directories only: nothing on PATH and nothing a later unsandboxed run
+      # trusts as configuration. ~/.cache/uv: every
+      # `uv run` target (make unit-test, validate-agent-assets, render-check)
+      # needs the uv cache writable (T39 live E2E leg 1). ~/.local/share/uv
+      # (uv tools and Pythons, the hcom binary on PATH) and ~/.local/state/mise
+      # (mise's trusted-configs) are not writable: measured under Seatbelt, `uv
+      # run --with pyyaml`, `uv run --no-project` and `mise exec` succeed without
+      # them; mise only warns that it could not track a new checkout's mise.toml.
       extra_allow_write:
         - ~/.cache/uv
-        - ~/.local/state/mise
-        - ~/.local/share/uv
         # The dotfiles program's hcom store until its one-time move (U16; README "Run a program in another repository").
         - ~/.local/state/hcom-regime
         # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
@@ -466,21 +502,62 @@ claude:
       # Rendered as sandbox.filesystem.denyRead on every OS: the sandbox's
       # default read policy "still allows reading credential files" and the
       # Linux sandbox drops the glob Read rules above, while `denyRead` globs
-      # are enforced there (code.claude.com/docs/en/sandboxing; U17).
+      # are enforced there (code.claude.com/docs/en/sandboxing; U17). The /tmp
+      # pair covers checkouts outside $HOME (the audit worktrees, Claude's own
+      # /tmp/claude-<uid>); Linux honours a wildcard after the first directory
+      # name, so `/tmp/**` works where `/**` would cover nothing (U68).
       deny_read:
         - ~/**/.env
         - ~/**/.env.*
-    # Rendered as sandbox.credentials: a `deny` entry denies reads inside the
-    # sandbox like denyRead; the SSH keys and config stay unreadable to
-    # sandboxed commands (git pushes from sessions go over HTTPS; U17).
-    # Both sandbox denies hold for sandboxed runs only: an unsandboxed retry
-    # after the auto-mode classifier keeps only the tool-layer rules, which miss
-    # arbitrary Python or Node reads (ask rule for the retry: D-024-148 follow-up).
-    # denyRead is home-anchored, so managed hosts keep project checkouts under
-    # $HOME (deployment restriction, D-024-148) until the root form is measured.
+        - /tmp/**/.env
+        - /tmp/**/.env.*
+      # macOS /tmp is a link to /private/tmp; the Seatbelt rule names the real path.
+      darwin_deny_read:
+        - /private/tmp/**/.env
+        - /private/tmp/**/.env.*
+    # Rendered as sandbox.credentials. A `deny` file entry denies reads inside
+    # the sandbox like denyRead; a `deny` envVars entry unsets the variable for
+    # sandboxed commands. Every entry is a deny: a `mask` lets the sandbox proxy
+    # put the real value into any request body to its injectHosts, so a
+    # sandboxed client can send the placeholder to an endpoint that echoes it
+    # (GitHub's POST /markdown) and read the real token back (audit round 6,
+    # reproduced on the installed 2.1.310 transformer). The gh hosts file, the
+    # file-based agent login stores and the chezmoi age key are denied (U68).
+    # Each path appears once: Claude Code keeps the later of two entries.
+    # Known limit, macOS: these entries cover files only. Claude Code's own
+    # login and the gh token live in the login Keychain there, and the Claude
+    # Code 2.1.310 Seatbelt profile always allows mach-lookup of
+    # com.apple.SecurityServer and com.apple.securityd.xpc, with no setting to
+    # remove them (allowMachLookup only adds services), so a sandboxed command
+    # can ask securityd for those items (`security find-generic-password`).
+    # On Linux the Claude login is the denied ~/.claude/.credentials.json.
+    # The ~/.ssh and gh hosts denies mean a sandboxed `git push` or `gh` cannot
+    # authenticate, so both are excluded commands behind their ask rules. All
+    # sandbox denies hold for sandboxed runs only; the prompt is the gate for
+    # the excluded commands (D-024-148).
     credentials:
       files:
         - path: ~/.ssh
+          mode: deny
+        - path: ~/.config/gh/hosts.yml
+          mode: deny
+        - path: ~/.claude/.credentials.json
+          mode: deny
+        - path: ~/.config/claude-code/oauth-token
+          mode: deny
+        - path: ~/.codex/auth.json
+          mode: deny
+        # The omp login stores, with their SQLite -wal and -shm companions.
+        - path: ~/.omp/agent/agent.db*
+          mode: deny
+        - path: ~/.omp/profiles/*/agent/agent.db*
+          mode: deny
+        - path: ~/.config/age/key.txt
+          mode: deny
+      # The remote seat host's `claude setup-token` login, which ~/.zshenv
+      # exports to every zsh (docs/remote-host-logins.md).
+      envVars:
+        - name: CLAUDE_CODE_OAUTH_TOKEN
           mode: deny
     network:
       allowedDomains:
@@ -488,18 +565,19 @@ claude:
         - api.github.com
         - uploads.github.com
         - objects.githubusercontent.com
+        # GitHub release downloads (uv, mise, gh) redirect here.
+        - release-assets.githubusercontent.com
         - codeload.github.com
         - pypi.org
         - files.pythonhosted.org
       # macOS certificate validation; the generator omits Mach services on Linux.
       allowMachLookup:
         - com.apple.trustd.agent
-      # macOS only: Claude Code ignores this list on Linux and WSL2, where the
-      # seccomp filter can't inspect socket paths. The Claude messaging socket
-      # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot
-      # be listed without a glob, so it is not.
-      allowUnixSockets:
-        - ~/.config/herdr/herdr.sock
+      # No allowUnixSockets: a socket a sandboxed command may reach is a way
+      # out of the sandbox (the herdr socket starts host processes), so herdr
+      # calls fail inside the macOS sandbox and are not retried (U68). On Linux
+      # Claude Code ignores that list, and Unix sockets are blocked only when the
+      # optional seccomp filter is installed (README "Claude Code sandbox").
       # The allow-all Unix socket switch is deliberately not set: with a
       # docker-group user or a reachable `systemd --user` bus it turns the
       # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
@@ -634,9 +712,9 @@ assets:
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
-    installer: install/ubuntu/common/aws_cli.sh
+    installer: install/common/aws_cli.sh
     render:
-      file: install/ubuntu/common/aws_cli.sh
+      file: install/common/aws_cli.sh
       constants: {AWS_CLI_FINGERPRINT: gpg_fingerprint}
   homebrew-installer:
     source: git-commit

@@ -7,6 +7,8 @@ ARG USER_GID=$USER_UID
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# python3 runs the chezmoi modify scripts of the Codex and Claude configs and scripts/check-agent-runtime.py
+# (make apply-check).
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -15,7 +17,8 @@ RUN apt-get update && \
     tzdata \
     parallel \
     build-essential \
-    ca-certificates
+    ca-certificates \
+    python3
 
 RUN existing_group="$(getent group "$USER_GID" | cut -d: -f1)" \
     && if [ -n "$existing_group" ]; then groupmod --new-name "$USERNAME" "$existing_group"; else groupadd --gid "$USER_GID" "$USERNAME"; fi \
@@ -35,9 +38,11 @@ WORKDIR /home/$USERNAME/.local/share/chezmoi
 # only that sha256, never the release page.
 ARG CHEZMOI_VERSION
 ARG CHEZMOI_SHA256
-# make docker rebuilds the image when the version label differs from the resolved release, or
-# when the sha256 label of a host-verified archive is missing.
-LABEL chezmoi.version=$CHEZMOI_VERSION chezmoi.sha256=$CHEZMOI_SHA256
+ARG DOCKERFILE_ID
+# make docker-image rebuilds the image when the version label differs from the resolved release,
+# when the sha256 label of a host-verified archive is missing, or when the image was built from
+# another Dockerfile (DOCKERFILE_ID is its git blob id).
+LABEL chezmoi.version=$CHEZMOI_VERSION chezmoi.sha256=$CHEZMOI_SHA256 dotfiles.dockerfile=$DOCKERFILE_ID
 RUN { test -n "$CHEZMOI_VERSION" && test -n "$CHEZMOI_SHA256"; } || { echo "build with --build-arg CHEZMOI_VERSION and CHEZMOI_SHA256 (make docker verifies both)" >&2; exit 1; } \
     && artifact="chezmoi_${CHEZMOI_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
     && base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}" \

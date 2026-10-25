@@ -940,20 +940,30 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.assert_hook_composition_fails("sessionstart-order source=compactiondb")
 
-    def valid_claude_sandbox(self) -> dict:
+    def valid_claude_sandbox(self, os_name: str = "darwin") -> dict:
+        files = [{"path": path, "mode": "deny"} for path in self.module.SANDBOX_CREDENTIAL_DENIES]
+        files.append(
+            {
+                "path": "~/.config/gh/hosts.yml",
+                "mode": "mask",
+                "extract": "oauth_token:\\s*(\\S+)",
+                "onExtractNoMatch": "deny",
+                "injectHosts": ["api.github.com"],
+            }
+        )
+        network = {"allowedDomains": ["github.com", "api.github.com"]}
+        if os_name != "darwin":
+            network["tlsTerminate"] = {}
         return {
             "enabled": True,
-            "failIfUnavailable": False,
+            "failIfUnavailable": True,
             "autoAllowBashIfSandboxed": True,
             "filesystem": {
                 "allowWrite": list(self.codex_writable_roots),
                 "denyRead": ["~/**/.env", "~/**/.env.*"],
             },
-            "credentials": {"files": [{"path": "~/.ssh", "mode": "deny"}]},
-            "network": {
-                "allowedDomains": ["github.com", "api.github.com"],
-                "allowUnixSockets": ["~/.config/herdr/herdr.sock", "/run/user/1000/x.sock"],
-            },
+            "credentials": {"files": files, "envVars": [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}]},
+            "network": network,
         }
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
@@ -1007,6 +1017,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_claude_settings(candidate)
                 self.assertRegex(stderr.getvalue(), message)
+
+        candidate = copy.deepcopy(manifest)
+        candidate["claude"]["permissions"]["ask"].remove("Bash(dangerouslyDisableSandbox:true)")
+        self.write_text_file(
+            "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(candidate)
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_claude_settings(candidate)
+        self.assertIn("permissions.ask must contain Bash(dangerouslyDisableSandbox:true)", stderr.getvalue())
 
         template = generator.render_claude_settings(manifest)
         prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
@@ -1237,6 +1257,90 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         sandbox["filesystem"]["denyRead"].append("/srv/secrets/**")
         self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
 
+    def test_claude_sandbox_refuses_each_way_out_of_the_boundary(self) -> None:
+        """U68: credential stores denied, no write reaching PATH or mise trust state, no socket, fail closed."""
+
+        def without_file(path: str):
+            def mutate(sandbox: dict) -> None:
+                files = sandbox["credentials"]["files"]
+                files[:] = [e for e in files if e["path"] != path]  # lint-comparisons: allow settings text
+
+            return mutate
+
+        def hosts(**change):
+            def mutate(sandbox: dict) -> None:
+                for entry in sandbox["credentials"]["files"]:
+                    if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
+                        entry.update(change)
+
+            return mutate
+
+        cases = {
+            "fails open": (lambda sandbox: sandbox.update(failIfUnavailable=False), "failIfUnavailable must be true"),
+            "uv tools writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv"),
+                "must not reach",
+            ),
+            "mise trust writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/state/mise"),
+                "must not reach",
+            ),
+            "a parent of PATH writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local"),
+                "must not reach",
+            ),
+            "uv python writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv/python"),
+                "must not reach",
+            ),
+            "age key readable": (without_file("~/.config/age/key.txt"), "deny entry for each credential store"),
+            "codex login readable": (without_file("~/.codex/auth.json"), "deny entry for each credential store"),
+            "gh hosts unlisted": (without_file("~/.config/gh/hosts.yml"), "~/.config/gh/hosts.yml"),
+            "gh mask fails open": (hosts(onExtractNoMatch="warn"), "onExtractNoMatch=deny"),
+            "gh mask injects anywhere": (hosts(injectHosts=["evil.example.com"]), "injectHosts inside allowedDomains"),
+            "gh mask allow": (hosts(mode="allow"), "~/.config/gh/hosts.yml"),
+            "token env passed": (
+                lambda sandbox: sandbox["credentials"].update(envVars=[]),
+                "envVars must deny",
+            ),
+            "herdr socket": (
+                lambda sandbox: sandbox["network"].update(allowUnixSockets=["~/.config/herdr/herdr.sock"]),
+                "allowUnixSockets must not list a socket",
+            ),
+            "macOS TLS termination": (
+                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
+                "tlsTerminate must not render on macOS",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox()
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                self.assertIn(message, stderr.getvalue())
+        linux_cases = {
+            "Linux mask without TLS termination": (
+                lambda sandbox: sandbox["network"].pop("tlsTerminate"),
+                "tlsTerminate must be set on Linux",
+            ),
+            "Linux socket list": (
+                lambda sandbox: sandbox["network"].update(allowUnixSockets=[]),
+                "allowUnixSockets must not list a socket",
+            ),
+        }
+        for name, (breaks, message) in linux_cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox("linux")
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox", "linux")
+                self.assertIn(message, stderr.getvalue())
+        self.module.validate_claude_sandbox(self.valid_claude_sandbox("linux"), self.codex_writable_roots, "s", "linux")
+        sandbox = self.valid_claude_sandbox()
+        sandbox["network"]["allowUnixSockets"] = []
+        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+
     def test_claude_deny_rules_refuse_a_glob_last_segment_except_the_env_pair(self) -> None:
         accepted = [
             "Bash(sudo:*)",
@@ -1276,22 +1380,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                     self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
                 self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
-
-    def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
-        for socket in (
-            "relative/herdr.sock",
-            "./herdr.sock",
-            "~herdr.sock",
-            "/run/user/*/cc.sock",
-            "~/.config/herdr/{a,b}.sock",
-            7,
-        ):
-            with self.subTest(socket=socket):
-                sandbox = self.valid_claude_sandbox()
-                sandbox["network"]["allowUnixSockets"].append(socket)
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("allowUnixSockets entries must be absolute or ~/ paths", stderr.getvalue())
 
     def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
         roots = [*self.codex_writable_roots, "/extra/codex/root"]

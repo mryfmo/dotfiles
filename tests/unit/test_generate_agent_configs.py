@@ -771,7 +771,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "api --raw-field",
                 "api --field",
             )
-        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        ] + [
+            "Bash(gh api -f*)",
+            "Bash(gh api -F*)",
+            "Bash(gh api --raw-field=*)",
+            "Bash(gh api --field=*)",
+            "Bash(dangerouslyDisableSandbox:true)",
+        ]
         template = self.module.render_claude_settings(manifest)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
@@ -785,10 +791,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     path.replace("{{ .chezmoi.homeDir }}", "/render-home")
                     for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
                 ]
+                # Cache and state only: no uv tool tree (the hcom binary) and no mise trust state (U68).
                 extras = [
                     "~/.cache/uv",
-                    "~/.local/state/mise",
-                    "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
                     "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
@@ -803,6 +808,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "api.github.com",
                         "uploads.github.com",
                         "objects.githubusercontent.com",
+                        "release-assets.githubusercontent.com",
                         "codeload.github.com",
                         "pypi.org",
                         "files.pythonhosted.org",
@@ -825,8 +831,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     settings["env"],
                 )
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
-                self.assertEqual({"files": [{"path": "~/.ssh", "mode": "deny"}]}, sandbox["credentials"])
-                self.assertEqual(["~/**/.env", "~/**/.env.*"], sandbox["filesystem"]["denyRead"])
+                self.assertNotIn("allowUnixSockets", sandbox["network"])
+                self.assertEqual(os_name == "linux", "tlsTerminate" in sandbox["network"])
+                self.assertTrue(sandbox["failIfUnavailable"])
+                files = {entry["path"]: entry for entry in sandbox["credentials"]["files"]}
+                for path in (
+                    "~/.ssh",
+                    "~/.claude/.credentials.json",
+                    "~/.config/claude-code/oauth-token",
+                    "~/.codex/auth.json",
+                    "~/.omp/agent/agent.db*",
+                    "~/.omp/profiles/*/agent/agent.db*",
+                    "~/.config/age/key.txt",
+                ):
+                    self.assertEqual({"path": path, "mode": "deny"}, files[path])
+                hosts = files["~/.config/gh/hosts.yml"]
+                self.assertEqual(
+                    ("mask", "deny", ["api.github.com"]),
+                    (hosts["mode"], hosts["onExtractNoMatch"], hosts["injectHosts"]),
+                )
+                self.assertRegex("    oauth_token: gho_placeholder\n", hosts["extract"])
+                self.assertEqual(
+                    [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}], sandbox["credentials"]["envVars"]
+                )
+                tmp = ["/tmp/**/.env", "/tmp/**/.env.*"]
+                darwin_tmp = ["/private/tmp/**/.env", "/private/tmp/**/.env.*"] if os_name == "darwin" else []
+                self.assertEqual(["~/**/.env", "~/**/.env.*", *tmp, *darwin_tmp], sandbox["filesystem"]["denyRead"])
                 deny = settings["permissions"]["deny"]
                 self.assertIn("Read(.env)", deny)
                 self.assertIn("Read(~/.ssh/**)", deny)

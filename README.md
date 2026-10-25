@@ -108,7 +108,9 @@ click is the laptop's. The design and the threat table are in
    Claude sign-in shows a code in the laptop tab; paste it at the terminal
    prompt. If that flow fails, run `claude setup-token` on the laptop and store
    the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
-   host; the login shells export it as `CLAUDE_CODE_OAUTH_TOKEN`.
+   host; `~/.zshenv` (every zsh) and `~/.profile` export it as
+   `CLAUDE_CODE_OAUTH_TOKEN`, and the managed Claude settings withhold both the
+   variable and the file from sandboxed commands.
 4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
    from presence and mtimes only.
 5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
@@ -502,63 +504,106 @@ block of the managed Claude settings, the counterpart of the Codex
 Bash calls may write only the working directory, the session `$TMPDIR`, and
 `sandbox.filesystem.allowWrite`, which the generator renders from
 `codex.sandbox_workspace_write.writable_roots` so both agents share one list,
-followed by `claude.sandbox.filesystem.extra_allow_write`
-(currently only `~/.cache/uv`, so `uv run` targets such as `make unit-test`
-work from sandboxed Bash). Network access from sandboxed commands is limited to
-the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
-`sandbox.network.allowUnixSockets` lists the herdr socket
-(`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
-ignores it on Linux and WSL2. The Claude messaging socket is a per-process path
-set at runtime (`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
-Because Linux and WSL2 ignore that list (the seccomp filter cannot inspect
-socket paths), `herdr` and `gh` (which reads its token from
-the keyring over D-Bus) run through the normal unsandboxed retry prompt on
-Linux. `sandbox.excludedCommands` is empty. The managed `permissions.allow`
-rules, the coordinator's levers with their `env` and writable directories,
-are described in `scripts/orchestrator/README.md`, "Pre-authorized levers"; they
-name the copies chezmoi installs read-only under `~/.local/bin/common`, each of
-which checks its own sha256 against the manifest before it runs.
-Codex workers run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
-used: on a workstation with a `docker`-group user or a reachable
-`systemd --user` bus it turns the auto-approved sandbox into an escape (see the
-upstream [security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
-`failIfUnavailable` is `false` for the first rollout stage: when the sandbox
-cannot start, Claude Code warns and runs commands unsandboxed. A later change
-flips it to `true` after live end-to-end verification.
+followed by `claude.sandbox.filesystem.extra_allow_write`: the uv cache
+(`~/.cache/uv`, so `uv run` targets such as `make unit-test` work from
+sandboxed Bash), the hcom stores and the omp seat worktrees, plus mise's cache
+on macOS. Nothing on `PATH` and no trust state is writable:
+`validate-agent-assets.py` refuses an `allowWrite` entry at, under or above
+`~/.local/bin`, `~/.local/share/uv` (the uv tools, among them the `hcom`
+binary), `~/.local/share/mise` or `~/.local/state/mise` (mise's
+trusted-configs). Sandboxed `uv run` and `mise exec` work without them; in a
+checkout mise has not seen yet, mise prints `mise WARN tracking config:
+failed to ln -sf …` and carries on. `uv tool install`, `uv python install`
+and `mise trust` fail inside the sandbox and go through the retry prompt.
+
+Network access from sandboxed commands is limited to the GitHub hosts
+(including `release-assets.githubusercontent.com`, where GitHub release
+downloads redirect) and PyPI in `sandbox.network.allowedDomains`; other hosts
+prompt, or in auto mode are refused unless the classifier approves the
+command's own host list. No Unix socket is allowed: a reachable socket is a way
+out of the sandbox (the herdr socket starts host processes, the Docker socket
+is root), so `herdr` and `hcom-seat` (which starts the seat through herdr)
+fail inside the sandbox on macOS and run as an unsandboxed retry.
+On Linux and WSL2 Claude Code ignores `allowUnixSockets` and blocks Unix
+sockets only when the optional seccomp filter from
+`npm install -g @anthropic-ai/sandbox-runtime` is installed; `/sandbox` shows
+a Dependencies tab while it is missing. This repository does not install it, so
+on a Linux host without it sandboxed commands can reach every Unix socket,
+the herdr socket included. `sandbox.excludedCommands` is empty. The managed
+`permissions.allow` rules, the coordinator's levers with their `env` and
+writable directories, are described in `scripts/orchestrator/README.md`,
+"Pre-authorized levers"; they name the copies chezmoi installs read-only under
+`~/.local/bin/common`, each of which checks its own sha256 against the manifest
+before it runs. Codex workers run under Codex's own sandbox and are not
+affected. `sandbox.network.allowAllUnixSockets` is deliberately not used: on a
+workstation with a `docker`-group user or a reachable `systemd --user` bus it
+turns the auto-approved sandbox into an escape (see the upstream
+[security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
+
+`failIfUnavailable` is `true`: when the sandbox cannot start (a missing
+`bwrap` or `socat`, or the AppArmor user-namespace restriction), Claude Code
+exits at startup instead of running commands unsandboxed.
 `autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed
 commands, while deny rules and content-scoped ask rules such as
 `Bash(git push:*)` still apply. A command that fails under the sandbox can
-still be retried unsandboxed through the normal permission prompt.
+be retried unsandboxed (`allowUnsandboxedCommands` is `true`), and every such
+retry prompts: `permissions.ask` carries `Bash(dangerouslyDisableSandbox:true)`,
+which prompts in auto mode too and outranks a matching allow rule, the lever
+rules included ([sandboxing](https://code.claude.com/docs/en/sandboxing#the-unsandboxed-retry-escape-hatch)).
 
 Secret files are guarded at two layers. The `Read(...)` and `Edit(...)` rules
 in `permissions.deny` (`Read(.env)`, `Read(.env.*)`, `Edit(.env*)`,
 `Read(~/.ssh/**)`, `Read(secrets/**)`, `Read(config/credentials.json)`) guard
 Claude's own file tools and the file commands it recognises in Bash, and do
-not reach arbitrary subprocesses. Three sandbox keys guard every sandboxed
-subprocess: `sandbox.credentials.files` denies `~/.ssh`,
-`sandbox.filesystem.denyRead` denies `~/**/.env` and `~/**/.env.*`, and
-`sandbox.filesystem.allowWrite` bounds writes as above. Sandboxed `ssh` and
-`scp` therefore cannot read `~/.ssh` (its keys or its config); Claude sessions
-push over HTTPS, and `chezmoi apply` and `make update` run outside the
+not reach arbitrary subprocesses. The sandbox keys guard every sandboxed
+subprocess:
+
+- `sandbox.credentials.files` denies `~/.ssh`, `~/.claude/.credentials.json`,
+  `~/.config/claude-code/oauth-token`, `~/.codex/auth.json`, the omp login
+  stores (`~/.omp/agent/agent.db*` and `~/.omp/profiles/*/agent/agent.db*`)
+  and the chezmoi age key `~/.config/age/key.txt`. It masks
+  `~/.config/gh/hosts.yml`: on Linux a sandboxed command reads a sentinel in
+  place of each `oauth_token`, and the sandbox proxy puts the real token back
+  only on requests to `api.github.com` (`network.tlsTerminate`, rendered on
+  Linux only, lets the proxy do that). On macOS Claude Code applies a file mask
+  as a deny, so the file is unreadable there; `gh` keeps its token in the
+  Keychain. The mask uses `onExtractNoMatch: deny`, so a file the pattern does
+  not match stays unreadable rather than exposed.
+- `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
+  environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
+  host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
+  read the file back.
+- `sandbox.filesystem.denyRead` denies `~/**/.env`, `~/**/.env.*` and the same
+  pair under `/tmp` (and `/private/tmp` on macOS), which covers checkouts
+  outside `$HOME` such as the audit worktrees and Claude's own
+  `/tmp/claude-<uid>`. A checkout elsewhere outside `$HOME` (for example
+  `/srv/project/.env.local`) is covered by the tool-layer rules only.
+- `sandbox.filesystem.allowWrite` bounds writes as above.
+
+Sandboxed `ssh` and `scp` cannot read `~/.ssh` (its keys or its config). The
+git config rewrites GitHub pushes to SSH (`pushInsteadOf`), so a `git push`
+from a Claude session fails inside the sandbox and runs as an unsandboxed
+retry behind the prompt; `chezmoi apply` and `make update` run outside the
 sandbox. On Linux `claude doctor` still names `Read(.env.*)` and `Edit(.env*)`
 under "Glob patterns in sandbox permission rules are not fully supported on
-Linux": they are tool-layer rules the Linux sandbox ignores, and `denyRead`
-covers them for subprocesses there; `validate-agent-assets.py` refuses any
-other Read/Edit rule that ends in a glob, and CI's ubuntu-24.04 leg runs
-`claude doctor` on the rendered settings to hold that list. The sandbox layer
-covers sandboxed runs only: under auto mode with `allowUnsandboxedCommands`
-`true`, a command that fails in the sandbox may be retried outside it after the
-classifier, where only the tool-layer Read/Edit rules apply, and those do not
-reach arbitrary Python or Node reads; an `ask` rule for that retry is the
-recorded follow-up (D-024-148), decided with the operator. `denyRead` is
-home-anchored: a project checkout outside `$HOME` (for example
-`/srv/project/.env.local`) is covered by the tool-layer rules only, whose glob
-forms the Linux sandbox ignores, so on managed hosts project checkouts live
-under `$HOME` (a deployment restriction, D-024-148) until the root-anchored
-form is measured on the Linux host. Sources:
-[permissions](https://code.claude.com/docs/en/permissions),
-[sandboxing](https://code.claude.com/docs/en/sandboxing),
-[settings](https://code.claude.com/docs/en/settings).
+Linux": the Linux sandbox drops those globs when it builds its own lists
+("Those wildcards don't work for sandboxed commands"), while the Read and Edit
+tools keep applying them. `denyRead` covers sandboxed reads there; a sandboxed
+write to a `.env*` file inside the working directory is not blocked on Linux,
+because Linux `denyWrite` accepts only a trailing `/**` (known limit).
+`validate-agent-assets.py` refuses any other Read/Edit rule that ends in a
+glob, and CI's ubuntu-24.04 leg runs `claude doctor` on the rendered settings
+to hold that list.
+
+Residual risk (recorded, not closed): the sandbox is not admin-required.
+Claude Code makes it admin-required only when managed settings or `--settings`
+set `allowUnsandboxedCommands: false`; a `false` in user settings does not.
+Until then a repository's `.claude/settings.json` can add `allowedDomains`
+and `excludedCommands` entries. Sandboxed commands run without a prompt within
+the added domains; excluded commands still go through the permission flow.
+Sources: [permissions](https://code.claude.com/docs/en/permissions),
+[sandboxing](https://code.claude.com/docs/en/sandboxing#repository-settings-under-an-admin-required-sandbox),
+[settings reference](https://code.claude.com/docs/en/settings-reference).
 
 On Ubuntu, `make update` installs `bubblewrap` and `socat`. On Ubuntu 24.04
 and later, the user-namespace restriction is handled by the `bwrap-userns`
@@ -569,13 +614,10 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite` (the `claude.sandbox.filesystem.extra_allow_write` entries, such
-as the uv cache and the hcom state). On Linux,
-commands that need a local Unix socket (herdr, the `gh` keyring) fail inside
-the sandbox and go through the unsandboxed retry prompt. Network hosts
-other than the listed GitHub domains prompt. A command that fails inside the
-sandbox may be retried unsandboxed after a normal permission prompt. Missing
-`bwrap` or `socat` only warns while `failIfUnavailable` is `false`.
+`allowWrite`. A command that needs a Unix socket, a push, a uv tool or Python
+install, a `mise trust`, or the agents' login stores fails inside the sandbox,
+and its unsandboxed retry always prompts. Network hosts other than the listed
+domains prompt. Claude Code refuses to start when the sandbox cannot.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

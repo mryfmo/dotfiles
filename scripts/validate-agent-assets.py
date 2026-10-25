@@ -284,6 +284,65 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
 
 
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
+# Paths a sandboxed command must never write (U68): the directories holding executables on PATH (the uv tools, among
+# them the hcom binary, mise's installs and shims, ~/.local/bin) and mise's trusted-configs state, all of which a later
+# unsandboxed run would execute or trust. An allowWrite entry at, under or above one of them is refused.
+SANDBOX_WRITE_FORBIDDEN = ("~/.local/bin", "~/.local/share/uv", "~/.local/share/mise", "~/.local/state/mise")
+# Credential stores every sandboxed command is denied (U68): SSH keys, the agents' login stores, the age key.
+SANDBOX_CREDENTIAL_DENIES = (
+    "~/.ssh",
+    "~/.claude/.credentials.json",
+    "~/.config/claude-code/oauth-token",
+    "~/.codex/auth.json",
+    "~/.omp/agent/agent.db*",
+    "~/.omp/profiles/*/agent/agent.db*",
+    "~/.config/age/key.txt",
+)
+GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
+SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
+RETRY_ASK_RULE = "Bash(dangerouslyDisableSandbox:true)"
+
+
+def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_name: str) -> None:
+    """Require the credential denies, the gh hosts-file mask and the TLS termination a Linux mask needs (U68)."""
+    credentials = sandbox.get("credentials", {})
+    files = credentials.get("files") if isinstance(credentials, dict) else None
+    if not isinstance(files, list) or not all(isinstance(entry, dict) for entry in files):
+        fail(f"{label}.credentials.files must contain a list of entries: {files!r}")
+    modes = {entry.get("path"): entry.get("mode") for entry in files}
+    missing = [path for path in SANDBOX_CREDENTIAL_DENIES if modes.get(path) != "deny"]
+    if missing:
+        fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
+    hosts = next((e for e in files if e.get("path") == GH_HOSTS_FILE), None)  # lint-comparisons: allow settings text
+    domains = sandbox.get("network", {}).get("allowedDomains", [])
+    if (
+        hosts is None
+        or hosts.get("mode") not in {"mask", "deny"}
+        or (
+            hosts.get("mode") == "mask"
+            and (
+                not hosts.get("extract")
+                or hosts.get("onExtractNoMatch") != "deny"
+                or not hosts.get("injectHosts")
+                or not set(hosts.get("injectHosts", [])) <= set(domains)
+            )
+        )
+    ):
+        fail(
+            f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with extract, onExtractNoMatch=deny and "
+            f"injectHosts inside allowedDomains: {hosts!r}"
+        )
+    env_vars = credentials.get("envVars", [])
+    entries = env_vars if isinstance(env_vars, list) else []
+    env_modes = {entry.get("name"): entry.get("mode") for entry in entries if isinstance(entry, dict)}
+    if not isinstance(env_vars, list) or any(env_modes.get(name) != "deny" for name in SANDBOX_ENV_DENIES):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    tls = sandbox.get("network", {}).get("tlsTerminate")
+    masks = any(entry.get("mode") == "mask" for entry in files)
+    if os_name == "darwin" and tls is not None:
+        fail(f"{label}.network.tlsTerminate must not render on macOS, where a file mask is applied as a deny")
+    if os_name != "darwin" and masks and not isinstance(tls, dict):
+        fail(f"{label}.network.tlsTerminate must be set on Linux, where a file mask substitutes through the proxy")
 
 
 def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str, os_name: str = "darwin") -> None:
@@ -293,8 +352,8 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     for key in ("enabled", "autoAllowBashIfSandboxed"):
         if sandbox.get(key) is not True:
             fail(f"{label}.{key} must be true")
-    if not isinstance(sandbox.get("failIfUnavailable"), bool):
-        fail(f"{label}.failIfUnavailable must be a boolean")
+    if sandbox.get("failIfUnavailable") is not True:
+        fail(f"{label}.failIfUnavailable must be true: a sandbox that cannot start must stop Claude Code")
     allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
     missing = set(writable_roots) - set(allow_write)
     if missing:
@@ -307,6 +366,17 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     ]
     if invalid:
         fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
+    reaching = []
+    for path in extra:
+        for gone in SANDBOX_WRITE_FORBIDDEN:
+            under = path.startswith(gone + "/") or gone.startswith(path + "/")  # lint-comparisons: allow settings text
+            if under or path.rstrip("/") == gone:  # lint-comparisons: allow settings path text
+                reaching.append(path)
+    if reaching:
+        fail(
+            f"{label}.filesystem.allowWrite must not reach {list(SANDBOX_WRITE_FORBIDDEN)}, which hold executables "
+            f"on PATH or mise trust state: {reaching}"
+        )
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -315,11 +385,6 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
             f"{label}.filesystem.denyRead must be a non-empty list of absolute or ~/ paths "
             f"(globs are allowed here, unlike allowWrite): {deny_read!r}"
         )
-    credentials = sandbox.get("credentials", {})
-    files = credentials.get("files") if isinstance(credentials, dict) else None
-    ssh_deny = {"path": "~/.ssh", "mode": "deny"}
-    if not isinstance(files, list) or ssh_deny not in files:  # lint-comparisons: allow the exact settings entry
-        fail(f"{label}.credentials.files must contain the ~/.ssh deny entry: {files!r}")
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")
@@ -329,6 +394,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
     if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
         fail(f"{label} must not allow telemetry or metadata domains")
+    validate_claude_sandbox_credentials(sandbox, label, os_name)
     network = sandbox.get("network", {})
     mach = network.get("allowMachLookup", [])
     if not isinstance(mach, list) or any(
@@ -340,16 +406,10 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     exclusions = sandbox.get("excludedCommands", [])
     if not isinstance(exclusions, list) or exclusions:
         fail(f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be []: {exclusions!r}")
-    sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
-    if not isinstance(sockets, list):
-        fail(f"{label}.network.allowUnixSockets must be a list")
-    invalid = [
-        socket
-        for socket in sockets
-        if not isinstance(socket, str) or not socket.startswith(("/", "~/")) or any(char in socket for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
+    # Each reachable socket is a way out of the sandbox (the herdr socket starts host processes), and Linux ignores
+    # the list (U68): no socket is listed.
+    if "allowUnixSockets" in network and (os_name != "darwin" or network["allowUnixSockets"] != []):
+        fail(f"{label}.network.allowUnixSockets must not list a socket: {network['allowUnixSockets']!r}")
 
 
 # The managed allow rules (regime-cutover U16, U31): the read-only `hcom list` and the coordinator
@@ -514,6 +574,9 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
         f"{settings_path} {os_name} sandbox",
         os_name,
     )
+    ask = (settings.get("permissions") or {}).get("ask") or []
+    if settings["sandbox"].get("allowUnsandboxedCommands") is not False and RETRY_ASK_RULE not in ask:
+        fail(f"{settings_path} {os_name} permissions.ask must contain {RETRY_ASK_RULE} while unsandboxed retries exist")
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")

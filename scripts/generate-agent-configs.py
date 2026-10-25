@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -402,14 +403,25 @@ def render_codex(manifest: dict[str, Any]) -> str:
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex writable roots.
 
-    `filesystem.denyRead` and `credentials` render the same on every OS: the Linux sandbox enforces `denyRead` globs
-    and credential denies but drops the glob forms of Read/Edit permission rules (regime-cutover U17).
+    `filesystem.denyRead` and `credentials` render on every OS: the Linux sandbox enforces `denyRead` globs and
+    credential entries but drops the glob forms of Read/Edit permission rules (regime-cutover U17). Per OS (U68):
+    Mach services and `allowUnixSockets` are macOS-only keys that Claude Code ignores on Linux, and
+    `network.tlsTerminate` renders on Linux only, the one platform where a file `mask` substitutes the real value
+    (macOS applies a file mask as a deny, code.claude.com/docs/en/sandboxing "Mask credential files").
     """
     sandbox = manifest["claude"]["sandbox"]
     filesystem = sandbox.get("filesystem", {})
-    network = dict(sandbox["network"])
-    if os_name != "darwin":
+    network = copy.deepcopy(sandbox["network"])
+    if os_name == "darwin":
+        network.pop("tlsTerminate", None)
+    else:
         network.pop("allowMachLookup", None)
+        network.pop("allowUnixSockets", None)
+    deny_read = [
+        *filesystem.get("deny_read", []),
+        *(filesystem.get("darwin_deny_read", []) if os_name == "darwin" else []),
+    ]
+    credentials = sandbox.get("credentials", {})
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],
@@ -423,11 +435,15 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
                 *filesystem.get("extra_allow_write", []),
                 *(filesystem.get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
             ],
-            **({"denyRead": list(filesystem["deny_read"])} if "deny_read" in filesystem else {}),
+            **({"denyRead": deny_read} if deny_read else {}),
         },
         **(
-            {"credentials": {"files": [dict(entry) for entry in sandbox["credentials"]["files"]]}}
-            if "credentials" in sandbox
+            {
+                "credentials": {
+                    key: copy.deepcopy(credentials[key]) for key in ("files", "envVars") if key in credentials
+                }
+            }
+            if credentials
             else {}
         ),
         "network": network,

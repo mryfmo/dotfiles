@@ -38,12 +38,12 @@ Do not use this skill when the task is to actually post, edit, or rewrite a comm
 
 ## Command
 
-`scripts/` paths are relative to this skill's directory. Run the command from the project directory so file arguments and `./.playwright-cli/` resolve there.
+Run the command from the project directory so file arguments and `./.playwright-cli/` resolve there; the script is called by its installed path.
 
 Direct URL:
 
 ```bash
-uv run --no-project scripts/attach_comment_files.py \
+uv run --no-project ~/.agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py \
   --url https://github.com/OWNER/REPO/pull/123 \
   docs/report.md assets/chart.png
 ```
@@ -51,7 +51,7 @@ uv run --no-project scripts/attach_comment_files.py \
 Resolve the page with `gh`:
 
 ```bash
-uv run --no-project scripts/attach_comment_files.py \
+uv run --no-project ~/.agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py \
   --repo github.example.com/OWNER/REPO \
   --pr 123 \
   results/report.md results/chart.png

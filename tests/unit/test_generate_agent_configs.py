@@ -2873,6 +2873,59 @@ class StandingRulesTest(unittest.TestCase):
         self.assertFalse(old_seat.parent.parent.exists())
         self.assertEqual(self.module.stale_standing_rule_outputs(outputs), [])
 
+    def generate(self) -> dict[Path, str]:
+        """One generate run over the fixture: write the standing-rule outputs, then sweep the stale ones."""
+        outputs = self.module.render_standing_rule_outputs(self.manifest)
+        self.module.write_outputs(outputs)
+        self.module.remove_stale_generated_outputs(outputs)
+        return outputs
+
+    def removals(self) -> set[str]:
+        return self.module.removal_block_entries((self.temp_dir / "home/.chezmoiremove").read_text())
+
+    def test_a_target_that_leaves_an_audience_is_removed_from_the_host_on_apply(self) -> None:
+        remove = self.temp_dir / "home/.chezmoiremove"
+        remove.write_text(".hand/written\n")
+        self.generate()
+        self.assertIn(".hand/written\n", remove.read_text())
+        self.assertNotIn(".claude/rules/shared.md", self.removals())
+        self.assertIn(".omp/profiles/audit/agent/AGENTS.md", self.removals())
+        dest = self.temp_dir / "dest"
+        dest.mkdir()
+        apply = [
+            CHEZMOI,
+            *("--source", str(self.temp_dir), "--destination", str(dest), "--no-tty"),
+            *("--config", str(self.temp_dir / "chezmoi.toml"), "--persistent-state", str(self.temp_dir / "state")),
+            "apply",
+        ]
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertTrue((dest / ".claude/rules/shared.md").is_file())
+
+        self.manifest["standing_rules"]["rules"]["shared"] = ["codex"]
+        stale = self.module.render_standing_rule_outputs(self.manifest)
+        self.assertNotEqual(stale[remove], remove.read_text(), "--check must report the missing removal")
+        self.generate()
+        self.assertLessEqual({".claude/rules/shared.md", ".omp/profiles/worker/agent/AGENTS.md"}, self.removals())
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertFalse((dest / ".claude/rules/shared.md").exists())
+        self.assertFalse((dest / ".omp/profiles/worker/agent/AGENTS.md").exists())
+        self.assertTrue((dest / ".codex/AGENTS.md").is_file())
+
+        del self.manifest["standing_rules"]["rules"]["claude-only"]
+        (self.rules / "claude-only.md").unlink()
+        self.generate()
+        self.assertIn(".claude/rules/claude-only.md", self.removals(), "a deleted rule keeps its removal")
+        self.manifest["standing_rules"]["rules"]["shared"] = ["claude"]
+        del self.manifest["standing_rules"]["rules"]["codex-only"]
+        (self.rules / "codex-only.md").unlink()
+        self.generate()
+        self.assertNotIn(".claude/rules/shared.md", self.removals(), "a target rendered again leaves the block")
+        self.assertIn(".codex/AGENTS.md", self.removals(), "Codex with no rule left loses its AGENTS.md")
+        self.assertFalse((self.temp_dir / "home/dot_codex/AGENTS.md.tmpl").exists())
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertFalse((dest / ".codex/AGENTS.md").exists())
+        self.assertTrue((dest / ".claude/rules/shared.md").is_file())
+
     def test_pstack_models_render_from_the_model_profiles_they_name(self) -> None:
         self.manifest["standing_rules"]["pstack_models"] = {
             "budget": "medium (high)",

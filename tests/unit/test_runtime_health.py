@@ -1475,6 +1475,72 @@ EOF
         self.assertIn("required failures: 0; optional warnings: 0", result.stdout)
         self.assertEqual("27.0.0\n", marker_file.read_text())
 
+    def test_rebuild_exempts_nothing_when_an_alias_of_an_exempt_name_is_not_installed(self) -> None:
+        # Codex bot thread on PR #561: npm applies min-release-age-exclude by registry name, and @openai/codex's
+        # platform builds are aliases of @openai/codex itself (npm:@openai/codex@<version>-<platform>), so exempting
+        # the package exempts each alias too. Every alias of an exempt name must be installed at its exact version, or
+        # nothing is exempt: the rebuild then runs under npm's full window, which a young release does not pass.
+        # The specs are the aliases as @openai/codex's installed package.json writes them (one per platform); only
+        # the installed ones are in node_modules, nested under the package as npm puts them.
+        both = {"ccusage-linux": "npm:ccusage@20.0.0-linux", "ccusage-darwin": "npm:ccusage@20.0.0-darwin"}
+        linux_only = {"ccusage-linux": "20.0.0-linux"}
+        exempt = "$'ccusage\\n\\n@ccusage/ccusage-linux-x64'"
+        for name, phase, specs, installed, exclusion, rebuilt in (
+            (
+                "every alias installed",
+                "young-alias-all",
+                both,
+                {**linux_only, "ccusage-darwin": "20.0.0-darwin"},
+                exempt,
+                True,
+            ),
+            ("an alias missing, young release", "young-alias-missing", both, linux_only, None, False),
+            ("an alias missing, old release", "alias-missing-old", both, linux_only, None, True),
+            (
+                "an alias at another version",
+                "young-alias-other",
+                both,
+                {**linux_only, "ccusage-darwin": "20.0.1-darwin"},
+                None,
+                False,
+            ),
+            ("an alias to a range", "young-alias-range", {"ccusage-linux": "npm:ccusage@^20.0.0"}, {}, None, False),
+            ("an alias without a version", "young-alias-bare", {"ccusage-linux": "npm:ccusage"}, {}, None, False),
+        ):
+            with self.subTest(name):
+                repo, env = self.upgrade_fixture(phase)
+                modules = Path(env["CCUSAGE_DIR"]) / "lib/node_modules"
+                manifest = json.loads((modules / "ccusage/package.json").read_text())
+                manifest["optionalDependencies"].update(specs)
+                (modules / "ccusage/package.json").write_text(json.dumps(manifest))
+                for key, version in installed.items():
+                    (modules / "ccusage/node_modules" / key).mkdir(parents=True)
+                    (modules / "ccusage/node_modules" / key / "package.json").write_text(
+                        json.dumps({"name": "ccusage", "version": version})
+                    )
+                marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
+                marker_file.parent.mkdir(parents=True)
+                marker_file.write_text("26.0.0\n")
+
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                log = (repo / "commands.log").read_text().splitlines()
+                self.assertEqual(
+                    [f"exclude install --yes npm:ccusage@20.0.0: {exclusion or 'unset'}"],
+                    [line for line in log if line.startswith("exclude install --yes npm:")],
+                )
+                notes = [line for line in result.stderr.splitlines() if line.startswith("note: npm:ccusage")]
+                self.assertEqual(0 if exclusion else 1, len(notes), result.stderr)
+                if not exclusion:
+                    self.assertIn("no package is exempt from min-release-age: ", result.stderr)
+                self.assertEqual(rebuilt, (Path(env["CCUSAGE_DIR"]) / "rebuilt").exists())
+                self.assertEqual(not rebuilt, (Path(env["CCUSAGE_DIR"]) / "original").exists())
+                skips = [line for line in result.stderr.splitlines() if line.startswith("skip: npm:ccusage")]
+                self.assertEqual(0 if rebuilt else 1, len(skips), result.stderr)
+                self.assertTrue(all("npm refused or could not fetch" in line for line in skips), skips)
+                self.assertEqual("27.0.0\n" if rebuilt else "26.0.0\n", marker_file.read_text())
+
     def test_rebuild_skips_with_a_reason_and_keeps_the_install_when_the_version_is_not_proven(self) -> None:
         # Each case leaves the working install, prints why, and leaves the marker so the next run tries again. Only
         # the last reaches the install; every other one is decided before the install directory is moved.

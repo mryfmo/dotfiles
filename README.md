@@ -235,8 +235,11 @@ version is younger than three days; for that one install only, it sets npm's
 `min-release-age-exclude` (npm 11.17.0 or later) to the package and the platform
 packages its installed `package.json` pins to the same version and that are
 installed with it, so the release already on the host comes back while every
-other dependency still resolves
-under the window. A tool whose installed copy does not name that exact version,
+other dependency still resolves under the window. npm matches that setting by
+registry name, so when the package's dependencies alias an exempt name (as
+`@openai/codex` aliases `@openai/codex@<version>-<platform>` for each platform)
+and any such alias is not installed at its exact version, nothing is exempt and
+the rebuild runs under the full window. A tool whose installed copy does not name that exact version,
 an older npm, or an install npm still refuses is skipped with the reason on a
 `skip:` line, and its previous install stays. The marker is written only after
 every tool is rebuilt and the final install succeeds, so a skipped tool is

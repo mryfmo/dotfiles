@@ -331,13 +331,18 @@ function run_mise_tool_command() {
 #   binary released with it, such as @anthropic-ai/claude-code-darwin-arm64). Those are the releases already on the
 #   host; every other dependency keeps the window. The installed copy is read strictly: it must be
 #   <install dir>/lib/node_modules/<package>/package.json naming that package at that exact version.
+#   npm applies the exclusion by registry name, so an npm: alias in the package's dependencies or optionalDependencies
+#   whose target is one of those names (as @openai/codex's platform builds alias @openai/codex@<version>-<platform>)
+#   would be exempt too. Each such alias must name one exact version that is installed beside the package under the
+#   alias (its package.json naming the target at that version); otherwise no package is exempt (exit 3).
 # @arg $1 string npm package name, for example @anthropic-ai/claude-code.
 # @arg $2 string The version mise reports as installed.
 # @arg $3 path The tool's install directory.
 # @stdout One package name per line.
-# @stderr The reason when the installed copy does not prove that exact version.
+# @stderr The reason when the installed copy does not prove that exact version, or when no package may be exempt.
 # @exitcode 1 When the version is not one exact version, or an installed package.json cannot be read or names
 #   another package or version.
+# @exitcode 3 When an alias of an exempt name is not proven installed: the rebuild runs under the full window.
 #
 function npm_rebuild_exclusions() {
     python3 -I - "$@" << 'PY'
@@ -356,43 +361,77 @@ SEMVER = re.compile(
     r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",
     re.ASCII,
 )
+# An npm alias spec, npm:<registry name>@<spec> (https://docs.npmjs.com/cli/v11/using-npm/package-spec#aliases).
+ALIAS = re.compile(rf"npm:({NAME.pattern})@(.*)", re.DOTALL)
+
+
+def exact(text):
+    """True for one exact version npm fetches as written: SemVer 2.0.0 without build metadata, which npm drops."""
+    match = SEMVER.fullmatch(text) if isinstance(text, str) else None
+    return match is not None and match.group(5) is None
+
+
 if not NAME.fullmatch(package):
     sys.exit(f"{package!r} is not an npm package name")
-exact = SEMVER.fullmatch(version)
-# npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.
-if exact is None or exact.group(5) is not None:
+if not exact(version):
     sys.exit(f"mise reports {version!r}, not one exact version")
 modules = f"{install_dir}/lib/node_modules"
 
 
-def installed(path, name):
-    """The package.json at path, which must name name at version; None only when the file is absent."""
+class Unproven(Exception):
+    pass
+
+
+def installed(path, name, at):
+    """The package.json at path, which must name name at version at; None only when the file is absent."""
     try:
         with open(path, encoding="utf-8") as handle:
             manifest = json.load(handle)
     except FileNotFoundError:
         return None
     except (OSError, ValueError) as error:
-        sys.exit(f"cannot read the installed {path}: {error}")
-    if not isinstance(manifest, dict) or manifest.get("name") != name or manifest.get("version") != version:
-        sys.exit(f"{path} does not name {name} at {version}")
+        raise Unproven(f"cannot read the installed {path}: {error}") from error
+    if not isinstance(manifest, dict) or manifest.get("name") != name or manifest.get("version") != at:
+        raise Unproven(f"{path} does not name {name} at {at}")
     return manifest
 
 
-manifest = installed(f"{modules}/{package}/package.json", package)
-if manifest is None:
-    sys.exit(f"{modules}/{package}/package.json is missing")
-optional = manifest.get("optionalDependencies", {})
-if not isinstance(optional, dict):
-    sys.exit(f"{modules}/{package}/package.json: optionalDependencies is not an object")
-names = [package]
-for name, spec in optional.items():
-    if spec != version or not NAME.fullmatch(name) or name in names:
-        continue
-    # npm nests the platform package under the package or hoists it beside it.
-    nested = installed(f"{modules}/{package}/node_modules/{name}/package.json", name)
-    if nested is not None or installed(f"{modules}/{name}/package.json", name) is not None:
-        names.append(name)
+def beside(directory, name, at):
+    """True when name is installed at version at under directory, nested under the package or hoisted beside it."""
+    nested = installed(f"{modules}/{package}/node_modules/{directory}/package.json", name, at)
+    return nested is not None or installed(f"{modules}/{directory}/package.json", name, at) is not None
+
+
+try:
+    manifest = installed(f"{modules}/{package}/package.json", package, version)
+    if manifest is None:
+        raise Unproven(f"{modules}/{package}/package.json is missing")
+    fields = {field: manifest.get(field, {}) for field in ("dependencies", "optionalDependencies")}
+    for field, entries in fields.items():
+        if not isinstance(entries, dict) or not all(isinstance(spec, str) for spec in entries.values()):
+            raise Unproven(f"{modules}/{package}/package.json: {field} is not an object of strings")
+    names = [package]
+    for name, spec in fields["optionalDependencies"].items():
+        if spec == version and NAME.fullmatch(name) and name not in names and beside(name, name, version):
+            names.append(name)
+except Unproven as error:
+    sys.exit(str(error))
+for field, entries in fields.items():
+    for key, spec in entries.items():
+        if not spec.startswith("npm:"):
+            continue
+        alias = ALIAS.fullmatch(spec)
+        try:
+            if alias is None:
+                raise Unproven(f"cannot read the alias {key}: {spec!r}")
+            target, at = alias.groups()
+            if target not in names:
+                continue
+            if not (NAME.fullmatch(key) and exact(at) and beside(key, target, at)):
+                raise Unproven(f"{field} alias {key} ({spec}) is not installed beside {package}")
+        except Unproven as error:
+            print(f"no package is exempt from min-release-age: {error}", file=sys.stderr)
+            sys.exit(3)
 print("\n".join(names))
 PY
 }
@@ -429,7 +468,9 @@ function npm_rebuild_skipped() {
 #   while it is younger than the window (ETARGET), although the host already runs it, so for this one command
 #   npm_config_min_release_age_exclude names that package and its same-version platform packages
 #   (npm_rebuild_exclusions); every other dependency still resolves under the window. A version the installed copy
-#   does not prove, an npm without the setting, or an install npm still refuses leaves the previous install.
+#   does not prove, an npm without the setting, or an install npm still refuses leaves the previous install. When an
+#   npm: alias of an exempt name is not proven installed (exit 3), no package is exempt and the rebuild runs under
+#   npm's full window, as every other install does.
 # @arg $1 string mise npm tool name, for example npm:ccusage.
 # @stderr A skip line naming the reason when the tool is not rebuilt.
 # @exitcode 1 When the tool was not rebuilt.
@@ -458,23 +499,30 @@ function rebuild_mise_npm_tool() {
         return 1
     }
     # Read before anything moves: the exclusion reaches only the version the installed copy proves.
-    exclusions="$(npm_rebuild_exclusions "${mise_tool#npm:}" "${version}" "${install_dir}")" || {
+    local proven=0
+    exclusions="$(npm_rebuild_exclusions "${mise_tool#npm:}" "${version}" "${install_dir}")" || proven=$?
+    if [ "${proven}" -eq 3 ]; then
+        printf 'note: %s is rebuilt under the full npm min-release-age window (the reason is above)\n' "${mise_tool}" >&2
+        exclusions=""
+    elif [ "${proven}" -ne 0 ]; then
         npm_rebuild_skipped "${mise_tool}" "its installed copy does not prove version ${version}"
         return 1
-    }
-    # The npm mise's npm backend runs: the current node's. A failed or unreadable answer skips before anything moves.
-    npm_version="$(run_mise_with_isolated_git_config exec -- npm --version)" || {
-        npm_rebuild_skipped "${mise_tool}" "npm --version failed"
-        return 1
-    }
-    local capable=0
-    npm_has_release_age_exclude "${npm_version}" || capable=$?
-    if [ "${capable}" -eq 1 ]; then
-        npm_rebuild_skipped "${mise_tool}" "npm ${npm_version} predates min-release-age-exclude (npm 11.17.0)"
-        return 1
-    elif [ "${capable}" -ne 0 ]; then
-        npm_rebuild_skipped "${mise_tool}" "npm --version printed no major.minor.patch version"
-        return 1
+    fi
+    if [ -n "${exclusions}" ]; then
+        # The npm mise's npm backend runs: the current node's. A failed or unreadable answer skips before anything moves.
+        npm_version="$(run_mise_with_isolated_git_config exec -- npm --version)" || {
+            npm_rebuild_skipped "${mise_tool}" "npm --version failed"
+            return 1
+        }
+        local capable=0
+        npm_has_release_age_exclude "${npm_version}" || capable=$?
+        if [ "${capable}" -eq 1 ]; then
+            npm_rebuild_skipped "${mise_tool}" "npm ${npm_version} predates min-release-age-exclude (npm 11.17.0)"
+            return 1
+        elif [ "${capable}" -ne 0 ]; then
+            npm_rebuild_skipped "${mise_tool}" "npm --version printed no major.minor.patch version"
+            return 1
+        fi
     fi
     mv "${install_dir}" "${backup}" || {
         npm_rebuild_skipped "${mise_tool}" "${install_dir} cannot be moved aside"
@@ -489,9 +537,12 @@ function rebuild_mise_npm_tool() {
     trap "${restore}; exit 143" TERM
     # shellcheck disable=SC2064
     trap "${restore}" EXIT
-    # npm reads a list setting from the environment as values separated by a blank line.
-    if npm_config_min_release_age_exclude="${exclusions//$'\n'/$'\n\n'}" \
-        run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
+    if [ -n "${exclusions}" ]; then
+        # Exported to the one install below only: npm reads a list setting from the environment as values separated
+        # by a blank line.
+        local -x npm_config_min_release_age_exclude="${exclusions//$'\n'/$'\n\n'}"
+    fi
+    if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then
         trap - INT TERM EXIT
         # Renamed before it is deleted, so a backup that cannot be fully deleted is never restored over this
         # install; the dot keeps a leftover out of mise's installed versions.

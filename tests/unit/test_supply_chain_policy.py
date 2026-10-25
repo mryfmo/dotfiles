@@ -404,10 +404,18 @@ main
         self.assertEqual(["scripts/upgrade-tools.sh"], [name for name, _, _ in hits])
         _, number, line = hits[0]
         script = (ROOT / "scripts/upgrade-tools.sh").read_text().splitlines()
-        self.assertEqual("    if npm_config_min_release_age_exclude=\"${exclusions//$'\\n'/$'\\n\\n'}\" \\", line)
         self.assertEqual(
-            '        run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then',
-            script[number + 1],
+            "        local -x npm_config_min_release_age_exclude=\"${exclusions//$'\\n'/$'\\n\\n'}\"", line
+        )
+        # Set only when exclusions is not empty, and the one command in its scope that runs npm is the install.
+        self.assertEqual('    if [ -n "${exclusions}" ]; then', script[number - 3])
+        self.assertEqual(
+            ["    fi", '    if run_mise_with_isolated_git_config install --yes "${mise_tool}@${version}"; then'],
+            script[number + 1 : number + 3],
+        )
+        body = [text.strip() for text in script[number + 3 : script.index("}", number)]]
+        self.assertFalse(
+            [text for text in body if text.startswith(("mise ", "npm ", "run_mise_with_isolated_git_config"))]
         )
 
     def test_mise_tools_track_latest_behind_the_cooldown(self):

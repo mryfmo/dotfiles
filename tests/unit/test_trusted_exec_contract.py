@@ -228,6 +228,18 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         shell = lambda line: lambda p: run(["/bin/sh", "-c", line, str(p.input)], ALLOWED_ENV)  # a subprocess consumer
         for name, act, reason in (
             ("read", lambda p: Path(p.input).read_text(), "read "),
+            ("read with os.open", lambda p: os.close(os.open(p.input, os.O_RDONLY)), "read "),
+            ("read for update", lambda p: open(p.input, "r+b").close(), "read "),
+            (
+                "read through a symlink",
+                lambda p: (p.base / "alias").symlink_to(p.input) or (p.base / "alias").read_text(),
+                "read ",
+            ),
+            (
+                "read through a hard link",
+                lambda p: os.link(p.input, p.base / "hard") or (p.base / "hard").read_text(),
+                "read ",
+            ),
             ("wrote", lambda p: Path(p.output).write_text("x"), "wrote "),
             ("created", lambda p: (Path(p.new_output).parent.mkdir(), Path(p.new_output).write_text("x")), "created "),
             ("appended", shell('echo x >> "$0"'), "wrote "),
@@ -296,13 +308,38 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
+    def test_a_foreign_reader_of_the_fresh_input_is_not_a_consumer_read(self):
+        # U92 root cause: the probe saw a read as the input's access time leaving 0, and any other process that opens
+        # the fresh file sets it as well (on the macOS host a scanner read new temporary files within a second), so the
+        # compliant consumer failed about once in 64 runs. Another process reading the input, and the time a scanner
+        # takes, are not the consumer under test.
+        probe = self.worker_root_probe()
+        self.assertEqual(b"legitimate\n", run(["/bin/cat", str(probe.input)], ALLOWED_ENV).stdout)
+        self.assertNotEqual(0, os.stat(probe.input).st_atime_ns)  # the access time moved: what the old probe read
+        with self.assertRaises(PermissionError):
+            guarded_io(probe)
+        probe.assert_untouched()
+        probe.assert_untouched()  # the probe's own content read is not a read either
+        # Writes only, and opens of other files, are not reads of the input.
+        os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
+        Path(probe.base / "elsewhere").read_text()
+        probe.assert_untouched()
+
+    def test_a_closed_worker_root_probe_records_nothing(self):
+        with tec.worker_root() as probe:
+            path = probe.input
+        self.assertEqual({}, tec._WATCHED)
+        self.assertFalse(path.exists())
+
     def test_worker_root_probe_detects_a_same_length_overwrite(self):
         identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)
         for name in ("input", "output"):  # in place, same length, the mtime put back: what a coarse clock leaves behind
             with self.subTest(name):
                 probe = self.worker_root_probe()
                 path, st = getattr(probe, name), os.stat(getattr(probe, name))
-                with open(path, "r+b") as handle:  # opened to write only; nothing is read
+                with os.fdopen(
+                    os.open(path, os.O_WRONLY), "wb"
+                ) as handle:  # write-only, no truncation: nothing is read
                     handle.write(tec.LEGIT.upper().encode())
                 os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
                 self.assertEqual(identity(st), identity(os.stat(path)), "precondition: inode, size, mtime unchanged")

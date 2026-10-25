@@ -17,6 +17,7 @@ ALLOWED = ("PATH", "HOME", "LANG")
 SAFE_PATH = "/usr/bin:/bin"
 LEGIT, ATTACKER = "legitimate\n", "attacker\n"
 BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
+_WATCHED = {}  # (st_dev, st_ino) -> the WorkerRoot whose input it is, while that probe is alive
 QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
 HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
@@ -98,36 +99,78 @@ class HostileGit:
             raise AssertionError("hostile git: " + "; ".join(found))
 
 
+def _open_audit(event, args):
+    """sys.addaudithook: record every open, for reading, of a live WorkerRoot's input made by this process.
+
+    CPython raises the `open` audit event for builtin open, io.open, pathlib and os.open alike, with the path and
+    the open flags, before the file is opened. The file is matched by device and inode, so an alias (a symlink, a
+    hard link, a case variant, a relative path) of the input counts as the input.
+    """
+    if event != "open" or not _WATCHED:
+        return
+    path, _mode, flags = args
+    if isinstance(path, int) or (flags or 0) & os.O_ACCMODE == os.O_WRONLY:
+        return  # an already open descriptor, or write-only: not a read of a path
+    try:
+        st = os.stat(path)
+    except (OSError, TypeError, ValueError):
+        return  # nothing there yet (a create), or not a path
+    probe = _WATCHED.get((st.st_dev, st.st_ino))
+    if probe is not None and not probe._own_io:
+        probe.reads.append(os.fsdecode(path))
+
+
+sys.addaudithook(_open_audit)  # an audit hook cannot be removed; it does nothing while no WorkerRoot is alive
+
+
 class WorkerRoot:
-    """An input, an output and a new output under a worker root. A read shows as the input's access time leaving 0; a
-    filesystem where a read leaves it at 0 (measured on a scratch file) refuses the probe instead of passing vacuously."""
+    """An input, an output and a new output under a worker root.
+
+    A read is observed deterministically: an audit hook (_open_audit) records every open of the input for reading
+    made by this process, the way a consumer under test runs in a unit test. The input's access time is not used:
+    any other process that opens the fresh file sets it too (the macOS host's Spotlight importer or endpoint
+    scanner reads new files within a second), so it measured whether a scanner had run yet, not the consumer. A
+    read by a subprocess consumer is not observed by this probe; its writes, replacements, removals and creations
+    are, from the files themselves.
+    """
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        check = base / "atime-check"
-        for path in (check, self.input, self.output):
+        self.reads, self._own_io = [], True
+        for path in (self.input, self.output):
             path.write_text(LEGIT)
-            os.utime(path, ns=(0, BASELINE_NS))
-        if check.read_text() and os.stat(check).st_atime_ns == 0:
-            raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
+            os.utime(path, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
+        st = os.stat(self.input)
+        self._key = (st.st_dev, st.st_ino)
+        _WATCHED[self._key] = self
+        self._own_io = False
+
+    def close(self):
+        if _WATCHED.get(self._key) is self:
+            del _WATCHED[self._key]
 
     def assert_untouched(self):
-        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory. The
-        content is compared too, since a write in place can keep the inode, the size and a coarse clock's mtime."""
-        found = []
-        for path, identity in self._identity.items():
-            if not os.path.lexists(path):
-                found.append(f"removed {path}")
-                continue
-            st = os.lstat(path)
-            found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
-            content = path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""  # the same regular file only
-            os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)  # puts this read's access back
-            if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
-                found.append(f"wrote {path}")
+        """Nothing in this process opened the input for reading; nothing wrote, replaced or removed either file, or
+        created the new output's directory. The content is compared too, since a write in place can keep the inode,
+        the size and a coarse clock's mtime."""
+        found = [f"read {self.input} (opened as {path})" for path in self.reads]
+        self._own_io = True  # the probe's own content read below is not the consumer's
+        try:
+            for path, identity in self._identity.items():
+                if not os.path.lexists(path):
+                    found.append(f"removed {path}")
+                    continue
+                st = os.lstat(path)
+                content = (
+                    path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""
+                )  # the same regular file only
+                if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
+                    found.append(f"wrote {path}")
+        finally:
+            self._own_io = False
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
@@ -162,9 +205,13 @@ class SwappedFile:
 @contextlib.contextmanager
 def _probe(cls, *args):
     base = Path(tempfile.mkdtemp(prefix="trusted-exec-")).resolve()
+    probe = None
     try:
-        yield cls(base, *args)
+        probe = cls(base, *args)
+        yield probe
     finally:
+        if hasattr(probe, "close"):
+            probe.close()
         shutil.rmtree(base, ignore_errors=True)
 
 

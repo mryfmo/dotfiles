@@ -328,14 +328,14 @@ def defines_hook_state(path: list) -> bool:
     return bool(path) and path[0] == "hooks" and (len(path) == 1 or path[1] == "state")
 
 
-def drop_hook_state_assignments(chunk: str, scope: list):
-    """The chunk without its assignments that write hook state, and whether it had any."""
+def drop_hook_state_assignments(chunk: str, scope: list, defines=defines_hook_state):
+    """The chunk without its assignments that `defines` reads as its own (hook state by default), and whether it had any."""
     kept, found = [], False
     string = None
     for line in chunk.splitlines(keepends=True):
         if string is None:
             match = DOTTED_KEY_ASSIGNMENT.match(line)
-            if match and defines_hook_state(scope + (key_path(match.group(1)) or [""])):
+            if match and defines(scope + (key_path(match.group(1)) or [""])):
                 # TOML 1.0 keeps an inline table on one line, so the assignment is this line.
                 found = True
                 continue
@@ -344,8 +344,8 @@ def drop_hook_state_assignments(chunk: str, scope: list):
     return "".join(kept), found
 
 
-def toml_value(value, label: str) -> str:
-    """A parsed TOML value written back as TOML; a date or time refuses (nothing hook state holds)."""
+def toml_value(value, label: str, table: str = "hooks.state") -> str:
+    """A parsed TOML value written back as TOML; a date or time refuses (nothing hook state or a project holds)."""
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
@@ -353,10 +353,10 @@ def toml_value(value, label: str) -> str:
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
     if isinstance(value, list):
-        return "[" + ", ".join(toml_value(item, label) for item in value) + "]"
+        return "[" + ", ".join(toml_value(item, label, table) for item in value) + "]"
     if isinstance(value, dict):
-        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item, label)}" for key, item in value.items()) + " }"
-    refuse(f"cannot rewrite a {type(value).__name__} value in hooks.state of {label}")
+        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item, label, table)}" for key, item in value.items()) + " }"
+    refuse(f"cannot rewrite a {type(value).__name__} value in {table} of {label}")
 
 
 def normalize_hook_state(text: str, label: str = "the current file") -> str:
@@ -396,6 +396,56 @@ def normalize_hook_state(text: str, label: str = "the current file") -> str:
     normalized = "\n\n".join(([body] if body.strip() else []) + tables) + "\n"
     if parse_config(normalized, label) != data:
         refuse(f"cannot rewrite hooks.state in {label} without changing its other settings")
+    return normalized
+
+
+def defines_projects(path: list) -> bool:
+    """An assignment at this key path writes project trust: `projects = {…}` or anything below it."""
+    return bool(path) and path[0] == "projects"
+
+
+def normalize_projects(text: str, label: str = "the current file") -> str:
+    """The config with every project entry in its own [projects.<path>] table, whatever valid TOML form held it.
+
+    Inline tables and dotted keys (under [projects] or at the root) are rewritten from the parsed data as tables, so
+    drop_missing_path_state reads every trusted project by its table name. Text already in table form is returned
+    unchanged. Invalid TOML, or projects that cannot be rewritten without changing any other setting, stops the apply:
+    the merge never keeps trust it could not read.
+    """
+    if not text.strip():
+        return text
+    data = parse_config(text, label)
+    projects = data.get("projects", {})
+    if not isinstance(projects, dict):
+        refuse(f"projects in {label} is not a table")
+    chunks, inline = [], False
+    for name, chunk in split_chunks(text):
+        scope = [] if name is None else key_path(name)
+        if scope is None:
+            refuse(f"cannot read the table name [{name}] in {label}")
+        if scope in ([], ["projects"]):
+            chunk, found = drop_hook_state_assignments(chunk, scope, defines_projects)
+            inline = inline or found
+        chunks.append((scope, chunk))
+    if not inline:
+        return text
+    body = "".join(chunk for scope, chunk in chunks if scope[:1] != ["projects"]).rstrip("\n")
+    header = ["[projects]"] + [
+        f"{toml_key(key)} = {toml_value(value, label, 'projects')}" for key, value in projects.items() if not isinstance(value, dict)
+    ]
+    tables = ["\n".join(header)] if len(header) > 1 else []
+    for key, fields in projects.items():
+        if isinstance(fields, dict):
+            lines = [f"[projects.{toml_key(key)}]"]
+            lines.extend(f"{toml_key(field)} = {toml_value(value, label, 'projects')}" for field, value in fields.items())
+            tables.append("\n".join(lines))
+    normalized = "\n\n".join(([body] if body.strip() else []) + tables) + "\n"
+    try:
+        same = hook_trust_toml.loads(normalized) == data
+    except ValueError:
+        same = False
+    if not same:
+        refuse(f"cannot rewrite projects in {label} without changing its other settings")
     return normalized
 
 
@@ -606,7 +656,7 @@ def merge_config(current: str) -> str:
     managed_chunks = split_chunks(MANAGED)
     declared = declared_hook_state(str(Path.home()))
     declared_keys = {hook_state_key(name) for name, _ in declared}
-    current_chunks = drop_declared_hook_state(split_chunks(normalize_hook_state(current)) if current.strip() else [], declared)
+    current_chunks = drop_declared_hook_state(split_chunks(normalize_projects(normalize_hook_state(current))) if current.strip() else [], declared)
     current_chunks = drop_missing_path_state(current_chunks)
     current_by_name: dict[str, list[str]] = {}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {}

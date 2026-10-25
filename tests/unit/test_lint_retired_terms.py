@@ -194,6 +194,20 @@ class LintTest(unittest.TestCase):
         self.assertEqual(("", 2), (result.stdout, result.returncode))
         self.assertIn("cannot read home/.chezmoiremove", result.stderr)
 
+    def test_a_cyclic_list_or_root_symlink_refuses_with_exit_2(self) -> None:
+        # Audit de9fff57 P2: resolving --list ran outside the handler, so a symlink loop exited 1 (read as hits).
+        self.write("docs/a.md", "clean\n")
+        self.write("scripts/retired-terms.tsv", TERM)
+        self.git("add", "-A")
+        loop = Path(self.temp.name) / "loop"
+        loop.symlink_to(Path(self.temp.name) / "loop-back")
+        (Path(self.temp.name) / "loop-back").symlink_to(loop)
+        for args in (("--root", str(self.repo), "--list", str(loop)), ("--root", str(loop))):
+            with self.subTest(args=args):
+                result = run_lint(*args)
+                self.assertEqual(("", 2), (result.stdout, result.returncode), result.stderr)
+                self.assertTrue(result.stderr.startswith("lint-retired-terms: "), result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

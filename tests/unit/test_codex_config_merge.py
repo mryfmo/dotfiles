@@ -838,21 +838,57 @@ class CodexConfigMergeTest(unittest.TestCase):
         env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home), HOME=str(home))
         return subprocess.run([str(script)], input=current, text=True, capture_output=True, env=env, check=True)
 
-    def test_project_trust_for_a_path_that_no_longer_exists_is_dropped(self) -> None:
+    def test_project_trust_for_a_path_that_no_longer_exists_is_dropped_in_every_form_by_every_modify_script(
+        self,
+    ) -> None:
+        # Audit de9fff57 P2: a project written as an inline table or a dotted key kept its trust; every valid TOML
+        # form is read from the parsed data, so an absent path loses its trust whatever form held it.
         kept = self.source_dir / "work/repo"
         kept.mkdir(parents=True)
         gone = self.source_dir / "work/deleted-checkout"
-        current = (
-            "".join(f'[projects.{json.dumps(str(path))}]\ntrust_level = "trusted"\n\n' for path in (kept, gone))
-            + '[projects."~/relative-key"]\ntrust_level = "trusted"\n'
-        )
+        k, g = json.dumps(str(kept)), json.dumps(str(gone))
+        relative = '"~/relative-key"'
+        forms = {
+            "tables": f'[projects.{k}]\ntrust_level = "trusted"\n\n[projects.{g}]\ntrust_level = "trusted"\n\n'
+            f'[projects.{relative}]\ntrust_level = "trusted"\n',
+            "inline at the root": f'projects = {{ {k} = {{ trust_level = "trusted" }}, {g} = {{ trust_level = "trusted" }}, '
+            f'{relative} = {{ trust_level = "trusted" }} }}\n',
+            "dotted at the root": f'projects.{k}.trust_level = "trusted"\nprojects.{g}.trust_level = "trusted"\n'
+            f'projects.{relative}.trust_level = "trusted"\n',
+            "dotted and inline under [projects]": f'[projects]\n{k}.trust_level = "trusted"\n'
+            f'{g} = {{ trust_level = "trusted" }}\n{relative}.trust_level = "trusted"\n',
+            "mixed": f'projects.{g}.trust_level = "trusted"\n\n[projects.{k}]\ntrust_level = "trusted"\n\n'
+            f'[projects.{relative}]\ntrust_level = "trusted"\n',
+        }
+        expected = {str(kept): {"trust_level": "trusted"}, "~/relative-key": {"trust_level": "trusted"}}
+        home = self.source_dir / "target-home"
+        for script in sorted((ROOT / "home/dot_codex").glob("modify_*config.toml")):
+            for form, projects in forms.items():
+                with self.subTest(script=script.name, form=form):
+                    current = (
+                        'approval_policy = "on-request"\n' + projects + "\n[experimental.local_state]\nenabled = true\n"
+                    )
+                    result = self.merge_stale_paths(script, current, home)
 
-        result = self.merge_stale_paths(MERGE_SCRIPT, current, self.source_dir / "target-home")
+                    data = tomllib.loads(result.stdout)
+                    self.assertEqual(expected, data["projects"])
+                    self.assertTrue(data["experimental"]["local_state"]["enabled"])
 
-        self.assertEqual(
-            tomllib.loads(result.stdout)["projects"],
-            {str(kept): {"trust_level": "trusted"}, "~/relative-key": {"trust_level": "trusted"}},
-        )
+    def test_projects_that_cannot_be_rewritten_refuse_the_apply(self) -> None:
+        # An inline table whose array spans lines is valid TOML the line rewrite cannot carry: the apply stops with
+        # the contracted message instead of keeping or dropping trust it could not read.
+        gone = json.dumps(str(self.source_dir / "work/deleted-checkout"))
+        current = f'projects = {{ {gone} = {{ trust_level = "trusted", tags = [\n"a",\n] }} }}\n'
+        for script in sorted((ROOT / "home/dot_codex").glob("modify_*config.toml")):
+            with self.subTest(script=script.name):
+                with self.assertRaises(subprocess.CalledProcessError) as raised:
+                    self.merge_stale_paths(script, current, self.source_dir / "target-home")
+                self.assertEqual(1, raised.exception.returncode)
+                self.assertIn(
+                    "cannot rewrite projects in the current file without changing its other settings",
+                    raised.exception.stderr,
+                )
+                self.assertEqual("", raised.exception.stdout)
 
     def test_project_trust_is_kept_and_reported_when_its_path_cannot_be_checked(self) -> None:
         if os.geteuid() == 0:

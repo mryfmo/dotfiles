@@ -26,7 +26,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
 LIST = Path("scripts/retired-terms.tsv")
 CHEZMOIREMOVE = Path("home/.chezmoiremove")
 FIELDS = {"term": 3, "allow": 4, "skip": 3, "gone": 3, "removed": 3}
@@ -137,17 +136,18 @@ def check(root: Path, list_path: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
-    parser.add_argument("--root", type=Path, default=ROOT, help="repository root (default: this checkout)")
+    parser.add_argument("--root", type=Path, help="repository root (default: this checkout)")
     parser.add_argument("--list", type=Path, help="the list (default: <root>/scripts/retired-terms.tsv)")
-    args = parser.parse_args()
-    root = args.root.resolve()
-    list_path = (args.list or root / LIST).resolve()
+    args = parser.parse_args()  # a usage error exits 2 on its own
+    # Every filesystem step (resolving the paths, reading the list and the files, running git) is inside the handler:
+    # any failure means the check did not run, so it exits 2, never 1 (read as hits) or 0 (read as clean).
     try:
+        root = (args.root or Path(__file__).resolve().parents[1]).resolve(strict=True)
+        list_path = (args.list or root / LIST).resolve()
         hits = check(root, list_path)
     except Refusal as error:
         print(f"lint-retired-terms: {error}", file=sys.stderr)
         return 2
-    # Any other failure means the check did not run: exit 2, never 1 (read as hits) or 0 (read as clean).
     except Exception as error:  # noqa: BLE001
         # A traceback would exit 1, which the callers read as hits, so the class of the failure is irrelevant here.
         print(f"lint-retired-terms: the check failed: {error!r}", file=sys.stderr)

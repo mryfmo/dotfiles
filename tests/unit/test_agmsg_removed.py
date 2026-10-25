@@ -58,11 +58,17 @@ class AgmsgRemovedTest(unittest.TestCase):
             for rel, text in files.items():
                 (home / rel).parent.mkdir(parents=True, exist_ok=True)
                 (home / rel).write_text(text)
-            # The Claude side links each shared skill into ~/.agents/skills, as chezmoi deploys it.
+            # The Claude side links each shared skill file into the chezmoi source tree, as the generator renders it
+            # ({{ .chezmoi.sourceDir }}/dot_agents/skills/<name>/<file>, scripts/generate-agent-configs.py). The link
+            # target outlives the apply, so a Claude link that is left behind still reads as a file.
+            chezmoi_source = base / "chezmoi-source"
             for name in ("agmsg-orchestration", "other"):
+                skill = chezmoi_source / "dot_agents/skills" / name / "SKILL.md"
+                skill.parent.mkdir(parents=True)
+                skill.write_text(name)
                 link = home / ".claude/skills" / name / "SKILL.md"
                 link.parent.mkdir(parents=True)
-                link.symlink_to(Path("../../../.agents/skills") / name / "SKILL.md")
+                link.symlink_to(skill)
             config = base / "chezmoi.toml"
             config.write_text("")
             run = subprocess.run(

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -142,43 +143,268 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertFalse(self.module.same_modified(source, target, json_target=True))
 
-    def test_check_uses_same_modified_for_codex_profiles(self) -> None:
+    def write_index(self, outputs: list[dict], scopes: list[dict] | None = None) -> Path:
+        path = self.temp_dir / "scripts/generated-agent-outputs.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"generated_by": "test", "outputs": outputs, "scopes": scopes or []}))
+        return path
+
+    def test_check_runs_each_indexed_codex_modify_script_with_chezmoi_working_tree(self) -> None:
+        """F058: the Codex modify scripts see the working tree chezmoi applies from, not this checkout's parent."""
         profile = self.write_source(
             "dot_codex/modify_private_standard.config.toml",
             "#!/usr/bin/env python3\n",
         )
         profile.chmod(0o755)
-        original_source_root = self.module.SOURCE_ROOT
-        original_home = self.module.HOME
-        original_same_text = self.module.same_text
-        original_same_modified = self.module.same_modified
-        original_shared = self.module.compare_shared_skills
-        original_claude = self.module.compare_claude_skills
-        original_hook = self.module.check_executable_hook
-        original_drift = self.module.chezmoi_drift_warnings
-        modified_sources: list[Path] = []
-        try:
-            self.module.SOURCE_ROOT = self.source_root
-            self.module.HOME = self.target_root
-            self.module.same_text = lambda *args, **kwargs: True
-            self.module.same_modified = lambda source, *args, **kwargs: modified_sources.append(source) or True
-            self.module.compare_shared_skills = list
-            self.module.compare_claude_skills = list
-            self.module.check_executable_hook = lambda *args, **kwargs: []
-            self.module.chezmoi_drift_warnings = list
-
+        self.write_index(
+            [
+                {
+                    "source": "source/dot_codex/modify_private_standard.config.toml",
+                    "target": ".codex/standard.config.toml",
+                    "kind": "modify",
+                    "executable": False,
+                }
+            ]
+        )
+        calls: list[tuple[Path, str | None]] = []
+        patches = {
+            "SOURCE_ROOT": self.source_root,
+            "HOME": self.target_root,
+            "same_text": lambda *args, **kwargs: True,
+            "same_modified": lambda source, *args, working_tree=None, **kwargs: (
+                calls.append((source, working_tree)) or True
+            ),
+            "chezmoi_working_tree": lambda: ("/chezmoi/tree", None),
+            "compare_shared_skills": list,
+            "compare_claude_skills": lambda entries: [],
+            "check_executable_hook": lambda *args, **kwargs: [],
+            "chezmoi_drift_warnings": list,
+            "gh_login_findings": list,
+        }
+        with mock.patch.multiple(self.module, **patches):
             self.module.check()
-        finally:
-            self.module.SOURCE_ROOT = original_source_root
-            self.module.HOME = original_home
-            self.module.same_text = original_same_text
-            self.module.same_modified = original_same_modified
-            self.module.compare_shared_skills = original_shared
-            self.module.compare_claude_skills = original_claude
-            self.module.check_executable_hook = original_hook
-            self.module.chezmoi_drift_warnings = original_drift
 
-        self.assertIn(profile, modified_sources)
+        self.assertIn((profile, "/chezmoi/tree"), calls)
+
+    def test_chezmoi_working_tree_is_read_from_chezmoi_and_its_failure_is_reported(self) -> None:
+        bin_dir = self.temp_dir / "bin"
+        bin_dir.mkdir()
+        chezmoi = bin_dir / "chezmoi"
+        chezmoi.write_text('#!/bin/sh\n[ "$3" = "{{ .chezmoi.workingTree }}" ] && printf "/chezmoi/tree"\n')
+        chezmoi.chmod(0o755)
+        with mock.patch.dict(os.environ, {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}):
+            self.assertEqual(("/chezmoi/tree", None), self.module.chezmoi_working_tree())
+            chezmoi.write_text("#!/bin/sh\necho 'no config' >&2\nexit 1\n")
+            self.assertEqual((None, "no config"), self.module.chezmoi_working_tree())
+
+    def test_a_modify_script_sees_the_working_tree_it_is_given(self) -> None:
+        script = self.write_source(
+            "modify_echo", '#!/bin/sh\ncat > /dev/null\nprintf "%s\\n" "$CHEZMOI_WORKING_TREE"\n'
+        )
+        script.chmod(0o755)
+        target = self.write_target("config.toml", "/chezmoi/tree\n")
+        with mock.patch.dict(os.environ, {"CHEZMOI_WORKING_TREE": "/checkout"}):
+            self.assertTrue(self.module.same_modified(script, target, working_tree="/chezmoi/tree"))
+            self.assertFalse(self.module.same_modified(script, target))
+
+    def test_generated_targets_are_compared_and_host_orphans_fail(self) -> None:
+        """F168, F056: every indexed deployed file is compared, and a file no output deploys is an ERROR."""
+        self.write_source("dot_agents/model-profiles.env", "env\n")
+        self.write_source("dot_agents/omp/profiles/worker.yml.tmpl", "home: {{ .chezmoi.homeDir }}\n")
+        self.write_source("dot_agents/plugins/create_marketplace.json", "{}\n")
+        self.write_target(".agents/model-profiles.env", "env\n")
+        self.write_target(".agents/omp/profiles/worker.yml", "home: /rendered\n")
+        retired = self.write_target(".agents/omp/profiles/retired.yml", "old\n")
+        self.write_target(".agents/plugins/marketplace.json", '{"runtime": true}\n')
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_agents/model-profiles.env",
+                    "target": ".agents/model-profiles.env",
+                    "kind": "file",
+                    "executable": False,
+                },
+                {
+                    "source": "source/dot_agents/omp/profiles/worker.yml.tmpl",
+                    "target": ".agents/omp/profiles/worker.yml",
+                    "kind": "template",
+                    "executable": False,
+                },
+                {
+                    "source": "source/dot_agents/plugins/create_marketplace.json",
+                    "target": ".agents/plugins/marketplace.json",
+                    "kind": "create",
+                    "executable": False,
+                },
+                {"source": "source/.chezmoitemplates/x.toml", "target": None},
+            ],
+            "scopes": [{"source": "home/dot_agents/omp/profiles", "target": ".agents/omp/profiles", "glob": "*"}],
+        }
+        rendered = {"text": b"home: /rendered\n"}
+        with mock.patch.multiple(
+            self.module,
+            SOURCE_ROOT=self.source_root,
+            HOME=self.target_root,
+            render_chezmoi_template=lambda source: (rendered["text"], None),
+        ):
+            findings = self.module.generated_target_findings(index, "/tree")
+            marketplace = self.target_root / ".agents/plugins/marketplace.json"
+            self.assertEqual(2, len(findings), findings)
+            self.assertTrue(self.module.is_warning(findings[0]) and str(marketplace) in findings[0], findings)
+            self.assertTrue(not self.module.is_warning(findings[1]) and str(retired) in findings[1], findings)
+            rendered["text"] = b"home: /elsewhere\n"
+            self.assertIn(
+                f"generated file differs or is missing: {self.target_root / '.agents/omp/profiles/worker.yml'}",
+                self.module.generated_target_findings(index, "/tree"),
+            )
+
+    def test_an_unreadable_output_index_is_an_error_not_an_empty_set(self) -> None:
+        with mock.patch.object(self.module, "SOURCE_ROOT", self.source_root):
+            index, error = self.module.load_output_index()
+            self.assertIsNone(index)
+            self.assertRegex(error, r"^generated output index unreadable: ")
+            self.write_index([{"source": "x"}])
+            index, error = self.module.load_output_index()
+            self.assertIsNone(index)
+            self.assertRegex(error, r"^generated output index invalid: ")
+
+    def test_a_malformed_output_index_is_refused_field_by_field(self) -> None:
+        """Every deviation from the generator's index shape is an ERROR, never an index with fewer outputs."""
+        good_output = {"source": "home/a", "target": ".a", "kind": "file", "executable": False}
+        good_scope = {"source": "home/d", "target": ".d", "glob": "*"}
+
+        def index(outputs=None, scopes=None, **extra) -> dict:
+            return {"generated_by": "g", "outputs": outputs or [good_output], "scopes": scopes or [good_scope], **extra}
+
+        self.assertIsNone(self.module.output_index_error(index()))
+        self.assertIsNone(self.module.output_index_error(index([{"source": "install/x.sh", "target": None}])))
+        for name, candidate in (
+            ("not an object", []),
+            ("extra top-level key", index(stray=1)),
+            ("generated_by not a string", {**index(), "generated_by": 1}),
+            ("outputs not a list", {**index(), "outputs": {}}),
+            ("output not an object", index(["home/a"])),
+            ("source not a string", index([{**good_output, "source": 3}])),
+            ("absolute source", index([{**good_output, "source": "/etc/passwd"}])),
+            ("target not a string", index([{**good_output, "target": 3}])),
+            ("target escapes HOME", index([{**good_output, "target": "../x"}])),
+            ("unknown kind", index([{**good_output, "kind": "script"}])),
+            ("executable not a bool", index([{**good_output, "executable": "yes"}])),
+            ("missing executable", index([{key: good_output[key] for key in ("source", "target", "kind")}])),
+            ("extra output key", index([{**good_output, "mode": 755}])),
+            ("null target with a kind", index([{"source": "home/a", "target": None, "kind": "file"}])),
+            ("scope missing glob", index(scopes=[{"source": "home/d", "target": ".d"}])),
+            ("scope glob not a string", index(scopes=[{**good_scope, "glob": ["*"]}])),
+            ("absolute scope target", index(scopes=[{**good_scope, "target": "/tmp"}])),
+            ("sha256 not hex", index([{**good_output, "sha256": "Z" * 64}])),
+            ("sha256 on a template", index([{**good_output, "kind": "template", "sha256": "0" * 64}])),
+        ):
+            with self.subTest(name=name):
+                self.assertIsNotNone(self.module.output_index_error(candidate))
+                with mock.patch.object(self.module, "SOURCE_ROOT", self.source_root):
+                    path = self.temp_dir / "scripts/generated-agent-outputs.json"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(json.dumps(candidate))
+                    loaded, error = self.module.load_output_index()
+                self.assertIsNone(loaded)
+                self.assertRegex(error, r"^generated output index invalid: ")
+
+    def test_a_crlf_corrupted_generated_executable_differs(self) -> None:
+        """Generated files compare byte for byte: CRLF line endings break a shebang, so they are a mismatch."""
+        self.write_source("dot_local/bin/common/executable_tool", "#!/bin/sh\necho ok\n")
+        target = self.target_root / ".local/bin/common/tool"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"#!/bin/sh\r\necho ok\r\n")
+        target.chmod(0o755)
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_local/bin/common/executable_tool",
+                    "target": ".local/bin/common/tool",
+                    "kind": "file",
+                    "executable": True,
+                }
+            ],
+            "scopes": [],
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual(
+                [f"generated file differs or is missing: {target}"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+            target.write_bytes(b"#!/bin/sh\necho ok\n")
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+
+    def test_a_lever_copy_corrupted_alike_in_source_and_on_the_host_fails_its_pin(self) -> None:
+        """The index carries a lever's pinned sha256, so matching corrupted source and target still fail."""
+        body = b"#!/usr/bin/env bash\nexit 0\n"
+        corrupted = body.replace(b"\n", b"\r\n")
+        source = self.source_root / "dot_local/bin/common/executable_omp-run.sh"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(corrupted)
+        target = self.target_root / ".local/bin/common/omp-run.sh"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(corrupted)
+        target.chmod(0o755)
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_local/bin/common/executable_omp-run.sh",
+                    "target": ".local/bin/common/omp-run.sh",
+                    "kind": "file",
+                    "executable": True,
+                    "sha256": hashlib.sha256(body).hexdigest(),
+                }
+            ],
+            "scopes": [],
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual(
+                [f"generated file does not hash to its pinned sha256: {target}"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+            source.write_bytes(body)
+            target.write_bytes(body)
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+
+    def test_a_leftover_install_copy_of_an_orchestrator_script_on_the_host_fails(self) -> None:
+        """The host scopes come from the generator's one scope list, lever rule included (ci-rerun.sh is no lever)."""
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        assert spec and spec.loader
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        tree = self.temp_dir / "tree"
+        for name in ("hcom-seat", "ci-rerun.sh"):
+            (tree / "scripts/orchestrator").mkdir(parents=True, exist_ok=True)
+            (tree / "scripts/orchestrator" / name).write_text("#!/bin/sh\n")
+        install = tree / "home/dot_local/bin/common/executable_hcom-seat"
+        install.parent.mkdir(parents=True)
+        install.write_text("#!/bin/sh\n")
+        generator.ROOT = tree
+        index = json.loads(generator.render_output_index({install: "#!/bin/sh\n"}))
+        self.assertIn(
+            {"source": "home/dot_local/bin/common", "target": ".local/bin/common", "glob": "ci-rerun.sh"},
+            index["scopes"],
+        )
+        self.write_target(".local/bin/common/hcom-seat", "#!/bin/sh\n", executable=True)
+        leftover = self.write_target(".local/bin/common/ci-rerun.sh", "#!/bin/sh\n", executable=True)
+        self.write_target(".local/bin/common/unrelated-tool", "#!/bin/sh\n", executable=True)
+        with mock.patch.multiple(self.module, SOURCE_ROOT=tree / "home", HOME=self.target_root):
+            self.assertEqual(
+                [f"generated directory holds a file no manifest entry renders: {leftover}; remove it"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+
+    def test_the_committed_output_index_matches_the_generated_tree(self) -> None:
+        """The doctor's index names every deployed generated file, and each source it names exists."""
+        index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        targets = {entry["target"] for entry in index["outputs"] if entry["target"]}
+        self.assertIn(".agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json", targets)
+        self.assertIn(".claude/agents/project-map.md", targets)
+        for entry in index["outputs"]:
+            self.assertTrue((ROOT / entry["source"]).is_file(), entry["source"])
 
     def test_chezmoi_drift_warnings_classify_targets_from_one_diff(self) -> None:
         status = mock.Mock(
@@ -488,10 +714,29 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.SOURCE_ROOT = self.source_root
             self.module.HOME = self.target_root
 
-            self.assertEqual([], self.module.compare_claude_skills())
+            self.assertEqual([], self.module.compare_claude_skills([]))
         finally:
             self.module.SOURCE_ROOT = original_source_root
             self.module.HOME = original_home
+
+    def test_installer_owned_skills_are_neither_unmanaged_nor_orphans(self) -> None:
+        """F157: one allowlist decides both the unmanaged-skill WARN and the orphan scan."""
+        self.write_source("dot_agents/skills/managed/SKILL.md")
+        self.write_target(".agents/skills/managed/SKILL.md")
+        for name in ("crit", "understand-chat"):
+            self.write_target(f".agents/skills/{name}/SKILL.md")
+        stray = self.write_target(".agents/skills/stray/SKILL.md").parent
+        with mock.patch.multiple(
+            self.module,
+            SOURCE_ROOT=self.source_root,
+            HOME=self.target_root,
+            chezmoi_managed_child_names=lambda root: set(),
+        ):
+            unmanaged = self.module.compare_shared_skills()
+            orphans = self.module.orphaned_asset_warnings()
+
+        self.assertEqual([f"WARN: unmanaged skill dir: {stray}"], unmanaged)
+        self.assertEqual([f"WARN: orphaned agent asset: {stray}; manual review required"], orphans)
 
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"
@@ -804,7 +1049,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.same_text = lambda *args, **kwargs: True
             self.module.same_modified = lambda *args, **kwargs: True
             self.module.compare_shared_skills = list
-            self.module.compare_claude_skills = list
+            self.module.compare_claude_skills = lambda entries: []
             self.module.check_executable_hook = lambda *args, **kwargs: []
             self.module.manifest_asset_findings = lambda *args, **kwargs: self.fail("manifest findings must be skipped")
             self.module.orphaned_asset_warnings = lambda *args, **kwargs: self.fail(
@@ -813,7 +1058,12 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.chezmoi_drift_warnings = list
             self.module.gh_login_findings = list
 
-            failures = self.module.check()
+            with mock.patch.multiple(
+                self.module,
+                generated_target_findings=lambda *args: [],
+                chezmoi_working_tree=lambda: ("/tree", None),
+            ):
+                failures = self.module.check()
         finally:
             self.module.HOME = original_home
             self.module.same_text = original_same_text
@@ -830,6 +1080,52 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertRegex(
             failures[0],
             rf"^installed manifest unreadable or invalid: {manifest_path} \(invalid JSON:",
+        )
+
+    def test_a_host_without_the_installed_manifest_gets_a_warning(self) -> None:
+        """F167: no installed-asset record is reported, as a WARN so a fresh apply-check container still passes."""
+        patches = {
+            "HOME": self.target_root,
+            "same_text": lambda *args, **kwargs: True,
+            "same_modified": lambda *args, **kwargs: True,
+            "compare_shared_skills": list,
+            "compare_claude_skills": lambda entries: [],
+            "check_executable_hook": lambda *args, **kwargs: [],
+            "orphaned_asset_warnings": list,
+            "chezmoi_drift_warnings": list,
+            "gh_login_findings": list,
+            "generated_target_findings": lambda *args: [],
+            "chezmoi_working_tree": lambda: ("/tree", None),
+        }
+        with mock.patch.multiple(self.module, **patches):
+            failures = self.module.check()
+
+        manifest_path = self.target_root / ".agents/.installed-manifest.json"
+        missing = [failure for failure in failures if str(manifest_path) in failure]
+        self.assertEqual(1, len(missing), failures)
+        self.assertTrue(self.module.is_warning(missing[0]))
+        self.assertEqual([], [failure for failure in failures if not self.module.is_warning(failure)])
+
+    def test_a_failed_working_tree_read_is_an_error(self) -> None:
+        patches = {
+            "HOME": self.target_root,
+            "same_text": lambda *args, **kwargs: True,
+            "same_modified": lambda *args, **kwargs: True,
+            "compare_shared_skills": list,
+            "compare_claude_skills": lambda entries: [],
+            "check_executable_hook": lambda *args, **kwargs: [],
+            "orphaned_asset_warnings": list,
+            "chezmoi_drift_warnings": list,
+            "gh_login_findings": list,
+            "generated_target_findings": lambda *args: [],
+            "chezmoi_working_tree": lambda: (None, "chezmoi: not found"),
+        }
+        with mock.patch.multiple(self.module, **patches):
+            failures = self.module.check()
+
+        self.assertIn(
+            "cannot read chezmoi's working tree, which the Codex configs key project trust with: chezmoi: not found",
+            failures,
         )
 
     def test_repair_mode_converges_once_and_reports_each_action(self) -> None:

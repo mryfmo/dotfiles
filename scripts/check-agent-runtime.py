@@ -11,10 +11,12 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import hashlib
 import json
 import os
 import re
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -79,8 +81,17 @@ class AssetFinding(NamedTuple):
     entry: dict[str, object]
 
 
+def exact_text(path: Path) -> str:
+    """A file's text with every byte kept: no newline translation, undecodable bytes round-trip through encode_bytes."""
+    return path.read_bytes().decode(errors="surrogateescape")
+
+
+def encode_bytes(text: str) -> bytes:
+    return text.encode(errors="surrogateescape")
+
+
 def render_template(path: Path) -> str:
-    text = path.read_text()
+    text = exact_text(path)
     # This repository uses .chezmoiroot=home, so .chezmoi.sourceDir resolves to
     # the chezmoi source root that contains dot_agents/, dot_codex/, etc.
     text = text.replace("{{ .chezmoi.sourceDir }}", str(SOURCE_ROOT))
@@ -89,33 +100,37 @@ def render_template(path: Path) -> str:
 
 
 def same_text(source: Path, target: Path, template: bool = False) -> bool:
-    if not target.exists():
+    """Whether target holds exactly the bytes of source (or of its rendering): a CRLF or BOM difference is a mismatch."""
+    if not target.is_file():
         return False
-    expected = render_template(source) if template else source.read_text()
-    return target.read_text() == expected
+    expected = encode_bytes(render_template(source)) if template else source.read_bytes()
+    return target.read_bytes() == expected
 
 
-def same_modified(source: Path, target: Path, json_target: bool = False) -> bool:
-    if not target.exists():
+def same_modified(
+    source: Path, target: Path, json_target: bool = False, working_tree: str | None = None, quiet: bool = False
+) -> bool:
+    """Whether running the modify script `source` on `target` leaves it unchanged.
+
+    The script reads this checkout's managed baseline (CHEZMOI_SOURCE_DIR) and, when given, the working tree chezmoi
+    applies from (CHEZMOI_WORKING_TREE), which the Codex config keys its project trust with (F058). `quiet` makes any
+    stderr output a mismatch, for a script that degrades to passing its input through with a warning.
+    """
+    if not target.is_file():
         return False
-    current = target.read_text()
+    current = target.read_bytes()
     env = os.environ.copy()
     env["CHEZMOI_SOURCE_DIR"] = str(SOURCE_ROOT)
-    result = subprocess.run(
-        [str(source)],
-        input=current,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        check=False,
-    )
-    if result.returncode != 0:
+    if working_tree is not None:
+        env["CHEZMOI_WORKING_TREE"] = working_tree
+    # Bytes in and out: no newline translation on either side, so the script's output must equal the file exactly.
+    result = subprocess.run([str(source)], input=current, capture_output=True, env=env, check=False)
+    if result.returncode != 0 or (quiet and result.stderr):
         return False
     if json_target:
         try:
             return json.loads(result.stdout) == json.loads(current)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return False
     return result.stdout == current
 
@@ -225,18 +240,179 @@ def split_chezmoi_diff(output: str) -> dict[str, str]:
     return blocks
 
 
-def expected_claude_skill_targets() -> dict[Path, str]:
-    """Return applied Claude skill relative paths and their expected file content."""
+def output_index_path() -> Path:
+    """scripts/generate-agent-configs.py's expected output set, rendered for this script (which has no PyYAML)."""
+    return SOURCE_ROOT.parent / "scripts/generated-agent-outputs.json"
+
+
+OUTPUT_KINDS = frozenset({"file", "template", "modify", "create", "symlink"})
+SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def output_index_error(index: object) -> str | None:
+    """Why `index` is not the generator's output index, field by field with exact types; None when it is.
+
+    The shape is generate-agent-configs.py render_output_index's: exactly generated_by, outputs and scopes; an output
+    is {source, target: null} for a file chezmoi does not deploy by itself, else {source, target, kind, executable}
+    with a known kind; a scope is {source, target, glob}. Every path is a non-empty relative string.
+    """
+
+    def relative(value: object) -> bool:
+        return (
+            isinstance(value, str) and bool(value) and not Path(value).is_absolute() and ".." not in Path(value).parts
+        )
+
+    if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes"}:
+        return "the top level must hold exactly generated_by, outputs and scopes"
+    if not isinstance(index["generated_by"], str):
+        return "generated_by must be a string"
+    if not isinstance(index["outputs"], list) or not isinstance(index["scopes"], list):
+        return "outputs and scopes must be lists"
+    for number, entry in enumerate(index["outputs"]):
+        if not isinstance(entry, dict) or not relative(entry.get("source")):
+            return f"outputs[{number}] must be an object with a relative source"
+        if set(entry) == {"source", "target"} and entry["target"] is None:
+            continue
+        keys = {"source", "target", "kind", "executable"}
+        if (
+            set(entry) - {"sha256"} != keys
+            or not relative(entry["target"])
+            or entry["kind"] not in OUTPUT_KINDS
+            or not isinstance(entry["executable"], bool)
+            or ("sha256" in entry and (entry["kind"] != "file" or not SHA256_HEX.fullmatch(str(entry["sha256"]))))
+        ):
+            return (
+                f"outputs[{number}] must be {{source, target, kind, executable}} with a known kind, and a lowercase "
+                f"hex sha256 only on a file: {entry!r}"
+            )
+    for number, scope in enumerate(index["scopes"]):
+        if (
+            not isinstance(scope, dict)
+            or set(scope) != {"source", "target", "glob"}
+            or not all(relative(scope[key]) for key in ("source", "target", "glob"))
+        ):
+            return f"scopes[{number}] must be {{source, target, glob}} of relative strings: {scope!r}"
+    return None
+
+
+def load_output_index() -> tuple[dict[str, list[dict[str, object]]] | None, str | None]:
+    """The generated output index, or None and the reason it cannot be used; a bad index is never "no outputs"."""
+    path = output_index_path()
+    try:
+        index = json.loads(path.read_text())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        return None, f"generated output index unreadable: {path} ({error})"
+    error = output_index_error(index)
+    if error is not None:
+        return None, f"generated output index invalid: {path}: {error} (run scripts/generate-agent-configs.py)"
+    return index, None
+
+
+def chezmoi_working_tree() -> tuple[str | None, str | None]:
+    """The working tree chezmoi applies from (its .chezmoi.workingTree), or None and why it could not be read."""
+    try:
+        result = subprocess.run(
+            ["chezmoi", "--no-pager", "execute-template", "{{ .chezmoi.workingTree }}"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as error:
+        return None, str(error)
+    if result.returncode != 0 or not result.stdout.strip():
+        return None, result.stderr.strip() or f"exit {result.returncode}"
+    return result.stdout.strip(), None
+
+
+def render_chezmoi_template(source: Path) -> tuple[bytes | None, str | None]:
+    """chezmoi's own rendering of one source template with the host's data, as bytes, or None and why it failed."""
+    try:
+        result = subprocess.run(
+            ["chezmoi", "--no-pager", "execute-template"],
+            input=source.read_bytes(),
+            capture_output=True,
+            check=False,
+        )
+    except OSError as error:
+        return None, str(error)
+    if result.returncode != 0:
+        return None, result.stderr.decode(errors="replace").strip() or f"exit {result.returncode}"
+    return result.stdout, None
+
+
+def scope_files(root: Path, pattern: str) -> set[Path]:
+    if not root.is_dir():
+        return set()
+    return {path for path in root.glob(pattern) if path.is_file() or path.is_symlink()}
+
+
+def generated_target_findings(index: dict[str, list[dict[str, object]]], working_tree: str | None) -> list[str]:
+    """Compare every deployed generated file with this checkout's generated source, and find host orphans.
+
+    A file target matches the source bytes (and its execute bit), a template target chezmoi's rendering, a modify
+    target the result of its script, and a create target, which chezmoi never rewrites, at least exists. Claude's
+    skill links are compare_claude_skills'. A file in a generated directory on the host that no output deploys is an
+    orphan: an ERROR naming the file, which only the operator removes.
+    """
+    failures: list[str] = []
+    targets: set[Path] = set()
+    for entry in index["outputs"]:
+        if entry["target"] is None:
+            continue
+        source = SOURCE_ROOT.parent / str(entry["source"])
+        target = HOME / str(entry["target"])
+        targets.add(normalized_path(target))
+        kind = entry.get("kind")
+        if kind == "symlink":
+            continue
+        if kind == "create":
+            if not target.exists():
+                failures.append(f"generated file differs or is missing: {target}")
+            elif not same_text(source, target):
+                failures.append(f"WARN: {target} differs from {entry['source']}; chezmoi creates it once and keeps it")
+        elif kind == "modify":
+            if working_tree is None:
+                continue
+            if not same_modified(source, target, working_tree=working_tree):
+                failures.append(f"generated config managed keys differ or profile is missing: {target}")
+        elif kind == "template":
+            rendered, error = render_chezmoi_template(source)
+            if rendered is None:
+                failures.append(f"cannot render {entry['source']} with chezmoi: {error}")
+            elif not target.is_file() or target.read_bytes() != rendered:
+                failures.append(f"generated file differs or is missing: {target}")
+        else:  # "file": output_index_error admits no other kind.
+            if not same_text(source, target):
+                failures.append(f"generated file differs or is missing: {target}")
+            elif "sha256" in entry and hashlib.sha256(target.read_bytes()).hexdigest() != entry["sha256"]:
+                # The source and the deployed copy can be corrupted alike; the pin cannot.
+                failures.append(f"generated file does not hash to its pinned sha256: {target}")
+            elif entry["executable"] and not target.stat().st_mode & stat.S_IXUSR:
+                failures.append(f"generated file is not executable: {target}")
+    for scope in index["scopes"]:
+        if Path(str(scope["target"])).parts == (".claude", "skills"):
+            continue
+        for path in sorted(scope_files(HOME / str(scope["target"]), str(scope["glob"]))):
+            if normalized_path(path) not in targets:
+                failures.append(f"generated directory holds a file no manifest entry renders: {path}; remove it")
+    return failures
+
+
+def expected_claude_skill_targets(entries: list[dict[str, object]]) -> dict[Path, str]:
+    """Return applied Claude skill relative paths and their expected file content, from the output index."""
     outputs: dict[Path, str] = {}
-    source_root = SOURCE_ROOT / "dot_claude/skills"
-    for template in sorted(source_root.rglob("symlink_*.tmpl")):
-        rel = template.relative_to(source_root)
-        applied_name = template.name.removeprefix("symlink_").removesuffix(".tmpl")
-        applied_rel = rel.with_name(applied_name)
-        linked_source_text = render_template(template).strip()
+    for entry in entries:
+        target = entry["target"]
+        if entry.get("kind") != "symlink" or not isinstance(target, str):
+            continue
+        parts = Path(target).parts
+        if parts[:2] != (".claude", "skills"):
+            continue
+        applied_rel = Path(*parts[2:])
+        linked_source_text = render_template(SOURCE_ROOT.parent / str(entry["source"])).strip()
         linked_source = Path(linked_source_text)
         if linked_source.exists():
-            outputs[applied_rel] = linked_source.read_text()
+            outputs[applied_rel] = exact_text(linked_source)
         else:
             outputs[applied_rel] = f"__BROKEN_EXPECTED_LINK__:{linked_source_text}"
     return outputs
@@ -310,7 +486,7 @@ def compare_tree_contents(
     for rel in sorted(expected_rels & actual):
         target = target_root / rel
         try:
-            actual_text = target.read_text()
+            actual_text = exact_text(target)
         except OSError as error:
             failures.append(f"{label} cannot read {target}: {error}")
             continue
@@ -322,31 +498,51 @@ def compare_tree_contents(
     return failures
 
 
+def installer_owned_skill_names(home: Path | None = None) -> set[str]:
+    """Skill directories under ~/.agents/skills that an installer or chezmoi external owns, not home/dot_agents/skills.
+
+    One list for both the unmanaged-skill WARN and the orphan scan (F157).
+    """
+    home = HOME if home is None else home
+    skills_root = home / ".agents/skills"
+    # Skill links installed by terminal-browser are receipt-tracked, not source-managed.
+    receipt_skill_names = {
+        path.name for path in terminal_browser_receipt_paths(home) if path.parent == normalized_path(skills_root)
+    }
+    return (
+        UNDERSTAND_SKILL_ALLOWLIST
+        | CRIT_PLUGIN_SKILLS
+        | receipt_skill_names
+        # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
+        | chezmoi_managed_child_names(skills_root)
+    )
+
+
 def compare_shared_skills() -> list[str]:
     source_root = SOURCE_ROOT / "dot_agents/skills"
     target_root = HOME / ".agents/skills"
     if not target_root.exists():
         return ["shared skill directory is missing: ~/.agents/skills"]
     expected_sources = source_files(source_root)
-    expected = {rel: path.read_text() for rel, path in expected_sources.items()}
-    external_skills = chezmoi_managed_child_names(target_root) - {rel.parts[0] for rel in expected if rel.parts}
+    expected = {rel: exact_text(path) for rel, path in expected_sources.items()}
+    owned_elsewhere = installer_owned_skill_names() - {rel.parts[0] for rel in expected if rel.parts}
     return compare_tree_contents(
         "shared skill directory",
         expected,
         target_root,
         expected_sources,
         warn_unmanaged_top_level=True,
-        ignored_paths={target_root / name for name in external_skills},
+        ignored_paths={target_root / name for name in owned_elsewhere},
     )
 
 
-def compare_claude_skills() -> list[str]:
+def compare_claude_skills(entries: list[dict[str, object]]) -> list[str]:
     target_root = HOME / ".claude/skills"
     if not target_root.exists():
         return ["Claude shared-skill symlink tree is missing: ~/.claude/skills"]
     return compare_tree_contents(
         "Claude shared-skill tree",
-        expected_claude_skill_targets(),
+        expected_claude_skill_targets(entries),
         target_root,
         # Cowork syncs its own skills into this subtree; chezmoi does not own it.
         ignored_paths=terminal_browser_receipt_paths() | {HOME / ".claude/skills/synced"},
@@ -510,18 +706,7 @@ def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None =
     owners = manifest_path_owners(agents_root / ".installed-manifest.json")
     warnings: list[str] = []
 
-    # Skill links installed by terminal-browser are receipt-tracked, not
-    # source-managed; treat them like the understand-anything allowlist.
-    receipt_skill_names = {
-        path.name for path in terminal_browser_receipt_paths(home) if path.parent == normalized_path(skills_root)
-    }
-    skill_allowlist = (
-        UNDERSTAND_SKILL_ALLOWLIST
-        | CRIT_PLUGIN_SKILLS
-        | receipt_skill_names
-        # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
-        | chezmoi_managed_child_names(skills_root)
-    )
+    skill_allowlist = installer_owned_skill_names(home)
     root_allowlist = AGENT_ROOT_ALLOWLIST | chezmoi_managed_child_names(agents_root)
     candidates = [(path, source_root_names, root_allowlist) for path in direct_asset_directories(agents_root)] + [
         (path, source_skill_names, skill_allowlist) for path in direct_asset_directories(skills_root)
@@ -765,35 +950,18 @@ def print_failures(failures: list[str]) -> None:
 
 def check() -> list[str]:
     failures: list[str] = []
-    checks = [
-        (
-            SOURCE_ROOT / "dot_agents/model-profiles.env",
-            HOME / ".agents/model-profiles.env",
-            False,
-            "model profile fragment",
-        ),
-        (
-            SOURCE_ROOT / "dot_claude/agents/express-explorer.md",
-            HOME / ".claude/agents/express-explorer.md",
-            False,
-            "Claude express-explorer agent",
-        ),
-    ]
-    for source, target, template, label in checks:
-        if not same_text(source, target, template=template):
-            failures.append(f"{label} differs or is missing: {target}")
-    for profile_source in sorted(SOURCE_ROOT.glob("dot_codex/modify_*.config.toml")):
-        target_name = deployed_relative_path(Path(profile_source.name.removeprefix("modify_"))).name
-        target = HOME / ".codex" / target_name
-        if not same_modified(profile_source, target):
-            failures.append(
-                f"Codex model profile {target_name.removesuffix('.config.toml')} managed keys differ or profile is missing: {target}"
-            )
-    if not same_modified(
-        SOURCE_ROOT / "dot_codex/modify_private_config.toml",
-        HOME / ".codex/config.toml",
-    ):
-        failures.append(f"Codex config managed keys differ or config is missing: {HOME / '.codex/config.toml'}")
+    index, index_error = load_output_index()
+    if index is None:
+        failures.append(str(index_error))
+        index = {"outputs": [], "scopes": []}
+    working_tree, tree_error = chezmoi_working_tree()
+    if working_tree is None:
+        failures.append(
+            f"cannot read chezmoi's working tree, which the Codex configs key project trust with: {tree_error}"
+        )
+    failures.extend(generated_target_findings(index, working_tree))
+    if not same_text(SOURCE_ROOT / "dot_agents/agent-config.yaml", HOME / ".agents/agent-config.yaml"):
+        failures.append(f"agent manifest differs or is missing: {HOME / '.agents/agent-config.yaml'}")
     if not same_modified(
         SOURCE_ROOT / "dot_claude/modify_private_settings.json",
         HOME / ".claude/settings.json",
@@ -802,9 +970,16 @@ def check() -> list[str]:
         failures.append(
             f"Claude settings managed keys differ or settings file is missing: {HOME / '.claude/settings.json'}"
         )
+    # The omp merge runs under uv; without uv it passes its input through with a warning, so a host without uv gets a
+    # WARN naming what was not checked, and any stderr output from the merge counts as a mismatch, never a pass.
+    omp_config = HOME / ".omp/agent/config.yml"
+    if shutil.which("uv") is None:
+        failures.append(f"WARN: {omp_config} not checked: the omp config merge needs uv, which is not on PATH")
+    elif not same_modified(SOURCE_ROOT / "dot_omp/private_agent/modify_private_config.yml", omp_config, quiet=True):
+        failures.append(f"omp config managed keys differ or config is missing: {omp_config}")
 
     failures.extend(compare_shared_skills())
-    failures.extend(compare_claude_skills())
+    failures.extend(compare_claude_skills(index["outputs"]))
     failures.extend(
         check_executable_hook(
             SOURCE_ROOT / "dot_claude/hooks/executable_enforce-uv.sh",
@@ -831,6 +1006,13 @@ def check() -> list[str]:
     if manifest_error is not None:
         failures.append(f"installed manifest unreadable or invalid: {manifest_path} ({manifest_error})")
     else:
+        # A host where scripts/update-agent-assets.sh never ran has no record to check its assets against (F167). A
+        # WARN, never an ERROR: `make apply-check` runs this in a fresh container that installs no assets.
+        if not manifest_path.exists() and not manifest_path.is_symlink():
+            failures.append(
+                f"WARN: installed asset manifest is missing: {manifest_path}; no third-party asset is checked until "
+                "make update (scripts/update-agent-assets.sh) records one"
+            )
         failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())

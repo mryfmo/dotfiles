@@ -1,6 +1,6 @@
 # Agent configuration architecture
 
-This directory is the canonical source for AI-agent assets shared by Codex and Claude Code.
+This directory is the canonical source for AI-agent assets shared by Codex, Claude Code and omp.
 
 ## Single source of truth
 
@@ -14,15 +14,25 @@ Generated files include:
 
 - `home/.chezmoitemplates/codex-config-managed.toml`
 - `home/dot_codex/modify_private_config.toml`
-- `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
+- `home/dot_codex/modify_private_<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/.chezmoitemplates/omp-config-managed.yml`
+- `home/dot_agents/omp/profiles/<role>.yml.tmpl` (one per `omp.roles` entry, with the profile's `omp.effort` as `defaultThinkingLevel`)
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/agents/project-map.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
 - `home/dot_agents/model-profiles.env`
 - `home/dot_agents/plugins/create_marketplace.json`
-- `home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json`
+- `home/dot_agents/plugins/mryfmo-dev-workflows/dot_codex-plugin/plugin.json` (deployed as `.codex-plugin/plugin.json`; chezmoi ignores a source name that starts with a dot)
+- `home/dot_local/bin/common/executable_<lever>` (one per `claude.levers.sha256` entry, a byte copy of `scripts/orchestrator/<lever>`)
+- `scripts/generated-agent-outputs.json`, the list of every generated file and its deployed target, which `make doctor` reads
+
+`expected_outputs()` in the generator is the one expected output set. The generated directories are
+`home/dot_agents/omp/profiles/`, `home/dot_agents/plugins/`, `home/dot_claude/agents/`, `home/dot_claude/skills/`,
+the `*.config.toml` files of `home/dot_codex/`, and the lever copies in `home/dot_local/bin/common/`: a file there
+that the set does not hold is an orphan, which `--check` (and so `validate-agent-assets.py`) reports and a write run
+deletes. `make doctor` checks every deployed target in the list and reports a file in a generated directory under
+`$HOME` that no output deploys; the operator removes it.
 
 ## Parity policy
 
@@ -82,4 +92,4 @@ After applying chezmoi, prove the active HOME runtime files match this source tr
 scripts/check-agent-runtime.py
 ```
 
-The validator checks generated-file freshness, skill parity, MCP parity, disabled-by-default safety, deprecated MCP packages, schema/parse validity, and obvious committed secrets. The runtime doctor checks the applied Codex, Claude Code, skill, and hook files in `$HOME` without modifying them.
+The validator checks generated-file freshness and orphans (through `generate-agent-configs.py --check`), the Agent Skills frontmatter limits, MCP parity, disabled-by-default safety, deprecated MCP packages, schema/parse validity, and obvious committed secrets. The runtime doctor checks every generated target in `$HOME` (including `~/.omp/agent/config.yml` and `~/.agents/agent-config.yaml`), the skill trees and the hooks without modifying them; a host where `make update` never wrote `~/.agents/.installed-manifest.json` gets a WARN.

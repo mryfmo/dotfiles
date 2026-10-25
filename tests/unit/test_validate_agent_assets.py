@@ -443,21 +443,24 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             name: {
                 "claude": {"model": "claude-model", "effort": "high"},
                 "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
-                "omp": {"model": "claude-bridge/claude-model"},
+                "omp": {"model": "claude-bridge/claude-model", "effort": "high"},
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
         profiles["security"]["codex"].update(model="gpt-6-astra", sandbox_mode="read-only")
         profiles["audit"]["codex"].update(model="gpt-6-astra", model_reasoning_effort="xhigh", sandbox_mode="read-only")
         profiles["standard"]["claude"]["advisor"] = "fable"
+        bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"
+        siwc = "~/.agents/omp/extensions/openai-siwc"
         manifest = {
             "schema_version": 1,
-            "target_agents": ["codex", "claude"],
-            "skills": {"canonical_dir": "~/.agents/skills"},
             "model_profiles": profiles,
             "interactive_profile": "deep",
-            "omp": {"extensions": ["~/.local/lib/omp-extensions/pi-claude-bridge"]},
-            "claude": {},
+            "omp": {
+                "extensions": [bridge],
+                "extension_providers": {"claude-bridge": bridge, "openai-siwc": siwc},
+            },
+            "claude": {"levers": {"extensions": [bridge, siwc]}},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
             "mcp_servers": {},
         }
@@ -480,7 +483,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 manifest = self.write_valid_agent_manifest()
                 manifest["model_profiles"]["audit"]["omp"]["model"] = value
                 self.module.validate_agent_manifest()
-        for value in ("foo/bar", "claude-bridge/claude model", "claude-model", None):
+        for value in ("foo/bar", "claude-bridge/claude model", "claude-model", "openai-codex/gpt-model", None):
             with self.subTest(value=value):
                 manifest = self.write_valid_agent_manifest()
                 if value is None:
@@ -490,24 +493,29 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
-                self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
+                self.assertIn("model profile audit", stderr.getvalue())
+
+    def test_agent_manifest_applies_the_generators_profile_rules(self) -> None:
+        """F169: the validator refuses exactly what the generator refuses, through the generator's own check."""
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["audit"]["omp"]["effort"] = "auto"
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.generator().model_profiles(manifest)
 
     def test_agent_manifest_requires_the_extension_that_registers_the_interactive_omp_provider(self) -> None:
         bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"
         siwc = "~/.agents/omp/extensions/openai-siwc"
-        for model, omp, needed in (
-            ("claude-bridge/claude-model", {"extensions": []}, bridge),
-            ("claude-bridge/claude-model", {"extensions": [siwc]}, bridge),
-            ("claude-bridge/claude-model", None, bridge),
-            ("openai-siwc/gpt-model", {"extensions": [bridge]}, siwc),
+        for model, extensions, needed in (
+            ("claude-bridge/claude-model", [], bridge),
+            ("claude-bridge/claude-model", [siwc], bridge),
+            ("openai-siwc/gpt-model", [bridge], siwc),
         ):
-            with self.subTest(model=model, omp=omp):
+            with self.subTest(model=model, extensions=extensions):
                 manifest = self.write_valid_agent_manifest()
                 manifest["model_profiles"]["deep"]["omp"]["model"] = model
-                if omp is None:
-                    del manifest["omp"]
-                else:
-                    manifest["omp"] = omp
+                manifest["omp"]["extensions"] = extensions
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
@@ -522,26 +530,65 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             with self.subTest(model=model, extensions=extensions):
                 manifest = self.write_valid_agent_manifest()
                 manifest["model_profiles"]["deep"]["omp"]["model"] = model
-                manifest["omp"] = {"extensions": extensions}
+                manifest["omp"]["extensions"] = extensions
                 self.module.validate_agent_manifest()
         # Only the interactive profile reaches a plain launch; a seat profile's route needs no entry here.
         manifest = self.write_valid_agent_manifest()
         manifest["model_profiles"]["audit"]["omp"]["model"] = "openai-siwc/gpt-model"
         self.module.validate_agent_manifest()
 
-    def test_agent_manifest_refuses_the_retired_openai_codex_route_by_name(self) -> None:
+    def test_the_default_model_provider_stays_loadable_when_its_mapping_is_removed(self) -> None:
+        """A plain omp launch must load the default model's provider: dropping its extension_providers entry, with or
+        without emptying omp.extensions, is refused, as is an entry for a route omp provides or does not know."""
+        for name, mutate in (
+            (
+                "bridge entry removed, extensions emptied",
+                lambda m: (m["omp"]["extension_providers"].pop("claude-bridge"), m["omp"].update(extensions=[])),
+            ),
+            ("bridge entry removed", lambda m: m["omp"]["extension_providers"].pop("claude-bridge")),
+            (
+                "builtin route mapped",
+                lambda m: m["omp"]["extension_providers"].update({"anthropic": "~/.agents/omp/extensions/openai-siwc"}),
+            ),
+            (
+                "unknown route mapped",
+                lambda m: m["omp"]["extension_providers"].update({"other": "~/.agents/omp/extensions/openai-siwc"}),
+            ),
+        ):
+            with self.subTest(name=name):
+                manifest = self.write_valid_agent_manifest()
+                mutate(manifest)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
         manifest = self.write_valid_agent_manifest()
-        manifest["model_profiles"]["audit"]["omp"]["model"] = "openai-codex/gpt-model"
-        stderr = io.StringIO()
+        manifest["model_profiles"]["deep"]["omp"]["model"] = "anthropic/claude-model"
+        manifest["omp"]["extensions"] = []
+        self.module.validate_agent_manifest()
 
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_agent_manifest()
+    def test_agent_manifest_keeps_every_omp_extension_directory_among_the_seat_extensions(self) -> None:
+        """F162: omp.extensions and omp.extension_providers name only claude.levers.extensions directories."""
+        for mutate in (
+            lambda manifest: manifest["omp"]["extension_providers"].update({"openai-siwc": "~/elsewhere/siwc"}),
+            lambda manifest: manifest["omp"]["extensions"].append("~/elsewhere/ext"),
+            lambda manifest: manifest["claude"]["levers"]["extensions"].remove("~/.agents/omp/extensions/openai-siwc"),
+            lambda manifest: manifest["omp"].pop("extension_providers"),
+        ):
+            with self.subTest(mutate=mutate):
+                manifest = self.write_valid_agent_manifest()
+                mutate(manifest)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
 
-        self.assertIn(
-            "model profile audit.omp.model names the retired openai-codex route; "
-            "use claude-bridge, openai-siwc or anthropic: 'openai-codex/gpt-model'",
-            stderr.getvalue(),
-        )
+    def test_agent_manifest_requires_review_to_match_deep_claude_model_and_effort(self) -> None:
+        """F164 (INV-7): the review profile's Claude model and effort are deep's."""
+        for key, value in (("model", "other-model"), ("effort", "low")):
+            with self.subTest(key=key):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["review"]["claude"][key] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("INV-7", stderr.getvalue())
 
     def test_agent_manifest_requires_fable_advisor_on_the_standard_profile(self) -> None:
         for advisor in (None, "opus"):
@@ -1577,6 +1624,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": self.codex_writable_roots,
@@ -1602,6 +1650,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": self.codex_writable_roots,
@@ -1705,6 +1754,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
                 "sandbox_workspace_write": {"network_access": False, "writable_roots": roots},
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -1763,6 +1813,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": self.codex_writable_roots,

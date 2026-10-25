@@ -363,8 +363,8 @@ the upstream installer for Codex, pinned to a reviewed commit and verified by
 sha256 before execution (bump both constants together in
 `scripts/update-agent-assets.sh` to take upstream installer updates). The
 installer clones `~/.understand-anything/repo` and symlinks its skills into
-`~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
-linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
+`~/.agents/skills` (`make doctor` knows them as installer-owned and reports
+neither an unmanaged skill nor an orphan); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
 `make update` also builds the plugin's `packages/core` with the mise-pinned
 `npm:pnpm` (run through `mise exec`, which installs the pin on demand) when
 its `dist/index.js` is missing or older than any file under
@@ -413,7 +413,7 @@ verifies the download against it, so that hash pins the payload too.
 `make update` converges both tools to the pinned versions; a pin changes only
 in `assets:` (see Asset manifest below).
 terminal-browser links its bundled agent skills into `~/.agents/skills`
-(expected unmanaged-skill WARNs in `make doctor`, tracked by its
+(installer-owned in `make doctor`, tracked by its
 `~/.local/state/terminal-browser/skills.links` receipt), and its editor setup
 is always skipped in lifecycle runs — run `terminal-browser setup` once
 manually if wanted.

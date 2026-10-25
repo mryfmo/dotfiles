@@ -21,6 +21,8 @@ SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 FAKE = ROOT / "tests/fixtures/hcom-seat/fake-tool.py"
 GATE_DRIVER = ROOT / "home/dot_agents/omp/hooks/tests/launch-driver.ts"
 BUN = shutil.which("bun")
+# A real executable binary (Mach-O on macOS, ELF on Linux), for tools hcom-seat requires to be no script.
+BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 
 
 GIT_IDENTITY = {
@@ -55,10 +57,14 @@ class HcomSeatTest(unittest.TestCase):
         bindir = root / "bin"
         bindir.mkdir()
         self.bindir = bindir
-        # srt plays the sandbox; bwrap, socat and rg only satisfy the Linux prerequisite check (U85). Copies, not
-        # links: hcom-seat runs srt and omp by their physical file, and the fake reads its role from its own name.
-        for tool in ("hcom", "herdr", "omp", "srt", "bwrap", "socat", "rg"):
+        # srt plays the sandbox (U85). Copies, not links: hcom-seat runs srt and omp by their physical file, and the
+        # fake reads its role from its own name.
+        for tool in ("hcom", "herdr", "omp", "srt"):
             shutil.copy(FAKE, bindir / tool)
+        # bwrap, socat and rg only satisfy the Linux prerequisite check, which requires binaries (srt runs them by
+        # path): copies of the system's `true` binary, so the check runs as written on every host.
+        for tool in ("bwrap", "socat", "rg"):
+            shutil.copy(BINARY_STAND_IN, bindir / tool)
         self.tools = (root / "home/.local/state/hcom-seat/tools").resolve()
         self.calls = root / "calls"
         self.calls.mkdir()
@@ -985,6 +991,23 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue((git_dir / "config.worktree").exists(), "the real launch creates it for its deny")
+
+    def test_the_linux_tool_stand_ins_are_binaries_as_the_check_requires(self):
+        """U85 round 11: the fixture's bwrap, socat and rg are real binaries, so the Linux binary check passes on an
+        Ubuntu runner for the right reason; a script in their place is refused there."""
+        for tool in ("bwrap", "socat", "rg"):
+            with self.subTest(tool=tool):
+                self.assertFalse((self.bindir / tool).is_symlink())
+                self.assertNotEqual((self.bindir / tool).read_bytes()[:2], b"#!", "hcom-seat refuses a script here")
+        if not sys.platform.startswith("linux"):
+            self.skipTest("the bwrap/socat/rg check runs on Linux only (the Ubuntu CI job)")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (self.bindir / "bwrap").unlink()
+        shutil.copy(FAKE, self.bindir / "bwrap")
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "worker-2")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("is a script; srt runs it by path, so it must be a binary", run.stderr)
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

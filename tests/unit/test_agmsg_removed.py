@@ -25,6 +25,7 @@ REMOVALS = (
     ".local/bin/common/herdr-agents",
 )
 
+
 class AgmsgRemovedTest(unittest.TestCase):
     def test_the_agmsg_orchestration_skill_is_gone_on_both_sides(self):
         for side in ("home/dot_agents/skills", "home/dot_claude/skills"):

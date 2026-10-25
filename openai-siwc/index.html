@@ -5192,7 +5192,7 @@
 </table>
 <p><code>stream: true</code> is forced too. The rewrite copies the payload and never mutates omp's object.</p>
 <h3 id="error-mapping">Error mapping<a class="headerlink" href="#error-mapping" title="Permanent link">&para;</a></h3>
-<p>The preview reports <code>subscription_sharing_usage_limit_exceeded</code> when the plan's shared usage is spent and <code>subscription_sharing_usage_unavailable</code> when plan usage is not available to the account (models-and-inference page, facts §4). The wire status is unmeasured. The extension adds no error code of its own: omp's classifier already handles both, and <code>tests/requests.test.ts</code> proves it through omp's real transport with a fake 403 and a fake 429 body.</p>
+<p>OpenAI's SIWC docs (<code>https://developers.openai.com/siwc/llms-full.txt</code>, "Errors and recovery", Structured Responses errors, read 2026-10-25) give each code its status and recovery. <code>subscription_sharing_user_not_eligible</code> (403) means "ChatGPT plan usage is unavailable for the selected user, workspace, or policy"; do not repeat the request. <code>subscription_sharing_usage_limit_exceeded</code> (429) says to "Pause new requests that use the user's ChatGPT plan" and warns "Do not assume the entire plan is empty or infer a reset time from this code alone; an app-specific limit can also apply". <code>subscription_sharing_usage_unavailable</code> (503) means "Usage availability could not be checked. Preserve credentials and retry later with bounded backoff"; it is not a spent or unavailable plan. The extension adds no error code of its own: omp's classifier already handles all three, and <code>tests/requests.test.ts</code> proves it through omp's real transport with fake 403, 429 and 503 bodies.</p>
 <table>
 <thead>
 <tr>
@@ -5204,7 +5204,7 @@
 </thead>
 <tbody>
 <tr>
-<td><code>subscription_sharing_usage_unavailable</code></td>
+<td><code>subscription_sharing_user_not_eligible</code></td>
 <td>HTTP 403</td>
 <td>One request, then an <code>error</code> event naming the code. <code>AIError.retriable</code> is false, so the session does not retry the turn.</td>
 <td><code>isTransientStatus</code> excludes 403 (<code>pi-ai/src/error/retryable.ts:20-22</code>); <code>isProviderRetryableError</code> treats every 4xx but 408/429 as terminal (<code>:44-49</code>).</td>
@@ -5215,9 +5215,20 @@
 <td>Classified <code>Flag.UsageLimit</code> (the code matches <code>usage.?limit</code>, <code>pi-ai/src/error/rate-limit.ts:337</code>), so <code>isProviderRetryableError</code> is false (<code>retryable.ts:46</code>) and the session hands it to omp's usage-limit recovery (wait for a reset within <code>retry.maxDelayMs</code>, or rotate to a sibling credential). The transport still sends 6 requests first.</td>
 <td>none reachable, see below</td>
 </tr>
+<tr>
+<td><code>subscription_sharing_usage_unavailable</code></td>
+<td>HTTP 503</td>
+<td>A transient failure: the transport sends 6 requests, then an <code>error</code> event naming the code, and <code>isProviderRetryableError</code> is true, so the session may retry the turn. This matches the docs' bounded backoff; credentials are kept.</td>
+<td>none needed</td>
+</tr>
 </tbody>
 </table>
 <p>The transport retry is the gap. <code>postOpenAIStream</code> sends through <code>fetchWithRetry</code> with 6 attempts (<code>pi-ai/src/utils/openai-http.ts:33</code>, <code>:100-117</code>), which retries every 429 unless the response carries a retry hint above 60 s or a proxy concurrency marker (<code>pi-utils/src/fetch-retry.ts:375-382</code>). The only caller gate, <code>shouldRetryResponse</code>, is built from omp-internal state (<code>openai-responses.ts:903-905</code>), and the <code>fetch</code> override reaches the transport only through <code>SimpleStreamOptions.fetch</code> (<code>pi-ai/src/types.ts:716-723</code>), which the session never sets for a built-in api. A <code>before_provider_request</code> hook sees only the payload, and <code>after_provider_response</code> fires only after a 2xx (<code>openai-responses.ts:914</code>, after <code>postOpenAIStream</code> has thrown on any other status). So on the built-in <code>openai-responses</code> transport no extension hook stops those 5 resends. With omp's default backoff they take about 15 s and spend nothing, because the server refuses each one. The custom-api candidate below would own the <code>fetch</code>; it is not taken, because it renames the session's <code>model.api</code> and so silently changes every omp branch keyed on <code>"openai-responses"</code> (<code>src/utils/tool-choice.ts:17-23</code>, <code>src/tools/think.ts:31-36</code>, <code>src/session/agent-session.ts:11043</code>, <code>:11090-11094</code>, <code>src/sdk.ts:1610-1612</code>). The test pins the 6 requests, so an omp release that adds a gate fails it.</p>
+<p>Operating rules that follow from the docs and the SIWC Terms (<code>https://openai.com/policies/sign-in-with-chatgpt-terms/</code>, read 2026-10-25):</p>
+<ul>
+<li>On <code>subscription_sharing_usage_limit_exceeded</code>, stop sending new requests on the profile and read ChatGPT <strong>Settings &gt; Usage</strong>, under <strong>App limits</strong> (help article <code>https://help.openai.com/en/articles/20001542</code>). Do not probe the route to learn whether the limit has reset: the article says "An app can reach its own limit even when your ChatGPT plan still has usage available" and "Signing in again or repeatedly retrying does not restore your usage".</li>
+<li>Keep one SIWC account per omp profile. omp's usage-limit recovery can rotate to a sibling credential of the same provider, and the Terms (§4) forbid enabling "Creating multiple accounts, splitting usage, rotating accounts, or otherwise bypassing usage limits". A second account stored under the same profile would let omp do exactly that.</li>
+</ul>
 <h2 id="synthesis-decision">Synthesis decision<a class="headerlink" href="#synthesis-decision" title="Permanent link">&para;</a></h2>
 <p>The architect skill's single-runner form was used, with the arena skipped by the brief. Two whole shapes were sketched. The base is the payload-hook shape (built-in <code>openai-responses</code> transport, compat, and a <code>before_provider_request</code> rewrite). The rejected candidate registered a custom <code>api</code> with <code>streamSimple</code>, wrapping pi-ai's <code>streamSimple</code> with its own <code>fetch</code>. It would own error mapping at the HTTP layer, but built-in api ids are reserved (<code>node_modules/@oh-my-pi/pi-ai/src/api-registry.ts:65-69</code>), so it needs a new api id and must re-target each model to <code>openai-responses</code> before delegating, which ties the extension to omp's internal model shape. U3b confirmed it is the only shape that reaches the transport's 429 retry, and kept it rejected: renaming the session's <code>model.api</code> changes more omp behaviour than five refused resends cost (Error mapping above).</p>
 <h2 id="tradeoffs-accepted">Tradeoffs accepted<a class="headerlink" href="#tradeoffs-accepted" title="Permanent link">&para;</a></h2>

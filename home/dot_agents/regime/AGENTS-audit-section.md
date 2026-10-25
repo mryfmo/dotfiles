@@ -3,6 +3,7 @@
 Standing review rules for the auditor. Every audit is one fresh-context, read-only run per head of a unit's pull request: step 4 of the `hcom-orchestration` skill runs `~/.local/bin/common/omp-run.sh --role audit`, which puts this file as it stands on `origin/main` before the prompt. Those are the auditor's rules; the head's own copy is part of the changeset under review and never binds its audit. When that route cannot run (for example the openai-siwc provider refuses with its usage limit), the orchestrator runs a fresh-context, read-only review of the same head on another route, under the same rules from `origin/main`, and the ledger row names that route. The program's standing orders are `.orchestration/orchestrate/<program>/preferences.md`; its records are `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md` beside it.
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
+- The audit run is isolated from its caller: no user skill, user `AGENTS.md` or other instruction file from the caller's `HOME` or `CODEX_HOME` reaches the auditor, either because the run gets a scratch `HOME` and `CODEX_HOME` or because every instruction discovery is switched off. A run that loaded one is no audit.
 - Cover:
   - correctness;
   - security, including injection, authentication/authorization, secret handling, unsafe deserialization, path traversal, and trust-boundary validation;

@@ -32,6 +32,7 @@ GOOD_SKILLS = {
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+from claude_plugin_fixture import install_reviewed
 
 
 def setUpModule() -> None:
@@ -1647,25 +1648,25 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_doctor_accepts_the_plugins_spark_enabled_at_their_declared_pins(self) -> None:
         # U91: spark-9e8d ran pyright-lsp (version 1.0.0) and frontend-design (commit-version d4226d062928) at
-        # user scope, enabled, without a pin. frontend-design carries a content pin, so its files are compared:
-        # the same files at that older commit-version pass, one changed byte or a symlink fails.
-        recorded = json.loads((ROOT / "scripts/plugin-pins.json").read_text())
-        self.assertRegex(recorded["claude"]["frontend-design@claude-plugins-official"]["pin"], r"^sha256:[0-9a-f]{64}$")
-        cache = self.target_root / ".claude/plugins/cache/claude-plugins-official"
-        (cache / "pyright-lsp/1.0.0").mkdir(parents=True)
-        skill = cache / "frontend-design/d4226d062928/skills/frontend-design/SKILL.md"
-        skill.parent.mkdir(parents=True)
-        skill.write_text("# Frontend Design\n")
-        pins = self.temp_dir / "spark-pins.json"
-        recorded["claude"]["frontend-design@claude-plugins-official"]["pin"] = self.module.records.content_sha256(
-            cache / "frontend-design/d4226d062928"
-        )
-        pins.write_text(json.dumps(recorded))
+        # user scope, enabled, without a pin. frontend-design carries a content pin over its files and its catalog
+        # entry in the installed marketplace clone: the reviewed pair at that older commit-version passes; one
+        # changed byte, an entry that adds runtime behaviour, or a symlink fails.
+        pins = ROOT / "scripts/plugin-pins.json"
+        frontend = "frontend-design@claude-plugins-official"
+        self.assertRegex(json.loads(pins.read_text())["claude"][frontend]["pin"], r"^sha256:[0-9a-f]{64}$")
+        copy = install_reviewed(self.target_root, frontend, "d4226d062928")
+        (self.target_root / ".claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0").mkdir(parents=True)
         installs = {
-            f"{name}@claude-plugins-official": [
-                {"scope": "user", "version": version, "installPath": str(cache / name / version)}
-            ]
-            for name, version in (("pyright-lsp", "1.0.0"), ("frontend-design", "d4226d062928"))
+            "pyright-lsp@claude-plugins-official": [
+                {
+                    "scope": "user",
+                    "version": "1.0.0",
+                    "installPath": str(
+                        self.target_root / ".claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0"
+                    ),
+                }
+            ],
+            frontend: [{"scope": "user", "version": "d4226d062928", "installPath": str(copy)}],
         }
         (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
             json.dumps({"version": 2, "plugins": installs})
@@ -1681,11 +1682,25 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             return [f for f in found if "pyright-lsp" in f or "frontend-design" in f]
 
         self.assertEqual([], findings())
-        skill.write_text("# Frontend Design!\n")
+        skill = copy / "skills/frontend-design/SKILL.md"
+        reviewed = skill.read_bytes()
+        skill.write_bytes(reviewed + b"!")
         [changed] = findings()
         self.assertFalse(self.module.is_warning(changed), changed)
         self.assertIn("installed at d4226d062928 (sha256:", changed)
-        skill.write_text("# Frontend Design\n")
+        skill.write_bytes(reviewed)
+        catalog = (
+            self.target_root / ".claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json"
+        )
+        original = catalog.read_text()
+        data = json.loads(original)
+        data["plugins"][0].update(strict=False, lspServers={"x": {"command": "x"}})
+        catalog.write_text(json.dumps(data))
+        [widened] = findings()
+        self.assertFalse(self.module.is_warning(widened), widened)
+        self.assertIn("installed at d4226d062928 (sha256:", widened)
+        catalog.write_text(original)
+        self.assertEqual([], findings())
         (skill.parent / "link").symlink_to(skill)
         [linked] = findings()
         self.assertFalse(self.module.is_warning(linked), linked)

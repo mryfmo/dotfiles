@@ -21,7 +21,7 @@ The watch reads api.github.com only, and only these four things:
   branch, so no release window applies); only an entry with `strict: false` whose directory listing holds no
   manifest directory has no plugin.json, and then its catalog version alone is read. A content pin (`sha256:...`, a Claude plugin with no version, U91) is
   compared with the content hash (scripts/pin_records.py content_digest, the definition make update and make doctor
-  use) of the plugin's directory as the marketplace serves it now: its git tree (recursive, never truncated) and
+  use) of the plugin's catalog entry and its directory as the marketplace serves them now: its git tree (recursive, never truncated) and
   each blob, read by the SHA this script took from that tree and checked against the blob's own git SHA-1.
 - retired-term: the retired-term lint (RETIRED_TERM_LINT, owned by U72) when this tree has it; each line it prints is
   a finding.
@@ -637,7 +637,8 @@ class Watch:
             if kind != "blob" or mode not in REGULAR_MODES:
                 raise tree.fail(f"{path} has type {kind!r} with mode {mode!r}, no git tree entry shape")
             files.append((path.encode(), self.blob(source_repo, sha)))
-        return [(place, pin_records.content_digest(files))], ""
+        # The catalog entry is part of what Claude Code loads (strict: false can define servers or hooks in it).
+        return [(place, pin_records.content_digest(files, item))], ""
 
     def blob(self, repo: str, sha: str) -> bytes:
         """A git blob's bytes, proven by its own git SHA-1."""

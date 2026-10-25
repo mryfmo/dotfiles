@@ -416,8 +416,9 @@ function claude_user_install() {
 
 #
 # @description Print what the user-scope installation of a Claude Code plugin is compared with its pin by
-#   (pin_records.claude_observed): its version for a version pin, the content hash of its installPath
-#   (pin_records.content_sha256) for a content pin, whatever commit its version names.
+#   (pin_records.claude_observed): its version for a version pin; for a content pin, the content digest of its
+#   installPath together with its catalog entry in the installed marketplace clone (pin_records.content_digest),
+#   whatever commit its version names.
 # @arg $1 string The JSON list claude_plugin_installs prints, holding a user-scope installation.
 # @arg $2 string The pin.
 # @exitcode 1 When there is no user-scope installation, or it cannot be read or hashed (a symlink or special

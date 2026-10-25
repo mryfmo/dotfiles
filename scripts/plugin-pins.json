@@ -6,7 +6,7 @@
     },
     "frontend-design@claude-plugins-official": {
       "marketplace": "anthropics/claude-plugins-official",
-      "pin": "sha256:ce5bda41d00150cd52bea577bc91f738dd86a68ac75efc3a6d512727ba82bd6c"
+      "pin": "sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0"
     },
     "ponytail@ponytail": {
       "marketplace": "DietrichGebert/ponytail",

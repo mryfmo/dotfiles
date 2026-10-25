@@ -926,7 +926,8 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
         if not users:
             findings.append(f"WARN: Claude Code plugin {plugin_id} is not installed (pin {pin.pin})")
             continue
-        # A content pin compares the installed files (pin_records.content_sha256), whatever commit the version names.
+        # A content pin compares the installed files and the clone's catalog entry (pin_records.content_digest),
+        # whatever commit the version names.
         try:
             observed = sorted(
                 {

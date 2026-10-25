@@ -57,6 +57,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from claude_plugin_fixture import CONTENT_VERSION, REVIEWED
 
+OFFICIAL_CLONE = REVIEWED / "marketplaces/claude-plugins-official"
+
 
 def setUpModule() -> None:
     isolate_agent_homes()
@@ -581,13 +583,19 @@ claude() {
 }
 """
 
-    def converge_listed(self, step, installs, enabled, markets=None, project=None, cwd=None, **flags):
+    def converge_listed(self, step, installs, enabled, markets=None, project=None, cwd=None, catalog=None, **flags):
         """Run STEP against the fake: INSTALLS {id: [{scope, version, projectPath?}]}, user ENABLED {id: bool},
         PROJECT {id: bool} as the enabledPlugins of a project directory (work/project), CWD "project" to run there."""
         work = Path(tempfile.mkdtemp(prefix="converge-listed-"))
         self.addCleanup(shutil.rmtree, work)
         home = work / "home"
         (home / ".claude/plugins").mkdir(parents=True)
+        # The installed marketplace clones a content pin reads its catalog entry from: the reviewed ones, or the
+        # CATALOG entries {marketplace: [entry, ...]} a test serves instead.
+        shutil.copytree(REVIEWED / "marketplaces", home / ".claude/plugins/marketplaces")
+        for name, entries in (catalog or {}).items():
+            clone = home / ".claude/plugins/marketplaces" / name / ".claude-plugin/marketplace.json"
+            clone.write_text(json.dumps({"name": name, "plugins": entries}))
         project_dir = work / "project"
         (project_dir / ".claude").mkdir(parents=True)
         (project_dir / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": project or {}}))
@@ -1000,7 +1008,15 @@ claude() {
     @staticmethod
     def content_hash(root: Path) -> str:
         return subprocess.run(
-            ["python3", "-I", str(ROOT / "scripts/pin_records.py"), "content-sha256", str(root)],
+            [
+                "python3",
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "content-sha256",
+                str(root),
+                str(OFFICIAL_CLONE),
+                "frontend-design",
+            ],
             text=True,
             capture_output=True,
             check=True,
@@ -1050,6 +1066,28 @@ claude() {
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn("is a symlink or special file", result.stderr)
         self.assertIs(False, state["user"][plugin_id])
+
+    def test_a_catalog_entry_that_adds_runtime_behaviour_moves_the_plugin_off_its_pin(self):
+        # Round-8 audit: with strict: false the catalog entry alone can define an LSP server, hooks or MCP servers,
+        # so the pin covers the entry the installed marketplace clone serves, not only the plugin directory.
+        plugin_id = "frontend-design@claude-plugins-official"
+        entry = json.loads((OFFICIAL_CLONE / ".claude-plugin/marketplace.json").read_text())["plugins"][0]
+        installs = {plugin_id: [{"scope": "user", "version": CONTENT_VERSION, "reviewed": True}]}
+        step = self.content_step(self.pin_of(plugin_id))
+        widened = {**entry, "strict": False, "lspServers": {"x": {"command": "x", "args": []}}}
+        result, calls, state = self.converge_listed(
+            step, installs, {plugin_id: True}, catalog={"claude-plugins-official": [widened]}
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertIn(f"not its pin {self.pin_of(plugin_id)}", result.stderr)
+        self.assertEqual(f"plugin disable {plugin_id} --scope user @neutral", calls[-1])
+        self.assertIs(False, state["user"][plugin_id])
+        # The reviewed entry with the same files is at its pin: nothing is called and it stays enabled.
+        result, calls, state = self.converge_listed(step, installs, {plugin_id: True})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertIs(True, state["user"][plugin_id])
 
     def test_a_content_hash_that_cannot_be_read_fails_the_step_before_any_update(self):
         # Round-3 audit: an unreadable installed copy used to trigger an update, and a later readable copy at the

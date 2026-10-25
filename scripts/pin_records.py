@@ -280,12 +280,30 @@ def content_pin(path: Path, entry: Any, where: str, agent: str) -> str:
     return pin
 
 
-def content_digest(files: Iterable[Tuple[bytes, bytes]]) -> str:
-    """The content pin of a set of regular files given as (relative POSIX path, bytes): `sha256:` and the hex SHA-256
-    over them in the byte order of their paths, each adding `<relative path> NUL <size> NUL <bytes>`. The one
-    definition: content_sha256 feeds it an installed copy, scripts/drift-watch.py the upstream directory's blobs.
-    A path whose first component is one of CLAUDE_CACHE_MARKERS is left out."""
+def canonical_entry(entry: Any) -> bytes:
+    """A marketplace catalog entry as canonical JSON: sorted keys, no whitespace, UTF-8, no NaN or Infinity."""
+    if not isinstance(entry, dict):
+        raise RecordError("marketplace.json", "(entry)", "a catalog entry must be a JSON object")
+    try:
+        return json.dumps(entry, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    except (ValueError, UnicodeEncodeError) as error:
+        raise RecordError("marketplace.json", "(entry)", f"has no canonical JSON form ({error})") from None
+
+
+def content_digest(files: Iterable[Tuple[bytes, bytes]], entry: Any) -> str:
+    """The content pin of a Claude Code plugin: what Claude Code loads for it, which is its catalog entry in the
+    marketplace's .claude-plugin/marketplace.json (with `strict: false` the entry alone may define hooks, commands,
+    MCP or LSP servers) and the regular files of its plugin directory, given as (relative POSIX path, bytes).
+
+    `sha256:` and the hex SHA-256 over, in this order: `catalog-entry NUL <size> NUL <canonical_entry(entry)>`, then
+    each file in the byte order of its path as `<relative path> NUL <size> NUL <bytes>`. The entry record always
+    comes first and every record carries its size, so the stream has one reading. The one definition: content_sha256
+    feeds it an installed copy and the entry from the installed marketplace clone, scripts/drift-watch.py the upstream
+    directory's blobs and the upstream catalog entry. A path whose first component is one of CLAUDE_CACHE_MARKERS is
+    left out."""
     digest = hashlib.sha256()
+    canonical = canonical_entry(entry)
+    digest.update(b"catalog-entry\0" + str(len(canonical)).encode() + b"\0" + canonical)
     for relative, data in sorted(files, key=lambda item: item[0]):
         if relative.split(b"/", 1)[0].decode("utf-8", "surrogateescape") in CLAUDE_CACHE_MARKERS:
             continue
@@ -293,8 +311,54 @@ def content_digest(files: Iterable[Tuple[bytes, bytes]]) -> str:
     return "sha256:" + digest.hexdigest()
 
 
-def content_sha256(root: Path) -> str:
-    """The content pin of a plugin directory (content_digest over its regular files).
+def unique_object(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"duplicate key in {keys}")
+    return dict(pairs)
+
+
+def refuse_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not JSON")
+
+
+def read_catalog_entry(marketplace_root: Path, plugin: str) -> Dict[str, Any]:
+    """PLUGIN's entry in the marketplace clone MARKETPLACE_ROOT (.claude-plugin/marketplace.json), read fd-relative:
+    the root is opened with O_DIRECTORY|O_NOFOLLOW, then .claude-plugin and marketplace.json below it without
+    following a symlink, the file regular and the same device and inode as its lstat. The JSON must have no duplicate
+    key and no NaN or Infinity, and the catalog must list PLUGIN exactly once."""
+    where = marketplace_root / ".claude-plugin/marketplace.json"
+    fds: List[int] = []
+    try:
+        try:
+            fds.append(os.open(marketplace_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+            fds.append(os.open(".claude-plugin", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fds[-1]))
+            status = os.stat("marketplace.json", dir_fd=fds[-1], follow_symlinks=False)
+            if not stat.S_ISREG(status.st_mode):
+                raise RecordError(where, "(file)", "is not a regular file")
+            fd = open_regular("marketplace.json", status, fds[-1])
+            if fd is None:
+                raise RecordError(where, "(file)", "changed while it was read")
+            with os.fdopen(fd, "rb") as handle:
+                raw = handle.read()
+        except OSError as error:
+            raise RecordError(where, "(file)", f"cannot read ({error})") from None
+    finally:
+        for opened in fds:
+            os.close(opened)
+    try:
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object, parse_constant=refuse_constant)
+    except ValueError as error:
+        raise RecordError(where, "(file)", f"not strict JSON: {error}") from None
+    plugins = field(where, data, "plugins", list)
+    matches = [item for item in plugins if isinstance(item, dict) and item.get("name") == plugin]
+    if len(matches) != 1:
+        raise RecordError(where, f"plugins[{plugin}]", f"is listed {len(matches)} times, not once")
+    return matches[0]
+
+
+def content_sha256(root: Path, entry: Any) -> str:
+    """The content pin (content_digest) of the plugin directory ROOT with its catalog entry ENTRY.
 
     File order on disk, mtimes, modes and empty directories do not count, and CLAUDE_CACHE_MARKERS at the top level
     are not read. The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry
@@ -356,7 +420,7 @@ def content_sha256(root: Path) -> str:
         walk(root_fd, "")
     finally:
         os.close(root_fd)
-    return content_digest(contents)
+    return content_digest(contents, entry)
 
 
 def open_regular(name: Any, status: os.stat_result, dir_fd: Optional[int] = None) -> Optional[int]:
@@ -380,8 +444,17 @@ def open_regular(name: Any, status: os.stat_result, dir_fd: Optional[int] = None
 
 
 def claude_observed(pin: str, version: str, install_path: str) -> str:
-    """What a Claude Code installation is compared with its pin by: its content for a content pin, else its version."""
-    return content_sha256(Path(install_path)) if CONTENT_PIN.fullmatch(pin) else version
+    """What a Claude Code installation is compared with its pin by: its content for a content pin, else its version.
+
+    installPath is <plugins>/cache/<marketplace>/<plugin>/<version> (load_claude_installs checks that shape), so the
+    catalog entry Claude Code loads beside the copy is read from the installed marketplace clone
+    <plugins>/marketplaces/<marketplace>."""
+    if not CONTENT_PIN.fullmatch(pin):
+        return version
+    copy = Path(install_path)
+    plugin, marketplace, plugins_dir = copy.parent.name, copy.parent.parent.name, copy.parents[3]
+    entry = read_catalog_entry(plugins_dir / "marketplaces" / marketplace, plugin)
+    return content_sha256(copy, entry)
 
 
 # --- ~/.claude/plugins/installed_plugins.json ----------------------------------------------------------------
@@ -773,7 +846,8 @@ def main(argv: List[str]) -> int:
         name = repository.split("/", 1)[1]
         return 0 if any(entry.split("/", 1)[1] == name for entry in pinned) else 1
     elif command == "content-sha256":
-        print(content_sha256(Path(args[0])))
+        # PLUGIN_DIR MARKETPLACE_ROOT PLUGIN: the content pin of a plugin directory with its entry in that clone.
+        print(content_sha256(Path(args[0]), read_catalog_entry(Path(args[1]), args[2])))
     elif command == "claude-observed":
         # PIN VERSION INSTALL_PATH: the value make update compares with the pin (claude_observed).
         print(claude_observed(args[0], args[1], args[2]))

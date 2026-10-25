@@ -620,7 +620,7 @@ class DriftWatchTest(unittest.TestCase):
         false entry with a version and no plugin.json), read through the tree and blob endpoints."""
         upstream = copy.deepcopy(CURRENT_UPSTREAM)
         upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"] += [
-            {"name": "frontend-design", "source": "./plugins/frontend-design"},
+            self.reviewed_entry(),
             {"name": "pyright-lsp", "source": "./plugins/pyright-lsp", "version": "1.0.0", "strict": False},
         ]
         upstream[f"{self.OFFICIAL}/contents/plugins"] = [
@@ -689,6 +689,23 @@ class DriftWatchTest(unittest.TestCase):
         status, report = self.content_watch(self.content_upstream(self.reviewed_files(), [link]))
         self.assertEqual(3, status, report)
         self.assertIn("skills/link is not a regular file (git mode 120000)", report)
+        # Round-8 audit: the catalog entry is part of what Claude Code loads, so an entry that adds an LSP server
+        # (strict: false) over the same files is a finding, never current.
+        upstream = self.content_upstream(self.reviewed_files())
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2].update(
+            strict=False, lspServers={"x": {"command": "x"}}
+        )
+        status, report = self.content_watch(upstream)
+        self.assertEqual(3, status, report)
+        self.assertEqual(
+            {("plugin-pin", "claude-plugins.frontend-design@claude-plugins-official")}, self.findings(report)
+        )
+
+    @staticmethod
+    def reviewed_entry() -> dict:
+        """frontend-design's reviewed catalog entry (tests/fixtures/claude-plugins/marketplaces), part of its pin."""
+        clone = ROOT / "tests/fixtures/claude-plugins/marketplaces/claude-plugins-official/.claude-plugin"
+        return json.loads((clone / "marketplace.json").read_text())["plugins"][0]
 
     def test_a_content_read_that_cannot_be_trusted_is_a_read_failure(self):
         files = self.reviewed_files()

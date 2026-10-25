@@ -1296,14 +1296,18 @@ assets:
       marketplace source takes a ref only as a branch or tag, not a commit (code.claude.com
       marketplace reference, marketplace sources), and anthropics/claude-plugins-official has no
       tags. Such a plugin is pinned by content instead: pin sha256:<hex>, the hash
-      scripts/pin_records.py content_sha256 takes over the installed copy's files, which make update
-      and make doctor compare in place of the version (equal at 58267944f921, d4226d062928 and the
-      seven other versions spark-9e8d cached on 2026-10-26). The reviewed tree is kept at
-      tests/fixtures/claude-plugins/<plugin>; moving such a pin replaces it with the new reviewed tree.
+      scripts/pin_records.py content_digest takes over what Claude Code loads for it, its catalog
+      entry in the marketplace's .claude-plugin/marketplace.json (which can itself define hooks or
+      servers) and the files of its plugin directory. make update and make doctor compare it, from
+      the installed copy and the installed marketplace clone, in place of the version, and make
+      drift from the upstream catalog and tree (equal at 58267944f921, d4226d062928 and the seven
+      other versions spark-9e8d cached, and upstream, on 2026-10-26). The reviewed tree and entry
+      are kept at tests/fixtures/claude-plugins/<plugin> and
+      tests/fixtures/claude-plugins/marketplaces/<marketplace>; moving such a pin replaces both.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
-      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:ce5bda41d00150cd52bea577bc91f738dd86a68ac75efc3a6d512727ba82bd6c'}
+      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
       ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}

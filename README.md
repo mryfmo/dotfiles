@@ -841,10 +841,9 @@ the `gh pr merge` command text (a speed bump, not a boundary); its merge path is
 refuses unless the newest `ledger.tsv` row for the full head sha is `correct`
 and every check on that head passed, then runs
 `gh pr merge <pr> --squash --match-head-commit <head sha>`, so GitHub refuses
-the merge if the head moved after the checks. Each audit round is one
-`~/.local/bin/common/pr-audit.sh` run, which writes the round's verdict file
-and ledger row (regime-cutover U71). GitHub itself enforces none of this until
-the ruleset requires the `regime` check (gate G10).
+the merge if the head moved after the checks (regime-cutover U71). GitHub
+itself enforces none of this until the ruleset requires the `regime` check
+(gate G10).
 
 Codex worker seats are denied merge commands natively. The Codex execpolicy
 forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or

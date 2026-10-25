@@ -89,9 +89,8 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}pr-close.sh --from-table t.md --only 378",
     f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
-    # U71: the merge lever (a `correct` ledger row for the head and green CI) and the audit round.
+    # U71: the merge lever (a `correct` ledger row for the head and green CI).
     f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
-    f"{LEVER}pr-audit.sh 480 --unit U71 --records .orchestration/orchestrate/regime-cutover --context /tmp/ctx.md",
 ]
 BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
 # A verdict line, the text the audit seat once sent on the bus; the audit run now has no bus reply in any form (U58).
@@ -135,7 +134,6 @@ TABLE = {
         ("bash", "gh pr merge 1 --squash --auto", "deny"),
         ("bash", f"{LEVER}pr-merge.sh 480 --records r && gh pr merge 1", "deny"),
         ("bash", "scripts/orchestrator/pr-merge.sh 480 --records r", "deny"),
-        ("bash", "/Users/u/.local/bin/common/pr-audit.sh 480 --unit U1", "deny"),
         ("bash", f"{PUSH_RECIPE} b", "deny"),
         ("bash", "git push origin b", "deny"),
         ("bash", "gh pr create --title t --body b", "deny"),
@@ -425,7 +423,6 @@ class OmpSeatPolicyTest(unittest.TestCase):
             allows,
             [
                 "~/.local/bin/common/pr-merge.sh *",
-                "~/.local/bin/common/pr-audit.sh *",
                 "~/.local/bin/common/pr-thread-reply.sh *",
                 "~/.local/bin/common/pr-thread-resolve.sh *",
                 "~/.local/bin/common/pr-update-branch.sh *",

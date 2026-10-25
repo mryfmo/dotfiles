@@ -32,7 +32,6 @@ LEVERS = (
     "pr-threads-check.sh",
     "records-sync.sh",
     "pr-merge.sh",
-    "pr-audit.sh",
     "omp-run.sh",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"

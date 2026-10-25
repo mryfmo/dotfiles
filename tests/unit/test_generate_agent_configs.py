@@ -216,7 +216,6 @@ LEVERS = (
     "hcom-dispatch",
     "hcom-seat",
     "omp-run.sh",
-    "pr-audit.sh",
     "pr-body-edit.sh",
     "pr-close.sh",
     "pr-merge.sh",

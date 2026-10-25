@@ -1155,7 +1155,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.validate_omp_policies(manifest, policies)
         # U71 audit round 3 (P2): a raw merge allow in audit.yml, or any other policy file, is refused too.
         for role in sorted(policies):
-            for merge in ("gh pr merge 541 --squash --match-head-commit *", "gh api repos/o/r/pulls/541/merge *"):
+            for merge in (
+                "gh pr merge 541 --squash --match-head-commit *",
+                "gh api repos/o/r/pulls/541/merge *",
+                # U71 audit round 8 (P2): GitHub's merge-a-branch endpoint, by gh and by any other client
+                "gh api repos/o/r/merges *",
+                "gh api -X POST repos/*/merges*",
+                "curl -X POST https://api.github.com/repos/o/r/merges *",
+            ):
                 with self.subTest(role=role, merge=merge):
                     injected = json.loads(json.dumps(policies))
                     injected[role]["bash"]["patterns"].insert(0, {"match": merge, "approval": "allow"})

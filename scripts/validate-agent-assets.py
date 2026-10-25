@@ -419,11 +419,13 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
 # `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
 # read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table. In every policy
 # file under home/dot_agents/omp/policies, found by glob so a new or renamed file is covered too, an allow whose
-# pattern names a GitHub merge (`gh … merge`: `gh pr merge`, `gh api …/merge`) is refused, since the orchestrator
-# merges only through pr-merge.sh (U71).
+# pattern names a GitHub merge (`gh pr merge`, an API `…/pulls/<n>/merge` or `…/merges` path) is refused, since the
+# orchestrator merges only through pr-merge.sh (U71).
 OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
-OMP_RAW_MERGE_ALLOW = re.compile(r"\bgh\b.*\bmerge\b")
+# A merge in any spelling the API or gh offers: a `merge` or `merges` path segment (`repos/o/r/pulls/1/merge`,
+# `repos/o/r/merges`, through `gh api`, curl or anything else), or `merge`/`merges` after `gh` (`gh pr merge`).
+OMP_RAW_MERGE_ALLOW = re.compile(r"/merges?\b|\bgh\b.*\bmerges?\b")
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 

@@ -325,23 +325,165 @@ function run_mise_tool_command() {
 }
 
 #
+# @description Decide whether npm's own release-age window (min-release-age, ~/.npmrc) lets npm install one exact
+#   version again, from the window npm reports and the version's publish time in the registry. The rebuild of an
+#   installed version asks this first, so a version younger than the window is skipped before its install is moved,
+#   instead of failing in npm (ETARGET) after it. Every read is strict: an answer that is not exactly what npm prints
+#   is "cannot tell", never "old enough". The publish time is compared at its full precision (fractional seconds to
+#   the microsecond), and a version counts as old enough only from 60 seconds after the window ends, so a clock that
+#   differs from npm's by less than that never lets the rebuild move an install npm then refuses.
+# @arg $1 string The version mise reports as installed: one SemVer 2.0.0 version without build metadata.
+# @arg $2 string `npm config get min-release-age` output: a number of days, or `null` when npm sets no window.
+# @arg $3 number Optional: the current time in Unix seconds, for a frozen clock; the system clock when absent.
+# @stdin `npm view --json <package> time`: the registry's map of version to publish time.
+# @stdout The reason, when the version is not old enough or the answer cannot be told.
+# @exitcode 0 The version is at least min-release-age days and 60 seconds old, or npm sets no window.
+# @exitcode 1 The version is younger than that.
+# @exitcode 2 The version, the window, the publish time or the given time cannot be read.
+#
+function npm_release_age_verdict() {
+    # The program is read into a variable, so stdin stays npm view's answer; read -d '' ends with status 1 at the end
+    # of the here-document by design, so an empty program is the failure checked. (A here-document inside $(...)
+    # breaks bash 3.2, the /bin/bash of macOS.)
+    local code=""
+    IFS= read -r -d '' code << 'PY' || [ -n "${code}" ] || return 2
+import datetime
+import json
+import re
+import sys
+
+version, age, *clock = sys.argv[1:]
+# Past the end of npm's window by this much before a version counts as old enough: clocks differ.
+MARGIN = datetime.timedelta(seconds=60)
+# The SemVer 2.0.0 regular expression, verbatim from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+# (ASCII digits only; fullmatch, so no trailing newline). npm reads anything else, such as 20.0.0-a..b, as a tag.
+SEMVER = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",
+    re.ASCII,
+)
+# The registry's publish times, as npm view prints them: UTC with optional fractional seconds.
+PUBLISHED = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z", re.ASCII)
+
+
+def cannot_tell(reason):
+    print(reason)
+    sys.exit(2)
+
+
+def microseconds(fraction):
+    """A decimal fraction of a second in whole microseconds, rounded up, so a time is never read as earlier."""
+    nanoseconds = int((fraction or "").ljust(9, "0"))
+    return -(-nanoseconds // 1000)
+
+
+exact = SEMVER.fullmatch(version)
+# npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.
+if exact is None or exact.group(5) is not None:
+    cannot_tell(f"mise reports {version!r}, not one exact version")
+# timezone.utc, not datetime.UTC: macOS's /usr/bin/python3 is 3.9.
+epoch = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+if not clock:
+    now = datetime.datetime.now(datetime.timezone.utc)
+elif len(clock) == 1 and (given := re.fullmatch(r"(0|[1-9]\d{0,11})(?:\.(\d{1,6}))?", clock[0], re.ASCII)):
+    now = epoch + datetime.timedelta(seconds=int(given[1]), microseconds=microseconds(given[2]))
+else:
+    cannot_tell(f"the given time {clock!r} is not one number of Unix seconds")
+if age == "null":
+    sys.exit(0)
+if not re.fullmatch(r"(?:0|[1-9]\d{0,5})(?:\.\d{1,6})?", age, re.ASCII):
+    cannot_tell(f"npm config get min-release-age printed {age!r}, not a number of days")
+try:
+    times = json.load(sys.stdin)
+except ValueError:
+    cannot_tell("npm view printed no JSON publish times")
+published = times.get(version) if isinstance(times, dict) else None
+match = PUBLISHED.fullmatch(published) if isinstance(published, str) else None
+if match is None:
+    cannot_tell(f"npm view lists no publish time for {version}")
+try:
+    when = datetime.datetime(*map(int, match.groups()[:6]), tzinfo=datetime.timezone.utc)
+except ValueError:
+    cannot_tell(f"npm view lists {published!r} for {version}, not a date")
+# Full precision: 2026-10-23T21:20:46.540Z is 540 ms later than 21:20:46, and npm compares the whole value.
+when += datetime.timedelta(microseconds=microseconds(match[7]))
+clears = when + datetime.timedelta(days=float(age)) + MARGIN
+if now < clears:
+    print(
+        f"{version} was published {when:%Y-%m-%dT%H:%M:%S.%fZ}, younger than npm's min-release-age of {age} days"
+        f" and a 60-second margin; it can be rebuilt from {clears:%Y-%m-%dT%H:%M:%S.%fZ}"
+    )
+    sys.exit(1)
+PY
+    python3 -I -c "${code}" "$@"
+}
+
+#
+# @description Report that one npm: tool keeps its previous install instead of being rebuilt on the current node.
+# @arg $1 string mise npm tool name.
+# @arg $2 string The reason.
+# @stderr One skip line.
+#
+function npm_rebuild_skipped() {
+    printf 'skip: %s is not rebuilt on the current node (%s); its previous install stays, and the next make update tries again\n' "$1" "$2" >&2
+}
+
+#
 # @description Rebuild one npm: tool on the current node, keeping its working install until the new one succeeds.
 #   mise install --force would delete the install before downloading its
 #   replacement, so a rebuild without a network would leave the tool missing.
+#   The rebuild reinstalls the exact version already installed, under npm's own min-release-age like every other
+#   install: no package is exempt from it. npm refuses a version younger than that window (ETARGET), although the
+#   host already runs it, so the rebuild first asks npm for the window and the version's publish time
+#   (npm_release_age_verdict) and skips a version that is younger, or whose age it cannot tell, before anything
+#   moves. An install npm still refuses (a dependency younger than the window) restores the previous install.
 # @arg $1 string mise npm tool name, for example npm:ccusage.
+# @stderr A skip line naming the reason when the tool is not rebuilt.
+# @exitcode 1 When the tool was not rebuilt.
 #
 function rebuild_mise_npm_tool() {
     local mise_tool="$1"
-    local version install_dir backup
+    local version install_dir backup min_age times verdict
 
-    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || return 1
-    install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || return 1
+    version="$(run_mise_with_isolated_git_config current "${mise_tool}")" || {
+        npm_rebuild_skipped "${mise_tool}" "mise cannot name its current version"
+        return 1
+    }
+    install_dir="$(run_mise_with_isolated_git_config where "${mise_tool}")" || {
+        npm_rebuild_skipped "${mise_tool}" "mise cannot name its install directory"
+        return 1
+    }
     # Only an existing absolute install directory is moved or removed.
-    [[ -n "${version}" && "${install_dir}" == /* ]] || return 1
+    [[ -n "${version}" && "${install_dir}" == /* ]] || { # lint-comparisons: allow an absolute-path prefix test
+        npm_rebuild_skipped "${mise_tool}" "no version or no absolute install directory"
+        return 1
+    }
     backup="${install_dir}.before-node-rebuild"
     # restore_interrupted_npm_rebuilds put any leftover backup back; never move an install into one.
-    [[ -d "${install_dir}" && ! -e "${backup}" ]] || return 1
-    mv "${install_dir}" "${backup}" || return 1
+    [[ -d "${install_dir}" && ! -e "${backup}" ]] || {
+        npm_rebuild_skipped "${mise_tool}" "${install_dir} is missing or a backup of it exists"
+        return 1
+    }
+    # Decided before anything moves, with the npm that mise's npm backend runs (the current node's).
+    min_age="$(run_mise_with_isolated_git_config exec -- npm config get min-release-age)" || {
+        npm_rebuild_skipped "${mise_tool}" "npm config get min-release-age failed"
+        return 1
+    }
+    times="$(run_mise_with_isolated_git_config exec -- npm view --json "${mise_tool#npm:}" time)" || {
+        npm_rebuild_skipped "${mise_tool}" "npm view cannot read the publish time of ${version}"
+        return 1
+    }
+    local age_status=0
+    verdict="$(npm_release_age_verdict "${version}" "${min_age}" <<< "${times}")" || age_status=$?
+    if [ "${age_status}" -ne 0 ]; then
+        npm_rebuild_skipped "${mise_tool}" "${verdict:-its release age cannot be told}"
+        return 1
+    fi
+    mv "${install_dir}" "${backup}" || {
+        npm_rebuild_skipped "${mise_tool}" "${install_dir} cannot be moved aside"
+        return 1
+    }
     # Until the new install succeeds, an interruption or exit puts the working install back.
     local restore
     restore="$(printf 'restore_npm_install %q %q' "${install_dir}" "${backup}")"
@@ -357,12 +499,16 @@ function rebuild_mise_npm_tool() {
         # install; the dot keeps a leftover out of mise's installed versions.
         local discard="${install_dir%/*}/.${install_dir##*/}.discarded-after-rebuild"
         rm -rf "${discard}"
-        mv "${backup}" "${discard}" || return 1
+        mv "${backup}" "${discard}" || {
+            printf 'warning: %s was rebuilt, but its previous install %s cannot be set aside\n' "${mise_tool}" "${backup}" >&2
+            return 1
+        }
         rm -rf "${discard}" || printf 'warning: could not delete %s; nothing uses it\n' "${discard}" >&2
         return 0
     fi
     trap - INT TERM EXIT
-    restore_npm_install "${install_dir}" "${backup}"
+    restore_npm_install "${install_dir}" "${backup}" &&
+        npm_rebuild_skipped "${mise_tool}" "npm refused or could not fetch ${mise_tool#npm:}@${version}, its error is above; a dependency younger than npm's min-release-age is still refused"
     return 1
 }
 
@@ -399,7 +545,8 @@ function restore_npm_install() {
 }
 
 #
-# @description Rebuild the current npm: tools so they run on the current node.
+# @description Rebuild the current npm: tools so they run on the current node; each one not rebuilt says why.
+# @exitcode 1 When the tools cannot be listed or at least one was not rebuilt.
 #
 function reinstall_mise_npm_tools() {
     local mise_tool
@@ -409,10 +556,7 @@ function reinstall_mise_npm_tools() {
     mise_tools="$(current_mise_tools)" || return 1
     while IFS= read -r mise_tool; do
         [[ "${mise_tool}" == npm:* ]] || continue
-        if ! rebuild_mise_npm_tool "${mise_tool}"; then
-            printf 'warning: rebuilding %s on the current node failed; its previous install stays; continuing\n' "${mise_tool}" >&2
-            failed=1
-        fi
+        rebuild_mise_npm_tool "${mise_tool}" || failed=1
     done <<< "${mise_tools}"
 
     return "${failed}"

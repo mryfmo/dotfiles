@@ -383,6 +383,24 @@ main
             packages = re.search(pattern, text, re.MULTILINE | re.DOTALL)
             self.assertIn("cmake", packages[1].split(), installer)
 
+    def test_no_package_is_exempt_from_the_npm_release_age_window(self):
+        # U89: npm matches min-release-age-exclude by package name, so any name it exempts also reaches versions no
+        # check saw (three audit rounds on PR #561). No tracked file sets or documents that exemption; the records
+        # under .orchestration/ and these tests only name it.
+        tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
+        setting = re.compile(r"min[-_]release[-_]age[-_]exclude", re.IGNORECASE)
+        hits = []
+        for name in tracked.decode().split("\0"):
+            path = ROOT / name
+            if not name or name.startswith(("tests/", ".orchestration/")) or not path.is_file():
+                continue
+            try:
+                text = path.read_text()
+            except UnicodeDecodeError:
+                continue
+            hits += [name for line in text.splitlines() if setting.search(line)]
+        self.assertEqual([], hits)
+
     def test_mise_tools_track_latest_behind_the_cooldown(self):
         text = (ROOT / "home/dot_mise/config.toml").read_text()
         config = tomllib.loads(text)

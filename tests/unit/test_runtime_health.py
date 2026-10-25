@@ -1160,23 +1160,31 @@ EOF
         }
         (Path(env["CCUSAGE_DIR"]) / "original").parent.mkdir(parents=True)
         (Path(env["CCUSAGE_DIR"]) / "original").touch()
-        # The installed copy, as npm lays out a global install under mise's prefix: one platform package of the same
-        # release (pinned to the exact version), one of another version and one range, which the rebuild must tell apart.
-        package_json = Path(env["CCUSAGE_DIR"]) / "lib/node_modules/ccusage/package.json"
-        package_json.parent.mkdir(parents=True)
-        package_json.write_text(
-            json.dumps(
+        # The installed copy, as npm lays out a global install under mise's prefix. Of its optional dependencies only
+        # linux-x64 is the same release and installed (nested, as npm puts a platform binary); darwin-arm64 is the same
+        # release but not installed here, linux-arm64 another version and fsevents a range. The rebuild must tell them apart.
+        modules = Path(env["CCUSAGE_DIR"]) / "lib/node_modules"
+        for path, manifest in (
+            (
+                "ccusage",
                 {
                     "name": "ccusage",
                     "version": "20.0.0",
                     "optionalDependencies": {
                         "@ccusage/ccusage-linux-x64": "20.0.0",
+                        "@ccusage/ccusage-darwin-arm64": "20.0.0",
                         "@ccusage/ccusage-linux-arm64": "20.0.1",
                         "fsevents": "~2.3.3",
                     },
-                }
-            )
-        )
+                },
+            ),
+            (
+                "ccusage/node_modules/@ccusage/ccusage-linux-x64",
+                {"name": "@ccusage/ccusage-linux-x64", "version": "20.0.0"},
+            ),
+        ):
+            (modules / path).mkdir(parents=True)
+            (modules / path / "package.json").write_text(json.dumps(manifest))
         # A GitHub Actions runner makes the script skip every phase; these tests stand for a host.
         for name in ("MISE_CONFIG_DIR", "MISE_CEILING_PATHS", "XDG_CONFIG_HOME", "GITHUB_ACTIONS", "RUNNER_TEMP"):
             env.pop(name, None)

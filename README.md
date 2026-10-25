@@ -233,8 +233,9 @@ tool in place), and then runs `mise install` once more. The rebuild asks npm for
 the exact version already installed, which npm's window would refuse while that
 version is younger than three days; for that one install only, it sets npm's
 `min-release-age-exclude` (npm 11.17.0 or later) to the package and the platform
-packages its installed `package.json` pins to the same version, so the release
-already on the host comes back while every other dependency still resolves
+packages its installed `package.json` pins to the same version and that are
+installed with it, so the release already on the host comes back while every
+other dependency still resolves
 under the window. A tool whose installed copy does not name that exact version,
 an older npm, or an install npm still refuses is skipped with the reason on a
 `skip:` line, and its previous install stays. The marker is written only after

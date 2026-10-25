@@ -327,16 +327,17 @@ function run_mise_tool_command() {
 #
 # @description Print the npm package names a rebuild of one installed npm: tool may take past npm's own release-age
 #   window (min-release-age in ~/.npmrc), one per line: the package itself and each optional dependency its installed
-#   package.json pins to exactly the installed version (the platform binaries released with it, such as
-#   @anthropic-ai/claude-code-darwin-arm64). Those are the bytes already on the host; every other dependency keeps
-#   the window. The installed copy is read strictly: it must be <install dir>/lib/node_modules/<package>/package.json
-#   naming that package at that exact version.
+#   package.json pins to exactly the installed version and that is installed at that version beside it (the platform
+#   binary released with it, such as @anthropic-ai/claude-code-darwin-arm64). Those are the releases already on the
+#   host; every other dependency keeps the window. The installed copy is read strictly: it must be
+#   <install dir>/lib/node_modules/<package>/package.json naming that package at that exact version.
 # @arg $1 string npm package name, for example @anthropic-ai/claude-code.
 # @arg $2 string The version mise reports as installed.
 # @arg $3 path The tool's install directory.
 # @stdout One package name per line.
 # @stderr The reason when the installed copy does not prove that exact version.
-# @exitcode 1 When the version is not one exact version or the installed copy cannot be read or names another one.
+# @exitcode 1 When the version is not one exact version, or an installed package.json cannot be read or names
+#   another package or version.
 #
 function npm_rebuild_exclusions() {
     python3 -I - "$@" << 'PY'
@@ -352,20 +353,36 @@ if not NAME.fullmatch(package):
     sys.exit(f"{package!r} is not an npm package name")
 if not VERSION.fullmatch(version):
     sys.exit(f"mise reports {version!r}, not one exact version")
-path = f"{install_dir}/lib/node_modules/{package}/package.json"
-try:
-    with open(path, encoding="utf-8") as handle:
-        manifest = json.load(handle)
-except (OSError, ValueError) as error:
-    sys.exit(f"cannot read the installed {path}: {error}")
-if not isinstance(manifest, dict) or manifest.get("name") != package or manifest.get("version") != version:
-    sys.exit(f"{path} does not name {package} at {version}")
+modules = f"{install_dir}/lib/node_modules"
+
+
+def installed(path, name):
+    """The package.json at path, which must name name at version; None only when the file is absent."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        sys.exit(f"cannot read the installed {path}: {error}")
+    if not isinstance(manifest, dict) or manifest.get("name") != name or manifest.get("version") != version:
+        sys.exit(f"{path} does not name {name} at {version}")
+    return manifest
+
+
+manifest = installed(f"{modules}/{package}/package.json", package)
+if manifest is None:
+    sys.exit(f"{modules}/{package}/package.json is missing")
 optional = manifest.get("optionalDependencies", {})
 if not isinstance(optional, dict):
-    sys.exit(f"{path}: optionalDependencies is not an object")
+    sys.exit(f"{modules}/{package}/package.json: optionalDependencies is not an object")
 names = [package]
 for name, spec in optional.items():
-    if spec == version and NAME.fullmatch(name) and name not in names:
+    if spec != version or not NAME.fullmatch(name) or name in names:
+        continue
+    # npm nests the platform package under the package or hoists it beside it.
+    nested = installed(f"{modules}/{package}/node_modules/{name}/package.json", name)
+    if nested is not None or installed(f"{modules}/{name}/package.json", name) is not None:
         names.append(name)
 print("\n".join(names))
 PY

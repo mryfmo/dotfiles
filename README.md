@@ -507,14 +507,18 @@ Bash calls may write only the working directory, the session `$TMPDIR`, and
 followed by `claude.sandbox.filesystem.extra_allow_write`: the uv cache
 (`~/.cache/uv`, so `uv run` targets such as `make unit-test` work from
 sandboxed Bash), the hcom stores and the omp seat worktrees, plus mise's cache
-on macOS. Nothing on `PATH` and no trust state is writable:
-`validate-agent-assets.py` refuses a write root (Claude `allowWrite`, the
-Codex `writable_roots` it shares, Claude `additionalDirectories`) that, after
-`~`, `$HOME`, `..` and trailing slashes are normalised, is, lies under or
-contains `~/.local/bin`, `~/.local/share/uv` (the uv tools, among them the
-`hcom` binary), `~/.local/share/mise` or `~/.local/state/mise` (mise's
-trusted-configs); `/`, `~` and `~/.local` are refused for that reason.
-Sandboxed `uv run` and `mise exec` work without them; in a
+on macOS. Every write root (Claude `allowWrite`, the Codex `writable_roots` it
+shares, Claude `additionalDirectories`) must be byte-identical to an entry of
+the exact allowlist `SANDBOX_WRITE_ROOTS` in `validate-agent-assets.py`
+(`~/.cache/uv`, `~/.local/state/hcom-regime`, `~/.local/state/hcom`,
+`~/.local/state/omp-seats`, and `~/Library/Caches/mise` on macOS only). No
+spelling is normalised: a case variant, a `..` route, another home anchor or a
+trailing slash is refused because it is not on the list. Nothing on `PATH`
+(`~/.local/bin`, the uv tools with the `hcom` binary, mise's installs) and no
+trust state (mise's trusted-configs) is on it. Adding a root means changing
+that list, a trust-boundary change reviewed as such.
+Sandboxed `uv run` and `mise exec` work without write access to
+`~/.local/share/uv` or `~/.local/state/mise`; in a
 checkout mise has not seen yet, mise prints `mise WARN tracking config:
 failed to ln -sf …` and carries on. `uv tool install`, `uv python install`
 and `mise trust` fail inside the sandbox; run them in a terminal.

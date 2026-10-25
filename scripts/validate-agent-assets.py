@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections.abc import Iterable
 from functools import cache
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 import tomllib
@@ -284,74 +284,37 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
 
 
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
-# Paths a sandboxed command must never write (U68): the directories holding executables on PATH (the uv tools, among
-# them the hcom binary, mise's installs and shims, ~/.local/bin) and mise's trusted-configs state, all of which a later
-# unsandboxed run would execute or trust. Every write root the manifest renders (Claude allowWrite, which includes
-# the Codex writable_roots, the Codex writable_roots themselves, Claude additionalDirectories) is refused when it is
-# one of them, lies under one, or contains one (`/`, `~`, `~/.local`), compared after normalisation.
-SANDBOX_WRITE_FORBIDDEN = ("~/.local/bin", "~/.local/share/uv", "~/.local/share/mise", "~/.local/state/mise")
-HOME_ANCHORS = ("{{ .chezmoi.homeDir }}", "${HOME}", "$HOME", "~")
-# A home token expands to this stand-in, itself a `/home/<name>` path, so `..` resolves against a real home depth:
-# `~/../<user>/...` lands in another home, which is mapped back to `/HOME` like any other.
-SYNTHETIC_HOME = "/home/home-anchor"
-# A home itself and the directories above every home contain the forbidden paths of some user.
-HOME_PARENTS = frozenset(PurePosixPath(path) for path in ("/", "/HOME", "/Users", "/home", "/var"))
+# The only directories a sandboxed command may write beyond the working directory and its session TMPDIR (U68): an
+# exact allowlist, compared byte for byte, for every write-root list the manifest renders (Claude allowWrite, which
+# includes the Codex writable_roots, the Codex writable_roots themselves, Claude additionalDirectories). No spelling
+# is normalised, so a case variant, a `..` route, a symlink or another home anchor is refused because it is not on the
+# list, not because it was recognised as dangerous. Adding a root is a change to this list, reviewed as a
+# trust-boundary change; none may hold an executable on PATH (~/.local/bin, the uv tools, mise's installs) or state an
+# unsandboxed run trusts (mise's trusted-configs).
+SANDBOX_WRITE_ROOTS = (
+    # The uv cache: every `uv run` target needs it writable (T39 live E2E leg 1).
+    "~/.cache/uv",
+    # The hcom stores: the dotfiles program's store until its one-time move, and the derived per-repository stores.
+    "~/.local/state/hcom-regime",
+    "~/.local/state/hcom",
+    # The omp seat worktrees, which `hcom-seat worker` creates and reuses.
+    "~/.local/state/omp-seats",
+)
+# mise's macOS cache directory; Linux keeps mise's cache under ~/.cache/mise, which is not listed.
+DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
 
 
-def canonical_write_root(path: str) -> PurePosixPath:
-    """Return `path` absolute and normalised, with any home directory spelled `/HOME` (U68).
-
-    `~`, `$HOME`, `${HOME}` and `{{ .chezmoi.homeDir }}` first expand to an absolute home (`SYNTHETIC_HOME`), then
-    `..`, `.`, repeated and trailing slashes are folded lexically on that absolute path by `posixpath.normpath`, and
-    only then is a home directory (`/Users/<name>`, `/home/<name>`, `/root`, `/var/root`, this host's own home)
-    spelled `/HOME`. Folding before mapping keeps `~/../<user>/.local/bin` from escaping the comparison.
-    """
-    text = path.strip()
-    for anchor in HOME_ANCHORS:
-        # The anchors are template and shell tokens, not paths, so they are matched as text.
-        if text == anchor or text.startswith(anchor + "/"):  # lint-comparisons: allow template token text
-            text = SYNTHETIC_HOME + text[len(anchor) :]
-            break
-    canonical = PurePosixPath(posixpath.normpath(re.sub(r"^/+", "/", text)))
-    home = PurePosixPath(posixpath.normpath(str(Path.home())))
-    parts = canonical.parts
-    if canonical.is_relative_to(home):
-        return PurePosixPath("/HOME", canonical.relative_to(home))
-    if len(parts) >= 3 and parts[1] in {"Users", "home"}:
-        return PurePosixPath("/HOME", *parts[3:])
-    for root in (PurePosixPath("/root"), PurePosixPath("/var/root")):
-        if canonical.is_relative_to(root):
-            return PurePosixPath("/HOME", canonical.relative_to(root))
-    return canonical
-
-
-def validate_write_roots(roots: Any, label: str) -> None:
-    """Refuse a write root that is not an absolute or home path without globs, or that reaches a forbidden path."""
+def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None:
+    """Refuse a write root that is not byte-identical to an allowlisted spelling for `os_name` (U68)."""
     if not isinstance(roots, list):
         fail(f"{label} must be a list: {roots!r}")
-    anchored = ("/", *(anchor + "/" for anchor in HOME_ANCHORS))
-    # The form check reads the settings text as written (an anchor token, a glob character), before normalisation.
-    invalid = []
-    for root in roots:
-        text = root.strip() if isinstance(root, str) else None
-        token = text in HOME_ANCHORS  # lint-comparisons: allow settings text
-        rooted = text is not None and text.startswith(anchored)  # lint-comparisons: allow settings text
-        anchored_text = token or rooted
-        if not anchored_text or any(char in text for char in "*?[]"):  # lint-comparisons: allow settings text
-            invalid.append(root)
-    if invalid:
-        fail(f"{label} entries must be absolute or home paths without globs: {invalid}")
-    forbidden = [canonical_write_root(path) for path in SANDBOX_WRITE_FORBIDDEN]
-    reaching = []
-    for root in roots:
-        canonical = canonical_write_root(root)
-        parent = canonical in HOME_PARENTS  # lint-comparisons: allow PurePosixPath membership, already normalised
-        if parent or any(canonical.is_relative_to(gone) or gone.is_relative_to(canonical) for gone in forbidden):
-            reaching.append(root)
-    if reaching:
+    permitted = (*SANDBOX_WRITE_ROOTS, *(DARWIN_SANDBOX_WRITE_ROOTS if os_name == "darwin" else ()))
+    # Byte-for-byte on purpose: any normalisation would re-open the spellings this list exists to refuse.
+    unlisted = [r for r in roots if not isinstance(r, str) or r not in permitted]  # lint-comparisons: allow exact text
+    if unlisted:
         fail(
-            f"{label} must not reach {list(SANDBOX_WRITE_FORBIDDEN)}, which hold executables on PATH or mise trust "
-            f"state: {reaching}"
+            f"{label} entries must be exactly one of {list(permitted)} (an exact allowlist in "
+            f"validate-agent-assets.py; adding a root is a reviewed trust-boundary change): {unlisted}"
         )
 
 
@@ -473,15 +436,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     missing = set(writable_roots) - set(allow_write)
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
-    extra = [path for path in allow_write if path not in writable_roots]
-    invalid = [
-        path
-        for path in extra
-        if not isinstance(path, str) or not path.startswith(("/", "~/")) or any(char in path for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
-    validate_write_roots(allow_write, f"{label}.filesystem.allowWrite")
+    validate_write_roots(allow_write, f"{label}.filesystem.allowWrite", os_name)
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -705,6 +660,7 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     validate_write_roots(
         (settings.get("permissions") or {}).get("additionalDirectories", []),
         f"{settings_path} {os_name} permissions.additionalDirectories",
+        os_name,
     )
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
@@ -797,6 +753,7 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should keep sandbox command network access disabled")
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
+    # The Codex config is one file for both OSes, so its roots must be on the list shared by both.
     validate_write_roots(
         data.get("sandbox_workspace_write", {}).get("writable_roots", []),
         f"{codex_path} sandbox_workspace_write.writable_roots",

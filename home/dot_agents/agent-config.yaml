@@ -386,8 +386,11 @@ claude:
     linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
-      # roots. Cache and state directories only: nothing on PATH and nothing a
-      # later unsandboxed run trusts as configuration (U68). ~/.cache/uv: every
+      # roots. Each entry must be byte-identical to validate-agent-assets.py
+      # SANDBOX_WRITE_ROOTS (DARWIN_SANDBOX_WRITE_ROOTS for the darwin list):
+      # a new root is a reviewed change to that allowlist (U68). Cache and state
+      # directories only: nothing on PATH and nothing a later unsandboxed run
+      # trusts as configuration. ~/.cache/uv: every
       # `uv run` target (make unit-test, validate-agent-assets, render-check)
       # needs the uv cache writable (T39 live E2E leg 1). ~/.local/share/uv
       # (uv tools and Pythons, the hcom binary on PATH) and ~/.local/state/mise

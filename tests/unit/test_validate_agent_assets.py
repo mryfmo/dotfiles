@@ -87,7 +87,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
-        self.codex_writable_roots = ["{{ .chezmoi.homeDir }}/.cache/codex-root"]
+        # An allowlisted spelling (validate-agent-assets.py SANDBOX_WRITE_ROOTS), so fixtures pass the write-root check.
+        self.codex_writable_roots = ["~/.local/state/hcom"]
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
         (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
@@ -1060,7 +1061,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_claude_settings(manifest)
-        self.assertIn("permissions.additionalDirectories must not reach", stderr.getvalue())
+        self.assertIn("permissions.additionalDirectories entries must be exactly one of", stderr.getvalue())
 
         template = generator.render_claude_settings(manifest)
         prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
@@ -1313,19 +1314,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "fails open": (lambda sandbox: sandbox.update(failIfUnavailable=False), "failIfUnavailable must be true"),
             "uv tools writable": (
                 lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv"),
-                "must not reach",
+                "must be exactly one of",
             ),
             "mise trust writable": (
                 lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/state/mise"),
-                "must not reach",
+                "must be exactly one of",
             ),
             "a parent of PATH writable": (
                 lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local"),
-                "must not reach",
+                "must be exactly one of",
             ),
             "uv python writable": (
                 lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv/python"),
-                "must not reach",
+                "must be exactly one of",
             ),
             "age key readable": (without_file("~/.config/age/key.txt"), "deny entry for each credential store"),
             "codex login readable": (without_file("~/.codex/auth.json"), "deny entry for each credential store"),
@@ -1403,17 +1404,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn("which the Linux sandbox ignores", stderr.getvalue())
                 self.assertIn("covered for subprocesses by sandbox.filesystem.denyRead", stderr.getvalue())
 
-    def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
+    def test_claude_sandbox_allow_write_refuses_any_form_off_the_allowlist(self) -> None:
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")
         self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-        for path in ("relative/cache", "~cache", "/tmp/*", 7):
+        for path in ("relative/cache", "~cache", "/tmp/*", 7, None):
             with self.subTest(path=path):
                 sandbox = self.valid_claude_sandbox()
                 sandbox["filesystem"]["allowWrite"].append(path)
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                     self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
+                self.assertIn("allowWrite entries must be exactly one of", stderr.getvalue())
 
     def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
         roots = [*self.codex_writable_roots, "/extra/codex/root"]
@@ -1469,15 +1470,33 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.module.validate_codex_config(manifest)
 
-    def test_every_write_root_list_refuses_a_path_that_reaches_path_or_trust_state(self) -> None:
-        """U68 audit: normalised containment both ways, on Claude allowWrite, Codex roots and additionalDirectories."""
-        reaching = [
+    def test_every_write_root_list_accepts_only_the_exact_allowlisted_spellings(self) -> None:
+        """U68 audits 1-3: an exact allowlist on Claude allowWrite, Codex roots and additionalDirectories."""
+        unlisted = [
+            # Round 3: case folding, a `/root` traversal, and the parent of a nonstandard home.
+            "~/.LOCAL/share/uv",
+            "~/.Cache/uv",
+            "~/../home/bob/.local/share/uv",
+            "/srv",
+            # Round 2: `..` routes into another home or above one.
+            f"~/../{Path.home().name}/.local/share/uv",
+            "~/../someone/.local/bin",
+            "$HOME/../someone/.local/state/mise",
+            "{{ .chezmoi.homeDir }}/../someone/.local/share/mise",
+            "~/..",
+            "~/../..",
+            "~/../../Users/someone/.local/bin",
+            "/Users/someone/../someone/.local/share/uv",
+            "/home/someone/../someone/.local/bin",
+            "/home/someone/../../Users/other/.local/share/mise",
+            # Round 1: roots, homes, ancestors and descendants of PATH directories and mise trust state.
             "/",
             "//",
             "~",
             "~/",
             "~/.local",
             "~/.local/",
+            "~/.local/share/uv",
             "~/.local/share/uv/",
             "~/.local/share/uv/tools/hcom",
             "~/.cache/../.local/bin",
@@ -1490,40 +1509,45 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "/home/someone",
             "/home/someone/.local/state/mise/trusted-configs",
             str(Path.home() / ".local/share/uv"),
-            # Round 2: `..` resolved after the home token expands (`~/../<user>` is a home again) and above it.
-            f"~/../{Path.home().name}/.local/share/uv",
-            "~/../someone/.local/bin",
-            "$HOME/../someone/.local/state/mise",
-            "{{ .chezmoi.homeDir }}/../someone/.local/share/mise",
-            "~/..",
-            "~/../..",
-            "~/../../Users/someone/.local/bin",
-            "/Users/someone/../someone/.local/share/uv",
-            "/home/someone/../someone/.local/bin",
-            "/home/someone/../../Users/other/.local/share/mise",
+            # Other spellings of allowlisted roots are refused too: only the listed bytes pass.
+            "~/.cache/uv/",
+            "$HOME/.cache/uv",
+            "{{ .chezmoi.homeDir }}/.cache/uv",
+            str(Path.home() / ".cache/uv"),
+            " ~/.cache/uv",
+            "~/.local/statex",
+            "/tmp/build",
+            "relative/root",
+            "../escape",
+            "~/.cache/*",
         ]
-        for root in reaching:
-            with self.subTest(list="claude allowWrite", root=root):
-                sandbox = self.valid_claude_sandbox()
-                sandbox["filesystem"]["allowWrite"].append(root)
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_write_roots(sandbox["filesystem"]["allowWrite"], "allowWrite")
-                self.assertIn("must not reach", stderr.getvalue())
-            with self.subTest(list="shared Codex root via the Claude sandbox", root=root):
-                roots = [*self.codex_writable_roots, root]
-                sandbox = self.valid_claude_sandbox()
-                sandbox["filesystem"]["allowWrite"] = list(roots)
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, roots, "sandbox")
-                self.assertIn("must not reach", stderr.getvalue())
-        for root in ("relative/root", "../escape", "~/.cache/*"):
-            with self.subTest(refused_form=root), contextlib.redirect_stderr(io.StringIO()) as stderr:
-                with self.assertRaises(SystemExit):
-                    self.module.validate_write_roots([root], "roots")
-                self.assertIn("absolute or home paths without globs", stderr.getvalue())
-        self.module.validate_write_roots(
-            ["~/.cache/uv", "~/.local/state/hcom", "~/.local/statex", "/tmp/build", *self.codex_writable_roots], "ok"
-        )
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            for root in unlisted:
+                with self.subTest(list="claude allowWrite", root=root):
+                    sandbox = self.valid_claude_sandbox()
+                    sandbox["filesystem"]["allowWrite"].append(root)
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                    self.assertIn("must be exactly one of", stderr.getvalue())
+                with self.subTest(list="shared Codex root via the Claude sandbox", root=root):
+                    roots = [*self.codex_writable_roots, root]
+                    sandbox = self.valid_claude_sandbox()
+                    sandbox["filesystem"]["allowWrite"] = list(roots)
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_claude_sandbox(sandbox, roots, "sandbox")
+                    self.assertIn("must be exactly one of", stderr.getvalue())
+        for os_name in ("darwin", "linux"):
+            with self.subTest(accepts_all_on=os_name):
+                permitted = list(self.module.SANDBOX_WRITE_ROOTS)
+                if os_name == "darwin":
+                    permitted += self.module.DARWIN_SANDBOX_WRITE_ROOTS
+                self.module.validate_write_roots(permitted, "roots", os_name)
+                sandbox = self.valid_claude_sandbox(os_name)
+                sandbox["filesystem"]["allowWrite"] = permitted
+                self.module.validate_claude_sandbox(sandbox, [], "sandbox", os_name)
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_write_roots(["~/Library/Caches/mise"], "roots", "linux")
+        self.assertIn("must be exactly one of", stderr.getvalue())
 
         roots = ["{{ .chezmoi.homeDir }}/.local/share/uv"]
         self.write_codex_config(f"network_access = false\nwritable_roots = {json.dumps(roots)}")
@@ -1545,7 +1569,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
-        self.assertIn("sandbox_workspace_write.writable_roots must not reach", stderr.getvalue())
+        self.assertIn("sandbox_workspace_write.writable_roots entries must be exactly one of", stderr.getvalue())
 
     def test_the_gh_hosts_mask_must_capture_each_token_value_and_mask_duplicates(self) -> None:
         """U68 audit: an extract that captures whitespace, a key or part of a token exposes the secret."""

@@ -22,7 +22,6 @@ fi
 function install_chezmoi_private() {
     if chezmoi init \
         --apply \
-        --ssh \
         --source "${PRIVATE_DOTFILES_PATH}" \
         --config "${PRIVATE_DOTFILES_CONFIG_PATH}" \
         "${PRIVATE_DOTFILES_REPO_URL}"; then

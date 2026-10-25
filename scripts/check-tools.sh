@@ -143,15 +143,43 @@ function check_homebrew() {
 }
 
 #
-# @description Print whether the per-machine signing/push SSH key exists.
+# @description Check the key git signs commits with. With commit.gpgsign=true a missing
+#   user.signingkey file makes every commit fail, so it is a required failure; a git config
+#   read that fails (other than "unset") is one too.
 #
-function check_machine_ssh_key() {
-    local key_path="${HOME%/}/.ssh/id_ed25519.pub"
+function check_git_signing_key() {
+    local gpgsign key status=0
 
-    if [ -f "${key_path}" ]; then
-        printf 'found:   machine SSH key -> %s\n' "${key_path}"
+    gpgsign="$(git config --get --type=bool commit.gpgsign 2> /dev/null)" || status=$?
+    if [ "${status}" -eq 1 ] || { [ "${status}" -eq 0 ] && [ "${gpgsign}" != "true" ]; }; then
+        printf 'not applicable: commit signing key (commit.gpgsign is not true)\n'
+        return 0
+    fi
+    if [ "${status}" -ne 0 ]; then
+        printf 'required failed: git config --get commit.gpgsign (exit %d)\n' "${status}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+
+    status=0
+    key="$(git config --get user.signingkey 2> /dev/null)" || status=$?
+    if [ "${status}" -ne 0 ]; then
+        printf 'required failed: commit.gpgsign is true but user.signingkey cannot be read (exit %d); run provision-machine-key\n' "${status}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    # A literal key ("key::ssh-ed25519 ...") needs no file.
+    if [[ "${key}" == key::* ]]; then
+        printf 'found:   commit signing key (literal user.signingkey)\n'
+        return 0
+    fi
+    # git expands a leading ~/ in user.signingkey; do the same.
+    key="${key/#\~\//${HOME%/}/}"
+    if [ -f "${key}" ]; then
+        printf 'found:   commit signing key -> %s\n' "${key}"
     else
-        warn_optional "machine SSH key is missing: ${key_path} (run provision-machine-key)"
+        printf 'required missing: commit signing key %s (commit.gpgsign=true, so commits fail); run provision-machine-key and register the key with GitHub\n' "${key}" >&2
+        ((required_failures += 1))
     fi
 }
 
@@ -376,7 +404,7 @@ function main() {
     check_zed
 
     section "SSH"
-    check_machine_ssh_key
+    check_git_signing_key
 
     section "AppArmor"
     check_apparmor_userns

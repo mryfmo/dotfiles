@@ -1,7 +1,14 @@
 {{ if eq .chezmoi.os "linux" -}}
 {{   if eq .chezmoi.osRelease.idLike "debian" -}}
 {{     if eq .system "server" -}}
-{{       include "../install/ubuntu/server/ssh_server.sh" }}
+{{       if stat "/.dockerenv" -}}
+{{         include "../install/ubuntu/server/ssh_server.sh" }}
+{{       else -}}
+#!/usr/bin/env bash
+# ssh_server.sh is container-only (it refuses to run without /.dockerenv);
+# a server-role apply on a real host leaves that host's sshd untouched.
+echo "Skipping the container sshd setup: /.dockerenv not found (not a Docker container)." >&2
+{{       end -}}
 {{     end -}}
 {{   end -}}
 {{ end -}}

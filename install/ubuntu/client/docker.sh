@@ -3,8 +3,10 @@
 # @file install/ubuntu/client/docker.sh
 # @brief Install Docker Engine on Ubuntu client machines.
 # @description
-#   Removes legacy Docker packages, configures Docker's apt repository, and
-#   installs the current Docker Engine packages.
+#   Follows https://docs.docker.com/engine/install/ubuntu/: removes the
+#   distribution packages that conflict with Docker Engine, configures Docker's
+#   apt repository (docker.asc key, deb822 docker.sources), and installs Docker
+#   Engine with the buildx and compose plugins.
 
 set -Eeuo pipefail
 
@@ -16,6 +18,7 @@ readonly PACKAGES=(
     docker-ce
     docker-ce-cli
     containerd.io
+    docker-buildx-plugin
     docker-compose-plugin
 )
 
@@ -24,9 +27,12 @@ readonly PACKAGES=(
 #
 function uninstall_old_docker() {
     local packages=(
-        "docker"
-        "docker-engine"
         "docker.io"
+        "docker-compose"
+        "docker-compose-v2"
+        "docker-doc"
+        "docker-buildx"
+        "podman-docker"
         "containerd"
         "runc"
     )
@@ -47,7 +53,6 @@ function setup_repository() {
     sudo apt-get install -y \
         ca-certificates \
         curl \
-        gnupg \
         lsb-release
 
     local arch codename
@@ -60,14 +65,21 @@ function setup_repository() {
         return 1
     }
 
-    # Add Docker’s official GPG key:
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+    # Docker's ASCII-armored key and a deb822 source. The one-line docker.list and the dearmored docker.gpg
+    # an earlier version of this script wrote are removed first: two sources for one URI with different
+    # Signed-By keys make apt refuse to update.
+    sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-    # Use the following command to set up the repository:
-    echo \
-        "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        ${codename} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    printf '%s\n' \
+        "Types: deb" \
+        "URIs: https://download.docker.com/linux/ubuntu" \
+        "Suites: ${codename}" \
+        "Components: stable" \
+        "Architectures: ${arch}" \
+        "Signed-By: /etc/apt/keyrings/docker.asc" | sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null
 }
 
 #
@@ -77,7 +89,7 @@ function install_docker_engine() {
     # Update the apt package index:
     sudo apt-get update
 
-    # Install Docker Engine, containerd, and Docker Compose.
+    # Install Docker Engine, containerd, and the buildx and compose plugins.
     sudo apt-get install -y "${PACKAGES[@]}"
 
 }

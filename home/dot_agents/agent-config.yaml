@@ -547,9 +547,9 @@ assets:
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
-    installer: install/ubuntu/common/aws_cli.sh
+    installer: install/common/aws_cli.sh
     render:
-      file: install/ubuntu/common/aws_cli.sh
+      file: install/common/aws_cli.sh
       constants: {AWS_CLI_FINGERPRINT: gpg_fingerprint}
   homebrew-installer:
     source: git-commit

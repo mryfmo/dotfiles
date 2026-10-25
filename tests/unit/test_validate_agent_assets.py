@@ -512,7 +512,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "gpg_fingerprint": "FB5D",
                     "reason": "fixture: a pinned archive",
                     "install_path": "~/.local/share/aws-cli",
-                    "installer": "install/ubuntu/common/aws_cli.sh",
+                    "installer": "install/common/aws_cli.sh",
                 },
                 "plugins": {
                     "source": "claude-plugin",
@@ -568,19 +568,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         aws.update(
             release="latest",
             render={
-                "file": "install/ubuntu/common/aws_cli.sh",
+                "file": "install/common/aws_cli.sh",
                 "constants": {"AWS_CLI_FINGERPRINT": "gpg_fingerprint"},
             },
         )
         return manifest
 
     def test_assets_accept_rolling_releases_without_pins(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
 
         self.module.validate_assets(self.rolling_asset_manifest())
 
     def test_assets_reject_invalid_rolling_and_pinned_declarations(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
         cases = {
             "release other than latest": (lambda a: a["mise"].update(release="v1"), "release must be 'latest'"),
             "release on a git-commit source": (

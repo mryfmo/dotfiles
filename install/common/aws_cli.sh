@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# @file install/ubuntu/common/aws_cli.sh
+# @file install/common/aws_cli.sh
 # @brief Install the current AWS CLI from AWS's official distribution, verified with AWS's GPG signature.
 # @description
 #   On Linux the archive is verified and installed. On macOS AWS's install.sh is verified, then run under the
@@ -22,8 +22,9 @@ readonly AWS_CLI_ETAG_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/aws
 
 #
 # @description Print the URL of AWS's current release: the archive for the current supported architecture
-#   on Linux, whose .sig is checked against the pinned key, and the pkg on macOS, whose ETag main reads.
-# @stdout The official x86_64 or aarch64 archive URL, or the macOS pkg URL.
+#   on Linux, whose .sig is checked against the pinned key, and on macOS v2/version.txt, the release marker
+#   that v2/install.sh installs, whose ETag main reads.
+# @stdout The official x86_64 or aarch64 archive URL, or the macOS v2/version.txt URL.
 #
 function aws_cli_url() {
     local architecture kernel
@@ -32,9 +33,9 @@ function aws_cli_url() {
         printf 'uname -s failed; no AWS CLI archive was chosen.\n' >&2
         return 1
     }
-    # The macOS pkg serves every architecture.
+    # macOS installs through v2/install.sh, which installs the release v2/version.txt names.
     if [ "${kernel}" = Darwin ]; then
-        printf 'https://awscli.amazonaws.com/AWSCLIV2.pkg\n'
+        printf 'https://awscli.amazonaws.com/v2/version.txt\n'
         return
     fi
     architecture="$(uname -m)"

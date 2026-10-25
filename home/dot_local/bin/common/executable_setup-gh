@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
 # @file home/dot_local/bin/common/executable_setup-gh
-# @brief Authenticate `gh` and upload the local SSH key.
+# @brief Log in `gh` through gh-auth.sh and upload the local SSH key.
 # @description
-#   Logs into GitHub through the GitHub CLI, ensures the local SSH public key
-#   exists through an explicit interactive flow, and registers the public key as
-#   both an authentication key and a commit signing key on the authenticated
-#   account.
+#   Logs this machine into GitHub through the one login path, the dotfiles
+#   checkout's `scripts/gh-auth.sh` (file storage the sandboxed seats can read),
+#   ensures the local SSH public key exists through an explicit interactive
+#   flow, and registers it as both an authentication and a commit signing key.
+#   The two key uploads need `admin:public_key` and `admin:ssh_signing_key`;
+#   they run under a separate one-off login in a temporary `GH_CONFIG_DIR`,
+#   which is logged out and deleted afterwards, so the machine login every
+#   agent uses never gains those scopes. `gh auth logout` does not revoke the
+#   one-off token on GitHub; revoke it under Settings → Applications if wanted.
 # @example
 #   setup-gh
 
@@ -14,10 +19,16 @@ set -Eeuo pipefail
 
 readonly DEFAULT_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
 readonly DEFAULT_SSH_PUBLIC_KEY_PATH="${DEFAULT_SSH_KEY_PATH}.pub"
+readonly GH_AUTH_SCRIPT="${DOTFILES_GH_AUTH_SCRIPT:-${HOME%/}/.local/share/chezmoi/scripts/gh-auth.sh}"
 
-# @description Authenticate GitHub CLI against github.com over HTTPS.
+# @description Log in the machine's GitHub account through the dotfiles checkout's gh-auth.sh.
+# @exitcode 1 gh-auth.sh is missing or the login did not complete.
 function login_to_github() {
-    gh auth login -h github.com -p https
+    if [[ ! -x "${GH_AUTH_SCRIPT}" ]]; then
+        printf 'setup-gh: %s not found; run "make gh-auth" in the dotfiles checkout\n' "${GH_AUTH_SCRIPT}" >&2
+        return 1
+    fi
+    "${GH_AUTH_SCRIPT}"
 }
 
 # @description Print the short host name, or fail naming the read when neither form works.
@@ -72,13 +83,22 @@ function ensure_default_ssh_key() {
     chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }
 
-# @description Upload the local public SSH key through GitHub CLI.
+# @description Upload the local public SSH key under a one-off login that holds the key-admin scopes.
 function add_ssh_key_to_github() {
+    local key_config status=0
     ensure_default_ssh_key
-    gh auth refresh -h github.com -s admin:public_key
-    gh auth refresh -h github.com -s admin:ssh_signing_key
-    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication
-    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
+    key_config="$(mktemp -d)" || return 1
+    (
+        export GH_CONFIG_DIR="${key_config}"
+        unset GH_TOKEN GITHUB_TOKEN
+        printf 'setup-gh: a one-off login with admin:public_key and admin:ssh_signing_key uploads the key; the machine login keeps its scopes\n' >&2
+        gh auth login -h github.com -p https --insecure-storage -s admin:public_key,admin:ssh_signing_key &&
+            gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication &&
+            gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
+    ) || status=$?
+    GH_CONFIG_DIR="${key_config}" gh auth logout -h github.com > /dev/null 2>&1 || true
+    rm -rf "${key_config}"
+    return "${status}"
 }
 
 # @description Run the GitHub authentication and SSH key setup flow.

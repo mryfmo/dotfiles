@@ -533,6 +533,50 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             run(["/bin/sh", "-c", 'sh -c "$0" & wait', inner], ALLOWED_ENV, timeout=1)
         self.assert_gone(int(expired.exception.output.split()[0]))
 
+    def test_kill_group_accepts_eperm_only_for_a_successful_empty_ps_listing(self):
+        # Failure injection for the EPERM decision: KILL to the group answers EPERM, and ps answers (a) a failure,
+        # (b) output that cannot be parsed, (c) a live member of the group, or (d) a successful listing with no
+        # member of the group (none at all, or zombies only). Only (d) accepts the EPERM; the others raise.
+        pgid = 424242
+
+        class Proc:
+            pid = pgid
+
+            def communicate(self, timeout=None):
+                return b"out", b""
+
+        def killpg(group, sig):
+            if sig == signal.SIGKILL:
+                raise PermissionError(errno.EPERM, "Operation not permitted")
+
+        def ps(stdout="", returncode=0):
+            def fake(argv, **kwargs):
+                self.assertEqual("/bin/ps", argv[0])
+                if returncode:
+                    raise subprocess.CalledProcessError(returncode, argv)
+                return subprocess.CompletedProcess(argv, returncode, stdout, "")
+
+            return fake
+
+        cases = (
+            ("ps fails", ps(returncode=1), subprocess.CalledProcessError),
+            ("ps unparsable", ps(stdout="not a listing\n"), ValueError),
+            ("live member", ps(stdout=f"  77 {pgid} S+\n 1 1 Ss\n"), PermissionError),
+            ("empty listing", ps(stdout="  1 1 Ss\n"), None),
+            ("zombies only", ps(stdout=f"  1 1 Ss\n 78 {pgid} Z\n"), None),
+        )
+        for name, fake_ps, raised in cases:
+            with (
+                self.subTest(name),
+                mock.patch.object(os, "killpg", killpg),
+                mock.patch.object(subprocess, "run", fake_ps),
+            ):
+                if raised is None:
+                    self.assertEqual((b"out", b""), kill_group(Proc()))
+                else:
+                    with self.assertRaises(raised):
+                        kill_group(Proc())
+
     def test_a_timed_out_subprocess_consumer_leaves_no_descendant(self):
         # A shell whose child blocks on a FIFO nobody serves: at the timeout the whole process group is stopped.
         fifo = self.scratch("trusted-exec-group-") / "fifo"

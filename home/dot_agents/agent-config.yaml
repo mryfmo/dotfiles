@@ -182,6 +182,11 @@ omp:
     tool_deny:
       - debug
       - AskClaude
+  # omp's startup.checkUpdate in the plain-launch config and every seat overlay. On, an interactive
+  # launch advises `omp update`, whose self-update refuses this install (the npm tarball's
+  # dist/cli.js is "a shebang script, not an OMP binary"); omp moves only through the reviewed pin
+  # in assets.omp, installed by make update (scripts/update-agent-assets.sh update_omp).
+  check_update: false
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the
@@ -780,7 +785,7 @@ claude:
   # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: 2da3209222ed295efd3f7a695beccfaacf56400ff7b1c83cc300cbd7653ce7fd
+      hcom-seat: 0840d73f5c3cf7ed559e882230584c2b67ab1192894423da154929db3340e57b
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -797,7 +802,7 @@ claude:
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
-      omp-run.sh: 3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5
+      omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
@@ -1137,12 +1142,12 @@ assets:
       constants: {TERMINAL_BROWSER_PIN_VERSION: pin, TERMINAL_BROWSER_INSTALLER_SHA256: sha256}
   omp:
     source: https-download
-    upstream: https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-18.11.3.tgz
-    pin: 18.11.3
+    upstream: https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-18.12.6.tgz
+    pin: 18.12.6
     verify: sha256
-    sha256: b4a4eaf8057a7591f4ca83be293780489fd72b174e6a629d4704320165177f09
-    note: npm published 2026-10-16T21:52:39.004Z; bin omp is dist/cli.js; integrity sha512-7MdQBaj/zGHG7uV0mJSrYGHsjX3xthYgXUxTxLeJeFFL15UAnyE99kAfDE66c8LdXU0dN34eTyw6lfM7K5ouCg==; shasum a187bd1b0ef31c17e18b456846309f64fe92cf87; tarball fetched 2026-10-17T10:44:00Z (14684952 bytes), its sha512 equals the registry integrity. Re-read 2026-10-25, `npm audit signatures` in a scratch project with 18.11.3 installed reports 142 packages with verified registry signatures and 73 with verified attestations, this package's own SLSA provenance among them. The tarball ships no npm-shrinkwrap.json, so its dependencies resolve at install time under npm's min-release-age (~/.npmrc, three days).
-    reason: held at 18.11.3 although 18.12.6 is past the cooldown, because the seat policies (home/dot_agents/omp/policies) and tests/unit/test_omp_seat_policy.py model this release's approval resolver (src/tools/approval.ts), which 18.12.x rewrote with approval grants and a grant cache (diff of the two tarballs, 2026-10-25); bump with a re-read of that resolver. The registry signs the tarball and the release carries SLSA provenance, but the provenance names a CI workflow, not a reviewed build, so the reviewed sha256 of the exact tarball pins what runs as omp.
+    sha256: 8088b050a405cc4073c8f4b32d338ebb0ecc2f0d18be05852f20960b73e819e1
+    note: npm published 2026-10-21T21:21:39.454Z; bin omp is dist/cli.js; integrity sha512-Wo+FcJ7A3RY/OFuafj4hcdIAXc/W7NMxbanwQh3Cmy8s57+ihLOLgAv+HROxHBkssEMg0MaScwkQ9xwqLPiC/g==; shasum 7762bf3888fa4a841545ea2e13f6e22e74f24792; tarball fetched 2026-10-25T23:20Z (15233742 bytes), its sha512 and sha1 equal the registry's integrity and shasum. Read 2026-10-25T23:30Z, `npm audit signatures` in a scratch project with 18.12.6 installed reports 142 packages with verified registry signatures and 73 with verified attestations, this package's own SLSA provenance among them (0 invalid, 0 missing). The tarball ships no npm-shrinkwrap.json, so its dependencies resolve at install time under npm's min-release-age (~/.npmrc, three days).
+    reason: bumped from 18.11.3 with a re-read of the approval resolver (U94). 18.12.3 added the `always-ask-cached` mode with approval grants in approval-cache.db; resolveApproval (src/tools/approval.ts:331-452) differs from 18.11.3's only by that mode's branch, and the bash.patterns matcher (src/tools/bash.ts:241-316, :512-596) is unchanged, so the seat policies, which use always-ask and yolo, decide as before and tests/unit/test_omp_seat_policy.py refuses a seat in the cached mode. omp's self-update refuses this install; omp.check_update is off and this pin is the update path. The registry signs the tarball and the release carries SLSA provenance, but the provenance names a CI workflow, not a reviewed build, so the reviewed sha256 of the exact tarball pins what runs as omp.
     install_path: ~/.local/bin/omp
     installer: scripts/update-agent-assets.sh#update_omp
     render:

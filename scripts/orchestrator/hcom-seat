@@ -250,7 +250,7 @@ elif ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-comm
     refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
 fi
 # U66 (F005): omp 18.11.3 merges the cwd's .omp/config.yml and .omp/settings.json at start whatever disabledProviders
-# says (the list binds only after settings load; measured under a scratch HOME), so a seat never starts in a directory
+# says (the list binds only after settings load; measured under a scratch HOME; 18.12.6 loads settings the same way), so a seat never starts in a directory
 # that holds .omp. The profile overlay's disabledProviders (native and the other project-code providers) keeps the
 # cwd's .omp tools, MCP servers, rules and skills out of the running seat (measured the same way).
 [[ ! -e ${dir}/.omp && ! -L ${dir}/.omp ]] ||

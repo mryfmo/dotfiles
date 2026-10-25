@@ -1191,7 +1191,12 @@ checksum, rendered drift, and any hand-written `*_VERSION="..."` or
 `version="..."` literal left in `install/` or `scripts/`. Change a pin only in
 the manifest, with `generate-agent-configs.py --set-asset NAME.FIELD=VALUE`,
 then regenerate. `pin: unknown` marks a component with no recorded upstream
-version.
+version. omp is installed this way, from its npm tarball at `assets.omp.pin`
+with the reviewed sha256, so its own `omp update` refuses the install ("the
+resolved foreign symlink target is a shebang script, not an OMP binary"):
+`omp.check_update: false` switches off its startup advice to run it, in
+`~/.omp/agent/config.yml` and every seat overlay, and an omp release reaches a
+host only as a reviewed bump of that pin through `make update`.
 
 Plugin and gh extension pins (`assets.claude-plugins`, `assets.codex-plugins`,
 `assets.gh-extensions`) are the versions both hosts run, rendered into

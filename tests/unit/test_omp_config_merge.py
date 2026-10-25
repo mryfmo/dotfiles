@@ -27,6 +27,8 @@ MANAGED = (
     "disabledProviders:\n"
     "  - agent-plugins\n"
     "  - openai-codex\n"
+    "startup:\n"
+    "  checkUpdate: false\n"
 )
 # The real home: uv (the script's runtime) needs it, so the test cannot fake $HOME.
 HOME = os.path.expanduser("~")
@@ -35,6 +37,8 @@ MANAGED_EXTENSIONS = (
     f"extensions:\n- {HOME}/.local/lib/omp-extensions/pi-claude-bridge\n- /srv/omp-ext\n"
     "disabledProviders:\n- agent-plugins\n- openai-codex\n"
 )
+# U94: omp.check_update; a live file without a startup key gains it at the end.
+MANAGED_STARTUP = "startup:\n  checkUpdate: false\n"
 
 
 class OmpConfigMergeTest(unittest.TestCase):
@@ -85,11 +89,27 @@ class OmpConfigMergeTest(unittest.TestCase):
 
         expected = current.replace("anthropic/claude-old", "anthropic/claude-managed")
         expected = expected.replace("/old/skills", f"{HOME}/.agents/skills")
-        expected = expected.replace(
-            "extensions:\n- /old/ext\n- /other/ext\ndisabledProviders:\n- mine\n", MANAGED_EXTENSIONS
+        expected = (
+            expected.replace("extensions:\n- /old/ext\n- /other/ext\ndisabledProviders:\n- mine\n", MANAGED_EXTENSIONS)
+            + MANAGED_STARTUP
         )
         self.assertEqual(result.stdout, expected)
         self.assertEqual(result.stderr, "")
+
+    def test_the_update_check_is_set_and_every_other_startup_key_stays(self) -> None:
+        """U94: omp self-update refuses this install, so the managed startup.checkUpdate wins over a live true."""
+        current = "startup:\n  quiet: true\n  checkUpdate: true\ntheme:\n  dark: night\n"
+
+        result = self.merge(current)
+
+        self.assertIn("startup:\n  quiet: true\n  checkUpdate: false\ntheme:\n  dark: night\n", result.stdout)
+        self.assertEqual(self.merge(result.stdout).stdout, result.stdout, "a second apply changes nothing")
+        # A startup key that is not a mapping is no file this script may rewrite.
+        for broken in ("startup: plain\n", "startup:\n- a\n"):
+            with self.subTest(broken=broken):
+                kept = self.merge(broken)
+                self.assertEqual(kept.stdout, broken)
+                self.assertIn("startup is not a mapping", kept.stderr)
 
     def test_extensions_are_added_after_the_keys_omp_wrote(self) -> None:
         result = self.merge("theme:\n  dark: night\nmodelRoles:\n  default: anthropic/claude-old\n")
@@ -98,7 +118,8 @@ class OmpConfigMergeTest(unittest.TestCase):
             result.stdout,
             "theme:\n  dark: night\nmodelRoles:\n  default: anthropic/claude-managed\n"
             + MANAGED_SKILLS
-            + MANAGED_EXTENSIONS,
+            + MANAGED_EXTENSIONS
+            + MANAGED_STARTUP,
         )
 
     def test_a_managed_enabled_true_replaces_a_stale_enabled_false(self) -> None:
@@ -128,14 +149,17 @@ class OmpConfigMergeTest(unittest.TestCase):
             result.stdout,
             "skills:\n  enableSkillCommands: false\n  ignoredSkills:\n  - hcom-worker\n  customDirectories:\n"
             f"  - {HOME}/.agents/skills\n  - {HOME}/.agents/pstack/skills\n"
-            "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_EXTENSIONS,
+            "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_EXTENSIONS + MANAGED_STARTUP,
         )
         self.assertEqual(self.merge(result.stdout).stdout, result.stdout, "a second apply changes nothing")
 
     def test_empty_input_yields_the_managed_mapping_only(self) -> None:
         self.assertEqual(
             self.merge("").stdout,
-            "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_SKILLS + MANAGED_EXTENSIONS,
+            "modelRoles:\n  default: anthropic/claude-managed\n"
+            + MANAGED_SKILLS
+            + MANAGED_EXTENSIONS
+            + MANAGED_STARTUP,
         )
 
     def test_input_that_is_not_a_yaml_mapping_passes_through_byte_for_byte(self) -> None:

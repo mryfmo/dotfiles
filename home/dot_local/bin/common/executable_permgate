@@ -60,6 +60,50 @@ def policy_path() -> Path:
     return Path(override) if override else Path.home() / ".agents/permgate-policy.yaml"
 
 
+def claude_settings_path() -> Path:
+    override = os.environ.get("PERMGATE_CLAUDE_SETTINGS_PATH")
+    if override:
+        return Path(override)
+    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    return (Path(config_dir) if config_dir else Path.home() / ".claude") / "settings.json"
+
+
+def claude_excluded_commands() -> list[str]:
+    """Return `sandbox.excludedCommands` from Claude Code's rendered settings, the one source of the set.
+
+    A command that matches one runs outside the sandbox, so permgate must never approve it: the user's prompt is the
+    only gate left (U68). An unreadable or malformed file raises, and the caller then decides nothing.
+    """
+    settings = json.loads(claude_settings_path().read_text())
+    sandbox = settings.get("sandbox", {}) if isinstance(settings, dict) else None
+    excluded = sandbox.get("excludedCommands", []) if isinstance(sandbox, dict) else None
+    if not isinstance(excluded, list) or not all(isinstance(entry, str) for entry in excluded):
+        raise ValueError("sandbox.excludedCommands must be a list of strings")
+    return excluded
+
+
+def runs_excluded_command(command: str, excluded: list[str]) -> bool:
+    """True when `command` may invoke an excluded command, in any position (U68).
+
+    Deliberately wider than Claude Code's own matcher: a pattern's first word matches the basename of any token, and
+    its remaining literal words must follow somewhere after it, so `env A=1 gh pr view`, `command gh`,
+    `/opt/bin/gh` and `git -C x push` all count. A command that cannot be tokenised counts too.
+    """
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return True
+    names = [Path(token).name for token in tokens]
+    for pattern in excluded:
+        words = [word for word in pattern.split() if word != "*"]
+        if not words:
+            return True
+        for index, name in enumerate(names):
+            if name == words[0] and all(word in tokens[index + 1 :] for word in words[1:]):
+                return True
+    return False
+
+
 def state_path() -> Path:
     override = os.environ.get("PERMGATE_STATE_PATH")
     if override:
@@ -169,13 +213,20 @@ def decision_record(
 
 
 def decide(
-    agent: str, payload: dict[str, Any], policy: dict[str, Any]
+    agent: str,
+    payload: dict[str, Any],
+    policy: dict[str, Any],
+    excluded: list[str] | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     started = time.monotonic()
     tool, _, match_text = request_parts(payload)
     layer = "fallthrough"
     decision = "ask"
     output: dict[str, Any] | None = None
+    if agent == "claude" and excluded is None:
+        excluded = claude_excluded_commands()
+    # A Claude Bash command the sandbox excludes runs unsandboxed; only the user may approve it (U68).
+    sandbox_excluded = agent == "claude" and tool == "Bash" and runs_excluded_command(match_text, excluded or [])
 
     for pattern in policy.get("deny_patterns", []):
         if pattern_match(pattern, tool, match_text):
@@ -184,7 +235,9 @@ def decide(
             output = hook_output("deny", str(pattern["message"]))
             break
     else:
-        if tool != "Bash" or is_bounded_shell_command(match_text):
+        if sandbox_excluded:
+            layer = "sandbox-excluded"
+        elif tool != "Bash" or is_bounded_shell_command(match_text):
             for pattern in policy.get("allow_patterns", []):
                 if pattern_match(pattern, tool, match_text):
                     layer = "deterministic"
@@ -236,7 +289,7 @@ def main() -> int:
         return 0
     try:
         output, record = decide(agent, payload, policy)
-    except (AttributeError, KeyError, TypeError, ValueError, re.error):
+    except (AttributeError, KeyError, TypeError, ValueError, OSError, re.error):
         output = None
         record = decision_record(agent, payload, "config-error", "ask", 0)
     try:

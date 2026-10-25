@@ -734,10 +734,9 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                         ["com.apple.trustd.agent"] if os_name == "Darwin" else [],
                         settings["sandbox"]["network"].get("allowMachLookup", []),
                     )
-                    self.assertEqual(
-                        [],
-                        settings["sandbox"]["excludedCommands"],
-                    )
+                    # Strict sandbox mode with the two prompted exclusions (U68).
+                    self.assertEqual(["git push *", "gh *"], settings["sandbox"]["excludedCommands"])
+                    self.assertIs(False, settings["sandbox"]["allowUnsandboxedCommands"])
                     if "sandbox" in json.loads(current):
                         self.assertEqual(result.stdout, current)
                     current = result.stdout

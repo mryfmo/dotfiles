@@ -771,7 +771,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "api --raw-field",
                 "api --field",
             )
-        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        ] + [
+            "Bash(gh api -f*)",
+            "Bash(gh api -F*)",
+            "Bash(gh api --raw-field=*)",
+            "Bash(gh api --field=*)",
+            "Bash(git push *)",
+            "Bash(gh *)",
+        ]
         template = self.module.render_claude_settings(manifest)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
@@ -785,10 +792,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     path.replace("{{ .chezmoi.homeDir }}", "/render-home")
                     for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
                 ]
+                # Cache and state only: no uv tool tree (the hcom binary) and no mise trust state (U68).
                 extras = [
                     "~/.cache/uv",
-                    "~/.local/state/mise",
-                    "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
                     "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
@@ -803,16 +809,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "api.github.com",
                         "uploads.github.com",
                         "objects.githubusercontent.com",
+                        "release-assets.githubusercontent.com",
                         "codeload.github.com",
                         "pypi.org",
                         "files.pythonhosted.org",
                     ],
                     sandbox["network"]["allowedDomains"],
                 )
-                self.assertEqual(
-                    [],
-                    sandbox["excludedCommands"],
-                )
+                # Strict sandbox mode: no retry, and the two excluded commands prompt (U68).
+                self.assertIs(False, sandbox["allowUnsandboxedCommands"])
+                self.assertEqual(["git push *", "gh *"], sandbox["excludedCommands"])
+                ask = settings["permissions"]["ask"]
+                self.assertTrue(all(f"Bash({entry})" in ask for entry in sandbox["excludedCommands"]))
+                self.assertFalse(any("dangerouslyDisableSandbox" in rule for rule in ask))
                 self.assertEqual(expected_ask, settings["permissions"]["ask"])
                 self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
                 self.assertEqual(
@@ -825,8 +834,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     settings["env"],
                 )
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
-                self.assertEqual({"files": [{"path": "~/.ssh", "mode": "deny"}]}, sandbox["credentials"])
-                self.assertEqual(["~/**/.env", "~/**/.env.*"], sandbox["filesystem"]["denyRead"])
+                self.assertNotIn("allowUnixSockets", sandbox["network"])
+                self.assertNotIn("tlsTerminate", sandbox["network"])
+                self.assertTrue(sandbox["failIfUnavailable"])
+                # Round 6: every credential entry is a plain deny, the gh hosts file included; no mask on any OS.
+                self.assertEqual(
+                    [
+                        {"path": path, "mode": "deny"}
+                        for path in (
+                            "~/.ssh",
+                            "~/.config/gh/hosts.yml",
+                            "~/.claude/.credentials.json",
+                            "~/.config/claude-code/oauth-token",
+                            "~/.codex/auth.json",
+                            "~/.omp/agent/agent.db*",
+                            "~/.omp/profiles/*/agent/agent.db*",
+                            "~/.config/age/key.txt",
+                        )
+                    ],
+                    sandbox["credentials"]["files"],
+                )
+                self.assertEqual(
+                    [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}], sandbox["credentials"]["envVars"]
+                )
+                tmp = ["/tmp/**/.env", "/tmp/**/.env.*"]
+                darwin_tmp = ["/private/tmp/**/.env", "/private/tmp/**/.env.*"] if os_name == "darwin" else []
+                self.assertEqual(["~/**/.env", "~/**/.env.*", *tmp, *darwin_tmp], sandbox["filesystem"]["denyRead"])
                 deny = settings["permissions"]["deny"]
                 self.assertIn("Read(.env)", deny)
                 self.assertIn("Read(~/.ssh/**)", deny)
@@ -836,10 +869,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_linux_sandbox_confines_the_top_level_herdr_agents_invocation(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
         settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
-        self.assertEqual(
-            [],
-            settings["sandbox"]["excludedCommands"],
-        )
+        self.assertEqual(["git push *", "gh *"], settings["sandbox"]["excludedCommands"])
+        # No lever is excluded, so a lever's allow rule only ever approves a sandboxed run (U68).
+        self.assertFalse(any(rule.startswith("Bash(git") for rule in MANAGED_ALLOW))
         self.assertEqual(MANAGED_ALLOW, settings["permissions"]["allow"])
         darwin = self.render_claude_template(self.module.render_claude_settings(manifest), "darwin")
         self.assertEqual(MANAGED_ALLOW, darwin["permissions"]["allow"])
@@ -899,37 +931,60 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), stale.replace("0" * 64, pin))
 
-    def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
+    def test_sandbox_exclusions_render_only_git_push_and_gh_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
-                self.assertEqual([], self.module.render_claude_sandbox(manifest, os_name)["excludedCommands"])
+                self.assertEqual(
+                    ["git push *", "gh *"], self.module.render_claude_sandbox(manifest, os_name)["excludedCommands"]
+                )
 
-    def test_managed_sandbox_exclusions_are_empty_for_all_os(self) -> None:
+    def test_managed_sandbox_exclusions_are_only_git_push_and_gh_for_all_os(self) -> None:
         template = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
-                self.assertEqual([], self.render_claude_template(template, os_name)["sandbox"]["excludedCommands"])
+                sandbox = self.render_claude_template(template, os_name)["sandbox"]
+                self.assertEqual(["git push *", "gh *"], sandbox["excludedCommands"])
+                self.assertIs(False, sandbox["allowUnsandboxedCommands"])
 
-    def test_sandbox_validator_requires_empty_exclusions(self) -> None:
+    def test_sandbox_validator_requires_strict_mode_and_the_allowlisted_exclusions(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
         )
         validator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(validator)
         manifest = load_manifest_fixture(self.temp_dir)
-        cases = [({}, True), ({"excludedCommands": []}, True)]
-        patterns = ["gh *", "git push *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        cases = [
+            ({"excludedCommands": ["git push *", "gh *"]}, True),
+            ({"excludedCommands": ["gh *", "git push *"]}, True),
+        ]
+        patterns = ["git *", "git push", "gh", "herdr *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        levers = ["~/.local/bin/common/hcom-seat *", "hcom *"]
         legacy = ["gh *", "herdr-agents *"]
         cases += [
             ({"excludedCommands": value}, False)
-            for value in (None, False, 0, "", {}, (), [None], [""], legacy, *([p] for p in patterns))
+            for value in (
+                None,
+                False,
+                0,
+                "",
+                {},
+                (),
+                [],
+                [None],
+                [""],
+                ["git push *"],
+                ["gh *"],
+                ["git push *", "gh *", "gh *"],
+                legacy,
+                *(["git push *", "gh *", p] for p in patterns + levers),
+            )
         ]
+        cases += [({"allowUnsandboxedCommands": value}, False) for value in (True, None, "false", 0)]
         for os_name in ("darwin", "linux"):
             for patch, expected in cases:
                 with self.subTest(os=os_name, patch=patch), contextlib.redirect_stderr(io.StringIO()):
                     sandbox = self.module.render_claude_sandbox(manifest, os_name)
-                    sandbox.pop("excludedCommands")
                     sandbox.update(patch)
                     try:
                         validator.validate_claude_sandbox(
@@ -1666,7 +1721,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_managed_claude_settings_render_the_levers_and_the_regime_env(self) -> None:
         claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
-        self.assertEqual([], claude["sandbox"]["excludedCommands"])
+        self.assertEqual(["git push *", "gh *"], claude["sandbox"]["excludedCommands"])
         self.assertEqual(MANAGED_ALLOW, claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
         # No session-wide bus: the store and team are per repository, derived by the levers (regime-cutover U33).

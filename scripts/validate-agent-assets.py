@@ -284,6 +284,104 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
 
 
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
+# The only directories a sandboxed command may write beyond the working directory and its session TMPDIR (U68): an
+# exact allowlist, compared byte for byte, for every write-root list the manifest renders (Claude allowWrite, which
+# includes the Codex writable_roots, the Codex writable_roots themselves, Claude additionalDirectories). No spelling
+# is normalised, so a case variant, a `..` route, a symlink or another home anchor is refused because it is not on the
+# list, not because it was recognised as dangerous. Adding a root is a change to this list, reviewed as a
+# trust-boundary change; none may hold an executable on PATH (~/.local/bin, the uv tools, mise's installs) or state an
+# unsandboxed run trusts (mise's trusted-configs).
+SANDBOX_WRITE_ROOTS = (
+    # The uv cache: every `uv run` target needs it writable (T39 live E2E leg 1).
+    "~/.cache/uv",
+    # The hcom stores: the dotfiles program's store until its one-time move, and the derived per-repository stores.
+    "~/.local/state/hcom-regime",
+    "~/.local/state/hcom",
+    # The omp seat worktrees, which `hcom-seat worker` creates and reuses.
+    "~/.local/state/omp-seats",
+)
+# mise's macOS cache directory; Linux keeps mise's cache under ~/.cache/mise, which is not listed.
+DARWIN_SANDBOX_WRITE_ROOTS = ("~/Library/Caches/mise",)
+
+
+def validate_write_roots(roots: Any, label: str, os_name: str = "linux") -> None:
+    """Refuse a write root that is not byte-identical to an allowlisted spelling for `os_name` (U68)."""
+    if not isinstance(roots, list):
+        fail(f"{label} must be a list: {roots!r}")
+    permitted = (*SANDBOX_WRITE_ROOTS, *(DARWIN_SANDBOX_WRITE_ROOTS if os_name == "darwin" else ()))
+    # Byte-for-byte on purpose: any normalisation would re-open the spellings this list exists to refuse.
+    unlisted = [r for r in roots if not isinstance(r, str) or r not in permitted]  # lint-comparisons: allow exact text
+    if unlisted:
+        fail(
+            f"{label} entries must be exactly one of {list(permitted)} (an exact allowlist in "
+            f"validate-agent-assets.py; adding a root is a reviewed trust-boundary change): {unlisted}"
+        )
+
+
+# Credential stores every sandboxed command is denied (U68): SSH keys, the gh token, the agents' login stores, the
+# age key. Every credential entry is a plain deny: a `mask` lets the sandbox proxy put the real value into any request
+# body to its injectHosts, so a sandboxed client can send the placeholder to an endpoint that echoes it (GitHub's
+# POST /markdown) and read the real token back (audit round 6, on the installed Claude Code 2.1.310 transformer).
+SANDBOX_CREDENTIAL_DENIES = (
+    "~/.ssh",
+    "~/.config/gh/hosts.yml",
+    "~/.claude/.credentials.json",
+    "~/.config/claude-code/oauth-token",
+    "~/.codex/auth.json",
+    "~/.omp/agent/agent.db*",
+    "~/.omp/profiles/*/agent/agent.db*",
+    "~/.config/age/key.txt",
+)
+SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
+# Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
+# `dangerouslyDisableSandbox` retry, and exactly these exclusions run outside the sandbox, each behind an identical
+# `Bash(<pattern>)` ask rule. `git push` needs ~/.ssh and `gh` needs its hosts file, both denied inside. Claude Code
+# 2.1.310 parses a `Bash(dangerouslyDisableSandbox:true)` rule as a literal command, so no rule may name the parameter.
+SANDBOX_EXCLUSIONS = ("git push *", "gh *")
+RETRY_PARAMETER = "dangerouslyDisableSandbox"
+
+
+def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str) -> None:
+    """Require every credential store denied, each entry exactly `{path|name, mode: deny}`, each named once (U68).
+
+    Every entry is checked: Claude Code 2.1.310 merges credential entries and keeps the later of two entries for one
+    path, so a duplicate is refused outright. No mask is accepted, and so no TLS termination either.
+    """
+    credentials = sandbox.get("credentials", {})
+    files = credentials.get("files") if isinstance(credentials, dict) else None
+    if not isinstance(files, list) or not all(isinstance(e, dict) and isinstance(e.get("path"), str) for e in files):
+        fail(f"{label}.credentials.files must contain a list of entries: {files!r}")
+    paths = [entry["path"] for entry in files]
+    duplicated = sorted({path for path in paths if paths.count(path) > 1})
+    if duplicated:
+        fail(f"{label}.credentials.files must name each path once (Claude Code keeps the later entry): {duplicated}")
+    not_deny = [entry for entry in files if entry.get("mode") != "deny" or set(entry) != {"path", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.files entries must all be exactly path and deny (no mask): {not_deny}")
+    missing = [path for path in SANDBOX_CREDENTIAL_DENIES if path not in paths]  # lint-comparisons: allow settings text
+    if missing:
+        fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
+    env_vars = credentials.get("envVars", [])
+    if not isinstance(env_vars, list) or not all(
+        isinstance(e, dict) and isinstance(e.get("name"), str) for e in env_vars
+    ):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    names = [entry["name"] for entry in env_vars]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    if duplicated:
+        fail(
+            f"{label}.credentials.envVars must name each variable once (Claude Code keeps the later entry): {duplicated}"
+        )
+    not_deny = [entry for entry in env_vars if entry.get("mode") != "deny" or set(entry) != {"name", "mode"}]
+    if not_deny:
+        fail(f"{label}.credentials.envVars entries must all be exactly name and deny (no mask): {not_deny}")
+    if not set(SANDBOX_ENV_DENIES) <= set(names):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
+    for key in ("allowPlaintextInject", "awsPairs", "sigv4"):
+        if key in credentials:
+            fail(f"{label}.credentials.{key} must not be set: no credential is ever injected")
+    if "tlsTerminate" in sandbox.get("network", {}):
+        fail(f"{label}.network.tlsTerminate must not be set: no mask needs it")
 
 
 def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str, os_name: str = "darwin") -> None:
@@ -293,20 +391,13 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     for key in ("enabled", "autoAllowBashIfSandboxed"):
         if sandbox.get(key) is not True:
             fail(f"{label}.{key} must be true")
-    if not isinstance(sandbox.get("failIfUnavailable"), bool):
-        fail(f"{label}.failIfUnavailable must be a boolean")
+    if sandbox.get("failIfUnavailable") is not True:
+        fail(f"{label}.failIfUnavailable must be true: a sandbox that cannot start must stop Claude Code")
     allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
     missing = set(writable_roots) - set(allow_write)
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
-    extra = [path for path in allow_write if path not in writable_roots]
-    invalid = [
-        path
-        for path in extra
-        if not isinstance(path, str) or not path.startswith(("/", "~/")) or any(char in path for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
+    validate_write_roots(allow_write, f"{label}.filesystem.allowWrite", os_name)
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -315,11 +406,6 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
             f"{label}.filesystem.denyRead must be a non-empty list of absolute or ~/ paths "
             f"(globs are allowed here, unlike allowWrite): {deny_read!r}"
         )
-    credentials = sandbox.get("credentials", {})
-    files = credentials.get("files") if isinstance(credentials, dict) else None
-    ssh_deny = {"path": "~/.ssh", "mode": "deny"}
-    if not isinstance(files, list) or ssh_deny not in files:  # lint-comparisons: allow the exact settings entry
-        fail(f"{label}.credentials.files must contain the ~/.ssh deny entry: {files!r}")
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")
@@ -329,6 +415,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
     if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
         fail(f"{label} must not allow telemetry or metadata domains")
+    validate_claude_sandbox_credentials(sandbox, label)
     network = sandbox.get("network", {})
     mach = network.get("allowMachLookup", [])
     if not isinstance(mach, list) or any(
@@ -337,19 +424,19 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label} Mach services must stay within the macOS trustd allowlist")
     if network.get("allowAllUnixSockets") is True:
         fail(f"{label}.network.allowAllUnixSockets must not be true")
+    if sandbox.get("allowUnsandboxedCommands") is not False:
+        fail(f"{label}.allowUnsandboxedCommands must be false: no command may leave the sandbox by an unprompted retry")
     exclusions = sandbox.get("excludedCommands", [])
-    if not isinstance(exclusions, list) or exclusions:
-        fail(f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be []: {exclusions!r}")
-    sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
-    if not isinstance(sockets, list):
-        fail(f"{label}.network.allowUnixSockets must be a list")
-    invalid = [
-        socket
-        for socket in sockets
-        if not isinstance(socket, str) or not socket.startswith(("/", "~/")) or any(char in socket for char in "*?[]{}")
-    ]
-    if invalid:
-        fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
+    exact = isinstance(exclusions, list) and sorted(map(str, exclusions)) == sorted(SANDBOX_EXCLUSIONS)
+    if not exact:
+        fail(
+            f"{label} {'macOS' if os_name == 'darwin' else 'Linux'} excludedCommands must be exactly "
+            f"{list(SANDBOX_EXCLUSIONS)}: {exclusions!r}"
+        )
+    # Each reachable socket is a way out of the sandbox (the herdr socket starts host processes), and Linux ignores
+    # the list (U68): no socket is listed.
+    if "allowUnixSockets" in network and (os_name != "darwin" or network["allowUnixSockets"] != []):
+        fail(f"{label}.network.allowUnixSockets must not list a socket: {network['allowUnixSockets']!r}")
 
 
 # The managed allow rules (regime-cutover U16, U31): the read-only `hcom list` and the coordinator
@@ -514,6 +601,29 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
         f"{settings_path} {os_name} sandbox",
         os_name,
     )
+    permissions = settings.get("permissions") or {}
+    ask = permissions.get("ask") or []
+    unprompted = [entry for entry in settings["sandbox"].get("excludedCommands", []) if f"Bash({entry})" not in ask]
+    if unprompted:
+        fail(
+            f"{settings_path} {os_name} permissions.ask must hold Bash(<pattern>) for each excluded command: {unprompted}"
+        )
+    named = [
+        rule
+        for kind in ("allow", "ask", "deny")
+        for rule in permissions.get(kind) or []
+        if isinstance(rule, str) and RETRY_PARAMETER in rule
+    ]
+    if named:
+        fail(
+            f"{settings_path} {os_name} permissions must not name {RETRY_PARAMETER}, a literal command to Claude Code: {named}"
+        )
+    # additionalDirectories grant sandboxed commands write access like allowWrite (code.claude.com/docs/en/sandboxing).
+    validate_write_roots(
+        (settings.get("permissions") or {}).get("additionalDirectories", []),
+        f"{settings_path} {os_name} permissions.additionalDirectories",
+        os_name,
+    )
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
@@ -605,6 +715,11 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should keep sandbox command network access disabled")
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
+    # The Codex config is one file for both OSes, so its roots must be on the list shared by both.
+    validate_write_roots(
+        data.get("sandbox_workspace_write", {}).get("writable_roots", []),
+        f"{codex_path} sandbox_workspace_write.writable_roots",
+    )
     features = data.get("features", {})
     for feature in ("plugins", "hooks", "plugin_hooks"):
         if features.get(feature) is not True:

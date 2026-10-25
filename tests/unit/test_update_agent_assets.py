@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -129,8 +130,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                 return
             records = calls()
             self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
-            self.assertEqual("3", records[0]["min_release_age"])
-            self.assertEqual("0" if tool == "omp" else "3", records[1]["min_release_age"])
+            # npm's three-day cooldown reaches the install too, so the tarball's dependencies resolve under it.
+            self.assertEqual(["3", "3"], [row["min_release_age"] for row in records])
             url = records[0]["argv"][1]
             if tool == "omp":
                 self.assertEqual(
@@ -529,3 +530,53 @@ class ProducerFailureTest(unittest.TestCase):
                 f"Cannot read the CompactionDB version from {source}/vendor/compactiondb/CHANGELOG.md.", result.stderr
             )
             self.assertFalse((home / "calls").exists())
+
+    def converge_claude(
+        self, listings: list[str], plugin: str = "crit@crit"
+    ) -> tuple[subprocess.CompletedProcess, list[str]]:
+        # converge_claude_plugin against a fake claude: `plugin list --json` prints LISTINGS in turn, the rest is logged.
+        work = Path(tempfile.mkdtemp(prefix="converge-claude-"))
+        self.addCleanup(shutil.rmtree, work)
+        for index, listing in enumerate(listings):
+            (work / f"list-{index}").write_text(listing)
+        fake = (
+            'claude() { if [ "$1 $2" = "plugin list" ]; then n="$(cat "${WORK}/n" 2> /dev/null || echo 0)"; '
+            'echo $((n + 1)) > "${WORK}/n"; [ -f "${WORK}/list-${n}" ] || return 1; cat "${WORK}/list-${n}"; '
+            'else printf "%s\\n" "$*" >> "${WORK}/calls"; fi; }'
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; {fake}; converge_claude_plugin "$2"', "bash", str(UPDATER), plugin],
+            env=os.environ | {"WORK": str(work)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        return result, calls
+
+    def test_a_claude_plugin_stays_at_its_recorded_pin(self):
+        pin = json.loads((ROOT / "scripts/lib/plugin-pins.json").read_text())["claude"]["crit@crit"]["pin"]
+        at_pin = json.dumps([{"id": "crit@crit", "version": pin, "enabled": True}])
+        newer = json.dumps([{"id": "crit@crit", "version": "999.0.0", "enabled": True}])
+
+        # At its pin: nothing is installed, updated or toggled, so make update no longer takes the newest release.
+        result, calls = self.converge_claude([at_pin, at_pin])
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+
+        # Off its pin and still off after the update: the unreviewed release is left disabled.
+        result, calls = self.converge_claude([newer, newer])
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["plugin update crit@crit", "plugin disable crit@crit"], calls)
+        self.assertIn(f"not its pin {pin}", result.stderr)
+
+        # Missing, then installed at the pin: installed and kept enabled.
+        result, calls = self.converge_claude(["[]", at_pin])
+        self.assertEqual(["plugin install crit@crit"], calls)
+
+    def test_a_claude_plugin_is_not_changed_when_the_plugin_list_cannot_be_read(self):
+        # Failure injection: a failed `claude plugin list` is never read as "not installed".
+        result, calls = self.converge_claude([])
+        self.assertEqual(1, result.returncode)
+        self.assertEqual([], calls)
+        self.assertIn("claude plugin list --json failed", result.stderr)

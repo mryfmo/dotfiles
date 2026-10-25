@@ -1,0 +1,38 @@
+{
+  "claude": {
+    "crit@crit": {
+      "marketplace": "tomasz-tomczyk/crit",
+      "pin": "1.8.14"
+    },
+    "ponytail@ponytail": {
+      "marketplace": "DietrichGebert/ponytail",
+      "pin": "5.3.2"
+    },
+    "pstack@cursor-plugins": {
+      "marketplace": "cursor/plugins",
+      "pin": "0.15.30"
+    },
+    "superpowers@claude-plugins-official": {
+      "marketplace": "anthropics/claude-plugins-official",
+      "pin": "7.0.0"
+    },
+    "understand-anything@understand-anything": {
+      "marketplace": "Egonex-AI/Understand-Anything",
+      "pin": "2.9.7"
+    }
+  },
+  "codex": {
+    "ponytail@ponytail": {
+      "marketplace": "https://github.com/DietrichGebert/ponytail.git",
+      "pin": "5.3.2",
+      "ref": "09c434ab73ca43761c5d8b0c5d341926c2fba710"
+    },
+    "superpowers@openai-curated": {
+      "marketplace": "openai-curated",
+      "pin": "6.3.0"
+    }
+  },
+  "gh_extensions": {
+    "seachicken/gh-poi": "v0.18.5"
+  }
+}

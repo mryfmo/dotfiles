@@ -208,6 +208,42 @@ class CodexConfigMergeTest(unittest.TestCase):
             "https://example.invalid/repo.git",
         )
 
+    def test_a_marketplace_pinned_to_a_ref_replaces_its_runtime_copy(self) -> None:
+        ref = "09c434ab73ca43761c5d8b0c5d341926c2fba710"
+        managed = f"""
+            model = "managed"
+
+            [marketplaces.ponytail]
+            ref = "{ref}"
+            source_type = "git"
+            source = "https://github.com/DietrichGebert/ponytail.git"
+            """
+        current = """
+            model = "runtime"
+
+            [marketplaces.ponytail]
+            last_updated = "2026-06-30T01:47:41Z"
+            last_revision = "16f6cbf4b87792938e47b0f8c650b6d80fcbc98c"
+            source_type = "git"
+            source = "https://github.com/DietrichGebert/ponytail.git"
+
+            [marketplaces.openai-bundled]
+            source_type = "local"
+            source = "/runtime/bundled"
+            """
+
+        output = self.merge(managed, current)
+
+        marketplaces = tomllib.loads(output)["marketplaces"]
+        # The pin wins over the stale runtime revision, so `codex plugin marketplace upgrade` fetches the reviewed commit.
+        self.assertEqual(
+            {"ref": ref, "source_type": "git", "source": "https://github.com/DietrichGebert/ponytail.git"},
+            marketplaces["ponytail"],
+        )
+        # A marketplace the manifest does not pin stays Codex's runtime state.
+        self.assertEqual({"source_type": "local", "source": "/runtime/bundled"}, marketplaces["openai-bundled"])
+        self.assertEqual(output, self.merge(managed, output))
+
     def test_current_only_runtime_tables_keep_current_group_order(self) -> None:
         output = self.merge(
             """

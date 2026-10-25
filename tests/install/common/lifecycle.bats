@@ -308,10 +308,9 @@ herdr server reload-config" ]
     grep -q 'crit-darwin-amd64' scripts/update-agent-assets.sh
     grep -q 'crit-darwin-arm64' scripts/update-agent-assets.sh
     run ! grep -q 'brew install crit' scripts/update-agent-assets.sh
-    grep -q 'python3 -c' scripts/update-agent-assets.sh
-    grep -q 'plugin.get("id") == plugin_id' scripts/update-agent-assets.sh
-    grep -q 'if claude_crit_plugin_is_enabled; then' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_plugin "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'claude plugin disable "${plugin_id}"' scripts/update-agent-assets.sh
+    grep -q 'claude plugin enable "${plugin_id}"' scripts/update-agent-assets.sh
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
@@ -326,11 +325,11 @@ herdr server reload-config" ]
     grep -q 'CLAUDE_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
     grep -q 'CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
-    grep -q 'CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"' scripts/update-agent-assets.sh
     grep -q 'codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"' scripts/update-agent-assets.sh
     grep -q 'codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}"' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_plugin "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" --ref "${ref}"' scripts/update-agent-assets.sh
     grep -q 'codex plugin add "${CODEX_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'update_claude_ponytail' scripts/update-agent-assets.sh
     grep -q 'update_codex_ponytail' scripts/update-agent-assets.sh
@@ -348,8 +347,7 @@ herdr server reload-config" ]
     grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256=' scripts/update-agent-assets.sh
     grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"' scripts/update-agent-assets.sh
     grep -q '\[ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" \]' scripts/update-agent-assets.sh
-    grep -q 'if claude_understand_anything_plugin_is_enabled; then' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_plugin "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'bash "${installer}" codex < /dev/null' scripts/update-agent-assets.sh
     grep -q 'function provision_codex_understand_anything_runtime()' scripts/update-agent-assets.sh
     grep -q 'packages/core/dist' scripts/update-agent-assets.sh

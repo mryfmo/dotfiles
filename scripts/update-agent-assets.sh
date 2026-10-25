@@ -49,6 +49,9 @@ if ! declare -F manifest_record > /dev/null 2>&1; then
 fi
 # shellcheck source=scripts/lib/installer-pins.sh
 source "${AGENT_ASSET_SCRIPT_DIR}/lib/installer-pins.sh"
+# Rendered from assets.claude-plugins, assets.codex-plugins and assets.gh-extensions in
+# home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+readonly AGENT_PLUGIN_PINS="${AGENT_ASSET_SCRIPT_DIR}/lib/plugin-pins.json"
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
@@ -61,7 +64,6 @@ readonly CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
 readonly CLAUDE_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
 readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
-readonly CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
 readonly CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"
@@ -137,8 +139,8 @@ function ensure_mise_npm_agent_cli() {
     has_command mise || return 0
 
     printf 'Repairing %s through the mise npm backend.\n' "${cli}"
-    MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
-        mise install --force "${mise_tool}"
+    # Both cooldowns hold: mise picks a release past minimum_release_age, npm's min-release-age covers its dependencies.
+    MISE_NPM_PACKAGE_MANAGER=npm mise install --force "${mise_tool}"
     hash -r
     "${cli}" --version > /dev/null
     # A version the repaired CLI cannot print is recorded as unknown; its path must resolve.
@@ -147,7 +149,7 @@ function ensure_mise_npm_agent_cli() {
         printf 'Cannot locate the repaired %s for the asset manifest.\n' "${cli}" >&2
         return 1
     }
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "${cli_version}" "${install_path}" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "${cli_version}" "${install_path}" -- "MISE_NPM_PACKAGE_MANAGER=npm mise install --force ${mise_tool}"
 }
 
 #
@@ -359,90 +361,74 @@ function ensure_claude_understand_anything_marketplace() {
 }
 
 #
-# @description Return success when the Claude Code Crit plugin is already enabled.
+# @description Print one recorded field of a plugin pin from scripts/lib/plugin-pins.json.
+# @arg $1 string Agent: `claude` or `codex`.
+# @arg $2 string Fully qualified plugin ID.
+# @arg $3 string Field: `pin` or `ref`.
+# @exitcode 1 When the pins file cannot be read or does not record the field.
 #
-function claude_crit_plugin_is_enabled() {
-    if ! has_command python3; then
-        return 1
-    fi
-
-    claude plugin list --json 2> /dev/null | CLAUDE_CRIT_PLUGIN_ID="${CLAUDE_CRIT_PLUGIN}" python3 -c '
-import json
-import os
-import sys
-
-try:
-    plugins = json.load(sys.stdin)
-except json.JSONDecodeError:
-    sys.exit(1)
-
-plugin_id = os.environ["CLAUDE_CRIT_PLUGIN_ID"]
-enabled = any(
-    isinstance(plugin, dict)
-    and plugin.get("id") == plugin_id
-    and plugin.get("enabled") is True
-    for plugin in plugins
-)
-sys.exit(0 if enabled else 1)
-'
+function plugin_pin() {
+    jq -er --arg agent "$1" --arg id "$2" --arg field "$3" '.[$agent][$id][$field] | strings' "${AGENT_PLUGIN_PINS}" 2> /dev/null
 }
 
 #
-# @description Return success when the Claude Code Ponytail plugin is already enabled.
+# @description Print the installed version and enabled state of a Claude Code plugin as `<version> <enabled>`,
+#   or nothing when it is not installed.
+# @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 1 When `claude plugin list --json` fails or prints no JSON list: a failed read is never "not installed".
 #
-function claude_ponytail_plugin_is_enabled() {
-    if ! has_command python3; then
-        return 1
-    fi
+function claude_plugin_state() {
+    local listing
 
-    claude plugin list --json 2> /dev/null | CLAUDE_PONYTAIL_PLUGIN_ID="${CLAUDE_PONYTAIL_PLUGIN}" python3 -c '
-import json
-import os
-import sys
-
-try:
-    plugins = json.load(sys.stdin)
-except json.JSONDecodeError:
-    sys.exit(1)
-
-plugin_id = os.environ["CLAUDE_PONYTAIL_PLUGIN_ID"]
-enabled = any(
-    isinstance(plugin, dict)
-    and plugin.get("id") == plugin_id
-    and plugin.get("enabled") is True
-    for plugin in plugins
-)
-sys.exit(0 if enabled else 1)
-'
+    listing="$(claude plugin list --json 2> /dev/null)" || return 1
+    jq -er --arg id "$1" 'if type == "array" then (first(.[] | select(.id == $id) | "\(.version) \(.enabled == true)") // "") else error end' <<< "${listing}" 2> /dev/null
 }
 
 #
-# @description Return success when the Claude Code Understand-Anything plugin is already enabled.
+# @description Keep a Claude Code plugin at its recorded pin (assets.claude-plugins in agent-config.yaml).
+# @description
+#   Claude Code installs only a marketplace's current release and takes no version, so a plugin at its
+#   pin is left alone (and enabled), a missing one is installed and one at another version is updated.
+#   A plugin still off its pin afterwards is disabled: Claude Code runs a plugin's hooks with no trust
+#   step, so only the reviewed version stays enabled. `make doctor` reports the difference.
+# @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 0 When the plugin is at its pin, or was left disabled because it is not.
+# @exitcode 1 When the pin or the plugin list cannot be read; the plugin is then not changed further.
 #
-function claude_understand_anything_plugin_is_enabled() {
-    if ! has_command python3; then
+function converge_claude_plugin() {
+    local plugin_id="$1"
+    local pin state installed
+
+    if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
+        printf 'Cannot read the pin of %s from %s; the plugin was not changed.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
         return 1
     fi
-
-    claude plugin list --json 2> /dev/null | CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID="${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" python3 -c '
-import json
-import os
-import sys
-
-try:
-    plugins = json.load(sys.stdin)
-except json.JSONDecodeError:
-    sys.exit(1)
-
-plugin_id = os.environ["CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID"]
-enabled = any(
-    isinstance(plugin, dict)
-    and plugin.get("id") == plugin_id
-    and plugin.get("enabled") is True
-    for plugin in plugins
-)
-sys.exit(0 if enabled else 1)
-'
+    if ! state="$(claude_plugin_state "${plugin_id}")"; then
+        printf 'claude plugin list --json failed; %s was not changed.\n' "${plugin_id}" >&2
+        return 1
+    fi
+    if [ -z "${state}" ]; then
+        claude plugin install "${plugin_id}" || true
+    elif [ "${state% *}" != "${pin}" ]; then
+        claude plugin update "${plugin_id}" || true
+    fi
+    if ! state="$(claude_plugin_state "${plugin_id}")"; then
+        printf 'claude plugin list --json failed after installing %s; disabling it until make update can compare it with its pin.\n' "${plugin_id}" >&2
+        claude plugin disable "${plugin_id}" || true
+        return 1
+    fi
+    installed="${state% *}"
+    if [ "${installed}" != "${pin}" ]; then
+        printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; it stays disabled until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${installed:-no version (not installed)}" "${pin}" >&2
+        if [ "${state#* }" = "true" ]; then
+            claude plugin disable "${plugin_id}" || true
+        fi
+        return 0
+    fi
+    printf 'Claude Code plugin %s is at its pin %s.\n' "${plugin_id}" "${pin}"
+    if [ "${state#* }" != "true" ]; then
+        claude plugin enable "${plugin_id}" || true
+    fi
 }
 
 #
@@ -456,6 +442,8 @@ function ensure_herdr_integrations() {
     section "herdr integrations"
     herdr integration install claude
     herdr integration install codex
+    # The manifest declares no trust for herdr's hook (README.md, the hook trust paragraph): it is herdr's own file.
+    printf "Codex runs herdr's SessionStart hook (~/.codex/hooks.json) only after you trust it with /hooks once per profile.\n"
     # A herdr that cannot print its version is recorded as unknown, as before.
     local herdr_output herdr_version
     herdr_output="$(herdr --version 2> /dev/null)" || herdr_output=""
@@ -497,7 +485,7 @@ function refresh_codex_hook_trust() {
 }
 
 #
-# @description Install or update the Claude Code Superpowers plugin.
+# @description Keep the Claude Code Superpowers plugin at its recorded pin.
 #
 function update_claude_superpowers() {
     if ! has_command claude; then
@@ -508,20 +496,14 @@ function update_claude_superpowers() {
     section "Claude Code plugins"
     ensure_claude_superpowers_marketplace
     claude plugin marketplace update claude-plugins-official || true
-
-    if command_output_contains "\"id\":\"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json ||
-        command_output_contains "\"id\": \"${CLAUDE_SUPERPOWERS_PLUGIN}\"" claude plugin list --json; then
-        claude plugin update "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
-    else
-        claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
-    fi
+    converge_claude_plugin "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" || return 1
     manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
 }
 
 #
-# @description Install or update the Claude Code Crit plugin.
+# @description Keep the Claude Code Crit plugin at its recorded pin.
 #
 function update_claude_crit() {
     if ! has_command claude; then
@@ -535,25 +517,14 @@ function update_claude_crit() {
     fi
     ensure_claude_crit_marketplace
     claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
-
-    if command_output_contains "\"id\":\"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json ||
-        command_output_contains "\"id\": \"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json; then
-        claude plugin update "${CLAUDE_CRIT_PLUGIN}" || true
-    else
-        claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
-    fi
-    if claude_crit_plugin_is_enabled; then
-        printf 'Claude Code Crit plugin is already enabled.\n'
-    else
-        claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
-    fi
+    converge_claude_plugin "${CLAUDE_CRIT_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" || return 1
     manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
-# @description Install or update the Claude Code Ponytail plugin.
+# @description Keep the Claude Code Ponytail plugin at its recorded pin.
 #
 function update_claude_ponytail() {
     if ! has_command claude; then
@@ -564,18 +535,7 @@ function update_claude_ponytail() {
     section "Claude Code Ponytail plugin"
     ensure_claude_ponytail_marketplace
     claude plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
-
-    if command_output_contains "\"id\":\"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json ||
-        command_output_contains "\"id\": \"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json; then
-        claude plugin update "${CLAUDE_PONYTAIL_PLUGIN}" || true
-    else
-        claude plugin install "${CLAUDE_PONYTAIL_PLUGIN}" || true
-    fi
-    if claude_ponytail_plugin_is_enabled; then
-        printf 'Claude Code Ponytail plugin is already enabled.\n'
-    else
-        claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
-    fi
+    converge_claude_plugin "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" || return 1
@@ -583,7 +543,7 @@ function update_claude_ponytail() {
 }
 
 #
-# @description Install or update the Claude Code Understand-Anything plugin.
+# @description Keep the Claude Code Understand-Anything plugin at its recorded pin.
 #
 function update_claude_understand_anything() {
     if ! has_command claude; then
@@ -594,28 +554,51 @@ function update_claude_understand_anything() {
     section "Claude Code Understand-Anything plugin"
     ensure_claude_understand_anything_marketplace
     claude plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
-
-    if command_output_contains "\"id\":\"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json ||
-        command_output_contains "\"id\": \"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json; then
-        claude plugin update "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
-    else
-        claude plugin install "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
-    fi
-    if claude_understand_anything_plugin_is_enabled; then
-        printf 'Claude Code Understand-Anything plugin is already enabled.\n'
-    else
-        claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
-    fi
+    converge_claude_plugin "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
     local plugin_version
     plugin_version="$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" || return 1
     manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #
-# @description Install the Codex Superpowers plugin from the OpenAI-curated catalog.
+# @description Print the versions in the plugin.json of every installed copy of a Codex plugin, one per line.
+# @arg $1 string Fully qualified Codex plugin ID.
+#
+function codex_plugin_cache_versions() {
+    local plugin="${1%@*}" marketplace="${1#*@}" manifest
+
+    for manifest in "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/${marketplace}/${plugin}"/*/.codex-plugin/plugin.json; do
+        [ -f "${manifest}" ] || continue
+        jq -r '.version // "no version"' "${manifest}" 2> /dev/null || printf 'unreadable %s\n' "${manifest}"
+    done
+}
+
+#
+# @description Warn when the installed copy of a Codex plugin is not its recorded pin.
+# @description
+#   Codex takes no plugin version, so this compares after the install. A plugin hook of a copy off its pin
+#   is not trusted anyway: the modify scripts trust it only at its trusted_hash pin (codex.hooks.state).
+# @arg $1 string Fully qualified Codex plugin ID.
+#
+function warn_codex_plugin_off_pin() {
+    local plugin_id="$1"
+    local pin versions
+
+    if ! pin="$(plugin_pin codex "${plugin_id}" pin)"; then
+        printf 'WARN: cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
+        return 0
+    fi
+    versions="$(codex_plugin_cache_versions "${plugin_id}")"
+    if [ "${versions}" != "${pin}" ]; then
+        printf 'WARN: Codex plugin %s is installed at [%s], not its pin %s; review that release and record its version in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${versions//$'\n'/, }" "${pin}" >&2
+    fi
+}
+
+#
+# @description Install the Codex Superpowers plugin from the OpenAI-curated catalog, then compare it with its pin.
 #
 function update_codex_superpowers() {
-    local codex_output
+    local codex_output installed
 
     if ! has_command codex; then
         printf 'Skipping Codex plugins: codex command not found.\n'
@@ -623,8 +606,8 @@ function update_codex_superpowers() {
     fi
 
     section "Codex plugins"
-    if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
-        command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
+    installed="$(codex_plugin_cache_versions "${CODEX_SUPERPOWERS_PLUGIN}")"
+    if [ -n "${installed}" ]; then
         printf 'Codex Superpowers plugin is already installed.\n'
     elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
         if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
@@ -639,18 +622,27 @@ function update_codex_superpowers() {
         # shellcheck disable=SC2016 # Backticks are literal operator guidance.
         printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"
     fi
+    warn_codex_plugin_off_pin "${CODEX_SUPERPOWERS_PLUGIN}"
     local plugin_version
     plugin_version="$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" || return 1
     manifest_record "update_codex_superpowers" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
 }
 
 #
-# @description Ensure the Ponytail Codex plugin marketplace is configured.
+# @description Ensure the Ponytail Codex plugin marketplace is configured at its reviewed commit.
+# @description
+#   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins), so an
+#   existing marketplace follows the pin on `codex plugin marketplace upgrade`; a new one is added at it.
 #
 function ensure_codex_ponytail_marketplace() {
     local codex_home="${CODEX_HOME:-${HOME}/.codex}"
     local codex_config="${codex_home%/}/config.toml"
+    local ref
 
+    if ! ref="$(plugin_pin codex "${CODEX_PONYTAIL_PLUGIN}" ref)"; then
+        printf 'Cannot read the marketplace ref of %s from %s.\n' "${CODEX_PONYTAIL_PLUGIN}" "${AGENT_PLUGIN_PINS}" >&2
+        return 1
+    fi
     if [ -f "${codex_config}" ] && grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}"; then
         if grep -Fq "source = \"${CODEX_PONYTAIL_MARKETPLACE_SOURCE}\"" "${codex_config}"; then
             return 0
@@ -667,33 +659,41 @@ function ensure_codex_ponytail_marketplace() {
         return 1
     fi
 
-    codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE}"
+    codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" --ref "${ref}"
 }
 
 #
-# @description Install or update the Codex Ponytail plugin from its marketplace.
+# @description Install the Codex Ponytail plugin from its marketplace at the reviewed commit, then compare it with its pin.
 #
 function update_codex_ponytail() {
+    local ref revision installed
+
     if ! has_command codex; then
         printf 'Skipping Codex Ponytail plugin: codex command not found.\n'
         return 0
     fi
 
     section "Codex Ponytail plugin"
-    ensure_codex_ponytail_marketplace
+    ensure_codex_ponytail_marketplace || return 0
     codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
 
-    if command_output_contains "\"pluginId\":\"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json ||
-        command_output_contains "\"pluginId\": \"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json; then
+    installed="$(codex_plugin_cache_versions "${CODEX_PONYTAIL_PLUGIN}")"
+    if [ -n "${installed}" ]; then
         printf 'Codex Ponytail plugin is already installed.\n'
     else
         codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
     fi
-    printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
+    ref="$(plugin_pin codex "${CODEX_PONYTAIL_PLUGIN}" ref)" || ref=""
+    revision="$(jq -r '.revision // empty' "${CODEX_HOME:-${HOME}/.codex}/.tmp/marketplaces/${CODEX_PONYTAIL_MARKETPLACE_NAME}/.codex-marketplace-install.json" 2> /dev/null)" || revision=""
+    if [ -z "${ref}" ] || [ "${revision}" != "${ref}" ]; then
+        printf 'WARN: the Codex Ponytail marketplace is at %s, not its pinned ref %s; run chezmoi apply, then make update.\n' "${revision:-an unreadable revision}" "${ref:-(unreadable)}" >&2
+    fi
+    warn_codex_plugin_off_pin "${CODEX_PONYTAIL_PLUGIN}"
+    printf 'Ponytail lifecycle hooks are trusted only at their reviewed trusted_hash pins; the Codex config refresh at the end of this run applies them.\n'
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
     local plugin_version
     plugin_version="$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" || return 1
-    manifest_record "update_codex_ponytail" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
+    manifest_record "update_codex_ponytail" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE_SOURCE} --ref ${ref}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -1037,8 +1037,9 @@ function update_omp() (
         printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link} and resolves to ${resolved})}"
         mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
     fi
-    # Allow this reviewed pin before the default three-day cooldown expires.
-    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" &&
+    # The verified local tarball has no registry release date, so npm's min-release-age (~/.npmrc, three days)
+    # applies only to the dependencies it resolves: none newer than the cooldown, as for every other install.
+    npm install -g --prefix "${HOME}/.local" "${tarball}" &&
         installed="$("${entry}" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     installed="${installed#omp/}"
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
@@ -1046,7 +1047,7 @@ function update_omp() (
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
-    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm_config_min_release_age=0 npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
+    manifest_record "update_omp" installer "${OMP_PIN_VERSION}" "${HOME}/.local/bin/omp" -- "npm install -g --prefix ${HOME}/.local <verified-omp-tarball>"
 )
 
 #

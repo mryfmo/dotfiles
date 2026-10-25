@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["github-actions", "mise", "custom.regex"],
+  "enabledManagers": ["mise", "custom.regex"],
   "schedule": ["* 0-3 * * 1"],
   "labels": ["dependencies"],
   "dependencyDashboard": true,
@@ -20,32 +20,77 @@
     },
     {
       "customType": "regex",
-      "description": "crates.io asset pins in the agent manifest.",
+      "description": "npm tarball pins (https-download from registry.npmjs.org) in the agent manifest.",
       "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
       "matchStrings": [
-        "source: crates\\n\\s+upstream: (?<depName>[^\\s]+)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+        "source: https-download\\n\\s+upstream: https://registry\\.npmjs\\.org/(?<depName>(?:@[^/\\s]+/)?[^/\\s]+)/-/[^\\s]+\\n\\s+pin: (?<currentValue>[^\\s]+)"
       ],
-      "datasourceTemplate": "crate"
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "PyPI wheel pins (https-download from pypi.org) in the agent manifest.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: https-download\\n\\s+upstream: https://pypi\\.org/project/(?<depName>[^/\\s]+)/[^\\s]*\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "GitHub commit pins (git-commit) in the agent manifest, against the head of each repository's main branch.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: git-commit\\n\\s+upstream: (?<depName>[^\\s]+)\\n\\s+pin: (?<currentDigest>[0-9a-f]{40})\\n"
+      ],
+      "packageNameTemplate": "https://github.com/{{{depName}}}",
+      "currentValueTemplate": "main",
+      "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "description": "The tode installer-script pin in the agent manifest: tode.sh/install installs zenbu-labs/terminal-code releases.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: installer-script\\n\\s+upstream: (?<depName>https://tode\\.sh/install)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "packageNameTemplate": "zenbu-labs/terminal-code",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "The terminal-browser installer-script pin in the agent manifest: terminal-browser.sh/install installs zenbu-labs/terminal-browser v* releases (semver drops its pixel-v* and electron-v* tags).",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: installer-script\\n\\s+upstream: (?<depName>https://terminal-browser\\.sh/install)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "packageNameTemplate": "zenbu-labs/terminal-browser",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "The gh extension pin (gh-extension) in the agent manifest, against the extension's GitHub releases.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: gh-extension\\n\\s+upstream: https://github\\.com/(?<depName>[^\\s]+)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "github-releases"
     }
   ],
   "packageRules": [
     {
-      "description": "Group minor and patch updates for actions and mise tools.",
-      "matchManagers": ["github-actions", "mise"],
+      "description": "Group minor and patch updates for mise tools. Dependabot (.github/dependabot.yml) alone updates GitHub Actions.",
+      "matchManagers": ["mise"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "minor and patch updates"
     },
     {
-      "description": "Notification-only: agent-config.yaml pins pair with sha256/trusted_hash fields that only generate-agent-configs.py --set-asset recomputes, until T119 retires the pins. A bare pin bump would break the asset's verify: check, so these updates wait for dashboard approval and are applied through --set-asset instead.",
+      "description": "Notification-only: each agent-config.yaml pin pairs with a sha256 (or per-platform sha256) field that only generate-agent-configs.py --set-asset recomputes. A bare pin bump would break the asset's verify: check, so these updates wait for dashboard approval and are applied through --set-asset instead.",
       "matchManagers": ["custom.regex"],
       "matchFileNames": ["home/dot_agents/agent-config.yaml"],
       "dependencyDashboardApproval": true
-    },
-    {
-      "description": "Hold fd, as home/dot_mise/config.toml does: newer releases lack a macOS x64 asset.",
-      "matchManagers": ["mise"],
-      "matchDepNames": ["fd"],
-      "enabled": false
     },
     {
       "description": "Hold npm:pnpm, as home/dot_mise/config.toml does: the Understand-Anything plugin lockfile needs that version.",

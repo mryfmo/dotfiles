@@ -276,7 +276,8 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = "mise npm 0 install --force npm:@anthropic-ai/claude-code"
+        # The repair keeps npm's own cooldown: it no longer sets npm_config_min_release_age (logged empty here).
+        repair = "mise npm  install --force npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
         self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))

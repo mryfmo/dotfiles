@@ -16,7 +16,7 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${output}" = "extension install seachicken/gh-poi" ]
+    [ "${output}" = "extension install seachicken/gh-poi --pin $(sed -n 's/^GH_POI_PIN_VERSION="\(.*\)"$/\1/p' "${SCRIPT_PATH}")" ]
 }
 
 @test "[common] gh_extensions skips login and extensions when unauthenticated" {
@@ -38,14 +38,14 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     [[ "${output}" != *"unexpected:"* ]]
 }
 
-@test "[common] gh_extensions keeps installed extensions unchanged" {
+@test "[common] gh_extensions keeps an extension at its pinned tag unchanged" {
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }
         gh() {
             case "$1 $2" in
                 "auth status") return 0 ;;
-                "extension list") printf "gh poi\tseachicken/gh-poi\tv0.18.4\n" ;;
+                "extension list") printf "gh poi\tseachicken/gh-poi\t%s\n" "${GH_POI_PIN_VERSION}" ;;
                 *) printf "unexpected: %s\n" "$*"; return 99 ;;
             esac
         }
@@ -54,6 +54,46 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 
     [ "${status}" -eq 0 ]
     [ -z "${output}" ]
+}
+
+@test "[common] gh_extensions reinstalls an extension at another tag at its pin" {
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        activate_mise() { :; }
+        gh() {
+            case "$1 $2" in
+                "auth status") return 0 ;;
+                "extension list") printf "gh poi\tseachicken/gh-poi\tv0.0.1\n" ;;
+                *) printf "%s\n" "$*" ;;
+            esac
+        }
+        main
+        printf "pin=%s\n" "${GH_POI_PIN_VERSION}"
+    '
+
+    [ "${status}" -eq 0 ]
+    pin="${lines[3]#pin=}"
+    [ "${lines[1]}" = "extension remove gh-poi" ]
+    [ "${lines[2]}" = "extension install seachicken/gh-poi --pin ${pin}" ]
+}
+
+@test "[common] gh_extensions changes nothing when the extension list cannot be read" {
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        activate_mise() { :; }
+        gh() {
+            case "$1 $2" in
+                "auth status") return 0 ;;
+                "extension list") return 1 ;;
+                *) printf "unexpected: %s\n" "$*"; return 99 ;;
+            esac
+        }
+        main
+    '
+
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"gh extension list failed"* ]]
+    [[ "${output}" != *"unexpected:"* ]]
 }
 
 @test "[common] gh_extensions refuses when mise activate fails, before any gh call" {

@@ -51,7 +51,7 @@
 
 - Ponytail (`ponytail@ponytail`) を利用できる場合は、コーディング作業で YAGNI、stdlib/native platform first、既存実装の再利用、最小の正しい差分を優先してください。
 - Ponytail は「短ければよい」ではありません。trust boundary の入力検証、データ損失防止、セキュリティ、アクセシビリティ、明示要求された要件は削らないでください。
-- Codex で初回導入または更新後は `/hooks` を開き、Ponytail lifecycle hooks を review and trust してから新しい thread を開始してください。
+- Ponytail lifecycle hooks は `make update` が manifest の reviewed pin (`trusted_hash`) でだけ信頼します。pin と違う hook は信頼されず、apply と `make doctor` が警告します。その場合は `/hooks` で review し、hash を `home/dot_agents/agent-config.yaml` に記録してから新しい thread を開始してください。
 - モードは上流の既定値 `full` を使います。必要な場合だけ `PONYTAIL_DEFAULT_MODE=lite|full|ultra|off` または Ponytail コマンドで変更してください。
 
 ## Understand-Anything

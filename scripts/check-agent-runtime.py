@@ -18,6 +18,7 @@ import shlex
 import stat
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import NamedTuple
 
@@ -596,6 +597,177 @@ def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = No
     ]
 
 
+PLUGIN_PINS = ROOT / "scripts/lib/plugin-pins.json"
+# Marketplaces whose plugins this repository does not pin: the ones OpenAI ships with Codex, and this
+# repository's own (crit@mryfmo-personal-plugins is the copy the pinned crit CLI writes, assets.crit).
+UNPINNED_CODEX_MARKETPLACES = frozenset(
+    {"openai-bundled", "openai-primary-runtime", "openai-curated-remote", "mryfmo-personal-plugins"}
+)
+
+
+def read_json(path: Path) -> object:
+    """Parse a JSON file; OSError or ValueError propagates so a caller can tell a failed read from an absent file."""
+    return json.loads(path.read_text())
+
+
+def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> list[str]:
+    """Fail for a Claude Code plugin installed at another version than its pin; warn for unpinned enabled ones."""
+    installed_path = home / ".claude/plugins/installed_plugins.json"
+    if not installed_path.exists():
+        return [
+            f"WARN: Claude Code plugins: {installed_path} is missing, so no recorded plugin is installed; run make update"
+        ]
+    try:
+        installed = read_json(installed_path)["plugins"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
+    findings = []
+    for plugin_id, pin in sorted(pins.items()):
+        versions = sorted(
+            {str(entry.get("version")) for entry in installed.get(plugin_id, []) if isinstance(entry, dict)}
+        )
+        if not versions:
+            findings.append(f"WARN: Claude Code plugin {plugin_id} is not installed (pin {pin['pin']})")
+        elif versions != [pin["pin"]]:
+            findings.append(
+                f"Claude Code plugin {plugin_id} is installed at {', '.join(versions)}, not its pin {pin['pin']} "
+                "(assets.claude-plugins in home/dot_agents/agent-config.yaml); review that release and record it, "
+                "or run make update to return to the pin"
+            )
+    settings_path = home / ".claude/settings.json"
+    if settings_path.exists():
+        try:
+            enabled = read_json(settings_path).get("enabledPlugins", {})
+        except (OSError, ValueError, AttributeError) as error:
+            return [
+                *findings,
+                f"Claude Code plugins: cannot read {settings_path} ({error!r}); unpinned plugins not checked",
+            ]
+        for plugin_id in sorted(enabled):
+            if enabled[plugin_id] is True and plugin_id not in pins:
+                findings.append(
+                    f"WARN: Claude Code plugin {plugin_id} is enabled but has no pin in assets.claude-plugins; "
+                    "record its reviewed version there or disable it"
+                )
+    return findings
+
+
+def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], script: Path) -> list[str]:
+    """Fail for a Codex plugin or git marketplace off its pin; warn for an enabled third-party plugin without one.
+
+    The copy checked is the one Codex loads, chosen by the base modify script's own hook-trust block, so doctor,
+    apply and Codex agree on it.
+    """
+    try:
+        block = script.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace: dict[str, object] = {"sys": sys, "Path": Path}
+        with contextlib.redirect_stderr(io.StringIO()):
+            exec(block.split("\n", 1)[1], namespace)
+        active_plugin_version = namespace["active_plugin_version"]
+    except (Exception, SystemExit) as error:
+        return [f"Codex plugins: cannot evaluate {script} ({error!r}); plugin pins not checked"]
+    findings = []
+    for plugin_id, pin in sorted(pins.items()):
+        plugin, _, marketplace = plugin_id.partition("@")
+        root = home / ".codex/plugins/cache" / marketplace / plugin
+        version_dir = active_plugin_version(root) if root.is_dir() else None
+        if version_dir is None:
+            findings.append(f"WARN: Codex plugin {plugin_id} is not installed (pin {pin['pin']})")
+            continue
+        copy = root / version_dir
+        try:
+            version = str(read_json(copy / ".codex-plugin/plugin.json").get("version"))
+        except (OSError, ValueError, AttributeError) as error:
+            findings.append(f"Codex plugin {plugin_id}: cannot read {copy / '.codex-plugin/plugin.json'} ({error!r})")
+            continue
+        if version != pin["pin"]:
+            findings.append(
+                f"Codex plugin {plugin_id} is installed at {version}, not its pin {pin['pin']} "
+                "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
+            )
+        ref = pin.get("ref")
+        if ref is None:
+            continue
+        install_record = home / ".codex/.tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
+        try:
+            revision = read_json(install_record).get("revision")
+        except (OSError, ValueError, AttributeError) as error:
+            findings.append(
+                f"Codex marketplace {marketplace}: cannot read {install_record} ({error!r}); its pin is not checked"
+            )
+            continue
+        if revision != ref:
+            findings.append(
+                f"Codex marketplace {marketplace} is at {revision}, not its pinned ref {ref}; run chezmoi apply, then make update"
+            )
+        head = copy / ".git/HEAD"
+        if (
+            head.is_file()
+            and re.fullmatch(r"[0-9a-f]{40}", head.read_text().strip())
+            and head.read_text().strip() != ref
+        ):
+            findings.append(
+                f"Codex plugin {plugin_id} copy {copy} was installed from {head.read_text().strip()}, not the pinned ref {ref}"
+            )
+    config_path = home / ".codex/config.toml"
+    if config_path.exists():
+        try:
+            enabled = tomllib.loads(config_path.read_text()).get("plugins", {})
+        except (OSError, ValueError) as error:
+            return [*findings, f"Codex plugins: cannot read {config_path} ({error!r}); unpinned plugins not checked"]
+        for plugin_id, table in sorted(enabled.items()):
+            enabled_here = isinstance(table, dict) and table.get("enabled") is True
+            third_party = plugin_id.partition("@")[2] not in UNPINNED_CODEX_MARKETPLACES
+            if enabled_here and third_party and plugin_id not in pins:
+                findings.append(
+                    f"WARN: Codex plugin {plugin_id} is enabled but has no pin in assets.codex-plugins; "
+                    "record its reviewed version there or disable it"
+                )
+    return findings
+
+
+def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
+    """Fail for a gh extension installed at another tag than its pin (assets.gh-extensions)."""
+    data_home = Path(os.environ.get("XDG_DATA_HOME") or home / ".local/share")
+    findings = []
+    for repository, pin in sorted(pins.items()):
+        manifest = data_home / "gh/extensions" / repository.split("/", 1)[1] / "manifest.yml"
+        if not manifest.exists():
+            findings.append(
+                f"WARN: gh extension {repository} is not installed (pin {pin}); run make update after make gh-auth"
+            )
+            continue
+        try:
+            tag = re.search(r"^tag: *(\S+)$", manifest.read_text(), re.MULTILINE)
+        except OSError as error:
+            findings.append(f"gh extension {repository}: cannot read {manifest} ({error!r})")
+            continue
+        if tag is None or tag.group(1) != pin:
+            findings.append(
+                f"gh extension {repository} is installed at {tag.group(1) if tag else 'an unknown tag'}, not its pin {pin}; run make update"
+            )
+    return findings
+
+
+def plugin_pin_findings(
+    home: Path | None = None, pins_path: Path | None = None, script: Path | None = None
+) -> list[str]:
+    """Compare every recorded plugin and gh extension pin with what this host runs."""
+    home = home or HOME
+    pins_path = pins_path or PLUGIN_PINS
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    try:
+        pins = read_json(pins_path)
+        claude, codex, extensions = pins["claude"], pins["codex"], pins["gh_extensions"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return [f"plugin pins unreadable: {pins_path} ({error!r})"]
+    return [
+        *claude_plugin_pin_findings(home, claude),
+        *codex_plugin_pin_findings(home, codex, script),
+        *gh_extension_pin_findings(home, extensions),
+    ]
+
+
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 GH_LOGIN_HINT = "run make gh-auth"
 
@@ -843,6 +1015,7 @@ def check() -> list[str]:
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
     failures.extend(codex_hook_trust_warnings())
+    failures.extend(plugin_pin_findings())
     failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures

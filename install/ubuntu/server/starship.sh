@@ -18,9 +18,9 @@ readonly BIN_DIR="${HOME}/.local/bin"
 readonly STARSHIP_RELEASE_REPO="starship/starship"
 # Rendered from assets.starship in home/dot_agents/agent-config.yaml; change them there.
 # starship's releases are mutable and carry only .sha256 sidecars, so the reviewed sha256 is the check.
-readonly STARSHIP_PIN_VERSION="v1.26.0"
-readonly STARSHIP_X86_64_SHA256="b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3"
-readonly STARSHIP_AARCH64_SHA256="dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b"
+readonly STARSHIP_PIN_VERSION="v1.27.0"
+readonly STARSHIP_X86_64_SHA256="10c8eb4cb3b761d9bf59ea828444c2dab36c900b7d69a69e08814b286969df89"
+readonly STARSHIP_AARCH64_SHA256="341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"
 
 # @description Print the Starship Linux artifact name and its reviewed sha256 for the current architecture.
 function starship_artifact() {

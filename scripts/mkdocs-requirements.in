@@ -1,0 +1,7 @@
+# The documentation build's direct dependencies (make docs / make deploy). The Makefile installs
+# scripts/mkdocs-requirements.txt, compiled from this file with an exact version of every package; the
+# command in its header regenerates it. Its --exclude-newer date stays at least seven days in the
+# past: hosts run uv with exclude-newer = "7 days" and could not install anything newer.
+mkdocs>=1.6,<2
+mkdocs-material
+mkdocs-toc-md

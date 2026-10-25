@@ -164,7 +164,9 @@
     "GH_TELEMETRY": "false",
     "DO_NOT_TRACK": "1",
     "CHECKPOINT_DISABLE": "1",
-    "AWS_EC2_METADATA_DISABLED": "true"
+    "AWS_EC2_METADATA_DISABLED": "true",
+    "DISABLE_AUTOUPDATER": "1",
+    "DISABLE_UPDATES": "1"
   },
   "hooks": {
     "PreToolUse": [

@@ -191,9 +191,34 @@ def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str, Any]:
-    """Return the pinned marketplace revision recorded in assets.codex-plugins."""
-    plugin = manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
-    return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
+    """Return the reviewed commit a Codex git marketplace is fetched at, from assets.codex-plugins."""
+    plugins = manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {})
+    refs = {
+        plugin["ref"] for plugin_id, plugin in plugins.items() if plugin_id.endswith(f"@{name}") and "ref" in plugin
+    }
+    if len(refs) > 1:
+        fail(f"assets.codex-plugins pins marketplace {name} at more than one ref: {sorted(refs)}")
+    return {"ref": refs.pop()} if refs else {}
+
+
+PLUGIN_PINS_PATH = "scripts/lib/plugin-pins.json"
+
+
+def render_plugin_pins(manifest: dict[str, Any]) -> str:
+    """The recorded plugin and gh extension pins, for update-agent-assets.sh (jq) and make doctor."""
+    assets = manifest.get("assets", {})
+    pins: dict[str, Any] = {}
+    for agent, asset in (("claude", "claude-plugins"), ("codex", "codex-plugins")):
+        pins[agent] = {}
+        for plugin_id, plugin in assets.get(asset, {}).get("plugins", {}).items():
+            if "@" not in plugin_id or not plugin.get("pin") or plugin["pin"] == "unknown":
+                fail(f"assets.{asset}.plugins.{plugin_id} must be <plugin>@<marketplace> with a recorded pin")
+            pins[agent][plugin_id] = {key: plugin[key] for key in ("marketplace", "pin", "ref") if key in plugin}
+    extension = assets.get("gh-extensions", {})
+    pins["gh_extensions"] = (
+        {extension["upstream"].removeprefix("https://github.com/"): extension["pin"]} if extension else {}
+    )
+    return json.dumps(pins, indent=2, sort_keys=True) + "\n"
 
 
 def asset_field(asset: dict[str, Any], path: str) -> str:
@@ -204,7 +229,7 @@ def asset_field(asset: dict[str, Any], path: str) -> str:
 
 
 PLAIN_PIN_VALUE = re.compile(r"[A-Za-z0-9._+-]+")
-SETTABLE_ASSET_FIELD = re.compile(r"(?:fallback\.)?(?:pin|sha256|sha256\.[A-Za-z0-9-]+)")
+SETTABLE_ASSET_FIELD = re.compile(r"(?:fallback\.)?(?:pin|sha256|sha256\.[A-Za-z0-9_-]+)")
 
 
 def set_asset_field(text: str, name: str, path: str, value: str) -> str:
@@ -870,7 +895,7 @@ def declared_hook_trust(home: str) -> list:
     \"\"\"(key, entry, trusted hash or None, kind, warning or None) for each hook the manifest declares.
 
     A config hook is trusted at the hash of its manifest definition. A plugin hook is trusted only at its
-    manifest pin: `make update` upgrades plugins, so an installed hook whose hash differs from the pin is a
+    manifest pin: an installed hook whose hash differs from the pin (a plugin copy off its recorded version) is a
     release nobody reviewed and stays untrusted (kind "changed") until it is reviewed in /hooks and the
     reviewed hash is recorded as the pin. When the hash cannot be computed, the pin is written as is
     (kind "fallback"): Codex trusts only content with that hash, so the pin never trusts anything else.
@@ -1564,6 +1589,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
+    outputs[ROOT / PLUGIN_PINS_PATH] = render_plugin_pins(manifest)
     outputs.update(render_lever_installs(manifest))
     return outputs
 

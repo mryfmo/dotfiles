@@ -774,8 +774,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_orphans = self.module.orphaned_asset_warnings
         original_drift = self.module.chezmoi_drift_warnings
         original_gh_login = self.module.gh_login_findings
+        original_plugin_pins = self.module.plugin_pin_findings
         try:
             self.module.HOME = self.target_root
+            self.module.plugin_pin_findings = list
             self.module.same_text = lambda *args, **kwargs: True
             self.module.same_modified = lambda *args, **kwargs: True
             self.module.compare_shared_skills = list
@@ -800,6 +802,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.orphaned_asset_warnings = original_orphans
             self.module.chezmoi_drift_warnings = original_drift
             self.module.gh_login_findings = original_gh_login
+            self.module.plugin_pin_findings = original_plugin_pins
 
         self.assertEqual(1, len(failures))
         self.assertRegex(
@@ -1032,6 +1035,103 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
         ):
             self.assertIn("WARN: hook-trust sentinel", self.module.check())
+
+    def plugin_pins_fixture(self) -> Path:
+        pins = self.temp_dir / "plugin-pins.json"
+        pins.write_text(
+            json.dumps(
+                {
+                    "claude": {"demo@market": {"marketplace": "owner/demo", "pin": "2.0.0"}},
+                    "codex": {
+                        "tail@tail": {
+                            "marketplace": "https://example.invalid/tail.git",
+                            "pin": "5.0.0",
+                            "ref": "a" * 40,
+                        }
+                    },
+                    "gh_extensions": {"owner/gh-tool": "v1.0.0"},
+                }
+            )
+        )
+        return pins
+
+    def install_plugin_fixture(self, claude: str, codex: str, revision: str, tag: str) -> None:
+        home = self.target_root
+        (home / ".claude/plugins").mkdir(parents=True, exist_ok=True)
+        (home / ".claude/plugins/installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": {"demo@market": [{"scope": "user", "version": claude}]}})
+        )
+        (home / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": {"demo@market": True}}))
+        copy = home / ".codex/plugins/cache/tail/tail" / codex / ".codex-plugin"
+        copy.mkdir(parents=True, exist_ok=True)
+        (copy / "plugin.json").write_text(json.dumps({"name": "tail", "version": codex}))
+        record = home / ".codex/.tmp/marketplaces/tail"
+        record.mkdir(parents=True, exist_ok=True)
+        (record / ".codex-marketplace-install.json").write_text(json.dumps({"revision": revision}))
+        extension = home / ".local/share/gh/extensions/gh-tool"
+        extension.mkdir(parents=True, exist_ok=True)
+        (extension / "manifest.yml").write_text(f"owner: owner\nname: gh-tool\ntag: {tag}\n")
+
+    def plugin_findings(self, pins: Path) -> list[str]:
+        with mock.patch.dict(os.environ, {"XDG_DATA_HOME": ""}):
+            return self.module.plugin_pin_findings(self.target_root, pins)
+
+    def test_doctor_fails_on_every_plugin_and_extension_off_its_recorded_pin(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        self.assertEqual([], self.plugin_findings(pins))
+
+        self.install_plugin_fixture("2.1.0", "5.1.0", "b" * 40, "v1.1.0")
+        shutil.rmtree(self.target_root / ".codex/plugins/cache/tail/tail/5.0.0")
+        findings = self.plugin_findings(pins)
+
+        errors = [finding for finding in findings if not self.module.is_warning(finding)]
+        self.assertEqual(4, len(errors), findings)
+        for expected in ("demo@market is installed at 2.1.0", "tail@tail is installed at 5.1.0", "b" * 40, "v1.1.0"):
+            self.assertTrue(any(expected in error for error in errors), (expected, errors))
+
+    def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        (self.target_root / ".claude/settings.json").write_text(
+            json.dumps({"enabledPlugins": {"demo@market": True, "extra@elsewhere": True, "off@elsewhere": False}})
+        )
+        (self.target_root / ".codex").mkdir(exist_ok=True)
+        (self.target_root / ".codex/config.toml").write_text(
+            '[plugins."third@party"]\nenabled = true\n\n[plugins."browser@openai-bundled"]\nenabled = true\n'
+        )
+
+        findings = self.plugin_findings(pins)
+
+        self.assertEqual(2, len(findings), findings)
+        self.assertTrue(all(self.module.is_warning(finding) for finding in findings), findings)
+        self.assertIn("extra@elsewhere", findings[0])
+        self.assertIn("third@party", findings[1])
+
+    def test_doctor_fails_when_a_plugin_record_cannot_be_read(self) -> None:
+        # Failure injection: an unreadable record is an error, never "nothing installed" or "every pin matches".
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        (self.target_root / ".claude/plugins/installed_plugins.json").write_text("{truncated")
+        (self.target_root / ".codex/.tmp/marketplaces/tail/.codex-marketplace-install.json").write_text("[")
+
+        findings = self.plugin_findings(pins)
+
+        errors = [finding for finding in findings if not self.module.is_warning(finding)]
+        self.assertEqual(2, len(errors), findings)
+        self.assertIn("installed_plugins.json", errors[0])
+        self.assertIn(".codex-marketplace-install.json", errors[1])
+        broken = self.temp_dir / "broken-pins.json"
+        broken.write_text("{}")
+        (finding,) = self.plugin_findings(broken)
+        self.assertTrue(finding.startswith("plugin pins unreadable:"), finding)
+
+    def test_check_includes_plugin_pin_findings(self) -> None:
+        with (
+            mock.patch.object(self.module, "plugin_pin_findings", return_value=["plugin-pin sentinel"]),
+            mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
+        ):
+            self.assertIn("plugin-pin sentinel", self.module.check())
 
     def fake_gh_status(self, accounts: list[dict]) -> str:
         """A fake gh whose `auth status --json hosts` reports ACCOUNTS; it fails if a token variable leaks."""

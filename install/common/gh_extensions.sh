@@ -4,7 +4,8 @@
 # @brief Install GitHub CLI extensions used by the dotfiles.
 # @description
 #   Activates `mise` when available and installs the configured `gh`
-#   extensions only when GitHub CLI is already authenticated.
+#   extensions at their reviewed tags, only when GitHub CLI is already
+#   authenticated. An extension at another tag is reinstalled at the pin.
 
 set -Eeuo pipefail
 
@@ -14,8 +15,11 @@ fi
 
 readonly MISE_BIN="${HOME}/.local/bin/mise"
 
+# Rendered from assets.gh-extensions in home/dot_agents/agent-config.yaml; change the pin there.
+GH_POI_PIN_VERSION="v0.18.5"
+
 readonly GH_EXTENSIONS=(
-    seachicken/gh-poi
+    "seachicken/gh-poi=${GH_POI_PIN_VERSION}"
 )
 
 #
@@ -33,19 +37,33 @@ function activate_mise() {
 }
 
 #
-# @description Install every configured extension, or skip when unauthenticated.
+# @description Install every configured extension at its pinned tag, or skip when unauthenticated.
+# @exitcode 1 When `gh extension list` fails: an unreadable list is never read as "not installed".
 #
 function install_gh_extensions() {
+    local entry extension pin listing installed
+
     if ! gh auth status &> /dev/null; then
         printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
         return 0
     fi
 
-    for extension in "${GH_EXTENSIONS[@]}"; do
-        if gh extension list | awk -F '\t' -v expected="${extension}" '$2 == expected { found = 1 } END { exit !found }'; then
+    if ! listing="$(gh extension list)"; then
+        printf '%s\n' 'gh extension list failed; gh extensions were not changed.' >&2
+        return 1
+    fi
+    for entry in "${GH_EXTENSIONS[@]}"; do
+        extension="${entry%=*}"
+        pin="${entry##*=}"
+        installed="$(awk -F '\t' -v expected="${extension}" '$2 == expected { print $3; exit }' <<< "${listing}")"
+        if [ "${installed}" = "${pin}" ]; then
             continue
         fi
-        gh extension install "${extension}"
+        if [ -n "${installed}" ]; then
+            printf '%s is at %s; reinstalling it at the pinned %s.\n' "${extension}" "${installed}" "${pin}"
+            gh extension remove "${extension##*/}"
+        fi
+        gh extension install "${extension}" --pin "${pin}"
     done
 }
 

@@ -716,6 +716,36 @@ class LintComparisonsTest(unittest.TestCase):
         # a jq comment is a comment token: a reasonless marker in one is R0 (audit:6434c27:13)
         self.assert_hits([("nw.sh", "jq -r '. # lint-comparisons: allow'\n", [("R0", 1)])])
 
+    def test_audit_531_empty_fragments_env_wrappers_and_escaped_concatenations(self):
+        # audit of d78efc86: an empty quoted fragment never leads a word, so the path variable after it still does
+        self.assert_hits(
+            [
+                ("ef.sh", '[[ \'\'"$path" == "$x" ]]\n', [("R1", 1)]),
+                ("eg.sh", "case ''\"$url\" in foo) ;; esac\n", [("R2", 1)]),
+                ("eh.sh", '[[ ""$path == "$x" ]]\n', [("R1", 1)]),
+                ("ei.sh", '[[ \'\'"$count" == "$x" ]]\n', []),
+            ]
+        )
+        # jq behind env, with its options, their operands and NAME=value arguments, still runs the program
+        forms = (
+            "env LC_ALL=C jq -n --arg p /x 'select(.url == $p)'\n",
+            "env -i -u HOME LC_ALL=C jq -r 'select(.url == $p)'\n",
+            "env -- jq -r 'select(.url == $p)'\n",
+            "command env A=1 jq -r 'select(.url == $p)'\n",
+        )
+        self.assert_hits([(f"ev{i}.sh", f, [("R3", 1)]) for i, f in enumerate(forms)])
+        self.assert_hits([("ew.sh", "env LC_ALL=C echo 'select(.url == $p)'\n", [])])
+        # an f-string value built only from re.escape calls and constants is escaped; one bare name is not
+        self.assert_hits(
+            [
+                ("ra.py", 're.search(f"{re.escape(prefix) + re.escape(name)}", text)\n', []),
+                ("rb.py", "re.search(f\"{re.escape(prefix) + '/' + re.escape(name)}\", text)\n", []),
+                ("rc.py", "re.search(f\"{f'{re.escape(prefix)}-'}\", text)\n", []),
+                ("rd.py", "re.search(f\"{re.escape(prefix) + '/' + name}\", text)\n", [("R6", 1)]),
+                ("re.py", "re.search(f\"{f'{prefix}-'}\", text)\n", [("R6", 1)]),
+            ]
+        )
+
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []
         for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order

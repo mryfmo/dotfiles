@@ -53,6 +53,8 @@ ANSI_ESC = re.compile(
     r"\\(?:([0-7]{1,3})|x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|U([0-9A-Fa-f]{1,8})|c(.)|(.))", re.DOTALL
 )
 JQ_SKIP = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
+# env options whose value is the next word
+ENV_OPERAND = {"-u", "-C", "-P", "-S", "--unset", "--chdir", "--split-string"}
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
@@ -169,11 +171,17 @@ def option(word):  # a literal option: the word's first part is literal text sta
     return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"
 
 
-def command(call):  # a CallExpr's words and argument nodes from its command word on, past command, builtin and exec
+def command(call):  # a CallExpr's words and argument nodes from its command word on, past command, builtin, exec and
+    # env (its options, their operands and its NAME=value arguments)
     args, i = call.get("Args") or [], 0
-    while i < len(args) and static(args[i]) in ("command", "builtin", "exec"):
-        i += 1
+    while i < len(args) and static(args[i]) in ("command", "builtin", "exec", "env"):
+        env, i = static(args[i]) == "env", i + 1
         while i < len(args) and option(args[i]):
+            flag, i = static(args[i]), i + 1
+            if flag == "--":
+                break
+            i += env and flag in ENV_OPERAND  # -u NAME, -C DIR, -P PATH, -S STRING take the next word
+        while env and i < len(args) and re.match(r"[A-Za-z_]\w*=", static(args[i])):
             i += 1
     return [static(a) for a in args[i:]], args[i:]
 
@@ -203,8 +211,10 @@ def expands(node):  # a parameter expansion below: a name, or a positional or sp
     return any(n.get("Type") == "ParamExp" for n in nodes(node))
 
 
-def operand(word):  # a path-named variable first (not its ${#length}), or a literal path piece beside any expansion
-    first = next(flat(word), ({}, False))[0]
+def operand(word):  # the word's leading expansion, a path-named variable (not its ${#length}), or a literal path piece
+    # beside any expansion; an empty literal ('' or "") adds nothing to the word, so it never leads it
+    lead = (p for p, q in flat(word) if p["Type"] not in ("Lit", "SglQuoted", "ExtGlob") or next(chars(p, q), None))
+    first = next(lead, {})
     name = first.get("Type") == "ParamExp" and not first.get("Length") and (first.get("Param") or {}).get("Value")
     return bool(name and TOKEN.search(name) or LITERAL.search(static(word)))
 
@@ -385,10 +395,15 @@ def python_hits(text):
     def py_calls(nodes, accept):
         return any(accept(dotted(c.func)) for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
 
-    def escaped(node):  # a formatted value whose every fragment is re.escape's: a call, a join of escapes, a constant
+    def escaped(node):  # a formatted value whose every fragment is re.escape's: a call, a join of escapes, a constant,
+        # or a concatenation (+ or a nested f-string) of those
         name = dotted(node.func) if isinstance(node, ast.Call) else ""
         if name == "re.escape" or isinstance(node, ast.Constant):
             return True
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return escaped(node.left) and escaped(node.right)
+        if isinstance(node, ast.JoinedStr):
+            return all(escaped(v.value) for v in node.values if isinstance(v, ast.FormattedValue))
         joined = name.endswith(".join") and len(node.args) == 1 and isinstance(node.func.value, ast.Constant)
         arg = node.args[0] if joined else None  # a constant separator: an escaped one would be its own call
         if isinstance(arg, ast.Call) and dotted(arg.func) == "map" and arg.args:

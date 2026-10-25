@@ -307,6 +307,35 @@ class PinRecordsTest(unittest.TestCase):
             records.optional("r", {"ref": None}, "ref", str)
         self.assertIsNone(records.optional("r", {}, "ref", str))
 
+    def test_every_string_passes_clean_including_extension_tags(self) -> None:
+        base = {"claude": {}, "codex": {}, "gh_extensions": {"seachicken/gh-poi": "v1\nFORGED"}}
+        self.refused(lambda: records.load_plugin_pins(self.write("p.json", base)), "gh_extensions.seachicken/gh-poi")
+        base["gh_extensions"]["seachicken/gh-poi"] = "v1\x00"
+        self.refused(lambda: records.load_plugin_pins(self.write("p.json", base)), "gh_extensions.seachicken/gh-poi")
+        self.refused(
+            lambda: records.load_codex_config(
+                self.write("c.toml", '[marketplaces."a\\nb"]\nsource_type = "git"\nsource = "s"\n')
+            ),
+            "marketplaces",
+        )
+
+    def test_yes_no_questions_exit_0_1_and_2_on_failure(self) -> None:
+        script = [sys.executable, "-I", str(ROOT / "scripts/pin_records.py")]
+        config = self.write("mise.toml", '[tools]\n# Held: x\nfd = "1"\njq = "latest"\n')
+        pins = self.write("p.json", {"claude": {}, "codex": {}, "gh_extensions": {"seachicken/gh-poi": "v1"}})
+        for args, code in (
+            (["is-held", str(config), "fd"], 0),
+            (["is-held", str(config), "jq"], 1),
+            (["is-held", str(self.dir / "absent.toml"), "fd"], 2),
+            (["is-pinned-extension", str(pins), "seachicken/gh-poi"], 0),
+            (["is-pinned-extension", str(pins), "fork/gh-poi"], 0),
+            (["is-pinned-extension", str(pins), "dlvhdr/gh-dash"], 1),
+            (["is-pinned-extension", str(pins), "not a repository"], 2),
+            (["is-pinned-extension", str(self.write("bad.json", "{")), "dlvhdr/gh-dash"], 2),
+        ):
+            with self.subTest(args=args[0:1] + args[2:]):
+                self.assertEqual(code, subprocess.run([*script, *args], capture_output=True, check=False).returncode)
+
     def test_command_line_fails_with_the_field(self) -> None:
         path = self.write("s.json", {"enabledPlugins": {"crit@crit": "false"}})
         result = subprocess.run(

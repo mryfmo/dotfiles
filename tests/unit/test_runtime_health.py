@@ -1245,6 +1245,36 @@ EOF
         self.assertNotIn("gh extension upgrade --all", log)
         self.assertIn("Skipping gh extension seachicken/gh-poi: pinned", result.stdout)
 
+    def test_upgrade_never_reads_a_failed_hold_or_pin_check_as_no(self) -> None:
+        # Failure injection: a hold or pin question that cannot be answered never upgrades the tool or extension.
+        for case in ("mise config with a stray Held comment", "unreadable plugin pins"):
+            with self.subTest(case=case):
+                repo, env = self.upgrade_fixture("hold-" + case.split()[0])
+                self.executable(
+                    repo / "bin/gh",
+                    """
+                    printf 'gh %s\\n' "$*" >> "$TEST_LOG"
+                    if [ "$1 $2" = "extension list" ]; then printf 'gh poi\\tseachicken/gh-poi\\tv0.18.5\\n'; fi
+                    """,
+                )
+                if case.startswith("mise"):
+                    config = repo / "home/.config/mise/config.toml"
+                    config.write_text(config.read_text() + "\n# Held: dangling\n")
+                else:
+                    (repo / "scripts/plugin-pins.json").write_text("{truncated")
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+                log = (repo / "commands.log").read_text().splitlines()
+                output = result.stdout + result.stderr
+                if case.startswith("mise"):
+                    self.assertNotIn("mise upgrade --yes npm:ccusage", log)
+                    self.assertFalse([line for line in log if line.startswith("mise upgrade --yes ")], log)
+                    self.assertIn("unable to read the held tools", output)
+                    self.assertNotEqual(0, result.returncode, output)
+                else:
+                    self.assertFalse([line for line in log if line.startswith("gh extension upgrade")], log)
+                    self.assertIn("cannot tell whether gh extension seachicken/gh-poi is pinned", output)
+                    self.assertIn("optional warning", output)
+
     def test_upgrade_holds_exactly_the_tools_the_config_marks_held(self) -> None:
         repo, env = self.upgrade_fixture("none")
         config = repo / "home/.config/mise/config.toml"

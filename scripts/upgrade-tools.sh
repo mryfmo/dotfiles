@@ -259,6 +259,17 @@ function held_mise_tools() {
 }
 
 #
+# @description Ask scripts/pin_records.py whether the applied mise config holds one tool.
+# @arg $1 string mise tool name.
+# @exitcode 0 Held.
+# @exitcode 1 Not held.
+# @exitcode 2 The config cannot be read or has an unknown shape: never read as "not held".
+#
+function mise_tool_is_held() {
+    python3 -I "${repo_root}/scripts/pin_records.py" is-held "${MISE_CONFIG_DIR}/config.toml" "$1"
+}
+
+#
 # @description Run a mise lifecycle command for each current tool; only upgrade is per tool.
 # @arg $1 string Mise command name: upgrade.
 # @exitcode 1 When the current tools cannot be listed.
@@ -268,14 +279,15 @@ function run_mise_tool_command() {
     local mise_command="$1"
     local mise_tool
     local mise_tools
-    local held_tools
+    local held
     local failed=0
 
     if ! mise_tools="$(current_mise_tools)"; then
         printf 'warning: unable to list current mise tools for %s; continuing\n' "${mise_command}" >&2
         return 1
     fi
-    if ! held_tools="$(held_mise_tools)"; then
+    # Read once up front, so an unreadable config stops the phase before any tool moves.
+    if ! held_mise_tools > /dev/null; then
         printf 'warning: unable to read the held tools from %s/config.toml; no mise tool was upgraded\n' "${MISE_CONFIG_DIR}" >&2
         return 1
     fi
@@ -289,9 +301,14 @@ function run_mise_tool_command() {
             printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
             continue
         fi
-        if grep -qxF -- "${mise_tool}" <<< "${held_tools}"; then
+        held=0
+        mise_tool_is_held "${mise_tool}" || held=$?
+        if [ "${held}" -eq 0 ]; then
             printf 'Skipping mise upgrade for held tool: %s (see its Held comment in the mise config).\n' "${mise_tool}"
             continue
+        elif [ "${held}" -ne 1 ]; then
+            printf 'warning: cannot tell whether %s is held; no further mise tool was upgraded\n' "${mise_tool}" >&2
+            return 1
         fi
         # A plain upgrade keeps the config's "latest" or exact request as written.
         if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
@@ -496,32 +513,29 @@ function upgrade_uv_tools() {
 # @exitcode 1 When the pins or the extension list cannot be read (nothing is upgraded), or an upgrade fails.
 #
 function upgrade_gh_extensions() {
-    local pinned listing repository failed=0
+    local listing repository pinned failed=0
 
     if ! has_command gh; then
         return 0
     fi
 
     section "GitHub CLI extensions"
-    if ! pinned="$(python3 -I "${repo_root}/scripts/pin_records.py" plugin-ids "${repo_root}/scripts/plugin-pins.json" gh_extensions)"; then
-        printf 'warning: cannot read the pinned gh extensions from %s; no extension was upgraded\n' "${repo_root}/scripts/plugin-pins.json" >&2
-        return 1
-    fi
     if ! listing="$(gh extension list)"; then
         printf 'warning: gh extension list failed; no extension was upgraded\n' >&2
         return 1
     fi
     while IFS=$'\t' read -r _ repository _; do
         [ -n "${repository}" ] || continue
-        # `gh extension upgrade` takes the name, so a fork with a pinned extension's name is skipped too;
-        # a row that is not <owner>/<name> cannot be told apart from a pinned one and is not upgraded.
-        if [[ ! "${repository}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-            printf 'warning: skipping an unrecognised gh extension list row: %s\n' "${repository}" >&2
-            failed=1
-            continue
-        fi
-        if grep -qxF -- "${repository}" <<< "${pinned}" || awk -F/ -v name="${repository##*/}" '$2 == name { found = 1 } END { exit !found }' <<< "${pinned}"; then
+        # pin_records.py answers exit 0 pinned, 1 not pinned; anything else (unreadable pins, a row that is not
+        # <owner>/<name>) is a failure, and the extension is not upgraded.
+        pinned=0
+        python3 -I "${repo_root}/scripts/pin_records.py" is-pinned-extension "${repo_root}/scripts/plugin-pins.json" "${repository}" || pinned=$?
+        if [ "${pinned}" -eq 0 ]; then
             printf 'Skipping gh extension %s: pinned in assets.gh-extensions.\n' "${repository}"
+            continue
+        elif [ "${pinned}" -ne 1 ]; then
+            printf 'warning: cannot tell whether gh extension %s is pinned; it was not upgraded\n' "${repository}" >&2
+            failed=1
             continue
         fi
         gh extension upgrade "${repository##*/}" || failed=1

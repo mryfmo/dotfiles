@@ -9,7 +9,8 @@ beyond the required ones are tolerated, since Claude Code, Codex and gh add fiel
 
 scripts/check-agent-runtime.py imports this module; scripts/update-agent-assets.sh, scripts/upgrade-tools.sh
 and install/common/gh_extensions.sh run its command-line form (`python3 -I scripts/pin_records.py <command>`),
-which prints the parsed value and exits 2 with `ERROR: <record>: <field>: <why>` on stderr otherwise. It keeps
+which prints the parsed value and exits 2 with `ERROR: <record>: <field>: <why>` on stderr otherwise; the
+yes/no questions (is-held, is-pinned-extension) exit 0 for yes and 1 for no, so any other exit is a failure. It keeps
 to Python 3.9 syntax so a fresh macOS's /usr/bin/python3 can run the gh commands; only the TOML readers need
 tomllib (Python 3.11+).
 """
@@ -183,8 +184,9 @@ def load_plugin_pins(path: Path) -> PluginPins:
     for repository, tag in extensions.items():
         if not REPOSITORY.fullmatch(repository):
             raise RecordError(path, f"gh_extensions.{repository}", "must be <owner>/<repository>")
-        if type(tag) is not str or not tag:
-            raise RecordError(path, f"gh_extensions.{repository}", "must be a tag string")
+        if type(tag) is not str or not tag or re.search(r"\s", tag):
+            raise RecordError(path, f"gh_extensions.{repository}", "must be one tag string")
+        clean(path, f"gh_extensions.{repository}", tag)
     return PluginPins(agents["claude"], agents["codex"], dict(extensions))
 
 
@@ -390,6 +392,7 @@ def load_codex_config(path: Path) -> Optional[CodexConfig]:
     if not isinstance(marketplaces, dict):
         raise RecordError(path, "marketplaces", "must be a table")
     for name, table in marketplaces.items():
+        clean(path, f"marketplaces.{name!r}", name)
         field(path, table, "source_type", str, f"marketplaces.{name}.")
         field(path, table, "source", str, f"marketplaces.{name}.")
         optional(path, table, "ref", str, f"marketplaces.{name}.")
@@ -543,6 +546,18 @@ def main(argv: List[str]) -> int:
         print("absent" if extension is None else f"{extension.tag} {'true' if extension.pinned else 'false'}")
     elif command == "mise-holds":
         print("\n".join(load_mise_holds(Path(args[0]))))
+    elif command == "is-held":
+        # One question for the shell: exit 0 held, 1 not held, 2 the config cannot be read (never "not held").
+        return 0 if args[1] in load_mise_holds(Path(args[0])) else 1
+    elif command == "is-pinned-extension":
+        # Exit 0 when REPOSITORY, or any extension of the same name (gh upgrades by name, so a fork of a pinned
+        # extension would move it), is pinned; 1 when not; 2 when the pins or the repository cannot be read.
+        repository = args[1]
+        if not REPOSITORY.fullmatch(repository):
+            raise RecordError("gh extension list", repository, "is not <owner>/<repository>")
+        pinned = load_plugin_pins(Path(args[0])).gh_extensions
+        name = repository.split("/", 1)[1]
+        return 0 if any(entry.split("/", 1)[1] == name for entry in pinned) else 1
     else:
         raise RecordError("pin_records.py", command, "is not a command")
     return 0

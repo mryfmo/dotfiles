@@ -346,12 +346,21 @@ import re
 import sys
 
 package, version, install_dir = sys.argv[1:]
-# An npm package name (lowercase, an optional scope) and one exact semver version: never a range or a tag.
+# An npm package name (lowercase, an optional scope) and one exact version: never a range or a tag.
 NAME = re.compile(r"(?:@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*")
-VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?")
+# The SemVer 2.0.0 regular expression, verbatim from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+# (ASCII digits only; fullmatch, so no trailing newline). npm reads anything else, such as 20.0.0-a..b, as a tag.
+SEMVER = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",
+    re.ASCII,
+)
 if not NAME.fullmatch(package):
     sys.exit(f"{package!r} is not an npm package name")
-if not VERSION.fullmatch(version):
+exact = SEMVER.fullmatch(version)
+# npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.
+if exact is None or exact.group(5) is not None:
     sys.exit(f"mise reports {version!r}, not one exact version")
 modules = f"{install_dir}/lib/node_modules"
 
@@ -389,14 +398,17 @@ PY
 }
 
 #
-# @description Return success when an npm version has min-release-age-exclude: npm 11.17.0 added it
+# @description Tell whether an npm version has min-release-age-exclude: npm 11.17.0 added it
 #   (https://github.com/npm/cli/releases/tag/v11.17.0, #9534). An older npm ignores the setting, so its rebuild is
 #   skipped rather than run without it.
 # @arg $1 string npm version, as `npm --version` prints it.
+# @exitcode 0 npm 11.17.0 or later.
+# @exitcode 1 An older npm.
+# @exitcode 2 Not a plain major.minor.patch version (no leading zero, at most nine digits each): never read as either.
 #
 function npm_has_release_age_exclude() {
-    [[ "$1" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]] || return 1
-    ((BASH_REMATCH[1] > 11 || (BASH_REMATCH[1] == 11 && BASH_REMATCH[2] >= 17)))
+    [[ "$1" =~ ^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$ ]] || return 2
+    ((BASH_REMATCH[1] > 11 || (BASH_REMATCH[1] == 11 && BASH_REMATCH[2] >= 17))) || return 1
 }
 
 #
@@ -450,15 +462,20 @@ function rebuild_mise_npm_tool() {
         npm_rebuild_skipped "${mise_tool}" "its installed copy does not prove version ${version}"
         return 1
     }
-    # The npm mise's npm backend runs: the current node's.
+    # The npm mise's npm backend runs: the current node's. A failed or unreadable answer skips before anything moves.
     npm_version="$(run_mise_with_isolated_git_config exec -- npm --version)" || {
         npm_rebuild_skipped "${mise_tool}" "npm --version failed"
         return 1
     }
-    npm_has_release_age_exclude "${npm_version}" || {
+    local capable=0
+    npm_has_release_age_exclude "${npm_version}" || capable=$?
+    if [ "${capable}" -eq 1 ]; then
         npm_rebuild_skipped "${mise_tool}" "npm ${npm_version} predates min-release-age-exclude (npm 11.17.0)"
         return 1
-    }
+    elif [ "${capable}" -ne 0 ]; then
+        npm_rebuild_skipped "${mise_tool}" "npm --version printed no major.minor.patch version"
+        return 1
+    fi
     mv "${install_dir}" "${backup}" || {
         npm_rebuild_skipped "${mise_tool}" "${install_dir} cannot be moved aside"
         return 1

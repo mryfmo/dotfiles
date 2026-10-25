@@ -1110,13 +1110,19 @@ EOF
                 current)
                     case "$2" in
                         node) [ -e "$NODE_MOVED" ] && printf '27.0.0\n' || printf '26.0.0\n' ;;
-                        npm:ccusage) printf '20.0.0\n' ;;
+                        # FAKE_CCUSAGE_VERSION stands for a version string npm would not read as one version.
+                        npm:ccusage) printf '%s\n' "${FAKE_CCUSAGE_VERSION-20.0.0}" ;;
                     esac
                     ;;
                 # Like mise, where fails for a tool whose install is not in place.
                 where) [[ "$2" != npm:ccusage ]] || { [ -d "$CCUSAGE_DIR" ] && printf '%s\n' "$CCUSAGE_DIR"; } ;;
-                # The current node's npm; FAKE_NPM_VERSION stands for an older one.
-                exec) [[ "$*" == "exec -- npm --version" ]] && printf '%s\n' "${FAKE_NPM_VERSION:-11.20.0}" ;;
+                # The current node's npm: FAKE_NPM_VERSION stands for an older one or unreadable output, "fail" for
+                # an npm that cannot run.
+                exec)
+                    [[ "$*" == "exec -- npm --version" ]] || exit 0
+                    [[ "${FAKE_NPM_VERSION-11.20.0}" != fail ]] || exit 1
+                    printf '%s\n' "${FAKE_NPM_VERSION-11.20.0}"
+                    ;;
             esac
             """,
         )
@@ -1470,23 +1476,34 @@ EOF
         self.assertEqual("27.0.0\n", marker_file.read_text())
 
     def test_rebuild_skips_with_a_reason_and_keeps_the_install_when_the_version_is_not_proven(self) -> None:
-        # Each case leaves the working install, prints why, and leaves the marker so the next run tries again.
-        for name, phase, change, reason, attempted in (
-            ("installed copy names another version", "young-other-version", "version", "does not prove version", False),
-            ("installed copy unreadable", "young-unreadable", "remove", "does not prove version", False),
-            ("npm without min-release-age-exclude", "young-old-npm", "npm", "predates min-release-age-exclude", False),
-            ("npm still refuses a dependency", "young_dependency", None, "npm refused or could not fetch", True),
-        ):
+        # Each case leaves the working install, prints why, and leaves the marker so the next run tries again. Only
+        # the last reaches the install; every other one is decided before the install directory is moved.
+        unproven, no_npm = "does not prove version", "printed no major.minor.patch version"
+        cases = [
+            ("installed copy names another version", {}, "20.0.1", unproven, False),
+            ("installed copy unreadable", {}, None, unproven, False),
+            ("npm without min-release-age-exclude", {"FAKE_NPM_VERSION": "11.16.0"}, "", "predates", False),
+            ("npm --version fails", {"FAKE_NPM_VERSION": "fail"}, "", "npm --version failed", False),
+            ("npm --version prints nothing", {"FAKE_NPM_VERSION": ""}, "", no_npm, False),
+            ("npm --version prints two parts", {"FAKE_NPM_VERSION": "11.20"}, "", no_npm, False),
+            ("npm --version has a leading zero", {"FAKE_NPM_VERSION": "011.17.0"}, "", no_npm, False),
+            ("npm --version prints a word", {"FAKE_NPM_VERSION": "npm 11.20.0"}, "", no_npm, False),
+            ("npm still refuses a dependency", {}, "", "npm refused or could not fetch", True),
+        ]
+        # Versions npm would not read as one exact version (20.0.0-a..b is a tag to npm), even where the installed
+        # copy carries the same string, so the grammar alone decides.
+        for version in ("20.0.0-a..b", "1.2", "v1.2.3", "1.2.3 ", "1.2.3+build", "01.2.3", "1.2.3-01"):
+            cases.append((f"version {version!r}", {"FAKE_CCUSAGE_VERSION": version}, version, unproven, False))
+        for number, (name, overrides, installed, reason, attempted) in enumerate(cases):
             with self.subTest(name):
-                repo, env = self.upgrade_fixture(phase)
+                repo, env = self.upgrade_fixture("young_dependency" if attempted else f"young-skip-{number}")
+                env.update(overrides)
                 tool = Path(env["CCUSAGE_DIR"])
                 package_json = tool / "lib/node_modules/ccusage/package.json"
-                if change == "version":
-                    package_json.write_text(json.dumps({"name": "ccusage", "version": "20.0.1"}))
-                elif change == "remove":
+                if installed is None:
                     package_json.unlink()
-                elif change == "npm":
-                    env["FAKE_NPM_VERSION"] = "11.16.0"
+                elif installed:
+                    package_json.write_text(json.dumps({"name": "ccusage", "version": installed}))
                 marker_file = Path(env["XDG_STATE_HOME"]) / "dotfiles/npm-tools-node"
                 marker_file.parent.mkdir(parents=True)
                 marker_file.write_text("26.0.0\n")
@@ -1500,7 +1517,8 @@ EOF
                 self.assertIn("its previous install stays", skips[0])
                 self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
                 log = (repo / "commands.log").read_text().splitlines()
-                self.assertEqual(attempted, "mise install --yes npm:ccusage@20.0.0" in log)
+                installs = [line for line in log if line.startswith("mise install --yes npm:")]
+                self.assertEqual(["mise install --yes npm:ccusage@20.0.0"] if attempted else [], installs)
                 self.assertTrue((tool / "original").exists())
                 self.assertFalse((tool / "rebuilt").exists())
                 self.assertFalse(Path(f"{tool}.before-node-rebuild").exists())

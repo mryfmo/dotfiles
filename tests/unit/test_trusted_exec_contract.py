@@ -54,17 +54,44 @@ def run(argv, env, timeout=60, **kw):
 
 
 def kill_group(proc, grace=2):
-    """Stop PROC's process group: TERM, then KILL after GRACE seconds; return what PROC wrote."""
-    for sig in (signal.SIGTERM, signal.SIGKILL):
-        try:
-            os.killpg(proc.pid, sig)
-        except ProcessLookupError:
-            break  # the whole group is gone
-        try:
-            return proc.communicate(timeout=grace)
-        except subprocess.TimeoutExpired:
-            continue
-    return proc.communicate()
+    """Stop PROC's process group and return what PROC wrote: TERM, a GRACE-second wait, then KILL to the group in
+    every case (a descendant may ignore TERM and have closed its output, so PROC finishing proves nothing about
+    it), then wait. ESRCH (ProcessLookupError) means the group is already gone. macOS answers EPERM when the
+    group is vanishing, its last members zombies being reaped (measured: 42 of 200 parallel runs, 1 of 40 serial,
+    with ps then showing no member); that EPERM is accepted only after ps shows no live member of the group. Any
+    other errno, or EPERM with a live member, is raised."""
+    out = err = None
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass  # the whole group is gone already
+    try:
+        out, err = proc.communicate(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass  # PROC itself ignores TERM: KILL below
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass  # nothing of the group is left
+    except PermissionError:
+        if live_group_members(proc.pid):
+            raise
+    if out is None:
+        out, err = proc.communicate()
+    return out, err
+
+
+def live_group_members(pgid):
+    """The pids in process group PGID that are not zombies, read from ps (state Z is a zombie)."""
+    listing = subprocess.run(
+        ["/bin/ps", "-axo", "pid=,pgid=,stat="],
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    rows = (line.split() for line in listing.splitlines() if line.strip())
+    return [int(pid) for pid, group, state in rows if int(group) == pgid and not state.startswith("Z")]
 
 
 def naive_git(root, env):
@@ -488,22 +515,31 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "worker root: read "):
             probe.assert_untouched()
 
+    def assert_gone(self, pid, timeout=10):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        self.fail(f"process {pid} is still running after its group was stopped")
+
+    def test_a_descendant_that_ignores_term_and_closed_its_output_is_killed(self):
+        # Audit round 10 of 8ae07078: after TERM the shell exits and the pipes close, so a group stop that returned
+        # then skipped KILL for a descendant that ignores TERM and had closed its output.
+        inner = 'trap "" TERM; echo $$; exec >/dev/null 2>&1; sleep 1000'
+        with self.assertRaises(subprocess.TimeoutExpired) as expired:
+            run(["/bin/sh", "-c", 'sh -c "$0" & wait', inner], ALLOWED_ENV, timeout=1)
+        self.assert_gone(int(expired.exception.output.split()[0]))
+
     def test_a_timed_out_subprocess_consumer_leaves_no_descendant(self):
         # A shell whose child blocks on a FIFO nobody serves: at the timeout the whole process group is stopped.
         fifo = self.scratch("trusted-exec-group-") / "fifo"
         os.mkfifo(fifo)
         with self.assertRaises(subprocess.TimeoutExpired) as expired:
             run(["/bin/sh", "-c", 'cat "$0" & echo "$!"; wait', str(fifo)], ALLOWED_ENV, timeout=1)
-        child = int(expired.exception.output.split()[0])
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            try:
-                os.kill(child, 0)
-            except ProcessLookupError:
-                break
-            time.sleep(0.01)
-        else:
-            self.fail(f"the blocked child {child} is still running after its group was stopped")
+        self.assert_gone(int(expired.exception.output.split()[0]))
 
     def test_an_errno_other_than_enxio_fails_the_probe(self):
         # No except-all: the only answers the probe reads are ENXIO (no reader) and ENOENT/ELOOP (removed, replaced).

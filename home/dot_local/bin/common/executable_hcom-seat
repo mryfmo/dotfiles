@@ -248,7 +248,7 @@ json_paths() {
 # @arg $2 string The settings file.
 # @exitcode 1 The file cannot be read, has no such array, or holds an entry that is not a clean path.
 allow_write_list() {
-    local n i entry
+    local n i entry line
     case $1 in
     Darwin)
         n=$(/usr/bin/plutil -extract filesystem.allowWrite raw -expect array -o - "$2") || return 1
@@ -261,14 +261,19 @@ allow_write_list() {
         ;;
     *)
         [[ -x /usr/bin/jq ]] || return 1
-        entry=$(/usr/bin/jq -er '.filesystem.allowWrite | if type == "array" then .[] else error end | strings' "$2") ||
-            return 1
-        while IFS= read -r i; do
-            if [[ -n ${i} ]]; then
-                clean_path "${i}" || return 1
-                printf '%s\n' "${i}"
-            fi
+        # Every entry must be a string without a newline, or the line-per-entry output below would drop or split it.
+        /usr/bin/jq -e '.filesystem.allowWrite | type == "array" and all(.[]; type == "string" and (test("\n") | not))' \
+            "$2" > /dev/null || return 1
+        n=$(/usr/bin/jq -e '.filesystem.allowWrite | length' "$2") || return 1
+        entry=$(/usr/bin/jq -er '.filesystem.allowWrite[]' "$2") || [[ ${n} == 0 ]] || return 1
+        i=0
+        while IFS= read -r line; do
+            [[ -n ${line} ]] || continue
+            clean_path "${line}" || return 1
+            printf '%s\n' "${line}"
+            i=$((i + 1))
         done <<< "${entry}"
+        ((i == n)) || return 1
         ;;
     esac
 }
@@ -427,6 +432,9 @@ find_on_path() {
 # @set pinned The argv.
 pin_exec() {
     local label=$1 file first interp name extra interp_path
+    # The spelling the kernel will follow, every link hop, is held to the identity check too: a link in a write root
+    # that points outside it passes the physical check today and can be retargeted before the next exec.
+    refuse_if_link_chain_writable "${label}" "$2"
     file=$(physical_file "$2") || refuse "cannot resolve ${label} to a physical executable file: $2"
     refuse_if_seat_writable "${label}" "${file}"
     [[ -r ${file} ]] || refuse "cannot read ${label}: ${file}"
@@ -445,6 +453,7 @@ pin_exec() {
             [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
             interp_path=${interp}
         fi
+        refuse_if_link_chain_writable "the interpreter of ${label}" "${interp_path}"
         interp=$(physical_file "${interp_path}") || refuse "cannot resolve the interpreter of ${label}: ${interp_path}"
         refuse_if_seat_writable "${label}" "${interp}"
         [[ -r ${interp} ]] || refuse "cannot read the interpreter of ${label}: ${interp}"
@@ -454,6 +463,27 @@ pin_exec() {
         pinned=("${interp}" "${file}")
         ;;
     esac
+}
+
+# @description Refuse (exit 2) when any hop of the symlink chain `$2` (the spelling itself, then each link target in
+#   turn) is, or lies under, a protected write root (refuse_if_seat_writable on each hop as spelled, which compares
+#   the hop's target and every directory above the spelling), so the path the kernel follows at exec time cannot be retargeted by a seat.
+# @arg $1 string A label for the refusal.
+# @arg $2 string An absolute path.
+refuse_if_link_chain_writable() {
+    local p=$2 link n=0
+    while :; do
+        # The hop as spelled: stat follows it to its target, and every directory above the spelling is compared too.
+        refuse_if_seat_writable "$1" "${p}"
+        [[ -L ${p} ]] || return 0
+        n=$((n + 1))
+        ((n <= 40)) || refuse "$1 ${2}: too many symbolic links"
+        link=$(/usr/bin/readlink "${p}") || refuse "cannot read the link $1 ${p}"
+        case ${link} in
+        /*) p=${link} ;;
+        *) p=${p%/*}/${link} ;;
+        esac
+    done
 }
 
 # The tools (regime-cutover U85, the pattern of scripts/orchestrator/ci-rerun.sh, U61). First the complete protected
@@ -584,6 +614,10 @@ for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
 done
+# Host git runs by the argv pin_exec checked (interpreter first when git is a script), never by a lookup.
+git_path=$(find_on_path git) || refuse 'git not found in the private tool directory'
+pin_exec git "${git_path}"
+git_cmd=("${pinned[@]}")
 # Inside the sandbox the seat works with its tools (gh, uv, linters) from the caller's absolute PATH entries after
 # these; every process there is contained, and nothing outside the sandbox runs from that list.
 seat_path=${PATH}
@@ -635,13 +669,15 @@ git_state_check() {
     fi
     for f in "${git_state[@]}"; do
         [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
+        # A dry run validates and creates nothing: an absent file holds no setting, and the real launch creates it.
+        ((! dry_run)) || continue
         case ${f##*/} in
         info | hooks) [[ -d ${f} ]] || /bin/mkdir -p "${f}" || refuse "cannot create ${f}" ;;
         config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
         esac
     done
     for f in "${git_state[@]}"; do
-        [[ ${f##*/} == config.worktree ]] || continue
+        [[ ${f##*/} == config.worktree && -e ${f} ]] || continue
         # From /, so no repository around the cwd is discovered or read; git() adds the overrides.
         names=$(cd / && git config --file "${f}" --no-includes --name-only --list) ||
             refuse "cannot read the git config ${f}"
@@ -660,7 +696,7 @@ git_state_check() {
 #   checked.
 # @arg $@ string git's arguments.
 git() {
-    GIT_CONFIG_NOSYSTEM=1 command git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+    GIT_CONFIG_NOSYSTEM=1 "${git_cmd[@]}" -c core.hooksPath=/dev/null -c core.fsmonitor=false \
         -c extensions.worktreeConfig=false -c protocol.allow=never "$@"
 }
 
@@ -831,6 +867,8 @@ for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
 done
+pin_exec git "${git_path}"
+git_cmd=("${pinned[@]}")
 IFS=: read -r -a path_dirs <<< "${PATH}"
 for path_dir in "${path_dirs[@]}"; do
     path_real=$(physical_path "${path_dir}") || refuse "cannot resolve the PATH entry ${path_dir}"
@@ -857,9 +895,17 @@ case ${os} in
 Darwin) [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec' ;;
 Linux)
     # srt looks bwrap, socat and rg up on PATH unless its settings name them; they name the checked physical files.
-    bwrap_real=$(physical_file "${tools_dir}/bwrap") || refuse 'bwrap not found; srt needs bubblewrap on Linux'
-    socat_real=$(physical_file "${tools_dir}/socat") || refuse 'socat not found; srt needs socat on Linux'
-    rg_real=$(physical_file "${tools_dir}/rg") || refuse 'rg not found; srt needs ripgrep on Linux'
+    # srt runs them by these paths, so a script among them (whose interpreter the kernel would look up) is refused.
+    bwrap_real='' socat_real='' rg_real=''
+    for tool in bwrap socat rg; do
+        pin_exec "${tool}" "${tools_dir}/${tool}"
+        ((${#pinned[@]} == 1)) || refuse "${tool} ${pinned[1]} is a script; srt runs it by path, so it must be a binary"
+        case ${tool} in
+        bwrap) bwrap_real=${pinned[0]} ;;
+        socat) socat_real=${pinned[0]} ;;
+        rg) rg_real=${pinned[0]} ;;
+        esac
+    done
     require_clean_path bwrap "${bwrap_real}"
     require_clean_path socat "${socat_real}"
     require_clean_path rg "${rg_real}"

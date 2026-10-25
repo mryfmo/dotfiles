@@ -553,7 +553,8 @@ class HcomSeatTest(unittest.TestCase):
         (outside / "srt").chmod(0o755)
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(f"srt {interp.resolve()} is or lies under the seat write root {self.store.resolve()}", run.stderr)
+        # The interpreter is named as its `#!` line spells it (the path the kernel follows), the root physically.
+        self.assertRegex(run.stderr, rf"srt \S*/u85interp is or lies under the seat write root {self.store.resolve()}")
         (outside / "srt").write_text("#!/usr/bin/env u85interp\n" + FAKE.read_text().split("\n", 1)[1])
         (outside / "u85interp").symlink_to(interp)
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
@@ -744,7 +745,7 @@ class HcomSeatTest(unittest.TestCase):
                 (outside / tool).chmod(0o755)
                 run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-                self.assertIn(f"{tool} {interp.resolve()} is or lies under the seat write root", run.stderr)
+                self.assertRegex(run.stderr, rf"{tool} \S*/u85interp is or lies under the seat write root")
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
         self.assertFalse(Path(self.seats).exists())
 
@@ -917,6 +918,73 @@ class HcomSeatTest(unittest.TestCase):
                     capture_output=True, text=True, check=False,
                 )  # fmt: skip
                 self.assertEqual(run.returncode, 1, run.stdout)
+
+    def test_git_runs_by_its_checked_argv_and_no_link_hop_lies_in_a_write_root(self):
+        """U85 round 10: a script-based git whose interpreter is a symlink inside a seat write root (pointing outside,
+        so its physical file passes) is refused, since a seat could retarget the link before host git runs."""
+        real_git = shutil.which("git", path="/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin")
+        if real_git is None:
+            self.skipTest("no git outside a shims directory")
+        hop = self.store / "u85-sh"
+        hop.symlink_to("/bin/sh")
+        self.addCleanup(hop.unlink)
+        outside = Path(self.temp.name).resolve() / "git-bin"
+        outside.mkdir()
+        (outside / "git").write_text(f'#!{hop}\nexec {shlex.quote(real_git)} "$@"\n')
+        (outside / "git").chmod(0o755)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("the interpreter of git", run.stderr)
+        self.assertIn(f"is or lies under the seat write root {self.store.resolve()}", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        # A git reached through an outside link runs by its physical file: the seat launch still works.
+        (outside / "git").unlink()
+        (outside / "git").symlink_to(real_git)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_the_linux_reader_refuses_non_string_and_multiline_entries(self):
+        """U85 round 10: the jq reader refuses an allowWrite entry that is no string or holds a newline, rather than
+        dropping or splitting it."""
+        if not Path("/usr/bin/jq").exists():
+            self.skipTest("/usr/bin/jq is not installed here")
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("clean_path", "allow_write_list")
+        )
+        fixture = Path(self.temp.name) / "settings.json"
+        for label, entries, status in (
+            ("clean", ["/tmp/a", "/tmp/b"], 0),
+            ("empty", [], 0),
+            ("number", ["/tmp/a", 7], 1),
+            ("object", [{"path": "/tmp/a"}], 1),
+            ("newline", ["/tmp/a\n/tmp/b"], 1),
+        ):
+            with self.subTest(label):
+                fixture.write_text(json.dumps({"filesystem": {"allowWrite": entries}}))
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'{functions}\nallow_write_list Linux "$1"', "_", str(fixture)],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, status, run.stdout + run.stderr)
+                if status == 0:
+                    self.assertEqual(run.stdout.splitlines(), entries)
+
+    def test_a_dry_run_creates_no_git_metadata(self):
+        """U85 round 10: a dry run validates the git state and creates nothing in the repository."""
+        git_dir = self.repo / ".git"
+        shutil.rmtree(git_dir / "hooks", ignore_errors=True)
+        (git_dir / "config.worktree").unlink(missing_ok=True)
+        before = sorted(str(path) for path in git_dir.rglob("*"))
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(sorted(str(path) for path in git_dir.rglob("*")), before)
+        self.assertFalse((git_dir / "config.worktree").exists())
+        self.assertFalse(Path(self.seats).exists())
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue((git_dir / "config.worktree").exists(), "the real launch creates it for its deny")
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

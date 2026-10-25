@@ -411,7 +411,7 @@ claude:
   # self-checked the same way, so every repository runs the same pinned copy.
   levers:
     sha256:
-      hcom-seat: fc4265bad5af8bb490e182db286151479dfad31b4b684ab649d4f8eee4852cd9
+      hcom-seat: 9ef3a0c725ea0d0e172f245115ba37807032fc2d6fd3f689aa18e085c08abfc5
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

@@ -319,43 +319,42 @@ ancestors_of() {
     done
 }
 
-# @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 in all) and the
-#   directory in its `pwd -P` form. A path that does not exist yet is its nearest existing ancestor's physical form
-#   with the rest appended, so a write root a launch has not created yet still compares with what it will be. Only
-#   shell builtins and `/usr/bin/readlink` run.
+# @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all,
+#   one budget for the whole resolution) and the directory in its `pwd -P` form. A path that does not exist yet is
+#   its nearest existing ancestor's physical form with the rest appended, so a write root a launch has not created
+#   yet still compares with what it will be. Iterative (regime-cutover U85): a dangling link that names a path
+#   under itself (`.state/<name> -> <name>/child`) spends the one budget and fails instead of recursing. Only shell
+#   builtins and `/usr/bin/readlink` run.
 # @arg $1 string An absolute path.
 # @stdout The physical path.
-# @exitcode 1 Not absolute, a control character in it or in a link, a link loop, or a directory that cannot be
-#   resolved.
+# @exitcode 1 Not absolute, a control character in it or in a link, more than 40 links, or a directory that cannot
+#   be resolved.
 physical_path() {
     local p=$1 tail='' link dir n=0
     [[ ${p} == /* && ${p} != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow an absolute-path and content test
-    # p is absolute, so each step shortens it and the walk ends at `/`, which exists.
-    while [[ ! -e ${p} && ! -L ${p} ]]; do
-        tail=/${p##*/}${tail}
-        p=${p%/*}
-        [[ -n ${p} ]] || p=/
-    done
-    while [[ -L ${p} ]]; do
+    while :; do
+        # p is absolute, so each step shortens it and the walk ends at `/`, which exists.
+        while [[ ! -e ${p} && ! -L ${p} ]]; do
+            tail=/${p##*/}${tail}
+            p=${p%/*}
+            [[ -n ${p} ]] || p=/
+        done
+        [[ -L ${p} ]] || break
         n=$((n + 1))
         ((n <= 40)) || return 1
         # The '.' keeps a target's own trailing newlines from the command substitution.
         link=$(/usr/bin/readlink "${p}" && printf .) || return 1
         link=${link%.}
         link=${link%$'\n'}
-        [[ ${link} != *[[:cntrl:]]* ]] || return 1
+        [[ -n ${link} && ${link} != *[[:cntrl:]]* ]] || return 1
         case ${link} in
         /*) p=${link} ;;
         *) p=${p%/*}/${link} ;;
         esac
     done
-    if [[ ! -e ${p} ]]; then
-        # A dangling link: resolve what it names, which does not exist yet.
-        p=$(physical_path "${p}") || return 1
-        printf '%s%s\n' "${p%/}" "${tail:-}"
-    elif [[ -d ${p} ]]; then
+    if [[ -d ${p} ]]; then
         dir=$(cd "${p}/" && pwd -P) || return 1
-        printf '%s%s\n' "${dir%/}" "${tail:-}"
+        printf '%s%s\n' "${dir%/}" "${tail}"
     else
         dir=$(cd "${p%/*}/" && pwd -P) || return 1
         printf '%s/%s%s\n' "${dir%/}" "${p##*/}" "${tail}"
@@ -1014,6 +1013,34 @@ seat_write_roots() {
     done
 }
 
+# @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
+#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
+#   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
+#   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
+#   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
+#   the exemption skips. It runs before anything resolves those paths (lstat first, then physical_path), so a slot
+#   that is a link is refused before any link is followed. Missing slots are created later, one component at a time
+#   (seat_sandbox_write).
+# @arg $1 string The role.
+# @arg $2 string The seat name.
+own_slots_check() {
+    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2")
+    [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
+    seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
+    for slot in "${slots[@]}"; do
+        [[ ! -L ${slot} ]] || refuse "the seat slot ${slot} is a symbolic link; a seat's own slots must be real directories"
+        [[ -e ${slot} ]] || continue
+        [[ -d ${slot} ]] || refuse "the seat slot ${slot} is not a directory"
+        real=$(physical_path "${slot}") || refuse "cannot resolve the seat slot ${slot}"
+        parent=${slot%/*}
+        [[ ${real%/*} -ef ${parent} && ${parent} -ef ${seats_phys}${parent#"${seats_root}"} ]] ||
+            refuse "the seat slot ${slot} does not sit in ${parent}"
+        [[ ${real##*/} == "${slot##*/}" ]] || refuse "the seat slot ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
+    done
+}
+own_slots_check "${role}" "${name}"
+own_slots_check orchestrator orchestrator
+
 # The exact roots (regime-cutover U85): this seat's `allowWrite` list, from the same function that writes the
 # settings, so the check and the sandbox cannot drift, and the other role's; the derived seats root and hcom store;
 # and every settings file under the derived seats root. Their identities join the set computed before any tool ran
@@ -1088,31 +1115,6 @@ seat_overlap_check() {
     done
 }
 
-# @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
-#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
-#   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
-#   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
-#   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
-#   the exemption skips. Missing slots are created later, one component at a time (seat_sandbox_write).
-# @arg $1 string The role.
-# @arg $2 string The seat name.
-own_slots_check() {
-    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2")
-    [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
-    seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
-    for slot in "${slots[@]}"; do
-        [[ ! -L ${slot} ]] || refuse "the seat slot ${slot} is a symbolic link; a seat's own slots must be real directories"
-        [[ -e ${slot} ]] || continue
-        [[ -d ${slot} ]] || refuse "the seat slot ${slot} is not a directory"
-        real=$(physical_path "${slot}") || refuse "cannot resolve the seat slot ${slot}"
-        parent=${slot%/*}
-        [[ ${real%/*} -ef ${parent} && ${parent} -ef ${seats_phys}${parent#"${seats_root}"} ]] ||
-            refuse "the seat slot ${slot} does not sit in ${parent}"
-        [[ ${real##*/} == "${slot##*/}" ]] || refuse "the seat slot ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
-    done
-}
-own_slots_check "${role}" "${name}"
-own_slots_check orchestrator orchestrator
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
 seat_overlap_check "${role}" "${dir_phys}" "${seat_write[@]}"
 orchestrator_write=()

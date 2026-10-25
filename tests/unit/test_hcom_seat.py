@@ -1133,6 +1133,43 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
 
+    def test_a_self_referencing_link_chain_refuses_promptly(self):
+        """U85 round 23: physical_path is iterative with one 40-hop budget per call, so a dangling link naming a
+        path under itself (`.state/<name> -> <name>/child`) fails instead of recursing without bound, and a launch
+        over such a slot is refused (own_slots_check runs before anything resolves a slot)."""
+        text = SEAT.read_text()
+        function = text[text.index("physical_path() {") : text.index("\n}\n", text.index("physical_path() {")) + 3]
+        scratch = Path(self.temp.name).resolve() / "chain"
+        scratch.mkdir()
+        (scratch / "w").symlink_to("w/child")
+        (scratch / "a").symlink_to("b/x")
+        (scratch / "b").symlink_to("a/y")
+        for link in ("w", "a", "w/deeper/path"):
+            with self.subTest(link=link):
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'{function}\nphysical_path "$1"', "_", str(scratch / link)],
+                    capture_output=True, text=True, check=False, timeout=20,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        (scratch / "ok").symlink_to("real/sub")
+        run = subprocess.run(
+            ["/bin/bash", "-c", f'{function}\nphysical_path "$1"', "_", str(scratch / "ok/tail")],
+            capture_output=True, text=True, check=False, timeout=20,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (0, f"{scratch}/real/sub/tail\n"), run.stderr)
+        seats = Path(self.seats)
+        for slot in (".state/worker", "worker"):
+            with self.subTest(slot=slot):
+                (seats / slot).parent.mkdir(parents=True, exist_ok=True)
+                (seats / slot).symlink_to("worker/child")
+                run = subprocess.run(
+                    [str(SEAT), "worker", "--seats-root", self.seats], cwd=self.repo, env=self.env,
+                    capture_output=True, text=True, check=False, timeout=120,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the seat slot {seats / slot} is a symbolic link", run.stderr)
+                shutil.rmtree(seats)
+
     def test_the_linux_reader_checks_jq_status_for_an_empty_list(self):
         """U85 round 16: jq's status for the entry read is checked unconditionally, so a jq that exits 7 or 127
         while the list is empty fails the read instead of reading as an empty list."""

@@ -244,7 +244,11 @@ function run_mise_with_isolated_git_config() {
 # @stdout One tool name per line.
 #
 function current_mise_tools() {
-    run_mise_with_isolated_git_config ls --current --no-header | awk '{print $1}'
+    local listing
+
+    # Captured first: a failed `mise ls` is a failure of the inventory, never an empty one.
+    listing="$(run_mise_with_isolated_git_config ls --current --no-header)" || return 1
+    awk '{print $1}' <<< "${listing}"
 }
 
 #

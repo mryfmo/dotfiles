@@ -339,7 +339,6 @@ EOF
                     """
                     source "$1"
                     has_command() { return 0; }
-                    command_output_contains() { return 1; }
                     codex() {
                         if [ "$*" = "plugin add superpowers@openai-curated" ]; then
                             printf 'Error: plugin superpowers@openai-curated was not found\n' >&2

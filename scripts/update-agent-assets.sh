@@ -176,63 +176,44 @@ function ensure_gh_extensions() {
 }
 
 #
-# @description Return success when a command's output contains a fixed string.
-# @arg $1 string Fixed string to search for.
-# @arg $@ string Command and arguments to run.
-#
-function command_output_contains() {
-    local needle="$1"
-    shift
-
-    "$@" 2> /dev/null | grep -Fq "${needle}"
-}
-
-#
-# @description Print the local root path for a configured Codex marketplace.
-# @arg $1 string Marketplace name.
-#
-function codex_marketplace_root() {
-    local marketplace="$1"
-
-    codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }'
-}
-
-#
-# @description Return success when a Git root has the expected origin URL.
-# @arg $1 string Git working tree root.
-# @arg $2 string Expected HTTPS origin URL.
-#
-function git_remote_origin_matches() {
-    local root="$1"
-    local expected_source="$2"
-    local expected_ssh="git@github.com:${expected_source#https://github.com/}"
-    local remote
-
-    remote="$(git -C "${root}" config --get remote.origin.url 2> /dev/null || true)"
-    case "${remote}" in
-    "${expected_source}" | "${expected_source%.git}" | "${expected_ssh}" | "${expected_ssh%.git}")
-        return 0
-        ;;
-    esac
-    return 1
-}
-
-#
-# @description Return success when a configured Codex marketplace has a matching Git origin.
+# @description Tell whether a Codex marketplace is configured from the expected Git origin. Every probe's
+#   output and status are captured separately: a `codex plugin marketplace list` or `git config` that fails
+#   is "cannot tell", never "absent", so no marketplace is added over one that could not be read.
 # @arg $1 string Marketplace name.
 # @arg $2 string Expected HTTPS origin URL.
+# @exitcode 0 Configured, and its clone's origin is the expected one.
+# @exitcode 1 Not configured.
+# @exitcode 2 Configured from another origin (or a root that is no Git clone): a foreign marketplace.
+# @exitcode 3 The marketplace list or the clone's origin cannot be read.
 #
 function codex_marketplace_has_source() {
     local marketplace="$1"
     local expected_source="$2"
-    local root
+    local expected_ssh="git@github.com:${expected_source#https://github.com/}"
+    local listing root remote status=0
 
-    root="$(codex_marketplace_root "${marketplace}")"
-    if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
+    if ! listing="$(codex plugin marketplace list 2> /dev/null)"; then
+        printf 'ERROR: codex plugin marketplace list failed; cannot tell whether %s is configured.\n' "${marketplace}" >&2
+        return 3
+    fi
+    root="$(awk -v name="${marketplace}" '$1 == name { print $2; exit }' <<< "${listing}")" || return 3
+    if [ -z "${root}" ]; then
         return 1
     fi
-
-    git_remote_origin_matches "${root}" "${expected_source}"
+    if [ ! -d "${root}/.git" ]; then
+        return 2
+    fi
+    remote="$(git -C "${root}" config --get remote.origin.url 2> /dev/null)" || status=$?
+    if [ "${status}" -eq 1 ]; then
+        return 2
+    elif [ "${status}" -ne 0 ]; then
+        printf 'ERROR: cannot read the origin of %s (git exit %s).\n' "${root}" "${status}" >&2
+        return 3
+    fi
+    case "${remote}" in
+    "${expected_source}" | "${expected_source%.git}" | "${expected_ssh}" | "${expected_ssh%.git}") return 0 ;;
+    esac
+    return 2
 }
 
 #
@@ -843,13 +824,17 @@ function ensure_codex_ponytail_marketplace() {
         return 0
     fi
 
-    if codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"; then
-        return 0
-    fi
-    if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
-        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+    state=0
+    codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" || state=$?
+    case "${state}" in
+    0) return 0 ;;
+    1) ;;
+    2)
+        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" >&2
         return 1
-    fi
+        ;;
+    *) return 1 ;;
+    esac
 
     codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" --ref "${ref}"
 }

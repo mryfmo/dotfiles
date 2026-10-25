@@ -1000,3 +1000,59 @@ claude() {
         # At another tag: reinstalled at the pin.
         result, calls, _ = self.run_gh_extensions("v0.0.1", "true")
         self.assertEqual(reinstall, calls)
+
+
+class MaskedStatusTest(unittest.TestCase):
+    """Structural guard: no exit status of an agent CLI, gh or mise is lost on its way to a decision."""
+
+    FILES = ("scripts/update-agent-assets.sh", "scripts/upgrade-tools.sh", "install/common/gh_extensions.sh")
+
+    def test_shellcheck_reports_no_masked_return(self):
+        result = subprocess.run(
+            ["shellcheck", "-x", "-o", "check-extra-masked-returns", "-f", "gcc", *self.FILES],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_no_tool_output_is_piped_into_a_decision(self):
+        # SC2312 does not see a pipeline's first command; under pipefail its failure reads as "no match". Every
+        # call of these tools is captured on its own (status checked) before anything parses its output.
+        tool = re.compile(
+            r'(^|[\s;(&|])(claude_outside_projects|claude|codex|gh|run_mise_with_isolated_git_config|mise|uv|"\$@")\s[^|#]*\|'
+        )
+        offenders = []
+        for name in self.FILES:
+            for number, line in enumerate((ROOT / name).read_text().splitlines(), 1):
+                code = line.split(" #", 1)[0]
+                if code.lstrip().startswith("#"):
+                    continue
+                # `||` is a status test, not a pipe; only a single `|` hands output on.
+                if tool.search(code.replace("||", "  ")):
+                    offenders.append(f"{name}:{number}: {line.strip()}")
+        self.assertEqual([], offenders)
+
+    def test_a_failed_codex_marketplace_list_is_never_read_as_absent(self):
+        # Failure injection: no [marketplaces.ponytail] in the config and `codex plugin marketplace list` fails.
+        work = Path(tempfile.mkdtemp(prefix="ponytail-probe-"))
+        self.addCleanup(shutil.rmtree, work)
+        (work / "home/.codex").mkdir(parents=True)
+        (work / "home/.codex/config.toml").write_text("")
+        fake = (
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; '
+            '[ "$1 $2 $3" = "plugin marketplace list" ] && return 9; return 0; }'
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; {fake}\nensure_codex_ponytail_marketplace', "bash", str(UPDATER)],
+            env=os.environ | {"WORK": str(work), "HOME": str(work / "home"), "CODEX_HOME": ""},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        self.assertNotEqual(0, result.returncode, result.stderr)
+        self.assertFalse([call for call in calls if call.startswith("plugin marketplace add")], calls)
+        self.assertIn("codex plugin marketplace list failed", result.stderr)

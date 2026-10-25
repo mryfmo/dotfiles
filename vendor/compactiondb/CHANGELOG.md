@@ -6,6 +6,7 @@
 - Runtime support is Linux/macOS (POSIX) only; native Windows and the legacy Windows settings example are unsupported. Defer `fcntl` imports until health-log locking so module imports and CLI help remain available without it; locking fails explicitly before writes instead of proceeding unlocked.
 
 - Generated instruction snippets and recovery verification commands require `uv` on PATH and use `uv run --no-project` so the stdlib CLI does not synchronize the target project environment; standalone users must install uv to use these examples.
+- `AGENTS.md` now carries the CompactionDB instructions and `CLAUDE.md` imports it, so non-Claude agents read the same text. Every documented `contextdb_cli.py` example (`AGENTS.md`, `README.md`, `docs/OPERATIONS.md`) uses `uv run --no-project`, matching the installer snippet; hook commands are unchanged.
 
 - Reclaim orphaned project session rows before evicting newer events and after every size-cap batch.
 - Preserve installed hook positions and leave settings bytes, timestamps and backups untouched on a no-op reinstall.

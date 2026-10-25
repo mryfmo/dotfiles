@@ -3,8 +3,8 @@
 ## 日常確認
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py health
-python3 .claude/hooks/contextdb_cli.py verify
+uv run --no-project .claude/hooks/contextdb_cli.py health
+uv run --no-project .claude/hooks/contextdb_cli.py verify
 ```
 
 見るべき項目:
@@ -18,7 +18,7 @@ python3 .claude/hooks/contextdb_cli.py verify
 ## spoolが残る場合
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py drain
+uv run --no-project .claude/hooks/contextdb_cli.py drain
 ```
 
 それでも残る場合:
@@ -37,13 +37,13 @@ spool fileはredacted済みですが、解決前に削除しないでくださ�
 ## retention
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py prune
+uv run --no-project .claude/hooks/contextdb_cli.py prune
 ```
 
 既定30日です。緊急削除例:
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py prune --days 0
+uv run --no-project .claude/hooks/contextdb_cli.py prune --days 0
 ```
 
 これはraw eventだけを削除し、durable memoryは残します。memoryの撤回は `memory retract` を使用します。
@@ -67,7 +67,7 @@ python3 .claude/hooks/contextdb_cli.py prune --days 0
 `probe` は指定sessionの台帳を読み、利用可能なrecall / artifact / decision / continuation probeだけをground truth付きで返します。LLM・network・DB writeは実行しません。
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py probe --session <session_id> --json
+uv run --no-project .claude/hooks/contextdb_cli.py probe --session <session_id> --json
 ```
 
 JSON schema:
@@ -79,7 +79,7 @@ JSON schema:
 ## query-conditioned recall
 
 ```bash
-python3 .claude/hooks/contextdb_cli.py recall "query" --session <session_id> --k 5 --json
+uv run --no-project .claude/hooks/contextdb_cli.py recall "query" --session <session_id> --k 5 --json
 ```
 
 `recall.rho`はlexical scoreの重み、`recall.k`は既定出力件数です。semantic embeddingが無効または未保存なら、外部commandを呼ばずlexical scoreだけを使います。recall自体はDBへ書き込みません。

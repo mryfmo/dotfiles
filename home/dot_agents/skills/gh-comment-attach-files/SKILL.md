@@ -11,7 +11,7 @@ description: Attach local files to a GitHub issue or pull request comment via Pl
 
 ## When To Use
 
-Use this skill when you need GitHub to host local files and give back anonymized attachment URLs, but you do not want Codex to submit the issue or pull request comment itself.
+Use this skill when you need GitHub to host local files and give back anonymized attachment URLs, but the agent must not submit the issue or pull request comment itself.
 
 Typical cases:
 
@@ -38,10 +38,12 @@ Do not use this skill when the task is to actually post, edit, or rewrite a comm
 
 ## Command
 
+`scripts/` paths are relative to this skill's directory. Run the command from the project directory so file arguments and `./.playwright-cli/` resolve there.
+
 Direct URL:
 
 ```bash
-uv run python ~/.agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py \
+uv run --no-project scripts/attach_comment_files.py \
   --url https://github.com/OWNER/REPO/pull/123 \
   docs/report.md assets/chart.png
 ```
@@ -49,7 +51,7 @@ uv run python ~/.agents/skills/gh-comment-attach-files/scripts/attach_comment_fi
 Resolve the page with `gh`:
 
 ```bash
-uv run python ~/.agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py \
+uv run --no-project scripts/attach_comment_files.py \
   --repo github.example.com/OWNER/REPO \
   --pr 123 \
   results/report.md results/chart.png

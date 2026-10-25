@@ -297,6 +297,39 @@ class DriftWatchTest(unittest.TestCase):
             with self.subTest(name):
                 self.assert_read_failure(*self.current(change))
 
+    def test_every_404_is_a_read_failure_and_never_a_missing_pin(self):
+        # Codex bot thread on 5a646261: a repository lookup 404 was read as a missing commit pin. The watch now has
+        # no 404 that means "absent": a deleted, renamed or private repository is a read failure (exit 4).
+        for name, url in (
+            ("a release repository", STARSHIP),
+            ("a runner announcement list", RUNNER_ISSUES),
+            ("a marketplace catalog", CLAUDE_CATALOG),
+            ("a plugin.json", SUPERPOWERS_JSON),
+        ):
+            with self.subTest(name):
+                status, report = self.current(lambda upstream, url=url: upstream.update({url: {"http_status": 404}}))
+                self.assert_read_failure(status, report)
+                self.assertIn("HTTP 404", report)
+                self.assertEqual(set(), self.findings(report))
+
+    def test_a_pypi_pin_is_never_read_so_a_yanked_file_cannot_age_it(self):
+        # Codex bot thread on 5a646261: a yanked PyPI file made a fresh release look past the window. PyPI is out of
+        # scope: the fixture has no pypi.org entry, so any read of it would be a read failure, and none happens.
+        old_yanked_then_fresh = {
+            "https://pypi.org/pypi/hcom/json": {
+                "releases": {
+                    "0.7.32": [
+                        {"upload_time_iso_8601": "2026-10-01T00:00:00Z", "yanked": True},
+                        {"upload_time_iso_8601": "2026-10-24T12:00:00Z", "yanked": False},
+                    ]
+                }
+            }
+        }
+        status, report = self.current(lambda upstream: upstream.update(old_yanked_then_fresh))
+        self.assertEqual(0, status, report)
+        self.assertEqual(set(), self.findings(report))
+        self.assertIn("manifest-pin hcom.pin 0.7.31 (home/dot_agents/agent-config.yaml", self.not_watched(report))
+
     def test_a_payload_that_is_not_exactly_the_expected_shape_is_a_read_failure(self):
         for name, change in (
             ("a release list that is an object", lambda upstream: upstream.update({STARSHIP: {}})),

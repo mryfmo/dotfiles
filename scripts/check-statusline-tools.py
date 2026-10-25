@@ -13,9 +13,9 @@ from pathlib import Path
 
 CLAUDE_STATUS = {
     "model": {"display_name": "Claude"},
-    "workspace": {"current_dir": "/private/tmp"},
+    "workspace": {"current_dir": "/nonexistent/statusline"},
     "session_id": "offline-test",
-    "transcript_path": "/private/tmp/nonexistent.jsonl",
+    "transcript_path": "/nonexistent/statusline/transcript.jsonl",
 }
 
 

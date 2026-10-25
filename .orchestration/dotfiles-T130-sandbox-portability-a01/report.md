@@ -1,0 +1,54 @@
+---
+task_id: dotfiles-T130-sandbox-portability-a01
+seat: claude-review-dot-a005
+branch: portability/sandbox-a01
+base: e9bc99d2
+code_commit: e4819e2f (round 1: 005e6c91)
+pr: 395
+task_sha256: 53eb1abbaa839795a41abd9540a5e08bd312e95a4b9274bbdf272721f3a967bc
+---
+
+# Report: dotfiles-T130-sandbox-portability-a01
+
+- Seat: `claude-review-dot-a005` in `.claude/worktrees/worker-d`, on a fresh branch `portability/sandbox-a01` from `origin/main` `e9bc99d2`; the branches of PR #387 and PR #394 stay in the worktree, committed and pushed, for their integrations.
+- Task file: dispatched 2026-10-17T14:00:00Z at `3c8cb121…`; Amendment 1 (14:39:41Z) at `d5f403d0…`; Amendment 2 (14:43:25Z) at `53eb1abb…`, copied byte-identical to `task.md`; the task-consistency check passes on it (validation §1a); the three premises replay as recorded (§2a to §2c). One question (PONG 14:38:09Z, answered by Amendment 1) and one blocked note (PONG 14:40:45Z, answered by Amendment 2).
+
+## What changed
+
+- **`tests/unit/test_sandbox_portability.py`** (new, 102 lines, stdlib only; `git ls-files` over `scripts`, `home` and `install`, a file read by name or shebang): `test_no_process_substitution_in_tracked_scripts` refuses a `diff` invocation with a `<(` or `>(` argument outside a comment in a tracked shell file (a temporary repository with `diff <(sort a) <(sort b)` refused by that line, one with `done < <(…)` and `comm <(…) <(…)` accepted, the checkout accepted); `test_no_hard_coded_tmp_in_tracked_scripts` refuses a line outside a comment that names `/tmp/` or a bare `/tmp` without reading `TMPDIR`, over the shell and Python files (the same fixture shape; the checkout accepted).
+- **`scripts/check-statusline-tools.py`** (two literals): the probe's payload `current_dir` and `transcript_path` move from `/private/tmp` and `/private/tmp/nonexistent.jsonl` to `/nonexistent/statusline` and `/nonexistent/statusline/transcript.jsonl`; the probe only sends them as JSON to the statusline binaries, and no consumer in the repository reads them (validation §4a).
+
+## The question, the blocked note and the two amendments
+
+1. Both guards as first worded refused the checkout: item 1 (no `<(` or `>(` outside a comment) 31 lines in 11 tracked files, 30 of them `done < <(…)` loops and one `comm -23 <(…) <(…)`; item 2 the two probe literals in a script outside `allowed_files`. Measured inside the sandbox (validation §3): `done < <(…)`, `comm <(…) <(…)` and `cat <(…)` work and only `diff <(…) <(…)` fails (`diff: /dev/fd/63: Operation not permitted`), so premise 1's own predicate is the hazard. Amendment 1 made item 1's guard that predicate and added the probe script to `allowed_files` for the two literals.
+2. Item 3 (the CompactionDB store out of `.claude/`) needed edits outside the task and across a trust boundary: `home/dot_local/bin/common/executable_contextdb-codex-notify` resolves the project by the `.claude/contextdb` directory, refuses symlinks under it and requires its storage children before running the trusted CLI from the home directory; `tests/unit/test_contextdb_codex_notify.py` asserts that boundary; the trusted CLI's `paths.py` is byte-identical to the repository's copy (synced from `vendor/compactiondb`, never edited), so moving only the repository's package base would split the ledger; `compactiondb-install` rewrites the package copy and the ignore entries; upstream has no store-base option. Amendment 2 withdrew item 3 (D-portability-store); a relocation is an upstream design task of its own.
+3. The `ps` guard (item 2 (d)): none on `origin/main` (premise 2) and PR #387's lint carries rule R5 for it, so no second guard, as the task says.
+
+## The Check
+
+The two tests green (§4); caps 4 changed lines outside `tests/` and `.orchestration/` (cap 20) and 102 added under `tests/` (cap 200) (§5a). `ruff format --check` is clean on both files; `ruff check` reports three pre-existing findings on `scripts/check-statusline-tools.py` (EXE001, I001, PLW1510) that are on `origin/main`'s copy unchanged and outside the two literals.
+
+## Readings, declared
+
+- "Outside a comment" is read as: a line whose first non-space character is `#` is skipped, and a trailing ` #…` is cut before the match.
+- A trailing ` #…` is cut whether or not the `#` sits inside a quoted string, and the `TMPDIR` exemption reads the whole line, comment included.
+- Item 1's guard is line- and word-scoped: the word `diff` and a `<(` or `>(` on the same line; a backslash continuation or a variable holding the program name is outside it.
+- A shell file is one whose name ends `.sh`, `.bash` or `.zsh` or whose first line is a `sh`, `bash` or `zsh` shebang; a Python file one whose name ends `.py` or whose first line is a python shebang; `.tmpl` files and executables under `env -S uv run` are outside both sets, as the task's own filter has it.
+
+## Revise round 1 (ACCEPTANCE of 15:29:54Z, previous head d571d674)
+
+The Bot's first review (5558372164) left two P2 on the guards themselves, both small and inside `allowed_files` (C-50; fix round 1 of INV-6):
+
+1. **4303151489, a backslash-continued `diff`**: `hits()` matched each physical line alone, so `diff \` followed by `<(sort a) \` and `<(sort b)` carried no line with both the word and the argument. `logical_lines()` now joins a line ending in a backslash with the next one, as the shell reads it, before `code()` and the predicate run; the hit keeps the first physical line's number. The continuation is decided on the comment-free text, so a whole-line or trailing comment ending in a backslash (the shell ends a comment at the newline; `scripts/orchestrator/dispatch.sh:73` is one) never swallows the next line, and a final continued line without a newline is still scanned.
+2. **4303151496, a quoted `#`**: the comment cut split at the first whitespace-prefixed `#` even inside quotes, so `diff --label "baseline # current" <(sort a) <(sort b)` and `printf 'copy # /tmp/out'` lost their tails. `code()` now scans the line and cuts only at a `#` that starts the line or follows whitespace while no single or double quote is open; the whole-line-comment case falls out of the same rule. A backslash-escaped quote still reads as a quote (declared in the code as a shortcut).
+
+Checks, red before green (validation §7 to §10): `test_a_continued_diff_command_is_refused` and `test_a_quoted_hash_is_not_a_comment` fail on the test commit `c98dde2d` (`FAILED (failures=2)`, the two earlier tests OK) and pass on the first fix commit `54975f44`. The worker review of `54975f44` then found a P2 of the same class as 4303151489, introduced by that fix: the continuation was decided on the raw line, so a trailing comment ending in a backslash (`foo # see \\`) joined the next line and the comment cut then hid it. The case and the final-line case joined the first check in `bb84e254` (red against `54975f44`'s guards, `FAILED (failures=1)`) and `e4819e2f` decides the continuation on `code(line)` and flushes a final continued line (green, the checkout still accepted). Caps unchanged and met: 4 changed lines outside `tests/` and `.orchestration/` (cap 20), 159 added under `tests/` (cap 200) (§12a). `ruff format --check` and `ruff check` clean on the test file (§13). No thread resolved. The six P3 of the worker review stay advisory under `dotfiles-T130-sandbox-portability-followup-a01`.
+
+Round-2 worker review: two reviews by the same read-only subagent: `Verdict: incorrect` on `54975f44` (the P2 above and three P3) and `Verdict: correct` on `e4819e2f` after the repair (the P2 and the final-line P3 closed by the new assertions; a backslash-escaped double quote closing the scanner's quote and the `TMPDIR` exemption now reading the logical line stay declared P3). Records in the worker-crit JSON, receipt updated.
+
+## Review, hook, cost
+
+- Worker-side independent review: one round on `005e6c91` by a fresh read-only subagent, `Verdict: correct`, no P0 to P2, six P3 notes (`dotfiles-T130-sandbox-portability-a01-worker-crit.json`, receipt `dotfiles-T130-sandbox-portability-a01-worker-review-receipt.md`). The notes, all spec-shaped or test-robustness, are declared below and are the orchestrator's follow-up input (C-61): `.sh.tmpl` scripts with a template directive on line 1 (25 tracked, 21 with inline shell) are outside both guards; the `TMPDIR` exemption reads the whole line, comment included (`export TMPDIR=/tmp` passes); the trailing-comment cut also cuts inside a quoted string and no fixture exercises that branch; the `diff` guard is line- and word-scoped (a backslash continuation, `$DIFF`, `colordiff` pass); the refused fixture is named `.sh`, so shebang-only classification is exercised only as accepted; `tracked()` inherits the environment, so an exported `GIT_DIR` makes the fixture tests error loudly.
+- No Understand-Anything hook prompt fired; no Plan Mode was used.
+- cost: n/a (the runtime exposes no token or cost figure to the seat).
+- CompactionDB: one decision added in this worktree's store before completion (validation §6); the orchestrator consolidates adopted decisions into the main checkout's store at acceptance.

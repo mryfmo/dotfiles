@@ -1,6 +1,6 @@
 # openai-siwc: omp provider for Sign in with ChatGPT
 
-Design for the omp 18.11.3 extension at `home/dot_agents/omp/extensions/openai-siwc/`. It gives the audit-side omp profiles ChatGPT plan inference through OpenAI's official Sign in with ChatGPT (SIWC) route, which omp does not ship (issue `can1357/oh-my-pi#13974`, facts §3). The package loads in omp 18.11.3 and registers the provider; it has not yet run a real login or completion (gate G2). The points that still need a real-endpoint measurement carry `TODO(gate G2)` and are listed under open questions.
+Design for the omp 18.11.3 extension at `home/dot_agents/omp/extensions/openai-siwc/`. It gives the audit-side omp profiles ChatGPT plan inference through OpenAI's official Sign in with ChatGPT (SIWC) route, which omp does not ship (issue `can1357/oh-my-pi#13974`, facts §3). The package loads in omp 18.11.3 and registers the provider, and gate G2 passed on 2026-10-23: a real login in the `audit` profile and a real `-p` turn (`.orchestration/validation/025-pilot-facts.md`, X2/X3). The points that one login and one turn did not measure still carry `TODO(gate G2)` and are listed under open questions.
 
 Sources: `.orchestration/validation/025-v13-facts-20261023.md` (facts §3, §3b, §4), `.orchestration/validation/025-pilot-facts.md` #S0, the probe `.orchestration/validation/025-pilot-s0-siwc-probe.py`, red-team row R12R-07, the installed omp source under `~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent` (paths below are relative to it), and upstream `docs/extensions.md` and `docs/provider-compat-reference.md` (main, fetched 2026-10-23).
 
@@ -141,7 +141,7 @@ The architect skill's single-runner form was used, with the arena skipped by the
 
 - We accept depending on `before_provider_request` reaching every request in exchange for reusing omp's transport, SSE parsing, and retries unchanged. Upstream documents that transports must invoke `onPayload` and that `devin-agent` does not; `openai-responses` does.
 - We accept a hand-written loopback receiver of about 40 lines in exchange for capturing the issued `client_id`, which `OAuthCallbackFlow` drops.
-- We accept static model rows in exchange for no discovery call, since `GET /v1/models` returned no entries on this route.
+- We accept static model rows in exchange for no discovery call. #S0's empty `GET /v1/models` result does not show that discovery is unavailable: the probe read `data[].id`, while the SIWC docs return a `models` array of `{slug, visibility}` ("Models and inference", step 1), so the list is unmeasured until the re-probe under open questions.
 - We accept one registration per profile, so three audit profiles mean three agent entries in the ChatGPT account (red-team R12R-06 proposed one shared record). The brief fixes the record per profile.
 
 ## Threat table
@@ -160,11 +160,11 @@ The architect skill's single-runner form was used, with the arena skipped by the
 
 - Does a later sign-in with the issued `client_id` accept `ext_agent_host_id`? Default: send it, because the sign-in page marks it required. G2's second login per profile measures it.
 - Does a refresh response carry `scope`, and does the SIWC id_token carry the Codex account claim? Defaults: accept an absent scope on refresh; leave `accountId` empty when the claim is absent.
-- Is `gpt-6-astra` served on this route? Assumption (【仮定】): yes. It ships as a static row next to the measured `gpt-6.1-sol`, both text-only, with the limits of omp's `openai/<id>` catalog rows. `fetchDynamicModels` is not registered, because `GET /v1/models` returned no entries (#S0).
+- Does `GET /v1/models` list the plan's models? Unmeasured: #S0 read the wrong field (`data[].id`), so its `models_total` 0 says nothing. The probe now reads `.models[]` by `slug` and `visibility` (`--selftest` checks the documented shape). Re-probe, operator-only because it registers an agent through a browser login: `uv run --no-project .orchestration/validation/025-pilot-s0-siwc-probe.py --name omp-dotfiles-models-probe`, then delete that agent in ChatGPT settings as G6 did. If `models_listed` is non-empty, register `fetchDynamicModels` and drop the static rows; until then both static rows stay, and both have answered on this route (`gpt-6.1-sol` in #S0 and G2, `gpt-6-astra` in the audit verdicts from 2026-10-23 on).
 - What HTTP status carries each subscription error? Default: rely on omp's classifier, which handles a 403 and a 429 as the table above shows.
 - Should three profiles share one registration (R12R-06)? Default: one per profile, as the brief specifies.
 - Are `prompt_cache_key`, `include`, `reasoning` and `stream_options` accepted? Default: keep them.
 
 ## Next step
 
-Gate G2: the operator runs `/login openai-siwc` and one `-p` turn in the `audit` profile, as the package README lists, which answers the first four questions.
+Gate G2 passed (2026-10-23). The remaining measurements are the models re-probe above and the `TODO(gate G2)` points that need a second login per profile or a refresh response.

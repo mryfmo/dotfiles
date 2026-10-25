@@ -1,6 +1,6 @@
 ---
 name: convert-to-transformers
-description: "Use this skill when converting custom PyTorch models to Hugging Face Transformers format. Helps with: (1) Creating PretrainedConfig and PreTrainedModel classes, (2) Writing ImageProcessor/Tokenizer, (3) Compatibility testing, (4) Hub upload preparation. Use when the user wants to make their model compatible with transformers library."
+description: "Use this skill when converting custom PyTorch models to Hugging Face Transformers format. Helps with: (1) Creating PreTrainedConfig and PreTrainedModel classes, (2) Writing ImageProcessor/Tokenizer, (3) Compatibility testing, (4) Hub upload preparation. Use when the user wants to make their model compatible with transformers library."
 ---
 
 # Hugging Face Transformers Model Conversion
@@ -11,7 +11,7 @@ Convert custom PyTorch models to Hugging Face Transformers format while maintain
 
 This skill provides a systematic workflow for transformers conversion:
 
-- Extract hardcoded values into PretrainedConfig
+- Extract hardcoded values into PreTrainedConfig
 - Create PreTrainedModel wrapper
 - Build ImageProcessor/Tokenizer
 - Test equivalence thoroughly
@@ -39,17 +39,20 @@ Then identify:
 - Preprocessing pipeline
 - Custom layers or modules
 
-### Step 2: Create PretrainedConfig Class
+### Step 2: Create PreTrainedConfig Class
 
 **Key principle**: Extract ALL hardcoded values from the model as configurable parameters.
 
-Template:
+Template. Transformers 5 exports `PreTrainedConfig` (and keeps `PretrainedConfig` only as a backward-compatibility alias); 4.x exports only `PretrainedConfig`. The import below works on both majors:
 
 ```python
-from transformers import PretrainedConfig
+try:
+    from transformers import PreTrainedConfig  # transformers >= 5
+except ImportError:
+    from transformers import PretrainedConfig as PreTrainedConfig  # transformers 4.x
 from typing import List, Optional
 
-class {ModelName}Config(PretrainedConfig):
+class {ModelName}Config(PreTrainedConfig):
     model_type = "{model_name}"
 
     def __init__(

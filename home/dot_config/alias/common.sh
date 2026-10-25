@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# Shared shell aliases used across machines.
-# These aliases wrap common repository and local workflow commands.
+# @file home/dot_config/alias/common.sh
+# @brief Shared shell aliases used across machines.
+# @description
+#   These aliases wrap common repository and local workflow commands.
 
 # Use eza for ls command. In eza 0.23.5 `--icons` takes an optional WHEN value,
 # so the bare flag swallows the first path argument and `ls dir` fails.

@@ -743,12 +743,6 @@ def check() -> list[str]:
     failures: list[str] = []
     checks = [
         (
-            SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl",
-            HOME / ".claude/mcp.json",
-            True,
-            "Claude MCP config",
-        ),
-        (
             SOURCE_ROOT / "dot_agents/model-profiles.env",
             HOME / ".agents/model-profiles.env",
             False,

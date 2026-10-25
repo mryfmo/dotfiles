@@ -109,7 +109,10 @@ class AgentSessionStalenessTest(unittest.TestCase):
 
         self.assertEqual(first.stdout, "")
         self.assertEqual(first.stderr, "")
-        self.assertIn("restart recommended: skills", second.stdout)
+        output = json.loads(second.stdout)
+        self.assertIn("restart recommended: skills", output["systemMessage"])
+        self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "SessionStart")
+        self.assertIn("restart recommended: skills", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(second.stderr, "")
         self.assertEqual(float(state_file.read_text()), baseline)
 

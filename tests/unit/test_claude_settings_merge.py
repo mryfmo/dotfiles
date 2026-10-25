@@ -480,6 +480,17 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                 )
                 self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], [literal, managed_entry])
 
+    def test_managed_pre_tool_use_is_not_duplicated_next_to_an_unmanaged_hook(self) -> None:
+        enforce = {"type": "command", "command": "~/.claude/hooks/enforce-uv.sh"}
+        audit = {"type": "command", "command": "~/bin/audit-bash.sh"}
+        managed_entry = {"matcher": "Bash", "hooks": [enforce]}
+        current = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [enforce, audit]}]}})
+        output = self.merge({"hooks": {"PreToolUse": [managed_entry]}}, current)
+        expected = [{"matcher": "Bash", "hooks": [audit]}, managed_entry]
+        self.assertEqual(json.loads(output)["hooks"]["PreToolUse"], expected)
+        # A second apply is a fixed point: enforce-uv.sh still runs once.
+        self.assertEqual(self.merge({"hooks": {"PreToolUse": [managed_entry]}}, output), output)
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

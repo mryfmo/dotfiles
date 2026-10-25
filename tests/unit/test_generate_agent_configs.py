@@ -101,7 +101,6 @@ def sample_manifest() -> dict:
         },
         "claude": {
             "settings_path": "home/.chezmoitemplates/claude-settings-managed.json",
-            "mcp_config_path": "home/dot_claude/private_mcp.json.tmpl",
             "schema": "https://json.schemastore.org/claude-code-settings.json",
             "alwaysThinkingEnabled": True,
             "plansDirectory": "./.agents/worklog/claude",
@@ -1518,13 +1517,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ],
         )
 
-    def test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map(self) -> None:
+    def test_an_empty_mcp_server_map_renders_no_tables(self) -> None:
         manifest = sample_manifest()
         self.assertEqual(manifest["mcp_servers"], {})
 
         self.assertNotIn("[mcp_servers.", self.module.render_codex(manifest))
-        claude_mcp = self.module.render_claude_mcp(manifest).split("*/}}", 1)[-1]
-        self.assertEqual(json.loads(claude_mcp), {"mcpServers": {}})
         self.assertNotIn("enabledPlugins", json.loads(self.module.render_claude_settings(manifest)))
 
     def test_codex_command_hooks_render_after_permission_request_in_manifest_order(self) -> None:

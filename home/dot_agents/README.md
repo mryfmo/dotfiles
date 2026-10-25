@@ -17,7 +17,6 @@ Generated files include:
 - `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/.chezmoitemplates/omp-config-managed.yml`
-- `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/agents/project-map.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`

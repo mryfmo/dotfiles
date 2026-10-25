@@ -173,20 +173,127 @@ function handle_python_m_module() {
 }
 
 # @description Rewrite direct Python execution to `uv run`.
-# @arg $1 string Original Python arguments.
+# @arg $1 string The simple command as written (interpreter and arguments, quotes kept).
 function handle_python_run() {
-    local args="$1"
+    local segment="$1"
     deny_command <<- EOF
 	uvでPythonを実行:
 
-	uv run $args
+	uv run $segment
 
 	✅ 仮想環境のアクティベーションは不要です！
 	EOF
     exit 0
 }
 
-# @description Read hook input JSON, classify the command, and emit a decision.
+# @description Append one trimmed simple command to SEGMENTS; an empty one is skipped.
+# @arg $1 string The text between two separators.
+# @set SEGMENTS array The simple commands found so far.
+function add_segment() {
+    local segment="$1"
+    segment="${segment#"${segment%%[![:space:]]*}"}"
+    segment="${segment%"${segment##*[![:space:]]}"}"
+    if [[ -n "$segment" ]]; then
+        SEGMENTS+=("$segment")
+    fi
+}
+
+# @description Split a command line into its simple commands at the unquoted separators `&&`, `||`, `;`, `|`,
+#   `&` and newlines, the way Claude Code splits a compound command before matching it, so `cd x && python y.py`
+#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text.
+# @arg $1 string The command line.
+# @set SEGMENTS array The simple commands, in order.
+function split_segments() {
+    local line="$1" current="" quote="" char i
+    SEGMENTS=()
+    for ((i = 0; i < ${#line}; i++)); do
+        char=${line:i:1}
+        if [[ -n "$quote" ]]; then
+            current+=$char
+            if [[ "$char" == "$quote" ]]; then
+                quote=""
+            elif [[ "$char" == "\\" && "$quote" == '"' ]]; then
+                current+=${line:i+1:1}
+                i=$((i + 1))
+            fi
+            continue
+        fi
+        case "$char" in
+        "'" | '"')
+            quote=$char
+            current+=$char
+            ;;
+        "\\")
+            current+=$char${line:i+1:1}
+            i=$((i + 1))
+            ;;
+        ';' | '&' | '|' | $'\n')
+            add_segment "$current"
+            current=""
+            ;;
+        *)
+            current+=$char
+            ;;
+        esac
+    done
+    add_segment "$current"
+}
+
+# @description Emit the deny for one simple command that runs pip or Python directly; return for any other.
+# @arg $1 string One simple command.
+function classify_segment() {
+    local segment="$1"
+    case "$segment" in
+    # ===== pip関連コマンド =====
+    pip\ * | pip3\ *)
+        # pipコマンドの詳細な解析
+        local pip_cmd
+        pip_cmd=$(echo "$segment" | sed -E 's/^pip[0-9]? *//' | xargs)
+
+        case "$pip_cmd" in
+        install\ *)
+            handle_pip_install "$pip_cmd"
+            ;;
+        uninstall\ *)
+            handle_pip_uninstall "$pip_cmd"
+            ;;
+        list* | freeze*)
+            handle_pip_list
+            ;;
+        *)
+            handle_pip_other "$pip_cmd"
+            ;;
+        esac
+        ;;
+
+    # ===== 直接的なPython実行の処理 =====
+    python* | py\ *)
+        # -m オプションの特別処理
+        local args
+        args=$(echo "$segment" | sed -E 's/^python[0-9]? //' | xargs 2> /dev/null)
+        if [[ "$args" =~ ^-m ]]; then
+            local module
+            module=${args/-m /}
+
+            case "$module" in
+            pip\ *)
+                local pip_cmd
+                pip_cmd=${module/pip /}
+                handle_python_m_pip "$pip_cmd"
+                ;;
+            *)
+                handle_python_m_module "$module"
+                ;;
+            esac
+        fi
+
+        # 基本的なPython実行: the command as written, so `python3 -c 'print(1)'` keeps its quotes.
+        handle_python_run "$segment"
+        ;;
+    esac
+}
+
+# @description Read hook input JSON, classify each simple command of a Bash call, and emit a decision.
 function main() {
     local input
     input=$(cat)
@@ -202,57 +309,12 @@ function main() {
     local command
     command=$(echo "$input" | jq -r '.tool_input.command // ""' 2> /dev/null || echo "")
 
-    # ===== pip関連コマンド =====
     if [[ "$tool_name" == "Bash" ]]; then
-        case "$command" in
-        pip\ * | pip3\ *)
-            # pipコマンドの詳細な解析
-            local pip_cmd
-            pip_cmd=$(echo "$command" | sed -E 's/^pip[0-9]? *//' | xargs)
-
-            case "$pip_cmd" in
-            install\ *)
-                handle_pip_install "$pip_cmd"
-                ;;
-            uninstall\ *)
-                handle_pip_uninstall "$pip_cmd"
-                ;;
-            list* | freeze*)
-                handle_pip_list
-                ;;
-            *)
-                handle_pip_other "$pip_cmd"
-                ;;
-            esac
-            ;;
-
-        # ===== 直接的なPython実行の処理 =====
-        python* | py\ *)
-            # 通常のuvへの変換
-            local args
-            args=$(echo "$command" | sed -E 's/^python[0-9]? //' | xargs)
-
-            # -m オプションの特別処理
-            if [[ "$args" =~ ^-m ]]; then
-                local module
-                module=${args/-m /}
-
-                case "$module" in
-                pip\ *)
-                    local pip_cmd
-                    pip_cmd=${module/pip /}
-                    handle_python_m_pip "$pip_cmd"
-                    ;;
-                *)
-                    handle_python_m_module "$module"
-                    ;;
-                esac
-            fi
-
-            # 基本的なPython実行
-            handle_python_run "$args"
-            ;;
-        esac
+        local segment
+        split_segments "$command"
+        for segment in "${SEGMENTS[@]}"; do
+            classify_segment "$segment"
+        done
     fi
 
     exit 0

@@ -293,6 +293,20 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
 
+    def test_a_ps_form_that_prints_the_environment_is_never_automatically_allowed(self) -> None:
+        """U76 (F139): BSD `e`, `-E`, and macOS `-e` print each process's environment; an `-o` format may still
+        name keywords that hold an `e`."""
+        self.policy_path.write_text((ROOT / "home/dot_agents/permgate-policy.yaml").read_text())
+        for command in ("ps auxe", "ps eww", "ps aux -e", "ps -E", "ps -ef", "ps -p 1 e"):
+            with self.subTest(command=command):
+                result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
+        for command in ("ps aux", "ps -ax", "ps -p 123 -o pid,etime,command", "ps -A -o user,pid"):
+            with self.subTest(command=command):
+                allowed = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
+                self.assertEqual(permission_behavior(allowed.stdout), "allow")
+
     def test_structured_secret_is_redacted_from_the_summary(self) -> None:
         secret_marker = "structured-secret-must-not-leak"
         payload = CODEX_INPUT | {

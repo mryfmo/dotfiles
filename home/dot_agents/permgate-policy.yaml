@@ -63,7 +63,7 @@
       "id": "process-inspection",
       "tool": "Bash",
       "category": "read_only_inspection",
-      "regex": "\\s*(?:ps(?:\\s+[-A-Za-z0-9_,.=]+)*|pgrep\\s+-fl\\s+[-A-Za-z0-9_.]+|sysctl\\s+-n\\s+[-A-Za-z0-9_.]+)\\s*",
+      "regex": "\\s*(?:ps(?:\\s+(?:-[oO]\\s*[A-Za-z0-9_,%=]+|-?[A-DF-Za-df-z0-9_,.=]+))*|pgrep\\s+-fl\\s+[-A-Za-z0-9_.]+|sysctl\\s+-n\\s+[-A-Za-z0-9_.]+)\\s*",
       "sources": [{"kind": "codex_approval_prefix", "count": 6}]
     },
     {

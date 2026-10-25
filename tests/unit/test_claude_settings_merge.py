@@ -531,6 +531,26 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         # A second apply is a fixed point: enforce-uv.sh still runs once.
         self.assertEqual(self.merge({"hooks": {"PreToolUse": [managed_entry]}}, output), output)
 
+    def test_the_retired_gh_merge_gate_hook_leaves_an_installed_settings_file(self) -> None:
+        """U76 (F033): the macOS host's settings.json held gh-merge-gate.sh beside enforce-uv.sh in one entry, plus the
+        managed enforce-uv entry; the merge leaves exactly the managed entry, and a second apply is a fixed point."""
+        enforce = {"type": "command", "command": "~/.claude/hooks/enforce-uv.sh"}
+        audit = {"type": "command", "command": "~/bin/audit-bash.sh"}
+        managed_entry = {"matcher": "Bash", "hooks": [enforce]}
+        managed = {"hooks": {"PreToolUse": [managed_entry]}}
+        for gate in ("~/.claude/hooks/gh-merge-gate.sh", str(self.home_dir / ".claude/hooks/gh-merge-gate.sh")):
+            with self.subTest(gate=gate):
+                gate_hook = {"type": "command", "command": gate}
+                installed = [{"matcher": "Bash", "hooks": [enforce, gate_hook]}, managed_entry]
+                output = self.merge(managed, json.dumps({"hooks": {"PreToolUse": installed}}))
+                self.assertEqual(json.loads(output)["hooks"]["PreToolUse"], [managed_entry])
+                self.assertEqual(self.merge(managed, output), output)
+                # An unmanaged hook in the gate's entry stays where it was.
+                mixed = [{"matcher": "Bash", "hooks": [gate_hook, audit]}]
+                output = self.merge(managed, json.dumps({"hooks": {"PreToolUse": mixed}}))
+                expected = [{"matcher": "Bash", "hooks": [audit]}, managed_entry]
+                self.assertEqual(json.loads(output)["hooks"]["PreToolUse"], expected)
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

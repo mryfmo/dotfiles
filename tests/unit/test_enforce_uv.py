@@ -31,10 +31,15 @@ class EnforceUvTest(unittest.TestCase):
             ("python -m pip install requests", "uv add requests"),
             ("python -m pip list", "uv list"),
             ("python -m pytest", "uv run python -m pytest"),
-            ("python script.py", "uv run script.py"),
-            ("python3 script.py", "uv run script.py"),
+            ("python script.py", "uv run python script.py"),
+            ("python3 script.py", "uv run python3 script.py"),
             ("py script.py", "uv run py script.py"),
             (r"""python -m 'mod"quoted\path' """, r'mod"quoted\path'),
+            # U76 (F137): the advice is the command as written, quotes kept, and a compound line is judged per command.
+            ("python3 -c 'print(1)'", "uv run python3 -c 'print(1)'"),
+            ("cd x && python foo.py", "uv run python foo.py"),
+            ("make lint; pip install requests", "uv add requests"),
+            ("cat in.txt | python3 -c 'import sys'", "uv run python3 -c 'import sys'"),
         ):
             with self.subTest(command=command):
                 result = self.hook(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
@@ -60,6 +65,9 @@ class EnforceUvTest(unittest.TestCase):
                 ("Bash", ""),
                 ("Read", "pip install requests"),
                 ("Bash", "echo python"),
+                ("Bash", "echo 'a; python x'"),
+                ("Bash", 'git commit -m "use python && pip here"'),
+                ("Bash", "cd x && uv run python foo.py"),
             )
         ]
         for payload in payloads:

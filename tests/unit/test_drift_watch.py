@@ -9,7 +9,9 @@ none: a test that runs the script or reads the workflow skips without it; the re
 Fake tokens are built from parts at run time, so the committed-secret scan has no credential-shaped literal to flag.
 """
 
+import base64
 import copy
+import hashlib
 import http.client
 import importlib.util
 import json
@@ -28,6 +30,18 @@ except ModuleNotFoundError:
     yaml = None
 
 NO_YAML = "PyYAML is not installed: the script and the workflow parse need it"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    # The watch now loads scripts/pin_records.py (content pins), one of the scripts that resolve agent homes.
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
 
 
 def fake_token(fill: str) -> str:
@@ -591,6 +605,129 @@ class DriftWatchTest(unittest.TestCase):
                     self.assertEqual(make_status, run.returncode, run.stderr)
                     named = f"drift-watch.py exited {script_status} (3: drift, 4: an upstream read failed)"
                     self.assertEqual(script_status != "0", named in run.stderr, run.stderr)
+
+    # U91: a Claude plugin with no version is pinned by content (sha256:..., scripts/pin_records.py content_digest);
+    # a strict: false entry may have no plugin.json at all.
+    OFFICIAL = f"{GH}/anthropics/claude-plugins-official"
+    TREE_SHA = "d" * 40
+
+    @staticmethod
+    def git_blob_sha(data: bytes) -> str:
+        return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+    def content_upstream(self, files: dict, extra_nodes=(), truncated=False):
+        """CURRENT_UPSTREAM plus frontend-design served as FILES {relative path: bytes} (and pyright-lsp, a strict:
+        false entry with a version and no plugin.json), read through the tree and blob endpoints."""
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"] += [
+            {"name": "frontend-design", "source": "./plugins/frontend-design"},
+            {"name": "pyright-lsp", "source": "./plugins/pyright-lsp", "version": "1.0.0", "strict": False},
+        ]
+        upstream[f"{self.OFFICIAL}/contents/plugins"] = [
+            {"name": "frontend-design", "type": "dir", "sha": self.TREE_SHA}
+        ]
+        upstream[f"{self.OFFICIAL}/contents/plugins/pyright-lsp"] = [{"name": "LICENSE"}, {"name": "README.md"}]
+        nodes = []
+        for path, data in files.items():
+            sha = self.git_blob_sha(data)
+            nodes.append({"path": path, "mode": "100644", "type": "blob", "sha": sha})
+            upstream[f"{self.OFFICIAL}/git/blobs/{sha}"] = {
+                "encoding": "base64",
+                "content": base64.encodebytes(data).decode(),
+                "sha": sha,
+            }
+        tree = [{"path": "skills", "mode": "040000", "type": "tree", "sha": "e" * 40}, *nodes, *extra_nodes]
+        upstream[f"{self.OFFICIAL}/git/trees/{self.TREE_SHA}?recursive=1"] = {"tree": tree, "truncated": truncated}
+        return upstream
+
+    @staticmethod
+    def reviewed_files() -> dict:
+        reviewed = ROOT / "tests/fixtures/claude-plugins/frontend-design"
+        return {str(p.relative_to(reviewed)): p.read_bytes() for p in sorted(reviewed.rglob("*")) if p.is_file()}
+
+    def content_manifest(self, pin: str):
+        manifest = copy.deepcopy(CURRENT_MANIFEST)
+        manifest["assets"]["claude-plugins"]["plugins"].update(
+            {
+                "frontend-design@claude-plugins-official": {
+                    "marketplace": "anthropics/claude-plugins-official",
+                    "pin": pin,
+                },
+                "pyright-lsp@claude-plugins-official": {
+                    "marketplace": "anthropics/claude-plugins-official",
+                    "pin": "1.0.0",
+                },
+            }
+        )
+        return manifest
+
+    def content_watch(self, upstream, pin=None):
+        pin = (
+            pin
+            or json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"][
+                "frontend-design@claude-plugins-official"
+            ]["pin"]
+        )
+        return self.watch(["ubuntu-24.04", "macos-15"], CURRENT_MISE, self.content_manifest(pin), upstream)
+
+    def test_a_content_pin_is_compared_with_the_upstream_directory_content(self):
+        # The reviewed tree served upstream hashes to the recorded pin: the same definition as make update's.
+        status, report = self.content_watch(self.content_upstream(self.reviewed_files()))
+        self.assertEqual(0, status, report)
+        self.assertNotIn("Read failures", report)
+        self.assertEqual(set(), self.findings(report))
+        # One changed byte upstream is a plugin-pin finding with the hash served now.
+        changed = {**self.reviewed_files(), "README.md": self.reviewed_files()["README.md"] + b"!"}
+        status, report = self.content_watch(self.content_upstream(changed))
+        self.assertEqual(3, status, report)
+        self.assertEqual(
+            {("plugin-pin", "claude-plugins.frontend-design@claude-plugins-official")}, self.findings(report)
+        )
+        self.assertIn("(anthropics/claude-plugins-official/plugins/frontend-design)", report)
+        # A symlink in the served tree is no reviewable content: a finding, never a pass.
+        link = {"path": "skills/link", "mode": "120000", "type": "blob", "sha": "f" * 40}
+        status, report = self.content_watch(self.content_upstream(self.reviewed_files(), [link]))
+        self.assertEqual(3, status, report)
+        self.assertIn("skills/link is not a regular file (git mode 120000)", report)
+
+    def test_a_content_read_that_cannot_be_trusted_is_a_read_failure(self):
+        files = self.reviewed_files()
+
+        def forged(upstream):
+            blob = next(url for url in upstream if "/git/blobs/" in url)  # lint-comparisons: allow a fixture key
+            upstream[blob]["content"] = base64.encodebytes(b"other bytes").decode()
+
+        def no_listing(upstream):
+            upstream[f"{self.OFFICIAL}/contents/plugins"] = {"http_status": 404}
+
+        for name, upstream in (
+            ("a truncated tree", self.content_upstream(files, truncated=True)),
+            ("blob bytes that are not its git SHA", self.content_upstream(files)),
+            ("the parent listing 404", self.content_upstream(files)),
+        ):
+            with self.subTest(case=name):
+                if name.startswith("blob"):
+                    forged(upstream)
+                elif name.startswith("the parent"):
+                    no_listing(upstream)
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertIn("frontend-design", report.split("## Read failures", 1)[1])
+
+    def test_a_strict_false_entry_without_a_plugin_json_reads_its_catalog_version(self):
+        # pyright-lsp: the catalog entry is the whole definition and the directory has no .claude-plugin.
+        upstream = self.content_upstream(self.reviewed_files())
+        status, report = self.content_watch(upstream)
+        self.assertEqual(0, status, report)
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-1]["version"] = "1.1.0"
+        status, report = self.content_watch(upstream)
+        self.assertEqual(3, status, report)
+        self.assertIn("1.1.0 (anthropics/claude-plugins-official/.claude-plugin/marketplace.json)", report)
+        # A manifest directory in the listing means a plugin.json is read, and one not served is a read failure.
+        upstream[f"{self.OFFICIAL}/contents/plugins/pyright-lsp"].append({"name": ".claude-plugin"})
+        status, report = self.content_watch(upstream)
+        self.assert_read_failure(status, report)
+        self.assertIn("pyright-lsp/.claude-plugin/plugin.json: not in the fixture", report)
 
 
 class UpstreamTokenTest(unittest.TestCase):

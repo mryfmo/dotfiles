@@ -28,7 +28,7 @@ import sys
 from contextlib import redirect_stderr
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 # One path component taken from record data (see confined): it starts with a letter or digit, so it is never
 # empty, `.`, `..` or absolute, and holds no separator.
@@ -279,13 +279,25 @@ def content_pin(path: Path, entry: Any, where: str, agent: str) -> str:
     return pin
 
 
-def content_sha256(root: Path) -> str:
-    """The content pin of a plugin directory: `sha256:` and the hex SHA-256 over its regular files.
+def content_digest(files: Iterable[Tuple[bytes, bytes]]) -> str:
+    """The content pin of a set of regular files given as (relative POSIX path, bytes): `sha256:` and the hex SHA-256
+    over them in the byte order of their paths, each adding `<relative path> NUL <size> NUL <bytes>`. The one
+    definition: content_sha256 feeds it an installed copy, scripts/drift-watch.py the upstream directory's blobs.
+    A path whose first component is one of CLAUDE_CACHE_MARKERS is left out."""
+    digest = hashlib.sha256()
+    for relative, data in sorted(files, key=lambda item: item[0]):
+        if relative.split(b"/", 1)[0].decode("utf-8", "surrogateescape") in CLAUDE_CACHE_MARKERS:
+            continue
+        digest.update(relative + b"\0" + str(len(data)).encode() + b"\0" + data)
+    return "sha256:" + digest.hexdigest()
 
-    The files are taken in the byte order of their relative POSIX paths, and each one adds
-    `<relative path> NUL <size> NUL <bytes>`, so file order on disk, mtimes, modes and empty directories do not
-    count. CLAUDE_CACHE_MARKERS at the top level are left out. A symlink, or anything that is neither a regular
-    file nor a directory, anywhere below the root (the root included) refuses: it is not reviewable content.
+
+def content_sha256(root: Path) -> str:
+    """The content pin of a plugin directory (content_digest over its regular files).
+
+    File order on disk, mtimes, modes and empty directories do not count, and CLAUDE_CACHE_MARKERS at the top level
+    are not read. A symlink, or anything that is neither a regular file nor a directory, anywhere below the root (the
+    root included) refuses: it is not reviewable content.
     """
     files: List[Tuple[bytes, Path, os.stat_result]] = []
 
@@ -318,18 +330,17 @@ def content_sha256(root: Path) -> str:
     if not stat.S_ISDIR(root_mode):
         raise RecordError(root, "(directory)", "is not a real directory")
     walk(root, "")
-    digest = hashlib.sha256()
-    for relative, file_path, status in sorted(files, key=lambda item: item[0]):
+    contents: List[Tuple[bytes, bytes]] = []
+    for relative, file_path, status in files:
         try:
             fd = open_regular(file_path, status)
             if fd is None:
                 raise RecordError(root, os.fsdecode(relative), "changed while it was read")
             with os.fdopen(fd, "rb") as handle:
-                data = handle.read()
+                contents.append((relative, handle.read()))
         except OSError as error:
             raise RecordError(root, os.fsdecode(relative), f"cannot read ({error})") from None
-        digest.update(relative + b"\0" + str(len(data)).encode() + b"\0" + data)
-    return "sha256:" + digest.hexdigest()
+    return content_digest(contents)
 
 
 def open_regular(path: Path, status: os.stat_result) -> Optional[int]:

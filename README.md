@@ -791,30 +791,63 @@ shell. The omp seats of the hcom regime run in Herdr panes that
 `scripts/orchestrator/hcom-seat` starts, one seat per pane
 ([scripts/orchestrator/README.md](scripts/orchestrator/README.md), "hcom-seat").
 
-The Codex execpolicy forbidden set is managed by this repository:
+The dangerous-command list is managed in one place: `command_policy` in
+`home/dot_agents/agent-config.yaml` names each GitHub write and destructive
+command by its argv positions (`sudo` also by absolute path, recursive force
+`rm` by `rm`, `/bin/rm` and `/usr/bin/rm`, `npm`, `pnpm`,
+`yarn` and `uv publish`, `terraform apply` and `destroy`, `kubectl apply` and
+`delete`, `gh release`, `gh pr merge` and the API merge forms, `gh api`, the
+`gh pr`, `gh issue`, `gh repo`, `gh secret`, `gh variable`, `gh workflow`,
+`gh run`, `gh cache`, `gh label`, `gh gist`, key, codespace, project and
+alias writes, and a shell after a pipe). The generator
+renders it three ways, each with that consumer's own matcher: Claude Code
+`permissions.deny` or `permissions.ask` rules, the Codex execpolicy file
+`~/.codex/rules/command-policy.rules` (`forbidden` or `prompt`), and the
+deny block of every omp seat policy and of the plain-launch omp config. The
+generator refuses an entry whose own renders let one of its examples through,
+and `tests/unit/test_command_policy.py` fails when a render drops an entry.
+Claude refuses where a rule is exact and prompts where it is broad, since a
+false positive lands in the operator's own session: it denies the listed
+recursive force `rm` forms, and asks for a recursive and a force flag group
+in any order with other letters (wildcard rules that over-match, so
+`rm -v -f report.txt` prompts) and for every shell run as a command
+(`Bash(sh *)`, `Bash(bash *)`, `Bash(zsh *)`, `Bash(dash *)`), so
+`curl … | bash -e` prompts after the pipe is split, and so do
+`bash script.sh` and `bash -c …`. The unattended omp seats deny all of these:
+the same `rm` wildcards, and any line with a `|` followed by a word ending in
+`sh`. Codex forbids the listed `rm` groupings only and has no rule for a shell
+after a pipe, since a rule on a shell would match its own `bash -lc`; it relies
+on its sandbox for both. A text
+rule never sees another spelling of the program (`git -C`, `command gh`, a
+gh alias made earlier, a variable holding the name, a glob, `eval`, a script
+or make target that runs it): for those the
+Claude sandbox (every `gh` and `git push` prompts), the Codex sandbox and the
+omp seats' srt and GitHub identity are the controls. The old Claude rule
+`Bash(curl * | sh)` never matched, because Claude Code matches each piped
+subcommand on its own.
+
 `home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
-and replaces it on every `chezmoi apply`. It forbids `sudo` (also by absolute
-path), `rm -rf` and
-`rm -fr` (also split as `rm -r -f`), `gh pr merge` (merging is the
-orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
-`terraform apply` and `destroy`, `kubectl apply` and `delete`, `chezmoi apply`,
+and replaces it on every `chezmoi apply`. It keeps the Codex-only lifecycle
+rules: it forbids `chezmoi apply`,
 `chezmoi update`, all of `chezmoi init` and `chezmoi edit`, and the make
 targets that run it or reset chezmoi state (`make setup`, `init`, `update`,
 `apply`, `upgrade`, `watch`, `reset`, `reset-config`), and `./setup.sh`, which
 `make setup` wraps. It also forbids `make clean`, whose recipe runs `rm -rf`,
 and `make deploy`, which force-pushes the docs site. A forbidden match is a refusal under every approval
-policy and overrides any allow rule for the same prefix. The file holds no
-allow rules, so an "always allow" that an interactive session adds there does
-not survive the next `chezmoi apply`. Codex reads the rules at startup, so
-restart running Codex sessions after `make update`. Rules match the argument list Codex is
-asked to run by prefix, so they cover the documented invocation forms only.
-Global options placed before the subcommand (`terraform -chdir=<dir> apply`,
-`kubectl --context <c> apply`, `chezmoi --source <d> --config <f> apply`),
-flags after the operands, and commands a script spawns are outside prefix
-coverage, for Codex and the Claude Code deny list alike; the sandbox
-(read-only, or workspace-write with its writable roots) is the backstop for
-them. Pipelines such as `curl … | sh` are covered by the Claude Code deny
-list.
+policy and overrides any allow rule for the same prefix. Neither file holds
+allow rules, so an "always allow" that an interactive session adds to
+`default.rules` does not survive the next `chezmoi apply`. Codex reads the
+rules at startup, so restart running Codex sessions after `make update`.
+Rules match the argument list Codex is asked to run by prefix, so they cover
+the documented invocation forms only. Global options placed before the
+subcommand (`terraform -chdir=<dir> apply`, `kubectl --context <c> apply`,
+`chezmoi --source <d> --config <f> apply`), flags after the operands, and
+commands a script spawns are outside prefix coverage. Codex splits
+`bash -lc '<script>'` into its commands only when the script is plain words
+joined by `&&`, `||`, `;` or `|`; a script with a redirect, a substitution, a
+variable or a glob is matched whole, so no prefix rule applies inside it. The
+sandbox (read-only, or workspace-write with its writable roots and network
+off) is the backstop for all of them.
 
 New workspaces no longer create a persistent files pane; `prefix+f` opens the
 on-demand `herdr-file-viewer` popup instead. A legacy `files` pane restored
@@ -943,9 +976,10 @@ itself enforces none of this until the ruleset requires the `regime` check
 (gate G10).
 
 Codex worker seats are denied merge commands natively. The Codex execpolicy
-forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT` or
-`gh api --method PUT` when the flag comes right after `api`. A flag after the
-path, `-XPUT` and `--method=PUT` are not caught by a prefix rule.
+forbids `gh pr merge`, `gh api graphql`, and `gh api -X PUT`,
+`gh api --method PUT`, `gh api -XPUT` or `gh api --method=PUT` when the flag
+comes right after `api`; with the flag after the path the call still prompts,
+because every `gh api` call does.
 
 Under one OS user nothing isolates a deliberately misbehaving seat. The
 denials stop the accidental and prompt-injected paths; the audit verdicts and the

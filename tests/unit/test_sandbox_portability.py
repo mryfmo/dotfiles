@@ -1,9 +1,21 @@
 """Guards that keep the repository's own scripts working inside the Claude sandbox (plan 023 PR F, T130).
 
 Measured inside the sandbox: `done < <(...)`, `comm <(...) <(...)` and `cat <(...)` work; only `diff` with a process
-substitution argument fails (`diff: /dev/fd/N: Operation not permitted`), so the first guard is exactly that predicate.
-The sandbox's writable temporary directory is `$TMPDIR`, never `/tmp`, so the second guard refuses a hard-coded `/tmp`
-path unless the same word expands TMPDIR (shell) or the same statement reads it or calls tempfile (Python).
+substitution argument fails (`diff: /dev/fd/N: Operation not permitted`). The sandbox's writable temporary directory is
+`$TMPDIR`, never `/tmp`.
+
+Contract: the guards catch accidental, ordinary forms and fail closed on the rest; a refused odd form is fixed by
+writing it the plain way, never by teaching the guard a new spelling.
+- diff: a command is refused when one of its arguments is literally `diff` or ends in `/diff` and a later argument holds
+  a process substitution, whatever command word runs it (env, sudo, xargs or a wrapper of one's own cannot hide it;
+  `command -v diff <(x)` is refused too). A later argument whose literal text holds `<(` or `>(` counts as one, since
+  shfmt keeps a substitution inside `${x:-<(...)}` as text. Redirection targets are no arguments.
+- shell /tmp: a literal `/tmp` path, single-quoted text included, is refused unless it is the operand of a
+  `${TMPDIR...}` expansion or its word expands TMPDIR outside single quotes.
+- Python /tmp: a string constant holding a `/tmp` path is refused unless its statement reads TMPDIR by a canonical
+  spelling (`os.environ.get("TMPDIR"...)`, `os.environ["TMPDIR"]`, `os.getenv("TMPDIR"...)`) or calls `tempfile.*` with
+  the constant outside that call's arguments (an explicit `dir="/tmp"` bypasses TMPDIR). Aliased reads (`from os import
+  getenv`) are refused: fail closed, fixed by the canonical spelling.
 
 Shell is read only from shfmt's JSON syntax tree (PATH's shfmt, which CI pins, else the pinned mise form); a missing
 shfmt or a parse failure fails the test, and no text scan stands in for the parser. A comment ending in a backslash is
@@ -25,9 +37,7 @@ SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
 PYTHON = re.compile(r"#!.*python")
 TMP = re.compile(r"/tmp(/|\b)")
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
-WRAPPERS = ("command", "builtin", "exec")
-ENV_READS = ("os.environ.get", "environ.get", "os.getenv", "getenv")
-ENVIRON = ("os.environ", "environ")
+ENV_READS = ("os.environ.get", "os.getenv")
 
 
 @functools.cache
@@ -92,33 +102,28 @@ def literal(word):
     return "".join(out)
 
 
-def effective(args):
-    """The arguments from the command word on, past command, builtin and exec with their options; `command -v` and
-    `command -V` only look the name up, so they run nothing."""
-    i = 0
-    while i < len(args) and literal(args[i]) in WRAPPERS:
-        wrapper = literal(args[i])
-        i += 1
-        while i < len(args) and (opt := literal(args[i]) or "").startswith("-"):
-            i += 1
-            if opt == "--":
-                break
-            if wrapper == "command" and set(opt[1:]) & {"v", "V"}:
-                return []
-            if wrapper == "exec" and "a" in opt[1:]:
-                i += 1  # exec -a takes the process name as its operand
-    return args[i:]
+def substitutes(word):
+    """The argument holds a process substitution, or literal `<(`/`>(` text where shfmt left one unparsed; nested
+    command and process substitution bodies are their own commands."""
+    todo = list(word.get("Parts") or [])
+    while todo:
+        n = todo.pop()
+        if isinstance(n, list):
+            todo.extend(n)
+        elif isinstance(n, dict):
+            if n.get("Type") == "ProcSubst" or n.get("Type") == "Lit" and re.search(r"[<>]\(", n.get("Value", "")):
+                return True
+            if n.get("Type") != "CmdSubst":
+                todo.extend(n.values())
+    return False
 
 
 def diff_lines(tree):
-    """Lines of each command that runs diff with a process substitution argument; redirection targets are no arguments."""
+    """Lines of each command with a `diff` argument followed by an argument that substitutes a process."""
     for n in nodes(tree):
-        if n.get("Type") != "CallExpr":
-            continue
-        args = effective(n.get("Args") or [])
-        name = args and literal(args[0])
-        runs_diff = name and (name == "diff" or name.endswith("/diff"))
-        if runs_diff and any(p["Type"] == "ProcSubst" for w in args[1:] for p in w.get("Parts") or []):
+        args = n.get("Args") or [] if n.get("Type") == "CallExpr" else []
+        names = [i for i, w in enumerate(args) if (lit := literal(w)) and (lit == "diff" or lit.endswith("/diff"))]
+        if names and any(substitutes(w) for w in args[names[0] + 1 :]):
             yield n["Pos"]["Line"]
 
 
@@ -172,39 +177,28 @@ def own_nodes(stmt):
         todo.extend(c for c in ast.iter_child_nodes(n) if not isinstance(c, (ast.stmt, ast.excepthandler)))
 
 
-def reads_tmpdir(found, from_tempfile):
+def python_tmp_lines(text):
+    """Lines of each string constant holding /tmp that its statement neither excuses by a canonical TMPDIR read nor by
+    a tempfile call the constant is no argument of."""
+
     def is_tmpdir(node):
         return isinstance(node, ast.Constant) and node.value == "TMPDIR"
 
-    for n in found:
-        if isinstance(n, ast.Call):
-            name = dotted(n.func)
-            if name in ENV_READS and n.args and is_tmpdir(n.args[0]):
-                return True
-            if name.startswith("tempfile.") or name in from_tempfile:
-                return True
-        if isinstance(n, ast.Subscript) and dotted(n.value) in ENVIRON and is_tmpdir(n.slice):
-            return True
-    return False
-
-
-def python_tmp_lines(text):
-    """Lines of each string constant holding /tmp in a statement that neither reads TMPDIR nor calls tempfile."""
-    tree = ast.parse(text)
-    from_tempfile = {
-        a.asname or a.name
-        for n in ast.walk(tree)
-        if isinstance(n, ast.ImportFrom) and n.module == "tempfile"
-        for a in n.names
-    }
-    for stmt in ast.walk(tree):
+    for stmt in ast.walk(ast.parse(text)):
         if not isinstance(stmt, ast.stmt):
             continue
         found = list(own_nodes(stmt))
-        if reads_tmpdir(found, from_tempfile):
+        calls = [n for n in found if isinstance(n, ast.Call)]
+        if any(dotted(c.func) in ENV_READS and c.args and is_tmpdir(c.args[0]) for c in calls) or any(
+            isinstance(n, ast.Subscript) and dotted(n.value) == "os.environ" and is_tmpdir(n.slice) for n in found
+        ):
             continue
+        tempfile_calls = [c for c in calls if dotted(c.func).startswith("tempfile.")]
+        in_tempfile_args = {id(x) for c in tempfile_calls for a in (*c.args, *c.keywords) for x in ast.walk(a)}
         for n in found:
             if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                if tempfile_calls and id(n) not in in_tempfile_args:
+                    continue
                 yield from (n.lineno + n.value[: m.start()].count("\n") for m in TMP.finditer(n.value))
 
 
@@ -267,6 +261,12 @@ DIFF_REFUSED = {
     "command -- diff a <(b)\n": [2],
     "exec -- diff a <(b)\n": [2],
     "exec -a name diff a <(b)\n": [2],
+    "exec -afoo diff <(printf a) <(printf b)\n": [2],
+    "env LC_ALL=C diff <(printf a) <(printf b)\n": [2],
+    "sudo -u root nice -n 5 timeout 5s diff a <(b)\n": [2],
+    "my_wrapper --flag diff a <(b)\n": [2],
+    "diff ${left:-<(printf a)} ${right:-<(printf b)}\n": [2],
+    "command -v diff <(x)\n": [2],  # fail closed: no command word excuses a diff argument
     "diff a >(cat)\n": [2],
     "x=$( # it's a comment\n:)\ndiff a <(b)\n": [4],
     "cat <<EOF\n$(diff a <(b))\nEOF\n": [3],
@@ -279,7 +279,6 @@ DIFF_ACCEPTED = (
     "diff a b; cat <(x)\n",
     "diff a b 2>&1 | cat <(x)\n",
     "diff a b > >(cat)\n",
-    "command -v diff <(x)\n",
     "cat <<'EOF'\ndiff <(a) <(b)\nEOF\n",
     "cat <<EOF\ndiff <(a) <(b)\nEOF\n",
 )
@@ -294,6 +293,11 @@ TMP_REFUSED = {
     ("bad.py", 'out = "/tmp/out.txt"  # TMPDIR\n'): [1],
     ("bad.py", 'out = "/tmp/TMPDIR/out"\n'): [1],
     ("bad.py", 'if os.environ.get("TMPDIR"):\n    out = "/tmp/x"\n'): [2],
+    ("bad.py", 'd = tempfile.mkdtemp(dir="/tmp")\n'): [1],
+    ("bad.py", 'd = environ.get("TMPDIR", "/tmp")\n'): [1],
+    # fail closed: an aliased read is no canonical spelling, so the constant is refused although it would run fine
+    ("bad.py", 'from os import getenv as env\nout = env("TMPDIR", "/tmp")\n'): [2],
+    ("bad.py", "from tempfile import gettempdir\nd = gettempdir() or '/tmp'\n"): [2],
 }
 TMP_ACCEPTED = (
     ("ok.sh", SH + 't="${TMPDIR:-/tmp}/x"\nx=1 # a comment may name /tmp\n'),
@@ -303,7 +307,7 @@ TMP_ACCEPTED = (
     ("ok.py", 'd = os.getenv("TMPDIR") or "/tmp"\n'),
     ("ok.py", 'd = os.environ["TMPDIR"] if "TMPDIR" in os.environ else "/tmp"\n'),
     ("ok.py", "d = tempfile.gettempdir() or '/tmp'\n"),
-    ("ok.py", "from tempfile import gettempdir\nd = gettempdir() or '/tmp'\n"),
+    ("ok.py", 'd = tempfile.mkdtemp(dir=os.environ.get("TMPDIR", "/tmp"))\n'),
 )
 
 

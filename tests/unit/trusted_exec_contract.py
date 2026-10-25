@@ -1,16 +1,19 @@
 """Shared probes of design-quality 5.14 item 7: one attack each in a temporary fixture, and the trusted parent."""
 
 import contextlib
+import errno
 import functools
 import hashlib
 import json
 import os
 import pwd
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 SHIMS = ("uv", "python3", "gh", "git", "bash")
@@ -18,7 +21,6 @@ ALLOWED = ("PATH", "HOME", "LANG")
 SAFE_PATH = "/usr/bin:/bin"
 LEGIT, ATTACKER = "legitimate\n", "attacker\n"
 BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
-_WATCHED = {}  # (st_dev, st_ino) -> the WorkerRoot whose input it is, while that probe is alive
 QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
 HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
@@ -100,116 +102,126 @@ class HostileGit:
             raise AssertionError("hostile git: " + "; ".join(found))
 
 
-def _open_audit(event, args):
-    """sys.addaudithook: record every open, for reading, of a live WorkerRoot's input made by this process.
-
-    CPython raises the `open` audit event for builtin open, io.open, pathlib and os.open alike, with the path and
-    the open flags, before the file is opened. The file is matched by device and inode, so an alias (a symlink, a
-    hard link, a case variant, a relative path) of the input counts as the input.
-    """
-    if event != "open" or not _WATCHED:
-        return
-    path, _mode, flags = args
-    if isinstance(path, int) or (flags or 0) & os.O_ACCMODE == os.O_WRONLY:
-        return  # an already open descriptor, or write-only: not a read of a path
-    try:
-        st = os.stat(path)
-    except FileNotFoundError:
-        return  # nothing there yet: a create, never the input
-    except ValueError:
-        return  # an embedded NUL: the open itself fails the same way, so nothing is read
-    except Exception as error:  # noqa: BLE001 - any other failure means the open cannot be classified
-        for probe in list(_WATCHED.values()):
-            probe.errors.append(f"cannot tell whether an open of {path!r} read the input: os.stat failed: {error!r}")
-        return
-    probe = _WATCHED.get((st.st_dev, st.st_ino))
-    if probe is not None:  # no exceptions: the probe itself never opens its input once the watch is armed
-        probe.reads.append(f"{os.fsdecode(path)} in thread {threading.current_thread().name}")
-
-
-# An audit hook cannot be removed; it does nothing while no WorkerRoot is alive. An existing hook can refuse it, and
-# CPython then drops the new hook silently (measured on 3.13 and 3.15 for RuntimeError, PermissionError and
-# ValueError; only a BaseException such as KeyboardInterrupt propagates), so a successful call proves nothing: every
-# probe's setup checks the hook with a self-test read. A refusal that is raised makes every probe refuse too.
-try:
-    sys.addaudithook(_open_audit)
-    _HOOK_ERROR = None
-except Exception as error:  # noqa: BLE001 - any refusal: probes then refuse instead of passing vacuously
-    _HOOK_ERROR = error
-
-
 class WorkerRoot:
     """An input, an output and a new output under a worker root.
 
-    A read is observed deterministically: an audit hook (_open_audit) records every open of the input for reading
-    made by this process, the way a consumer under test runs in a unit test. The input's access time is not used:
-    any other process that opens the fresh file sets it too (the macOS host's Spotlight importer or endpoint
-    scanner reads new files within a second), so it measured whether a scanner had run yet, not the consumer. A
-    read by a subprocess consumer is not observed by this probe; its writes, replacements, removals and creations
-    are, from the files themselves.
+    The input is a FIFO read sentinel, never a regular file: opening it for reading is a kernel event the probe sees
+    from outside the consumer, for any thread and any subprocess. A watcher thread polls `os.open(input, O_WRONLY |
+    O_NONBLOCK)`: ENXIO means no reader has it open; success means a reader opened it, so the read is recorded and
+    the descriptor closed, which gives that reader EOF (it cannot hang). A blocking read open waits for that poll, so
+    the record exists before the reader's open returns. stat() opens nothing, so metadata checks are unaffected. The
+    input's access time is not used: another process that reads a fresh regular file sets it too (the macOS host's
+    Spotlight importer or endpoint scanner reads new temporary files within a second); none of them opens a FIFO.
+
+    The output stays a regular file the consumer must not write, checked by inode, mode, mtime and content.
+
+    Not observed (residual): a read open that never blocks (O_NONBLOCK or O_RDWR) and closes before the next poll; a
+    write to the input in place (a FIFO keeps no content). A consumer that opens the input for writing does not
+    hang: each poll also opens and closes a non-blocking reader, which releases it (its write then fails, EPIPE).
+    Replacing or removing the input is observed from its identity.
     """
+
+    POLL_S, LIVENESS_S = 0.001, 10.0  # the poll interval; how long a check waits for the watcher before refusing
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.reads, self.errors, self._fds, self._key = [], [], {}, None
-        if _HOOK_ERROR is not None:
-            raise RuntimeError(f"the open audit hook could not be added ({_HOOK_ERROR!r}), so reads are not observable")
-        for path in (self.input, self.output):
-            path.write_text(LEGIT)
-            os.utime(path, ns=(BASELINE_NS, BASELINE_NS))
+        self.reads, self.errors = [], []
+        os.mkfifo(self.input, 0o600)
+        self.output.write_text(LEGIT)
+        os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
+        self._cond, self._stop, self._done = threading.Condition(), False, 0
+        self._watcher = threading.Thread(target=self._watch, name="worker-root-fifo", daemon=True)
+        self._watcher.start()
         try:
-            # The probe's own descriptors, opened before the watch is armed: the check reads through them (os.pread
-            # and os.fstat raise no `open` event), so every open of the input once armed is a consumer read.
-            for path in (self.input, self.output):
-                self._fds[path] = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-            st = os.fstat(self._fds[self.input])
-            self._key = (st.st_dev, st.st_ino)
-            _WATCHED[self._key] = self
-            # Self-test: the hook must record a read of the input made here, or no read is observable at all.
-            with open(self.input, "rb"):
-                pass
-            recorded, self.reads[:] = list(self.reads), []
-            if len(recorded) != 1:
-                raise RuntimeError(f"the open audit hook did not record the probe's self-test read ({recorded!r})")
+            self._self_test()
         except BaseException:
             self.close()
             raise
 
-    def close(self):
-        """Disarm the watch and close the probe's descriptors; safe to call more than once."""
-        if self._key is not None and _WATCHED.get(self._key) is self:
-            del _WATCHED[self._key]
-        while self._fds:
-            os.close(self._fds.popitem()[1])
+    def _is_sentinel(self, fd):
+        st = os.fstat(fd)
+        return stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]
 
-    def _content(self, path):
-        fd, chunks, offset = self._fds[path], [], 0
-        while chunk := os.pread(fd, 1 << 16, offset):
-            chunks.append(chunk)
-            offset += len(chunk)
-        return b"".join(chunks)
+    def _poll_once(self):
+        """One poll: record a reader that has the input open, then release any writer waiting for a reader."""
+        try:
+            fd = os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        except OSError as error:
+            if error.errno not in (errno.ENXIO, errno.ENOENT, errno.ELOOP):
+                self.errors.append(f"cannot poll {self.input}: {error!r}")
+        else:
+            try:
+                if self._is_sentinel(fd):
+                    with self._cond:
+                        self.reads.append(f"{self.input} opened for reading")
+            finally:
+                os.close(fd)  # the reader now sees EOF
+        try:
+            fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        except OSError:
+            return  # gone or replaced: the identity check reports it
+        os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
+
+    def _watch(self):
+        while True:
+            with self._cond:
+                if self._stop:
+                    return
+            self._poll_once()
+            with self._cond:
+                self._done += 1
+                self._cond.notify_all()
+            time.sleep(self.POLL_S)
+
+    def _settle(self):
+        """Wait until two whole polls have run after this call: a reader open before it is then recorded."""
+        with self._cond:
+            target = self._done + 2
+            if not self._cond.wait_for(lambda: self._done >= target or self._stop, timeout=self.LIVENESS_S):
+                raise RuntimeError(f"the FIFO watcher of {self.input} did not poll within {self.LIVENESS_S}s")
+
+    def _self_test(self):
+        """The watcher must record a reader of the sentinel, or no read is observable at all."""
+        fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            self._settle()
+        finally:
+            os.close(fd)
+        with self._cond:
+            recorded, self.reads[:] = list(self.reads), []
+        if not recorded:
+            raise RuntimeError(f"the FIFO watcher did not record the probe's self-test reader on {self.input}")
+
+    def close(self):
+        """Stop the watcher; safe to call more than once."""
+        with self._cond:
+            self._stop = True
+            self._cond.notify_all()
+        self._watcher.join(self.LIVENESS_S)
 
     def assert_untouched(self):
-        """Nothing in this process opened the input for reading; nothing wrote, replaced or removed either file, or
-        created the new output's directory. The content is compared too, since a write in place can keep the inode,
-        the size and a coarse clock's mtime. The probe reads through the descriptors it opened before arming, so the
-        check itself opens nothing and a read anyone makes during it, in any thread or nested hook, is reported."""
+        """Nothing opened the input for reading, or replaced or removed it; nothing wrote, replaced or removed the
+        output, or created the new output's directory. The output's content is compared too, since a write in place
+        can keep the inode, the size and a coarse clock's mtime."""
+        self._settle()
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):
                 found.append(f"removed {path}")
                 continue
             st = os.lstat(path)
-            held = os.fstat(self._fds[path])
-            same = (st.st_ino, st.st_mode) == identity and (st.st_dev, st.st_ino) == (held.st_dev, held.st_ino)
-            content = self._content(path) if same else b""  # the same regular file only
+            if path == self.input:
+                found += [] if (st.st_ino, st.st_mode) == identity else [f"wrote {path} (replaced)"]
+                continue
+            content = path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""  # the same regular file only
             if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
-        found = [f"read {self.input} (opened as {path})" for path in self.reads] + found + self.errors
+        with self._cond:
+            found = [f"read {entry}" for entry in self.reads] + found + self.errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
 

@@ -5,6 +5,7 @@ import hashlib
 import os
 import pwd
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -46,6 +47,27 @@ def careful_git(root, env):
     run([*git, "status", "--porcelain"], env)
     top = run([*git, "rev-parse", "--show-toplevel"], env).stdout.decode().strip()
     return top, Path(root, "probe.txt").read_text()
+
+
+def in_thread(target, timeout=30):
+    """Run TARGET in another thread and wait for it; a consumer that hangs fails the test instead of the suite."""
+    import threading
+
+    thread = threading.Thread(target=target, name="consumer", daemon=True)
+    thread.start()
+    thread.join(timeout)
+    if thread.is_alive():
+        raise AssertionError(f"consumer still running after {timeout}s: it hung")
+
+
+def read_relative(path):
+    """Read PATH by its bare name from its own directory (the working directory is put back)."""
+    here = os.getcwd()
+    os.chdir(Path(path).parent)
+    try:
+        return Path(Path(path).name).read_bytes()
+    finally:
+        os.chdir(here)
 
 
 def naive_io(probe):
@@ -230,7 +252,9 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         for name, act, reason in (
             ("read", lambda p: Path(p.input).read_text(), "read "),
             ("read with os.open", lambda p: os.close(os.open(p.input, os.O_RDONLY)), "read "),
-            ("read for update", lambda p: open(p.input, "r+b").close(), "read "),
+            ("read by a subprocess", shell('cat "$0" > /dev/null'), "read "),
+            ("read by a relative path after chdir", lambda p: read_relative(p.input), "read "),
+            ("read by another thread", lambda p: in_thread(lambda: Path(p.input).read_bytes()), "read "),
             (
                 "read through a symlink",
                 lambda p: (p.base / "alias").symlink_to(p.input) or (p.base / "alias").read_text(),
@@ -243,7 +267,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             ),
             ("wrote", lambda p: Path(p.output).write_text("x"), "wrote "),
             ("created", lambda p: (Path(p.new_output).parent.mkdir(), Path(p.new_output).write_text("x")), "created "),
-            ("appended", shell('echo x >> "$0"'), "wrote "),
+            ("appended", lambda p: run(["/bin/sh", "-c", 'echo x >> "$0"', str(p.output)], ALLOWED_ENV), "wrote "),
             ("replaced", shell('echo x > "$0.t"; mv "$0.t" "$0"'), "wrote "),
             ("removed", lambda p: os.unlink(p.input), "removed "),
         ):
@@ -309,27 +333,43 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
-    def test_a_foreign_reader_of_the_fresh_input_is_not_a_consumer_read(self):
-        # U92 root cause: the probe saw a read as the input's access time leaving 0, and any other process that opens
-        # the fresh file sets it as well (on the macOS host a scanner read new temporary files within a second), so the
-        # compliant consumer failed about once in 64 runs. Another process reading the input, and the time a scanner
-        # takes, are not the consumer under test.
+    def test_metadata_reads_and_other_files_are_not_reads_of_the_input(self):
+        # U92 root cause: the probe saw a read as the input's access time leaving 0, and any process that opens a fresh
+        # regular file sets it as well (on the macOS host a scanner read new temporary files within a second), so the
+        # compliant consumer failed about once in 64 runs. The input is now a FIFO: only an open for reading counts.
         probe = self.worker_root_probe()
-        self.assertEqual(b"legitimate\n", run(["/bin/cat", str(probe.input)], ALLOWED_ENV).stdout)
-        self.assertNotEqual(0, os.stat(probe.input).st_atime_ns)  # the access time moved: what the old probe read
+        self.assertTrue(stat.S_ISFIFO(os.lstat(probe.input).st_mode))
+        os.stat(probe.input), os.path.realpath(probe.input), os.access(probe.input, os.R_OK)
+        run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking at it, without opening it
         with self.assertRaises(PermissionError):
             guarded_io(probe)
-        probe.assert_untouched()
-        probe.assert_untouched()  # the probe's own content read is not a read either
-        # Writes only, and opens of other files, are not reads of the input.
         os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
         Path(probe.base / "elsewhere").read_text()
         probe.assert_untouched()
+        probe.assert_untouched()
 
-    def test_a_closed_worker_root_probe_records_nothing(self):
+    def test_a_reader_of_the_input_never_hangs_and_is_recorded_before_its_open_returns(self):
+        probe = self.worker_root_probe()
+        result = subprocess.run(["/bin/cat", str(probe.input)], capture_output=True, timeout=30, check=False)
+        self.assertEqual((0, b""), (result.returncode, result.stdout))  # EOF: a sentinel, never content
+        with probe._cond:  # recorded already, before any check settles the watcher
+            self.assertTrue(probe.reads)
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+
+    def test_a_writer_to_the_input_never_hangs(self):
+        probe = self.worker_root_probe()
+        # A writer blocked on the open is released by the next poll (its write then fails or is dropped); it never
+        # waits for a reader forever. subprocess.run raises TimeoutExpired, and in_thread fails, if it did.
+        subprocess.run(
+            ["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], capture_output=True, timeout=30, check=False
+        )
+        in_thread(lambda: open(probe.input, "wb").close())
+
+    def test_a_closed_worker_root_probe_stops_its_watcher(self):
         with tec.worker_root() as probe:
-            path = probe.input
-        self.assertEqual({}, tec._WATCHED)
+            path, watcher = probe.input, probe._watcher
+        self.assertFalse(watcher.is_alive())
         self.assertFalse(path.exists())
 
     def scratch(self, prefix):
@@ -337,119 +377,23 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.addCleanup(shutil.rmtree, base, True)
         return base
 
-    def test_a_consumer_thread_reading_during_the_probe_check_is_recorded(self):
+    def test_a_probe_refuses_when_its_watcher_does_not_record(self):
+        # The watcher's self-test: a watcher that never sees a reader (here: its poll is a no-op) refuses the setup,
+        # and the failed setup stops it.
         import threading
 
-        probe = self.worker_root_probe()
-        real = os.pread
-
-        def pread_with_a_consumer_thread(fd, length, offset):
-            consumer = threading.Thread(target=lambda: Path(probe.input).read_text(), name="consumer")
-            consumer.start()
-            consumer.join()
-            return real(fd, length, offset)
-
-        with mock.patch.object(tec.os, "pread", pread_with_a_consumer_thread):
-            with self.assertRaisesRegex(AssertionError, r"worker root: read .* in thread consumer"):
-                probe.assert_untouched()
-
-    def test_a_read_nested_in_another_audit_callback_is_recorded(self):
-        # Audit of 6c74c57c: a thread-local self-exclusion hid every open nested in the probe's own read. There is no
-        # exclusion now: a hook that reads the input from inside another open's audit callback is a read.
-        probe, armed = self.worker_root_probe(), {"on": True}
-        output = os.fspath(probe.output)
-
-        def reentrant(event, args):
-            if armed["on"] and event == "open" and os.fspath(args[0]) == output:
-                armed["on"] = False
-                Path(probe.input).read_bytes()
-
-        sys.addaudithook(reentrant)  # permanent; inert once disarmed
-        self.addCleanup(armed.update, on=False)
-        Path(probe.output).read_bytes()
-        with self.assertRaisesRegex(AssertionError, "worker root: read "):
-            probe.assert_untouched()
-
-    def test_the_probe_check_itself_opens_nothing(self):
-        # So there is nothing to exclude: every open of the input while the watch is armed is a consumer's.
-        probe, opens, armed = self.worker_root_probe(), [], {"on": False}
-        sys.addaudithook(lambda event, args: opens.append(args[0]) if armed["on"] and event == "open" else None)
-        armed["on"] = True
-        try:
-            probe.assert_untouched()
-            probe.assert_untouched()
-        finally:
-            armed["on"] = False
-        self.assertEqual([], opens)
-
-    def test_a_failed_setup_leaves_no_watch_and_no_descriptor(self):
-        fds = lambda: len(os.listdir("/dev/fd"))
-        before_watch, before_fds = dict(tec._WATCHED), fds()
-        with mock.patch.object(tec, "open", side_effect=PermissionError(13, "denied"), create=True):
-            with self.assertRaises(PermissionError):
-                tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
-        self.assertEqual(before_watch, tec._WATCHED)
-        self.assertEqual(before_fds, fds())
-
-    def test_an_open_that_cannot_be_classified_fails_the_probe(self):
-        # Only a missing path means "not the input" (a create); any other stat failure is not a pass.
-        probe = self.worker_root_probe()
-        real = tec.os.stat
-
-        def refusing_stat(path, *args, **kwargs):
-            if os.fspath(path) == os.fspath(probe.input):
-                raise PermissionError(13, "denied", os.fspath(path))
-            return real(path, *args, **kwargs)
-
-        with mock.patch.object(tec.os, "stat", refusing_stat):
-            Path(probe.input).read_text()
-        with self.assertRaisesRegex(
-            AssertionError, r"cannot tell whether an open of .* read the input: os.stat failed"
-        ):
-            probe.assert_untouched()
-        clean = self.worker_root_probe()
-        Path(clean.base / "created-now").write_text("x")  # a create: FileNotFoundError before the open, not an error
-        clean.assert_untouched()
-
-    def test_a_probe_refuses_when_its_audit_hook_does_not_record(self):
-        # The hook's self-test: a hook that records nothing (here: it never finds the input) refuses the setup.
-        class Blind(dict):
-            def get(self, key, default=None):
-                return default
-
-        with mock.patch.object(tec, "_WATCHED", Blind()), self.assertRaisesRegex(RuntimeError, "self-test read"):
-            tec.WorkerRoot(self.scratch("trusted-exec-blind-"))
+        watchers = lambda: sum(thread.name == "worker-root-fifo" for thread in threading.enumerate())
+        before = watchers()
         with (
-            mock.patch.object(tec, "_HOOK_ERROR", PermissionError("refused")),
-            self.assertRaisesRegex(RuntimeError, "could not be added"),
+            mock.patch.object(tec.WorkerRoot, "_poll_once", lambda self: None),
+            self.assertRaisesRegex(RuntimeError, "did not record the probe's self-test reader"),
         ):
-            tec.WorkerRoot(self.scratch("trusted-exec-refused-"))
-        # And an existing hook policy that refuses new hooks: CPython drops the new hook without raising, so only the
-        # self-test can tell, and every probe then refuses.
-        expected = b"refused: the open audit hook did not record the probe's self-test read ([])"
-        for error in ("RuntimeError", "PermissionError"):
-            script = (
-                "import sys\n"
-                "def deny(event, args):\n"
-                "    if event == 'sys.addaudithook':\n"
-                f"        raise {error}('no more hooks')\n"
-                "sys.addaudithook(deny)\n"
-                f"sys.path.insert(0, {str(ROOT / 'tests/unit')!r})\n"
-                "import trusted_exec_contract as tec\n"
-                "try:\n"
-                "    with tec.worker_root():\n"
-                "        print('probe ran')\n"
-                "except RuntimeError as error:\n"
-                "    print('refused:', error)\n"
-            )
-            with self.subTest(refusal=error):
-                result = run([sys.executable, "-I", "-c", script], {"PATH": "/usr/bin:/bin"})
-                self.assertIn(expected, result.stdout, result.stderr)
-                self.assertNotIn(b"probe ran", result.stdout)
+            tec.WorkerRoot(self.scratch("trusted-exec-blind-"))
+        self.assertEqual(before, watchers())
 
     def test_worker_root_probe_detects_a_same_length_overwrite(self):
         identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)
-        for name in ("input", "output"):  # in place, same length, the mtime put back: what a coarse clock leaves behind
+        for name in ("output",):  # in place, same length, the mtime put back: what a coarse clock leaves behind
             with self.subTest(name):
                 probe = self.worker_root_probe()
                 path, st = getattr(probe, name), os.stat(getattr(probe, name))

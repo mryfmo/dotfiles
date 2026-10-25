@@ -100,6 +100,18 @@ set -euo pipefail
 caller_path=${PATH:-}
 system_path=/usr/bin:/bin:/usr/sbin:/sbin
 PATH=${system_path}
+# Git is steered by no inherited environment (regime-cutover U85): every `GIT_*` variable the caller exported
+# (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, GIT_CONFIG_* and the rest) is removed before the first git command, so host
+# git, and the seat, find the repository from the working directory alone. hcom-seat takes no input that way.
+inherited=$(compgen -e) || {
+    echo 'hcom-seat: refused: cannot list the environment' >&2
+    exit 2
+}
+while IFS= read -r inherited_name; do
+    case ${inherited_name} in
+    GIT_*) unset "${inherited_name}" ;;
+    esac
+done <<< "${inherited}"
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
@@ -600,11 +612,15 @@ if [[ -n ${top} || -e /.git ]]; then
         esac
     fi
     roots+=("${top}" "${gitdir}" "${common_guess}")
-    # The main checkout is the common directory's parent only for a `.git` directory; a separate git directory
+    # The main checkout is the common directory's parent only when that parent's `.git` is the common directory, by
+    # identity (a `.GIT` spelling on a case-insensitive volume included); a separate git directory
     # (`git init --separate-git-dir`) has no checkout above it, and its checkout is `top`.
-    case ${common_guess} in # lint-comparisons: allow a name test on the git directory, no path compare
-    */.git) roots+=("${common_guess%/*}") ;;
-    esac
+    common_parent=$(physical_path "${common_guess}") || refuse "cannot resolve the git common directory ${common_guess}"
+    common_parent=${common_parent%/*}
+    common_parent=${common_parent:-/}
+    if [[ -d ${common_parent}/.git && ! -L ${common_parent}/.git && ${common_parent}/.git -ef ${common_guess} ]]; then
+        roots+=("${common_parent}")
+    fi
 fi
 # Every existing seat settings file, read by the system's reader (allow_write_list); an entry that cannot be read, or
 # that is not a clean path, is a refusal.
@@ -867,6 +883,7 @@ exts=("${checked[@]}")
 [[ -n ${top} ]] || refuse 'run hcom-seat inside the repository checkout'
 git_paths_of 3 rev-parse --path-format=absolute --show-toplevel --git-dir --git-common-dir
 repo=${git_paths[0]}
+launch_gitdir=${git_paths[1]}
 common=${git_paths[2]}
 [[ ${repo} -ef ${top} && ${git_paths[1]} -ef ${gitdir} && ${common} -ef ${early_common} ]] ||
     refuse "git resolves the checkout ${repo}, git directory ${git_paths[1]} and common directory ${common}, not ${top}, ${gitdir} and ${early_common} found before it ran"
@@ -920,9 +937,54 @@ within() {
     [[ $'\n'${ids}$'\n' == *$'\n'"${outer_id}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
 }
 
-# The main checkout: the parent of a `.git` common directory, else the toplevel git names (a separate git directory).
-checkout=$(physical_path "${common%/.git}") || refuse "cannot resolve the main checkout of ${common}"
-[[ ${common} == */.git ]] || checkout=$(physical_path "${repo}") || refuse "cannot resolve the checkout ${repo}" # lint-comparisons: allow a name test on the git directory, no path compare
+# @description Set `worktree_paths` to the worktrees git records for this repository, main worktree first, and
+#   `main_bare` to 1 when that record is a bare repository (regime-cutover U85). `git worktree list --porcelain -z`
+#   is read whole: NUL-terminated fields, each turned into one line (a newline inside a field becomes \001, a control
+#   character, refused in a path); every path must be absolute and free of control characters.
+# @set worktree_paths The worktree paths, as git prints them.
+# @set main_bare 1 for a bare main record, else 0.
+worktree_records() {
+    local listing line record=0
+    listing=$({ git -C "${repo}" worktree list --porcelain -z | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
+        refuse "git cannot list the worktrees of ${repo}"
+    listing=${listing%.}
+    worktree_paths=()
+    main_bare=0
+    while IFS= read -r line; do
+        case ${line} in
+        '') record=$((record + 1)) ;;
+        'worktree '*)
+            line=${line#worktree }
+            [[ ${line} == /* && ${line} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
+                refuse "git names the worktree '${line}', not an absolute path free of control characters"
+            worktree_paths+=("${line}")
+            ;;
+        bare) if ((record == 0)); then main_bare=1; fi ;;
+        esac
+    done <<< "${listing}"
+    ((${#worktree_paths[@]} > 0)) || refuse "git lists no worktree of ${repo}"
+}
+
+# The main checkout, by identity, never by the common directory's spelling (a `.GIT` on a case-insensitive volume is
+# `.git`): the common directory's parent when that parent's `.git` is the common directory; else the main worktree
+# git records. A bare repository has none, and the launch checkout stands in. For a separate git directory git
+# records the git directory itself as the main worktree, so its checkout is known only when the launch runs in it
+# (its git directory is the common directory); from another worktree of it the launch is refused.
+worktree_records
+common_parent=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
+common_parent=${common_parent%/*}
+common_parent=${common_parent:-/}
+if [[ -d ${common_parent}/.git && ! -L ${common_parent}/.git && ${common_parent}/.git -ef ${common} ]]; then
+    checkout=${common_parent}
+elif ((main_bare)); then
+    checkout=$(physical_path "${repo}") || refuse "cannot resolve the checkout ${repo}"
+elif [[ ${worktree_paths[0]} -ef ${common} ]]; then
+    [[ ${launch_gitdir} -ef ${common} ]] ||
+        refuse "git records no main checkout for the separate git directory ${common}; launch from that checkout"
+    checkout=$(physical_path "${repo}") || refuse "cannot resolve the checkout ${repo}"
+else
+    checkout=$(physical_path "${worktree_paths[0]}") || refuse "cannot resolve the main checkout ${worktree_paths[0]}"
+fi
 
 # OS containment (regime-cutover U85): the seat's omp runs under Anthropic's sandbox-runtime (`srt`, sandbox-exec on
 # macOS, bubblewrap on Linux). hcom pins the `omp` it finds first on this process's PATH as the runner's
@@ -975,7 +1037,7 @@ other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'c
 # @arg $2 string The seat directory, physical.
 # @arg $@ string The seat's allowWrite roots after them, physical, its own slots first (seat_write_roots).
 seat_overlap_check() {
-    local own_role=$1 own_dir=$2 r p i k status line target listing record seats_phys labels=() protected=()
+    local own_role=$1 own_dir=$2 r p i k status line target seats_phys labels=() protected=()
     shift 2
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
@@ -986,27 +1048,14 @@ seat_overlap_check() {
         labels+=("the seat directory")
         protected+=("${target}")
     done
-    # Every linked worktree, as git names it (relative `gitdir` files included): NUL-terminated fields, each turned
-    # into one line (a newline inside a field becomes \001, a control character, refused in a path). The first record
-    # is the main worktree, protected above as the main checkout.
-    listing=$({ git -C "${repo}" worktree list --porcelain -z | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
-        refuse "git cannot list the worktrees of ${repo}"
-    listing=${listing%.}
-    record=0
-    while IFS= read -r line; do
-        if [[ -z ${line} ]]; then
-            record=$((record + 1))
-            continue
-        fi
-        [[ ${line} == 'worktree '* ]] || continue # lint-comparisons: allow the porcelain field name, no path compare
-        ((record > 0)) || continue
-        line=${line#worktree }
-        [[ ${line} == /* && ${line} != *[[:cntrl:]]* ]] || # lint-comparisons: allow an absolute-path and content test
-            refuse "git names the worktree '${line}', not an absolute path free of control characters"
+    # Every linked worktree, as git names it (relative `gitdir` files included); the first record is the main
+    # worktree, protected above as the main checkout.
+    worktree_records
+    for line in "${worktree_paths[@]:1}"; do
         target=$(physical_path "${line}") || refuse "cannot resolve the worktree ${line}"
         labels+=("the worktree")
         protected+=("${target}")
-    done <<< "${listing}"
+    done
     for p in "${protected[@]}"; do
         require_clean_path 'a protected seat path' "${p}"
     done
@@ -1032,7 +1081,7 @@ seat_overlap_check() {
             ((status != 2)) || refuse "cannot decide by identity whether the ${own_role} seat's write root ${r} lies inside ${labels[i]} ${p}: neither exists yet"
             if ((status == 0)); then
                 # The main checkout's own `.git`, by identity of the common directory and its parent.
-                if ((i == 0)) && [[ -e ${r} && ${r} -ef ${common} && ${r%/*} -ef ${checkout} && ${r##*/} == .git ]]; then continue; fi # lint-comparisons: allow a name test on the git directory, the rest by identity
+                if ((i == 0)) && [[ -e ${r} && ${r} -ef ${common} && -d ${checkout}/.git && ! -L ${checkout}/.git && ${checkout}/.git -ef ${r} ]]; then continue; fi
                 refuse "the ${own_role} seat's write root ${r} lies inside ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
             fi
         done
@@ -1178,7 +1227,7 @@ seat_sandbox_write() {
     # Exactly the list the protected set was built from (seat_write_roots), so the check and the sandbox cannot drift.
     write=("${seat_write[@]}")
     deny_write=("${seats_real}/.sandbox")
-    for base in "${dir_real}" "${common_real%/.git}"; do
+    for base in "${dir_real}" "${checkout}"; do
         deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
             "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
     done

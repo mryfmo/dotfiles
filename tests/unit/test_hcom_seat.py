@@ -848,15 +848,49 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("names no absolute path", run.stderr)
 
-    def test_git_must_resolve_the_directories_checked_before_it_ran(self):
-        """U85 round 18: the checkout and git directories git names are the ones found before git ran, by identity;
-        a GIT_DIR naming another repository is refused, not launched over unchecked state."""
+    def test_inherited_git_environment_has_no_effect(self):
+        """U85 round 20: hcom-seat removes every inherited `GIT_*` variable before its first git command, so a
+        GIT_DIR, GIT_COMMON_DIR or GIT_WORK_TREE naming another repository steers neither host git nor the seat."""
         other = Path(self.temp.name).resolve() / "other"
         subprocess.run(["git", "init", "-q", str(other)], check=True)
-        run = self.seat("worker", "--seats-root", self.seats, GIT_DIR=str(other / ".git"))
+        steer = {"GIT_DIR": str(other / ".git"), "GIT_COMMON_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
+        for name, value in steer.items():
+            with self.subTest(variable=name):
+                run = self.seat("worker", "--seats-root", self.seats, "--name", f"w-{name.lower()}", **{name: value})
+                self.assertEqual(run.returncode, 0, run.stderr)
+                pointer = Path(self.seats, f"w-{name.lower()}", ".git").read_text()
+                self.assertIn(str((self.repo / ".git/worktrees").resolve()), pointer)
+                self.assertFalse((other / ".git/worktrees").exists())
+        run = self.seat("worker", "--seats-root", self.seats, **steer)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        for tool in ("hcom", "omp"):
+            for call in self.calls_of(tool):
+                self.assertEqual([k for k in call["git_env"] if k in steer or k == "GIT_CONFIG_GLOBAL"], [], tool)
+
+    def test_the_main_checkout_is_found_by_identity(self):
+        """U85 round 20: the main checkout is the common directory's parent when that parent's `.git` is the common
+        directory by identity, never by its spelling: a `commondir` spelled `.GIT` (one directory on a
+        case-insensitive volume) still protects the main checkout, not the linked worktree the launch runs in."""
+        if not (self.repo / ".GIT").exists():
+            self.skipTest("needs a case-insensitive file system")
+        linked = Path(self.temp.name).resolve() / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked), "HEAD")
+        (self.repo / ".git/worktrees/linked/commondir").write_text("../../../.GIT\n")
+        common = subprocess.run(
+            ["git", "-C", str(linked), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            env=self.env, capture_output=True, text=True, check=True,
+        ).stdout.strip()  # fmt: skip
+        self.assertEqual(Path(common).name, ".GIT", "git keeps the spelling")
+        run = self.seat("worker", "--seats-root", self.seats, cwd=linked)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        deny_read = self.settings_of("worker")["filesystem"]["denyRead"]
+        self.assertIn(str(self.repo.resolve()), deny_read)
+        self.assertNotIn(str(linked), deny_read)
+        # The main checkout stays protected: a seats root inside it is refused from the linked worktree too.
+        inside = self.repo / "seats-inside"
+        run = self.seat("worker", "--seats-root", str(inside), "--name", "w2", cwd=linked)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("found before it ran", run.stderr)
-        self.assertFalse(Path(self.seats).exists())
+        self.assertIn("the main checkout", run.stderr)
 
     def test_an_interpreter_in_a_seat_write_root_never_runs(self):
         """U85 round 6: the interpreter of mise or of a resolved tool is held to the identity check before either runs."""

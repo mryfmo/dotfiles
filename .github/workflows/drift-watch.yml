@@ -1,12 +1,12 @@
 name: drift-watch
 
-# Weekly drift watch (regime-cutover U81): scripts/drift-watch.py reads this tree and public upstream metadata (runner
-# image announcements, releases, marketplaces) and reports what has aged: retiring runner images still in a matrix,
-# pins behind the newest release past the 72h window, plugin pins behind their marketplace, and the retired-term lint.
-# `make drift` runs the same script locally. The job keeps one tracking issue titled "Drift watch", opened by
-# github-actions[bot]: it opens it on drift, rewrites its body on every run, and closes it when a run finds none. It
-# runs only on the schedule and by hand, from the default branch's code, and reads no pull-request input and no
-# secret; the token reads the GitHub API and writes that one issue.
+# Weekly drift watch (regime-cutover U81): scripts/drift-watch.py reads this tree and GitHub's public API (runner
+# image announcements, releases, marketplaces) and reports what has aged: open runner-image announcements that mention
+# a label in use, pins behind the newest release past the 72h window, plugin pins behind their marketplace, and the
+# retired-term lint. `make drift` runs the same script locally. The job keeps one tracking issue: titled "Drift watch",
+# labelled `drift-watch`, opened by github-actions[bot]. It opens it on drift, rewrites its body on every run, and
+# closes it when a run finds none. It runs only on the schedule and by hand, from the default branch's code, and reads
+# no pull-request input and no secret; the token reads the GitHub API and writes that one issue and its label.
 on:
   schedule:
     - cron: "23 1 * * 1"
@@ -56,9 +56,28 @@ jobs:
           set -euo pipefail
           report="${RUNNER_TEMP}/drift.md"
           printf '\nRun: %s\n' "${RUN_URL}" >> "${report}"
-          # Only an issue the bot opened itself: an issue someone else titles "Drift watch" is never rewritten.
-          number="$(gh issue list --state open --author 'github-actions[bot]' --limit 100 --json number,title,author \
-            --jq 'map(select(.title == "Drift watch" and .author.login == "app/github-actions")) | .[0].number // empty')"
+          # The tracking issue is the one open issue labelled drift-watch, created by github-actions[bot] and titled
+          # "Drift watch". The label and creator filters run on the server and --paginate reads every page, so no
+          # number of other issues can hide it; the jq filter re-checks each field. Someone else's issue is never
+          # rewritten, and more than one match fails the job instead of picking one.
+          numbers="$(gh api --paginate \
+            "repos/${GH_REPO}/issues?state=open&labels=drift-watch&creator=github-actions%5Bbot%5D&per_page=100" \
+            --jq '.[] | select(.title == "Drift watch" and .user.login == "github-actions[bot]"
+              and (.pull_request | not) and ([.labels[].name] | index("drift-watch"))) | .number')"
+          if [ -z "${numbers}" ]; then
+            count=0
+          else
+            count="$(printf '%s\n' "${numbers}" | wc -l | tr -d ' ')"
+          fi
+          if [ "${count}" -gt 1 ]; then
+            echo "::error::${count} open drift-watch tracking issues (${numbers//$'\n'/, }); close all but one"
+            exit 1
+          fi
+          number="${numbers}"
+          if [ -n "${number}" ] && ! [[ "${number}" =~ ^[0-9]+$ ]]; then
+            echo "::error::the issue lookup returned a non-numeric issue number"
+            exit 1
+          fi
           if [ "${STATUS}" = 0 ]; then
             if [ -n "${number}" ]; then
               gh issue edit "${number}" --body-file "${report}"
@@ -67,7 +86,8 @@ jobs:
           elif [ -n "${number}" ]; then
             gh issue edit "${number}" --body-file "${report}"
           else
-            gh issue create --title "Drift watch" --body-file "${report}"
+            gh label create drift-watch --color BFD4F2 --description "Tracking issue of the weekly drift watch" --force
+            gh issue create --title "Drift watch" --label drift-watch --body-file "${report}"
           fi
       - name: Fail on an upstream read failure
         if: steps.watch.outputs.status == '4'

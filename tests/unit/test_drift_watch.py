@@ -192,7 +192,7 @@ def load_module():
 
 
 class DriftWatchTest(unittest.TestCase):
-    def watch(self, oses, mise, manifest, upstream, lint=None):
+    def watch(self, oses, mise, manifest, upstream, lint=None, token=None, stderr=""):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / ".github/workflows").mkdir(parents=True)
@@ -206,6 +206,8 @@ class DriftWatchTest(unittest.TestCase):
                 (root / "scripts/lint-retired-terms.py").write_text(lint)
             (root / "upstream.json").write_text(json.dumps(upstream))
             env = {key: value for key, value in os.environ.items() if key != "GITHUB_TOKEN"}
+            if token is not None:
+                env["GITHUB_TOKEN"] = token
             command = [sys.executable, "-I", str(SCRIPT), "--root", str(root), "--now", NOW]
             run = subprocess.run(
                 [*command, "--upstream", str(root / "upstream.json")],
@@ -214,7 +216,9 @@ class DriftWatchTest(unittest.TestCase):
                 env=env,
                 check=False,
             )
-        self.assertEqual("", run.stderr)
+        if token:
+            self.assertNotIn(token.strip(), run.stdout + run.stderr)
+        self.assertEqual(stderr, run.stderr)
         return run.returncode, run.stdout
 
     def current(self, change=None, oses=("ubuntu-24.04", "macos-15"), manifest=None):
@@ -402,6 +406,21 @@ class DriftWatchTest(unittest.TestCase):
         self.assertEqual(2, upstream_cell.count("`"), upstream_cell)
         self.assertNotIn("\n## injected", report)
 
+    def test_a_token_with_a_newline_is_refused_with_a_fixed_message_and_no_report(self):
+        refused = "GITHUB_TOKEN contains whitespace or a control character; refusing to use it\n"
+        current = (["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, CURRENT_UPSTREAM)
+        status, report = self.watch(*current, token="ghs_secretvalue123\n", stderr=refused)
+        self.assertEqual((2, ""), (status, report))
+
+    def test_a_token_that_upstream_text_repeats_is_redacted_from_the_report(self):
+        token = "ghs_" + "t" * 36
+        title = f"macos-15 will be retired {token}"
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[RUNNER_ISSUES].append({"number": 9, "state": "open", "title": title})
+        status, report = self.watch(["macos-15"], CURRENT_MISE, CURRENT_MANIFEST, upstream, token=token)
+        self.assertEqual(3, status, report)
+        self.assertIn("macos-15 will be retired [redacted]", report)
+
     def test_an_open_announcement_that_mentions_a_used_label_is_reported_for_review(self):
         # The titles of audit rounds 4 and 5 plus the live retirement title: whether each retires the image or
         # deprecates a tool on it, it mentions the label, so it is reported for a human to read.
@@ -505,6 +524,36 @@ class UpstreamTokenTest(unittest.TestCase):
             handler.redirect_request(request, None, 302, "Found", {}, "https://api.github.com/repositories/1")
         )
 
+    def test_exception_text_never_reaches_a_read_failure(self):
+        # http.client quotes the whole header, token included, when it refuses one.
+        error = ValueError("Invalid header value b'Bearer ghs_secret\\n'")
+        with (
+            mock.patch.object(self.module.OPENER, "open", side_effect=error),
+            self.assertRaises(self.module.ReadError) as raised,
+        ):
+            self.module.Upstream(None, "ghs_secret").get("https://api.github.com/repos/o/r/releases?per_page=100")
+        self.assertEqual("/repos/o/r/releases?per_page=100: read failed (ValueError)", str(raised.exception))
+
+    def test_a_token_with_whitespace_or_a_control_character_is_refused(self):
+        for token in ("ghs_secret\n", "ghs_secret\nInjected: 1", "ghs secret", "ghs_\tsecret", "ghs_secret\x00"):
+            with self.subTest(repr(token)), self.assertRaises(ValueError):
+                self.module.Upstream(None, token)
+        self.assertEqual([], self.requests)
+
+    def test_the_report_never_contains_the_token(self):
+        token = "ghs_" + "s" * 36
+        watch = mock.Mock(
+            now=self.module.datetime.datetime(2026, 10, 25), window=self.module.datetime.timedelta(hours=72)
+        )
+        watch.upstream.token = token
+        watch.findings = [self.module.Finding("runner-image", token, "x", f"title {token}", "y")]
+        watch.failures = [f"/x: {'p' * 395}{token}"]
+        watch.unwatched = []
+        report = self.module.report(watch)
+        self.assertNotIn(token, report)
+        self.assertNotIn(token[:8], report, "no cut-off part of the token survives truncation")
+        self.assertIn("[redacted]", report)
+
     def test_an_http_error_is_a_read_failure(self):
         error = urllib.error.HTTPError("https://api.github.com/x", 500, "boom", {}, None)
         with (
@@ -537,20 +586,52 @@ class UpstreamTokenTest(unittest.TestCase):
 
 
 WORKFLOW = ROOT / ".github/workflows/drift-watch.yml"
-# A stub gh: logs its argv, and answers `issue list` by running the step's own --jq filter over GH_LIST_JSON.
-GH_STUB = """#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "$GH_LOG"
-if [ "$1 $2" = "issue list" ]; then
-    [ -z "${GH_LIST_FAIL:-}" ] || exit 1
-    while [ $# -gt 0 ]; do [ "$1" != --jq ] || filter="$2"; shift; done
-    printf '%s' "$GH_LIST_JSON" | jq -r "$filter"
-fi
+# A stub gh. `gh api [--paginate] <issues URL> --jq <filter>` serves GH_ISSUES as the REST issues endpoint does: it
+# filters by the URL's state, labels and creator, splits the result into pages of per_page, and runs the step's own jq
+# filter over each page, every page only with --paginate. Every other call is logged and succeeds.
+GH_STUB = """#!/usr/bin/env python3
+import json, os, subprocess, sys, urllib.parse
+args = sys.argv[1:]
+with open(os.environ["GH_LOG"], "a") as log:
+    log.write(" ".join(arg.replace("\\n", " ") for arg in args) + "\\n")
+if args[:1] == ["api"]:
+    if os.environ.get("GH_LIST_FAIL"):
+        sys.exit(1)
+    url = next(a for a in args[1:] if a.startswith("repos/"))
+    query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+    wanted = set(query.get("labels", "").split(",")) - {""}
+    issues = [
+        i for i in json.loads(os.environ["GH_ISSUES"])
+        if i["state"] == query.get("state", "open")
+        and wanted <= {label["name"] for label in i["labels"]}
+        and i["user"]["login"] == query.get("creator", i["user"]["login"])
+    ]
+    size = int(query.get("per_page", "30"))
+    pages = [issues[n:n + size] for n in range(0, len(issues), size)] or [[]]
+    for page in pages if "--paginate" in args else pages[:1]:
+        jq = args[args.index("--jq") + 1]
+        sys.stdout.write(subprocess.run(["jq", "-r", jq], input=json.dumps(page), capture_output=True, text=True,
+                                        check=True).stdout)
 """
-BOT = {"login": "app/github-actions", "is_bot": True}
+BOT = "github-actions[bot]"
+CREATE = [
+    "label create drift-watch --color BFD4F2 --description Tracking issue of the weekly drift watch --force",
+    "issue create --title Drift watch --label drift-watch --body-file {}",
+]
+
+
+def issue(number, title="Drift watch", login=BOT, labels=("drift-watch",), state="open"):
+    return {
+        "number": number,
+        "title": title,
+        "state": state,
+        "user": {"login": login},
+        "labels": [{"name": name} for name in labels],
+    }
 
 
 class TrackingIssueStepTest(unittest.TestCase):
-    """The workflow's issue step, run with a stub gh: which issue it writes, and that a failed lookup writes none."""
+    """The workflow's issue step, run with a stub gh: which issue it writes, and that an unclear lookup writes none."""
 
     def step(self, status, issues, list_fails=False):
         doc = yaml.safe_load(WORKFLOW.read_text())
@@ -566,7 +647,8 @@ class TrackingIssueStepTest(unittest.TestCase):
             env = {
                 "PATH": f"{temp / 'bin'}:{os.environ['PATH']}",
                 "GH_LOG": str(temp / "gh.log"),
-                "GH_LIST_JSON": json.dumps(issues),
+                "GH_ISSUES": json.dumps(issues),
+                "GH_REPO": "o/r",
                 "RUNNER_TEMP": str(temp),
                 "STATUS": status,
                 "RUN_URL": "https://github.com/o/r/actions/runs/1",
@@ -575,23 +657,33 @@ class TrackingIssueStepTest(unittest.TestCase):
                 env["GH_LIST_FAIL"] = "1"
             run = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, check=False)
             calls = (temp / "gh.log").read_text().splitlines()
-        return run.returncode, [call for call in calls if not call.startswith("issue list")]
+        writes = [" ".join("{}" if w.endswith("/drift.md") else w for w in c.split(" ")) for c in calls]
+        return run.returncode, [call for call in writes if not call.startswith("api ")]
 
     def test_the_workflow_runs_only_on_schedule_and_by_hand(self):
         doc = yaml.safe_load(WORKFLOW.read_text())
         self.assertEqual({"schedule", "workflow_dispatch"}, set(doc[True]))
 
-    def test_drift_opens_one_issue_and_never_rewrites_an_issue_someone_else_opened(self):
-        human = {"number": 5, "title": "Drift watch", "author": {"login": "someone", "is_bot": False}}
-        self.assertEqual(
-            (0, ["issue create --title Drift watch --body-file " + "{}"]), self.normalised(self.step("3", [human]))
-        )
-        bot = {"number": 7, "title": "Drift watch", "author": BOT}
-        self.assertEqual((0, ["issue edit 7 --body-file {}"]), self.normalised(self.step("4", [human, bot])))
+    def test_drift_opens_one_labelled_issue_and_never_rewrites_an_issue_someone_else_opened(self):
+        human = issue(5, login="someone")
+        self.assertEqual((0, CREATE), self.step("3", [human]))
+        self.assertEqual((0, ["issue edit 7 --body-file {}"]), self.step("4", [human, issue(7)]))
+
+    def test_the_tracking_issue_is_found_behind_more_than_a_hundred_other_bot_issues(self):
+        unlabelled = [issue(1000 + n, title=f"Bot issue {n}", labels=()) for n in range(150)]
+        # Labelled bot issues with another title fill the first page, so only reading every page finds it.
+        labelled = [issue(2000 + n, title=f"Other {n}") for n in range(150)]
+        for name, others in (("unlabelled", unlabelled), ("labelled, other titles", labelled)):
+            with self.subTest(name):
+                self.assertEqual((0, ["issue edit 7 --body-file {}"]), self.step("3", [*others, issue(7)]))
+
+    def test_more_than_one_tracking_issue_fails_the_step_and_writes_nothing(self):
+        status, calls = self.step("3", [issue(7), issue(8)])
+        self.assertNotEqual(0, status)
+        self.assertEqual([], calls)
 
     def test_a_clean_run_closes_the_open_issue_and_otherwise_writes_nothing(self):
-        bot = {"number": 7, "title": "Drift watch", "author": BOT}
-        status, calls = self.normalised(self.step("0", [bot]))
+        status, calls = self.step("0", [issue(7), issue(9, state="closed")])
         self.assertEqual(0, status)
         self.assertEqual(
             [
@@ -606,13 +698,6 @@ class TrackingIssueStepTest(unittest.TestCase):
         status, calls = self.step("3", [], list_fails=True)
         self.assertNotEqual(0, status)
         self.assertEqual([], calls)
-
-    @staticmethod
-    def normalised(result):
-        status, calls = result
-        return status, [
-            " ".join("{}" if word.endswith("/drift.md") else word for word in call.split(" ")) for call in calls
-        ]
 
 
 if __name__ == "__main__":

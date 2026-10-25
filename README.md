@@ -1126,7 +1126,7 @@ make drift
 uv run --no-project --with pyyaml python -I scripts/drift-watch.py
 ```
 
-[`.github/workflows/drift-watch.yml`](.github/workflows/drift-watch.yml) runs the same script every Monday, and you can also start it by hand. It has a read-only contents token, `issues: write`, and no secrets. It keeps one tracking issue titled "Drift watch", opened by `github-actions[bot]`: it opens the issue when it finds drift, rewrites the body on every run, and closes the issue when a run finds nothing. A read failure also fails the run.
+[`.github/workflows/drift-watch.yml`](.github/workflows/drift-watch.yml) runs the same script every Monday, and you can also start it by hand. It has a read-only contents token, `issues: write`, and no secrets. It keeps one tracking issue titled "Drift watch", labelled `drift-watch` and opened by `github-actions[bot]`: it opens the issue when it finds drift, rewrites the body on every run, and closes the issue when a run finds nothing. It finds the issue by reading every page of open issues with that label and creator. If more than one matches, the run fails and writes nothing, so close the extras. A read failure also fails the run. The report never contains exception text, and any occurrence of the token is redacted. A `GITHUB_TOKEN` that contains whitespace or a control character is refused before any request (exit 2).
 
 ## 📊 Measure the startup speed of the dotfiles
 

@@ -81,10 +81,12 @@ MISSING = object()
 
 
 class ReadError(Exception):
-    """An upstream read that returned no usable answer."""
+    """An upstream read that returned no usable answer. Its text is a fixed reason and the path of a URL this script
+    built; no exception text ever reaches it, since an exception can quote a request header (the token)."""
 
     def __init__(self, url: str, reason: str) -> None:
-        super().__init__(f"{url}: {reason}")
+        parts = urllib.parse.urlsplit(url)
+        super().__init__(f"{parts.path}{'?' + parts.query if parts.query else ''}: {reason}")
 
 
 class Shape:
@@ -152,10 +154,18 @@ class AllowedRedirects(urllib.request.HTTPRedirectHandler):
 OPENER = urllib.request.build_opener(AllowedRedirects)
 
 
+# A GitHub token is printable ASCII without spaces; anything else is refused before any request is built, since
+# http.client quotes an invalid header value, token included, in its error.
+TOKEN_CHARS = re.compile(r"[\x21-\x7e]+")
+TOKEN_REFUSED = "GITHUB_TOKEN contains whitespace or a control character; refusing to use it"
+
+
 class Upstream:
     """Reads JSON from api.github.com, or from a fixture mapping URL to the decoded response."""
 
     def __init__(self, fixture: dict | None, token: str) -> None:
+        if token and not TOKEN_CHARS.fullmatch(token):
+            raise ValueError(TOKEN_REFUSED)
         self.fixture = fixture
         self.token = token
 
@@ -180,11 +190,11 @@ class Upstream:
                 # and a str that starts with a byte-order mark is refused by json.loads.
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
-            raise ReadError(url, f"HTTP {error.code}") from None
+            raise ReadError(url, f"HTTP {int(error.code)}") from None
         # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
-        # IncompleteRead; ValueError covers a body that is no strict UTF-8 JSON.
+        # IncompleteRead; ValueError covers a body that is no strict UTF-8 JSON. Only the class name is kept.
         except (OSError, http.client.HTTPException, ValueError) as error:
-            raise ReadError(url, f"{type(error).__name__}: {error}") from None
+            raise ReadError(url, f"read failed ({type(error).__name__})") from None
 
 
 def cli_time(text: str) -> datetime.datetime:
@@ -486,9 +496,8 @@ class Watch:
             [sys.executable, "-I", str(lint)], cwd=self.root, capture_output=True, text=True, check=False
         )
         if run.returncode not in (0, 1):
-            self.failures.append(
-                f"retired-term: {RETIRED_TERM_LINT} exited {run.returncode}: {run.stderr.strip()[:200]}"
-            )
+            # Only the status: the lint's stderr is not copied into a report that goes into a public issue.
+            self.failures.append(f"retired-term: {RETIRED_TERM_LINT} exited {run.returncode}")
             return
         for line in run.stdout.splitlines():
             if line.strip():
@@ -504,13 +513,24 @@ class Watch:
         self.retired_terms()
 
 
-def cell(text: str) -> str:
+def code_span(text: str) -> str:
     """Upstream text as an inline code span: no Markdown, links, mentions or table breaks survive in it."""
     flat = re.sub(r"[`|\r\n]+", " ", str(text)).strip()[:400]
     return f"`{flat}`" if flat else "-"
 
 
+def redact(text: str, token: str) -> str:
+    """text with every occurrence of the token replaced, the last guard before anything is written."""
+    return text.replace(token, "[redacted]") if token else text
+
+
 def report(watch: Watch) -> str:
+    token = watch.upstream.token
+
+    def cell(text) -> str:
+        # Redacted before the cell flattens and truncates it, so no part of the token survives a cut.
+        return code_span(redact(str(text), token))
+
     lines = [
         "# Drift watch",
         "",
@@ -537,7 +557,7 @@ def report(watch: Watch) -> str:
         lines += ["", f"## Read failures ({len(watch.failures)})", ""] + [f"- {cell(f)}" for f in watch.failures]
     if watch.unwatched:
         lines += ["", f"## Not watched ({len(watch.unwatched)})", ""] + [f"- {cell(u)}" for u in watch.unwatched]
-    return "\n".join(lines) + "\n"
+    return redact("\n".join(lines) + "\n", token)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -548,7 +568,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     fixture = json.loads(args.upstream.read_text()) if args.upstream else None
     now = args.now or datetime.datetime.now(datetime.UTC)
-    watch = Watch(args.root.resolve(), Upstream(fixture, os.environ.get("GITHUB_TOKEN", "")), now)
+    try:
+        upstream = Upstream(fixture, os.environ.get("GITHUB_TOKEN", ""))
+    except ValueError:
+        print(TOKEN_REFUSED, file=sys.stderr)
+        return 2
+    watch = Watch(args.root.resolve(), upstream, now)
     watch.run()
     sys.stdout.write(report(watch))
     return 4 if watch.failures else 3 if watch.findings else 0

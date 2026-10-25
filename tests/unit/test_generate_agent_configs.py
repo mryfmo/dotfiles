@@ -75,6 +75,10 @@ def sample_manifest() -> dict:
         },
         "interactive_profile": "standard",
         "omp": {"skills_directories": ["~/.agents/skills"], "roles": {"worker": "standard"}},
+        "skills": {
+            "audience": {"example": ["claude", "codex", "omp", "omp-worker"]},
+            "pstack": {"audience": ["omp", "omp-worker"], "exclude": []},
+        },
         "codex": {
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
             "model_reasoning_summary": "concise",
@@ -630,7 +634,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         source.parent.mkdir(parents=True)
         source.write_text("#!/bin/sh\n")
 
-        outputs = self.module.claude_skill_symlink_outputs()
+        outputs = self.module.claude_skill_symlink_outputs(sample_manifest())
 
         target = self.temp_dir / "home/dot_claude/skills/example/scripts/symlink_send.sh.tmpl"
         self.assertEqual(
@@ -993,7 +997,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.render_output_index({hidden: "{}\n"})
         self.assertIn("never deploys", stderr.getvalue())
-        shown = self.temp_dir / "home/dot_agents/plugins/p" / self.module.CODEX_PLUGIN_MANIFEST
+        shown = self.temp_dir / "home/dot_agents/plugins/p/dot_codex-plugin/plugin.json"
         self.assertEqual(
             {"target": ".agents/plugins/p/.codex-plugin/plugin.json", "kind": "file", "executable": False},
             self.module.chezmoi_target(shown),
@@ -1971,11 +1975,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = sample_manifest()
         path = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
         header = f"# {self.module.GENERATED_HEADER}\n"
-        skills = "skills:\n  customDirectories:\n    - ~/.agents/skills\n"
+        skills = "skills:\n  enabled: true\n  customDirectories:\n    - ~/.agents/skills\n"
+        pstack = "    - ~/.agents/pstack/skills\n  ignoredSkills: []\n"
 
         self.assertEqual(
             self.module.expected_outputs(manifest)[path],
-            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "extensions: []\ndisabledProviders: []\n",
+            header
+            + "modelRoles:\n  default: anthropic/sonnet\n"
+            + skills
+            + pstack
+            + "extensions: []\ndisabledProviders: []\n",
         )
         manifest["interactive_profile"] = "express"
         manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
@@ -1988,6 +1997,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n"
             + skills
             + "    - /srv/skills\n"
+            + pstack
             + "extensions:\n  - ~/.agents/omp/extensions/openai-siwc\n  - /srv/omp-ext\n"
             + "disabledProviders:\n  - agent-plugins\n  - openai-codex\n",
         )
@@ -2010,6 +2020,97 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.module.render_omp_config(manifest)
                 self.assertIn(message, stderr.getvalue())
 
+    def test_skill_audience_refuses_unknown_empty_repeated_and_undeclared(self) -> None:
+        (self.temp_dir / "home/dot_agents/skills/example").mkdir(parents=True)
+        cases = (
+            ({"example": ["claude", "cursor"]}, None, "skill example names unknown audience ['cursor']"),
+            ({"example": []}, None, "skill example needs a non-empty audience list without repeats"),
+            ({"example": ["codex", "codex"]}, None, "skill example needs a non-empty audience list without repeats"),
+            ({"example": ["omp-audit"]}, None, "skill example names unknown audience ['omp-audit']"),
+            ({"other": ["claude"]}, None, "not declared in skills.audience: ['example']"),
+            ({"example": ["claude"]}, {"audience": ["codex"]}, "skills.pstack cannot name ['codex']"),
+            ({"example": ["claude"]}, {"audience": ["omp"], "exclude": ["example"]}, "skills.audience declares"),
+            ({"example": ["claude"]}, {"audience": []}, "skills.pstack needs a non-empty audience list"),
+        )
+        for audience, pstack, message in cases:
+            with self.subTest(audience=audience, pstack=pstack):
+                manifest = sample_manifest()
+                manifest["skills"]["audience"] = audience
+                if pstack is not None:
+                    manifest["skills"]["pstack"] = pstack
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.expected_outputs(manifest)
+                self.assertIn(message, stderr.getvalue())
+
+    def test_each_agent_gets_only_the_skills_its_audience_names(self) -> None:
+        for name in ("shared", "seat-only", "claude-only"):
+            skill = self.temp_dir / f"home/dot_agents/skills/{name}/SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text(f"---\nname: {name}\ndescription: d\n---\n")
+        manifest = sample_manifest()
+        manifest["omp"]["roles"] = {"worker": "standard", "audit": "express"}
+        manifest["skills"] = {
+            "audience": {
+                "shared": ["claude", "codex", "omp", "omp-worker"],
+                "seat-only": ["omp-worker"],
+                "claude-only": ["claude"],
+                "installer-owned": ["omp"],
+            },
+            "pstack": {"audience": ["omp-worker"], "exclude": ["setup-pstack"]},
+        }
+        outputs = self.module.expected_outputs(manifest)
+
+        codex = tomllib.loads(outputs[self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml"])
+        self.assertEqual(
+            [
+                {"path": f"{{{{ .chezmoi.homeDir }}}}/.agents/skills/{name}/SKILL.md", "enabled": False}
+                for name in ("claude-only", "installer-owned", "seat-only")
+            ],
+            codex["skills"]["config"],
+        )
+        plain = outputs[self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"]
+        self.assertIn(
+            "skills:\n  enabled: true\n  customDirectories:\n    - ~/.agents/skills\n  ignoredSkills:\n    - claude-only\n    - seat-only\n",
+            plain,
+        )
+        worker = outputs[self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"]
+        self.assertIn(
+            "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n"
+            "  ignoredSkills:\n    - claude-only\n    - installer-owned\n    - setup-pstack\n",
+            worker,
+        )
+        audit = outputs[self.temp_dir / "home/dot_agents/omp/profiles/audit.yml.tmpl"]
+        self.assertIn("skills:\n  enabled: false\n", audit)
+        links = sorted(
+            {
+                path.relative_to(self.temp_dir / "home/dot_claude/skills").parts[0]
+                for path in outputs
+                if self.temp_dir / "home/dot_claude/skills" in path.parents
+            }
+        )
+        self.assertEqual(["claude-only", "shared"], links)
+        removals = outputs[self.temp_dir / "home/.chezmoiremove"]
+        self.assertIn(
+            self.module.SKILL_REMOVALS_BEGIN + ".claude/skills/seat-only\n" + self.module.SKILL_REMOVALS_END, removals
+        )
+        index = json.loads(outputs[self.temp_dir / "scripts/generated-agent-outputs.json"])["skills"]
+        self.assertEqual(["claude-only", "installer-owned", "seat-only"], index["codex_disabled"])
+        self.assertEqual({"enabled": False, "pstack": False, "ignored": []}, index["omp"]["omp-audit"])
+        self.assertEqual(
+            {"enabled": True, "pstack": True, "ignored": ["claude-only", "installer-owned", "setup-pstack"]},
+            index["omp"]["omp-worker"],
+        )
+
+        # A skill given back to Claude Code leaves the removal block; one that loses it enters.
+        self.module.write_exact(self.temp_dir / "home/.chezmoiremove", removals)
+        manifest["skills"]["audience"]["seat-only"] = ["claude", "omp-worker"]
+        manifest["skills"]["audience"]["shared"] = ["codex"]
+        removals = self.module.expected_outputs(manifest)[self.temp_dir / "home/.chezmoiremove"]
+        self.assertIn(
+            self.module.SKILL_REMOVALS_BEGIN + ".claude/skills/shared\n" + self.module.SKILL_REMOVALS_END, removals
+        )
+
     def test_omp_skills_directories_must_be_home_or_absolute_paths(self) -> None:
         for value in (None, [], "~/.agents/skills", ["skills"], ["~"], ["~other/skills"], ["/"], ["~/x; rm -rf"], [3]):
             with self.subTest(value=value):
@@ -2027,7 +2128,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
         profiles = self.temp_dir / "home/dot_agents/omp/profiles"
         header = f"# {self.module.GENERATED_HEADER}\n"
-        skills = "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
+        skills = (
+            "skills:\n  enabled: true\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
+            "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
+        )
         wizard = "setupVersion: 2\nstartup:\n  setupWizard: false\n"
 
         overlays = {
@@ -2039,11 +2143,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             overlays["worker.yml.tmpl"],
             header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "defaultThinkingLevel: high\n" + wizard,
         )
+        # No skill names omp-audit, so the audit role's overlay loads none at all.
         self.assertEqual(
             overlays["audit.yml.tmpl"],
             header
             + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n"
-            + skills
+            + "skills:\n  enabled: false\n"
             + "defaultThinkingLevel: low\n"
             + wizard,
         )
@@ -2065,7 +2170,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             overlay,
             f"# {self.module.GENERATED_HEADER}\n"
             "modelRoles:\n  default: anthropic/sonnet\n"
-            "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
+            "skills:\n  enabled: true\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
+            "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
             "defaultThinkingLevel: high\n"
             "disabledProviders:\n  - agent-plugins\n"
             "setupVersion: 2\nstartup:\n  setupWizard: false\n",

@@ -2,8 +2,14 @@
 modelRoles:
   default: claude-bridge/claude-opus-5-5
 skills:
+  enabled: true
   customDirectories:
     - {{ .chezmoi.homeDir }}/.agents/skills
+    - {{ .chezmoi.homeDir }}/.agents/pstack/skills
+  ignoredSkills:
+    - hcom-orchestration
+    - project-map
+    - setup-pstack
 defaultThinkingLevel: xhigh
 disabledProviders:
   - agent-plugins

@@ -102,132 +102,139 @@ class HostileGit:
             raise AssertionError("hostile git: " + "; ".join(found))
 
 
-CONSUMER_GENERATION = 1
+_CONSUMER_ERRORS = {}  # consume()'s worker thread -> its outcome, while it runs
+_previous_excepthook = threading.excepthook
+
+
+def _consumer_excepthook(args):
+    """threading.excepthook: a consume() worker's exception goes to its caller, which raises it; any other thread's
+    goes to the hook that was installed before (no exception is caught, so none can be swallowed)."""
+    outcome = _CONSUMER_ERRORS.get(args.thread)
+    if outcome is None:
+        _previous_excepthook(args)
+    else:
+        outcome["error"] = args.exc_value
+
+
+threading.excepthook = _consumer_excepthook
 
 
 class WorkerRoot:
-    """An input, an output and a new output under a worker root.
+    """An input, an output and a new output under a worker root; the consumer runs through consume().
 
     The input is a FIFO read sentinel, never a regular file: opening it for reading is a kernel event the probe sees
-    from outside the consumer, for any thread and any subprocess. A watcher thread polls `os.open(input, O_WRONLY |
-    O_NONBLOCK)`: ENXIO means no reader has it open; success means a reader opened it, so the read is recorded and
-    the descriptor closed, which gives that reader EOF (it cannot hang). A blocking read open waits for that poll, so
-    the record exists before the reader's open returns. stat() opens nothing, so metadata checks are unaffected. The
-    input's access time is not used: another process that reads a fresh regular file sets it too (the macOS host's
-    Spotlight importer or endpoint scanner reads new temporary files within a second); none of them opens a FIFO.
+    from outside the consumer. consume(target) runs the consumer step in a worker thread and, while it runs, the
+    probe itself alternates a short join with one `os.open(input, O_WRONLY | O_NONBLOCK)`:
+      - ENXIO: no process has the input open for reading;
+      - success: a reader holds it (any thread, any subprocess, any path or working directory): the read is recorded
+        and the descriptor closed, which gives the reader EOF, so it cannot hang;
+      - ENOENT or ELOOP: the input was removed or replaced by a link, which the identity check reports;
+      - any other errno: recorded as an error, so the check fails closed.
+    One last attempt runs after the join, and a consumer still running at the deadline fails the check instead of
+    hanging. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
+    for writing is released (its write then fails, EPIPE) instead of waiting for the deadline. No thread runs in the
+    probe outside consume(), and stat() opens nothing, so metadata checks never count.
 
+    The input's access time is not used: another process that reads a fresh regular file sets it too (the macOS
+    host's Spotlight importer or endpoint scanner reads new temporary files within a second); none opens a FIFO.
     The output stays a regular file the consumer must not write, checked by inode, mode, mtime and content.
 
-    Not observed (residual): a read open that never blocks (O_NONBLOCK or O_RDWR) and closes before the next poll; a
-    write to the input in place (a FIFO keeps no content). A consumer that opens the input for writing does not
-    hang: each poll also opens and closes a non-blocking reader, which releases it (its write then fails, EPIPE).
-    Replacing or removing the input is observed from its identity.
+    Not observed (residual): a read open that never blocks (O_NONBLOCK, or O_RDWR) and closes between two attempts
+    (about a millisecond apart); a write to the input in place (a FIFO keeps no content).
     """
 
-    POLL_S, LIVENESS_S = 0.001, 10.0  # the poll interval; how long a check waits for the watcher before refusing
+    POLL_S, DEADLINE_S = 0.001, 30.0
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        # Every read is (generation, entry): the generation the poll that saw it started in. Setup's self-test is
-        # generation 0; the consumer's is 1, and only it counts, so a late record of the self-test never does.
-        self.reads, self.errors, self._generation = [], [], 0
+        self.reads, self.errors = [], []
         os.mkfifo(self.input, 0o600)
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
-        self._cond, self._stop, self._done = threading.Condition(), False, 0
-        self._watcher = threading.Thread(target=self._watch, name="worker-root-fifo", daemon=True)
-        self._watcher.start()
+        self._self_test()
+
+    def _open_writer(self):
+        """One write-open attempt on the input: a descriptor when a reader holds it, None when none does (ENXIO)."""
         try:
-            self._self_test()
-        except BaseException:
-            self.close()
+            return os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        except OSError as error:
+            if error.errno == errno.ENXIO:
+                return None
             raise
 
-    def _is_sentinel(self, fd):
-        st = os.fstat(fd)
-        return stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]
-
-    def _record(self, generation, entry):
-        with self._cond:
-            self.reads.append((generation, entry))
-            self._cond.notify_all()
-
-    def consumer_reads(self):
-        """The reads recorded in the consumer's generation."""
-        with self._cond:
-            return [entry for generation, entry in self.reads if generation == CONSUMER_GENERATION]
-
-    def _poll_once(self):
-        """One poll: record a reader that has the input open, then release any writer waiting for a reader."""
-        with self._cond:
-            generation = self._generation
+    def _self_test(self):
+        """Synchronous: no reader means ENXIO; the probe's own reader makes the write-open succeed on this very
+        FIFO; closing it brings ENXIO back. Any other answer refuses the probe, since reads would not be seen."""
+        if (fd := self._open_writer()) is not None:
+            os.close(fd)
+            raise RuntimeError(f"{self.input} has a reader before the consumer ran")
+        reader = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
         try:
-            fd = os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-        except OSError as error:
-            if error.errno not in (errno.ENXIO, errno.ENOENT, errno.ELOOP):
-                with self._cond:
-                    self.errors.append(f"cannot poll {self.input}: {error!r}")
-        else:
+            writer = self._open_writer()
+            if writer is None:
+                raise RuntimeError(f"a reader of {self.input} did not make the write-open succeed")
             try:
-                if self._is_sentinel(fd):
-                    self._record(generation, f"{self.input} opened for reading")
+                st = os.fstat(writer)
+                if not (stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]):
+                    raise RuntimeError(f"the write-open of {self.input} reached another file")
+            finally:
+                os.close(writer)
+        finally:
+            os.close(reader)
+        if (fd := self._open_writer()) is not None:
+            os.close(fd)
+            raise RuntimeError(f"{self.input} still has a reader after the self-test closed its own")
+
+    def _attempt(self):
+        """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
+        try:
+            fd = self._open_writer()
+        except OSError as error:
+            if error.errno not in (errno.ENOENT, errno.ELOOP):
+                self.errors.append(f"cannot tell whether {self.input} is being read: {error!r}")
+            return
+        if fd is not None:
+            try:
+                st = os.fstat(fd)
+                if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]:
+                    self.reads.append(f"{self.input} opened for reading")
             finally:
                 os.close(fd)  # the reader now sees EOF
         try:
             fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-        except OSError:
-            return  # gone or replaced: the identity check reports it
+        except OSError as error:
+            if error.errno not in (errno.ENOENT, errno.ELOOP):
+                self.errors.append(f"cannot release a writer of {self.input}: {error!r}")
+            return
         os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
 
-    def _watch(self):
-        while True:
-            with self._cond:
-                if self._stop:
-                    return
-            self._poll_once()
-            with self._cond:
-                self._done += 1
-                self._cond.notify_all()
-            time.sleep(self.POLL_S)
-
-    def _settle(self):
-        """Wait until two whole polls have run after this call: a reader open before it is then recorded."""
-        with self._cond:
-            target = self._done + 2
-            if not self._cond.wait_for(lambda: self._done >= target or self._stop, timeout=self.LIVENESS_S):
-                raise RuntimeError(f"the FIFO watcher of {self.input} did not poll within {self.LIVENESS_S}s")
-
-    def _self_test(self):
-        """The watcher must record a reader of the sentinel, or no read is observable at all. The self-test reader
-        is closed and two more polls settle before the consumer's generation starts, and its records keep generation
-        0 wherever they land, so none of them is ever a consumer read."""
-        fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK)
-        try:
-            self._settle()
-        finally:
-            os.close(fd)
-        self._settle()
-        with self._cond:
-            recorded = [entry for generation, entry in self.reads if generation == 0]
-            self._generation = CONSUMER_GENERATION
-        if not recorded:
-            raise RuntimeError(f"the FIFO watcher did not record the probe's self-test reader on {self.input}")
-
-    def close(self):
-        """Stop the watcher; safe to call more than once."""
-        with self._cond:
-            self._stop = True
-            self._cond.notify_all()
-        self._watcher.join(self.LIVENESS_S)
+    def consume(self, target, deadline=None):
+        """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
+        its exception. A step still running at DEADLINE seconds fails with AssertionError instead of hanging."""
+        outcome = {}
+        worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
+        _CONSUMER_ERRORS[worker] = outcome
+        end = time.monotonic() + (self.DEADLINE_S if deadline is None else deadline)
+        worker.start()
+        while worker.is_alive():
+            if time.monotonic() > end:
+                self._attempt()  # releases a reader blocked on the sentinel, at least
+                raise AssertionError("worker root: the consumer was still running after its deadline: it hung")
+            self._attempt()
+            worker.join(self.POLL_S)
+        self._attempt()
+        _CONSUMER_ERRORS.pop(worker, None)
+        if "error" in outcome:
+            raise outcome["error"]
+        return outcome.get("value")
 
     def assert_untouched(self):
-        """Nothing opened the input for reading, or replaced or removed it; nothing wrote, replaced or removed the
-        output, or created the new output's directory. The output's content is compared too, since a write in place
-        can keep the inode, the size and a coarse clock's mtime."""
-        self._settle()
+        """Nothing opened the input for reading during consume(), or replaced or removed it; nothing wrote, replaced
+        or removed the output, or created the new output's directory. The output's content is compared too, since a
+        write in place can keep the inode, the size and a coarse clock's mtime."""
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):
@@ -241,9 +248,7 @@ class WorkerRoot:
             if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
-        with self._cond:
-            errors = list(self.errors)
-        found = [f"read {entry}" for entry in self.consumer_reads()] + found + errors
+        found = [f"read {entry}" for entry in self.reads] + found + self.errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
 
@@ -282,8 +287,6 @@ def _probe(cls, *args):
         probe = cls(base, *args)
         yield probe
     finally:
-        if hasattr(probe, "close"):
-            probe.close()
         shutil.rmtree(base, ignore_errors=True)
 
 

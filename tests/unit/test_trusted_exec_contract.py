@@ -1,6 +1,7 @@
 """Exercise tests/unit/trusted_exec_contract.py: each probe fails for the intended reason on a noncompliant consumer stub
 (so an inert attack or a no-op assertion fails the test), then passes a compliant one; fixtures are temporary."""
 
+import errno
 import functools
 import hashlib
 import os
@@ -10,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -174,12 +176,12 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def case_worker_root(self):
         probe = self.worker_root_probe()
-        in_thread(lambda: naive_io(probe))
+        probe.consume(lambda: naive_io(probe))
         with self.assertRaisesRegex(AssertionError, "worker root: read .*; wrote .*; created ") as red:
             probe.assert_untouched()
         clean = self.worker_root_probe()
         with self.assertRaises(PermissionError):
-            guarded_io(clean)
+            clean.consume(lambda: guarded_io(clean))
         for _ in range(2):  # twice: the probe's own content read must not count as a read
             clean.assert_untouched()
         return str(red.exception)
@@ -291,7 +293,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 probe = self.worker_root_probe()
                 self.assertIn("/.claude/worktrees/", str(probe.input))
                 self.assertFalse(Path(probe.new_output).exists())
-                in_thread(functools.partial(act, probe))  # a blocking open nobody serves fails here, never hangs
+                probe.consume(functools.partial(act, probe))
                 with self.assertRaisesRegex(AssertionError, reason):
                     probe.assert_untouched()
 
@@ -355,83 +357,94 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         # compliant consumer failed about once in 64 runs. The input is now a FIFO: only an open for reading counts.
         probe = self.worker_root_probe()
         self.assertTrue(stat.S_ISFIFO(os.lstat(probe.input).st_mode))
-        os.stat(probe.input), os.path.realpath(probe.input), os.access(probe.input, os.R_OK)
-        run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking at it, without opening it
+
+        def looks_only():
+            os.stat(probe.input), os.path.realpath(probe.input), os.access(probe.input, os.R_OK)
+            run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking at it, without opening it
+            os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
+            Path(probe.base / "elsewhere").read_text()
+
+        probe.consume(looks_only)
         with self.assertRaises(PermissionError):
-            guarded_io(probe)
-        os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
-        Path(probe.base / "elsewhere").read_text()
+            probe.consume(lambda: guarded_io(probe))
         probe.assert_untouched()
         probe.assert_untouched()
 
-    def test_a_reader_of_the_input_never_hangs_and_is_recorded_before_its_open_returns(self):
-        probe = self.worker_root_probe()
-        result = subprocess.run(["/bin/cat", str(probe.input)], capture_output=True, timeout=30, check=False)
-        self.assertEqual((0, b""), (result.returncode, result.stdout))  # EOF: a sentinel, never content
-        self.assertTrue(probe.consumer_reads())  # recorded already, before any check settles the watcher
-        with self.assertRaisesRegex(AssertionError, "worker root: read "):
-            probe.assert_untouched()
-
-    def test_a_late_record_of_the_self_test_never_counts_as_a_consumer_read(self):
-        # Audit round 4 of 3f49cbf9: a poll in flight during setup could append the self-test read after setup had
-        # cleared the reads. Forced here: the first self-test record is delivered at once (the self-test needs one)
-        # and again from a poll held at a barrier until setup has returned. That late copy keeps generation 0, so the
-        # compliant consumer still passes.
-        import threading
-
-        real, released, late = tec.WorkerRoot._record, threading.Event(), []
-
-        def held(probe, generation, entry):
-            if generation == 0 and not late:
-                late.append(threading.Thread(target=lambda: (released.wait(30), real(probe, generation, entry))))
-                late[0].start()
-            real(probe, generation, entry)
-
-        with mock.patch.object(tec.WorkerRoot, "_record", held):
-            probe = self.worker_root_probe()
-        self.assertEqual(1, len(late))
-        released.set()
-        late[0].join(30)
-        self.assertFalse(late[0].is_alive())
-        self.assertIn((0, f"{probe.input} opened for reading"), probe.reads[-1:])  # it landed, after setup
-        self.assertEqual([], probe.consumer_reads())
-        with self.assertRaises(PermissionError):
-            guarded_io(probe)
-        probe.assert_untouched()
+    def test_a_blocking_reader_never_hangs_and_gets_eof(self):
+        for name, consumer in (
+            ("subprocess", lambda p: run(["/bin/cat", str(p.input)], ALLOWED_ENV)),
+            ("thread", lambda p: in_thread(lambda: Path(p.input).read_bytes())),
+        ):
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+                result = probe.consume(functools.partial(consumer, probe))
+                self.assertEqual(b"", result.stdout if name == "subprocess" else result)  # EOF: never content
+                with self.assertRaisesRegex(AssertionError, "worker root: read "):
+                    probe.assert_untouched()
 
     def test_a_writer_to_the_input_never_hangs(self):
+        # A writer blocked on the open is released by the probe's next attempt (its write then fails or is dropped).
         probe = self.worker_root_probe()
-        # A writer blocked on the open is released by the next poll (its write then fails or is dropped); it never
-        # waits for a reader forever. subprocess.run raises TimeoutExpired, and in_thread fails, if it did.
-        subprocess.run(
-            ["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], capture_output=True, timeout=30, check=False
-        )
-        in_thread(lambda: open(probe.input, "wb").close())
+        probe.consume(lambda: run(["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], ALLOWED_ENV))
+        probe.consume(lambda: open(probe.input, "wb").close())
 
-    def test_a_closed_worker_root_probe_stops_its_watcher(self):
-        with tec.worker_root() as probe:
-            path, watcher = probe.input, probe._watcher
-        self.assertFalse(watcher.is_alive())
-        self.assertFalse(path.exists())
+    def test_a_consumer_past_its_deadline_fails_instead_of_hanging(self):
+        import threading
+
+        probe, forever = self.worker_root_probe(), threading.Event()
+        self.addCleanup(forever.set)
+        started = time.monotonic()
+        with self.assertRaisesRegex(AssertionError, "still running after its deadline: it hung"):
+            probe.consume(forever.wait, deadline=1)
+        self.assertLess(time.monotonic() - started, 10)
+
+    def test_an_errno_other_than_enxio_fails_the_probe(self):
+        # No except-all: the only answers the probe reads are ENXIO (no reader) and ENOENT/ELOOP (removed, replaced).
+        probe, real = self.worker_root_probe(), os.open
+
+        def eio(path, flags, *args, **kwargs):
+            if os.fspath(path) == os.fspath(probe.input) and flags & os.O_ACCMODE == os.O_WRONLY:
+                raise OSError(errno.EIO, "injected I/O error", os.fspath(path))
+            return real(path, flags, *args, **kwargs)
+
+        with mock.patch.object(tec.os, "open", eio):
+            probe.consume(lambda: None)
+        with self.assertRaisesRegex(AssertionError, r"cannot tell whether .* is being read: .*EIO|injected I/O error"):
+            probe.assert_untouched()
+
+    def test_a_consumer_exception_is_raised_to_the_caller_and_no_thread_is_left(self):
+        import threading
+
+        probe = self.worker_root_probe()
+        before = threading.active_count()
+        with self.assertRaisesRegex(ValueError, "from the consumer"):
+            probe.consume(lambda: (_ for _ in ()).throw(ValueError("from the consumer")))
+        self.assertEqual(7, probe.consume(lambda: 7))
+        self.assertEqual(before, threading.active_count())
+        self.assertEqual({}, tec._CONSUMER_ERRORS)
 
     def scratch(self, prefix):
         base = Path(tempfile.mkdtemp(prefix=prefix)).resolve()
         self.addCleanup(shutil.rmtree, base, True)
         return base
 
-    def test_a_probe_refuses_when_its_watcher_does_not_record(self):
-        # The watcher's self-test: a watcher that never sees a reader (here: its poll is a no-op) refuses the setup,
-        # and the failed setup stops it.
-        import threading
-
-        watchers = lambda: sum(thread.name == "worker-root-fifo" for thread in threading.enumerate())
-        before = watchers()
-        with (
-            mock.patch.object(tec.WorkerRoot, "_poll_once", lambda self: None),
-            self.assertRaisesRegex(RuntimeError, "did not record the probe's self-test reader"),
+    def test_the_self_test_refuses_a_probe_whose_reads_would_not_be_seen(self):
+        # Synchronous: ENXIO without a reader, success with the probe's own reader, ENXIO again after it closes.
+        for name, fake in (
+            ("writer never succeeds", lambda self: None),
+            ("writer always succeeds", lambda self: os.open(os.devnull, os.O_WRONLY)),
         ):
-            tec.WorkerRoot(self.scratch("trusted-exec-blind-"))
-        self.assertEqual(before, watchers())
+            with (
+                self.subTest(name),
+                mock.patch.object(tec.WorkerRoot, "_open_writer", fake),
+                self.assertRaises(RuntimeError),
+            ):
+                tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
+        with (
+            mock.patch.object(tec.WorkerRoot, "_open_writer", side_effect=OSError(errno.EIO, "injected")),
+            self.assertRaisesRegex(OSError, "injected"),
+        ):
+            tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
 
     def test_worker_root_probe_detects_a_same_length_overwrite(self):
         identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)

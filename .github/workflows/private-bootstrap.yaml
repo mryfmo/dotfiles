@@ -26,6 +26,8 @@ jobs:
             system: server
           - os: macos-14
             system: client
+          - os: macos-15
+            system: client
 
     runs-on: ${{ matrix.os }}
     env:

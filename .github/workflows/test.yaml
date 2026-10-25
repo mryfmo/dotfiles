@@ -31,10 +31,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14]
+        # macos-15 runs beside macos-14 until the ruleset's required contexts
+        # move to it; macos-14 is retired on 2026-11-02 (U64).
+        os: [ubuntu-24.04, macos-14, macos-15]
         system: [client, server]
         exclude:
           - os: macos-14
+            system: server
+          - os: macos-15
             system: server
         # Non-required canary for the next Ubuntu image: it shows how the suite
         # fares there without blocking merges. Adopt it by changing the
@@ -116,10 +120,10 @@ jobs:
             echo "skip_reason=unrelated" >> "${GITHUB_OUTPUT}"
           # macOS adds nothing to a pull request whose every relevant path is Python, docs or records: a shell,
           # install, home, bats, Makefile or workflow change keeps it, and a push to main runs the full matrix.
-          elif [ "${OS:-}" = macos-14 ] && [ "${EVENT_NAME}" = pull_request ] &&
+          elif [[ "${OS:-}" == macos-* ]] && [ "${EVENT_NAME}" = pull_request ] &&
             ! grep -Evq '^(scripts/.*\.py$|tests/unit/.*\.py$|docs/|plans/|\.orchestration/|[^/]+\.md$|ruff\.toml$|\.prettierignore$)' <<< "${relevant}"; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
-            echo "skip_reason=os-independent on macos-14" >> "${GITHUB_OUTPUT}"
+            echo "skip_reason=os-independent on ${OS}" >> "${GITHUB_OUTPUT}"
           else
             echo "should_test=true" >> "${GITHUB_OUTPUT}"
           fi
@@ -135,8 +139,8 @@ jobs:
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
-          if [ "${OS}" == "macos-14" ]; then
-            # The macos-14 runner image ships third-party taps tapped but
+          if [[ "${OS}" == macos-* ]]; then
+            # The macOS runner images ship third-party taps tapped but
             # untrusted, and Homebrew warns on every `brew install` while one
             # is present. The installs below come from homebrew/core, so
             # resolve those taps with the brew installer's own CI handling
@@ -172,8 +176,9 @@ jobs:
           esac
           artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
           base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-          sha256_check=(sha256sum --check --strict)
-          command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
+          sha256_check=(shasum -a 256 --check --strict)
+          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
           curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
           curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \
@@ -344,7 +349,7 @@ jobs:
           if [[ "${OS}" == ubuntu-* ]]; then
             sudo unshare --net -- sh -c 'test -z "$(ip route show)"'
             sudo unshare --net -- "${smoke[@]}" || smoke_failed
-          elif [ "${OS}" = "macos-14" ]; then
+          elif [[ "${OS}" == macos-* ]]; then
             sandbox_profile='(version 1)(allow default)(deny network*)'
             if /usr/bin/sandbox-exec -p "${sandbox_profile}" \
               python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0))'; then
@@ -404,7 +409,7 @@ jobs:
         run: |
           if [[ "${OS}" == ubuntu-* ]]; then
             sudo apt-get update && sudo apt-get install -y jq zsh
-          elif [ "${OS}" == "macos-14" ]; then
+          elif [[ "${OS}" == macos-* ]]; then
             command -v jq > /dev/null 2>&1 || brew install jq
             command -v zsh > /dev/null 2>&1 || brew install zsh
           fi
@@ -459,7 +464,7 @@ jobs:
       - name: Run unit test
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
-          if [ "${OS}" == "macos-14" ]; then
+          if [[ "${OS}" == macos-* ]]; then
             # Bats uses its own tracing internals on macOS, and bashcov can
             # misread those records as coverage trace entries. Keep macOS in
             # the test matrix for platform validation, but collect Codecov

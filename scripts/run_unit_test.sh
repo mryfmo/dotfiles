@@ -23,7 +23,7 @@ function run_common_test() {
 # @description Run the OS-specific Bats suite for the active CI target.
 #
 function run_os_specific_test() {
-    if [ "${OS}" == "macos-14" ]; then
+    if [[ "${OS}" == macos-* ]]; then
         # macOS-only install tests.
         bats -r "tests/install/macos/common/"
 
@@ -51,7 +51,7 @@ function run_files_test() {
     local -a bats_args
     local test_count
 
-    if [ "${OS}" == "macos-14" ] && [ "${SYSTEM}" == "client" ]; then
+    if [[ "${OS}" == macos-* ]] && [ "${SYSTEM}" == "client" ]; then
         bats_args=(tests/files/macos.bats)
     elif [[ "${OS}" == ubuntu-* ]] && { [ "${SYSTEM}" == "client" ] || [ "${SYSTEM}" == "server" ]; }; then
         bats_args=(--filter-tags "common,ubuntu:${SYSTEM}" tests/files/ubuntu.bats)

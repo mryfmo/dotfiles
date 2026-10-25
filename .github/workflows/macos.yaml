@@ -30,7 +30,14 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14 # M1 Mac
+    # macos-15 runs beside macos-14, which is retired on 2026-11-02 (U64). One
+    # at a time: both jobs push to the same benchmark repository.
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }} # Apple silicon
     env:
       # DOTFILES_DEBUG: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,7 +125,8 @@ jobs:
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_BENCHMARK_TOKEN == 'true' }}
         uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
-          name: MacOS benchmark
+          # macos-14 keeps the existing series; another image starts its own, so runner hardware never mixes in one.
+          name: ${{ matrix.os == 'macos-14' && 'MacOS benchmark' || format('MacOS benchmark ({0})', matrix.os) }}
           tool: customSmallerIsBetter
           output-file-path: result.json
           github-token: ${{ secrets.MY_DOTFILES_BENCHMARK }}

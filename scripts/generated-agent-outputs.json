@@ -350,15 +350,15 @@
       "executable": true
     },
     {
+      "source": "install/common/aws_cli.sh",
+      "target": null
+    },
+    {
       "source": "install/common/mise.sh",
       "target": null
     },
     {
       "source": "install/macos/common/brew.sh",
-      "target": null
-    },
-    {
-      "source": "install/ubuntu/common/aws_cli.sh",
       "target": null
     },
     {

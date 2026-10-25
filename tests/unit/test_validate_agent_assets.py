@@ -341,6 +341,87 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def git_config_failure(self, template: str) -> str | None:
+        """Run validate_git_config on a template beside the real setup-gh; return its error or None."""
+        self.write_text_file("home/dot_config/git/config.tmpl", template)
+        setup_gh = "home/dot_local/bin/common/executable_setup-gh"
+        self.write_text_file(setup_gh, (ROOT / setup_gh).read_text())
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                self.module.validate_git_config()
+        except SystemExit:
+            return stderr.getvalue()
+        return None
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_accepts_the_managed_template_rendered_with_and_without_the_key(self) -> None:
+        self.assertIsNone(self.git_config_failure((ROOT / "home/dot_config/git/config.tmpl").read_text()))
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_refuses_templates_that_render_the_wrong_signing(self) -> None:
+        managed = (ROOT / "home/dot_config/git/config.tmpl").read_text()
+        guard = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}\n'
+        if_line = "{{- if $signing }}\n"
+        self.assertIn(guard, managed)
+        self.assertEqual(2, managed.count(if_line))
+        mutations = {
+            # Audit of 52e28100: an else right after each guard signs only when the key is absent.
+            "else after the guard": (
+                managed.replace(if_line, if_line + "{{- else }}\n"),
+                "rendered with the signing key present",
+            ),
+            "unconditional signing": (
+                managed.replace(guard, "{{- $signing := true }}\n"),
+                "rendered without the signing key",
+            ),
+            "gpgsign outside the guard": (
+                managed.replace(
+                    "{{- if $signing }}\n[commit]\n\tgpgsign = true\n",
+                    "[commit]\n\tgpgsign = true\n{{- if $signing }}\n",
+                ),
+                "without the signing key must not set commit.gpgsign",
+            ),
+            "format dropped": (managed.replace("\tformat = ssh\n", ""), "must set gpg.format exactly once"),
+            "guard dropped": (managed.replace(guard, ""), "could not render"),
+            # Audit of 551f3439: git reads [Commit] as [commit], so an unconditional one signs without the key.
+            "unconditional [Commit]": (managed + "[Commit]\n\tgpgsign = true\n", "commit.gpgsign"),
+            "mixed-case section and key": (managed + "[COMMIT]\n\tGpgSign = true\n", "commit.gpgsign"),
+            "mixed-case format outside the guard": (managed + "[GPG]\n\tFormat = ssh\n", "gpg.format"),
+            "gpgsign false beside the guarded one": (
+                managed.replace("[pull]\n", "[Commit]\n\tgpgsign = false\n[pull]\n"),
+                "commit.gpgsign",
+            ),
+            "include directive": (managed + "[include]\n\tpath = ~/.gitconfig.local\n", "[include] or [includeIf]"),
+            "includeIf directive": (
+                managed + '[IncludeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig.work\n',
+                "[include] or [includeIf]",
+            ),
+            "include hidden from the text check": (
+                managed + '{{ "[" }}include]\n\tpath = ~/.gitconfig.local\n',
+                "must not include other config: include.path",
+            ),
+        }
+        for name, (template, message) in mutations.items():
+            with self.subTest(mutation=name):
+                self.assertNotEqual(managed, template)
+                self.assertIn(message, self.git_config_failure(template) or "")
+
+    def test_git_config_names_a_missing_chezmoi(self) -> None:
+        self.write_text_file("home/dot_config/git/config.tmpl", "[user]\n")
+        old_path = os.environ.get("PATH", "")
+        old_override = os.environ.pop("DOTFILES_CHEZMOI", None)
+        os.environ["PATH"] = str(self.temp_dir / "no-bin")
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_git_config()
+        finally:
+            os.environ["PATH"] = old_path
+            if old_override is not None:
+                os.environ["DOTFILES_CHEZMOI"] = old_override
+        self.assertIn("chezmoi is required", stderr.getvalue())
+
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
@@ -532,7 +613,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "gpg_fingerprint": "FB5D",
                     "reason": "fixture: a pinned archive",
                     "install_path": "~/.local/share/aws-cli",
-                    "installer": "install/ubuntu/common/aws_cli.sh",
+                    "installer": "install/common/aws_cli.sh",
                 },
                 "plugins": {
                     "source": "claude-plugin",
@@ -588,19 +669,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         aws.update(
             release="latest",
             render={
-                "file": "install/ubuntu/common/aws_cli.sh",
+                "file": "install/common/aws_cli.sh",
                 "constants": {"AWS_CLI_FINGERPRINT": "gpg_fingerprint"},
             },
         )
         return manifest
 
     def test_assets_accept_rolling_releases_without_pins(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
 
         self.module.validate_assets(self.rolling_asset_manifest())
 
     def test_assets_reject_invalid_rolling_and_pinned_declarations(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
         cases = {
             "release other than latest": (lambda a: a["mise"].update(release="v1"), "release must be 'latest'"),
             "release on a git-commit source": (

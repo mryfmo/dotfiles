@@ -10,7 +10,9 @@ failure or output that is no JSON refuses, and nothing stands in for the parser.
 after its leading assignments and the known WRAPPERS (their options, option values, `--` and operands): an unknown
 wrapper hides the command after it, accepted for precision, so a data argument (`printf '%s' jq "…"`) is never read as
 a command. A shell's -c string and eval's arguments are shell code: they are parsed again, every rule reads them, and
-their hits are reported on the outer lines."""
+their hits are reported on the outer lines; an expansion the outer shell performs is an unknown value there, whatever
+quoting the nested text puts around it. Options and command names are read from a word's literal text after the
+shell joins its fragments (`''-i` is `-i`)."""
 
 import argparse
 import ast
@@ -77,6 +79,8 @@ JQ_NAME = re.compile(r"jq([-._][A-Za-z0-9._-]*)?(\.exe)?")  # jq, jq-1.7, jq-lin
 GREPS = ("pgrep", "grep", "egrep")
 SHELLS = ("bash", "sh", "zsh", "dash", "ksh", "mksh")
 NORM = {"R1": SH_NORM, "R2": SH_NORM, "R6": "escape_regex"}  # the normaliser that accepts a rule's hit, if any
+LITS = ("Lit", "SglQuoted", "ExtGlob")  # the word parts that are literal text
+OUTER = re.compile(r"lintcmpX(\w*?)Xpmctnil")  # spelled()'s token: an outer expansion inside a nested string
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
@@ -191,9 +195,14 @@ def static(word):  # the literal text of a word, its runtime expansions left out
     return "".join(c for part, quoted in flat(word) for c, _ in chars(part, quoted))
 
 
-def option(word):  # a literal option: the word's first part is literal text starting with -, never an expansion's
-    first = next(flat(word), None)
-    return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"
+def leading(word):  # (part, quoted) of the first part that adds text: an empty literal ('' or "") adds none
+    return next(((p, q) for p, q in flat(word) if p["Type"] not in LITS or next(chars(p, q), None)), None)
+
+
+def option(word, signs="-"):  # a literal option: the word's text starts with one of signs and that text is literal
+    # (empty fragments before it vanish, as the shell joins them), never an expansion's
+    first = leading(word)
+    return bool(first) and first[0]["Type"] in LITS and static(word)[:1] in signs
 
 
 def command(call):  # a CallExpr's words and argument nodes from its command word on, past the WRAPPERS, their
@@ -228,21 +237,29 @@ def is_jq(word):  # the command word runs jq: written out (j"q", $bin/jq-1.7, jq
         index = [x.get("Value") for x in nodes(n.get("Index") or {})]
         if n.get("Type") == "ParamExp" and "jq" in [(n.get("Param") or {}).get("Value"), *index]:
             return True
+        if "jq" in outer_names(n):
+            return True
         last = command(stage((n.get("Stmts") or [None])[-1], True))[0][-1:] if n.get("Type") == "CmdSubst" else []
         if last and JQ_NAME.fullmatch(os.path.basename(last[0])):
             return True
     return False
 
 
-def expands(node):  # a parameter expansion below: a name, or a positional or special parameter ($1, ${10}, $@, $?)
-    return any(n.get("Type") == "ParamExp" for n in nodes(node))
+def outer_names(node):  # the names of the outer expansions a nested string's text carries (see spelled), "" for one
+    # that is no plain name; they sit in literal parts, whatever quoting the nested text puts around them
+    return [x for n in nodes(node) if n.get("Type") in LITS for x in OUTER.findall(n.get("Value") or "")]
 
 
-def operand(word):  # any top-level part is a path-named variable (not its ${#length}), or the literal text holds a
-    # path piece; a substitution or an empty literal before it hides nothing
+def expands(node):  # a parameter expansion below: a name, or a positional or special parameter ($1, ${10}, $@, $?), or
+    # an outer expansion in a nested string
+    return any(n.get("Type") == "ParamExp" for n in nodes(node)) or bool(outer_names(node))
+
+
+def operand(word):  # any top-level part is a path-named variable (not its ${#length}) or carries a path-named outer
+    # expansion, or the literal text holds a path piece; a substitution or an empty literal before it hides nothing
     for part, _ in flat(word):
         name = part["Type"] == "ParamExp" and not part.get("Length") and (part.get("Param") or {}).get("Value")
-        if name and TOKEN.search(name):
+        if any(x and TOKEN.search(x) for x in [name, *outer_names(part)]):
             return True
     return bool(LITERAL.search(static(word)))
 
@@ -312,20 +329,20 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
             return True
         return any((m := MARKER.search(note.get(k, ""))) and m.group(1) for k in range(lo, hi + 1))
 
-    def shell_text(words):  # (character, outer line) of the text a nested shell parses: each word as the shell hands
-        # it over, joined by spaces; an expansion stays as written, so the nested parse keeps it as a reference
+    def shell_text(words):  # (character, outer line) of the text a nested shell parses: each word as the outer shell
+        # hands it over, joined by spaces. The outer shell performs its expansions before the nested parse, so the
+        # nested quoting cannot protect them: each becomes the token spelled(name), which the rules read as an
+        # unknown value in any quoting; only the outer literal text stays literal
         pairs = []
         for k, word in enumerate(words):
             if k:
                 pairs.append((" ", pairs[-1][1] if pairs else word["Pos"]["Line"]))
             for part, quoted in flat(word):
-                if part["Type"] in ("Lit", "SglQuoted", "ExtGlob"):
+                if part["Type"] in LITS:
                     pairs += chars(part, quoted, src(part) if part["Type"] == "Lit" else None)
                     continue
-                line = part["Pos"]["Line"]
-                for c in src(part):
-                    pairs.append((c, line))
-                    line += c == "\n"
+                name = part["Type"] == "ParamExp" and not part.get("Length") and (part.get("Param") or {}).get("Value")
+                pairs += [(c, part["Pos"]["Line"]) for c in spelled(name if re.fullmatch(r"\w+", name or "") else "")]
         return pairs
 
     for stmt, top in stmts(tree):  # a statement's lines are its whole chain's, continued lines included
@@ -377,24 +394,28 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
                 break
         nested, nested_zsh = executed(words, args) if t == "CallExpr" else ([], False)
         if nested:  # the nested hits land on the outer lines their text came from
-            spelled = shell_text(nested)
-            starts = [0] + [k + 1 for k, (c, _) in enumerate(spelled) if c == "\n"]
-            where = [spelled[min(s, len(spelled) - 1)][1] if spelled else at for s in starts]
-            inner, inner_note = shell_hits(rel, "".join(c for c, _ in spelled), nested_zsh, f"{rel}:{at}")
+            text_lines = shell_text(nested)
+            starts = [0] + [k + 1 for k, (c, _) in enumerate(text_lines) if c == "\n"]
+            where = [text_lines[min(s, len(text_lines) - 1)][1] if text_lines else at for s in starts]
+            inner, inner_note = shell_hits(rel, "".join(c for c, _ in text_lines), nested_zsh, f"{rel}:{at}")
             hits.extend((where[n - 1], rule, ok or accepted(lo, hi, NORM.get(rule))) for n, rule, ok in inner)
             for n, c in inner_note.items():
                 note.setdefault(where[n - 1], c)
     return hits, note
 
 
+def spelled(name):  # the literal token that stands for an outer expansion in a nested string
+    return f"lintcmpX{name}Xpmctnil"
+
+
 def executed(words, args):  # (the words a command runs as shell code, zsh): a shell's -c string, eval's arguments
     name = os.path.basename(words[0]) if words else ""
-    if name == "eval":
-        return args[1:], False
+    if name == "eval":  # eval takes -- before its arguments
+        return args[2 if len(args) > 1 and option(args[1]) and words[1] == "--" else 1 :], False
     if name not in SHELLS:
         return [], False
     i, string = 1, False
-    while i < len(args) and (option(args[i]) or words[i][:1] == "+"):
+    while i < len(args) and option(args[i], "-+"):
         flag, i = words[i], i + 1
         if flag == "--":
             break
@@ -446,8 +467,12 @@ def jq_hits(prog):  # ([(offset, accepted)] per string-form comparison, [(offset
         while hi < len(toks) and not (depth == 0 and (closes(hi) or bound(hi, fn))):
             depth += opens(hi) - closes(hi)
             hi += 1
-        named = (
-            x[0] == "field" and x[1] in (".url", ".path") or x[0] == "var" and TOKEN.search(x[1][1:])
+        named = (  # an outer shell expansion spliced into the program (see spelled) counts by its name
+            x[0] == "field"
+            and x[1] in (".url", ".path")
+            or x[0] == "var"
+            and TOKEN.search(x[1][1:])
+            or any(n and TOKEN.search(n) for n in OUTER.findall(x[1]))
             for x in toks[lo:hi]
         )
         if any(named) or any(x[0] == "str" and LITERAL.search(x[1]) for x in toks[lo:hi]):

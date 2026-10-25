@@ -815,6 +815,40 @@ class LintComparisonsTest(unittest.TestCase):
             ]
         )
 
+    def test_audit_531_round_4_outer_expansions_eval_end_of_options_and_joined_fragments(self):
+        # audit of c8a42d25: the outer shell expands before the nested parse, so nested quotes cannot protect it
+        forms = (
+            ("eval \"grep -E '$name' f\"\n", "R6"),
+            ("bash -c \"grep -E '$name' f\"\n", "R6"),
+            ("sh -c \"pgrep -f '$name'\"\n", "R5"),
+            ("eval \"[[ '$path' == x ]]\"\n", "R1"),
+            ("eval \"case '$url' in a) ;; esac\"\n", "R2"),
+            ('eval "jq -r \'select(.x == \\"$path\\")\'"\n', "R3"),
+            ("eval \"'$jq' -r 'select(.url == 1)'\"\n", "R3"),
+        )
+        self.assert_hits([(f"oe{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(forms)])
+        self.assert_hits(
+            [
+                ("of.sh", 'eval "grep -E \'$(escape_regex "$name")\' f"\n', []),  # the outer normaliser accepts
+                ("og.sh", "eval \"[[ '$count' == x ]]\"\n", []),  # no path name, no path text
+                ("oh.sh", "bash -c 'grep -E '\"'\\$name'\"' f'\n", []),  # an escaped $ is the nested shell's literal
+            ]
+        )
+        # eval takes --, as the other wrappers do
+        self.assert_hits([("ed.sh", "eval -- 'grep -E \"$name\" f'\n", [("R6", 1)])])
+        # an option or a command name is its literal text after the shell joins the fragments
+        joined = (
+            ("env ''-i jq -r 'select(.url == $p)'\n", "R3"),
+            ("env -''i jq -r 'select(.url == $p)'\n", "R3"),
+            ("nice \"\"-n 5 jq -r 'select(.url == $p)'\n", "R3"),
+            ("bash ''-c 'grep -E \"$name\" f'\n", "R6"),
+            ("eval ''-- 'grep -E \"$name\" f'\n", "R6"),
+            ("pgrep ''-f \"$name\"\n", "R5"),
+            ('grep ""-E "$name" f\n', "R6"),
+            ("jq ''--arg p /x 'select(.path == $p)'\n", "R3"),
+        )
+        self.assert_hits([(f"fj{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(joined)])
+
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []
         for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order

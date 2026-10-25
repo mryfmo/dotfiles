@@ -17,13 +17,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-# A host whose Claude Code runs every pinned plugin at its pin: `claude plugin list --json` reports them from the
-# fixture repository's scripts/plugin-pins.json (the updater's own pins), so the convergence has nothing to change.
-PINNED_PLUGIN_LIST = (
-    'if [ "$1 $2 $3" = "plugin list --json" ]; then '
-    "jq '[.claude | to_entries[] | {id: .key, scope: \"user\", version: .value.pin, enabled: true}]' "
-    '"${DOTFILES_SOURCE_DIR:-$PWD}/scripts/plugin-pins.json"; fi'
-)
+def install_pinned_claude_plugins(home: Path) -> None:
+    """A host whose Claude Code runs every pinned plugin at its pin (installed_plugins.json, the file the
+    updater reads), so the plugin convergence has nothing to change."""
+    pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+    record = home / ".claude/plugins/installed_plugins.json"
+    record.parent.mkdir(parents=True, exist_ok=True)
+    plugins = {plugin_id: [{"scope": "user", "version": pin["pin"]}] for plugin_id, pin in pins.items()}
+    record.write_text(json.dumps({"version": 2, "plugins": plugins}))
 
 
 class RuntimeHealthTest(unittest.TestCase):
@@ -142,6 +143,7 @@ class RuntimeHealthTest(unittest.TestCase):
         (repo / "scripts").mkdir(parents=True)
         (repo / "install/common").mkdir(parents=True)
         home.mkdir()
+        install_pinned_claude_plugins(home)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
@@ -179,7 +181,6 @@ class RuntimeHealthTest(unittest.TestCase):
                 bin_dir / command,
                 f"""
                 printf '{command} %s\\n' "$*" >> "$TEST_LOG"
-                {PINNED_PLUGIN_LIST if command == "claude" else ""}
                 """,
             )
         log = repo / "commands.log"
@@ -213,6 +214,7 @@ class RuntimeHealthTest(unittest.TestCase):
         (repo / "scripts").mkdir(parents=True)
         (repo / "install/common").mkdir(parents=True)
         home.mkdir()
+        install_pinned_claude_plugins(home)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
@@ -264,9 +266,6 @@ class RuntimeHealthTest(unittest.TestCase):
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash
 printf 'claude %s\n' "$*" >> "$TEST_LOG"
-"""
-            + PINNED_PLUGIN_LIST
-            + """
 EOF
                 chmod +x "$BROKEN_CLAUDE"
             fi

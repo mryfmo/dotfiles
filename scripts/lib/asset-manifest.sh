@@ -4,23 +4,6 @@
 # @brief Record installed agent assets in a private atomic JSON manifest.
 
 #
-# @description Return the installed version of a Claude Code plugin, or `unknown` when the plugin
-#   list cannot be read or does not name it: the manifest records what it could not read as such.
-# @arg $1 string Fully qualified Claude Code plugin ID.
-#
-function manifest_claude_plugin_version() {
-    local plugin_id="$1"
-    local listing version
-
-    if listing="$(claude plugin list --json 2> /dev/null)" &&
-        version="$(jq -er --arg id "${plugin_id}" 'first(.[] | select(.id == $id) | .version)' <<< "${listing}" 2> /dev/null)"; then
-        printf '%s\n' "${version}"
-    else
-        printf 'unknown\n'
-    fi
-}
-
-#
 # @description Return the installed version of a Codex plugin, or `unknown` when the plugin list
 #   cannot be read or does not name it.
 # @arg $1 string Fully qualified Codex plugin ID.

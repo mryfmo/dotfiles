@@ -1015,10 +1015,16 @@ Plugin and gh extension pins (`assets.claude-plugins`, `assets.codex-plugins`,
 taking the newest release:
 
 - Claude Code takes no plugin version, so every installation of a plugin (each
-  scope) at its pin is left alone; a missing plugin is installed from its
+  scope, read from `~/.claude/plugins/installed_plugins.json`) at its pin is
+  left alone; a missing plugin is installed from its
   recorded marketplace (registered first when absent), and one at another
   version is updated. Every installation still off its pin afterwards is
-  disabled, because Claude Code runs a plugin's hooks with no trust step. The
+  disabled in its own scope, and `enabledPlugins` in that scope's settings file
+  (`~/.claude/settings.json`, or the project's `.claude/settings.json`) must
+  show it disabled, because Claude Code runs a plugin's hooks with no trust
+  step. Every `claude plugin` command runs from an empty directory (or, for a
+  project-scope copy, its project), so the directory `make update` runs in
+  never changes a decision. The
   enabled state of an installation at its pin is never changed, so a plugin
   you disabled stays disabled. A pinned plugin that cannot be checked or
   installed, or an off-pin installation that cannot be proven disabled, fails

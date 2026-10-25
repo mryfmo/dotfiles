@@ -363,6 +363,11 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
+    def assert_stat_ran(self, result, path):
+        """/usr/bin/stat exited 0 and described PATH: the metadata look really happened."""
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(os.fsencode(path.name), result.stdout)
+
     def test_metadata_reads_and_other_files_are_not_reads_of_the_input(self):
         # U92 root cause: the probe saw a read as the input's access time leaving 0, and any process that opens a fresh
         # regular file sets it as well (on the macOS host a scanner read new temporary files within a second), so the
@@ -372,11 +377,17 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
         def looks_only():
             os.stat(probe.input), os.path.realpath(probe.input), os.access(probe.input, os.R_OK)
-            run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking at it, without opening it
             os.close(os.open(probe.base / "elsewhere", os.O_WRONLY | os.O_CREAT))
             Path(probe.base / "elsewhere").read_text()
+            return run(["/usr/bin/stat", str(probe.input)], ALLOWED_ENV)  # another process looking, not opening
 
-        probe.consume(looks_only)
+        self.assert_stat_ran(probe.consume(looks_only), probe.input)
+        # Injected: a stat that fails, or exits 0 without describing the input, fails that check.
+        for line, why in (('/usr/bin/stat "$0"; exit 4', "exit"), (': "$0"', "output")):
+            with self.subTest(injected=why):
+                result = probe.consume(functools.partial(run, ["/bin/sh", "-c", line, str(probe.input)], ALLOWED_ENV))
+                with self.assertRaises(AssertionError):
+                    self.assert_stat_ran(result, probe.input)
         with self.assertRaises(PermissionError):
             probe.consume(lambda: guarded_io(probe))
         probe.assert_untouched()
@@ -404,9 +415,10 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     self.assert_eof(result)
 
-    def test_an_input_that_was_ever_not_the_probes_fifo_fails_even_when_restored(self):
+    def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
         # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
-        # and back during the step passed. Held until the probe has made two attempts on the swapped-in file.
+        # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is
+        # in scope; one swapped and restored between two polls is not (see WorkerRoot's docstring).
         for name, swap_in in (
             ("regular file", lambda path: path.write_text(tec.LEGIT)),
             ("another FIFO", lambda path: os.mkfifo(path)),

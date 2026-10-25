@@ -126,9 +126,9 @@ class WorkerRoot:
     from outside the consumer. consume(target) runs the consumer step in a worker thread and, while it runs, the
     probe itself alternates a short join with one `os.open(input, O_WRONLY | O_NONBLOCK)`:
       - ENXIO: no process has the input open for reading;
-      - success: a reader holds it (any thread, any subprocess, any path or working directory): the read is recorded
-        and the descriptor closed, which gives the reader EOF, so it cannot hang;
-      - ENOENT or ELOOP: the input was removed or replaced by a link, which the identity check reports;
+      - success: a reader holds it (the consumer step's thread, a thread it starts, or a subprocess, by any path):
+        the read is recorded and the descriptor closed, which gives the reader EOF, so it cannot hang;
+      - ENOENT or ELOOP: the input is removed or replaced by a link at this poll, which is recorded;
       - any other errno: recorded as an error, so the check fails closed.
     One last attempt runs after the join, and a consumer still running at the deadline fails the check instead of
     hanging. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
@@ -139,8 +139,13 @@ class WorkerRoot:
     host's Spotlight importer or endpoint scanner reads new temporary files within a second); none opens a FIFO.
     The output stays a regular file the consumer must not write, checked by inode, mode, mtime and content.
 
-    Not observed (residual): a read open that never blocks (O_NONBLOCK, or O_RDWR) and closes between two attempts
-    (about a millisecond apart); a write to the input in place (a FIFO keeps no content).
+    Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
+    the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
+    the same PR, and the probe guards against an accidental read, not against an adversary inside the test process.
+    So it does not claim to detect (residual): a replacement swapped in and restored between two polls (about a
+    millisecond apart); reads made by audit hooks or other callbacks running inside the probe's own calls; a read
+    open that never blocks (O_NONBLOCK, or O_RDWR) and closes between two polls; a write to the input in place (a
+    FIFO keeps no content).
     """
 
     POLL_S, DEADLINE_S = 0.001, 30.0
@@ -189,8 +194,9 @@ class WorkerRoot:
             raise RuntimeError(f"{self.input} still has a reader after the self-test closed its own")
 
     def _not_sentinel(self, error=None, fd=None):
-        """Whether the input is not the probe's FIFO at this moment, recorded: once it was not, the check fails,
-        even if the FIFO is put back later. ENOENT is a removal and ELOOP a link put in its place."""
+        """Whether the input is not the probe's FIFO at this poll, recorded, so the check fails even if the FIFO is
+        back by then (a swap and restore between two polls is out of scope). ENOENT is a removal and ELOOP a link
+        put in its place."""
         if error is not None:
             if error.errno in (errno.ENOENT, errno.ELOOP):
                 self.replaced.append(f"{self.input} was {'removed' if error.errno == errno.ENOENT else 'a link'}")

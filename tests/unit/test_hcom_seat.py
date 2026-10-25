@@ -920,6 +920,54 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
                 self.assertIn("cannot find an existing directory above", run.stderr)
 
+    def test_own_slots_that_are_links_are_refused(self):
+        """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be
+        what they claim. A `.state/<name> -> ..` (the whole seats root) or a `<seats-root>/<name> -> /` is refused
+        before anything is created; a real, pre-existing slot still launches."""
+        seats = Path(self.seats)
+        cases = (
+            ("worker", ".state/worker", ".."),
+            ("orchestrator", ".state/orchestrator", ".."),
+            ("worker", "worker", "/"),
+            ("worker", ".state", "/tmp"),
+        )
+        for role, slot, target in cases:
+            with self.subTest(role=role, slot=slot, target=target):
+                (seats / slot).parent.mkdir(parents=True, exist_ok=True)
+                (seats / slot).symlink_to(target)
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the seat slot {seats / slot} is a symbolic link", run.stderr)
+                self.assertFalse((seats / ".sandbox").exists())
+                shutil.rmtree(seats)
+        (seats / ".state/worker").mkdir(parents=True)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_the_linux_reader_checks_jq_status_for_an_empty_list(self):
+        """U85 round 16: jq's status for the entry read is checked unconditionally, so a jq that exits 7 or 127
+        while the list is empty fails the read instead of reading as an empty list."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("clean_path", "allow_write_list")
+        )
+        fake = Path(self.temp.name) / "fake-jq"
+        fake.write_text(
+            '#!/bin/sh\ncase "$*" in\n*\'allowWrite[]\'*) exit "${JQ_ENTRY_STATUS:-0}" ;;\n*length*) echo 0 ;;\nesac\n'
+        )
+        fake.chmod(0o755)
+        functions = functions.replace("/usr/bin/jq", str(fake))
+        fixture = Path(self.temp.name) / "settings.json"
+        fixture.write_text(json.dumps({"filesystem": {"allowWrite": []}}))
+        for status in (0, 7, 127):
+            with self.subTest(status=status):
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'{functions}\nallow_write_list Linux "$1"', "_", str(fixture)],
+                    env={**os.environ, "JQ_ENTRY_STATUS": str(status)}, capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (0 if status == 0 else 1, ""), run.stderr)
+
     def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
         """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout
         (`--separate-git-dir`) that holds the seats root would grant every worker its siblings, so it is refused."""

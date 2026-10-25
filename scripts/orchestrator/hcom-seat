@@ -272,7 +272,9 @@ allow_write_list() {
         /usr/bin/jq -e '.filesystem.allowWrite | type == "array" and all(.[]; type == "string" and (test("\n") | not))' \
             "$2" > /dev/null || return 1
         n=$(/usr/bin/jq -e '.filesystem.allowWrite | length' "$2") || return 1
-        entry=$(/usr/bin/jq -er '.filesystem.allowWrite[]' "$2") || [[ ${n} == 0 ]] || return 1
+        # No -e here: an empty array prints nothing, which -e would report as a failure; so jq's status is checked
+        # unconditionally, and an empty read with a nonzero n fails the count check below.
+        entry=$(/usr/bin/jq -r '.filesystem.allowWrite[]' "$2") || return 1
         i=0
         while IFS= read -r line; do
             [[ -n ${line} ]] || continue
@@ -928,6 +930,7 @@ seat_overlap_check() {
             if [[ -e ${p} && ${p} -ef ${own_dir} ]]; then continue; fi
             # Its own slots under the seats root sit there by construction, as siblings of `.sandbox`: the state
             # directory of every seat, and a worker's directory (the orchestrator's is the launch checkout, checked).
+            # own_slots_check has proved, before this runs, that they are what they claim (no link, right parent).
             if [[ (${k} == 2 || (${k} == 1 && ${own_role} != orchestrator)) && (${i} == 1 || ${i} == 2) ]]; then continue; fi
             status=0
             within "${r}" "${p}" || status=$?
@@ -946,6 +949,31 @@ seat_overlap_check() {
     done
 }
 
+# @description Refuse (exit 2) unless a seat's own slots under the seats root are what the overlap check's exemption
+#   takes them for (regime-cutover U85): `<seats-root>/.state`, `<seats-root>/.state/<name>` and, for a worker,
+#   `<seats-root>/<name>` are each no symbolic link, a directory when they exist, and, when they exist, their physical
+#   parent has the identity of the physical seats root (resp. `.state`) and their physical basename is the name they
+#   are spelled with. A `.state/<name> -> ..` or `<name> -> /` would otherwise resolve the slot to a wider root that
+#   the exemption skips. Missing slots are created later, one component at a time (seat_sandbox_write).
+# @arg $1 string The role.
+# @arg $2 string The seat name.
+own_slots_check() {
+    local slot parent real seats_phys slots=("${seats_root}/.state" "${seats_root}/.state/$2")
+    [[ $1 == orchestrator ]] || slots+=("${seats_root}/$2")
+    seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
+    for slot in "${slots[@]}"; do
+        [[ ! -L ${slot} ]] || refuse "the seat slot ${slot} is a symbolic link; a seat's own slots must be real directories"
+        [[ -e ${slot} ]] || continue
+        [[ -d ${slot} ]] || refuse "the seat slot ${slot} is not a directory"
+        real=$(physical_path "${slot}") || refuse "cannot resolve the seat slot ${slot}"
+        parent=${slot%/*}
+        [[ ${real%/*} -ef ${parent} && ${parent} -ef ${seats_phys}${parent#"${seats_root}"} ]] ||
+            refuse "the seat slot ${slot} does not sit in ${parent}"
+        [[ ${real##*/} == "${slot##*/}" ]] || refuse "the seat slot ${slot} resolves to ${real}" # lint-comparisons: allow a basename test, the parent by identity
+    done
+}
+own_slots_check "${role}" "${name}"
+own_slots_check orchestrator orchestrator
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
 seat_overlap_check "${role}" "${dir_phys}" "${seat_write[@]}"
 orchestrator_write=()
@@ -1037,9 +1065,18 @@ seat_sandbox_write() {
     local root path settings shim json base sandbox_state origin_url push_url srt_q omp_q
     local write_json deny_write_json deny_read_json allow_read_json
     local write=() deny_write=() deny_read=() allow_read=()
-    # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first.
-    (umask 077 && mkdir -p "${sandbox}/bin" "${seats_root%/}/.state/${name}" "${HOME}/.omp/profiles/${role}" \
-        "${HOME}/.omp/run") || refuse "cannot create the seat sandbox directory ${sandbox} or omp's state directories"
+    # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
+    # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
+    # and each is checked again to be a real directory.
+    (umask 077 && mkdir -p "${seats_root}" "${HOME}/.omp/profiles/${role}" "${HOME}/.omp/run") ||
+        refuse "cannot create the seats root ${seats_root} or omp's state directories"
+    for path in "${seats_root}/.state" "${seats_root}/.state/${name}" "${seats_root}/.sandbox" "${sandbox}" \
+        "${sandbox}/bin"; do
+        if [[ ! -e ${path} && ! -L ${path} ]]; then
+            (umask 077 && /bin/mkdir "${path}") || refuse "cannot create ${path}"
+        fi
+        [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
+    done
     h=$(physical_path "${HOME}") || refuse "cannot resolve HOME ${HOME}"
     claude=${CLAUDE_CONFIG_DIR:-${h}/.claude}
     dir_real=$(cd "${dir}" && pwd -P) || refuse "cannot resolve the seat directory ${dir}"

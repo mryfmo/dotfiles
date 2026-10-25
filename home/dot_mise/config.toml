@@ -7,7 +7,6 @@ python = "latest"
 age = "latest"
 bun = "latest"
 chezmoi = "latest"
-cmake = "latest"
 dotenvx = "latest"
 "cargo:eza" = "latest"
 fd = "latest"
@@ -40,8 +39,6 @@ ruff = "latest"
 "github:d-kuro/gwq" = "latest"
 "github:cli/cli" = "latest"
 "github:ogulcancelik/herdr" = "latest"
-# Fixed pin avoids the sandbox's blocked version-registry query.
-"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "latest"
 

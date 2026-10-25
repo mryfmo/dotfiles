@@ -1,0 +1,66 @@
+name: Docs build
+
+# A pull request that changes what the docs site is built from gets the same strict MkDocs build the Docs workflow
+# deploys on main, without deploying and with a read-only token (F151). Not a required check. The paths are the Docs
+# workflow's push paths plus this file.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/docs-check.yml"
+      - ".github/workflows/docs.yml"
+      - "docs/**"
+      - "Makefile"
+      - "README.md"
+      - "mkdocs.yml"
+      - "scripts/**"
+      - "install/**"
+      - "home/.chezmoiscripts/**"
+      - "home/dot_claude/hooks/**"
+      - "home/dot_config/alias/**"
+      - "home/dot_local/bin/**"
+
+concurrency:
+  group: docs-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
+          minimum_release_age: 72h
+          install: false
+          cache: true
+
+      - name: Trust mise config
+        run: mise trust --yes
+
+      - name: Install mise tools
+        run: mise install
+
+      - name: Build the docs site strictly
+        # make docs generates the reference pages and runs `mkdocs build --clean --strict`.
+        run: make docs

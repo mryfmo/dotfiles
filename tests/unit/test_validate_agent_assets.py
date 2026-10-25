@@ -87,7 +87,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
-        self.codex_writable_roots = ["{{ .chezmoi.homeDir }}/.cache/codex-root"]
+        # An allowlisted spelling (validate-agent-assets.py SANDBOX_WRITE_ROOTS), so fixtures pass the write-root check.
+        self.codex_writable_roots = ["~/.local/state/hcom"]
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
         (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
@@ -340,6 +341,87 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def git_config_failure(self, template: str) -> str | None:
+        """Run validate_git_config on a template beside the real setup-gh; return its error or None."""
+        self.write_text_file("home/dot_config/git/config.tmpl", template)
+        setup_gh = "home/dot_local/bin/common/executable_setup-gh"
+        self.write_text_file(setup_gh, (ROOT / setup_gh).read_text())
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                self.module.validate_git_config()
+        except SystemExit:
+            return stderr.getvalue()
+        return None
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_accepts_the_managed_template_rendered_with_and_without_the_key(self) -> None:
+        self.assertIsNone(self.git_config_failure((ROOT / "home/dot_config/git/config.tmpl").read_text()))
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_refuses_templates_that_render_the_wrong_signing(self) -> None:
+        managed = (ROOT / "home/dot_config/git/config.tmpl").read_text()
+        guard = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}\n'
+        if_line = "{{- if $signing }}\n"
+        self.assertIn(guard, managed)
+        self.assertEqual(2, managed.count(if_line))
+        mutations = {
+            # Audit of 52e28100: an else right after each guard signs only when the key is absent.
+            "else after the guard": (
+                managed.replace(if_line, if_line + "{{- else }}\n"),
+                "rendered with the signing key present",
+            ),
+            "unconditional signing": (
+                managed.replace(guard, "{{- $signing := true }}\n"),
+                "rendered without the signing key",
+            ),
+            "gpgsign outside the guard": (
+                managed.replace(
+                    "{{- if $signing }}\n[commit]\n\tgpgsign = true\n",
+                    "[commit]\n\tgpgsign = true\n{{- if $signing }}\n",
+                ),
+                "without the signing key must not set commit.gpgsign",
+            ),
+            "format dropped": (managed.replace("\tformat = ssh\n", ""), "must set gpg.format exactly once"),
+            "guard dropped": (managed.replace(guard, ""), "could not render"),
+            # Audit of 551f3439: git reads [Commit] as [commit], so an unconditional one signs without the key.
+            "unconditional [Commit]": (managed + "[Commit]\n\tgpgsign = true\n", "commit.gpgsign"),
+            "mixed-case section and key": (managed + "[COMMIT]\n\tGpgSign = true\n", "commit.gpgsign"),
+            "mixed-case format outside the guard": (managed + "[GPG]\n\tFormat = ssh\n", "gpg.format"),
+            "gpgsign false beside the guarded one": (
+                managed.replace("[pull]\n", "[Commit]\n\tgpgsign = false\n[pull]\n"),
+                "commit.gpgsign",
+            ),
+            "include directive": (managed + "[include]\n\tpath = ~/.gitconfig.local\n", "[include] or [includeIf]"),
+            "includeIf directive": (
+                managed + '[IncludeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig.work\n',
+                "[include] or [includeIf]",
+            ),
+            "include hidden from the text check": (
+                managed + '{{ "[" }}include]\n\tpath = ~/.gitconfig.local\n',
+                "must not include other config: include.path",
+            ),
+        }
+        for name, (template, message) in mutations.items():
+            with self.subTest(mutation=name):
+                self.assertNotEqual(managed, template)
+                self.assertIn(message, self.git_config_failure(template) or "")
+
+    def test_git_config_names_a_missing_chezmoi(self) -> None:
+        self.write_text_file("home/dot_config/git/config.tmpl", "[user]\n")
+        old_path = os.environ.get("PATH", "")
+        old_override = os.environ.pop("DOTFILES_CHEZMOI", None)
+        os.environ["PATH"] = str(self.temp_dir / "no-bin")
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_git_config()
+        finally:
+            os.environ["PATH"] = old_path
+            if old_override is not None:
+                os.environ["DOTFILES_CHEZMOI"] = old_override
+        self.assertIn("chezmoi is required", stderr.getvalue())
+
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
@@ -512,7 +594,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "gpg_fingerprint": "FB5D",
                     "reason": "fixture: a pinned archive",
                     "install_path": "~/.local/share/aws-cli",
-                    "installer": "install/ubuntu/common/aws_cli.sh",
+                    "installer": "install/common/aws_cli.sh",
                 },
                 "plugins": {
                     "source": "claude-plugin",
@@ -568,19 +650,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         aws.update(
             release="latest",
             render={
-                "file": "install/ubuntu/common/aws_cli.sh",
+                "file": "install/common/aws_cli.sh",
                 "constants": {"AWS_CLI_FINGERPRINT": "gpg_fingerprint"},
             },
         )
         return manifest
 
     def test_assets_accept_rolling_releases_without_pins(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
 
         self.module.validate_assets(self.rolling_asset_manifest())
 
     def test_assets_reject_invalid_rolling_and_pinned_declarations(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
         cases = {
             "release other than latest": (lambda a: a["mise"].update(release="v1"), "release must be 'latest'"),
             "release on a git-commit source": (
@@ -648,20 +730,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.validate_assets(manifest)
         path.unlink()
 
-    def test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping(self) -> None:
-        path = self.write_text_file(
-            "home/dot_claude/private_mcp.json.tmpl", '{{/* generated */}}\n{"mcpServers": {}}\n'
-        )
-        self.assertEqual(self.module.validate_claude_mcp_config(), {"mcpServers": {}})
-        self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcpServers": {}}, {"mcp_servers": {}})
-
-        for text in ('{"mcpServers": []}', "{}"):
-            with self.subTest(text=text):
-                path.write_text(text)
-                stderr = io.StringIO()
-                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-                    self.module.validate_claude_mcp_config()
-                self.assertIn("must define mcpServers as a mapping", stderr.getvalue())
+    def test_mcp_parity_compares_the_manifest_with_codex_only(self) -> None:
+        self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcp_servers": {}})
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcp_servers": {"x": {}}})
+        self.assertIn("MCP server names differ", stderr.getvalue())
 
     def test_assets_scan_setup_sh_for_unrendered_versions(self) -> None:
         self.write_text_file("setup.sh", 'declare -r CHEZMOI_VERSION="2.70.4"\n')
@@ -941,20 +1015,22 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.assert_hook_composition_fails("sessionstart-order source=compactiondb")
 
-    def valid_claude_sandbox(self) -> dict:
+    def valid_claude_sandbox(self, os_name: str = "darwin") -> dict:
         return {
             "enabled": True,
-            "failIfUnavailable": False,
+            "failIfUnavailable": True,
+            "allowUnsandboxedCommands": False,
             "autoAllowBashIfSandboxed": True,
+            "excludedCommands": list(self.module.SANDBOX_EXCLUSIONS),
             "filesystem": {
                 "allowWrite": list(self.codex_writable_roots),
                 "denyRead": ["~/**/.env", "~/**/.env.*"],
             },
-            "credentials": {"files": [{"path": "~/.ssh", "mode": "deny"}]},
-            "network": {
-                "allowedDomains": ["github.com", "api.github.com"],
-                "allowUnixSockets": ["~/.config/herdr/herdr.sock", "/run/user/1000/x.sock"],
+            "credentials": {
+                "files": [{"path": path, "mode": "deny"} for path in self.module.SANDBOX_CREDENTIAL_DENIES],
+                "envVars": [{"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}],
             },
+            "network": {"allowedDomains": ["github.com", "api.github.com"]},
         }
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
@@ -1008,6 +1084,63 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_claude_settings(candidate)
                 self.assertRegex(stderr.getvalue(), message)
+
+        # U68 round 2: Claude Code 2.1.310 reads `Bash(dangerouslyDisableSandbox:true)` as a literal command and keeps
+        # an allow on the retry, so the boundary is strict mode plus a prompted exclusion, never that rule.
+        def without_push_ask(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].remove("Bash(git push *)")
+
+        def without_gh_ask(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].remove("Bash(gh *)")
+
+        def with_retry(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["allowUnsandboxedCommands"] = True
+
+        def with_dead_rule(candidate: dict) -> None:
+            candidate["claude"]["permissions"]["ask"].append("Bash(dangerouslyDisableSandbox:true)")
+
+        def with_lever_excluded(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["excludedCommands"].append("~/.local/bin/common/hcom-seat *")
+
+        def with_gh_hosts_masked(candidate: dict) -> None:
+            # Round 6: a mask lets the proxy write the real token into a body api.github.com echoes back (/markdown).
+            for entry in candidate["claude"]["sandbox"]["credentials"]["files"]:
+                if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
+                    entry.update(mode="mask", extract="oauth_token:\\s*(\\S+)", injectHosts=["api.github.com"])
+
+        def with_tls_termination(candidate: dict) -> None:
+            candidate["claude"]["sandbox"]["network"]["tlsTerminate"] = {}
+
+        for name, mutate, message in (
+            ("unprompted git push exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
+            ("unprompted gh exclusion", without_gh_ask, "Bash(<pattern>) for each excluded command"),
+            ("unsandboxed retry", with_retry, "allowUnsandboxedCommands must be false"),
+            ("literal retry rule", with_dead_rule, "must not name dangerouslyDisableSandbox"),
+            ("allowed lever excluded", with_lever_excluded, "excludedCommands must be exactly"),
+            ("gh hosts file masked", with_gh_hosts_masked, "must all be exactly path and deny (no mask)"),
+            ("TLS termination", with_tls_termination, "tlsTerminate must not be set"),
+        ):
+            with self.subTest(form=name):
+                candidate = copy.deepcopy(manifest)
+                mutate(candidate)
+                self.write_text_file(
+                    "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(candidate)
+                )
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_claude_settings(candidate)
+                self.assertIn(message, stderr.getvalue())
+
+        template = generator.render_claude_settings(manifest)
+        widened = template.replace(
+            '"defaultMode": "auto",', '"defaultMode": "auto", "additionalDirectories": ["~/"],', 1
+        )
+        self.assertNotEqual(template, widened)
+        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", widened)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_claude_settings(manifest)
+        self.assertIn("permissions.additionalDirectories entries must be exactly one of", stderr.getvalue())
 
         template = generator.render_claude_settings(manifest)
         prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
@@ -1211,7 +1344,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "no credentials": (lambda sandbox: sandbox.pop("credentials"), "credentials.files must contain"),
             "ssh allowed": (
                 lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.ssh", "mode": "allow"}]),
-                "credentials.files must contain",
+                "credentials.files entries must all be exactly path and deny",
             ),
             "other directory only": (
                 lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.gnupg", "mode": "deny"}]),
@@ -1236,6 +1369,117 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn(message, stderr.getvalue())
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["denyRead"].append("/srv/secrets/**")
+        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+
+    def test_claude_sandbox_refuses_each_way_out_of_the_boundary(self) -> None:
+        """U68: credential stores denied, no write reaching PATH or mise trust state, no socket, fail closed."""
+
+        def without_file(path: str):
+            def mutate(sandbox: dict) -> None:
+                files = sandbox["credentials"]["files"]
+                files[:] = [e for e in files if e["path"] != path]  # lint-comparisons: allow settings text
+
+            return mutate
+
+        def hosts(**change):
+            def mutate(sandbox: dict) -> None:
+                for entry in sandbox["credentials"]["files"]:
+                    if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
+                        entry.update(change)
+
+            return mutate
+
+        cases = {
+            "fails open": (lambda sandbox: sandbox.update(failIfUnavailable=False), "failIfUnavailable must be true"),
+            "uv tools writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv"),
+                "must be exactly one of",
+            ),
+            "mise trust writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/state/mise"),
+                "must be exactly one of",
+            ),
+            "a parent of PATH writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local"),
+                "must be exactly one of",
+            ),
+            "uv python writable": (
+                lambda sandbox: sandbox["filesystem"]["allowWrite"].append("~/.local/share/uv/python"),
+                "must be exactly one of",
+            ),
+            "age key readable": (without_file("~/.config/age/key.txt"), "deny entry for each credential store"),
+            "codex login readable": (without_file("~/.codex/auth.json"), "deny entry for each credential store"),
+            "gh hosts unlisted": (without_file("~/.config/gh/hosts.yml"), "~/.config/gh/hosts.yml"),
+            # Round 6: no mask of any kind, on any OS: the proxy would write the real token into an echoed body.
+            "gh hosts masked": (
+                hosts(mode="mask", extract="oauth_token:\\s*(\\S+)", injectHosts=["api.github.com"]),
+                "must all be exactly path and deny (no mask)",
+            ),
+            "gh hosts allowed": (hosts(mode="allow"), "must all be exactly path and deny (no mask)"),
+            "deny with mask fields": (hosts(injectHosts=["api.github.com"]), "must all be exactly path and deny"),
+            "another file masked": (
+                lambda sandbox: sandbox["credentials"]["files"].append({"path": "~/.netrc", "mode": "mask"}),
+                "must all be exactly path and deny (no mask)",
+            ),
+            "a variable masked": (
+                lambda sandbox: sandbox["credentials"]["envVars"].append({"name": "GH_TOKEN", "mode": "mask"}),
+                "envVars entries must all be exactly name and deny",
+            ),
+            "plaintext injection": (
+                lambda sandbox: sandbox["credentials"].update(allowPlaintextInject=True),
+                "allowPlaintextInject must not be set",
+            ),
+            "TLS termination": (
+                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
+                "tlsTerminate must not be set",
+            ),
+            # Round 5: every entry is checked and no path or variable may appear twice (Claude keeps the later).
+            "a path listed twice": (
+                lambda sandbox: sandbox["credentials"]["files"].append({"path": "~/.codex/auth.json", "mode": "deny"}),
+                "must name each path once",
+            ),
+            "a variable listed twice": (
+                lambda sandbox: sandbox["credentials"]["envVars"].append(
+                    {"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny"}
+                ),
+                "must name each variable once",
+            ),
+            "token env passed": (
+                lambda sandbox: sandbox["credentials"].update(envVars=[]),
+                "envVars must deny",
+            ),
+            "herdr socket": (
+                lambda sandbox: sandbox["network"].update(allowUnixSockets=["~/.config/herdr/herdr.sock"]),
+                "allowUnixSockets must not list a socket",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox()
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                self.assertIn(message, stderr.getvalue())
+        linux_cases = {
+            "Linux TLS termination": (
+                lambda sandbox: sandbox["network"].update(tlsTerminate={}),
+                "tlsTerminate must not be set",
+            ),
+            "Linux socket list": (
+                lambda sandbox: sandbox["network"].update(allowUnixSockets=[]),
+                "allowUnixSockets must not list a socket",
+            ),
+        }
+        for name, (breaks, message) in linux_cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox("linux")
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox", "linux")
+                self.assertIn(message, stderr.getvalue())
+        self.module.validate_claude_sandbox(self.valid_claude_sandbox("linux"), self.codex_writable_roots, "s", "linux")
+        sandbox = self.valid_claude_sandbox()
+        sandbox["network"]["allowUnixSockets"] = []
         self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
 
     def test_claude_deny_rules_refuse_a_glob_last_segment_except_the_env_pair(self) -> None:
@@ -1266,33 +1510,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn("which the Linux sandbox ignores", stderr.getvalue())
                 self.assertIn("covered for subprocesses by sandbox.filesystem.denyRead", stderr.getvalue())
 
-    def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
+    def test_claude_sandbox_allow_write_refuses_any_form_off_the_allowlist(self) -> None:
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")
         self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-        for path in ("relative/cache", "~cache", "/tmp/*", 7):
+        for path in ("relative/cache", "~cache", "/tmp/*", 7, None):
             with self.subTest(path=path):
                 sandbox = self.valid_claude_sandbox()
                 sandbox["filesystem"]["allowWrite"].append(path)
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                     self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
-
-    def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
-        for socket in (
-            "relative/herdr.sock",
-            "./herdr.sock",
-            "~herdr.sock",
-            "/run/user/*/cc.sock",
-            "~/.config/herdr/{a,b}.sock",
-            7,
-        ):
-            with self.subTest(socket=socket):
-                sandbox = self.valid_claude_sandbox()
-                sandbox["network"]["allowUnixSockets"].append(socket)
-                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
-                self.assertIn("allowUnixSockets entries must be absolute or ~/ paths", stderr.getvalue())
+                self.assertIn("allowWrite entries must be exactly one of", stderr.getvalue())
 
     def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
         roots = [*self.codex_writable_roots, "/extra/codex/root"]
@@ -1347,6 +1575,107 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_every_write_root_list_accepts_only_the_exact_allowlisted_spellings(self) -> None:
+        """U68 audits 1-3: an exact allowlist on Claude allowWrite, Codex roots and additionalDirectories."""
+        unlisted = [
+            # Round 3: case folding, a `/root` traversal, and the parent of a nonstandard home.
+            "~/.LOCAL/share/uv",
+            "~/.Cache/uv",
+            "~/../home/bob/.local/share/uv",
+            "/srv",
+            # Round 2: `..` routes into another home or above one.
+            f"~/../{Path.home().name}/.local/share/uv",
+            "~/../someone/.local/bin",
+            "$HOME/../someone/.local/state/mise",
+            "{{ .chezmoi.homeDir }}/../someone/.local/share/mise",
+            "~/..",
+            "~/../..",
+            "~/../../Users/someone/.local/bin",
+            "/Users/someone/../someone/.local/share/uv",
+            "/home/someone/../someone/.local/bin",
+            "/home/someone/../../Users/other/.local/share/mise",
+            # Round 1: roots, homes, ancestors and descendants of PATH directories and mise trust state.
+            "/",
+            "//",
+            "~",
+            "~/",
+            "~/.local",
+            "~/.local/",
+            "~/.local/share/uv",
+            "~/.local/share/uv/",
+            "~/.local/share/uv/tools/hcom",
+            "~/.cache/../.local/bin",
+            "~/./.local/state//mise",
+            "$HOME/.local/bin",
+            "{{ .chezmoi.homeDir }}/.local/share/mise",
+            "{{ .chezmoi.homeDir }}",
+            "/Users",
+            "/Users/someone/.local/bin",
+            "/home/someone",
+            "/home/someone/.local/state/mise/trusted-configs",
+            str(Path.home() / ".local/share/uv"),
+            # Other spellings of allowlisted roots are refused too: only the listed bytes pass.
+            "~/.cache/uv/",
+            "$HOME/.cache/uv",
+            "{{ .chezmoi.homeDir }}/.cache/uv",
+            str(Path.home() / ".cache/uv"),
+            " ~/.cache/uv",
+            "~/.local/statex",
+            "/tmp/build",
+            "relative/root",
+            "../escape",
+            "~/.cache/*",
+        ]
+        with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
+            for root in unlisted:
+                with self.subTest(list="claude allowWrite", root=root):
+                    sandbox = self.valid_claude_sandbox()
+                    sandbox["filesystem"]["allowWrite"].append(root)
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                    self.assertIn("must be exactly one of", stderr.getvalue())
+                with self.subTest(list="shared Codex root via the Claude sandbox", root=root):
+                    roots = [*self.codex_writable_roots, root]
+                    sandbox = self.valid_claude_sandbox()
+                    sandbox["filesystem"]["allowWrite"] = list(roots)
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_claude_sandbox(sandbox, roots, "sandbox")
+                    self.assertIn("must be exactly one of", stderr.getvalue())
+        for os_name in ("darwin", "linux"):
+            with self.subTest(accepts_all_on=os_name):
+                permitted = list(self.module.SANDBOX_WRITE_ROOTS)
+                if os_name == "darwin":
+                    permitted += self.module.DARWIN_SANDBOX_WRITE_ROOTS
+                self.module.validate_write_roots(permitted, "roots", os_name)
+                sandbox = self.valid_claude_sandbox(os_name)
+                sandbox["filesystem"]["allowWrite"] = permitted
+                self.module.validate_claude_sandbox(sandbox, [], "sandbox", os_name)
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_write_roots(["~/Library/Caches/mise"], "roots", "linux")
+        self.assertIn("must be exactly one of", stderr.getvalue())
+
+        roots = ["{{ .chezmoi.homeDir }}/.local/share/uv"]
+        self.write_codex_config(f"network_access = false\nwritable_roots = {json.dumps(roots)}")
+        manifest = {
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
+            "interactive_profile": "standard",
+            "codex": {
+                "sandbox_workspace_write": {"network_access": False, "writable_roots": roots},
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            },
+        }
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
+        self.assertIn("sandbox_workspace_write.writable_roots entries must be exactly one of", stderr.getvalue())
 
     def test_codex_command_hooks_accept_the_declared_tables(self) -> None:
         self.module.validate_codex_command_hooks(

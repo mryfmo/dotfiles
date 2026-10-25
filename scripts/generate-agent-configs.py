@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -42,7 +43,8 @@ def parse_manifest(text: str) -> dict[str, Any]:
 
 
 # The coordinator's levers (regime-cutover U31): the checkout script is the source, the generated chezmoi file installs
-# the same bytes read-only under ~/.local/bin/common, and claude.levers.sha256 pins them for the lever's own self-check.
+# the same bytes (mode 0755, owner-writable) under ~/.local/bin/common, and claude.levers.sha256 pins them for the
+# lever's own self-check, which detects a rewritten copy rather than preventing one.
 LEVER_SOURCE_DIR = "scripts/orchestrator"
 LEVER_INSTALL_DIR = "home/dot_local/bin/common"
 LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
@@ -427,14 +429,21 @@ def render_codex(manifest: dict[str, Any]) -> str:
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex writable roots.
 
-    `filesystem.denyRead` and `credentials` render the same on every OS: the Linux sandbox enforces `denyRead` globs
-    and credential denies but drops the glob forms of Read/Edit permission rules (regime-cutover U17).
+    `filesystem.denyRead` and `credentials` render on every OS: the Linux sandbox enforces `denyRead` globs and
+    credential entries but drops the glob forms of Read/Edit permission rules (regime-cutover U17). Per OS (U68):
+    Mach services and `allowUnixSockets` are macOS-only keys that Claude Code ignores on Linux.
     """
     sandbox = manifest["claude"]["sandbox"]
     filesystem = sandbox.get("filesystem", {})
-    network = dict(sandbox["network"])
+    network = copy.deepcopy(sandbox["network"])
     if os_name != "darwin":
         network.pop("allowMachLookup", None)
+        network.pop("allowUnixSockets", None)
+    deny_read = [
+        *filesystem.get("deny_read", []),
+        *(filesystem.get("darwin_deny_read", []) if os_name == "darwin" else []),
+    ]
+    credentials = sandbox.get("credentials", {})
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],
@@ -448,11 +457,15 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
                 *filesystem.get("extra_allow_write", []),
                 *(filesystem.get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
             ],
-            **({"denyRead": list(filesystem["deny_read"])} if "deny_read" in filesystem else {}),
+            **({"denyRead": deny_read} if deny_read else {}),
         },
         **(
-            {"credentials": {"files": [dict(entry) for entry in sandbox["credentials"]["files"]]}}
-            if "credentials" in sandbox
+            {
+                "credentials": {
+                    key: copy.deepcopy(credentials[key]) for key in ("files", "envVars") if key in credentials
+                }
+            }
+            if credentials
             else {}
         ),
         "network": network,
@@ -561,38 +574,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         )
         text = text.replace('"allow": null', '"allow": ' + allow_template, 1)
     return text
-
-
-def claude_mcp_entry(server: dict[str, Any]) -> dict[str, Any]:
-    entry: dict[str, Any] = {
-        "disabled": not bool(server.get("enabled", False)),
-        "timeout": server.get("timeout"),
-    }
-    if server["transport"] == "stdio":
-        entry["type"] = "stdio"
-        entry["command"] = server["command"]
-        entry["args"] = server.get("args", [])
-        if server.get("env"):
-            entry["env"] = server["env"]
-    elif server["transport"] == "http":
-        entry["type"] = "http"
-        entry["url"] = server["url"]
-        if server.get("headers"):
-            entry["headers"] = server["headers"]
-    else:
-        fail(f"unsupported MCP transport: {server['transport']}")
-    return {key: value for key, value in entry.items() if value is not None}
-
-
-def render_claude_mcp(manifest: dict[str, Any]) -> str:
-    data = {
-        "mcpServers": {
-            name: claude_mcp_entry(server)
-            for name, server in manifest.get("mcp_servers", {}).items()
-            if enabled_for(server, "claude")
-        }
-    }
-    return "{{/* " + GENERATED_HEADER + " */}}\n" + json_dumps(data)
 
 
 def render_marketplace(manifest: dict[str, Any]) -> str:
@@ -1434,21 +1415,31 @@ def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:
 OMP_PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
 
 
-def omp_disabled_providers(manifest: dict[str, Any]) -> list[str]:
-    """omp providers the seat overlays and the plain-launch config switch off as `disabledProviders`; none when absent.
+def omp_disabled_providers(manifest: dict[str, Any], key: str = "disabled_providers") -> list[str]:
+    """omp providers listed under `omp.<key>`, switched off as `disabledProviders`; none when absent.
 
-    omp 18.11.3 reads one `disabledProviders` set for discovery providers (src/capability/index.ts:306-308)
-    and for model providers (src/main.ts:1627), so a model route here would turn a seat's model off.
+    `disabled_providers` goes to the seat overlays and the plain-launch config, `seat_disabled_providers` to the seat
+    overlays only. omp 18.11.3 reads one `disabledProviders` set for discovery providers
+    (src/capability/index.ts:306-308) and for model providers (src/main.ts:1627), so a model route here would turn a
+    seat's model off.
     """
-    providers = manifest.get("omp", {}).get("disabled_providers", [])
+    providers = manifest.get("omp", {}).get(key, [])
     if not isinstance(providers, list):
-        fail("omp.disabled_providers must be a list of omp provider ids")
+        fail(f"omp.{key} must be a list of omp provider ids")
     for provider in providers:
         if not isinstance(provider, str) or not OMP_PROVIDER_ID_RE.fullmatch(provider):
-            fail(f"omp.disabled_providers entries must be omp provider ids: {provider!r}")
+            fail(f"omp.{key} entries must be omp provider ids: {provider!r}")
         if provider in OMP_MODEL_ROUTES:
-            fail(f"omp.disabled_providers must not name the model route {provider}; disabledProviders turns it off")
+            fail(f"omp.{key} must not name the model route {provider}; disabledProviders turns it off")
     return providers
+
+
+def omp_seat_disabled_providers(manifest: dict[str, Any]) -> list[str]:
+    """The seat overlays' `disabledProviders`: the shared list, then the seat-only entries it lacks."""
+    shared = omp_disabled_providers(manifest)
+    return shared + [
+        provider for provider in omp_disabled_providers(manifest, "seat_disabled_providers") if provider not in shared
+    ]
 
 
 def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
@@ -1484,12 +1475,41 @@ def omp_config_yaml(model: str, directories: list[str]) -> str:
     return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
 
 
+OMP_TOOL_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+
+
+def omp_interactive_policy(manifest: dict[str, Any]) -> str:
+    """The `tools.approval` and `bash.patterns` denies of a plain omp launch; empty when the key is absent.
+
+    The approval mode is left to omp and the operator (U66 F043, coordinator decision): an operator-driven session
+    keeps omp's default `yolo` and gets only outright denies, which omp honours in every mode
+    (src/tools/approval.ts:240-257).
+    """
+    policy = manifest.get("omp", {}).get("interactive_policy")
+    if policy is None:
+        return ""
+    if not isinstance(policy, dict) or sorted(policy) != ["bash_deny", "tool_deny"]:
+        fail("omp.interactive_policy must be a mapping of exactly tool_deny and bash_deny")
+    tools = policy["tool_deny"]
+    if not isinstance(tools, list) or not all(isinstance(t, str) and OMP_TOOL_NAME_RE.fullmatch(t) for t in tools):
+        fail("omp.interactive_policy.tool_deny must be a list of omp tool names")
+    denies = policy["bash_deny"]
+    if not isinstance(denies, list) or not denies or not all(isinstance(d, str) and d.strip() for d in denies):
+        fail("omp.interactive_policy.bash_deny must be a non-empty list of bash.patterns match strings")
+    if len(set(denies)) != len(denies) or len(set(tools)) != len(tools):
+        fail("omp.interactive_policy repeats an entry")
+    approval = "".join(f"    {tool}: deny\n" for tool in tools)
+    rules = "".join(f"    - match: {json.dumps(deny)}\n      approval: deny\n" for deny in denies)
+    return (f"tools:\n  approval:\n{approval}" if approval else "") + f"bash:\n  patterns:\n{rules}"
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
     config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
     return (
         config
         + omp_list_yaml("extensions", omp_extensions(manifest))
         + omp_list_yaml("disabledProviders", omp_disabled_providers(manifest))
+        + omp_interactive_policy(manifest)
     )
 
 
@@ -1509,7 +1529,7 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     ]
     model = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"]
     overlay = omp_config_yaml(model, directories)
-    disabled = "".join(f"  - {provider}\n" for provider in omp_disabled_providers(manifest))
+    disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
     if disabled:
         overlay += f"disabledProviders:\n{disabled}"
     # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:668-677) would open the
@@ -1568,7 +1588,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
         ROOT / manifest["claude"]["settings_path"]: render_claude_settings(manifest),
-        ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):

@@ -48,6 +48,8 @@ jobs:
             system: client
 
     runs-on: ${{ matrix.os }}
+    # Five times the slowest cell's measured six minutes (ubuntu-24.04 client, October 2026).
+    timeout-minutes: 30
     continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
       # Export matrix values to shell scripts so existing test helpers can use
@@ -95,32 +97,57 @@ jobs:
 
           echo "diff_range=${diff_range}" >> "${GITHUB_OUTPUT}"
 
-          # One option would be to predefine CI-relevant path groups such as
-          # `.github/workflows/`, `home/`, `install/`, and `tests/` in an env-
-          # var-like form to make the rule reusable. For this workflow, keeping
-          # the pattern inline is still easier to read because the rule is only
-          # used once and only decides whether the expensive unit-test steps
-          # should run. It does not decide whether the required workflow itself
-          # reports a status. If more workflows need the same rule later,
-          # extract a shared script instead of hiding the pattern in env.
-          # The formatting check also runs here, so any .py or .md outside
-          # .orchestration/ counts, as do ruff.toml and .prettierignore, and
-          # .github/flakes.yaml, which test_ci_rerun.py validates.
-          # .orchestration-only diffs still skip the matrix.
-          # No pipe into grep -q: under pipefail its early exit could SIGPIPE
-          # the writer and turn a match into a false negative. core.quotePath
-          # off keeps non-ASCII paths raw instead of "\343..."-quoted.
-          # --no-renames lists both sides of a rename, so a file moved out of
-          # home/ into .orchestration/ still runs the tests.
-          changed="$(git -c core.quotePath=false diff --no-renames --name-only "${diff_range}")"
-          relevant="$(grep -v '^\.orchestration/' <<< "${changed}" || true)"
-          if ! grep -Eq '^(\.github/workflows/|\.github/flakes\.yaml$|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
+          # One decision for every matrix row. A diff skips the unit tests only when it lists at least one path
+          # and every path is on the allowlist of paths no test, lint or formatting check reads (F051): the records
+          # under .orchestration/ and the .ua/ index (T128 INV-2), a README image directly in .github/, and LICENSE.
+          # Root configuration files are not on it: .shellcheckrc, renovate.json, mise.toml and the rest are read by
+          # make shellcheck or by the tests. Neither is docs/: the formatting check reads its Markdown and tests read
+          # its pages. An empty diff runs the tests on every row: nothing proves it safe to skip.
+          # Each path is matched whole with case, never by grep over the NUL-separated list: BSD grep -z (macOS)
+          # anchors ^ and $ at a newline inside a name, so home/a<newline>LICENSE would read as LICENSE. A path
+          # holding a control character is never on a list.
+          skippable() {
+            case "$1" in
+              *[[:cntrl:]]*) return 1 ;;
+              .orchestration/* | .ua/* | LICENSE) return 0 ;;
+              .github/*/*) return 1 ;;
+              .github/*.png) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          # macOS adds nothing to a pull request whose every other path is documentation or a formatting config: a
+          # Python, shell, install, home, bats, Makefile or workflow change keeps it (F154), and a push to main runs
+          # the full matrix.
+          os_independent() {
+            case "$1" in
+              *[[:cntrl:]]*) return 1 ;;
+              docs/* | plans/* | ruff.toml | .prettierignore) return 0 ;;
+              */*) return 1 ;;
+              *.md) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          # --no-renames lists both sides of a rename, so a file moved out of home/ into .orchestration/ still runs
+          # the tests, and -z lists every path raw: Git quotes a name holding a quote, a backslash or a control
+          # character even with core.quotePath off. A failed diff fails this job (set -e) instead of reading as
+          # "no path changed".
+          changed="${RUNNER_TEMP}/changed-paths"
+          git diff -z --no-renames --name-only "${diff_range}" > "${changed}"
+          paths=0
+          all_skippable=true
+          all_os_independent=true
+          while IFS= read -r -d '' path; do
+            paths=$((paths + 1))
+            skippable "${path}" && continue
+            all_skippable=false
+            os_independent "${path}" || all_os_independent=false
+          done < "${changed}"
+          if [ "${paths}" -eq 0 ]; then
+            echo "should_test=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${all_skippable}" = true ]; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
-            echo "skip_reason=unrelated" >> "${GITHUB_OUTPUT}"
-          # macOS adds nothing to a pull request whose every relevant path is Python, docs or records: a shell,
-          # install, home, bats, Makefile or workflow change keeps it, and a push to main runs the full matrix.
-          elif [[ "${OS:-}" == macos-* ]] && [ "${EVENT_NAME}" = pull_request ] &&
-            ! grep -Evq '^(scripts/.*\.py$|tests/unit/.*\.py$|docs/|plans/|\.orchestration/|[^/]+\.md$|ruff\.toml$|\.prettierignore$)' <<< "${relevant}"; then
+            echo "skip_reason=only records, the index, images or LICENSE changed" >> "${GITHUB_OUTPUT}"
+          elif [[ "${OS:-}" == macos-* ]] && [ "${EVENT_NAME}" = pull_request ] && [ "${all_os_independent}" = true ]; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
             echo "skip_reason=os-independent on ${OS}" >> "${GITHUB_OUTPUT}"
           else
@@ -131,9 +158,11 @@ jobs:
         if: ${{ steps.decide.outputs.should_test != 'true' }}
         env:
           SKIP_REASON: ${{ steps.decide.outputs.skip_reason }}
+          DIFF_RANGE: ${{ steps.decide.outputs.diff_range }}
         run: |
           echo "Skipped the unit tests: ${SKIP_REASON}."
-          echo "Compared diff range: ${{ steps.decide.outputs.diff_range }}"
+          echo "Compared diff range: ${DIFF_RANGE}"
+          printf '### Unit tests skipped\n\n%s (diff range %s).\n' "${SKIP_REASON}" "${DIFF_RANGE}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}

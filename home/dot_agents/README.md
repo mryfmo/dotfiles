@@ -17,7 +17,6 @@ Generated files include:
 - `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/.chezmoitemplates/omp-config-managed.yml`
-- `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/agents/project-map.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
@@ -27,15 +26,15 @@ Generated files include:
 
 ## Parity policy
 
-1. Every MCP server in `agent-config.yaml` must target both agents: Codex and Claude Code.
-2. Every generated agent-native MCP config must contain the same server names.
+1. Every MCP server in `agent-config.yaml` targets Codex only, and `validate-agent-assets.py` rejects `agents.claude: true`. Claude Code reads user-scope MCP servers from `~/.claude.json`, which this repository does not manage; add a Claude server with `claude mcp add --scope user`.
+2. The generated Codex config must contain exactly the server names declared in `agent-config.yaml`.
 3. MCP servers remain disabled by default. Enable them locally only after confirming credentials, filesystem scope, and network behavior.
 4. GitHub MCP must use the maintained official GitHub server (`ghcr.io/github/github-mcp-server`), not deprecated `@modelcontextprotocol/server-github`.
 5. Public dotfiles must not contain token literals. Credential-bearing servers inherit environment variables or refer to private configuration only.
 6. Claude plugins are not enabled by `settings.json` unless this repository also installs the marketplace/plugin. Shared workflows should live in skills first.
 7. Do not hand-edit generated files unless you immediately move the change back into `agent-config.yaml` and regenerate.
 8. For implementation tasks shared between Codex and Claude Code, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
-9. The Claude Code Bash sandbox (`claude.sandbox`) mirrors the Codex `workspace-write` sandbox: its `filesystem.allowWrite` is rendered from `codex.sandbox_workspace_write.writable_roots`, and `validate-agent-assets.py` requires it to be enabled, to set `failIfUnavailable` explicitly (`false` during the first rollout stage), to allow only hostnames in `network.allowedDomains`, and to list only absolute or `~/` paths without globs in `network.allowUnixSockets`. The coordinator's `claude.permissions.allow` levers, the `env` and the two writable directories they need are described in `scripts/orchestrator/README.md`, "Pre-authorized levers", and the validator refuses any allow rule outside that set. The two layers that guard secret files (the Read/Edit deny rules and `sandbox.credentials` with `sandbox.filesystem.denyRead`) are described in the top-level `README.md`, "Claude Code sandbox".
+9. The Claude Code Bash sandbox (`claude.sandbox`) mirrors the Codex `workspace-write` sandbox: its `filesystem.allowWrite` is rendered from `codex.sandbox_workspace_write.writable_roots`, and `validate-agent-assets.py` requires it to be enabled, to set `failIfUnavailable` to `true` and `allowUnsandboxedCommands` to `false` (strict sandbox mode: no unsandboxed retry), to keep `excludedCommands` exactly `["git push *", "gh *"]` with an identical `Bash(...)` ask rule for each entry and no rule naming `dangerouslyDisableSandbox`, to allow only hostnames in `network.allowedDomains`, to list no Unix socket, to keep every write root (Claude `allowWrite`, Codex `writable_roots`, Claude `additionalDirectories`) byte-identical to an entry of the exact allowlist `SANDBOX_WRITE_ROOTS` (no normalisation; adding a root is a reviewed change to that list), to deny the agents' file-based login stores and the age key (on macOS the Keychain-held Claude login and gh token stay reachable through securityd, which the Claude Code 2.1.310 sandbox always allows), to list each credential path and variable once, to deny the gh hosts file, to keep every credential entry a plain deny (no mask, no `network.tlsTerminate`: a mask lets the proxy write the real token into a request body that GitHub can echo back), and to withhold `CLAUDE_CODE_OAUTH_TOKEN` (U68). The coordinator's `claude.permissions.allow` levers, the `env` and the two writable directories they need are described in `scripts/orchestrator/README.md`, "Pre-authorized levers", and the validator refuses any allow rule outside that set. The two layers that guard secret files (the Read/Edit deny rules and `sandbox.credentials` with `sandbox.filesystem.denyRead`) are described in the top-level `README.md`, "Claude Code sandbox".
 10. The managed Claude settings template carries no `autoUpdates` or `autoUpdatesChannel` key, and the settings merge drops those two keys from an installed `~/.claude/settings.json` only while they hold the former managed values (`false`, `"stable"`); a different value is an operator override and stays. mise is the only Claude Code version channel, its updater is blocked by `DISABLE_UPDATES` and `DISABLE_AUTOUPDATER` in the login environment (top-level `README.md`, "Claude Code version"), and `claude update` is not a supported command here.
 
 ## Codex runtime state

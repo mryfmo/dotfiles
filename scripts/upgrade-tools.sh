@@ -248,6 +248,24 @@ function current_mise_tools() {
 }
 
 #
+# @description Print the tools the applied mise config holds, one per line: an entry whose comment block
+#   directly above it says "Held" (home/dot_mise/config.toml keeps every hold reason there). The config is
+#   the one source, so a hold released there leaves no skip behind here.
+# @exitcode 1 When the applied config cannot be read.
+#
+function held_mise_tools() {
+    local config="${MISE_CONFIG_DIR}/config.toml"
+
+    [ -r "${config}" ] || return 1
+    awk '
+        /^[[:space:]]*#/ { if ($0 ~ /Held/) held = 1; next }
+        /^[[:space:]]*\[tools\."/ { if (held) { name = $0; sub(/^[[:space:]]*\[tools\."/, "", name); sub(/"\].*$/, "", name); print name } held = 0; next }
+        /^[[:space:]]*"?[A-Za-z0-9@:\/._-]+"?[[:space:]]*=/ { if (held) { name = $0; sub(/[[:space:]]*=.*$/, "", name); gsub(/^[[:space:]]*"?|"?$/, "", name); print name } held = 0; next }
+        { held = 0 }
+    ' "${config}"
+}
+
+#
 # @description Run a mise lifecycle command for each current tool; only upgrade is per tool.
 # @arg $1 string Mise command name: upgrade.
 # @exitcode 1 When the current tools cannot be listed.
@@ -257,10 +275,15 @@ function run_mise_tool_command() {
     local mise_command="$1"
     local mise_tool
     local mise_tools
+    local held_tools
     local failed=0
 
     if ! mise_tools="$(current_mise_tools)"; then
         printf 'warning: unable to list current mise tools for %s; continuing\n' "${mise_command}" >&2
+        return 1
+    fi
+    if ! held_tools="$(held_mise_tools)"; then
+        printf 'warning: unable to read the held tools from %s/config.toml; no mise tool was upgraded\n' "${MISE_CONFIG_DIR}" >&2
         return 1
     fi
 
@@ -273,9 +296,8 @@ function run_mise_tool_command() {
             printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
             continue
         fi
-        # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
-        if [ "${mise_tool}" = "fd" ]; then
-            printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
+        if grep -qxF -- "${mise_tool}" <<< "${held_tools}"; then
+            printf 'Skipping mise upgrade for held tool: %s (see its Held comment in the mise config).\n' "${mise_tool}"
             continue
         fi
         # A plain upgrade keeps the config's "latest" or exact request as written.

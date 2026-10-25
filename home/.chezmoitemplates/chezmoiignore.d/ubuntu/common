@@ -1,1 +1,4 @@
 Library
+
+# macOS-only scripts render empty on Ubuntu; ignoring them keeps chezmoi status quiet.
+.chezmoiscripts/macos/**

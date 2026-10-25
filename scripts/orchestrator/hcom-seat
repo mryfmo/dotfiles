@@ -42,7 +42,9 @@
 #   Every input is checked before anything is created or started: an unknown role,
 #   a name or team outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a store regime-env refuses, hcom absent from
 #   PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout
-#   is exit 2 with the reason. `--dry-run` prints the launch line, and the derived
+#   is exit 2 with the reason. A seat directory that holds `.omp` is refused too, after the worktree exists and
+#   before hcom starts (U66: omp applies the cwd's `.omp/config.yml` at start, which no setting turns off).
+#   `--dry-run` prints the launch line, and the derived
 #   environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
 # @arg $1 string Role: orchestrator or worker.
@@ -242,4 +244,10 @@ elif ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-comm
     # A stale or foreign directory at the seat path would seat omp in the wrong tree.
     refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
 fi
+# U66 (F005): omp 18.11.3 merges the cwd's .omp/config.yml and .omp/settings.json at start whatever disabledProviders
+# says (the list binds only after settings load; measured under a scratch HOME), so a seat never starts in a directory
+# that holds .omp. The profile overlay's disabledProviders (native and the other project-code providers) keeps the
+# cwd's .omp tools, MCP servers, rules and skills out of the running seat (measured the same way).
+[[ ! -e ${dir}/.omp && ! -L ${dir}/.omp ]] ||
+    refuse "seat directory holds .omp, whose project settings omp would apply to the seat: ${dir}/.omp"
 exec "${argv[@]}"

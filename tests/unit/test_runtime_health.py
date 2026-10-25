@@ -963,6 +963,9 @@ EOF
         home = repo / "home"
         (repo / "scripts").mkdir(parents=True)
         home.mkdir()
+        # The applied mise config is the repository's (home/dot_config/mise/config.toml.tmpl includes it).
+        (home / ".config/mise").mkdir(parents=True)
+        shutil.copy(ROOT / "home/dot_mise/config.toml", home / ".config/mise/config.toml")
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
@@ -1183,6 +1186,26 @@ EOF
                 if phase != "apt":
                     self.assertIn("gh extension upgrade --all", log)
 
+    def test_upgrade_holds_exactly_the_tools_the_config_marks_held(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        config = repo / "home/.config/mise/config.toml"
+        # A hold added in the config is the only thing that holds fd; removing it releases fd again.
+        config.write_text(config.read_text().replace('\nfd = "latest"', '\n# Held: fixture hold\nfd = "10.3.0"', 1))
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertNotIn("mise upgrade --yes fd", log)
+        self.assertIn("Skipping mise upgrade for held tool: fd", result.stdout)
+        self.assertIn("mise upgrade --yes python", log)
+
+        # Failure injection: an unreadable config upgrades nothing rather than guessing the holds.
+        (repo / "commands.log").unlink()
+        (repo / "home/.config/mise/config.toml").unlink()
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertFalse([line for line in log if line.startswith("mise upgrade --yes ")], log)
+        self.assertIn("unable to read the held tools", result.stdout + result.stderr)
+
     def test_upgrade_skips_unavailable_mise_self_update(self) -> None:
         repo, env = self.upgrade_fixture("none")
         marker = repo / "lib/mise-self-update-instructions.toml"
@@ -1205,7 +1228,10 @@ EOF
         # Only exact versions (the npm rebuild) are installed per tool; a per-tool "latest" install needs the network.
         self.assertFalse([line for line in log if line.startswith("mise install --yes ") and "@" not in line])
         self.assertIn("mise upgrade --yes python", log)
-        self.assertNotIn("mise upgrade --yes fd", log)
+        # fd's hold is released in the config, so it moves; npm:ccusage's hold comment keeps it.
+        self.assertIn("mise upgrade --yes fd", log)
+        self.assertNotIn("mise upgrade --yes npm:ccusage", log)
+        self.assertIn("Skipping mise upgrade for held tool: npm:ccusage", result.stdout)
         self.assertFalse([line for line in log if line.startswith("mise upgrade --yes http:")])
         # The config's minimum_release_age is the cooldown; nothing bumps or rewrites a request.
         for flag in ("--bump", "--before", "--pin", " use "):

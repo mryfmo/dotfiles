@@ -64,21 +64,24 @@
       "Bash(gh api -f*)",
       "Bash(gh api -F*)",
       "Bash(gh api --raw-field=*)",
-      "Bash(gh api --field=*)"
+      "Bash(gh api --field=*)",
+      "Bash(git push *)",
+      "Bash(gh *)"
     ]
   },
   "sandbox": {{ if eq .chezmoi.os "darwin" }}
 {
   "enabled": true,
-  "failIfUnavailable": false,
+  "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
-  "allowUnsandboxedCommands": true,
-  "excludedCommands": [],
+  "allowUnsandboxedCommands": false,
+  "excludedCommands": [
+    "git push *",
+    "gh *"
+  ],
   "filesystem": {
     "allowWrite": [
       "~/.cache/uv",
-      "~/.local/state/mise",
-      "~/.local/share/uv",
       "~/.local/state/hcom-regime",
       "~/.local/state/hcom",
       "~/.local/state/omp-seats",
@@ -86,13 +89,51 @@
     ],
     "denyRead": [
       "~/**/.env",
-      "~/**/.env.*"
+      "~/**/.env.*",
+      "/tmp/**/.env",
+      "/tmp/**/.env.*",
+      "/private/tmp/**/.env",
+      "/private/tmp/**/.env.*"
     ]
   },
   "credentials": {
     "files": [
       {
         "path": "~/.ssh",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/gh/hosts.yml",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.claude/.credentials.json",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/claude-code/oauth-token",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.codex/auth.json",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.omp/agent/agent.db*",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.omp/profiles/*/agent/agent.db*",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/age/key.txt",
+        "mode": "deny"
+      }
+    ],
+    "envVars": [
+      {
+        "name": "CLAUDE_CODE_OAUTH_TOKEN",
         "mode": "deny"
       }
     ]
@@ -103,43 +144,78 @@
       "api.github.com",
       "uploads.github.com",
       "objects.githubusercontent.com",
+      "release-assets.githubusercontent.com",
       "codeload.github.com",
       "pypi.org",
       "files.pythonhosted.org"
     ],
     "allowMachLookup": [
       "com.apple.trustd.agent"
-    ],
-    "allowUnixSockets": [
-      "~/.config/herdr/herdr.sock"
     ]
   }
 }
 {{ else }}
 {
   "enabled": true,
-  "failIfUnavailable": false,
+  "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
-  "allowUnsandboxedCommands": true,
-  "excludedCommands": [],
+  "allowUnsandboxedCommands": false,
+  "excludedCommands": [
+    "git push *",
+    "gh *"
+  ],
   "filesystem": {
     "allowWrite": [
       "~/.cache/uv",
-      "~/.local/state/mise",
-      "~/.local/share/uv",
       "~/.local/state/hcom-regime",
       "~/.local/state/hcom",
       "~/.local/state/omp-seats"
     ],
     "denyRead": [
       "~/**/.env",
-      "~/**/.env.*"
+      "~/**/.env.*",
+      "/tmp/**/.env",
+      "/tmp/**/.env.*"
     ]
   },
   "credentials": {
     "files": [
       {
         "path": "~/.ssh",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/gh/hosts.yml",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.claude/.credentials.json",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/claude-code/oauth-token",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.codex/auth.json",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.omp/agent/agent.db*",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.omp/profiles/*/agent/agent.db*",
+        "mode": "deny"
+      },
+      {
+        "path": "~/.config/age/key.txt",
+        "mode": "deny"
+      }
+    ],
+    "envVars": [
+      {
+        "name": "CLAUDE_CODE_OAUTH_TOKEN",
         "mode": "deny"
       }
     ]
@@ -150,12 +226,10 @@
       "api.github.com",
       "uploads.github.com",
       "objects.githubusercontent.com",
+      "release-assets.githubusercontent.com",
       "codeload.github.com",
       "pypi.org",
       "files.pythonhosted.org"
-    ],
-    "allowUnixSockets": [
-      "~/.config/herdr/herdr.sock"
     ]
   }
 }
@@ -197,8 +271,7 @@
           {
             "type": "command",
             "command": "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook",
-            "async": true,
-            "timeout": 5
+            "timeout": 3
           }
         ]
       }

@@ -11,6 +11,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -823,6 +824,78 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(found.returncode, 0, found.stderr)
         self.assertEqual(found.stdout.splitlines(), [str(self.tools / "regime-open-url"), str(self.tools / "python3")])
         self.assertEqual(Path(found.stdout.splitlines()[0]).resolve(), (self.bindir / "regime-open-url").resolve())
+
+    def test_a_path_srt_could_read_as_a_pattern_or_an_unclean_path_is_refused(self):
+        """U85 round 9: srt reads a settings path as a pattern, so `HCOM_DIR=<store>*` would grant its siblings; every
+        input path must be clean (absolute, `[A-Za-z0-9._@+-]` components, no `.`/`..`, no trailing `/`)."""
+        sibling = Path(f"{self.store}-srt")
+        for label, args, overrides in (
+            ("glob in HCOM_DIR", ["--seats-root", self.seats], {"HCOM_DIR": f"{self.store}*"}),
+            ("bracket in HCOM_DIR", ["--seats-root", self.seats], {"HCOM_DIR": f"{self.store}[x]"}),
+            ("dot-dot in the seats root", ["--seats-root", f"{self.temp.name}/new/../repo/seats"], {}),
+            ("dot in the seats root", ["--seats-root", f"{self.seats}/./x"], {}),
+            ("trailing slash", ["--seats-root", f"{self.seats}/"], {}),
+            ("relative seats root", ["--seats-root", "seats"], {}),
+            ("space in CLAUDE_CONFIG_DIR", ["--seats-root", self.seats], {"CLAUDE_CONFIG_DIR": f"{self.home}/a b"}),
+        ):
+            with self.subTest(label):
+                run = self.seat("worker", *args, **overrides)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("is not a clean absolute path", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        self.assertFalse((self.repo / "seats").exists())
+        self.assertFalse(sibling.exists())
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_the_settings_are_written_without_jq_and_read_by_plutil_and_jq_alike(self):
+        """U85 round 9: hcom-seat writes the settings itself and reads them back with plutil on macOS (no system jq on
+        macOS 14) and /usr/bin/jq on Linux; both readers give the same list from the same file."""
+        if sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists():
+            no_jq = '(version 1)(allow default)(deny process-exec (literal "/usr/bin/jq"))'
+            run = subprocess.run(
+                ["/usr/bin/sandbox-exec", "-p", no_jq, str(SEAT), "worker", "--seats-root", self.seats],
+                cwd=self.repo, env=self.env, capture_output=True, text=True, check=False,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 0, run.stderr)
+            # A second launch reads the first one's settings back.
+            run = subprocess.run(
+                ["/usr/bin/sandbox-exec", "-p", no_jq, str(SEAT), "worker", "--name", "worker-2", "--seats-root",
+                 self.seats], cwd=self.repo, env=self.env, capture_output=True, text=True, check=False,
+            )  # fmt: skip
+            self.assertEqual(run.returncode, 0, run.stderr)
+        else:
+            run = self.seat("worker", "--seats-root", self.seats)
+            self.assertEqual(run.returncode, 0, run.stderr)
+        fixture = Path(self.seats, ".sandbox/worker/srt-settings.json")
+        expected = json.loads(fixture.read_text())["filesystem"]["allowWrite"]
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("clean_path", "allow_write_list")
+        )
+        readers = [("Linux", Path("/usr/bin/jq"))]
+        if sys.platform == "darwin":
+            readers.append(("Darwin", Path("/usr/bin/plutil")))
+        for system, tool in readers:
+            with self.subTest(reader=tool.name):
+                if not tool.exists():
+                    self.skipTest(f"{tool} is not installed here")
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'{functions}\nallow_write_list "$1" "$2"', "_", system, str(fixture)],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(run.stdout.splitlines(), expected)
+        fixture.write_text(json.dumps({"filesystem": {"allowWrite": ["/tmp/hcom*"]}}))
+        for system, tool in readers:
+            with self.subTest(reader=tool.name, entry="pattern"):
+                if not tool.exists():
+                    self.skipTest(f"{tool} is not installed here")
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'{functions}\nallow_write_list "$1" "$2"', "_", system, str(fixture)],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, 1, run.stdout)
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

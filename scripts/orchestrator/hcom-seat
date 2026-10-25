@@ -46,8 +46,11 @@
 #   directory and reads of the settings and `~/.ssh` fail inside (seat_sandbox_write below). srt and omp
 #   run by their physical argv (pin_exec), and so do hcom (exec'd by it) and herdr (through wrappers in the
 #   shim directory); none of their files may be or lie under a write root of any seat.
-#   No caller PATH entry runs anything: the first statement sets PATH to the system directories (jq is
-#   /usr/bin/jq), the complete protected set is built by (device, inode) identity before mise or any other
+#   Every input path (HOME, --seats-root, HCOM_DIR, REGIME_SEATS_ROOT, CLAUDE_CONFIG_DIR) and every path
+#   written into the srt settings must be clean: absolute, components of [A-Za-z0-9._@+-] only, no '.' or
+#   '..' component and no trailing '/', since srt reads a settings path as a pattern. The settings are
+#   written by the shell (no JSON tool) and read back by /usr/bin/plutil on macOS, /usr/bin/jq on Linux.
+#   No caller PATH entry runs anything: the first statement sets PATH to the system directories, the complete protected set is built by (device, inode) identity before mise or any other
 #   tool runs, and the tools beyond them (git, hcom, herdr, omp, srt, node, bun, claude; bwrap, socat and
 #   rg on Linux) are resolved through `mise which` under `env -i` from `/`, else `command -v` on the
 #   caller's PATH, checked (absolute, no control character, an executable regular file, no shim, neither
@@ -193,6 +196,80 @@ esac
 for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
     [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): launch seats from a terminal outside every seat"
 done
+
+# @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
+#   components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no whitespace, no quote or backslash), none
+#   of them empty, `.` or `..`, and no trailing `/`. srt 0.0.81 turns a settings path into a Seatbelt regex or a glob,
+#   so `/private/tmp/hcom*` would grant its siblings; a clean path names exactly itself.
+# @arg $1 string The path.
+# @exitcode 1 The path is not clean.
+clean_path() {
+    [[ $1 =~ ^(/[A-Za-z0-9._@+-]+)+$ ]] || return 1
+    [[ /$1/ != */./* && /$1/ != */../* ]] # lint-comparisons: allow a component test on one path, no path compare
+}
+
+# @description Refuse (exit 2) unless `$2` is a clean absolute path (clean_path).
+# @arg $1 string What the path is, for the refusal.
+# @arg $2 string The path.
+require_clean_path() {
+    clean_path "$2" ||
+        refuse "$1 '$2' is not a clean absolute path: every component must be [A-Za-z0-9._@+-] and neither '.' nor '..', with no trailing '/'"
+}
+
+# Every input path that reaches the srt settings is clean before anything is created or run (regime-cutover U85).
+require_clean_path HOME "${HOME}"
+[[ -z ${seats_root} ]] || require_clean_path --seats-root "${seats_root}"
+for var in HCOM_DIR REGIME_SEATS_ROOT CLAUDE_CONFIG_DIR; do
+    [[ -z ${!var:-} ]] || require_clean_path "${var}" "${!var}"
+done
+
+# @description Print a JSON array of the arguments, each a clean path (clean_path), so no JSON escaping is needed and
+#   no settings tool runs. An argument that is not clean is a refusal.
+# @arg $1 string What the list is, for the refusal.
+# @arg $@ string The paths after it.
+json_paths() {
+    local what=$1 path out='' sep=''
+    shift
+    for path in "$@"; do
+        require_clean_path "${what}" "${path}"
+        out+=${sep}\"${path}\"
+        sep=,
+    done
+    printf '[%s]' "${out}"
+}
+
+# @description Print the `filesystem.allowWrite` entries of the seat settings file `$2`, one per line: by
+#   `/usr/bin/plutil` on macOS (`-extract … raw -expect array` prints the count, `-expect string` each entry; macOS
+#   12 and later, plutil(1)), by `/usr/bin/jq` on Linux (from install/ubuntu/common/dependencies.sh). Each entry must
+#   be a clean path.
+# @arg $1 string The system name (`uname -s`).
+# @arg $2 string The settings file.
+# @exitcode 1 The file cannot be read, has no such array, or holds an entry that is not a clean path.
+allow_write_list() {
+    local n i entry
+    case $1 in
+    Darwin)
+        n=$(/usr/bin/plutil -extract filesystem.allowWrite raw -expect array -o - "$2") || return 1
+        [[ ${n} =~ ^[0-9]+$ ]] || return 1
+        for ((i = 0; i < n; i++)); do
+            entry=$(/usr/bin/plutil -extract "filesystem.allowWrite.${i}" raw -expect string -o - "$2") || return 1
+            clean_path "${entry}" || return 1
+            printf '%s\n' "${entry}"
+        done
+        ;;
+    *)
+        [[ -x /usr/bin/jq ]] || return 1
+        entry=$(/usr/bin/jq -er '.filesystem.allowWrite | if type == "array" then .[] else error end | strings' "$2") ||
+            return 1
+        while IFS= read -r i; do
+            if [[ -n ${i} ]]; then
+                clean_path "${i}" || return 1
+                printf '%s\n' "${i}"
+            fi
+        done <<< "${entry}"
+        ;;
+    esac
+}
 
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 in all) and the
 #   directory in its `pwd -P` form. A path that does not exist yet is its nearest existing ancestor's physical form
@@ -379,7 +456,7 @@ pin_exec() {
 
 # The tools (regime-cutover U85, the pattern of scripts/orchestrator/ci-rerun.sh, U61). First the complete protected
 # set, by identity: the (device, inode) of every write root any seat may have that exists, files and directories,
-# computed with builtins, /usr/bin/stat, /usr/bin/readlink and the system jq only, before any tool outside the
+# computed with builtins, /usr/bin/stat, /usr/bin/readlink and the system's settings reader only, before any tool outside the
 # system directories runs. It holds the seats roots and the hcom stores of every program, ~/Workspace, the checkout
 # this runs in and its git directories, the omp profiles and leases, the Claude Code state, srt's implicit write paths,
 # and every `allowWrite` entry of every existing seat settings file (another program's checkout outside ~/Workspace
@@ -390,9 +467,10 @@ pin_exec() {
 # above it has the identity of a protected root. A passing tool is linked into the private directory
 # ~/.local/state/hcom-seat/tools (0700, this user's, outside every seat write root), and PATH becomes that directory
 # followed by the system directories; no caller entry is inherited.
-system_jq=/usr/bin/jq
-[[ -x ${system_jq} ]] || refuse "the system jq ${system_jq} is absent; it reads and writes the seat sandbox settings"
 os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
+if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
+    refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
+fi
 case ${os} in
 Darwin) stat_args=(-L -f '%d:%i') ;;
 Linux) stat_args=(-L -c '%d:%i') ;;
@@ -403,10 +481,7 @@ roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Wor
     "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" "${HOME}/.claude.json"
     "${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)
 for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"}; do
-    case ${root} in # lint-comparisons: allow a relative operand is made absolute against the cwd, no path compare
-    /*) roots+=("${root}") ;;
-    *) roots+=("${PWD}/${root}") ;;
-    esac
+    roots+=("${root}")
 done
 # The checkout this runs in, found with builtins: the nearest ancestor with a `.git`, and for a worktree the git
 # directory its `.git` file names and that directory's common directory and main checkout.
@@ -434,13 +509,14 @@ if [[ -n ${top} || -e /.git ]]; then
     fi
     roots+=("${top}" "${gitdir}" "${common_guess}" "${common_guess%/*}")
 fi
-# Every existing seat settings file, read by the system jq; an entry that cannot be read is a refusal.
-for settings_file in ${seats_root:+"${seats_root%/}"/.sandbox/*/srt-settings.json} \
-    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT%/}"/.sandbox/*/srt-settings.json} \
+# Every existing seat settings file, read by the system's reader (allow_write_list); an entry that cannot be read, or
+# that is not a clean path, is a refusal.
+for settings_file in ${seats_root:+"${seats_root}"/.sandbox/*/srt-settings.json} \
+    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"/.sandbox/*/srt-settings.json} \
     "${HOME}"/.local/state/omp-seats/*/.sandbox/*/srt-settings.json; do
     [[ -e ${settings_file} ]] || continue
-    listed=$(/usr/bin/jq -er '.filesystem.allowWrite[] | strings' "${settings_file}") ||
-        refuse "cannot read the allowWrite list of ${settings_file}"
+    listed=$(allow_write_list "${os}" "${settings_file}") ||
+        refuse "cannot read a clean allowWrite list from ${settings_file}"
     while IFS= read -r root; do
         if [[ -n ${root} ]]; then roots+=("${root}"); fi
     done <<< "${listed}"
@@ -466,7 +542,7 @@ if [[ -n ${mise_real} ]]; then
     pin_exec mise "${mise_real}"
     mise_cmd=("${pinned[@]}")
 fi
-# jq is the system's (/usr/bin/jq), not a resolved tool, so a stale link of an earlier launch is dropped.
+# jq is no resolved tool (the settings are read by plutil or /usr/bin/jq), so a stale link of an earlier launch is dropped.
 /bin/rm -f "${tools_dir}/jq" || refuse "cannot clear ${tools_dir}/jq"
 required_tools=(git hcom herdr omp srt)
 # claude, regime-open-url and its python3 serve seat-login-preflight's interactive login handoff (U37).
@@ -599,6 +675,10 @@ fi
 # shellcheck source=scripts/orchestrator/regime-env
 . "${LEVER_DIR}/regime-env"
 regime_env hcom-seat || exit 2
+# The derived store and seats root reach the srt settings as well.
+for var in HCOM_DIR REGIME_SEATS_ROOT; do
+    [[ -z ${!var:-} ]] || require_clean_path "${var}" "${!var}"
+done
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 policy=${HOME}/.agents/omp/policies/${role}.yml
@@ -731,10 +811,10 @@ while IFS= read -r root; do seat_write+=("${root}"); done <<< "${seat_roots_out}
 other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'cannot resolve the orchestrator write roots'
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
-for settings_file in "${seats_root%/}"/.sandbox/*/srt-settings.json; do
+for settings_file in "${seats_root}"/.sandbox/*/srt-settings.json; do
     [[ -e ${settings_file} ]] || continue
-    listed=$(/usr/bin/jq -er '.filesystem.allowWrite[] | strings' "${settings_file}") ||
-        refuse "cannot read the allowWrite list of ${settings_file}"
+    listed=$(allow_write_list "${os}" "${settings_file}") ||
+        refuse "cannot read a clean allowWrite list from ${settings_file}"
     while IFS= read -r root; do
         if [[ -n ${root} ]]; then roots+=("${root}"); fi
     done <<< "${listed}"
@@ -770,7 +850,7 @@ herdr_path=$(find_on_path herdr) || refuse 'herdr not found on PATH'
 pin_exec herdr "${herdr_path}"
 herdr_cmd=("${pinned[@]}")
 os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
-linux_tools='{}'
+linux_tools=''
 case ${os} in
 Darwin) [[ -x /usr/bin/sandbox-exec ]] || refuse 'sandbox-exec absent: /usr/bin/sandbox-exec' ;;
 Linux)
@@ -778,8 +858,10 @@ Linux)
     bwrap_real=$(physical_file "${tools_dir}/bwrap") || refuse 'bwrap not found; srt needs bubblewrap on Linux'
     socat_real=$(physical_file "${tools_dir}/socat") || refuse 'socat not found; srt needs socat on Linux'
     rg_real=$(physical_file "${tools_dir}/rg") || refuse 'rg not found; srt needs ripgrep on Linux'
-    linux_tools=$(/usr/bin/jq -cn --arg bwrap "${bwrap_real}" --arg socat "${socat_real}" --arg rg "${rg_real}" \
-        '{bwrapPath: $bwrap, socatPath: $socat, ripgrep: {command: $rg}}') || refuse 'jq failed on the Linux tool paths'
+    require_clean_path bwrap "${bwrap_real}"
+    require_clean_path socat "${socat_real}"
+    require_clean_path rg "${rg_real}"
+    linux_tools=",\"bwrapPath\":\"${bwrap_real}\",\"socatPath\":\"${socat_real}\",\"ripgrep\":{\"command\":\"${rg_real}\"}"
     ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
@@ -826,8 +908,14 @@ seat_sandbox_write() {
     deny_write+=("${git_state[@]}")
     # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
     # write denies only, and the next launch's git_state_check covers it.
-    [[ ${os} != Darwin ]] || deny_write+=("${common_real}/worktrees/*/config.worktree" "${common_real}/worktrees/*/info"
-        "${common_real}/worktrees/*/commondir" "${common_real}/worktrees/*/gitdir")
+    # The patterns are the one place a settings entry is not a clean path: a clean prefix and a fixed suffix.
+    deny_write_patterns=''
+    if [[ ${os} == Darwin ]]; then
+        require_clean_path 'the git common directory' "${common_real}"
+        for path in config.worktree info commondir gitdir; do
+            deny_write_patterns+=",\"${common_real}/worktrees/*/${path}\""
+        done
+    fi
     for path in config.toml env config.env .tmp/launch scripts integrations shell_env.json; do
         deny_write+=("${hcom_real}/${path}")
     done
@@ -854,31 +942,24 @@ seat_sandbox_write() {
     # The orchestrator reads the worker clones of its own program, which it reviews; a worker reads no other seat.
     if [[ ${role} == orchestrator ]]; then allow_read+=("${seats_real}"); fi
     settings=${sandbox_real}/srt-settings.json
-    write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${write[@]}") || refuse 'jq failed on the seat write roots'
-    deny_write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${deny_write[@]}") || refuse 'jq failed on the seat write denies'
-    deny_read_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${deny_read[@]}") || refuse 'jq failed on the seat read denies'
-    allow_read_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${allow_read[@]}") || refuse 'jq failed on the seat read roots'
+    write_json=$(json_paths 'a seat write root' "${write[@]}") || exit 2
+    deny_write_json=$(json_paths 'a seat write deny' "${deny_write[@]}") || exit 2
+    deny_write_json=${deny_write_json%]}${deny_write_patterns}]
+    deny_read_json=$(json_paths 'a seat read deny' "${deny_read[@]}") || exit 2
+    allow_read_json=$(json_paths 'a seat read root' "${allow_read[@]}") || exit 2
     # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox. No local
     # binding either: srt 0.0.81 grants it as bind and inbound on `*:*` (every interface); the one listener a seat
     # runs, the hcom plugin's notify server, falls back to polling every 5 s when its bind fails (hcom.ts
-    # `startNotifyServer`, `FALLBACK_PENDING_POLL_MS`).
-    json=$(/usr/bin/jq -n --argjson write "${write_json}" --argjson deny_write "${deny_write_json}" \
-        --argjson deny_read "${deny_read_json}" --argjson allow_read "${allow_read_json}" \
-        --argjson linux "${linux_tools}" '{
-        network: {
-            allowedDomains: ["github.com", "api.github.com", "uploads.github.com", "codeload.github.com",
-                "objects.githubusercontent.com", "raw.githubusercontent.com", "release-assets.githubusercontent.com",
-                "pypi.org", "files.pythonhosted.org",
-                "api.anthropic.com", "claude.ai", "platform.claude.com", "console.anthropic.com",
-                "chatgpt.com", "auth.openai.com", "api.openai.com"],
-            deniedDomains: [],
-            allowUnixSockets: [],
-            allowMachLookup: ["com.apple.trustd.agent"],
-            allowLocalBinding: false
-        },
-        filesystem: {denyRead: $deny_read, allowRead: $allow_read, allowWrite: $write, denyWrite: $deny_write},
-        allowPty: true
-    } + $linux') || refuse "cannot render the seat sandbox settings for ${name}"
+    # `startNotifyServer`, `FALLBACK_PENDING_POLL_MS`). The settings are written by the shell from clean paths only
+    # (json_paths), so no JSON tool runs and none is needed on macOS.
+    domains='"github.com","api.github.com","uploads.github.com","codeload.github.com","objects.githubusercontent.com"'
+    domains+=',"raw.githubusercontent.com","release-assets.githubusercontent.com","pypi.org","files.pythonhosted.org"'
+    domains+=',"api.anthropic.com","claude.ai","platform.claude.com","console.anthropic.com"'
+    domains+=',"chatgpt.com","auth.openai.com","api.openai.com"'
+    json="{\"network\":{\"allowedDomains\":[${domains}],\"deniedDomains\":[],\"allowUnixSockets\":[]"
+    json+=",\"allowMachLookup\":[\"com.apple.trustd.agent\"],\"allowLocalBinding\":false}"
+    json+=",\"filesystem\":{\"denyRead\":${deny_read_json},\"allowRead\":${allow_read_json}"
+    json+=",\"allowWrite\":${write_json},\"denyWrite\":${deny_write_json}},\"allowPty\":true${linux_tools}}"
     if ! printf '%s\n' "${json}" > "${settings}.tmp" || ! mv -f "${settings}.tmp" "${settings}"; then
         refuse "cannot write ${settings}"
     fi

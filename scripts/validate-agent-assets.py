@@ -331,6 +331,8 @@ SANDBOX_CREDENTIAL_DENIES = (
 GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
 # The only hosts the sandbox proxy may send the real gh token to (U68): an exact list, like the write roots.
 GH_MASK_INJECT_HOSTS = ("api.github.com",)
+# The gh mask's complete key set: no `decode`, `maskClaims` or other field may change what it substitutes.
+GH_MASK_KEYS = frozenset({"path", "mode", "extract", "maskDuplicates", "onExtractNoMatch", "injectHosts"})
 SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
 # Strict sandbox mode (U68): `allowUnsandboxedCommands` is false, so Claude Code ignores the
 # `dangerouslyDisableSandbox` retry, and only these exclusions run outside the sandbox, each behind an identical
@@ -382,50 +384,69 @@ def mask_extracts_every_token(extract: Any) -> bool:
 
 
 def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_name: str) -> None:
-    """Require the credential denies, the gh hosts-file mask and the TLS termination a Linux mask needs (U68)."""
+    """Require the credential denies, the gh hosts-file mask and the TLS termination a Linux mask needs (U68).
+
+    Every entry is checked, not the first match: Claude Code 2.1.310 merges credential entries and keeps the later of
+    two entries for one path, so a duplicate path is refused outright, in `files` and in `envVars`.
+    """
     credentials = sandbox.get("credentials", {})
     files = credentials.get("files") if isinstance(credentials, dict) else None
-    if not isinstance(files, list) or not all(isinstance(entry, dict) for entry in files):
+    if not isinstance(files, list) or not all(isinstance(e, dict) and isinstance(e.get("path"), str) for e in files):
         fail(f"{label}.credentials.files must contain a list of entries: {files!r}")
-    modes = {entry.get("path"): entry.get("mode") for entry in files}
+    paths = [entry["path"] for entry in files]
+    duplicated = sorted({path for path in paths if paths.count(path) > 1})
+    if duplicated:
+        fail(f"{label}.credentials.files must name each path once (Claude Code keeps the later entry): {duplicated}")
+    modes = {entry["path"]: entry.get("mode") for entry in files}
     missing = [path for path in SANDBOX_CREDENTIAL_DENIES if modes.get(path) != "deny"]
     if missing:
         fail(f"{label}.credentials.files must contain a deny entry for each credential store: missing={missing}")
+    if GH_HOSTS_FILE not in modes:  # lint-comparisons: allow settings text
+        fail(f"{label}.credentials.files must deny or mask {GH_HOSTS_FILE}: {files!r}")
     # A mask authorises the proxy to send the real credential, so its destinations are an exact list too (U68): only
-    # the gh hosts file may be masked, and only toward GH_MASK_INJECT_HOSTS, compared byte for byte.
-    masked = [e.get("path") for e in files if e.get("mode") == "mask"]
-    others = [path for path in masked if path != GH_HOSTS_FILE]  # lint-comparisons: allow settings text
-    if others:
-        fail(f"{label}.credentials.files may mask only {GH_HOSTS_FILE}; deny the others: {others}")
-    hosts = next((e for e in files if e.get("path") == GH_HOSTS_FILE), None)  # lint-comparisons: allow settings text
+    # the gh hosts file may be masked, and only toward GH_MASK_INJECT_HOSTS, compared byte for byte. Every other entry
+    # is a plain deny with no further keys.
     domains = sandbox.get("network", {}).get("allowedDomains", [])
-    if (
-        hosts is None
-        or hosts.get("mode") not in {"mask", "deny"}
-        or (
-            hosts.get("mode") == "mask"
-            and (
-                not mask_extracts_every_token(hosts.get("extract"))
-                or hosts.get("maskDuplicates") is not True
-                or hosts.get("onExtractNoMatch") != "deny"
-                or hosts.get("injectHosts") != list(GH_MASK_INJECT_HOSTS)
-                or not set(GH_MASK_INJECT_HOSTS) <= set(domains)
+    for entry in files:
+        gh = entry["path"] == GH_HOSTS_FILE  # lint-comparisons: allow settings text
+        if entry.get("mode") == "deny" and set(entry) == {"path", "mode"}:
+            continue
+        if entry.get("mode") == "mask" and not gh:
+            fail(f"{label}.credentials.files may mask only {GH_HOSTS_FILE}; deny the others: {entry!r}")
+        if not gh:
+            fail(
+                f"{label}.credentials.files entries other than {GH_HOSTS_FILE} must be exactly path and deny: {entry!r}"
             )
-        )
-    ):
-        fail(
-            f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with an extract whose group 1 captures "
-            f"each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts exactly "
-            f"{list(GH_MASK_INJECT_HOSTS)} (also in allowedDomains): {hosts!r}"
-        )
+        if (
+            entry.get("mode") != "mask"
+            or set(entry) != GH_MASK_KEYS
+            or not mask_extracts_every_token(entry.get("extract"))
+            or entry.get("maskDuplicates") is not True
+            or entry.get("onExtractNoMatch") != "deny"
+            or entry.get("injectHosts") != list(GH_MASK_INJECT_HOSTS)
+            or not set(GH_MASK_INJECT_HOSTS) <= set(domains)
+        ):
+            fail(
+                f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with an extract whose group 1 "
+                f"captures each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts exactly "
+                f"{list(GH_MASK_INJECT_HOSTS)} (also in allowedDomains), and no other key: {entry!r}"
+            )
     env_vars = credentials.get("envVars", [])
-    entries = env_vars if isinstance(env_vars, list) else []
-    env_modes = {entry.get("name"): entry.get("mode") for entry in entries if isinstance(entry, dict)}
-    if not isinstance(env_vars, list) or any(env_modes.get(name) != "deny" for name in SANDBOX_ENV_DENIES):
+    if not isinstance(env_vars, list) or not all(
+        isinstance(e, dict) and isinstance(e.get("name"), str) for e in env_vars
+    ):
         fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
-    masked_env = [name for name, mode in env_modes.items() if mode != "deny"]
+    names = [entry["name"] for entry in env_vars]
+    duplicated = sorted({name for name in names if names.count(name) > 1})
+    if duplicated:
+        fail(
+            f"{label}.credentials.envVars must name each variable once (Claude Code keeps the later entry): {duplicated}"
+        )
+    masked_env = [entry for entry in env_vars if entry.get("mode") != "deny" or set(entry) != {"name", "mode"}]
     if masked_env:
         fail(f"{label}.credentials.envVars entries must all be deny (no mask sends a variable anywhere): {masked_env}")
+    if not set(SANDBOX_ENV_DENIES) <= set(names):
+        fail(f"{label}.credentials.envVars must deny {list(SANDBOX_ENV_DENIES)}: {env_vars!r}")
     tls = sandbox.get("network", {}).get("tlsTerminate")
     masks = any(entry.get("mode") == "mask" for entry in files)
     if os_name == "darwin" and tls is not None:

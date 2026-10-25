@@ -1041,12 +1041,26 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 if entry["path"] == "~/.config/gh/hosts.yml":  # lint-comparisons: allow settings text
                     entry["injectHosts"] = ["pypi.org"]
 
+        def with_appended_gh_mask(candidate: dict) -> None:
+            # Round 5: Claude Code keeps the later of two entries for one path, so an appended mask overrides the first.
+            candidate["claude"]["sandbox"]["credentials"]["files"].append(
+                {
+                    "path": "~/.config/gh/hosts.yml",
+                    "mode": "mask",
+                    "extract": "oauth_token:\\s*(\\S+)",
+                    "maskDuplicates": True,
+                    "onExtractNoMatch": "deny",
+                    "injectHosts": ["pypi.org"],
+                }
+            )
+
         for name, mutate, message in (
             ("unprompted exclusion", without_push_ask, "Bash(<pattern>) for each excluded command"),
             ("unsandboxed retry", with_retry, "allowUnsandboxedCommands must be false"),
             ("literal retry rule", with_dead_rule, "must not name dangerouslyDisableSandbox"),
             ("allowed lever excluded", with_lever_excluded, "excludedCommands must stay within"),
             ("gh token injected into pypi.org", with_token_to_pypi, "injectHosts exactly ['api.github.com']"),
+            ("appended gh mask to pypi.org", with_appended_gh_mask, "must name each path once"),
         ):
             with self.subTest(form=name):
                 candidate = copy.deepcopy(manifest)
@@ -1369,6 +1383,36 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "a variable masked": (
                 lambda sandbox: sandbox["credentials"]["envVars"].append({"name": "GH_TOKEN", "mode": "mask"}),
                 "envVars entries must all be deny",
+            ),
+            # Round 5: every entry is checked and no path or variable may appear twice.
+            "appended gh mask to pypi.org": (
+                lambda sandbox: (
+                    sandbox["network"]["allowedDomains"].append("pypi.org"),
+                    sandbox["credentials"]["files"].append(
+                        {
+                            **next(e for e in sandbox["credentials"]["files"] if e["mode"] == "mask"),
+                            "injectHosts": ["pypi.org"],
+                        }
+                    ),
+                ),
+                "must name each path once",
+            ),
+            "deny then mask of one store": (
+                lambda sandbox: sandbox["credentials"]["files"].append(
+                    {"path": "~/.codex/auth.json", "mode": "mask", "injectHosts": ["api.github.com"]}
+                ),
+                "must name each path once",
+            ),
+            "gh mask with decode": (hosts(decode="jwt"), "and no other key"),
+            "deny with mask fields": (
+                lambda sandbox: sandbox["credentials"]["files"][0].update(injectHosts=["pypi.org"]),
+                "must be exactly path and deny",
+            ),
+            "token variable denied then masked": (
+                lambda sandbox: sandbox["credentials"]["envVars"].append(
+                    {"name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "mask", "injectHosts": ["api.github.com"]}
+                ),
+                "must name each variable once",
             ),
             "token env passed": (
                 lambda sandbox: sandbox["credentials"].update(envVars=[]),

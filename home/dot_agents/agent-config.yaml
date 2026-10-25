@@ -428,11 +428,19 @@ claude:
     # sandboxed commands. The gh hosts file is masked: on Linux sandboxed
     # commands read a sentinel in place of each oauth_token and the proxy puts
     # the real token back only on requests to api.github.com, which needs
-    # network.tlsTerminate; on macOS Claude Code applies a file mask as a deny
-    # (the gh token lives in the Keychain there). `onExtractNoMatch: deny` keeps
-    # the file unreadable if the pattern ever misses (code.claude.com/docs/en/
-    # settings-reference, sandbox.credentials.files). Every agent login store
-    # and the chezmoi age key are denied (U68).
+    # network.tlsTerminate; on macOS Claude Code applies a file mask as a deny.
+    # `onExtractNoMatch: deny` keeps the file unreadable if the pattern ever
+    # misses (code.claude.com/docs/en/settings-reference,
+    # sandbox.credentials.files). The file-based agent login stores and the
+    # chezmoi age key are denied (U68). Each path appears once: Claude Code
+    # keeps the later of two entries for one path.
+    # Known limit, macOS: these entries cover files only. Claude Code's own
+    # login and the gh token live in the login Keychain there, and the Claude
+    # Code 2.1.310 Seatbelt profile always allows mach-lookup of
+    # com.apple.SecurityServer and com.apple.securityd.xpc, with no setting to
+    # remove them (allowMachLookup only adds services), so a sandboxed command
+    # can ask securityd for those items (`security find-generic-password`).
+    # On Linux the Claude login is the denied ~/.claude/.credentials.json.
     # The ~/.ssh deny means a sandboxed `git push` cannot authenticate: the git
     # config rewrites GitHub pushes to SSH (pushInsteadOf), so `git push` is the
     # one excluded command, behind its ask rule. All sandbox denies hold for

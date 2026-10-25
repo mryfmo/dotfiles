@@ -586,13 +586,22 @@ subprocess:
   place of each `oauth_token`, and the sandbox proxy puts the real token back
   only on requests to `api.github.com` (`network.tlsTerminate`, rendered on
   Linux only, lets the proxy do that). On macOS Claude Code applies a file mask
-  as a deny, so the file is unreadable there; `gh` keeps its token in the
-  Keychain. The mask sets `maskDuplicates` and `onExtractNoMatch: deny`, so a
-  file the pattern does not match stays unreadable rather than exposed. The
-  validator runs the `extract` pattern over a synthetic hosts file and refuses
-  it unless group 1 is exactly every token value. It also requires
-  `injectHosts` to be exactly `["api.github.com"]` (`GH_MASK_INJECT_HOSTS`),
-  not any allowed domain, and refuses a mask on any other file or variable.
+  as a deny, so the file is unreadable there. The mask sets `maskDuplicates`
+  and `onExtractNoMatch: deny`, so a file the pattern does not match stays
+  unreadable rather than exposed. The validator runs the `extract` pattern
+  over a synthetic hosts file and refuses it unless group 1 is exactly every
+  token value. It also requires `injectHosts` to be exactly
+  `["api.github.com"]` (`GH_MASK_INJECT_HOSTS`), not any allowed domain,
+  refuses a mask on any other file or variable, and refuses a path or variable
+  listed twice, because Claude Code keeps the later of two entries.
+- Known limit on macOS: the entries above cover files. Claude Code's own login
+  and the `gh` token live in the login Keychain there, and the Claude Code
+  2.1.310 sandbox profile always allows the `com.apple.SecurityServer` and
+  `com.apple.securityd.xpc` services, with no setting to take them away
+  (`allowMachLookup` only adds services). A sandboxed command can therefore
+  ask the Keychain for those items, as `security find-generic-password` or a
+  sandboxed `gh` does. On Linux the Claude login is the denied
+  `~/.claude/.credentials.json` and the `gh` token is the masked hosts file.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
   environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
   host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
@@ -639,8 +648,10 @@ needs nothing because the sandbox uses Seatbelt.
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
 `allowWrite`, and a command that fails there is not retried outside it. A
-uv tool or Python install, a `mise trust`, or a read of the agents' login
-stores fails inside the sandbox, and so does one that needs a Unix socket on
+uv tool or Python install, a `mise trust`, or a read of the agents' file-based
+login stores fails inside the sandbox (on macOS the Keychain-held Claude login
+and `gh` token stay reachable, see the known limit above), and so does one
+that needs a Unix socket on
 macOS, or on Linux only where the seccomp filter is installed (without it,
 sandboxed commands reach every Unix socket). `git push` runs outside the
 sandbox and prompts every time. Network hosts other than the listed domains

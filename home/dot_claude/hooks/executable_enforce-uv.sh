@@ -5,6 +5,9 @@
 # @description
 #   Emit PreToolUse permissionDecision deny for direct `pip` or `python` usage;
 #   other input exits successfully without output. Contract verified 2026-10-05.
+#   Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config)
+#   into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot
+#   parse the line, the hook decides nothing and exits 0 (fail open).
 # @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control
 
 # @description Encode the denial reason from stdin using the current hook contract.
@@ -186,155 +189,28 @@ function handle_python_run() {
     exit 0
 }
 
-# @description Append one trimmed simple command to SEGMENTS; an empty one is skipped.
-# @arg $1 string The text between two separators.
-# @set SEGMENTS array The simple commands found so far.
-function add_segment() {
-    local segment="$1"
-    segment="${segment#"${segment%%[![:space:]]*}"}"
-    segment="${segment%"${segment##*[![:space:]]}"}"
-    if [[ -n "$segment" ]]; then
-        SEGMENTS+=("$segment")
-    fi
-}
-
-# @description Split a command line into its simple commands at the unquoted separators `&&`, `||`, `;`, `|`,
-#   `&` and newlines, the way Claude Code splits a compound command before matching it, so `cd x && python y.py`
-#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text, and an `&` or `|`
-#   that is part of a redirection (`2>&1`, `>&2`, `<&3`, `&>file`, `>|file`) stays in it. A comment (an unquoted `#`
-#   that starts a word)
-#   runs to the end of its line, and a here-document body (`<<WORD`, `<<-WORD`, `<<'WORD'`, `<<"WORD"`, up to its
-#   terminator line) is data: neither yields a segment.
+# @description Collect the simple commands of a Bash line from shfmt's syntax tree (`shfmt -ln bash --to-json`):
+#   every statement whose command is a call (`CallExpr`), in tree order, nested ones (in a pipeline, a list, a
+#   subshell, `$(...)`) included, each as its source text from the statement's start to its end offset, so the
+#   suggestion keeps its quotes and redirections. Comments and here-document bodies are no statements, and quoting,
+#   escapes and line continuations are shfmt's, not this script's.
 # @arg $1 string The command line.
 # @set SEGMENTS array The simple commands, in order.
+# @exitcode 0 The line parsed.
+# @exitcode 1 shfmt or jq is absent, or the line does not parse.
 function split_segments() {
-    local line="$1" current="" quote="" char prev i j rest body delimiter strip escaped=-1
-    local -a delimiters=() strips=()
+    local line="$1" tree spans start end
     SEGMENTS=()
-    for ((i = 0; i < ${#line}; i++)); do
-        char=${line:i:1}
-        if [[ -n "$quote" ]]; then
-            current+=$char
-            if [[ "$char" == "$quote" ]]; then
-                quote=""
-            elif [[ "$char" == "\\" && "$quote" == '"' ]]; then
-                current+=${line:i+1:1}
-                i=$((i + 1))
-            fi
-            continue
+    command -v shfmt > /dev/null 2>&1 || return 1
+    tree=$(printf '%s' "$line" | shfmt -ln bash --to-json 2> /dev/null) || return 1
+    spans=$(jq -r '.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"' <<< "$tree") || return 1
+    # shfmt's offsets count bytes, so slice the line byte-wise.
+    local LC_ALL=C
+    while read -r start end; do
+        if [[ -n "$start" && -n "$end" ]]; then
+            SEGMENTS+=("${line:start:end-start}")
         fi
-        # The character before this one; a backslash-escaped one is part of a word, never an operator or a blank.
-        prev=""
-        if ((i > 0)); then
-            prev=${line:i-1:1}
-        fi
-        if ((i - 1 == escaped)); then
-            prev="\\"
-        fi
-        case "$char" in
-        "'" | '"')
-            quote=$char
-            current+=$char
-            ;;
-        "\\")
-            current+=$char${line:i+1:1}
-            i=$((i + 1))
-            escaped=$i
-            ;;
-        '#')
-            if [[ -z "$prev" || "$prev" == [[:space:]\;\&\|\(\)] ]]; then
-                # A comment: skip to the newline, which the next turn of the loop handles as a separator.
-                rest=${line:i}
-                if [[ "$rest" != *$'\n'* ]]; then
-                    break
-                fi
-                body=${rest%%$'\n'*}
-                i=$((i + ${#body} - 1))
-            else
-                current+=$char
-            fi
-            ;;
-        '<')
-            if [[ "${line:i:3}" == "<<<" ]]; then
-                current+="<<<"
-                i=$((i + 2))
-            elif [[ "${line:i:2}" == "<<" ]]; then
-                j=$((i + 2))
-                strip=""
-                if [[ "${line:j:1}" == "-" ]]; then
-                    strip=1
-                    j=$((j + 1))
-                fi
-                while [[ "${line:j:1}" == [[:blank:]] ]]; do
-                    j=$((j + 1))
-                done
-                delimiter=""
-                if [[ "${line:j:1}" == "'" || "${line:j:1}" == '"' ]]; then
-                    char=${line:j:1}
-                    rest=${line:j+1}
-                    delimiter=${rest%%"$char"*}
-                    j=$((j + ${#delimiter} + 2))
-                else
-                    while ((j < ${#line})) && [[ "${line:j:1}" != [[:space:]\;\&\|\<\>\(\)] ]]; do
-                        delimiter+=${line:j:1}
-                        j=$((j + 1))
-                    done
-                    delimiter=${delimiter//\\/}
-                fi
-                current+=${line:i:j-i}
-                delimiters+=("$delimiter")
-                strips+=("$strip")
-                i=$((j - 1))
-            else
-                current+=$char
-            fi
-            ;;
-        '&')
-            if [[ "$prev" == [\<\>] || "${line:i+1:1}" == ">" ]]; then
-                # Part of a redirection (`2>&1`, `>&2`, `<&3`, `&>file`, `&>>file`), not a separator.
-                current+=$char
-            else
-                add_segment "$current"
-                current=""
-            fi
-            ;;
-        '|')
-            if [[ "$prev" == ">" ]]; then
-                # `>|file` is the clobbering redirection, not a pipe.
-                current+=$char
-            else
-                add_segment "$current"
-                current=""
-            fi
-            ;;
-        ';' | $'\n')
-            add_segment "$current"
-            current=""
-            if [[ "$char" == $'\n' && ${#delimiters[@]} -gt 0 ]]; then
-                # The here-document bodies follow this newline, one after another, each up to its terminator.
-                for ((j = 0; j < ${#delimiters[@]}; j++)); do
-                    while ((i < ${#line})); do
-                        rest=${line:i+1}
-                        body=${rest%%$'\n'*}
-                        i=$((i + ${#body} + 1))
-                        if [[ -n "${strips[j]}" ]]; then
-                            body=${body#"${body%%[!$'\t']*}"}
-                        fi
-                        if [[ "$body" == "${delimiters[j]}" ]]; then
-                            break
-                        fi
-                    done
-                done
-                delimiters=()
-                strips=()
-            fi
-            ;;
-        *)
-            current+=$char
-            ;;
-        esac
-    done
-    add_segment "$current"
+    done <<< "$spans"
 }
 
 # @description Emit the deny for one simple command that runs pip or Python directly; return for any other.
@@ -409,7 +285,8 @@ function main() {
 
     if [[ "$tool_name" == "Bash" ]]; then
         local segment
-        split_segments "$command"
+        # Advisory: a line shfmt cannot parse (or no shfmt) gets no decision.
+        split_segments "$command" || exit 0
         for segment in "${SEGMENTS[@]}"; do
             classify_segment "$segment"
         done

@@ -101,6 +101,25 @@ class OmpConfigMergeTest(unittest.TestCase):
             + MANAGED_EXTENSIONS,
         )
 
+    def test_the_managed_ignored_skills_replace_the_live_list_and_other_skill_keys_stay(self) -> None:
+        """skills.audience: a plain launch lists no skill the manifest withholds from it, whatever the live file held."""
+        managed = MANAGED.replace(
+            "    - ~/.agents/skills\n",
+            "    - ~/.agents/skills\n    - ~/.agents/pstack/skills\n  ignoredSkills:\n    - hcom-worker\n",
+        )
+        (self.source_dir / ".chezmoitemplates/omp-config-managed.yml").write_text(managed)
+        current = "skills:\n  enableSkillCommands: false\n  ignoredSkills:\n  - noisy\n"
+
+        result = self.merge(current)
+
+        self.assertEqual(
+            result.stdout,
+            "skills:\n  enableSkillCommands: false\n  ignoredSkills:\n  - hcom-worker\n  customDirectories:\n"
+            f"  - {HOME}/.agents/skills\n  - {HOME}/.agents/pstack/skills\n"
+            "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_EXTENSIONS,
+        )
+        self.assertEqual(self.merge(result.stdout).stdout, result.stdout, "a second apply changes nothing")
+
     def test_empty_input_yields_the_managed_mapping_only(self) -> None:
         self.assertEqual(
             self.merge("").stdout,

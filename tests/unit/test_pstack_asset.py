@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The pstack skills reach ~/.agents/skills through the chezmoi externals that assets.pstack pins."""
+"""The pstack skills reach ~/.agents/pstack/skills through the chezmoi external that assets.pstack pins."""
 
 from __future__ import annotations
 
@@ -68,8 +68,8 @@ class PstackAssetTest(unittest.TestCase):
         rendered = chezmoi_template(
             f"{{{{ template {json.dumps(TEMPLATE.relative_to(ROOT / 'home/.chezmoitemplates').as_posix())} . }}}}"
         )
-        # The two pstack entries close the file; the rendered text itself is what the scratch source applies.
-        cls.rendered_pstack = rendered[rendered.index('".agents/skills":') :]
+        # The pstack entry closes the file; the rendered text itself is what the scratch source applies.
+        cls.rendered_pstack = rendered[rendered.index('".agents/pstack":') :]
 
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="pstack-asset-test-"))
@@ -136,21 +136,17 @@ class PstackAssetTest(unittest.TestCase):
             check=False,
         )
 
-    def test_both_externals_take_pin_and_sha256_from_the_manifest(self) -> None:
+    def test_the_external_takes_pin_and_sha256_from_the_manifest(self) -> None:
         self.assertRegex(self.asset["pin"], r"^[0-9a-f]{40}$")
         self.assertRegex(self.asset["sha256"], r"^[0-9a-f]{64}$")
         url = f'url: "https://github.com/cursor/plugins/archive/{self.asset["pin"]}.tar.gz"'
-        self.assertEqual(2, self.rendered_pstack.count(url), self.rendered_pstack)
-        self.assertEqual(2, self.rendered_pstack.count(f'sha256: "{self.asset["sha256"]}"'), self.rendered_pstack)
-        self.assertEqual(2, self.rendered_pstack.count("stripComponents: 5"))
-        self.assertIn('".agents/docs":\n  type: "archive"', self.rendered_pstack)
-        self.assertEqual(
-            1,
-            self.rendered_pstack.count("exact: true"),
-            "only ~/.agents/docs is exact; other installers own siblings under ~/.agents/skills",
-        )
+        self.assertEqual(1, self.rendered_pstack.count(url), self.rendered_pstack)
+        self.assertEqual(1, self.rendered_pstack.count(f'sha256: "{self.asset["sha256"]}"'), self.rendered_pstack)
+        self.assertIn("exact: true", self.rendered_pstack)
+        # chezmoi extracts every member that matches neither list when both are set (chezmoiexternal-format, rule 5).
+        self.assertNotIn("exclude:", self.rendered_pstack)
 
-    def test_externals_place_the_pinned_skills_and_docs_beside_the_source_skills(self) -> None:
+    def test_the_external_places_the_pinned_skills_and_docs_in_their_own_exact_root(self) -> None:
         source = self.scratch_source({"own-skill": "---\nname: own-skill\ndescription: mine\n---\n"})
         home = self.temp_dir / "home"
         home.mkdir()
@@ -159,46 +155,79 @@ class PstackAssetTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            ["own-skill", "poteto-mode", "principle-fix-root-causes"],
-            sorted(os.listdir(home / ".agents/skills")),
-        )
-        self.assertEqual("adapter\n", (home / ".agents/docs/harness/claude-code.md").read_text())
-        self.assertEqual("notes\n", (home / ".agents/skills/poteto-mode/references/notes.md").read_text())
-        self.assertEqual(
-            "---\nname: own-skill\ndescription: mine\n---\n", (home / ".agents/skills/own-skill/SKILL.md").read_text()
+            ["own-skill"], sorted(os.listdir(home / ".agents/skills")), "no pstack skill in the shared root"
         )
         self.assertEqual(
-            ["docs", "skills"], sorted(os.listdir(home / ".agents")), "plugin.json and the decoy trees stay out"
+            ["poteto-mode", "principle-fix-root-causes"], sorted(os.listdir(home / ".agents/pstack/skills"))
+        )
+        self.assertEqual("adapter\n", (home / ".agents/pstack/docs/harness/claude-code.md").read_text())
+        self.assertEqual("notes\n", (home / ".agents/pstack/skills/poteto-mode/references/notes.md").read_text())
+        self.assertEqual(
+            ["docs", "skills"], sorted(os.listdir(home / ".agents/pstack")), "plugin.json and the decoy trees stay out"
         )
         again = self.chezmoi(source, home, "apply", "--force", "--verbose")
         self.assertEqual(0, again.returncode, again.stderr)
         self.assertEqual("", again.stdout, "a second apply changes nothing")
-        managed = self.chezmoi(
-            source, home, "managed", "--include=dirs", "--path-style=absolute", str(home / ".agents/skills")
+        # Exact: a skill the pinned archive does not hold (one upstream dropped) is removed at the next apply.
+        (home / ".agents/pstack/skills/dropped-upstream").mkdir()
+        (home / ".agents/pstack/skills/dropped-upstream/SKILL.md").write_text("old\n")
+        swept = self.chezmoi(source, home, "apply", "--force")
+        self.assertEqual(0, swept.returncode, swept.stderr)
+        self.assertFalse((home / ".agents/pstack/skills/dropped-upstream").exists())
+
+    def test_pstack_skill_names_stay_disjoint_from_the_declared_skills(self) -> None:
+        """A pstack name that skills.audience also declared would be listed twice by omp, namespaced, with a warning."""
+        declared = set(
+            json.loads(chezmoi_template('{{ (include "dot_agents/agent-config.yaml" | fromYaml).skills | toJson }}'))[
+                "audience"
+            ]
         )
-        self.assertIn(str(home / ".agents/skills/poteto-mode"), managed.stdout.splitlines())
-
-    def test_a_pstack_skill_named_like_a_source_skill_is_refused_not_overwritten(self) -> None:
-        source = self.scratch_source({"poteto-mode": "---\nname: poteto-mode\ndescription: ours\n---\n"})
-        home = self.temp_dir / "home"
-        home.mkdir()
-
-        result = self.chezmoi(source, home, "apply", "--force")
-
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("inconsistent state", result.stderr)
-        self.assertIn(".agents/skills/poteto-mode/SKILL.md", result.stderr)
-        self.assertIn(str(source / "dot_agents/skills/poteto-mode/SKILL.md"), result.stderr, "both sources are named")
-        self.assertFalse((home / ".agents").exists(), "nothing is written when the two sets collide")
-
-    def test_pstack_skill_names_stay_disjoint_from_the_source_skills(self) -> None:
         source_skills = {path.name for path in (ROOT / "home/dot_agents/skills").iterdir() if path.is_dir()}
         self.assertEqual(57, len(PSTACK_SKILLS_AT_PIN))
-        self.assertEqual(
-            set(),
-            source_skills & PSTACK_SKILLS_AT_PIN,
-            f"a skill under home/dot_agents/skills shares its name with a pstack skill; source skills: {sorted(source_skills)}",
+        self.assertLessEqual(source_skills, declared)
+        self.assertEqual(set(), declared & PSTACK_SKILLS_AT_PIN, f"declared skills: {sorted(declared)}")
+
+    def retire(self, home: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-c", f"source {UPDATER}; retire_shared_pstack_copies"],
+            cwd=ROOT,
+            env={**os.environ, "HOME": str(home)},
+            text=True,
+            capture_output=True,
+            check=False,
         )
+
+    def test_retire_removes_only_identical_copies_the_old_external_left(self) -> None:
+        home = self.temp_dir / "home"
+        for root in (".agents/pstack/skills", ".agents/skills"):
+            for name in ("identical", "changed", "linked", "unreadable"):
+                (home / root / name).mkdir(parents=True)
+                (home / root / name / "SKILL.md").write_text(f"{name}\n")
+        (home / ".agents/skills/changed/SKILL.md").write_text("ours\n")
+        shutil.rmtree(home / ".agents/skills/linked")
+        (home / ".agents/skills/linked").symlink_to(home / ".agents/pstack/skills/linked")
+        (home / ".agents/skills/own").mkdir()
+
+        unreadable = home / ".agents/skills/unreadable/SKILL.md"
+        unreadable.chmod(0)
+        try:
+            failed = self.retire(home)
+        finally:
+            unreadable.chmod(0o644)
+        self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+        self.assertIn(f"cannot compare {home / '.agents/skills/unreadable'}", failed.stderr)
+
+        result = self.retire(home)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["changed", "linked", "own"], sorted(os.listdir(home / ".agents/skills")))
+        self.assertIn(f"kept {home / '.agents/skills/changed'}: it differs", result.stderr)
+        self.assertTrue((home / ".agents/skills/linked").is_symlink())
+        self.assertEqual(4, len(os.listdir(home / ".agents/pstack/skills")), "the pstack root is never touched")
+
+        bare = self.temp_dir / "bare-home"
+        (bare / ".agents/skills/identical").mkdir(parents=True)
+        self.assertEqual(0, self.retire(bare).returncode)
+        self.assertTrue((bare / ".agents/skills/identical").is_dir(), "without the pstack root nothing is touched")
 
     def check_pstack(self, home: Path, omp_listing: str | None) -> subprocess.CompletedProcess[str]:
         bin_dir = self.temp_dir / "bin"
@@ -231,18 +260,18 @@ class PstackAssetTest(unittest.TestCase):
 
     def test_check_pstack_reports_the_missing_file_the_absent_skill_and_the_listed_skill(self) -> None:
         home = self.temp_dir / "home"
-        (home / ".agents/skills/poteto-mode").mkdir(parents=True)
-        (home / ".agents/skills/poteto-mode/SKILL.md").write_text("---\nname: poteto-mode\n---\n")
+        (home / ".agents/pstack/skills/poteto-mode").mkdir(parents=True)
+        (home / ".agents/pstack/skills/poteto-mode/SKILL.md").write_text("---\nname: poteto-mode\n---\n")
         listed = (
             '{"skills":[{"name":"poteto-mode","hide":true,"warnings":[]},{"name":"unslop","hide":true}],"warnings":[]}'
         )
 
         missing = self.check_pstack(home, listed)
         self.assertEqual(1, missing.returncode)
-        self.assertIn(f"{home / '.agents/docs/harness/claude-code.md'} is missing", missing.stderr)
+        self.assertIn(f"{home / '.agents/pstack/docs/harness/claude-code.md'} is missing", missing.stderr)
 
-        (home / ".agents/docs/harness").mkdir(parents=True)
-        (home / ".agents/docs/harness/claude-code.md").write_text("adapter\n")
+        (home / ".agents/pstack/docs/harness").mkdir(parents=True)
+        (home / ".agents/pstack/docs/harness/claude-code.md").write_text("adapter\n")
         absent = self.check_pstack(home, '{"skills":[{"name":"unslop","hide":true}],"warnings":[]}')
         self.assertEqual(1, absent.returncode)
         self.assertIn("omp skill list does not name poteto-mode", absent.stderr)

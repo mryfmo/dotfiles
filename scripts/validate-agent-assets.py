@@ -246,6 +246,50 @@ def validate_skills() -> None:
                 fail(f"{openai_yaml} must be a mapping")
 
 
+def validate_skill_audience(manifest: dict[str, Any]) -> None:
+    """Parse each rendered agent config and refuse one that would list a skill outside its skills.audience.
+
+    Codex: the managed baseline's `[[skills.config]]` entries are exactly one `enabled = false` per ~/.agents/skills
+    skill that leaves out Codex, by its SKILL.md path. omp: each role overlay and the plain-launch config carry the
+    consumer's skill settings (skills.enabled false, or the roots and skills.ignoredSkills). Claude Code: a
+    ~/.claude/skills link exists only for a skill that names it.
+    """
+    gen = generator()
+    declared, _, _ = gen.skill_audiences(manifest)
+    codex = tomllib.loads((ROOT / manifest["codex"]["config_path"]).read_text())
+    entries = codex.get("skills", {}).get("config", [])
+    expected = [
+        {"path": f"{{{{ .chezmoi.homeDir }}}}/.agents/skills/{name}/SKILL.md", "enabled": False}
+        for name in gen.codex_disabled_skills(manifest)
+    ]
+    if entries != expected:
+        fail(f"{manifest['codex']['config_path']} [[skills.config]] must disable exactly {expected}: {entries}")
+    rendered = {"omp": ROOT / "home/.chezmoitemplates/omp-config-managed.yml"}
+    rendered |= {
+        f"omp-{role}": ROOT / f"home/dot_agents/omp/profiles/{role}.yml.tmpl" for role in gen.omp_roles(manifest)
+    }
+    home = "/validator-home"
+    for consumer, path in rendered.items():
+        parsed = yaml.safe_load(path.read_text().replace("{{ .chezmoi.homeDir }}", home)) if yaml else None
+        skills = parsed.get("skills") if isinstance(parsed, dict) else None
+        settings = gen.omp_skill_settings(manifest, consumer)
+        if settings["enabled"]:
+            # The overlays carry the absolute home through the chezmoi template; the plain config keeps ~/.
+            prefix = "~/" if consumer == "omp" else f"{home}/"
+            want = {
+                "customDirectories": [re.sub(r"^~/", prefix, d) for d in settings["customDirectories"]],
+                "ignoredSkills": settings["ignoredSkills"],
+            }
+        else:
+            want = {"enabled": False}
+        if skills != want:
+            fail(f"{path.relative_to(ROOT)} skills must be {want} for {consumer}: {skills}")
+    claude_links = {path.name for path in (ROOT / "home/dot_claude/skills").iterdir() if path.is_dir()}
+    wrong = sorted(name for name in claude_links if "claude" not in declared.get(name, []))
+    if wrong:
+        fail(f"home/dot_claude/skills links skills whose audience leaves out claude: {wrong}")
+
+
 HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
 
 
@@ -285,37 +329,12 @@ def validate_codex_plugins(manifest: dict[str, Any]) -> None:
     plugins = marketplace.get("plugins", [])
     if not isinstance(plugins, list) or not plugins:
         fail(f"{marketplace_path} must define at least one plugin")
-    # A plugin installed at update time (crit) ships its own manifest; the generator renders the others.
-    unmanaged = {
-        plugin["name"]
-        for plugin in manifest["plugins"].get("codex_plugins", [])
-        if plugin.get("managed_manifest", True) is False
-    }
+    # Every plugin ships its own .codex-plugin/plugin.json at install time (crit: `crit install codex-plugin`); a file
+    # of ours under home/dot_agents/plugins other than the marketplace is an orphan the generator refuses (F127).
     for plugin in plugins:
         source = plugin.get("source", {})
-        if source.get("source") == "local":
-            path_value = source.get("path", "")
-            if Path(path_value).is_absolute():
-                fail(f"{marketplace_path} must not use absolute local plugin paths")
-            if plugin.get("name") in unmanaged:
-                continue
-            plugin_dir = path_value.removeprefix("./")
-            manifest_path = ROOT / "home/dot_agents" / plugin_dir / generator().CODEX_PLUGIN_MANIFEST
-            # Codex reads <plugin>/.codex-plugin/plugin.json under the marketplace root (~/.agents); a source path
-            # chezmoi skips or deploys elsewhere leaves the marketplace pointing at an empty plugin (F054).
-            deployed = generator().chezmoi_target(generator().ROOT / manifest_path.relative_to(ROOT))
-            expected_target = f".agents/{plugin_dir}/.codex-plugin/plugin.json"
-            if deployed is None or deployed["target"] != expected_target:
-                fail(f"{manifest_path} must deploy to ~/{expected_target}: {deployed}")
-            plugin_manifest = json.loads(manifest_path.read_text())
-            for key in ("name", "version", "description"):
-                if not plugin_manifest.get(key):
-                    fail(f"{manifest_path} is missing {key}")
-            skills_path = plugin_manifest.get("skills")
-            if not skills_path:
-                fail(f"{manifest_path} must expose shared skills")
-            if Path(skills_path).is_absolute():
-                fail(f"{manifest_path} must not use an absolute skills path")
+        if source.get("source") == "local" and Path(source.get("path", "")).is_absolute():
+            fail(f"{marketplace_path} must not use absolute local plugin paths")
 
 
 def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label: str) -> None:
@@ -2003,6 +2022,7 @@ def main() -> None:
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()
+    validate_skill_audience(manifest)
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
     validate_omp_policies(manifest)

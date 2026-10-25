@@ -1254,18 +1254,18 @@ function omp_version_label() {
 }
 
 #
-# @description Confirm the pstack skills chezmoi places under ~/.agents/skills reach an omp seat.
+# @description Confirm the pstack skills chezmoi places under ~/.agents/pstack/skills reach the plain omp launch.
 # @description
-#   No installer step runs for pstack: the two externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
-#   deploy the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply. The check
-#   fails when the poteto-mode skill or the Claude Code adapter its first paragraph links is missing, or when
-#   `omp skill list`, run from an empty directory so no project skill tree takes part, does not name poteto-mode.
-#   Without omp the file check alone decides.
+#   No installer step runs for pstack: the external in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
+#   deploys the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply, into a
+#   root only the omp consumers skills.pstack.audience names load. The check fails when the poteto-mode skill or the
+#   Claude Code adapter its first paragraph links is missing, or when `omp skill list`, run from an empty directory
+#   so no project skill tree takes part, does not name poteto-mode. Without omp the file check alone decides.
 # @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.
 #
 function check_pstack() {
     local file cwd listing count version
-    for file in "${HOME}/.agents/skills/poteto-mode/SKILL.md" "${HOME}/.agents/docs/harness/claude-code.md"; do
+    for file in "${HOME}/.agents/pstack/skills/poteto-mode/SKILL.md" "${HOME}/.agents/pstack/docs/harness/claude-code.md"; do
         [ -f "${file}" ] || {
             printf 'pstack: %s is missing; run make update.\n' "${file}" >&2
             return 1
@@ -1289,6 +1289,47 @@ function check_pstack() {
 }
 
 #
+# @description Remove the copies of the pstack skills the retired ~/.agents/skills external left there.
+# @description
+#   Until U87 the pstack external extracted into ~/.agents/skills, which Codex and omp's agents provider list for
+#   every agent; it now extracts into ~/.agents/pstack/skills, and chezmoi does not delete what the old external
+#   placed. A directory ~/.agents/skills/<name> goes only when ~/.agents/pstack/skills/<name> exists and the two
+#   trees are byte-identical (`diff -r`), so a skill with the same name and other content stays; make doctor then
+#   reports it as listed outside its audience. A symlink is never followed or removed. Without the pstack root
+#   (chezmoi apply has not run) nothing is touched.
+# @exitcode 1 diff could not compare a pair (exit 2), or a removal failed; the path is named.
+#
+function retire_shared_pstack_copies() {
+    local pstack_root="${HOME}/.agents/pstack/skills" shared_root="${HOME}/.agents/skills" source name target status
+    [ -d "${pstack_root}" ] || return 0
+    for source in "${pstack_root}"/*/; do
+        [ -d "${source}" ] || continue
+        name="${source%/}"
+        name="${name##*/}"
+        target="${shared_root}/${name}"
+        if [ ! -d "${target}" ] || [ -L "${target}" ]; then
+            continue
+        fi
+        status=0
+        diff -r -q "${source}" "${target}" > /dev/null 2>&1 || status=$?
+        case "${status}" in
+        0)
+            rm -r "${target}" || {
+                printf 'pstack: cannot remove the retired copy %s.\n' "${target}" >&2
+                return 1
+            }
+            printf 'pstack: removed the retired copy %s (identical to %s).\n' "${target}" "${source%/}"
+            ;;
+        1) printf 'pstack: kept %s: it differs from %s.\n' "${target}" "${source%/}" >&2 ;;
+        *)
+            printf 'pstack: cannot compare %s with %s (diff exit %s).\n' "${target}" "${source%/}" "${status}" >&2
+            return 1
+            ;;
+        esac
+    done
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1304,23 +1345,24 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge or check_pstack.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack or retire_shared_pstack_copies.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies]\n' >&2
         exit 2
     fi
 
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
+    retire_shared_pstack_copies
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions

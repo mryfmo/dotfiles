@@ -4,6 +4,11 @@ modelRoles:
 skills:
   customDirectories:
     - {{ .chezmoi.homeDir }}/.agents/skills
+    - {{ .chezmoi.homeDir }}/.agents/pstack/skills
+  ignoredSkills:
+    - hcom-worker
+    - project-map
+    - setup-pstack
 defaultThinkingLevel: xhigh
 disabledProviders:
   - agent-plugins

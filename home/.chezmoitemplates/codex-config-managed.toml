@@ -50,6 +50,30 @@ last_revision = "16f6cbf4b87792938e47b0f8c650b6d80fcbc98c"
 source_type = "git"
 source = "https://github.com/DietrichGebert/ponytail.git"
 
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/crit/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/crit-cli/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/crit-story/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/hcom-orchestration/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/hcom-worker/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/project-map/SKILL.md"
+enabled = false
+
 [[hooks.PermissionRequest]]
 matcher = "*"
 

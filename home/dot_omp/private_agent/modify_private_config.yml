@@ -1,9 +1,10 @@
 #!/bin/sh
 # @file home/dot_omp/private_agent/modify_private_config.yml
-# @brief Carry the managed omp model role, skill roots, extensions, disabled providers and denies into ~/.omp/agent/config.yml.
+# @brief Carry the managed omp model role, skill settings, extensions, disabled providers and denies into ~/.omp/agent/config.yml.
 # @description
 #   chezmoi passes the live config on stdin. The merge sets modelRoles.default,
-#   skills.customDirectories, extensions and disabledProviders from
+#   every managed skills key (customDirectories, ignoredSkills; skills.audience
+#   in the manifest), extensions and disabledProviders from
 #   home/.chezmoitemplates/omp-config-managed.yml (a leading ~ expanded to
 #   $HOME, see docs/omp-skills.md). When the managed file carries them (U66) it
 #   also merges the managed tools.approval denies (a managed key wins, every
@@ -55,8 +56,12 @@ def main():
         data["skills"] = {}
     if not isinstance(data["skills"], dict):
         return keep(current, "skills is not a mapping")
+    # skills.audience owns every key the managed file carries; other skills keys stay as omp or the operator set them.
+    for key, value in managed["skills"].items():
+        data["skills"][key] = value
     # `omp skill list` resolves a non-absolute entry against cwd before omp expands ~ (src/cli/skill-list.ts:58-64).
-    data["skills"]["customDirectories"] = [os.path.expanduser(d) for d in managed["skills"]["customDirectories"]]
+    if "customDirectories" in managed["skills"]:
+        data["skills"]["customDirectories"] = [os.path.expanduser(d) for d in managed["skills"]["customDirectories"]]
     # A plain launch registers the default model's extension provider only through this list (docs/pi-claude-bridge.md).
     data["extensions"] = [os.path.expanduser(d) for d in managed["extensions"]]
     # A disabled provider stays unselectable even with a stored OAuth session (omp docs/providers.md).

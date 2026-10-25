@@ -4,6 +4,12 @@ modelRoles:
 skills:
   customDirectories:
     - ~/.agents/skills
+    - ~/.agents/pstack/skills
+  ignoredSkills:
+    - hcom-orchestration
+    - hcom-worker
+    - project-map
+    - setup-pstack
 extensions:
   - ~/.local/lib/omp-extensions/pi-claude-bridge
 disabledProviders:

@@ -4,7 +4,8 @@
 # @description
 #   Plan 025 W6a (U8). Composes, for `--role <role>`,
 #   `omp --no-extensions --profile <role> --config ~/.agents/omp/policies/<role>.yml
-#   --config ~/.agents/omp/profiles/<role>.yml -e <dir>... --no-session --max-time <s>
+#   --config ~/.agents/omp/profiles/<role>.yml [--append-system-prompt ~/.agents/omp/rules/<role>.md]
+#   -e <dir>... --no-session --max-time <s>
 #   [--model <provider/id>] --mode <text|json> -p <prompt>`
 #   (omp 18.11.3 `omp --help`: `--mode` is "text (default), json, rpc, or rpc-ui",
 #   `--config` loads an overlay and is repeatable, `-e` loads an extension, `-p` is
@@ -72,7 +73,7 @@
 # @option --ext <dir> Extension directory, repeatable; replaces the two defaults.
 # @stdout omp's output, unchanged.
 # @stderr omp's stderr, replayed after the run, then this script's own refusal.
-# @exitcode 2 A refusal: usage, omp absent from PATH, unknown role, missing prompt file, policy or profile overlay, extension directory or cwd; for `--role audit` a cwd outside git, no `refs/remotes/origin/main` or no `AGENTS.md` in it, bun absent, no provider list from omp's registry, a `TMPDIR` that cannot be made absolute or a scratch directory that cannot be made; or an extension failed to load.
+# @exitcode 2 A refusal: usage, omp absent from PATH, unknown role, missing prompt file, policy or profile overlay, an absent or empty standing-rules file for `--role orchestrator` or `worker`, extension directory or cwd; for `--role audit` a cwd outside git, no `refs/remotes/origin/main` or no `AGENTS.md` in it, bun absent, no provider list from omp's registry, a `TMPDIR` that cannot be made absolute or a scratch directory that cannot be made; or an extension failed to load.
 # @exitcode * omp's own status otherwise.
 # @example
 #   ~/.local/bin/common/omp-run.sh --role audit --prompt-file review.md --cwd /path/to/worktree --mode json --max-time 900
@@ -184,6 +185,14 @@ profile=${HOME}/.agents/omp/profiles/${role}.yml
 [[ -f ${profile} ]] || refuse "profile overlay not found: ${profile}"
 ((${#exts[@]})) || exts=("${HOME}/.local/lib/omp-extensions/pi-claude-bridge" "${HOME}/.agents/omp/extensions/openai-siwc")
 argv=(--no-extensions --profile "${role}" --config "${policy}" --config "${profile}")
+# The orchestrator and worker roles carry their standing rules as hcom-seat does (U75): --append-system-prompt, which
+# no disabled provider can drop and which wins over any discovered APPEND_SYSTEM.md. omp reads a missing path as
+# literal text, so the file must exist and be non-empty. The audit takes none: its rules are origin/main AGENTS.md.
+if [[ ${role} != audit ]]; then
+    rules=${HOME}/.agents/omp/rules/${role}.md
+    [[ -f ${rules} && -s ${rules} ]] || refuse "standing rules absent or empty: ${rules}"
+    argv+=(--append-system-prompt "${rules}")
+fi
 for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory not found: ${ext}"
     argv+=(-e "$(realpath "${ext}")")

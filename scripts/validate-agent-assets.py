@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import posixpath
@@ -24,6 +25,24 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
     yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@cache
+def generator() -> Any:
+    """scripts/generate-agent-configs.py, the one owner of the manifest's rendering rules and expected outputs.
+
+    Loaded on first use, never at import: `--mask-secrets` is a standalone mode that records-sync.sh runs from a tree
+    holding this script alone, and it needs nothing from the generator.
+    """
+    path = Path(__file__).resolve().parent / "generate-agent-configs.py"
+    spec = importlib.util.spec_from_file_location("generate_agent_configs", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
@@ -173,9 +192,42 @@ def read_frontmatter(path: Path) -> dict[str, Any]:
     return data
 
 
-def shared_skill_names() -> set[str]:
-    skills_root = ROOT / "home/dot_agents/skills"
-    return {path.name for path in skills_root.iterdir() if path.is_dir()}
+# The Agent Skills frontmatter (agentskills.io/specification): name and description are required, the other four
+# fields optional, and no other field is defined. A name is 1-64 lowercase letters, digits and single hyphens, not at
+# either end; a description 1-1024 characters; compatibility at most 500; metadata maps strings to strings.
+SKILL_FIELDS = frozenset({"name", "description", "license", "compatibility", "metadata", "allowed-tools"})
+SKILL_NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+SKILL_NAME_MAX = 64
+SKILL_DESCRIPTION_MAX = 1024
+SKILL_COMPATIBILITY_MAX = 500
+
+
+def validate_skill_frontmatter(skill_file: Path, directory_name: str, data: dict[str, Any]) -> None:
+    unknown = sorted(str(key) for key in data if key not in SKILL_FIELDS)
+    if unknown:
+        fail(f"{skill_file} frontmatter has fields the Agent Skills specification does not define: {unknown}")
+    name = data.get("name")
+    if not isinstance(name, str) or len(name) > SKILL_NAME_MAX or not SKILL_NAME_RE.fullmatch(name):
+        fail(f"{skill_file} name must be 1-{SKILL_NAME_MAX} lowercase letters, digits and single inner hyphens")
+    if name != directory_name:
+        fail(f"{skill_file} name does not match directory name")
+    description = data.get("description")
+    if not isinstance(description, str) or not description.strip() or len(description) > SKILL_DESCRIPTION_MAX:
+        fail(f"{skill_file} description must be a non-empty string of at most {SKILL_DESCRIPTION_MAX} characters")
+    compatibility = data.get("compatibility")
+    if compatibility is not None and (
+        not isinstance(compatibility, str) or not compatibility or len(compatibility) > SKILL_COMPATIBILITY_MAX
+    ):
+        fail(f"{skill_file} compatibility must be a non-empty string of at most {SKILL_COMPATIBILITY_MAX} characters")
+    metadata = data.get("metadata")
+    if metadata is not None and (
+        not isinstance(metadata, dict)
+        or not all(isinstance(key, str) and isinstance(value, str) for key, value in metadata.items())
+    ):
+        fail(f"{skill_file} metadata must map strings to strings")
+    for key in ("license", "allowed-tools"):
+        if key in data and not isinstance(data[key], str):
+            fail(f"{skill_file} {key} must be a string")
 
 
 def validate_skills() -> None:
@@ -186,32 +238,12 @@ def validate_skills() -> None:
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.exists():
             fail(f"{skill_dir} is missing SKILL.md")
-        data = read_frontmatter(skill_file)
-        for key in ("name", "description"):
-            if not data.get(key):
-                fail(f"{skill_file} is missing frontmatter key: {key}")
-        if data["name"] != skill_dir.name:
-            fail(f"{skill_file} name does not match directory name")
+        validate_skill_frontmatter(skill_file, skill_dir.name, read_frontmatter(skill_file))
         openai_yaml = skill_dir / "agents/openai.yaml"
         if openai_yaml.exists():
             parsed = load_yaml(openai_yaml)
             if not isinstance(parsed, dict):
                 fail(f"{openai_yaml} must be a mapping")
-
-
-def validate_claude_skill_parity() -> None:
-    expected = shared_skill_names()
-    claude_root = ROOT / "home/dot_claude/skills"
-    actual = {path.name for path in claude_root.iterdir() if path.is_dir()} if claude_root.exists() else set()
-    if actual != expected:
-        fail(
-            f"Claude skill set differs from shared skills: missing={sorted(expected - actual)} extra={sorted(actual - expected)}"
-        )
-    for name in sorted(expected):
-        symlink = claude_root / name / "symlink_SKILL.md.tmpl"
-        expected_target = f"{{{{ .chezmoi.sourceDir }}}}/dot_agents/skills/{name}/SKILL.md\n"
-        if not symlink.exists() or symlink.read_text() != expected_target:
-            fail(f"{symlink} must point at the shared skill tree")
 
 
 HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
@@ -245,29 +277,41 @@ def validate_manifest_home_paths() -> None:
             )
 
 
-def validate_codex_plugins() -> None:
-    marketplace_path = ROOT / "home/dot_agents/plugins/create_marketplace.json"
+def validate_codex_plugins(manifest: dict[str, Any]) -> None:
+    marketplace_path = ROOT / manifest["plugins"]["marketplace_path"]
     marketplace = json.loads(marketplace_path.read_text())
     if not marketplace.get("name"):
         fail(f"{marketplace_path} is missing name")
     plugins = marketplace.get("plugins", [])
     if not isinstance(plugins, list) or not plugins:
         fail(f"{marketplace_path} must define at least one plugin")
+    # A plugin installed at update time (crit) ships its own manifest; the generator renders the others.
+    unmanaged = {
+        plugin["name"]
+        for plugin in manifest["plugins"].get("codex_plugins", [])
+        if plugin.get("managed_manifest", True) is False
+    }
     for plugin in plugins:
         source = plugin.get("source", {})
         if source.get("source") == "local":
             path_value = source.get("path", "")
             if Path(path_value).is_absolute():
                 fail(f"{marketplace_path} must not use absolute local plugin paths")
-            if plugin.get("name") == "crit" and path_value == "./.codex/plugins/crit":
-                # Crit is installed dynamically and does not ship a static plugin manifest.
+            if plugin.get("name") in unmanaged:
                 continue
-            manifest_path = ROOT / "home/dot_agents" / path_value.removeprefix("./") / ".codex-plugin/plugin.json"
-            manifest = json.loads(manifest_path.read_text())
+            plugin_dir = path_value.removeprefix("./")
+            manifest_path = ROOT / "home/dot_agents" / plugin_dir / generator().CODEX_PLUGIN_MANIFEST
+            # Codex reads <plugin>/.codex-plugin/plugin.json under the marketplace root (~/.agents); a source path
+            # chezmoi skips or deploys elsewhere leaves the marketplace pointing at an empty plugin (F054).
+            deployed = generator().chezmoi_target(generator().ROOT / manifest_path.relative_to(ROOT))
+            expected_target = f".agents/{plugin_dir}/.codex-plugin/plugin.json"
+            if deployed is None or deployed["target"] != expected_target:
+                fail(f"{manifest_path} must deploy to ~/{expected_target}: {deployed}")
+            plugin_manifest = json.loads(manifest_path.read_text())
             for key in ("name", "version", "description"):
-                if not manifest.get(key):
+                if not plugin_manifest.get(key):
                     fail(f"{manifest_path} is missing {key}")
-            skills_path = manifest.get("skills")
+            skills_path = plugin_manifest.get("skills")
             if not skills_path:
                 fail(f"{manifest_path} must expose shared skills")
             if Path(skills_path).is_absolute():
@@ -502,20 +546,31 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
             fail(f"{label}.allow rule {rule!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
-# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is the audited squash
-# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *`,
-# `~/.local/bin/common/<lever> --<flag> *` or the exact bare `~/.local/bin/common/<lever>` (U28b F3), held to the same
-# lever checks as a Claude allow rule. audit.yml keeps its read-only allows under `always-ask`;
-# tests/unit/test_omp_seat_policy.py holds its decision table.
+# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is one lever by its
+# installed path, `~/.local/bin/common/<lever> *`, `~/.local/bin/common/<lever> --<flag> *` or the exact bare
+# `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
+# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table.
+OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
-OMP_MERGE_ALLOW = "gh pr merge * --squash --match-head-commit *"
+# GitHub reach (U71, audit rounds 3, 8 and 9): enumerating merge spellings always missed one (`/merges`, then GraphQL
+# `mergePullRequest`), so in every policy file under OMP_POLICY_DIR, found by glob so a new or renamed file is covered
+# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an
+# entry of its role's list below; any other such row is refused. The lists are today's rows, small and exact, so the
+# single manifest list U76 renders the policies from can adopt them. The orchestrator merges only through pr-merge.sh.
+OMP_GITHUB_REACH = re.compile(r"\bgh\b|graphql|api\.github\.com|\bcurl\b|\bwget\b", re.IGNORECASE)
+OMP_GITHUB_ALLOWLIST = {
+    # the auditor's read-only GitHub reads, behind audit.yml's common and write-method denies
+    "audit": ("gh pr view *", "gh pr diff *", "gh pr checks *", "gh run view *", "gh api repos/*"),
+    # the orchestrator's GitHub writes go through its levers only; no raw gh row
+    "orchestrator": (),
+    # the worker's one GitHub-write lever; its gh pr create/ready/comment run under the yolo default, not an allow row
+    "worker": (),
+}
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
 
-def validate_omp_policy_allow(
-    policy: Any, label: str, pinned: Iterable[str] | None = None, merge: bool = False
-) -> None:
+def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | None = None) -> None:
     patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
     if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
         fail(f"{label} bash.patterns must be a list of rules")
@@ -523,8 +578,6 @@ def validate_omp_policy_allow(
         if rule.get("approval") != "allow":
             continue
         match = rule.get("match")
-        if merge and match == OMP_MERGE_ALLOW:
-            continue
         if not isinstance(match, str):
             fail(f"{label} allow rule {match!r} is not a string")
         if OMP_CHECKOUT_LEVER.match(match):
@@ -534,8 +587,7 @@ def validate_omp_policy_allow(
             )
         lever = OMP_LEVER_ALLOW.fullmatch(match)
         if not lever:
-            merge_form = f"{OMP_MERGE_ALLOW!r} or " if merge else ""
-            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
+            fail(f"{label} allow rule {match!r} is not {LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
         reason = lever_refusal(lever.group(1))
         if reason:
             fail(f"{label} allow rule {match!r}: scripts/orchestrator/{lever.group(1)} {reason}")
@@ -543,15 +595,46 @@ def validate_omp_policy_allow(
             fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
+def omp_policy_roles() -> list[str]:
+    """The role of every policy file under OMP_POLICY_DIR (`<role>.yml`), found by glob."""
+    roles = sorted(path.stem for path in (ROOT / OMP_POLICY_DIR).glob("*.yml"))
+    if not roles:
+        fail(f"{ROOT / OMP_POLICY_DIR} holds no omp seat policy")
+    return roles
+
+
+def validate_omp_github_allow(policy: Any, label: str, role: str) -> None:
+    """Refuse an allow rule that mentions GitHub reach unless it is byte-identical to an OMP_GITHUB_ALLOWLIST entry of
+    its role (U71); a role without a list allows no such row."""
+    patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
+    if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
+        fail(f"{label} bash.patterns must be a list of rules")
+    for rule in patterns:
+        match = rule.get("match")
+        if rule.get("approval") != "allow" or not isinstance(match, str) or not OMP_GITHUB_REACH.search(match):
+            continue
+        if match not in OMP_GITHUB_ALLOWLIST.get(role, ()):
+            fail(
+                f"{label} allow rule {match!r} reaches GitHub and is not on the {role} allowlist in "
+                f"validate-agent-assets.py; seats merge only through {LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
+            )
+
+
 def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
-    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    """Check every seat policy's GitHub-reaching allow rows against its allowlist and the writing seats' allow rows; `policies` maps each role of
+    omp_policy_roles() to its parsed overlay, else PyYAML reads the files."""
     if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
     pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    for role in OMP_WRITING_POLICIES:
-        path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
+    roles = omp_policy_roles()
+    if policies is not None and sorted(policies) != roles:
+        fail(f"the parsed omp policies {sorted(policies)} are not the policy files {roles}")
+    for role in roles:
+        path = ROOT / OMP_POLICY_DIR / f"{role}.yml"
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
-        validate_omp_policy_allow(policy, str(path), pinned, merge=role == "orchestrator")
+        validate_omp_github_allow(policy, str(path), role)
+        if role in OMP_WRITING_POLICIES:
+            validate_omp_policy_allow(policy, str(path), pinned)
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
@@ -576,10 +659,10 @@ def validate_claude_permissions_deny(permissions: Any, label: str) -> None:
 
 
 def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:
-    settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+    settings_path = ROOT / manifest["claude"]["settings_path"]
     settings = json.loads(render_template_text(settings_path, os_name))
-    if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
-        fail(f"{settings_path} must declare the Claude Code settings schema")
+    if settings.get("$schema") != manifest["claude"]["schema"]:
+        fail(f"{settings_path} must declare the Claude Code settings schema claude.schema names")
     interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("claude", {})
     if settings.get("model") != interactive.get("model"):
         fail(f"{settings_path} must render the interactive profile model")
@@ -696,7 +779,7 @@ def validate_codex_command_hooks(
 
 
 def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
-    codex_path = ROOT / manifest.get("codex", {}).get("config_path", "home/.chezmoitemplates/codex-config-managed.toml")
+    codex_path = ROOT / manifest["codex"]["config_path"]
     text = render_template_text(codex_path)
     if not text.startswith("#:schema https://developers.openai.com/codex/config-schema.json"):
         fail(f"{codex_path} must declare the Codex config schema")
@@ -728,13 +811,13 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     if data.get("shell_environment_policy") != manifest_codex.get("shell_environment_policy"):
         fail(f"{codex_path} must render codex.shell_environment_policy from the shared manifest")
     shell_path = data.get("shell_environment_policy", {}).get("set", {}).get("PATH", "")
-    if "/Users/mryfmo/" in shell_path:
-        fail(f"{codex_path} must not hard-code a macOS home directory in shell_environment_policy.set.PATH")
+    if HARD_CODED_HOME_RE.search(shell_path):
+        fail(f"{codex_path} must not hard-code a home directory in shell_environment_policy.set.PATH")
     if "{{ .chezmoi.homeDir }}" not in shell_path:
         fail(f"{codex_path} must derive shell_environment_policy.set.PATH from the target chezmoi homeDir")
     for project_path in data.get("projects", {}):
-        if "/Users/mryfmo/" in project_path:
-            fail(f"{codex_path} must not hard-code a macOS home directory in [projects] keys")
+        if HARD_CODED_HOME_RE.search(project_path):
+            fail(f"{codex_path} must not hard-code a home directory in [projects] keys")
         if "{{ .chezmoi.workingTree }}" not in project_path:
             fail(f"{codex_path} must key managed Codex project trust with {{{{ .chezmoi.workingTree }}}}")
     for key, value in manifest_codex.get("tui", {}).items():
@@ -949,10 +1032,16 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                         f"{entry['file']} {constant} is rendered from both assets.{source[0]}.{source[1]} "
                         f"(via {source[2]}) and assets.{name}.{field}; render each assignment from one field"
                     )
-    # setup.sh is the bootstrap entry point; its pins render like the installers'.
+    # setup.sh is the bootstrap entry point; its pins render like the installers'. A shell script is one named *.sh or
+    # one whose shebang runs a shell, so an extensionless script (scripts/orchestrator/hcom-seat) is scanned too.
     scanned = [
         ROOT / "setup.sh",
-        *(path for root in ("install", "scripts") for path in sorted((ROOT / root).rglob("*.sh"))),
+        *(
+            path
+            for root in ("install", "scripts")
+            for path in sorted((ROOT / root).rglob("*"))
+            if is_shell_script(path)
+        ),
     ]
     for path in scanned:
         if not path.is_file():
@@ -963,17 +1052,50 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
 
 
-# omp model roles: Claude seats through pi-claude-bridge, OpenAI seats through openai-siwc
-# (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
-# fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
-OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
-OMP_RETIRED_ROUTES = ("openai-codex",)
-# omp model providers an extension registers, by the directory that registers them; a provider missing here
-# is omp-builtin (anthropic).
-OMP_EXTENSION_PROVIDERS = {
-    "claude-bridge": "~/.local/lib/omp-extensions/pi-claude-bridge",
-    "openai-siwc": "~/.agents/omp/extensions/openai-siwc",
-}
+SHELL_SHEBANG = re.compile(rb"#!\s*(?:/usr/bin/env\s+(?:-S\s+)?)?(?:\S*/)?(?:ba|z|da|k)?sh(?:\s|$)")
+
+
+def is_shell_script(path: Path) -> bool:
+    if not path.is_file() or path.is_symlink():
+        return False
+    if path.suffix == ".sh":
+        return True
+    with path.open("rb") as handle:
+        return SHELL_SHEBANG.match(handle.readline(256)) is not None
+
+
+def omp_extension_providers(manifest_path: Path, manifest: dict[str, Any]) -> dict[str, str]:
+    """omp.extension_providers: the model provider each extension directory registers, declared once.
+
+    Every directory there and in omp.extensions must be one of claude.levers.extensions, the only directories a seat
+    loads with -e, so a provider the manifest routes to is one a seat can reach.
+    """
+    omp = manifest.get("omp") if isinstance(manifest.get("omp"), dict) else {}
+    providers = omp.get("extension_providers")
+    if (
+        not isinstance(providers, dict)
+        or not providers
+        or not all(isinstance(key, str) and isinstance(value, str) for key, value in providers.items())
+    ):
+        fail(f"{manifest_path} omp.extension_providers must map omp provider ids to extension directories")
+    # Exact set: every model route omp does not provide itself, and nothing else, so a route can never lose the entry
+    # that says which extension a plain launch must load for it.
+    expected_routes = set(generator().OMP_MODEL_ROUTES) - set(generator().OMP_BUILTIN_ROUTES)
+    if set(providers) != expected_routes:
+        fail(
+            f"{manifest_path} omp.extension_providers must name exactly the extension-registered model routes "
+            f"{sorted(expected_routes)}: {sorted(providers)}"
+        )
+    extensions = omp.get("extensions", [])
+    if not isinstance(extensions, list):
+        fail(f"{manifest_path} omp.extensions must be a list of extension directories")
+    seat_extensions = manifest.get("claude", {}).get("levers", {}).get("extensions", [])
+    outside = sorted(
+        {*providers.values(), *extensions} - set(seat_extensions if isinstance(seat_extensions, list) else [])
+    )
+    if outside:
+        fail(f"{manifest_path} omp extension directories must be listed in claude.levers.extensions: {outside}")
+    return providers
 
 
 def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, Any]) -> None:
@@ -985,10 +1107,12 @@ def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, A
     """
     model = manifest["model_profiles"][manifest["interactive_profile"]]["omp"]["model"]
     provider = model.split("/", 1)[0]
-    needed = OMP_EXTENSION_PROVIDERS.get(provider)
-    omp = manifest.get("omp")
-    extensions = omp.get("extensions", []) if isinstance(omp, dict) else []
-    if needed is not None and (not isinstance(extensions, list) or needed not in extensions):
+    providers = omp_extension_providers(manifest_path, manifest)
+    if provider in generator().OMP_BUILTIN_ROUTES:
+        return
+    needed = providers.get(provider)
+    extensions = manifest["omp"].get("extensions", [])
+    if needed is None or needed not in extensions:
         fail(
             f"{manifest_path} interactive_profile omp model {model} needs {needed} in omp.extensions; "
             f"a plain omp launch skips a default model whose provider {provider} is not registered"
@@ -1000,12 +1124,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     manifest = load_yaml(manifest_path)
     if manifest.get("schema_version") != 1:
         fail(f"{manifest_path} schema_version must be 1")
-    targets = set(manifest.get("target_agents", []))
-    if targets != {"codex", "claude"}:
-        fail(f"{manifest_path} must target exactly Codex and Claude Code")
-    canonical_dir = manifest.get("skills", {}).get("canonical_dir")
-    if canonical_dir != "~/.agents/skills":
-        fail(f"{manifest_path} must keep ~/.agents/skills as the canonical skill directory")
+    # Each model profile's keys and values follow the generator's rules (scripts/generate-agent-configs.py
+    # model_profiles): one implementation for both the renderer and this check.
+    generator().model_profiles(manifest)
     codex_plugins = manifest.get("codex", {}).get("plugins", {})
     if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
@@ -1044,24 +1165,11 @@ def validate_agent_manifest() -> dict[str, Any]:
     advisor_profile = "standard"
     if profiles.get(advisor_profile, {}).get("claude", {}).get("advisor") != "fable":
         fail(f"{manifest_path} worker profile {advisor_profile!r} must set claude.advisor: fable (operator pin)")
-    for name, profile in profiles.items():
-        for agent, keys in (
-            ("claude", ("model", "effort")),
-            ("codex", ("model", "model_reasoning_effort")),
-        ):
-            for key in keys:
-                if not profile.get(agent, {}).get(key):
-                    fail(f"{manifest_path} model profile {name}.{agent}.{key} is required")
-        omp = profile.get("omp")
-        omp_model = omp.get("model") if isinstance(omp, dict) else None
-        route = omp_model.split("/", 1)[0] if isinstance(omp_model, str) else None
-        if route in OMP_RETIRED_ROUTES:
-            fail(
-                f"{manifest_path} model profile {name}.omp.model names the retired {route} route; "
-                f"use claude-bridge, openai-siwc or anthropic: {omp_model!r}"
-            )
-        if not isinstance(omp_model, str) or not OMP_MODEL_RE.fullmatch(omp_model):
-            fail(f"{manifest_path} model profile {name}.omp.model must match {OMP_MODEL_RE.pattern}: {omp_model!r}")
+    # INV-7 (operator decision 2026-10-13, plan 007 T717): the Claude review profile is the deep profile's model and
+    # effort, so review independence rests on a fresh context, not a different model.
+    for key in ("model", "effort"):
+        if profiles["review"]["claude"].get(key) != profiles["deep"]["claude"].get(key):
+            fail(f"{manifest_path} review profile claude.{key} must equal deep's (INV-7)")
     validate_omp_interactive_provider(manifest_path, manifest)
     if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):
         fail(f"{manifest_path} must keep model settings in model_profiles only")
@@ -1072,8 +1180,9 @@ def validate_agent_manifest() -> dict[str, Any]:
         if agents.get("claude"):
             # Claude Code reads user-scope MCP servers from ~/.claude.json, which this repo does not manage.
             fail(f"MCP server {name} cannot target claude: add it with `claude mcp add --scope user`")
-        if {agent for agent, enabled in agents.items() if enabled} != targets - {"claude"}:
-            fail(f"MCP server {name} must be exposed to every target agent except claude")
+        # The generator renders MCP servers into the Codex config only (render_codex: enabled_for(server, "codex")).
+        if {agent for agent, enabled in agents.items() if enabled} != {"codex"}:
+            fail(f"MCP server {name} must be exposed to Codex, the one agent whose MCP config this repo renders")
         transport = server.get("transport")
         if transport == "stdio":
             if not server.get("command"):
@@ -1147,7 +1256,17 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
             fail(f"{path} must preserve hook trust state for the {name} profile")
 
 
-def validate_crit_install_assets() -> None:
+def standing_rule_text(manifest: dict[str, Any], agent: str) -> str:
+    """The rule sources generate-agent-configs.py renders for one audience, in manifest order."""
+    section = manifest.get("standing_rules", {})
+    source_dir = ROOT / section.get("source_dir", "")
+    names = [name for name, audience in section.get("rules", {}).items() if agent in audience]
+    if not names:
+        fail(f"standing_rules declares no rule for {agent}")
+    return "\n".join((source_dir / f"{name}.md").read_text() for name in names)
+
+
+def validate_crit_install_assets(manifest: dict[str, Any]) -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
         "crit-darwin-amd64",
@@ -1159,7 +1278,7 @@ def validate_crit_install_assets() -> None:
     ):
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in (
         "$crit",
         "Crit plugin",
@@ -1168,7 +1287,7 @@ def validate_crit_install_assets() -> None:
         "http://localhost",
     ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Codex Crit rule token {token!r}")
 
 
 def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) -> None:
@@ -1205,10 +1324,10 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         if not hook_state.get(key, {}).get("trusted_hash", "").startswith("sha256:"):
             fail(f"home/.chezmoitemplates/codex-config-managed.toml must render trusted Ponytail hook state for {key}")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("Ponytail", "/hooks", "ponytail@ponytail", "YAGNI", "stdlib"):
+    codex_agents = standing_rule_text(manifest, "codex")
+    for token in ("Ponytail", "ponytail@ponytail", "YAGNI", "standard library"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Ponytail token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Ponytail token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/ponytail.md"
     if not claude_rule.exists():
@@ -1224,10 +1343,8 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         if token not in claude_rule_text:
             fail(f"{claude_rule} must document Ponytail token {token!r}")
 
-    claude_symlink = ROOT / "home/dot_claude/rules/symlink_ponytail.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/ponytail.md\n"
-    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
-        fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
+    if "claude" not in manifest.get("standing_rules", {}).get("rules", {}).get("ponytail", []):
+        fail("standing_rules.rules.ponytail must reach claude")
 
     readme = (ROOT / "README.md").read_text()
     for token in (
@@ -1240,7 +1357,7 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
-def validate_understand_anything_assets() -> None:
+def validate_understand_anything_assets(manifest: dict[str, Any]) -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
         "Egonex-AI/Understand-Anything",
@@ -1260,7 +1377,7 @@ def validate_understand_anything_assets() -> None:
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in (
         "Understand-Anything",
         "$understand",
@@ -1269,7 +1386,7 @@ def validate_understand_anything_assets() -> None:
         ".ua/diff-overlay.json",
     ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Understand-Anything token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/understand-anything.md"
     if not claude_rule.exists():
@@ -1286,10 +1403,8 @@ def validate_understand_anything_assets() -> None:
         if token not in claude_rule_text:
             fail(f"{claude_rule} must document Understand-Anything token {token!r}")
 
-    claude_symlink = ROOT / "home/dot_claude/rules/symlink_understand-anything.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
-    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
-        fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
+    if "claude" not in manifest.get("standing_rules", {}).get("rules", {}).get("understand-anything", []):
+        fail("standing_rules.rules.understand-anything must reach claude")
 
     readme = (ROOT / "README.md").read_text()
     for token in (
@@ -1320,14 +1435,14 @@ def validate_permgate_policy(policy_path: Path) -> None:
 
 
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
-    codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
+    codex_path = ROOT / manifest["codex"]["config_path"]
     codex_text = render_template_text(codex_path)
     if "hooks.PermissionRequest" not in codex_text or "permgate codex" not in codex_text:
         fail(f"{codex_path} must wire the permgate PermissionRequest hook")
     if "ccgate" in codex_text:
         fail(f"{codex_path} must not wire ccgate")
 
-    claude_settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+    claude_settings_path = ROOT / manifest["claude"]["settings_path"]
     claude_settings = json.loads(render_template_text(claude_settings_path))
     claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
     if "PermissionRequest" not in claude_hooks or "permgate claude" not in claude_hooks:
@@ -1378,10 +1493,10 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     if not express_agent.exists() or "model:" not in express_agent.read_text():
         fail(f"{express_agent} must define the low-cost explorer subagent")
 
-    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    codex_agents = standing_rule_text(manifest, "codex")
     for token in ("model_profiles", "--profile standard", "model-profiles.env"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document model profile token {token!r}")
+            fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document model profile token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/model-selection.md"
     if not claude_rule.exists():
@@ -1889,19 +2004,18 @@ def main() -> None:
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()
-    validate_claude_skill_parity()
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
     validate_omp_policies(manifest)
     validate_repo_claude_settings_portable()
     validate_compactiondb_project_copy()
-    validate_codex_plugins()
+    validate_codex_plugins(manifest)
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)
     validate_mcp_parity(codex, manifest)
-    validate_crit_install_assets()
+    validate_crit_install_assets(manifest)
     validate_ponytail_assets(manifest, codex)
-    validate_understand_anything_assets()
+    validate_understand_anything_assets(manifest)
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

@@ -43,6 +43,10 @@ class HcomSeatTest(unittest.TestCase):
         for role in ("orchestrator", "worker", "audit"):
             (self.policies / f"{role}.yml").write_text("tools: {}\n")
             (self.profiles / f"{role}.yml").write_text("modelRoles: {}\n")
+        self.rules = self.home / ".agents/omp/rules"
+        self.rules.mkdir(parents=True)
+        for role in ("orchestrator", "worker"):
+            (self.rules / f"{role}.md").write_text("## Regime\n")
         self.bridge = self.home / ".local/lib/omp-extensions/pi-claude-bridge"
         self.siwc = self.home / ".agents/omp/extensions/openai-siwc"
         self.gate = self.home / ".agents/omp/hooks"
@@ -97,6 +101,7 @@ class HcomSeatTest(unittest.TestCase):
         return [
             "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--go", "--",
             "--profile", role, "--config", str(self.policies / f"{role}.yml"), "--config", str(self.profiles / f"{role}.yml"),
+            "--append-system-prompt", str(self.rules / f"{role}.md"),
             *(flag for ext in (*exts, self.gate) for flag in ("-e", str(ext))), "--hcom-team", team,
         ]  # fmt: skip
 
@@ -408,6 +413,19 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("profile overlay absent", run.stderr)
+        (self.profiles / "orchestrator.yml").write_text("modelRoles: {}\n")
+        # U75: the seat's standing rules ride --append-system-prompt; omp reads a missing path as literal text, so an
+        # absent or empty rules file is refused before anything starts.
+        for content in (None, ""):
+            with self.subTest(rules=content):
+                rules = self.rules / "orchestrator.md"
+                rules.unlink()
+                if content is not None:
+                    rules.write_text(content)
+                run = self.seat("orchestrator", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"standing rules absent or empty: {rules}", run.stderr)
+                rules.write_text("## Regime\n")
         shutil.rmtree(self.bridge)
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)

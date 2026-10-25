@@ -314,11 +314,9 @@ herdr server reload-config" ]
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
-    grep -q 'crit status --json' home/dot_config/codex/AGENTS.md
-    grep -q 'crit comments --all --json <review.json>' home/dot_config/codex/AGENTS.md
-    grep -q '作業手順の証跡' home/dot_config/codex/AGENTS.md
-    grep -q 'レビュー実施者を認証するものではありません' home/dot_config/codex/AGENTS.md
-    ! grep -q 'crit comments --json' home/dot_config/codex/AGENTS.md
+    grep -q 'dot_config/claude/rules/codex.md' home/dot_codex/AGENTS.md.tmpl
+    grep -q 'CRIT_PLAN_REVIEW=off' home/dot_config/claude/rules/codex.md
+    ! grep -q 'crit comments --all --json' home/dot_config/claude/rules/codex.md
 }
 
 @test "[common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex" {
@@ -335,7 +333,7 @@ herdr server reload-config" ]
     grep -q 'update_codex_ponytail' scripts/update-agent-assets.sh
     grep -q 'PONYTAIL_DEFAULT_MODE' scripts/update-agent-assets.sh
     grep -q 'ponytail@ponytail' home/.chezmoitemplates/codex-config-managed.toml
-    grep -q 'Ponytail' home/dot_config/codex/AGENTS.md
+    grep -q 'dot_config/claude/rules/ponytail.md' home/dot_codex/AGENTS.md.tmpl
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
@@ -357,10 +355,10 @@ herdr server reload-config" ]
     grep -q 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact' scripts/update-agent-assets.sh
     grep -q 'update_claude_understand_anything' scripts/update-agent-assets.sh
     grep -q 'update_codex_understand_anything' scripts/update-agent-assets.sh
-    grep -q 'Understand-Anything' home/dot_config/codex/AGENTS.md
-    grep -q '\$understand' home/dot_config/codex/AGENTS.md
+    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_codex/AGENTS.md.tmpl
+    grep -q '\$understand' home/dot_config/claude/rules/understand-anything.md
     grep -q 'understand-anything@understand-anything' home/dot_config/claude/rules/understand-anything.md
-    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_claude/rules/symlink_understand-anything.md.tmpl
+    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_claude/rules/understand-anything.md.tmpl
     grep -q 'understand-anything@understand-anything' README.md
     grep -q 'validate_understand_anything_assets' scripts/validate-agent-assets.py
 }
@@ -396,7 +394,7 @@ herdr server reload-config" ]
     grep -q 'MODEL_PROFILE_INTERACTIVE' home/dot_agents/model-profiles.env
     grep -q 'model:' home/dot_claude/agents/express-explorer.md
     grep -q 'model_profiles' home/dot_config/claude/rules/model-selection.md
-    grep -q 'model_profiles' home/dot_config/codex/AGENTS.md
+    grep -q 'dot_config/claude/rules/model-selection.md' home/dot_codex/AGENTS.md.tmpl
 }
 
 @test "[common] README documents setup update and doctor lifecycle" {

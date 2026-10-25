@@ -1,7 +1,9 @@
 # Canonical AI-agent configuration managed by chezmoi.
 #
-# This file is the single source of truth for Codex and Claude Code.
-# Agent-native files are generated from this manifest by scripts/generate-agent-configs.py.
+# This file is the single source of truth for Codex, Claude Code and omp.
+# Agent-native files are generated from this manifest by scripts/generate-agent-configs.py, which also lists every
+# file it renders; `--check`, validate-agent-assets.py and make doctor fail on a file in a generated directory that
+# this manifest does not render.
 #
 # Best-practice rules encoded here:
 # - Define one shared capability catalog and render native adapters for every agent.
@@ -12,12 +14,58 @@
 
 schema_version: 1
 
-target_agents:
-  - codex
-  - claude
-
-skills:
-  canonical_dir: ~/.agents/skills
+# Standing rules: the user-level instructions every session of an agent starts with. Each rule is one
+# Markdown file, source_dir/<name>.md, and reaches exactly the agents its audience names; every file in
+# source_dir is declared here and nothing else renders to an agent (scripts/generate-agent-configs.py).
+# The rendered files include the source at chezmoi apply time, so a checkout alone changes no agent's
+# instructions:
+# - claude: ~/.claude/rules/<name>.md, one file per rule (Claude Code loads every file there).
+# - codex: ~/.codex/AGENTS.md, the codex rules in the order below.
+# - omp-<role>: ~/.agents/omp/rules/<role>.md, which hcom-seat and omp-run.sh pass as
+#   `--append-system-prompt` (omp docs system-prompt-customization.md). The seat overlays disable the
+#   native provider (seat_disabled_providers), so no profile context file loads, and omp reads no
+#   ~/.claude rule and no ~/.codex file; the explicit flag also wins over any project APPEND_SYSTEM.md.
+#   The audit role takes none: its rules are origin/main AGENTS.md alone.
+# A rule with front matter (Claude's `paths:` scoping) is Claude-only; the generator refuses it elsewhere.
+standing_rules:
+  source_dir: home/dot_config/claude/rules
+  rules:
+    codex: [codex]
+    regime: [claude, omp-orchestrator, omp-worker]
+    model-selection: [claude, codex, omp-orchestrator, omp-worker]
+    compactiondb: [claude, codex, omp-orchestrator, omp-worker]
+    ponytail: [claude, codex]
+    understand-anything: [claude, codex]
+    ask-user-question: [claude]
+    project-map: [claude]
+    python: [claude]
+    gpu: [claude]
+    latex: [claude]
+  # pstack's per-role models in Claude Code: ~/.claude/rules/pstack-models.md, the file the pstack Claude
+  # Code adapter (~/.agents/docs/harness/claude-code.md "Models") reads in place of Cursor's
+  # ~/.cursor/rules/pstack-models.mdc. A role names a model_profiles entry, rendered as `<alias> <effort>`
+  # from its claude model and effort, or inherit-parent / auto (the parent chat model); a list is a panel.
+  # setup-pstack's own write to that file is replaced at the next chezmoi apply: change the roles here.
+  pstack_models:
+    budget: large (xhigh)
+    roles:
+      feature, refactoring: inherit-parent
+      bug-fix: inherit-parent
+      perf-issue: inherit-parent
+      hillclimb: inherit-parent
+      judgment and prose: standard
+      hardest tasks: standard
+      how explorer: inherit-parent
+      how explainer: standard
+      why investigators: inherit-parent
+      why synthesizer: standard
+      reflect tooling: inherit-parent
+      reflect judgment, divergent, synthesizer: standard
+      arena runners: [standard, inherit-parent]
+      arena cross-judge pool: [standard, inherit-parent]
+      swarm workers: inherit-parent
+      architect runners: [standard, inherit-parent]
+      interrogate reviewers: [standard, inherit-parent]
 
 # omp seats load skills from these roots through skills.customDirectories in
 # ~/.omp/agent/config.yml (docs/omp-skills.md). omp 18.11.3 also scans
@@ -32,6 +80,12 @@ omp:
   # file; hcom-seat passes their extensions with -e (docs/pi-claude-bridge.md).
   extensions:
     - ~/.local/lib/omp-extensions/pi-claude-bridge
+  # The omp model provider each extension directory registers; a model route missing here is
+  # omp-builtin (anthropic). validate-agent-assets.py requires every directory here and in
+  # omp.extensions to be one of claude.levers.extensions, the seats' only -e directories.
+  extension_providers:
+    claude-bridge: ~/.local/lib/omp-extensions/pi-claude-bridge
+    openai-siwc: ~/.agents/omp/extensions/openai-siwc
   # omp providers each seat overlay and the plain-launch config switch off as disabledProviders
   # (regime-cutover U22). openai-codex is the retired route: disabled, no stored OAuth session
   # makes it selectable (omp docs/providers.md).
@@ -130,31 +184,33 @@ omp:
 # settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
 # ~/.agents/model-profiles.env for launchers. Keep main-session models fixed
 # within a session; switching models mid-session invalidates the prompt cache.
+# omp.effort is the seat's thinking level, rendered as defaultThinkingLevel into each role overlay
+# (~/.agents/omp/profiles/<role>.yml); it follows the effort of the vendor the omp model routes to.
 model_profiles:
   express:
     claude: { model: haiku, effort: low }
     codex: { model: gpt-5.6-luna, model_reasoning_effort: low }
-    omp: { model: "claude-bridge/claude-haiku-5-5" }
+    omp: { model: "claude-bridge/claude-haiku-5-5", effort: low }
   standard:
     claude: { model: claude-opus-5-5, effort: xhigh, advisor: fable }
     codex:
       model: gpt-6.1-sol
       model_reasoning_effort: xhigh
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "claude-bridge/claude-opus-5-5" }
+    omp: { model: "claude-bridge/claude-opus-5-5", effort: xhigh }
   review:
     # Review independence rests on a fresh context, not a stronger model (operator decision 2026-10-13, plan 007 T717);
     # INV-7: the Claude review profile is the same model and effort as deep.
     claude: { model: claude-fable-5-1, effort: xhigh }
     codex: { model: gpt-6.1-sol, model_reasoning_effort: xhigh }
-    omp: { model: "claude-bridge/claude-fable-5-1" }
+    omp: { model: "claude-bridge/claude-fable-5-1", effort: xhigh }
   deep:
     claude: { model: claude-fable-5-1, effort: xhigh, advisor: fable }
     codex:
       model: gpt-6.1-sol
       model_reasoning_effort: xhigh
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "claude-bridge/claude-fable-5-1" }
+    omp: { model: "claude-bridge/claude-fable-5-1", effort: xhigh }
   security:
     # Security-audit tier: specialist model for auditing pending changes. An audit reads
     # the changes and reports; it never edits, so it runs read-only like the audit tier.
@@ -165,7 +221,7 @@ model_profiles:
       model_reasoning_effort: high
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "openai-siwc/gpt-6-astra" }
+    omp: { model: "openai-siwc/gpt-6-astra", effort: high }
   audit:
     # Auditor tier (監査役): cross-vendor read-only audit of worker changesets
     # at xhigh reasoning effort (operator pin 2026-10-09, T115).
@@ -175,7 +231,7 @@ model_profiles:
       model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
-    omp: { model: "openai-siwc/gpt-6-astra" }
+    omp: { model: "openai-siwc/gpt-6-astra", effort: xhigh }
 interactive_profile: deep
 
 codex:
@@ -417,9 +473,11 @@ claude:
   # ~/.agents/omp/policies, never by a claude.permissions rule. omp-run.sh is
   # the one-turn omp runner the audit path uses (U66): installed and
   # self-checked the same way, so every repository runs the same pinned copy.
+  # pr-merge.sh is the orchestrator's only merge path (a `correct` ledger row
+  # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: 43f5f617ecac078bb62cfd0a1d77686e80f4fc486a2d40a689f94439b8092309
+      hcom-seat: 0294ae3e5f52980e5b4737cae61b7bb78ea96c4437d2d9caad0d0143ddad17ba
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -430,12 +488,13 @@ claude:
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
       pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
-      pr-update-branch.sh: 7892eecf70f1ffacc8045f8b016f7d0efde68ab44fa734ba0ca0f606bdac075f
+      pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf
+      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
-      omp-run.sh: dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e
+      pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
+      omp-run.sh: 3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

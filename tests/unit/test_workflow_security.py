@@ -14,6 +14,8 @@ EXPECTED_PERMISSIONS = {
     "agent-assets.yml": {"contents": "read"},
     "docs-check.yml": {"contents": "read"},
     "docs.yml": {"contents": "write"},
+    # U81: the drift watch keeps its one tracking issue; it runs on schedule and dispatch only.
+    "drift-watch.yml": {"contents": "read", "issues": "write"},
     "macos.yaml": {"contents": "read"},
     "private-bootstrap.yaml": {"contents": "read"},
     "regime.yml": {"contents": "read"},

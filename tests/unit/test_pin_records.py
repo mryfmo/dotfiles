@@ -104,6 +104,55 @@ class PinRecordsTest(unittest.TestCase):
         self.refused(lambda: records.load_claude_installs(self.write("i.json", {"plugins": []})), "plugins")
         self.refused(lambda: records.load_claude_installs(self.write("i.json", "{truncated")), "not JSON")
 
+    # Audit round 23: a record value joined into a path replaced the root (absolute) or left it (`..`).
+    BAD_COMPONENTS = ("/abs", "..", "a/b", "", ".")
+
+    def test_no_record_value_used_as_a_path_component_can_leave_its_root(self) -> None:
+        cache = self.dir / "cache"
+
+        def claude_install(plugin: str, marketplace: str, version: str):
+            # installPath is what a plain join of the record's own fields gives, so only confinement refuses it.
+            install_path = str(cache / marketplace / plugin / version)
+            data = {
+                "plugins": {
+                    f"{plugin}@{marketplace}": [{"scope": "user", "version": version, "installPath": install_path}]
+                }
+            }
+            return lambda: records.load_claude_installs(self.write("i.json", data))
+
+        cases = {
+            "installed_plugins.json version": lambda bad: claude_install("crit", "crit", bad),
+            "installed_plugins.json plugin": lambda bad: claude_install(bad, "crit", "1.8.14"),
+            "installed_plugins.json marketplace": lambda bad: claude_install("crit", bad, "1.8.14"),
+            "gh extension name": lambda bad: lambda: records.load_gh_extension(self.dir / "gh", f"seachicken/{bad}"),
+            "gh extension owner": lambda bad: lambda: records.load_gh_extension(self.dir / "gh", f"{bad}/gh-poi"),
+            "Codex version directory": lambda bad: lambda: records.confined(cache, "(version directory)", cache, bad),
+        }
+        (self.dir / "gh/extensions").mkdir(parents=True)
+        for field_name, make in cases.items():
+            for bad in self.BAD_COMPONENTS:
+                with self.subTest(field=field_name, value=bad):
+                    with self.assertRaises(records.RecordError):
+                        make(bad)()
+        # The pins' own ids reach the doctor's Codex cache and marketplace paths: each refused, never "absent".
+        spec = importlib.util.spec_from_file_location(
+            "check_agent_runtime_paths", ROOT / "scripts/check-agent-runtime.py"
+        )
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        home = self.dir / "home"
+        (home / ".codex").mkdir(parents=True)
+        for part in ("plugin", "marketplace"):
+            for bad in self.BAD_COMPONENTS:
+                with self.subTest(field=f"codex pin {part}", value=bad):
+                    plugin_id = f"{bad}@tail" if part == "plugin" else f"tail@{bad}"
+                    pins = {plugin_id: checker.records.Pin("https://example.invalid/tail.git", "5.0.0", COMMIT)}
+                    findings = checker.codex_plugin_pin_findings(home, pins, MODIFY)
+                    self.assertTrue([f for f in findings if "is not one path component" in f], findings)
+                    self.assertFalse([f for f in findings if checker.is_warning(f)], findings)
+        # A strict component still joins.
+        self.assertEqual(cache / "crit" / "1.8.14+build", records.confined(cache, "x", cache, "crit", "1.8.14+build"))
+
     def test_claude_enabled(self) -> None:
         self.assertEqual(
             {"crit@crit": False},

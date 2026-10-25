@@ -29,7 +29,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+# One path component taken from record data (see confined): it starts with a letter or digit, so it is never
+# empty, `.`, `..` or absolute, and holds no separator.
+COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
 PLUGIN_ID = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)@([A-Za-z0-9][A-Za-z0-9._-]*)$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -142,6 +144,21 @@ def plugin_parts(record: object, label: str, plugin_id: str) -> Tuple[str, str]:
     return match.group(1), match.group(2)
 
 
+def confined(record: object, label: str, root: Path, *parts: object) -> Path:
+    """ROOT joined with PARTS taken from record data, each one strict COMPONENT.
+
+    The join is refused unless its components are exactly ROOT's followed by PARTS, so no record value can
+    replace ROOT (an absolute value), climb out of it (`..`) or reach a deeper directory (`a/b`).
+    """
+    for part in parts:
+        if type(part) is not str or not COMPONENT.fullmatch(part):
+            raise RecordError(record, label, f"{part!r} is not one path component")
+    joined = root.joinpath(*parts)
+    if joined.parts != (*root.parts, *parts):
+        raise RecordError(record, label, f"{str(joined)!r} is not {str(root)!r} plus {list(parts)!r}")
+    return joined
+
+
 # --- agent homes ----------------------------------------------------------------------------------------------
 
 
@@ -249,7 +266,8 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
                 raise RecordError(path, f"{where}scope", f"{scope!r} is not one of {CLAUDE_SCOPES}")
             version = field(path, entry, "version", str, where)
             install_path = field(path, entry, "installPath", str, where)
-            expected = path.parent / "cache" / marketplace / plugin / version
+            plugin_dir = confined(path, f"plugins.{plugin_id}", path.parent / "cache", marketplace, plugin)
+            expected = confined(path, f"{where}version", plugin_dir, version)
             if Path(install_path) != expected:
                 raise RecordError(path, f"{where}installPath", f"{install_path!r} is not {str(expected)!r}")
             project = field(path, entry, "projectPath", str, where) if scope in ("project", "local") else None
@@ -359,7 +377,7 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
     if not versions:
         raise RecordError(root, "(directory)", "holds no version directory")
     active = "local" if "local" in versions else max(versions, key=functools.cmp_to_key(compare))
-    manifest_path = root / active / ".codex-plugin/plugin.json"
+    manifest_path = confined(root, "(version directory)", root, active) / ".codex-plugin/plugin.json"
     manifest = load_json(manifest_path)
     if manifest is ABSENT:
         raise RecordError(manifest_path, "(file)", "is missing")
@@ -449,8 +467,10 @@ def load_gh_extension(gh_dir: Path, repository: str) -> Optional[GhExtension]:
     ispinned and path are required; owner/name must be REPOSITORY and host github.com, so a fork's copy of
     the same name is foreign. A directory without a readable manifest cannot be verified and raises.
     """
+    if not REPOSITORY.fullmatch(repository):
+        raise RecordError(gh_dir, "repository", f"{repository!r} is not <owner>/<repository>")
     owner, name = repository.split("/", 1)
-    directory = gh_dir / "extensions" / name
+    directory = confined(gh_dir, "repository", gh_dir / "extensions", name)
     if not present(directory):
         return None
     manifest = directory / "manifest.yml"
@@ -470,8 +490,9 @@ def load_gh_extension(gh_dir: Path, repository: str) -> Optional[GhExtension]:
             raise RecordError(manifest, key, "is missing")
     if (values["owner"], values["name"]) != (owner, name):
         raise RecordError(manifest, "owner/name", f"{values['owner']}/{values['name']} is not {repository}")
-    if Path(values["path"]) != directory / name:
-        raise RecordError(manifest, "path", f"{values['path']!r} is not {str(directory / name)!r}")
+    binary = confined(manifest, "path", directory, name)
+    if Path(values["path"]) != binary:
+        raise RecordError(manifest, "path", f"{values['path']!r} is not {str(binary)!r}")
     if values["host"] != "github.com":
         raise RecordError(manifest, "host", f"{values['host']!r} is not github.com")
     if re.search(r"\s", values["tag"]):

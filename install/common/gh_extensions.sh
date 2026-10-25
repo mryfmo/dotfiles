@@ -84,6 +84,12 @@ function replace_gh_extension() {
     local extension="$1" pin="$2"
     local reader gh_dir root current previous
 
+    # Its name becomes a directory under gh's extensions directory that is moved and removed: one strict
+    # component only (pin_records.py COMPONENT), never empty, `.`, `..` or another path.
+    if ! [[ ${extension} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        printf 'ERROR: %s is not <owner>/<repository>; nothing was changed.\n' "${extension}" >&2
+        return 1
+    fi
     # gh's extension directory, resolved as make doctor resolves it (pin_records.py agent-home gh).
     if ! reader="$(pin_records_path)" || ! gh_dir="$(python3 -I "${reader}" agent-home gh)"; then
         printf 'Cannot resolve the gh extension directory; %s was not changed.\n' "${extension}" >&2

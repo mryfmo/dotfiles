@@ -1139,6 +1139,33 @@ claude() {
         self.assertFalse((directory.parent / ".gh-poi.previous").exists())
         self.assertFalse([call for call in calls if call.startswith("extension remove")], calls)
 
+    def test_a_gh_extension_name_that_is_not_one_component_changes_nothing(self):
+        # Audit round 23 (the same rule in shell): the name is moved aside and removed under gh's directory.
+        work = Path(tempfile.mkdtemp(prefix="gh-component-"))
+        self.addCleanup(shutil.rmtree, work)
+        canary = work / "home/.local/share/gh/extensions/keep"
+        canary.mkdir(parents=True)
+        for bad in ("seachicken/..", "seachicken/.", "seachicken/", "/abs", "seachicken/a/b", "../gh-poi"):
+            with self.subTest(repository=bad):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; set +e; gh() { printf "%s\\n" "$*" >> "${WORK}/calls"; }; replace_gh_extension "$2" v1; echo "rc=$?"',
+                        "bash",
+                        str(ROOT / "install/common/gh_extensions.sh"),
+                        bad,
+                    ],
+                    env=os.environ | scratch_env(work / "home") | {"WORK": str(work)},
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertIn("is not <owner>/<repository>", result.stderr)
+                self.assertTrue(canary.is_dir())
+                self.assertFalse((work / "calls").exists())
+
     def test_a_gh_extension_is_kept_pinned_at_its_tag(self):
         pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["gh_extensions"]["seachicken/gh-poi"]
         reinstall = [f"extension install seachicken/gh-poi --pin {pin}"]

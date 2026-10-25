@@ -871,15 +871,18 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
         return [f"Codex plugins: {error}; plugin pins not checked"]
     for plugin_id, pin in sorted(pins.items()):
         plugin, _, marketplace = plugin_id.partition("@")
-        root = codex_dir / "plugins/cache" / marketplace / plugin
         try:
+            root = records.confined(PLUGIN_PINS, f"codex.{plugin_id}", codex_dir / "plugins/cache", marketplace, plugin)
             copy = records.load_codex_copy(root, plugin, script)
         except RecordError as error:
             findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify its pin")
             continue
         if pin.ref is not None:
-            install_record = codex_dir / ".tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
             try:
+                install_record = (
+                    records.confined(PLUGIN_PINS, f"codex.{plugin_id}", codex_dir / ".tmp/marketplaces", marketplace)
+                    / ".codex-marketplace-install.json"
+                )
                 install = records.load_marketplace_install(install_record, pin.marketplace)
                 clone_present = present(install_record.parent)
                 if config is not None and marketplace in config.marketplaces:
@@ -906,8 +909,8 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
                 "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
             )
         # The commit a git copy was installed from, resolved by git itself (HEAD is often `ref: refs/heads/main`).
-        git_dir = root / copy.version_dir / ".git"
         try:
+            git_dir = records.confined(root, "(version directory)", root, copy.version_dir) / ".git"
             has_git = pin.ref is not None and present(git_dir)
         except RecordError as error:
             findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify the commit its copy came from")
@@ -931,7 +934,7 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
                 )
             elif commit != pin.ref:
                 findings.append(
-                    f"Codex plugin {plugin_id} copy {root / copy.version_dir} was installed from {commit}, "
+                    f"Codex plugin {plugin_id} copy {git_dir.parent} was installed from {commit}, "
                     f"not the pinned ref {pin.ref}"
                 )
     for plugin_id, on in sorted((config.plugins if config else {}).items()):

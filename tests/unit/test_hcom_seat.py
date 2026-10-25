@@ -8,6 +8,7 @@ the three extension directories (the two routes and the stop gate's); the cwd is
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -967,6 +968,90 @@ class HcomSeatTest(unittest.TestCase):
                     env={**os.environ, "JQ_ENTRY_STATUS": str(status)}, capture_output=True, text=True, check=False,
                 )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (0 if status == 0 else 1, ""), run.stderr)
+
+    def test_a_failing_header_read_refuses_instead_of_skipping_the_interpreter(self):
+        """U85 round 17: pin_exec reads a file's first bytes and its interpreter line with checked producers (head,
+        under pipefail); a producer that prints a plausible answer and fails refuses, never reads as a file without `#!`. The
+        git-state reads go through first_line, which fails the same way."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "first_line", "pin_exec")
+        )
+        scratch = Path(self.temp.name).resolve()
+        counter = scratch / "head-calls"
+        fake_head = scratch / "fake-head"
+        fake_head.write_text(
+            "#!/bin/sh\n"
+            f"n=$(cat {shlex.quote(str(counter))}); echo $((n + 1)) > {shlex.quote(str(counter))}\n"
+            'if [ "$n" = "${HEAD_FAIL_AT:--1}" ]; then printf \'#!/bin/sh\\n\'; exit 7; fi\n'
+            'exec /usr/bin/head "$@"\n'
+        )
+        fake_head.chmod(0o755)
+        functions = functions.replace("/usr/bin/head", str(fake_head))
+        stubs = (
+            "refuse_if_link_chain_writable() { :; }\nrefuse_if_seat_writable() { :; }\n"
+            "physical_file() { printf '%s\\n' \"$1\"; }\nfind_on_path() { return 1; }\n"
+        )
+        target = scratch / "tool"
+        target.write_text("#!/bin/sh\nexit 0\n")
+        cases = (
+            ("passes", {}, 'pin_exec tool "$1"; printf \'%s \' "${pinned[@]}"', 0, "/bin/sh " + str(target) + " "),
+            ("file bytes", {"HEAD_FAIL_AT": "0"}, 'pin_exec tool "$1"', 2, "cannot read tool"),
+            ("interpreter line", {"HEAD_FAIL_AT": "1"}, 'pin_exec tool "$1"', 2, "cannot read the interpreter line"),
+            (
+                "interpreter bytes",
+                {"HEAD_FAIL_AT": "2"},
+                'pin_exec tool "$1"',
+                2,
+                "cannot read the interpreter of tool",
+            ),
+            (
+                "first_line",
+                {"HEAD_FAIL_AT": "0"},
+                'first_line "$1" || refuse first_line failed',
+                2,
+                "first_line failed",
+            ),
+        )
+        for label, env, call, status, expected in cases:
+            with self.subTest(label):
+                counter.write_text("0\n")
+                script = f"set -euo pipefail\n{functions}\n{stubs}\n{call}\n"
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script, "_", str(target)], env={**os.environ, **env},
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, status, run.stdout + run.stderr)
+                self.assertIn(expected, run.stdout if status == 0 else run.stderr)
+        with self.subTest("a real read error"):
+            script = f'set -euo pipefail\n{functions}\n{stubs}\npin_exec tool "$1"\n'
+            run = subprocess.run(
+                ["/bin/bash", "-c", script, "_", str(scratch)], capture_output=True, text=True, check=False
+            )
+            self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+            self.assertIn(f"cannot read tool: {scratch}", run.stderr)
+
+    def test_no_file_read_or_command_status_is_masked(self):
+        """U85 round 17: hcom-seat passes ShellCheck with check-extra-masked-returns (SC2312) and
+        require-variable-braces, and reads no file with `read < file`, whose failure a `||` fallback can mask (file
+        reads go through a checked producer such as first_line). Both are checked here so the class cannot return."""
+        for path in (SEAT, ROOT / "home/dot_local/bin/common/executable_hcom-seat"):
+            with self.subTest(path=path.name):
+                masked = [
+                    f"{number}: {line.strip()}"
+                    for number, line in enumerate(path.read_text().splitlines(), 1)
+                    if not line.lstrip().startswith("#") and re.search(r"\bread\b[^<#]*<\s*[^<(\s]", line)
+                ]
+                self.assertEqual(masked, [])
+                shellcheck = shutil.which("shellcheck")
+                if shellcheck is None:
+                    self.skipTest("shellcheck is not installed here")
+                run = subprocess.run(
+                    [shellcheck, "-x", "-o", "check-extra-masked-returns,require-variable-braces", str(path)],
+                    cwd=ROOT, capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
     def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
         """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout

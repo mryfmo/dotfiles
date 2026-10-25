@@ -246,13 +246,29 @@ def validate_skills() -> None:
                 fail(f"{openai_yaml} must be a mapping")
 
 
-def validate_skill_audience(manifest: dict[str, Any]) -> None:
+# The home the overlays' {{ .chezmoi.homeDir }} is read as when validate_skill_audience parses them.
+SKILL_CONFIG_HOME = "/validator-home"
+
+
+def rendered_omp_skill_configs(manifest: dict[str, Any]) -> dict[str, Path]:
+    """Each omp consumer's rendered config: the plain-launch template and one overlay per omp.roles entry."""
+    rendered = {"omp": ROOT / "home/.chezmoitemplates/omp-config-managed.yml"}
+    rendered |= {
+        f"omp-{role}": ROOT / f"home/dot_agents/omp/profiles/{role}.yml.tmpl"
+        for role in generator().omp_roles(manifest)
+    }
+    return rendered
+
+
+def validate_skill_audience(manifest: dict[str, Any], omp_configs: dict[str, Any] | None = None) -> None:
     """Parse each rendered agent config and refuse one that would list a skill outside its skills.audience.
 
     Codex: the managed baseline's `[[skills.config]]` entries are exactly one `enabled = false` per ~/.agents/skills
     skill that leaves out Codex, by its SKILL.md path. omp: each role overlay and the plain-launch config carry the
     consumer's skill settings (skills.enabled false, or the roots and skills.ignoredSkills). Claude Code: a
-    ~/.claude/skills link exists only for a skill that names it.
+    ~/.claude/skills link exists only for a skill that names it. `omp_configs` maps each consumer to its parsed
+    config (its {{ .chezmoi.homeDir }} read as SKILL_CONFIG_HOME); without it the files are read here, which needs
+    PyYAML.
     """
     gen = generator()
     declared, _, _ = gen.skill_audiences(manifest)
@@ -264,13 +280,17 @@ def validate_skill_audience(manifest: dict[str, Any]) -> None:
     ]
     if entries != expected:
         fail(f"{manifest['codex']['config_path']} [[skills.config]] must disable exactly {expected}: {entries}")
-    rendered = {"omp": ROOT / "home/.chezmoitemplates/omp-config-managed.yml"}
-    rendered |= {
-        f"omp-{role}": ROOT / f"home/dot_agents/omp/profiles/{role}.yml.tmpl" for role in gen.omp_roles(manifest)
-    }
-    home = "/validator-home"
+    rendered = rendered_omp_skill_configs(manifest)
+    if omp_configs is None:
+        if yaml is None:
+            fail("PyYAML is required to read the rendered omp configs")
+        omp_configs = {
+            consumer: yaml.safe_load(path.read_text().replace("{{ .chezmoi.homeDir }}", SKILL_CONFIG_HOME))
+            for consumer, path in rendered.items()
+        }
+    home = SKILL_CONFIG_HOME
     for consumer, path in rendered.items():
-        parsed = yaml.safe_load(path.read_text().replace("{{ .chezmoi.homeDir }}", home)) if yaml else None
+        parsed = omp_configs.get(consumer)
         skills = parsed.get("skills") if isinstance(parsed, dict) else None
         settings = gen.omp_skill_settings(manifest, consumer)
         if settings["enabled"]:

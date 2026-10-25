@@ -279,6 +279,30 @@ class PinRecordsTest(unittest.TestCase):
         self.write("data/gh/extensions/gh-poi/gh-poi", "binary")
         self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), "cannot verify its pin")
 
+    def test_no_line_separator_but_newline_can_forge_a_text_record_field(self) -> None:
+        # Audit round 25: str.splitlines() also breaks at \x0b, \x0c, \x1c-\x1e, \x85, \u2028 and \u2029, so
+        # `tag: v0.18.5\x0bispinned: true` read as two fields. The whole file is refused instead.
+        data = self.dir / "data/gh"
+        binary = data / "extensions/gh-poi/gh-poi"
+        base = f"owner: seachicken\nname: gh-poi\nhost: github.com\npath: {binary}\n"
+        self.write("data/gh/extensions/gh-poi/manifest.yml", base + "tag: v0.18.5\nispinned: true\n")
+        self.assertTrue(records.load_gh_extension(data, "seachicken/gh-poi").pinned)
+        holds = '[tools]\n# Held: reason\nnode = "22"\n'
+        self.assertEqual(["node"], records.load_mise_holds(self.write("mise.toml", holds)))
+        self.assertEqual(["node"], records.load_mise_holds(self.write("mise.toml", holds.replace(" = ", "\t= "))))
+        for separator in ("\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029", "\r"):
+            with self.subTest(record="gh manifest", separator=repr(separator)):
+                forged = base + f"tag: v0.18.5{separator}ispinned: true\n"
+                self.write("data/gh/extensions/gh-poi/manifest.yml", forged)
+                self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), "line 5")
+            with self.subTest(record="mise holds", separator=repr(separator)):
+                # A Held comment that splitlines() would end early, putting `node` directly under it.
+                forged = f'[tools]\n# Held: reason{separator}node = "22"\n'
+                self.refused(lambda: records.load_mise_holds(self.write("mise.toml", forged)), "line 2")
+        with self.subTest(record="gh manifest", separator="tab"):
+            self.write("data/gh/extensions/gh-poi/manifest.yml", base + "tag: v0.18.5\tx\nispinned: true\n")
+            self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), "line 5")
+
     def test_mise_holds(self) -> None:
         good = '[tools]\n# Held: reason\nfd = "10.3.0"\njq = "latest"\n\n# Held: http\n[tools."http:bats"]\nversion = "1"\n'
         self.assertEqual(["fd", "http:bats"], records.load_mise_holds(self.write("mise.toml", good)))
@@ -323,7 +347,8 @@ class PinRecordsTest(unittest.TestCase):
         self.refused(lambda: records.load_claude_installs(path), "projectPath: contains a control character")
         manifest = "owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v1\tx\nispinned: true\npath: /x\n"
         self.write("data/gh/extensions/gh-poi/manifest.yml", manifest)
-        self.refused(lambda: records.load_gh_extension(self.dir / "data/gh", "seachicken/gh-poi"), "tag")
+        # Refused as a whole file at the line that holds it (record_lines), before any field is read.
+        self.refused(lambda: records.load_gh_extension(self.dir / "data/gh", "seachicken/gh-poi"), "line 4")
         self.refused(
             lambda: records.load_plugin_pins(
                 self.write("p.json", {"claude": {"crit@crit\n": {}}, "codex": {}, "gh_extensions": {}})

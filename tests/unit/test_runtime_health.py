@@ -301,6 +301,10 @@ class RuntimeHealthTest(unittest.TestCase):
                 "${MISE_NPM_PACKAGE_MANAGER:-}" \
                 "${npm_config_min_release_age:-}" \
                 "$*" >> "$TEST_LOG"
+            # As the real mise: `where` prints the tool's install directory (the manifest records it).
+            if [ "$1" = where ]; then
+                printf '%s\n' "$HOME/.local/share/mise/installs/claude"
+            fi
             if [ "$*" = "install --force npm:@anthropic-ai/claude-code" ]; then
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash

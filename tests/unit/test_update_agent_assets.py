@@ -1075,6 +1075,46 @@ claude() {
                 self.assertIs(False, state["user"][plugin_id])
                 self.assertIn(f"{plugin_id} is not installed or updated from an unverified marketplace", result.stderr)
 
+    def test_a_failed_manifest_write_fails_the_run_and_every_plugin_is_still_converged(self):
+        # Audit round 25: manifest_record always returned 0, so the wrappers' failure handler never ran and a
+        # failed write left the run green. Failure injection: ~/.agents is a file, so no record can be written.
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+        for step, plugin_id in (
+            ("update_claude_superpowers", "superpowers@claude-plugins-official"),
+            ("update_claude_crit", "crit@crit"),
+            ("update_claude_ponytail", "ponytail@ponytail"),
+            ("update_claude_understand_anything", "understand-anything@understand-anything"),
+        ):
+            with self.subTest(step=step):
+                installs = {plugin_id: [{"scope": "user", "version": pins[plugin_id]["pin"]}]}
+                gate = (
+                    'printf x > "${HOME}/.agents"; ensure_crit_cli() { :; }; '
+                    f'{step}; printf "reached failures=%s\\n" "${{CLAUDE_PIN_FAILURES}}"; fail_on_claude_pin_failures'
+                )
+                result, _, state = self.converge_listed(gate, installs, {plugin_id: True})
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("reached failures=1", result.stdout)
+                self.assertIn(f"failed to record asset manifest step {step}", result.stderr)
+                self.assertIs(True, state["user"][plugin_id])  # at its pin: the plugin itself is left alone
+        # A Codex step and one that is not a plugin step: the same failure, counted, and the run fails.
+        for step, stubs in (
+            (
+                "update_codex_superpowers",
+                "codex_plugin_cache_versions() { echo 6.3.0; }; doctor_pin_check() { :; }; "
+                "manifest_codex_plugin_version() { echo 6.3.0; }; ",
+            ),
+            ("ensure_herdr_integrations", 'herdr() { echo "herdr 1.0"; }; '),
+        ):
+            with self.subTest(step=step):
+                gate = (
+                    f'printf x > "${{HOME}}/.agents"; {stubs}{step}; '
+                    'printf "reached failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+                )
+                result, _, _ = self.converge_listed(gate, {}, {})
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("reached failures=1", result.stdout)
+                self.assertIn(f"failed to record asset manifest step {step}", result.stderr)
+
     def run_gh_extensions(
         self, tag: str, pinned: str | None, install_fails: bool = False
     ) -> tuple[subprocess.CompletedProcess, list[str], Path]:

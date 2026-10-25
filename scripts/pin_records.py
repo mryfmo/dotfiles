@@ -57,9 +57,11 @@ def present(path: Path) -> bool:
 
 
 def read_text(path: Path) -> Optional[str]:
-    """The text of PATH, None when absent; any other failure raises RecordError."""
+    """The text of PATH exactly as stored (no newline translation, so a \\r is seen, not turned into a line
+    break), None when absent; any other failure raises RecordError."""
     try:
-        return path.read_text()
+        with path.open(encoding="utf-8", newline="") as handle:
+            return handle.read()
     except (FileNotFoundError, NotADirectoryError):
         return None
     except (OSError, UnicodeDecodeError) as error:
@@ -118,7 +120,23 @@ def field(record: object, data: Any, name: str, kind: type, where: str = "") -> 
     return value
 
 
-CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+# Every C0/C1 control character and the Unicode line and paragraph separators: str.splitlines() breaks a line at
+# \x0b, \x0c, \x1c-\x1e, \x85, \u2028 and \u2029 as well as \n, so any of them could forge a record line or field.
+CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+CONTROL_BUT_TAB = re.compile(r"[\x00-\x08\x0a-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def record_lines(record: object, text: str, tab: bool = False) -> List[str]:
+    """TEXT split into lines at \\n only, after refusing the whole file when it holds any other control
+    character (a tab only when TAB: the format allows it) or a Unicode line separator."""
+    lines = text.split("\n")
+    for number, line in enumerate(lines, 1):
+        found = (CONTROL_BUT_TAB if tab else CONTROL).search(line)
+        if found:
+            raise RecordError(
+                record, f"line {number}", f"contains a control character or line separator: {found.group()!r}"
+            )
+    return lines[:-1] if lines and lines[-1] == "" else lines
 
 
 def clean(record: object, label: str, value: str) -> str:
@@ -478,7 +496,7 @@ def load_gh_extension(gh_dir: Path, repository: str) -> Optional[GhExtension]:
     if text is None:
         raise RecordError(manifest, "(file)", "is missing beside an installed extension; cannot verify its pin")
     values: Dict[str, str] = {}
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(record_lines(manifest, text), 1):
         if not line.strip():
             continue
         match = re.fullmatch(r"([a-z]+): ?(.*)", line)
@@ -516,7 +534,8 @@ def load_mise_holds(path: Path) -> List[str]:
     if text is None:
         raise RecordError(path, "(file)", "is missing")
     section, held, names = None, None, []
-    for number, line in enumerate(text.splitlines(), 1):
+    # TOML allows a tab as whitespace; nothing else.
+    for number, line in enumerate(record_lines(path, text, tab=True), 1):
         stripped = line.strip()
         if stripped.startswith("#"):
             held = held or (number if "Held" in stripped else None)

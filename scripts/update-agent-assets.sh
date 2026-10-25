@@ -150,11 +150,15 @@ function ensure_mise_npm_agent_cli() {
     "${cli}" --version > /dev/null
     # A version the repaired CLI cannot print is recorded as unknown; its path must resolve.
     cli_version="$("${cli}" --version 2> /dev/null || printf 'unknown\n')"
-    install_path="$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" || {
+    cli_version="${cli_version:-unknown}"
+    # An empty answer is no location either: the manifest records only an absolute path.
+    install_path="$(mise where "${mise_tool}" 2> /dev/null)" && [ -n "${install_path}" ] ||
+        install_path="$(command -v "${cli}")" || {
         printf 'Cannot locate the repaired %s for the asset manifest.\n' "${cli}" >&2
         return 1
     }
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "${cli_version}" "${install_path}" -- "MISE_NPM_PACKAGE_MANAGER=npm mise install --force ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "${cli_version}" "${install_path}" -- "MISE_NPM_PACKAGE_MANAGER=npm mise install --force ${mise_tool}" ||
+        record_claude_failure "recording ensure_mise_npm_agent_cli:${cli} in the installed asset manifest"
 }
 
 #
@@ -312,7 +316,8 @@ function ensure_crit_cli() {
     fi
     export PATH="${HOME}/.local/bin:${PATH}"
     hash -r
-    manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
+    manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}" ||
+        record_claude_failure "recording ensure_crit_cli in the installed asset manifest"
 }
 
 #
@@ -607,8 +612,9 @@ CLAUDE_CONVERGED=" "
 CLAUDE_PIN_FAILURES=0
 
 #
-# @description Count a failed Claude Code plugin setup step and keep going, so the run still reaches the
-#   convergence of every pinned plugin and fail_on_claude_pin_failures still fails it at the end.
+# @description Count a failed step (a plugin setup step, a pin check, an asset manifest record) and keep
+#   going, so the run still reaches the convergence of every pinned plugin and fail_on_claude_pin_failures
+#   still fails it at the end. A step that runs in a subshell returns its failure instead, which stops the run.
 # @arg $1 string What failed.
 #
 function record_claude_failure() {
@@ -680,7 +686,8 @@ function ensure_herdr_integrations() {
     local herdr_output herdr_version
     herdr_output="$(herdr --version 2> /dev/null)" || herdr_output=""
     herdr_version="$(awk 'NF { version = $NF } END { print version ? version : "unknown" }' <<< "${herdr_output}")" || return 1
-    manifest_record "ensure_herdr_integrations" integration "${herdr_version}" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
+    manifest_record "ensure_herdr_integrations" integration "${herdr_version}" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex" ||
+        record_claude_failure "recording ensure_herdr_integrations in the installed asset manifest"
 }
 
 #
@@ -862,7 +869,8 @@ function update_codex_superpowers() {
     converge_or_disable codex "${CODEX_SUPERPOWERS_PLUGIN}" install_codex_superpowers || return 0
     local plugin_version
     plugin_version="$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" || return 1
-    manifest_record "update_codex_superpowers" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/.tmp/plugins/plugins/superpowers" "${AGENT_CODEX_DIR}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
+    manifest_record "update_codex_superpowers" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/.tmp/plugins/plugins/superpowers" "${AGENT_CODEX_DIR}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}" ||
+        record_claude_failure "recording update_codex_superpowers in the installed asset manifest"
 }
 
 #
@@ -968,7 +976,8 @@ function update_codex_ponytail() {
     fi
     local plugin_version
     plugin_version="$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" || return 1
-    manifest_record "update_codex_ponytail" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CODEX_DIR}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE_SOURCE} --ref ${ref}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
+    manifest_record "update_codex_ponytail" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CODEX_DIR}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE_SOURCE} --ref ${ref}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}" ||
+        record_claude_failure "recording update_codex_ponytail in the installed asset manifest"
 }
 
 #
@@ -995,7 +1004,8 @@ function update_codex_crit() {
     local crit_output plugin_version
     crit_output="$(crit --version 2> /dev/null)" || crit_output=""
     plugin_version="$(awk 'NR == 1 { print $2 }' <<< "${crit_output}")" || return 1
-    manifest_record "update_codex_crit" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/crit" "${AGENT_CODEX_DIR}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
+    manifest_record "update_codex_crit" plugin "${plugin_version}" "${AGENT_CODEX_DIR}/plugins/crit" "${AGENT_CODEX_DIR}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force" ||
+        record_claude_failure "recording update_codex_crit in the installed asset manifest"
 }
 
 #
@@ -1138,7 +1148,8 @@ function update_codex_understand_anything() {
         # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
         printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
     ) || true
-    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex"
+    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex" ||
+        record_claude_failure "recording update_codex_understand_anything in the installed asset manifest"
 }
 
 #
@@ -1210,7 +1221,8 @@ function update_terminal_code() {
         run_pinned_installer "${TERMINAL_CODE_INSTALLER_URL}" "${TERMINAL_CODE_INSTALLER_SHA256}" ||
             printf 'tode installer failed; existing install unchanged.\n' >&2
     fi
-    manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>"
+    manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>" ||
+        record_claude_failure "recording update_terminal_code in the installed asset manifest"
 }
 
 #
@@ -1245,7 +1257,8 @@ function update_terminal_browser() {
         run_pinned_installer "${TERMINAL_BROWSER_INSTALLER_URL}" "${TERMINAL_BROWSER_INSTALLER_SHA256}" TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 ||
             printf 'terminal-browser installer failed; existing install unchanged.\n' >&2
     fi
-    manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>"
+    manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>" ||
+        record_claude_failure "recording update_terminal_browser in the installed asset manifest"
 }
 
 #
@@ -1575,7 +1588,8 @@ function update_compactiondb() {
         printf 'Cannot read the CompactionDB version from %sCHANGELOG.md.\n' "${source_root}" >&2
         return 1
     }
-    manifest_record "update_compactiondb" rsync "${version}" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
+    manifest_record "update_compactiondb" rsync "${version}" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/" ||
+        record_claude_failure "recording update_compactiondb in the installed asset manifest"
 }
 
 #

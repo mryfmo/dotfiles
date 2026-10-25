@@ -11,11 +11,17 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+# The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.
+if ! declare -F is_ci_runner > /dev/null; then
+    # shellcheck source=scripts/lib/ci-runner.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/ci-runner.sh"
+fi
+
 #
-# @description Validate the Docker Desktop cask in CI or install it locally.
+# @description Validate the Docker Desktop cask on a CI runner or install it locally.
 #
 function install_docker() {
-    if [[ "${CI:-}" == "true" ]]; then
+    if is_ci_runner; then
         brew info --cask docker
     else
         brew install --cask docker

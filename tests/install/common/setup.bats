@@ -8,7 +8,7 @@ render_role_config() {
         printf '{{- define "config" -}}\n'
         cat home/.chezmoi.yaml.tmpl
         printf '{{- end -}}{{ template "config" %s }}\n' "${data}"
-    } | CI=true chezmoi execute-template "$@"
+    } | GITHUB_ACTIONS=true RUNNER_TEMP="${BATS_TEST_TMPDIR}" chezmoi execute-template "$@"
 }
 
 # setup.sh resolves the newest chezmoi release at least 72 hours old; the fixture serves one.
@@ -298,7 +298,7 @@ if [ -n "${output:-}" ]; then cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
 EOF
     chmod +x "${tmpdir}/bin/curl"
 
-    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" CI=true \
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" GITHUB_ACTIONS=true \
         RUNNER_TEMP="${tmpdir}" \
         CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
         HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \
@@ -383,7 +383,7 @@ if [ "${output}" = - ]; then cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; else cp "$
 EOF
         chmod +x "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
 
-        run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
+        run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" GITHUB_ACTIONS=true \
             RUNNER_TEMP="${tmpdir}" CHEZMOI_TEST_MODE="${mode}" \
             CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
             /bin/bash -c "$(cat setup.sh)"
@@ -458,7 +458,7 @@ if [ "${output}" = - ]; then cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; else cp "$
 EOF
     chmod +x "${tmpdir}/bin/gh" "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
 
-    run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" GITHUB_ACTIONS=true \
         RUNNER_TEMP="${tmpdir}" CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
         /bin/bash -c "$(cat setup.sh)"
 
@@ -510,7 +510,8 @@ EOF
         for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
             HOMEBREW_TEST_PREFIX=""
             PATH="${tmpdir}/bin:/usr/bin:/bin"
-            CI=true
+            GITHUB_ACTIONS=true
+            RUNNER_TEMP="${tmpdir}"
             HOMEBREW_PREFIX_CANDIDATES="${prefix}"
             initialize_os_macos
             [ "${HOMEBREW_TEST_PREFIX}" = "${prefix}" ]
@@ -537,7 +538,7 @@ EOF
     printf '#!/bin/sh\n[ "$1" = shellenv ] && exit 4\nprintf "%%s\\n" "%s"\n' "${tmpdir}/brew" > "${tmpdir}/brew/bin/brew"
     chmod +x "${tmpdir}/brew/bin/brew"
 
-    run env PATH="${tmpdir}/brew/bin:/usr/bin:/bin" CI=true bash -c 'source ./setup.sh; initialize_os_macos; echo continued'
+    run env PATH="${tmpdir}/brew/bin:/usr/bin:/bin" GITHUB_ACTIONS=true RUNNER_TEMP="${tmpdir}" bash -c 'source ./setup.sh; initialize_os_macos; echo continued'
     [ "${status}" -eq 1 ]
     grep -qF -- "${tmpdir}/brew/bin/brew shellenv failed; cannot continue bootstrap." <<< "${output}"
     if grep -qF -- "continued" <<< "${output}"; then
@@ -597,7 +598,7 @@ if [ -n "${output:-}" ]; then cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
 EOF
     chmod +x "${tmpdir}/bin/curl"
 
-    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" CI=true \
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" GITHUB_ACTIONS=true \
         RUNNER_TEMP="${tmpdir}" \
         CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
         HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \

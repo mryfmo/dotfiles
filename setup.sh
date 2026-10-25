@@ -257,9 +257,16 @@ function github_release_verified_sha256() (
 )
 # --- github-release.sh end ---
 
-function is_ci() {
-    "${CI:-false}"
+# --- ci-runner.sh begin ---
+#
+# @description Succeed on a GitHub Actions runner, whatever `CI` holds.
+# @exitcode 0 `GITHUB_ACTIONS` is `true` and `RUNNER_TEMP` is set.
+# @exitcode 1 Anywhere else, an agent shell exporting `CI=true` included.
+#
+function is_ci_runner() {
+    [ "${GITHUB_ACTIONS:-}" = true ] && [ -n "${RUNNER_TEMP:-}" ]
 }
+# --- ci-runner.sh end ---
 
 function is_tty() {
     [ -t 0 ]
@@ -270,7 +277,7 @@ function is_not_tty() {
 }
 
 function is_ci_or_not_tty() {
-    is_ci || is_not_tty
+    is_ci_runner || is_not_tty
 }
 
 # @description Download one URL to standard output, preferring curl over wget.
@@ -630,8 +637,8 @@ function run_chezmoi() {
         return 1
     fi
 
-    if is_ci && { [ -z "${RUNNER_TEMP:-}" ] || [[ "${HOME}/" != "${RUNNER_TEMP%/}/"* ]]; }; then
-        echo "Refusing to apply in CI outside RUNNER_TEMP: ${HOME}" >&2
+    if is_ci_runner && [[ "${HOME}/" != "${RUNNER_TEMP%/}/"* ]]; then
+        echo "Refusing to apply on a GitHub Actions runner outside RUNNER_TEMP: ${HOME}" >&2
         return 1
     fi
 

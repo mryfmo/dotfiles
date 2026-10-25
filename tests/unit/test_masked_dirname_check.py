@@ -13,13 +13,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
 
+
+def on_ci_runner() -> bool:
+    """scripts/lib/ci-runner.sh decides, never the generic CI variable an agent shell exports."""
+    probe = 'source "$1" && is_ci_runner'
+    return (
+        subprocess.run(["bash", "-c", probe, "_", str(ROOT / "scripts/lib/ci-runner.sh")], check=False).returncode == 0
+    )
+
+
 # scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect the audit seat found.
 MESSAGE = "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
 
 U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || exit 2\n'
 
 
-@unittest.skipUnless(shutil.which("shfmt") or os.environ.get("CI"), "needs shfmt outside CI (CI puts 3.14.1 on PATH)")
+@unittest.skipUnless(shutil.which("shfmt") or on_ci_runner(), "needs shfmt off the CI runner (CI puts 3.14.1 on PATH)")
 class MaskedDirnameCheckTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="masked-dirname-check-test-"))

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/apparmor_userns.sh"
 PROFILE = ROOT / "install/ubuntu/common/apparmor/bwrap-userns"
 CHECK_TOOLS = ROOT / "scripts/check-tools.sh"
-WRAPPER = ROOT / "home/.chezmoiscripts/ubuntu/run_onchange_after_07-apparmor-bwrap-userns.sh.tmpl"
+WRAPPER = ROOT / "home/.chezmoiscripts/ubuntu/run_after_07-apparmor-bwrap-userns.sh.tmpl"
 
 
 def debian_like() -> bool:
@@ -121,8 +121,8 @@ class AppArmorUsernsTest(unittest.TestCase):
                 self.assertEqual(
                     [
                         "sudo -n true",
+                        f"sudo -n apparmor_parser -r {source}",
                         f"sudo -n install -m 0644 {source} {self.profile_target}",
-                        f"sudo -n apparmor_parser -r {self.profile_target}",
                     ],
                     self.calls(),
                 )
@@ -152,11 +152,30 @@ class AppArmorUsernsTest(unittest.TestCase):
         result = self.run_installer(self.env("1", self.fake("bwrap")))
 
         self.assertNotEqual(0, result.returncode)
-        self.assertEqual(
-            ["sudo -n true", f"sudo -n install -m 0644 {PROFILE} {self.profile_target}"],
-            self.calls(),
-        )
+        # The copy comes after the load, so a failed load leaves nothing installed and the next apply retries.
+        self.assertEqual(["sudo -n true", f"sudo -n apparmor_parser -r {PROFILE}"], self.calls())
         self.assertNotIn("Loaded AppArmor profile", result.stdout)
+
+    def test_installer_is_silent_without_sudo_when_the_installed_profile_equals_the_source(self) -> None:
+        self.fake("apparmor_parser")
+        self.fake("sudo")
+        self.profile_target.parent.mkdir(parents=True)
+        shutil.copy(PROFILE, self.profile_target)
+        result = self.run_installer(self.env("1", self.fake("bwrap")))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], self.calls())
+        self.assertEqual("", result.stdout + result.stderr)
+
+    def test_installer_reinstalls_a_profile_that_differs_from_the_source(self) -> None:
+        self.fake("apparmor_parser")
+        self.fake("sudo")
+        self.profile_target.parent.mkdir(parents=True)
+        self.profile_target.write_text("# an older profile\n")
+        result = self.run_installer(self.env("1", self.fake("bwrap")))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"sudo -n install -m 0644 {PROFILE} {self.profile_target}", self.calls())
 
     def test_doctor_is_not_applicable_without_the_restriction(self) -> None:
         self.fake("codex")
@@ -252,37 +271,44 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.assertIn("req=1 opt=0", result.stdout)
 
     @unittest.skipUnless(shutil.which("chezmoi") and debian_like(), "needs chezmoi on a Debian-like host")
-    def test_wrapper_re_renders_when_prerequisites_change(self) -> None:
-        home = self.temp_dir / "chezmoi-home"
-        home.mkdir()
-        present = self.fake("bwrap")
+    def test_every_apply_retries_a_pending_install(self) -> None:
+        # A run_once or run_onchange script that exits 0 while pending is recorded as done and
+        # never retried; the wrapper must run again on the next apply.
+        source = self.temp_dir / "repo/home"
+        (source / ".chezmoiscripts").mkdir(parents=True)
+        shutil.copy(WRAPPER, source / ".chezmoiscripts" / WRAPPER.name)
+        shutil.copytree(INSTALLER.parent, self.temp_dir / "repo/install/ubuntu/common")
+        self.fake("apparmor_parser")
+        self.sudo_failing_unless("-n never")
+        config = self.temp_dir / "chezmoi.yaml"
+        config.write_text("")
+        env = {**os.environ, **self.env("1", self.fake("bwrap"))}
 
-        def render(bwrap: Path, restricted: str) -> str:
-            self.sysctl.write_text(f"{restricted}\n")
-            result = subprocess.run(
-                ["chezmoi", "execute-template", "--source", str(ROOT / "home")],
-                input=WRAPPER.read_text(),
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "APPARMOR_USERNS_BWRAP": str(bwrap),
-                    "APPARMOR_USERNS_SYSCTL": str(self.sysctl),
-                },
+        def apply() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    *(
+                        str(shutil.which("chezmoi")),
+                        "--source",
+                        str(source),
+                        "--destination",
+                        str(self.temp_dir / "dest"),
+                    ),
+                    *("--config", str(config), "--cache", str(self.temp_dir / "cache")),
+                    *("--persistent-state", str(self.temp_dir / "state.boltdb"), "apply", "--no-tty"),
+                ],
+                env=env,
                 text=True,
                 capture_output=True,
-                check=True,
+                check=False,
             )
-            return result.stdout
 
-        skipped = render(self.temp_dir / "missing-bwrap", "1")
-        ready = render(present, "1")
-        unrestricted = render(present, "0")
-
-        self.assertIn("bwrap=absent", skipped)
-        self.assertIn("bwrap=present", ready)
-        self.assertIn("restriction=1", ready)
-        self.assertIn("restriction=0", unrestricted)
-        self.assertEqual(3, len({skipped, ready, unrestricted}))
+        (self.temp_dir / "dest").mkdir()
+        for attempt in ("first", "second"):
+            with self.subTest(attempt):
+                result = apply()
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("apparmor bwrap-userns profile pending", result.stderr)
 
 
 if __name__ == "__main__":

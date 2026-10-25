@@ -635,7 +635,7 @@ claude() {
         # Off its pin and still off after the update: disabled, proven from the user settings file.
         newer = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
         result, calls, state = self.converge_listed(step, newer, {"crit@crit": True})
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(1, result.returncode, result.stderr)  # disabled, and still drift for the doctor
         self.assertEqual(
             ["plugin update crit@crit --scope user @neutral", "plugin disable crit@crit --scope user @neutral"], calls
         )
@@ -653,7 +653,7 @@ claude() {
             project={"crit@crit": False},
             cwd="project",
         )
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(1, result.returncode, result.stderr)  # disabled at user scope; still drift for the doctor
         # Every claude call runs outside the project, and the user-scope disable is what the user file shows.
         self.assertIn("plugin disable crit@crit --scope user @neutral", calls)
         self.assertTrue(all(call.endswith("@neutral") for call in calls), calls)
@@ -716,6 +716,66 @@ claude() {
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn("projectPath: contains a control character", result.stderr)
         self.assertNotIn("is at its pin", result.stdout)
+
+    def test_duplicate_user_records_are_refused(self):
+        # Audit round 18: two user-scope records [pin, 99.0.0] let `first()` pick the pin while the doctor saw drift.
+        pin = self.pin_of("crit@crit")
+        installs = {"crit@crit": [{"scope": "user", "version": pin}, {"scope": "user", "version": "99.0.0"}]}
+        result, calls, _ = self.converge_listed('converge_claude_plugin "crit@crit"', installs, {"crit@crit": True})
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("a second user-scope record", result.stderr)
+        self.assertEqual([], calls)
+
+    def test_any_drift_the_doctor_reports_after_a_step_fails_the_run(self):
+        # The updater's own reading says "at the pin", but the doctor's check sees drift: the doctor wins.
+        pin = self.pin_of("crit@crit")
+        installs = {"crit@crit": [{"scope": "user", "version": pin}]}
+        step = (
+            "doctor_pin_check() { printf 'ERROR: injected drift\\n' >&2; return 1; }; "
+            'converge_claude_step "crit@crit" || true; fail_on_claude_pin_failures'
+        )
+        result, _, _ = self.converge_listed(step, installs, {"crit@crit": True})
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("make doctor still reports crit@crit off its pin", result.stderr)
+        self.assertIn("could not be checked or kept at their pin", result.stderr)
+        # And with the real check, an at-pin plugin passes.
+        result, _, _ = self.converge_listed('converge_claude_plugin "crit@crit"', installs, {"crit@crit": True})
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
+        # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.
+        work = Path(tempfile.mkdtemp(prefix="ponytail-step-"))
+        self.addCleanup(shutil.rmtree, work)
+        (work / "home/.codex").mkdir(parents=True)
+        (work / "home/.codex/config.toml").write_text(config)
+        fake = 'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; }'
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; fail_on_claude_pin_failures',
+                "bash",
+                str(UPDATER),
+            ],
+            env=os.environ | {"WORK": str(work), "HOME": str(work / "home"), "CODEX_HOME": ""},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        return result, calls
+
+    def test_a_ponytail_marketplace_without_the_pinned_ref_is_never_upgraded(self):
+        # Audit round 18: a marketplace with a missing or stale ref was upgraded to the branch head.
+        ref = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]["ref"]
+        source = "https://github.com/DietrichGebert/ponytail.git"
+        for name, extra in (("no ref", ""), ("stale ref", f'ref = "{"0" * 40}"\n')):
+            with self.subTest(case=name):
+                config = f'[marketplaces.ponytail]\nsource_type = "git"\nsource = "{source}"\n{extra}'
+                result, calls = self.run_ponytail_step(config)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn(f"is not pinned to {ref}", result.stderr)
+                self.assertFalse([call for call in calls if call.startswith("plugin marketplace upgrade")], calls)
 
     def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
         installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
@@ -805,7 +865,7 @@ claude() {
             calls,
         )
         self.assertEqual(["pstack@cursor-plugins"], [plugin for plugin, on in state["user"].items() if not on])
-        self.assertIn("failures=0", result.stdout)
+        self.assertIn("failures=1", result.stdout)  # the off-pin pstack, as the doctor judges it
         # A plugin a setup step already converged is not converged twice.
         _, calls, _ = self.converge_listed(
             'CLAUDE_CONVERGED=" pstack@cursor-plugins "; converge_claude_plugins', installs, enabled

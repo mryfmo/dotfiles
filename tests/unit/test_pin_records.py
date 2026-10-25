@@ -70,10 +70,15 @@ class PinRecordsTest(unittest.TestCase):
             ("unknown scope", {**entry, "scope": "global"}, "scope"),
             ("foreign cache", {**entry, "installPath": "/h/.claude/plugins/cache/other/crit/1"}, "installPath"),
             ("project without path", {**entry, "scope": "project"}, "projectPath: is missing"),
+            (
+                "duplicate user record (audit case)",
+                [entry, {**entry, "version": "99.0.0"}],
+                "a second user-scope record",
+            ),
             ("not an object", "crit", "must be an object"),
         ):
             with self.subTest(case=name):
-                data = {"plugins": {"crit@crit": [bad]}}
+                data = {"plugins": {"crit@crit": bad if isinstance(bad, list) else [bad]}}
                 self.refused(lambda: records.load_claude_installs(self.write("i.json", data)), field)
         self.refused(lambda: records.load_claude_installs(self.write("i.json", {"plugins": []})), "plugins")
         self.refused(lambda: records.load_claude_installs(self.write("i.json", "{truncated")), "not JSON")

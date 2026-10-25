@@ -813,7 +813,9 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
     records are read by pin_records, so a malformed entry is an error, never "not installed".
     """
     findings = []
-    installed_path = home / ".claude/plugins/installed_plugins.json"
+    # The directory Claude Code writes (CLAUDE_CONFIG_DIR, else ~/.claude), as update-agent-assets.sh reads it.
+    claude_dir = Path(os.environ["CLAUDE_CONFIG_DIR"]) if os.environ.get("CLAUDE_CONFIG_DIR") else home / ".claude"
+    installed_path = claude_dir / "plugins/installed_plugins.json"
     try:
         installed = records.load_claude_installs(installed_path)
     except RecordError as error:
@@ -840,7 +842,7 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
                 "(assets.claude-plugins in home/dot_agents/agent-config.yaml); review that release and record it, "
                 "or run make update to return to the pin"
             )
-    settings_path = home / ".claude/settings.json"
+    settings_path = claude_dir / "settings.json"
     try:
         enabled = records.load_claude_enabled(settings_path) or {}
     except RecordError as error:
@@ -985,6 +987,35 @@ def plugin_pin_findings(
         *codex_plugin_pin_findings(home, pins.codex, script),
         *gh_extension_pin_findings(home, pins.gh_extensions),
     ]
+
+
+def asset_pin_findings(
+    agent: str, asset_id: str, home: Path | None = None, pins_path: Path | None = None, script: Path | None = None
+) -> list[str]:
+    """The doctor's own pin check for one asset (agent claude, codex or gh; a plugin id or <owner>/<repo>).
+
+    update-agent-assets.sh runs it (--pin-check) after each convergence step, so the updater and the doctor
+    never judge a pin differently. The checks run with only that asset's pin, so every error they return
+    concerns it (or a record it depends on); a warning about another plugin is dropped.
+    """
+    home = home or HOME
+    pins_path = pins_path or PLUGIN_PINS
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    try:
+        pins = records.load_plugin_pins(pins_path)
+    except RecordError as error:
+        return [f"plugin pins unreadable: {error}"]
+    table = {"claude": pins.claude, "codex": pins.codex, "gh": pins.gh_extensions}.get(agent)
+    if table is None or asset_id not in table:
+        return [f"plugin pins: {agent} {asset_id} is not recorded in {pins_path}"]
+    subset = {asset_id: table[asset_id]}
+    if agent == "claude":
+        findings = claude_plugin_pin_findings(home, subset)
+    elif agent == "codex":
+        findings = codex_plugin_pin_findings(home, subset, script)
+    else:
+        findings = gh_extension_pin_findings(home, subset)
+    return [finding for finding in findings if not is_warning(finding) or asset_id in finding]
 
 
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
@@ -1247,7 +1278,17 @@ def main(argv: list[str] | None = None) -> int:
         metavar="EPOCH",
         help="show recent managed-asset updates, or compare them with EPOCH",
     )
+    parser.add_argument(
+        "--pin-check",
+        nargs=2,
+        metavar=("AGENT", "ID"),
+        help="run the doctor's pin check for one asset (claude|codex|gh and its id); exit 1 on any error",
+    )
     args = parser.parse_args(argv)
+    if args.pin_check is not None:
+        findings = asset_pin_findings(*args.pin_check)
+        print_failures(findings)
+        return 1 if [finding for finding in findings if not is_warning(finding)] else 0
     if args.session_staleness is not None:
         return run_session_staleness(args.session_staleness or None)
     failures = check()

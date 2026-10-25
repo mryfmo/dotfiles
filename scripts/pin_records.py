@@ -232,6 +232,11 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
             ):
                 raise RecordError(path, f"{where}installPath", f"{install_path!r} is not this plugin's cache")
             project = field(path, entry, "projectPath", str, where) if scope in ("project", "local") else None
+            # One record per identity (scope, project): a second one would let a reader pick either version.
+            if any((seen.scope, seen.project_path) == (scope, project) for seen in result[plugin_id]):
+                raise RecordError(
+                    path, f"{where}scope", f"a second {scope}-scope record{' for ' + project if project else ''}"
+                )
             result[plugin_id].append(ClaudeInstall(scope, version, install_path, project))
     return result
 
@@ -541,6 +546,16 @@ def main(argv: List[str]) -> int:
             print(install.revision)
     elif command == "codex-marketplace":
         print(codex_marketplace_state(Path(args[0]), args[1], args[2]))
+    elif command == "codex-marketplace-pinned":
+        # Exit 0 when config.toml declares marketplace NAME from SOURCE at exactly REF, 1 when it is absent or
+        # has another or no ref (an upgrade would then fetch something else), 2 when it cannot be read.
+        config = load_codex_config(Path(args[0]))
+        table = config.marketplaces.get(args[1]) if config is not ABSENT and config is not None else None
+        if table is None:
+            return 1
+        if table["source"] != args[2]:
+            raise RecordError(args[0], f"marketplaces.{args[1]}.source", f"{table['source']!r} is not {args[2]!r}")
+        return 0 if table.get("ref") == args[3] else 1
     elif command == "gh-extension":
         extension = load_gh_extension(Path(args[0]), args[1])
         print("absent" if extension is None else f"{extension.tag} {'true' if extension.pinned else 'false'}")

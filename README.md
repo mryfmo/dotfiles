@@ -1179,6 +1179,13 @@ an unreadable record, a missing or mistyped field, or a foreign identity (a
 fork's extension, another marketplace source) is an error, never "not
 installed" and never a pass.
 
+`make update` never judges its own result: after each plugin and extension step
+it runs `make doctor`'s own pin check for that asset
+(`check-agent-runtime.py --pin-check <agent> <id>`), and any error there fails
+the run. A Claude plugin still off its pin is disabled and still fails the run;
+the Codex Ponytail marketplace is upgraded only when the Codex config pins it to
+the manifest commit (run `chezmoi apply` first otherwise).
+
 `make doctor` fails on any installed version, marketplace revision or extension
 tag that differs from its pin, and warns for an enabled plugin with no pin. To
 move a plugin, review the upstream release, set its pin (and, for a Codex

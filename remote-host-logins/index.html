@@ -1577,6 +1577,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
         
   
@@ -4867,7 +4895,7 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 <tr>
 <td><code>RemoteForward 1456</code> and <code>regime-url-opener</code></td>
 <td>Loopback only; https only; exact host allow-list; no user info, no port but 443; <code>X-Regime-Open: 1</code> header (a cross-origin page cannot send it without a CORS preflight, which the server never answers); body of at most 8 KB; <code>open</code>/<code>xdg-open</code> with an argument list, never a shell; a log of every decision with scheme, host and path, never the query.</td>
-<td>residual: a local user on a multi-user seat host can make the laptop browser open an allow-listed authorize URL with their own client and challenge. The consent page is the gate, and a returning sign-in may skip it. Single-user seat host assumed, as above.</td>
+<td>residual: any process on the seat host that reaches 127.0.0.1:1456 while the operator's SSH session is open can make the laptop browser open an allow-listed authorize URL with its own client and challenge. That includes a process of the operator's own account, a <code>yolo</code> omp seat among them (it runs as the operator, and its policy does not stop a loopback POST), as well as a local user on a multi-user seat host. The consent page is the gate, and a returning sign-in may skip it, so such a process could obtain a grant the operator never read (inferred, not exercised); the decision log on the laptop records each opened host and path. Single-user seat host assumed; containing the seats (U85) is what removes the same-account case.</td>
 </tr>
 <tr>
 <td><code>regime-open-url</code></td>

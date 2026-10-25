@@ -1649,6 +1649,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../reference/home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
         
   
@@ -5010,7 +5038,7 @@
 </tr>
 <tr>
 <td><code>bus-history.sh</code>, the script the gate runs</td>
-<td>closed: the gate runs the copy chezmoi installs read-only at <code>$HOME/.local/bin/common/bus-history.sh</code>, resolved when it loads and never from the seat's cwd, so a worktree of a PR head cannot answer with its own rows (U33); <code>bus-history.sh is the installed copy under HOME, never the one in the seat's cwd (U33)</code> in <code>tests/stop-gate.test.ts</code>, with a decoy in the cwd that must not run</td>
+<td>closed: the gate runs the copy chezmoi installs (sha256-pinned, self-checked, mode 0755) at <code>$HOME/.local/bin/common/bus-history.sh</code>, resolved when it loads and never from the seat's cwd, so a worktree of a PR head cannot answer with its own rows (U33); <code>bus-history.sh is the installed copy under HOME, never the one in the seat's cwd (U33)</code> in <code>tests/stop-gate.test.ts</code>, with a decoy in the cwd that must not run</td>
 </tr>
 <tr>
 <td>the team (<code>--hcom-team</code>, <code>HCOM_TEAM</code>)</td>

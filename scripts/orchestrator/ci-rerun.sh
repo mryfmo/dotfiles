@@ -19,15 +19,17 @@
 #   as `mise which` answers them under env -i from / (else `command -v`). Each answer is followed through every link
 #   to its physical file, which must be an executable regular file and no shim: neither a file named mise in any
 #   letter case nor the mise binary itself (same device and inode; a mise shim is a link to it), nor a file in a
-#   directory named shims in any letter case, as found or as resolved. An answer, link or directory whose path holds a
-#   control character is refused too; otherwise the script exits 1. Only the checked physical file is ever run: all but
-#   python3 are linked by it into a private directory (under TMPDIR when it is absolute and has no ':', else /tmp;
-#   removed on exit and on HUP, INT or TERM) and PATH becomes those links then /usr/bin:/bin. python3 is always
-#   started by its physical path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
-#   `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i from the root, so no
-#   checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks
-#   the interpreter (security:4fe2438:1). Before PATH is pinned, every other command (mktemp, env, ln and the EXIT trap's
-#   rm) runs by its absolute system path; mise, the resolver itself, is the one program found through PATH.
+#   directory named shims in any letter case, as found or as resolved. An answer (captured with its own trailing
+#   newlines), link or directory whose path holds a control character is refused too; otherwise the script exits 1.
+#   Only the checked physical file is ever run: all but python3 are linked by it into a private directory, created
+#   under TMPDIR when it is absolute and has no ':', else /tmp, then used only by its physical path, which must be this
+#   user's with mode 0700 (removed on exit and on HUP, INT or TERM), and PATH becomes those links then /usr/bin:/bin.
+#   python3 is always started by its physical path, never a link (CPython reads a pyvenv.cfg beside and above the
+#   path it starts by), as `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i
+#   from the root, so no checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or
+#   PYTHON* variable picks the interpreter (security:4fe2438:1). Before PATH is pinned, every other command (mktemp,
+#   env, find, ln and the EXIT trap's rm) runs by its absolute system path; mise, the resolver itself, is the one
+#   program found through PATH.
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every candidate job matched a signature; the run was reserved and rerun once.
 # @exitcode 1 A tool resolves to a shim, a relative path or no executable regular file, a gh or jq call or the
@@ -110,9 +112,25 @@ function is_shim() {
     return 1
 }
 
-mise_bin=$(command -v mise) && mise_bin=$(physical "${mise_bin}") || mise_bin=''
+# The caller's spelling of TMPDIR may pass through a link it can retarget once mktemp is done, so PATH, the links and
+# the cleanup use only the physical directory.
+if ! physical_bin=$(physical_dir "${bin}"); then
+    echo "ci-rerun: cannot resolve the private directory ${bin}" >&2
+    exit 1
+fi
+bin=${physical_bin}
+private=$(/usr/bin/find "${bin}" -maxdepth 0 -perm 0700) || private=''
+if ! [[ -n ${private} && -d ${bin} && ! -L ${bin} && -O ${bin} ]]; then
+    trap - EXIT # not this run's directory: leave it alone
+    echo "ci-rerun: the private directory ${bin} is not this user's with mode 0700" >&2
+    exit 1
+fi
+# Each capture keeps the answer's own trailing newlines (the '.'), dropping only the one the resolver ends it with.
+mise_bin=$(command -v mise && printf .) && mise_bin=${mise_bin%.} && mise_bin=$(physical "${mise_bin%$'\n'}") || mise_bin=''
 for tool in python3 uv gh jq git mkdir; do
-    found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
+    found=$(cd / && { /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}"; } && printf .) || found=''
+    found=${found%.}
+    found=${found%$'\n'}
     # A missing or non-executable link target would be skipped by PATH lookup and fall through to /usr/bin.
     if ! { real=$(physical "${found}") && [[ -f ${real} && -x ${real} ]]; }; then
         echo "ci-rerun: ${tool} is not an executable file ('${found}')" >&2

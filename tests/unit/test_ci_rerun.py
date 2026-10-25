@@ -25,6 +25,8 @@ import json, os, subprocess, sys, time
 from pathlib import Path
 args, runs = sys.argv[1:], json.load(open(os.environ["GH_RUNS"]))
 entry = {"argv": args}
+if os.environ.get("GH_RECORD_PATH"):
+    entry["path0"] = os.environ["PATH"].split(os.pathsep)[0]
 if args[:2] == ["run", "rerun"]:
     validation = Path(os.environ["GH_REPO_ROOT"]) / ".orchestration/validation"
     ledger = validation / "ci-reruns.tsv"
@@ -446,7 +448,8 @@ class CiRerunTest(unittest.TestCase):
 
     def test_ci_rerun_runs_only_the_file_it_checked_when_a_path_holds_a_newline(self):
         # Audit on 7f1776fc: command substitution strips trailing newlines, so `<dir>\n/jq` was checked as `<dir>/jq`
-        # (and a link to `jq\n` as `jq`) while the answer itself, another file, was linked and ran.
+        # (and a link to `jq\n` as `jq`) while the answer itself, another file, was linked and ran. Audit on 7ba82b63:
+        # the resolver's own answer `jq\n` (then mise's delimiter) was captured as `jq` and accepted.
         marker = self.t / "planted.log"
         planted = f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n'
         checked = f'#!/bin/sh\nexec "{self.real["jq"]}" "$@"\n'
@@ -463,6 +466,7 @@ class CiRerunTest(unittest.TestCase):
         cases = [
             ("a directory name ending in a newline", self.t / "tools\n/jq"),
             ("a link to a file name ending in a newline", self.t / "nl-link/jq"),
+            ("an answer ending in a newline", self.t / "nl/jq\n"),
         ]
         for name, answer in cases:
             with self.subTest(name):
@@ -474,6 +478,33 @@ class CiRerunTest(unittest.TestCase):
                 self.assertIn("jq is not an executable file", result.stderr)
                 self.assertEqual([], self.entries())
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_uses_its_private_directory_by_the_physical_path(self):
+        # Audit on 7ba82b63: ${bin} kept the caller's TMPDIR spelling, so retargeting a link in it after mktemp moved
+        # PATH (and the cleanup) to a directory the caller prepared under the same name.
+        marker, real, planted, link = (self.t / name for name in ("planted.log", "real", "planted", "tmplink"))
+        real.mkdir()
+        planted.mkdir()
+        link.symlink_to(real)
+        self.reset()
+        process = self.start("101", TMPDIR=str(link), GH_LOG_DELAY="1", GH_RECORD_PATH="1")
+        deadline = time.monotonic() + 60
+        while "--job" not in self.log.read_text():  # inside the first log read, after the pin
+            self.assertLess(time.monotonic(), deadline, "the script never reached its log reads")
+            time.sleep(0.05)
+        (private,) = real.glob("ci-rerun-bin.*")
+        (planted / private.name).mkdir()
+        for tool in ("gh", "jq", "git", "awk", "grep", "date", "mkdir"):  # each leaves a mark
+            (planted / private.name / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexit 1\n')
+            (planted / private.name / tool).chmod(0o755)
+        link.unlink()
+        link.symlink_to(planted)
+        result = self.finish(process)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertEqual({str(private)}, {entry["path0"] for entry in self.entries()})
+        self.assertEqual([], list(real.iterdir()))
+        self.assertTrue((planted / private.name / "gh").exists(), "the cleanup followed the retargeted link")
 
     def test_ci_rerun_keeps_a_caller_tmpdir_out_of_its_pinned_path(self):
         # Audit P2 on d6521941: the private directory heads PATH, so a TMPDIR with a ':' split it into entries the

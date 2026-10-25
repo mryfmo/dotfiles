@@ -1998,18 +1998,21 @@ PY
 # @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
 # @description
 #   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
-#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. The file goes only on
-#   positive proof: ~/.agents and ~/.agents/bin are real directories (lstat; ~/.agents/bin is then held open as a
-#   directory fd and every later step works relative to it), the shim opens without following a symlink as a regular
-#   file and is read completely, it holds the exact line
-#   `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and lstat of that
-#   owner fails with ENOENT. Every other outcome (another file, the owner present, any other lstat, open or read
-#   error) keeps the file and fails the step with the reason. Removal is by the verified inode, never by name: the
-#   entry is renamed (atomic) into a private quarantine directory created for this run under ~/.agents/bin, and
-#   unlinked there only when its device and inode are the verified ones; anything else that was swapped in is linked
-#   back under its name (never over a newer entry) and the step fails. After removing the shim, ~/.agents/bin goes
-#   through rmdir, and ENOTEMPTY or EEXIST keeps it: another entry, whatever its name, keeps the directory. A missing
-#   shim (ENOENT) is nothing to do, so a second run changes nothing.
+#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. Every operation is
+#   fd-relative, with no path walked again: $HOME is opened, then `.agents` and `bin` below it with
+#   O_DIRECTORY|O_NOFOLLOW (a symlink at either refuses), and the shim is lstat'ed, opened, moved and deleted, and
+#   `bin` removed, only relative to those open directories. The shim goes only on positive proof: a regular file
+#   (fstatat) opened with O_NOFOLLOW|O_NONBLOCK whose fstat is the same device and inode, read completely, holding
+#   the exact line `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and
+#   an owner (looked up below the open `.agents`) whose lstat fails with ENOENT. Every other outcome keeps the file
+#   and fails the step with the reason. Removal is by the verified inode: the entry is renamed (renameat, atomic) into
+#   a private quarantine directory created in the open `bin`, and unlinked there only when its device and inode are
+#   the verified ones; anything else is linked back under its name (linkat, never over a newer entry) and the step
+#   fails. `bin` is then removed (unlinkat AT_REMOVEDIR relative to `.agents`) only when its lstat is still the
+#   directory opened above and it is empty; ENOTEMPTY or EEXIST keeps it. A missing `.agents`, `bin` or shim is
+#   nothing to do, so a second run changes nothing. Guaranteed: no path is followed through a symlink, and the inode
+#   deleted is the verified one. A same-user process racing the step inside the operator's own $HOME is the
+#   same-user class accepted under G17: a residual, not a guarantee.
 # @exitcode 1 No positive proof for an existing ~/.agents/bin/agy-tui, or a removal failed; the reason is printed.
 #
 function retire_agmsg_shim() {
@@ -2024,32 +2027,45 @@ home = sys.argv[1]
 agents = os.path.join(home, ".agents")
 bin_dir = os.path.join(agents, "bin")
 shim = os.path.join(bin_dir, "agy-tui")
-owner = os.path.join(agents, "skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh")
+owner_rel = "skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"
+owner = os.path.join(agents, owner_rel)
 marker = f"# agmsg-shim-owner: {owner}"
+DIRECTORY = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 
 
 def refuse(reason):
     sys.exit(f"agmsg: kept {shim}: {reason}.")
 
 
+def open_directory(name, parent_fd, label):
+    """The directory NAME below PARENT_FD, opened without following a symlink; None when it does not exist."""
+    try:
+        return os.open(name, DIRECTORY, dir_fd=parent_fd)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        if error.errno in (errno.ELOOP, errno.ENOTDIR):
+            refuse(f"{label} is not a real directory")
+        refuse(f"cannot open {label} ({error})")
+
+
 try:
-    shim_status = os.lstat(shim)
+    home_fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY)
+except OSError as error:
+    refuse(f"cannot open {home} ({error})")
+agents_fd = open_directory(".agents", home_fd, agents)
+if agents_fd is None:
+    sys.exit(0)
+bin_fd = open_directory("bin", agents_fd, bin_dir)
+if bin_fd is None:
+    sys.exit(0)
+bin_status = os.fstat(bin_fd)
+try:
+    shim_status = os.stat("agy-tui", dir_fd=bin_fd, follow_symlinks=False)
 except FileNotFoundError:
     sys.exit(0)
 except OSError as error:
     refuse(f"cannot lstat it ({error})")
-for directory in (agents, bin_dir):
-    try:
-        mode = os.lstat(directory).st_mode
-    except OSError as error:
-        refuse(f"cannot lstat {directory} ({error})")
-    if not stat.S_ISDIR(mode):
-        refuse(f"{directory} is not a real directory")
-try:
-    bin_fd = os.open(bin_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    shim_status = os.stat("agy-tui", dir_fd=bin_fd, follow_symlinks=False)
-except OSError as error:
-    refuse(f"cannot hold {bin_dir} open ({error})")
 # Only a regular file is opened (a FIFO would block the open), without following a symlink swapped in and without
 # blocking; fstat must then show the same regular file lstat saw.
 if not stat.S_ISREG(shim_status.st_mode):
@@ -2070,7 +2086,7 @@ with os.fdopen(fd, "rb") as handle:
 if marker.encode() not in data.split(b"\n"):
     refuse(f"it does not hold the line {marker!r}, so it is not the retired agmsg shim")
 try:
-    os.lstat(owner)
+    os.stat(owner_rel, dir_fd=agents_fd, follow_symlinks=False)
 except FileNotFoundError:
     pass
 except OSError as error:
@@ -2081,7 +2097,7 @@ else:
 quarantine = f".agmsg-retire-{secrets.token_hex(8)}"
 try:
     os.mkdir(quarantine, 0o700, dir_fd=bin_fd)
-    quarantine_fd = os.open(quarantine, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=bin_fd)
+    quarantine_fd = os.open(quarantine, DIRECTORY, dir_fd=bin_fd)
     os.rename("agy-tui", "agy-tui", src_dir_fd=bin_fd, dst_dir_fd=quarantine_fd)
     moved = os.stat("agy-tui", dir_fd=quarantine_fd, follow_symlinks=False)
 except OSError as error:
@@ -2105,8 +2121,16 @@ try:
 except OSError as error:
     sys.exit(f"agmsg: cannot remove the retired shim moved to {bin_dir}/{quarantine} ({error}).")
 print(f"agmsg: removed the retired shim {shim}.")
+# Removed: only the bin directory opened above may go.
 try:
-    os.rmdir(bin_dir)
+    current = os.stat("bin", dir_fd=agents_fd, follow_symlinks=False)
+except OSError as error:
+    sys.exit(f"agmsg: cannot lstat {bin_dir} again ({error}).")
+if (current.st_dev, current.st_ino) != (bin_status.st_dev, bin_status.st_ino):
+    print(f"agmsg: kept {bin_dir}: it is not the directory the shim was removed from.")
+    sys.exit(0)
+try:
+    os.rmdir("bin", dir_fd=agents_fd)
 except OSError as error:
     if error.errno in (errno.ENOTEMPTY, errno.EEXIST):
         print(f"agmsg: kept {bin_dir}: it holds other entries.")

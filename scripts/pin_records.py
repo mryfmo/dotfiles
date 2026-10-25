@@ -17,6 +17,7 @@ tomllib (Python 3.11+).
 
 from __future__ import annotations
 
+import errno
 import functools
 import hashlib
 import io
@@ -296,60 +297,81 @@ def content_sha256(root: Path) -> str:
     """The content pin of a plugin directory (content_digest over its regular files).
 
     File order on disk, mtimes, modes and empty directories do not count, and CLAUDE_CACHE_MARKERS at the top level
-    are not read. A symlink, or anything that is neither a regular file nor a directory, anywhere below the root (the
-    root included) refuses: it is not reviewable content.
+    are not read. The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry
+    below it is lstat'ed (fstatat) and opened (openat, O_NOFOLLOW) relative to its parent's open directory, never by
+    a path walked again. So no symlink is followed anywhere below the root (the root included), and each directory
+    and file read is the one its lstat showed (same device and inode). A symlink, or anything that is neither a
+    regular file nor a directory, refuses: it is not reviewable content.
     """
-    files: List[Tuple[bytes, Path, os.stat_result]] = []
+    try:
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError as error:
+        if error.errno in (errno.ELOOP, errno.ENOTDIR):
+            raise RecordError(root, "(directory)", "is not a real directory") from None
+        raise RecordError(root, "(directory)", f"cannot open ({error})") from None
+    contents: List[Tuple[bytes, bytes]] = []
 
-    def walk(directory: Path, prefix: str) -> None:
+    def walk(dir_fd: int, prefix: str) -> None:
         try:
-            entries = list(os.scandir(directory))
+            names = [entry.name for entry in os.scandir(dir_fd)]
         except OSError as error:
             raise RecordError(root, prefix or ".", f"cannot list ({error})") from None
-        for entry in entries:
-            relative = f"{prefix}{entry.name}"
-            if not prefix and entry.name in CLAUDE_CACHE_MARKERS:
+        for name in names:
+            relative = f"{prefix}{name}"
+            if not prefix and name in CLAUDE_CACHE_MARKERS:
                 continue
             try:
-                status = entry.stat(follow_symlinks=False)
+                status = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
             except OSError as error:
                 raise RecordError(root, relative, f"cannot lstat ({error})") from None
             if stat.S_ISDIR(status.st_mode):
-                walk(Path(entry.path), relative + "/")
+                try:
+                    child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dir_fd)
+                except OSError as error:
+                    if error.errno in (errno.ELOOP, errno.ENOTDIR):
+                        raise RecordError(root, relative, "changed while it was read") from None
+                    raise RecordError(root, relative, f"cannot open ({error})") from None
+                try:
+                    opened = os.fstat(child)
+                    if (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
+                        raise RecordError(root, relative, "changed while it was read")
+                    walk(child, relative + "/")
+                finally:
+                    os.close(child)
             elif stat.S_ISREG(status.st_mode):
-                files.append((os.fsencode(relative), Path(entry.path), status))
+                try:
+                    fd = open_regular(name, status, dir_fd)
+                    if fd is None:
+                        raise RecordError(root, relative, "changed while it was read")
+                    with os.fdopen(fd, "rb") as handle:
+                        contents.append((os.fsencode(relative), handle.read()))
+                except OSError as error:
+                    raise RecordError(root, relative, f"cannot read ({error})") from None
             else:
                 raise RecordError(
                     root, relative, "is a symlink or special file; a content pin covers regular files only"
                 )
 
     try:
-        root_mode = os.lstat(root).st_mode
-    except OSError as error:
-        raise RecordError(root, "(directory)", f"cannot lstat ({error})") from None
-    if not stat.S_ISDIR(root_mode):
-        raise RecordError(root, "(directory)", "is not a real directory")
-    walk(root, "")
-    contents: List[Tuple[bytes, bytes]] = []
-    for relative, file_path, status in files:
-        try:
-            fd = open_regular(file_path, status)
-            if fd is None:
-                raise RecordError(root, os.fsdecode(relative), "changed while it was read")
-            with os.fdopen(fd, "rb") as handle:
-                contents.append((relative, handle.read()))
-        except OSError as error:
-            raise RecordError(root, os.fsdecode(relative), f"cannot read ({error})") from None
+        walk(root_fd, "")
+    finally:
+        os.close(root_fd)
     return content_digest(contents)
 
 
-def open_regular(path: Path, status: os.stat_result) -> Optional[int]:
-    """Open PATH, which lstat showed as the regular file STATUS, for reading; None when it is now something else.
+def open_regular(name: Any, status: os.stat_result, dir_fd: Optional[int] = None) -> Optional[int]:
+    """Open NAME (relative to DIR_FD when given), which lstat showed as the regular file STATUS, for reading; None
+    when it is now something else.
 
     O_NOFOLLOW refuses a symlink swapped in, O_NONBLOCK keeps a FIFO swapped in from blocking the open, and fstat
     must show the same regular file (device and inode) lstat showed.
     """
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            return None
+        raise
     opened = os.fstat(fd)
     if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
         os.close(fd)

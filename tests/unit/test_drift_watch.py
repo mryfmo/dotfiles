@@ -756,6 +756,32 @@ class DriftWatchTest(unittest.TestCase):
                 self.assertIn(plugin, report.split("## Read failures", 1)[1])
                 self.assertNotIn(plugin, self.not_watched(report))
 
+    def test_every_tree_entry_is_validated(self):
+        # Round-6 audit: directory entries skipped mode and SHA checks, so a malformed tree read as current.
+        tree_path = f"/repos/anthropics/claude-plugins-official/git/trees/{self.TREE_SHA}"
+        findings = {
+            "a symlink typed as a tree": {"path": "skills/l", "mode": "120000", "type": "tree", "sha": "a" * 40},
+            "a submodule": {"path": "skills/m", "mode": "160000", "type": "commit", "sha": "b" * 40},
+        }
+        for name, node in findings.items():
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files(), [node])
+                status, report = self.content_watch(upstream)
+                self.assertEqual(3, status, report)
+                self.assertIn(f"{node['path']} is not a regular file (git mode {node['mode']})", report)
+        failures = {
+            "a directory with no sha": {"path": "skills/d", "mode": "040000", "type": "tree"},
+            "a directory with a short sha": {"path": "skills/d", "mode": "040000", "type": "tree", "sha": "abc"},
+            "a directory with a blob mode": {"path": "skills/d", "mode": "100644", "type": "tree", "sha": "c" * 40},
+            "an unknown mode": {"path": "skills/x", "mode": "100600", "type": "blob", "sha": "c" * 40},
+        }
+        for name, node in failures.items():
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files(), [node])
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertIn(tree_path, report.split("## Read failures", 1)[1])
+
 
 class UpstreamTokenTest(unittest.TestCase):
     def setUp(self):

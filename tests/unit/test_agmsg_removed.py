@@ -162,10 +162,12 @@ class AgmsgRemovedTest(unittest.TestCase):
             self.assertEqual(["mine"], os.listdir(home / ".agents/bin"))
 
     SWAP_POINT = "# Verified: from here on, nothing is removed by name."
+    REMOVED_POINT = "# Removed: only the bin directory opened above may go."
 
-    def retire_shim_with_swap(self, home: Path, swap: str) -> subprocess.CompletedProcess[str]:
-        """Run the step with SWAP (Python) injected right after verification, before anything is moved or removed:
-        python3 is wrapped so the step's own program is run with SWAP inserted at SWAP_POINT."""
+    def retire_shim_with_swap(self, home: Path, swap: str, point: str = SWAP_POINT) -> subprocess.CompletedProcess[str]:
+        """Run the step with SWAP (Python) injected at POINT, a comment line of the step's own program: python3 is
+        wrapped so that program is run with SWAP inserted there (SWAP_POINT: after verification, before anything is
+        moved or removed; REMOVED_POINT: after the shim is gone, before `bin` is removed)."""
         wrapper = (
             'python3() { local program; program="$(cat)"; '
             'case "${program}" in *"${SWAP_POINT}"*) ;; *) echo "no swap point" >&2; return 99 ;; esac; '
@@ -174,12 +176,52 @@ class AgmsgRemovedTest(unittest.TestCase):
         return subprocess.run(
             ["bash", "-c", f"source {ROOT / 'scripts/update-agent-assets.sh'}; {wrapper}; retire_agmsg_shim"],
             cwd=ROOT,
-            env={**os.environ, "HOME": str(home), "SWAP_POINT": self.SWAP_POINT, "SWAP": swap},
+            env={**os.environ, "HOME": str(home), "SWAP_POINT": point, "SWAP": swap},
             text=True,
             capture_output=True,
             check=False,
             timeout=30,
         )
+
+    def test_no_path_is_followed_through_a_symlinked_agents_directory(self):
+        # Round-6 audit: `.agents` swapped for a symlink after its check redirected the removal out of HOME. Every
+        # operation is relative to the directories opened at the start, so the symlink's target is never touched.
+        with tempfile.TemporaryDirectory() as temp:
+            home, elsewhere = Path(temp) / "home", Path(temp) / "elsewhere"
+            self.write_shim(home)
+            self.write_shim(elsewhere, owner_home=home)  # a shim that would pass verification, outside HOME
+            (elsewhere / ".agents/bin/keep-empty").mkdir()
+            swap = f'os.rename(agents, agents + ".moved")\nos.symlink({str(elsewhere / ".agents")!r}, agents)'
+            result = self.retire_shim_with_swap(home, swap)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue((elsewhere / ".agents/bin/agy-tui").is_file(), "nothing outside HOME is removed")
+            self.assertTrue((elsewhere / ".agents/bin/keep-empty").is_dir())
+            # The verified shim, in the directory the step opened, is the one removed, with its emptied bin.
+            self.assertFalse((home / ".agents.moved/bin").exists())
+        # Before any open: a symlinked `.agents` or `bin` refuses and removes nothing.
+        for link in (".agents", ".agents/bin"):
+            with self.subTest(symlink=link), tempfile.TemporaryDirectory() as temp:
+                home, elsewhere = Path(temp) / "home", Path(temp) / "elsewhere"
+                self.write_shim(elsewhere, owner_home=home)
+                target = elsewhere / (".agents" if link == ".agents" else ".agents/bin")
+                (home / link).parent.mkdir(parents=True, exist_ok=True)
+                (home / link).symlink_to(target)
+                result = self.retire_shim(home)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("is not a real directory", result.stderr)
+                self.assertTrue((elsewhere / ".agents/bin/agy-tui").is_file())
+
+    def test_a_bin_directory_swapped_in_before_its_removal_is_kept(self):
+        # Round-6 audit: the final rmdir by path removed an empty replacement `bin` that never held the shim.
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.write_shim(home)
+            swap = 'os.rename(bin_dir, bin_dir + ".old")\nos.mkdir(bin_dir)'
+            result = self.retire_shim_with_swap(home, swap, self.REMOVED_POINT)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("it is not the directory the shim was removed from", result.stdout)
+            self.assertTrue((home / ".agents/bin").is_dir(), "the replacement bin is kept")
+            self.assertEqual([], os.listdir(home / ".agents/bin.old"), "the shim itself was removed")
 
     def test_a_file_swapped_in_after_verification_is_kept(self):
         # Round-5 audit: removal by name deleted whatever held the name by then. Removal is by the verified inode.

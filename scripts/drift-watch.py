@@ -96,6 +96,9 @@ MISSING = object()
 GIT_SHA = re.compile(r"[0-9a-f]{40}")
 # The git modes of a regular file; a symlink (120000) or a submodule (160000) is no reviewable content.
 REGULAR_MODES = ("100644", "100755")
+TREE_MODE = "040000"
+# A symlink and a submodule (gitlink): reported as a finding, since neither is reviewable content.
+NOT_CONTENT_MODES = ("120000", "160000")
 
 
 def load_pin_records():
@@ -622,14 +625,18 @@ class Watch:
             path = tree.key(node, "path", str, "a tree entry")
             kind, mode = tree.key(node, "type", str, path), tree.key(node, "mode", str, path)
             repo_path(path, tree, "a tree path")
-            if kind == "tree":
+            # Every entry, a directory included, carries its git object SHA and a mode git defines for its type.
+            sha = tree.key(node, "sha", str, path)
+            if not GIT_SHA.fullmatch(sha):
+                raise tree.fail(f"{path}.sha {sha!r} is no git SHA")
+            if mode in NOT_CONTENT_MODES:
+                # A symlink or a submodule is no reviewable content: reported as the value served, never current.
+                return [(place, f"{path} is not a regular file (git mode {mode})")], ""
+            if (kind, mode) == ("tree", TREE_MODE):
                 continue
             if kind != "blob" or mode not in REGULAR_MODES:
-                return [(place, f"{path} is not a regular file (git mode {mode})")], ""
-            blob_sha = tree.key(node, "sha", str, path)
-            if not GIT_SHA.fullmatch(blob_sha):
-                raise tree.fail(f"{path}.sha {blob_sha!r} is no git SHA")
-            files.append((path.encode(), self.blob(source_repo, blob_sha)))
+                raise tree.fail(f"{path} has type {kind!r} with mode {mode!r}, no git tree entry shape")
+            files.append((path.encode(), self.blob(source_repo, sha)))
         return [(place, pin_records.content_digest(files))], ""
 
     def blob(self, repo: str, sha: str) -> bytes:

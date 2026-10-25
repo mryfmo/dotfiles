@@ -43,10 +43,13 @@ Then identify:
 
 **Key principle**: Extract ALL hardcoded values from the model as configurable parameters.
 
-Template:
+Template. Transformers 5 exports `PreTrainedConfig` (and keeps `PretrainedConfig` only as a backward-compatibility alias); 4.x exports only `PretrainedConfig`. The import below works on both majors:
 
 ```python
-from transformers import PreTrainedConfig  # transformers 5.x; 4.x names it PretrainedConfig, kept in 5.x only as a BC alias
+try:
+    from transformers import PreTrainedConfig  # transformers >= 5
+except ImportError:
+    from transformers import PretrainedConfig as PreTrainedConfig  # transformers 4.x
 from typing import List, Optional
 
 class {ModelName}Config(PreTrainedConfig):

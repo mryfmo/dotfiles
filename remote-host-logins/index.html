@@ -4868,7 +4868,11 @@ which opens allow-listed sign-in hosts only.</p>
   laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
   per machine. The seat host still signs in once.</li>
 <li><code>~/.zshenv</code> and <code>~/.profile</code>: export <code>CLAUDE_CODE_OAUTH_TOKEN</code> from the token file when it is
-  non-empty, and from nothing else.</li>
+  non-empty, and from nothing else. <code>~/.zshenv</code> runs in every zsh, not only login shells (it also
+  serves the non-interactive SSH commands that bootstrap Mosh and herdr), so every zsh child
+  process, a Claude Code hook or Bash command included, inherits the variable. The managed Claude settings
+  withhold it from sandboxed commands: <code>sandbox.credentials.envVars</code> denies the variable and
+  <code>sandbox.credentials.files</code> denies the token file, so a sandboxed zsh cannot read it back (U68).</li>
 </ul>
 <h2 id="measurements-2026-10-24-this-laptop">Measurements (2026-10-24, this laptop)<a class="headerlink" href="#measurements-2026-10-24-this-laptop" title="Permanent link">&para;</a></h2>
 <ul>
@@ -4932,8 +4936,8 @@ seat-host</code> gave the forwards to the tagged host only. A Unix-socket <code>
 </tr>
 <tr>
 <td><code>~/.config/claude-code/oauth-token</code></td>
-<td>Created by the operator, mode 0600, outside the repository; read only by the login shell, and exported only when non-empty; no seat writes or prints it.</td>
-<td>residual: once exported, the variable is in every child process of that shell, including the seats, which need it, and any other program the operator runs there. That is the vendor's documented mechanism.</td>
+<td>Created by the operator, mode 0600, outside the repository; read by every zsh (<code>~/.zshenv</code>) and by sh and bash login shells (<code>~/.profile</code>), and exported only when non-empty; no seat writes or prints it. Sandboxed Claude Code commands get neither the variable nor the file (<code>sandbox.credentials</code>, U68).</td>
+<td>residual: once exported, the variable is in every child process of that shell, including the seats, which need it, Claude Code hooks and the two excluded commands <code>git push</code> and <code>gh</code> (each prompts every time), and any other program the operator runs there. That is the vendor's documented mechanism. <code>CLAUDE_CODE_SUBPROCESS_ENV_SCRUB</code> is not set: it would also turn sandbox auto-allow off.</td>
 </tr>
 <tr>
 <td><code>seat-login-preflight --check</code> and <code>make doctor</code></td>

@@ -4851,6 +4851,50 @@ def<span class="w"> </span>policy_path<span class="o">()</span><span class="w"> 
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>override<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>override<span class="w"> </span><span class="k">else</span><span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">".agents/permgate-policy.yaml"</span>
 
 
+def<span class="w"> </span>claude_settings_path<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>Path:
+<span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_CLAUDE_SETTINGS_PATH"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>override:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>override<span class="o">)</span>
+<span class="w">    </span><span class="nv">config_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"CLAUDE_CONFIG_DIR"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>Path<span class="o">(</span>config_dir<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>config_dir<span class="w"> </span><span class="k">else</span><span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">".claude"</span><span class="o">)</span><span class="w"> </span>/<span class="w"> </span><span class="s2">"settings.json"</span>
+
+
+def<span class="w"> </span>claude_excluded_commands<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span>:
+<span class="w">    </span><span class="s2">"""Return `sandbox.excludedCommands` from Claude Code's rendered settings, the one source of the set.</span>
+
+<span class="s2">    A command that matches one runs outside the sandbox, so permgate must never approve it: the user's prompt is the</span>
+<span class="s2">    only gate left (U68). An unreadable or malformed file raises, and the caller then decides nothing.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="nv">settings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>claude_settings_path<span class="o">()</span>.read_text<span class="o">())</span>
+<span class="w">    </span><span class="nv">sandbox</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>settings.get<span class="o">(</span><span class="s2">"sandbox"</span>,<span class="w"> </span><span class="o">{})</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>settings,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">    </span><span class="nv">excluded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sandbox.get<span class="o">(</span><span class="s2">"excludedCommands"</span>,<span class="w"> </span><span class="o">[])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>sandbox,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>excluded,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>isinstance<span class="o">(</span>entry,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>entry<span class="w"> </span><span class="k">in</span><span class="w"> </span>excluded<span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"sandbox.excludedCommands must be a list of strings"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>excluded
+
+
+def<span class="w"> </span>runs_excluded_command<span class="o">(</span>command:<span class="w"> </span>str,<span class="w"> </span>excluded:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
+<span class="w">    </span><span class="s2">"""True when `command` may invoke an excluded command, in any position (U68).</span>
+
+<span class="s2">    Deliberately wider than Claude Code's own matcher: a pattern's first word matches the basename of any token, and</span>
+<span class="s2">    its remaining literal words must follow somewhere after it, so `env A=1 gh pr view`, `command gh`,</span>
+<span class="s2">    `/opt/bin/gh` and `git -C x push` all count. A command that cannot be tokenised counts too.</span>
+<span class="s2">    """</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">tokens</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>shlex.split<span class="o">(</span><span class="nb">command</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>ValueError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>True
+<span class="w">    </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>Path<span class="o">(</span>token<span class="o">)</span>.name<span class="w"> </span><span class="k">for</span><span class="w"> </span>token<span class="w"> </span><span class="k">in</span><span class="w"> </span>tokens<span class="o">]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>excluded:
+<span class="w">        </span><span class="nv">words</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>word<span class="w"> </span><span class="k">for</span><span class="w"> </span>word<span class="w"> </span><span class="k">in</span><span class="w"> </span>pattern.split<span class="o">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>word<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"*"</span><span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>words:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>True
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>index,<span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>names<span class="o">)</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>words<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>and<span class="w"> </span>all<span class="o">(</span>word<span class="w"> </span><span class="k">in</span><span class="w"> </span>tokens<span class="o">[</span>index<span class="w"> </span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span>:<span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>word<span class="w"> </span><span class="k">in</span><span class="w"> </span>words<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>:
+<span class="w">                </span><span class="k">return</span><span class="w"> </span>True
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>False
+
+
 def<span class="w"> </span>state_path<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>Path:
 <span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_STATE_PATH"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>override:
@@ -4960,13 +5004,20 @@ def<span class="w"> </span>decision_record<span class="o">(</span>
 
 
 def<span class="w"> </span>decide<span class="o">(</span>
-<span class="w">    </span>agent:<span class="w"> </span>str,<span class="w"> </span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>
+<span class="w">    </span>agent:<span class="w"> </span>str,
+<span class="w">    </span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,
+<span class="w">    </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,
+<span class="w">    </span>excluded:<span class="w"> </span>list<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None,
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]]</span>:
 <span class="w">    </span><span class="nv">started</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>time.monotonic<span class="o">()</span>
 <span class="w">    </span>tool,<span class="w"> </span>_,<span class="w"> </span><span class="nv">match_text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>request_parts<span class="o">(</span>payload<span class="o">)</span>
 <span class="w">    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"fallthrough"</span>
 <span class="w">    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ask"</span>
 <span class="w">    </span>output:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"claude"</span><span class="w"> </span>and<span class="w"> </span>excluded<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="nv">excluded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>claude_excluded_commands<span class="o">()</span>
+<span class="w">    </span><span class="c1"># A Claude Bash command the sandbox excludes runs unsandboxed; only the user may approve it (U68).</span>
+<span class="w">    </span><span class="nv">sandbox_excluded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"claude"</span><span class="w"> </span>and<span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span>and<span class="w"> </span>runs_excluded_command<span class="o">(</span>match_text,<span class="w"> </span>excluded<span class="w"> </span>or<span class="w"> </span><span class="o">[])</span>
 
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"deny_patterns"</span>,<span class="w"> </span><span class="o">[])</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>pattern_match<span class="o">(</span>pattern,<span class="w"> </span>tool,<span class="w"> </span>match_text<span class="o">)</span>:
@@ -4975,7 +5026,9 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">            </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">"deny"</span>,<span class="w"> </span>str<span class="o">(</span>pattern<span class="o">[</span><span class="s2">"message"</span><span class="o">]))</span>
 <span class="w">            </span><span class="k">break</span>
 <span class="w">    </span><span class="k">else</span>:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span>or<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>match_text<span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>sandbox_excluded:
+<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"sandbox-excluded"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span>or<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>match_text<span class="o">)</span>:
 <span class="w">            </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"allow_patterns"</span>,<span class="w"> </span><span class="o">[])</span>:
 <span class="w">                </span><span class="k">if</span><span class="w"> </span>pattern_match<span class="o">(</span>pattern,<span class="w"> </span>tool,<span class="w"> </span>match_text<span class="o">)</span>:
 <span class="w">                    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deterministic"</span>
@@ -5027,7 +5080,7 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span>try:
 <span class="w">        </span>output,<span class="w"> </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decide<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
-<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>AttributeError,<span class="w"> </span>KeyError,<span class="w"> </span>TypeError,<span class="w"> </span>ValueError,<span class="w"> </span>re.error<span class="o">)</span>:
+<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>AttributeError,<span class="w"> </span>KeyError,<span class="w"> </span>TypeError,<span class="w"> </span>ValueError,<span class="w"> </span>OSError,<span class="w"> </span>re.error<span class="o">)</span>:
 <span class="w">        </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 <span class="w">        </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span><span class="s2">"config-error"</span>,<span class="w"> </span><span class="s2">"ask"</span>,<span class="w"> </span><span class="m">0</span><span class="o">)</span>
 <span class="w">    </span>try:

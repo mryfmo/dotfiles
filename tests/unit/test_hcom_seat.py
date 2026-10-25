@@ -52,9 +52,10 @@ class HcomSeatTest(unittest.TestCase):
         bindir = root / "bin"
         bindir.mkdir()
         self.bindir = bindir
-        # srt plays the sandbox; bwrap, socat and rg only satisfy the Linux prerequisite check (U85).
+        # srt plays the sandbox; bwrap, socat and rg only satisfy the Linux prerequisite check (U85). Copies, not
+        # links: hcom-seat runs srt and omp by their physical file, and the fake reads its role from its own name.
         for tool in ("hcom", "herdr", "omp", "srt", "bwrap", "socat", "rg"):
-            (bindir / tool).symlink_to(FAKE)
+            shutil.copy(FAKE, bindir / tool)
         self.calls = root / "calls"
         self.calls.mkdir()
         self.seats = str(root / "seats")
@@ -72,6 +73,9 @@ class HcomSeatTest(unittest.TestCase):
         }
         # The checkout's slug (`repo`) is the team unless a test sets one, whatever the caller's session holds.
         self.env.pop("HCOM_TEAM", None)
+        # A test run from inside a seat would hit the inside-a-seat refusal (U85).
+        for marker in ("HCOM_LAUNCHED", "HCOM_PROCESS_ID", "HCOM_SEAT_SANDBOX"):
+            self.env.pop(marker, None)
         self.git("init", "-q")
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.git("update-ref", "refs/remotes/origin/main", "HEAD")
@@ -417,7 +421,10 @@ class HcomSeatTest(unittest.TestCase):
             canary["argv"][-3:], [str(shim.parent.parent / "canary"), str(settings), str(self.home / ".ssh")]
         )
         (omp,) = self.calls_of("omp")
-        self.assertEqual(launch["argv"], ["--settings", str(settings), "--", str(self.bindir / "omp"), *omp["argv"]])
+        # Both run by their physical argv: the fake's interpreter, then the file itself (U85 round 2).
+        self.assertEqual(launch["argv"][:3], ["--settings", str(settings), "--"])
+        self.assertEqual(launch["argv"][3], os.path.realpath(launch["argv"][3]))
+        self.assertEqual(launch["argv"][4:], [str(self.bindir / "omp"), *omp["argv"]])
         worker = self.settings_of("worker")
         clone = str(Path(self.seats, "worker"))
         write, deny_read = worker["filesystem"]["allowWrite"], worker["filesystem"]["denyRead"]
@@ -428,16 +435,45 @@ class HcomSeatTest(unittest.TestCase):
         for path in (".ssh", ".aws", ".codex", ".omp/agent", "Workspace", ".local/share/chezmoi"):
             self.assertIn(str(self.home / path), deny_read)
         self.assertIn(self.seats, deny_read, "a worker reads no other seat")
-        self.assertIn(str(shim.parent.parent), worker["filesystem"]["denyWrite"])
+        self.assertIn(str(shim.parent.parent.parent), worker["filesystem"]["denyWrite"], "every seat's sandbox")
         self.assertIn(str((self.repo / ".git/config").resolve()), worker["filesystem"]["denyWrite"])
         self.assertEqual(worker["network"]["allowUnixSockets"], [])
         self.assertNotIn("example.com", worker["network"]["allowedDomains"])
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         orchestrator = self.settings_of("orchestrator")
-        self.assertIn(self.seats, orchestrator["filesystem"]["allowWrite"], "the orchestrator creates worker clones")
-        self.assertIn(str(Path(self.seats, ".sandbox/orchestrator")), orchestrator["filesystem"]["denyWrite"])
-        self.assertEqual(orchestrator["network"]["allowUnixSockets"], [str(self.home / ".config/herdr/herdr.sock")])
+        # The orchestrator launches no seat (U85 round 2): no herdr socket, no write to the seats root or a sandbox.
+        self.assertEqual(orchestrator["network"]["allowUnixSockets"], [])
+        self.assertNotIn(self.seats, orchestrator["filesystem"]["allowWrite"])
+        self.assertIn(str(self.repo.resolve()), orchestrator["filesystem"]["allowWrite"])
+        self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyWrite"])
+        self.assertIn(str(Path(self.seats, ".sandbox")), orchestrator["filesystem"]["denyRead"])
+
+    def test_the_canary_runs_under_a_posix_shell(self):
+        """U85 round 2: under dash (Ubuntu's /bin/sh) the canary's denied write must not end the shell."""
+        dash = shutil.which("dash")
+        if dash is None:
+            self.skipTest("dash is not installed")
+        run = self.seat("worker", "--seats-root", self.seats, FAKE_SRT_SH=dash)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(self.calls_of("omp")), 1)
+
+    def test_a_launch_from_inside_a_seat_is_refused(self):
+        """U85 round 2: no seat launches a seat, by its environment markers or by its sandbox's read deny."""
+        for marker in ("HCOM_LAUNCHED", "HCOM_PROCESS_ID", "HCOM_SEAT_SANDBOX"):
+            with self.subTest(marker):
+                run = self.seat("worker", "--seats-root", self.seats, "--dry-run", **{marker: "1"})
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"refused inside a seat ({marker} is set)", run.stderr)
+        sandboxes = Path(self.seats, ".sandbox")
+        sandboxes.mkdir(parents=True)
+        sandboxes.chmod(0)
+        self.addCleanup(sandboxes.chmod, 0o700)
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("refused inside a seat sandbox", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats, "worker").exists())
 
     def test_a_canary_that_finds_the_sandbox_open_starts_no_omp(self):
         """U85, failure injection: an srt that does not contain the canary's probes never reaches omp."""
@@ -455,13 +491,34 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("srt (@anthropic-ai/sandbox-runtime) not found on PATH", run.stderr)
         self.assertFalse(Path(self.seats).exists())
-        # An srt the orchestrator could rewrite (inside its checkout) would run the next launch uncontained.
+        # An srt whose physical file a seat could rewrite would run the next launch uncontained: a copy inside the
+        # checkout (the orchestrator's root), and a link outside every root whose target is in the hcom store.
         planted = self.repo / "tools"
         planted.mkdir()
-        (planted / "srt").symlink_to(FAKE)
+        shutil.copy(FAKE, planted / "srt")
         run = self.seat("orchestrator", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
         self.assertIn(f"lies under the seat write root {self.repo.resolve()}", run.stderr)
+        outside = Path(self.temp.name).resolve() / "outside-bin"
+        outside.mkdir()
+        target = self.store / "u85-srt"
+        shutil.copy(FAKE, target)
+        self.addCleanup(target.unlink)
+        (outside / "srt").symlink_to(target)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"srt {target.resolve()} lies under the seat write root {self.store.resolve()}", run.stderr)
+        # The interpreter a `#!/usr/bin/env` line names is held to the same rule.
+        interp = self.store / "u85interp"
+        shutil.copy("/bin/sh", interp)
+        self.addCleanup(interp.unlink)
+        (outside / "srt").unlink()
+        (outside / "srt").write_text("#!/usr/bin/env u85interp\n" + FAKE.read_text().split("\n", 1)[1])
+        (outside / "srt").chmod(0o755)
+        (outside / "u85interp").symlink_to(interp)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"srt {interp.resolve()} lies under the seat write root {self.store.resolve()}", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
 
     def test_a_dry_run_writes_no_sandbox(self):

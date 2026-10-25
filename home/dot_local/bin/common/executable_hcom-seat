@@ -43,11 +43,16 @@
 #   (sandbox-exec on macOS, bubblewrap on Linux) with per-seat settings, through an `omp` shim at
 #   `<seats-root>/.sandbox/<name>/bin/omp` that is put first on PATH, so hcom pins it as the pane's tool;
 #   the shim runs a canary under the settings and refuses to start omp unless a write into the sandbox
-#   directory and reads of the settings and `~/.ssh` fail inside (seat_sandbox_write below).
-#   Every input is checked before anything is created or started: an unknown role,
-#   a name or team outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a store regime-env refuses, hcom absent from
-#   PATH, an absent policy or profile overlay or extension directory, a cwd outside a git checkout, or
-#   no omp, srt or jq on PATH, no sandbox-exec (macOS) or bubblewrap, socat and ripgrep (Linux)
+#   directory and reads of the settings and `~/.ssh` fail inside (seat_sandbox_write below). srt and omp
+#   run by their physical argv (pin_exec), none of whose files may lie under a write root of any seat.
+#   No seat launches a seat: the orchestrator's sandbox, like the worker's, has no herdr socket and no
+#   write to the seats root, and a launch from inside a seat is refused; seats are started from a
+#   terminal outside every seat (the operator or the coordinator, as gate G7 was).
+#   Every input is checked before anything is created or started: an unknown role, a launch inside a
+#   seat, a name or team outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a store regime-env refuses, hcom absent from
+#   PATH, an absent policy or profile overlay or extension directory, a cwd outside a git checkout,
+#   no omp, srt or jq on PATH, an srt, omp or hcom file under a seat write root, or no sandbox-exec
+#   (macOS) or bubblewrap, socat and ripgrep (Linux)
 #   is exit 2 with the reason. `--dry-run` prints the launch line, and the derived
 #   environment and sandbox on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
@@ -160,6 +165,12 @@ orchestrator | worker) exts=("${bridge}" "${siwc}") ;;
 *) refuse "unknown role '${role}'; expected orchestrator or worker" ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+# A seat never launches a seat (regime-cutover U85): a launch is the operator's or the coordinator's step from a
+# terminal outside every seat (gate G7). hcom marks the seat's environment and the shim marks its own; the
+# filesystem probe after the seats root is known catches a seat that unset them.
+for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
+    [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): launch seats from a terminal outside every seat"
+done
 # HCOM_DIR, HCOM_TEAM and the seats root come from the environment when set, else from this checkout (regime-env,
 # regime-cutover U33). hcom passes HCOM_DIR into the seat but not HCOM_TEAM, so the team rides --hcom-team below.
 [[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
@@ -221,25 +232,126 @@ esac
 # --hcom-tool-path, so a per-seat shim placed first on PATH is what the pane runs; the shim never falls back to an
 # uncontained omp. Every prerequisite is checked here, before anything is created or started.
 sandbox=${seats_root%/}/.sandbox/${name}
-# The real omp is the first one on PATH outside every `.sandbox` shim directory, so a launch from inside a seat
-# (whose PATH hcom prefixes with the shim) still names the real binary.
-real_omp=''
-IFS=: read -r -a path_dirs <<< "${PATH}"
-for path_dir in "${path_dirs[@]}"; do
-    [[ -n ${path_dir} && -x ${path_dir}/omp && ! -d ${path_dir}/omp ]] || continue
-    path_real=$(cd "${path_dir}" && pwd -P) || continue
-    case ${path_real}/ in # lint-comparisons: allow path_real is a pwd -P form
-    */.sandbox/*) continue ;;
-    esac
-    real_omp=${path_real}/omp
-    break
-done
-[[ -n ${real_omp} ]] || refuse 'omp not found on PATH (outside the .sandbox shim directories)'
-srt_bin=$(command -v srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found on PATH; run make update'
-# A mise shim picks its version from the cwd's config files, which a seat writes; the shim pins the installed file.
-if [[ ${srt_bin} == */mise/shims/srt ]]; then # lint-comparisons: allow names mise's shim directory as PATH spells it
-    srt_bin=$(mise which srt) || refuse "mise cannot resolve the srt behind ${srt_bin}"
+# Every seat's sandbox denies reads of <seats-root>/.sandbox, so a listing that fails means this process runs inside a
+# seat that unset the environment markers above.
+if [[ -e ${seats_root%/}/.sandbox ]] && ! ls "${seats_root%/}/.sandbox" > /dev/null 2>&1; then
+    refuse "refused inside a seat sandbox (${seats_root%/}/.sandbox is unreadable): launch seats from a terminal outside every seat"
 fi
+
+# @description Print the first executable `$1` on PATH outside every `.sandbox` shim directory. A mise shim is resolved
+#   with `mise which`, run from `/` so that no mise config a seat wrote selects the version.
+# @arg $1 string The command name.
+# @stdout The path, symlinks not yet followed.
+# @exitcode 1 None found, or mise cannot resolve its shim.
+find_on_path() {
+    local path_dir path_real path_dirs=()
+    IFS=: read -r -a path_dirs <<< "${PATH}"
+    for path_dir in "${path_dirs[@]}"; do
+        [[ -n ${path_dir} && -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
+        path_real=$(cd "${path_dir}" && pwd -P) || continue
+        case ${path_real}/ in # lint-comparisons: allow path_real is a pwd -P form
+        */.sandbox/*) continue ;;
+        */mise/shims/)
+            (cd / && mise which "$1") || return 1
+            return 0
+            ;;
+        esac
+        printf '%s\n' "${path_real}/$1"
+        return 0
+    done
+    return 1
+}
+
+# @description Print the physical file `$1` names: every symlink followed (at most 40), then the directory in its
+#   `pwd -P` form. The file must be a regular executable.
+# @arg $1 string An absolute path.
+# @stdout The physical path.
+# @exitcode 1 Not absolute, a link loop, a dangling link, not a regular executable file, or a directory that cannot
+#   be resolved.
+physical_file() {
+    local p=$1 link dir n=0
+    [[ ${p} == /* ]] || return 1 # lint-comparisons: allow tests that the operand is absolute, no path compare
+    while [[ -L ${p} ]]; do
+        n=$((n + 1))
+        ((n <= 40)) || return 1
+        link=$(readlink "${p}") || return 1
+        case ${link} in
+        /*) p=${link} ;;
+        *) p=${p%/*}/${link} ;;
+        esac
+    done
+    [[ -f ${p} && -x ${p} ]] || return 1
+    dir=$(cd "${p%/*}/" && pwd -P) || return 1
+    printf '%s/%s\n' "${dir%/}" "${p##*/}"
+}
+
+# @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
+#   interpreter when it is a `#!` script (`#!/abs/interp` or `#!/usr/bin/env <name>`, no arguments; an interpreter
+#   that is itself a script is refused). Every part must lie outside every write root of any seat (`all_roots`), since
+#   a seat that could rewrite a file the shim runs would run uncontained on the next launch. A failure exits 2 naming
+#   `$1`.
+# @arg $1 string A label for the refusal.
+# @arg $2 string The executable's path.
+# @set pinned The argv.
+pin_exec() {
+    local label=$1 file first interp name extra interp_path part root
+    file=$(physical_file "$2") || refuse "cannot resolve ${label} to a physical executable file: $2"
+    [[ -r ${file} ]] || refuse "cannot read ${label}: ${file}"
+    first=''
+    IFS= read -r first < "${file}" || [[ -n ${first} ]] || first=''
+    pinned=("${file}")
+    case ${first} in
+    '#!'*)
+        extra=''
+        read -r interp name extra <<< "${first#??}"
+        if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
+            [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
+                refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_path=$(find_on_path "${name}") || refuse "${label}: interpreter ${name} not found on PATH"
+        else
+            [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_path=${interp}
+        fi
+        interp=$(physical_file "${interp_path}") || refuse "cannot resolve the interpreter of ${label}: ${interp_path}"
+        [[ -r ${interp} ]] || refuse "cannot read the interpreter of ${label}: ${interp}"
+        first=''
+        IFS= read -r first < "${interp}" || [[ -n ${first} ]] || first=''
+        [[ ${first} != '#!'* ]] || refuse "${label}: its interpreter ${interp} is itself a script"
+        pinned=("${interp}" "${file}")
+        ;;
+    esac
+    for part in "${pinned[@]}"; do
+        for root in "${all_roots[@]}"; do
+            case ${part} in # lint-comparisons: allow both sides are pwd -P forms
+            "${root}"/*) refuse "${label} ${part} lies under the seat write root ${root}" ;;
+            esac
+        done
+    done
+}
+
+# The write roots of any seat, in `pwd -P` form: every seats root and hcom store of any program, every checkout
+# under ~/Workspace, the omp state and Claude Code roots the seats write, and srt's own TMPDIR. A root that does not
+# exist yet holds no executable; one that exists and cannot be resolved is a refusal.
+h_real=$(cd "${HOME}" && pwd -P) || refuse "cannot resolve HOME ${HOME}"
+all_roots=()
+for root in "${seats_root}" "${h_real}/.local/state/omp-seats" "${repo}" "${common}" "${h_real}/Workspace" \
+    "${HCOM_DIR}" "${h_real}/.local/state/hcom" "${h_real}/.omp/profiles/worker" \
+    "${h_real}/.omp/profiles/orchestrator" "${h_real}/.omp/run" "${CLAUDE_CONFIG_DIR:-${h_real}/.claude}" \
+    "${h_real}/.npm/_logs" /tmp/claude; do
+    [[ -e ${root} ]] || continue
+    root_real=$(cd "${root}" && pwd -P) || refuse "cannot resolve the seat write root ${root}"
+    all_roots+=("${root_real}")
+done
+pinned=()
+omp_path=$(find_on_path omp) || refuse 'omp not found on PATH (outside the .sandbox shim directories)'
+pin_exec omp "${omp_path}"
+omp_cmd=("${pinned[@]}")
+srt_path=$(find_on_path srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found on PATH; run make update'
+pin_exec srt "${srt_path}"
+srt_cmd=("${pinned[@]}")
+# hcom runs the pane outside every sandbox, so it must not be a file a seat can rewrite either.
+hcom_path=$(find_on_path hcom) || refuse 'hcom not found on PATH'
+pin_exec hcom "${hcom_path}"
 command -v jq > /dev/null || refuse 'jq not found on PATH; it writes the seat sandbox settings'
 os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
 case ${os} in
@@ -255,49 +367,34 @@ esac
 # @description Write the seat's srt settings and its `omp` shim under `<seats-root>/.sandbox/<name>` (regime-cutover
 #   U85), afresh on every launch, after the seat directory exists. The settings name what the seat may write (its
 #   directory, the repository's git common directory, the program's hcom store, its own omp profile and the omp
-#   session leases, the Claude Code state the bridge child writes, a per-seat cache root; the orchestrator also the
-#   seats root and the herdr socket, since it launches the workers), what it may not change inside those roots (git
-#   config and hooks, the hcom store's launch scripts and configuration, agent configuration that runs outside the
-#   seat), what it may not read (SSH, GPG, cloud and codex credentials, the chezmoi sources, `~/Workspace` but its own
-#   repository, other omp profiles, other hcom stores and seats, the sandbox directory itself) and the hosts it may
-#   reach. The shim runs a canary under those settings first, a write into the sandbox directory and reads of the
-#   settings file and `~/.ssh`, and refuses (exit 2) unless all three fail inside; only then does it exec omp under
-#   srt. srt, omp and the shim sit outside every write root, else the launch is refused.
+#   session leases, the Claude Code state the bridge child writes, a per-seat cache root; the same for both roles, so
+#   no seat writes the seats root or reaches the herdr socket, and none can start a seat), what it may not change
+#   inside those roots (git config and hooks, the hcom store's launch scripts and configuration, agent configuration
+#   that runs outside the seat), what it may not read (SSH, GPG, cloud and codex credentials, the chezmoi sources,
+#   `~/Workspace` but its own repository, other omp profiles, other hcom stores, every seat's sandbox directory, and
+#   for a worker the other seats) and the hosts it may reach. The shim runs a canary under those settings first, a
+#   write into the sandbox directory and reads of the settings file and `~/.ssh`, and refuses (exit 2) unless all
+#   three fail inside; only then does it run omp under srt, both by the physical argv `pin_exec` checked.
 # @noargs
 seat_sandbox_write() {
     local h claude dir_real common_real hcom_real seats_real sandbox_real
-    local srt_real omp_real root path settings shim json base sandbox_state origin_url push_url
-    local write_json deny_write_json deny_read_json allow_read_json sockets_json
-    local write=() deny_write=() deny_read=() allow_read=() sockets=()
+    local root path settings shim json base sandbox_state origin_url push_url srt_q omp_q
+    local write_json deny_write_json deny_read_json allow_read_json
+    local write=() deny_write=() deny_read=() allow_read=()
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first.
     (umask 077 && mkdir -p "${sandbox}/bin" "${seats_root%/}/.state/${name}" "${HOME}/.omp/profiles/${role}" \
         "${HOME}/.omp/run") || refuse "cannot create the seat sandbox directory ${sandbox} or omp's state directories"
-    # Every root is a `pwd -P` form, so the write-root check below compares physical paths.
-    h=$(cd "${HOME}" && pwd -P) || refuse "cannot resolve HOME ${HOME}"
+    h=${h_real}
     claude=${CLAUDE_CONFIG_DIR:-${h}/.claude}
     dir_real=$(cd "${dir}" && pwd -P) || refuse "cannot resolve the seat directory ${dir}"
     common_real=$(cd "${common}" && pwd -P) || refuse "cannot resolve the git common directory ${common}"
     hcom_real=$(cd "${HCOM_DIR}" && pwd -P) || refuse "cannot resolve the hcom store ${HCOM_DIR}"
     seats_real=$(cd "${seats_root}" && pwd -P) || refuse "cannot resolve the seats root ${seats_root}"
     sandbox_real=$(cd "${sandbox}" && pwd -P) || refuse "cannot resolve the seat sandbox directory ${sandbox}"
-    srt_real=$(cd "${srt_bin%/*}" && pwd -P) || refuse "cannot resolve the directory of ${srt_bin}"
-    srt_real=${srt_real}/${srt_bin##*/}
-    omp_real=${real_omp}
     sandbox_state=${seats_real}/.state/${name}
     write=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}" "${h}/.omp/run"
         "${claude}" "${h}/.claude.json" "${sandbox_state}")
-    # The orchestrator launches the workers, so it writes the seats root, the other seats' sandbox directories
-    # included; its own sandbox directory stays outside its reach, as every seat's does.
-    [[ ${role} != orchestrator ]] || write+=("${seats_real}")
-    deny_write=("${sandbox_real}")
-    # A seat that could rewrite srt, omp or its own shim would run uncontained on its next launch.
-    for path in "${srt_real}" "${omp_real}"; do
-        for root in "${write[@]}"; do
-            case ${path}/ in # lint-comparisons: allow both sides are pwd -P forms
-            "${root}"/*) refuse "${path} lies under the seat write root ${root}" ;;
-            esac
-        done
-    done
+    deny_write=("${seats_real}/.sandbox")
     for base in "${dir_real}" "${common_real%/.git}"; do
         deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
             "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
@@ -312,23 +409,18 @@ seat_sandbox_write() {
     deny_read=("${h}/.ssh" "${h}/.gnupg" "${h}/.aws" "${h}/.netrc" "${h}/.docker" "${h}/.kube" "${h}/.config/gcloud"
         "${h}/.codex" "${h}/.omp/agent" "${h}/.omp/profiles" "${h}/.hcom" "${h}/.local/state/hcom"
         "${h}/.local/share/chezmoi" "${h}/.local/share/chezmoi-private" "${h}/.config/chezmoi"
-        "${h}/.config/chezmoi-private" "${h}/Workspace" "${sandbox_real}")
+        "${h}/.config/chezmoi-private" "${h}/Workspace" "${seats_real}/.sandbox")
     allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}")
-    if [[ ${role} == orchestrator ]]; then
-        sockets=("${h}/.config/herdr/herdr.sock")
-    else
-        deny_read+=("${seats_real}")
-    fi
+    # The orchestrator reads the worker clones it reviews; a worker reads no other seat.
+    [[ ${role} == orchestrator ]] || deny_read+=("${seats_real}")
     settings=${sandbox_real}/srt-settings.json
     write_json=$(jq -cn '$ARGS.positional' --args "${write[@]}") || refuse 'jq failed on the seat write roots'
     deny_write_json=$(jq -cn '$ARGS.positional' --args "${deny_write[@]}") || refuse 'jq failed on the seat write denies'
     deny_read_json=$(jq -cn '$ARGS.positional' --args "${deny_read[@]}") || refuse 'jq failed on the seat read denies'
     allow_read_json=$(jq -cn '$ARGS.positional' --args "${allow_read[@]}") || refuse 'jq failed on the seat read roots'
-    # bash 3.2 (macOS /bin/bash) treats an empty array as unset under `set -u`.
-    sockets_json=$(jq -cn '$ARGS.positional' --args ${sockets[@]+"${sockets[@]}"}) || refuse 'jq failed on the seat sockets'
+    # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox.
     json=$(jq -n --argjson write "${write_json}" --argjson deny_write "${deny_write_json}" \
-        --argjson deny_read "${deny_read_json}" --argjson allow_read "${allow_read_json}" \
-        --argjson sockets "${sockets_json}" '{
+        --argjson deny_read "${deny_read_json}" --argjson allow_read "${allow_read_json}" '{
         network: {
             allowedDomains: ["github.com", "api.github.com", "uploads.github.com", "codeload.github.com",
                 "objects.githubusercontent.com", "raw.githubusercontent.com", "release-assets.githubusercontent.com",
@@ -336,7 +428,7 @@ seat_sandbox_write() {
                 "api.anthropic.com", "claude.ai", "platform.claude.com", "console.anthropic.com",
                 "chatgpt.com", "auth.openai.com", "api.openai.com"],
             deniedDomains: [],
-            allowUnixSockets: $sockets,
+            allowUnixSockets: [],
             allowMachLookup: ["com.apple.trustd.agent"],
             allowLocalBinding: true
         },
@@ -364,15 +456,19 @@ seat_sandbox_write() {
         echo "# Generated by hcom-seat for the ${role} seat ${name} (regime-cutover U85); rewritten on every launch."
         echo '# A canary proves the sandbox holds before omp starts; there is no uncontained fallback.'
         echo 'set -u'
-        printf 'srt=%q settings=%q omp=%q canary=%q state=%q push_url=%q\n' "${srt_real}" "${settings}" \
-            "${omp_real}" "${sandbox_real}/canary" "${sandbox_state}" "${push_url}"
+        printf -v srt_q '%q ' "${srt_cmd[@]}"
+        printf -v omp_q '%q ' "${omp_cmd[@]}"
+        echo "srt_cmd=(${srt_q}) omp_cmd=(${omp_q})"
+        printf 'settings=%q canary=%q state=%q push_url=%q sandbox=%q\n' "${settings}" "${sandbox_real}/canary" \
+            "${sandbox_state}" "${push_url}" "${sandbox_real}"
         cat << 'SHIM'
 rm -f "${canary}" || { echo "hcom-seat shim: cannot clear ${canary}" >&2; exit 2; }
-probe=$("${srt}" --settings "${settings}" -- /bin/sh -c 'if 2> /dev/null : > "$1"; then w=write-open; else w=write-denied; fi
+# `true`, not `:`: a failed redirection on a special builtin ends a POSIX shell (dash, Ubuntu's /bin/sh).
+probe=$("${srt_cmd[@]}" --settings "${settings}" -- /bin/sh -c 'if true 2> /dev/null > "$1"; then w=write-open; else w=write-denied; fi
 if cat "$2" > /dev/null 2>&1; then r=read-open; else r=read-denied; fi
 if ls "$3" > /dev/null 2>&1; then s=ssh-open; else s=ssh-denied; fi
 echo "$w $r $s"' canary "${canary}" "${settings}" "${HOME}/.ssh") || {
-    echo "hcom-seat shim: the sandbox canary did not run under ${srt}; omp not started" >&2
+    echo "hcom-seat shim: the sandbox canary did not run under ${srt_cmd[*]}; omp not started" >&2
     exit 2
 }
 if [[ ${probe} != 'write-denied read-denied ssh-denied' || -e ${canary} ]]; then
@@ -387,7 +483,9 @@ unset SSH_AUTH_SOCK
 if [[ -n ${push_url} ]]; then
     export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.pushurl GIT_CONFIG_VALUE_0=${push_url}
 fi
-exec "${srt}" --settings "${settings}" -- "${omp}" --no-extensions "$@"
+# hcom-seat refuses to launch a seat where this is set.
+export HCOM_SEAT_SANDBOX=${sandbox}
+exec "${srt_cmd[@]}" --settings "${settings}" -- "${omp_cmd[@]}" --no-extensions "$@"
 SHIM
     } > "${shim}.tmp" || refuse "cannot write ${shim}.tmp"
     if ! chmod 700 "${shim}.tmp" || ! mv -f "${shim}.tmp" "${shim}"; then
@@ -404,7 +502,7 @@ if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo
     echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
-    echo "hcom-seat: sandbox ${sandbox} (srt ${srt_bin}, omp ${real_omp})" >&2
+    echo "hcom-seat: sandbox ${sandbox} (srt ${srt_cmd[*]}, omp ${omp_cmd[*]})" >&2
     exit 0
 fi
 # U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file).

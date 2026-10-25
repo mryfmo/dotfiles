@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One fake for `hcom`, `herdr` and `omp` in the hcom-seat tests; the test symlinks it under each name.
+"""One fake for `hcom`, `herdr`, `omp` and `srt` in the hcom-seat tests; the test copies it under each name.
 
 Every call appends `{"argv": [...], "cwd": ..., "env": {HCOM_*}}` as one JSON line to `$FAKE_CALLS/<tool>`.
 `hcom omp` plays hcom 0.7.30's `--go` gate (without `--go` it prints the launch preview and starts nothing, as hcom
@@ -8,9 +8,11 @@ does inside an AI tool, `src/commands/launch.rs:48` at v0.7.30) and its herdr te
 and HCOM_TAG set, the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581`
 at v0.7.30), HCOM_DIR inherited and HCOM_TEAM dropped, as the real hcom drops it (the U33 pilot's pane showed
 HCOM_TEAM unset after hcom-seat exported it). `herdr pane run` executes the command it is given. `omp` records and
-exits 0. `srt --settings <file> -- <command...>` (regime-cutover U85) plays the sandbox without one: the seat shim's
-canary (`/bin/sh -c ...`) prints `$FAKE_SRT_CANARY` (default: all three probes denied, as the real sandbox answers) and
-any other command is executed. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
+exits 0. `srt --settings <file> -- <command...>` (regime-cutover U85) plays the sandbox without one. The seat
+shim's canary (`/bin/sh -c <script> canary <write> <read> <ssh>`) runs its script for real, under `$FAKE_SRT_SH`
+when set (`dash` in the POSIX-shell test) and with the three paths swapped for ones under a directory that does not
+exist, so the probes fail as the sandbox makes them fail; `$FAKE_SRT_CANARY`, when set, is printed instead. Any other
+command is executed. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
 """
 
 import json
@@ -53,8 +55,12 @@ elif tool == "herdr" and argv[:2] == ["pane", "run"]:
 elif tool == "srt":
     command = argv[argv.index("--") + 1 :]
     if command[:2] == ["/bin/sh", "-c"]:
-        print(os.environ.get("FAKE_SRT_CANARY", "write-denied read-denied ssh-denied"))
-        sys.exit(0)
+        if "FAKE_SRT_CANARY" in os.environ:
+            print(os.environ["FAKE_SRT_CANARY"])
+            sys.exit(0)
+        denied = ["/nonexistent-u85/canary", "/nonexistent-u85/settings", "/nonexistent-u85/.ssh"]
+        shell = os.environ.get("FAKE_SRT_SH", "/bin/sh")
+        sys.exit(subprocess.run([shell, "-c", command[2], command[3], *denied], check=False).returncode)
     os.execvp(command[0], command)
 elif tool not in ("herdr", "omp", "hcom", "bwrap", "socat", "rg"):
     sys.exit(f"fake-tool: unknown tool {tool}")

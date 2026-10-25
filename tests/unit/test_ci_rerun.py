@@ -419,6 +419,62 @@ class CiRerunTest(unittest.TestCase):
                 self.assertEqual([], self.entries())
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
 
+    def test_ci_rerun_refuses_a_link_to_a_mise_binary_when_mise_itself_is_not_found(self):
+        # Audit on 7f1776fc: with no mise on PATH the inode check had nothing to compare against, so a link to a mise
+        # binary outside any shims directory passed, and mise started as `jq` is a cwd-sensitive shim.
+        marker, vendor, decoy, gh_only = self.t / "planted.log", self.t / "vendor", self.t / "decoy", self.t / "gh-only"
+        for directory in (vendor, decoy, gh_only):
+            directory.mkdir()
+        (gh_only / "gh").symlink_to(self.t / "bin/gh")
+        path = os.pathsep.join(map(str, (decoy, gh_only, self.tools, "/usr/bin", "/bin")))
+        self.assertIsNone(shutil.which("mise", path=path))
+        for name in ("mise", "MiSe"):
+            with self.subTest(name):
+                binary = vendor / name
+                binary.write_text(f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n')
+                binary.chmod(0o755)
+                (decoy / "jq").unlink(missing_ok=True)
+                (decoy / "jq").symlink_to(binary)
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", PATH=path))
+                binary.unlink()
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("no jq outside a shims directory", result.stderr)
+                self.assertEqual([], self.entries())
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_runs_only_the_file_it_checked_when_a_path_holds_a_newline(self):
+        # Audit on 7f1776fc: command substitution strips trailing newlines, so `<dir>\n/jq` was checked as `<dir>/jq`
+        # (and a link to `jq\n` as `jq`) while the answer itself, another file, was linked and ran.
+        marker = self.t / "planted.log"
+        planted = f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{self.real["jq"]}" "$@"\n'
+        checked = f'#!/bin/sh\nexec "{self.real["jq"]}" "$@"\n'
+        for file, text in (
+            (self.t / "tools\n/jq", planted),
+            (self.t / "nl/jq\n", planted),
+            (self.t / "nl/jq", checked),
+        ):
+            file.parent.mkdir(exist_ok=True)
+            file.write_text(text)
+            file.chmod(0o755)
+        (self.t / "nl-link").mkdir()
+        (self.t / "nl-link/jq").symlink_to(self.t / "nl/jq\n")
+        cases = [
+            ("a directory name ending in a newline", self.t / "tools\n/jq"),
+            ("a link to a file name ending in a newline", self.t / "nl-link/jq"),
+        ]
+        for name, answer in cases:
+            with self.subTest(name):
+                self.reset()
+                self.answer(jq=str(answer))
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101"))
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn("jq is not an executable file", result.stderr)
+                self.assertEqual([], self.entries())
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
     def test_ci_rerun_keeps_a_caller_tmpdir_out_of_its_pinned_path(self):
         # Audit P2 on d6521941: the private directory heads PATH, so a TMPDIR with a ':' split it into entries the
         # caller chose (a relative one, or an empty one: the cwd), and their commands ran after the pin.

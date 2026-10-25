@@ -17,12 +17,13 @@
 #   once, and it blocks only its own run. All of these live in the checkout this script lives in
 #   (`git rev-parse --show-toplevel` there). Before reading anything, uv, python3, gh, jq, git and mkdir are resolved
 #   as `mise which` answers them under env -i from / (else `command -v`). Each answer is followed through every link
-#   to its physical file, which must be an executable regular file and no shim: neither the mise binary itself (same
-#   device and inode; a mise shim is a link to it) nor a file in a directory named shims in any letter case, as
-#   found or as resolved; otherwise the script exits 1. All but
-#   python3 are linked into a private directory (under TMPDIR when it is absolute and has no ':', else /tmp; removed
-#   on exit and on HUP, INT or TERM) and PATH becomes those links then /usr/bin:/bin. python3 is always
-#   started by its own path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
+#   to its physical file, which must be an executable regular file and no shim: neither a file named mise in any
+#   letter case nor the mise binary itself (same device and inode; a mise shim is a link to it), nor a file in a
+#   directory named shims in any letter case, as found or as resolved. An answer, link or directory whose path holds a
+#   control character is refused too; otherwise the script exits 1. Only the checked physical file is ever run: all but
+#   python3 are linked by it into a private directory (under TMPDIR when it is absolute and has no ':', else /tmp;
+#   removed on exit and on HUP, INT or TERM) and PATH becomes those links then /usr/bin:/bin. python3 is always
+#   started by its physical path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
 #   `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i from the root, so no
 #   checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks
 #   the interpreter (security:4fe2438:1). Before PATH is pinned, every other command (mktemp, env, ln and the EXIT trap's
@@ -55,43 +56,65 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 #
+# @description Print the physical path of a directory, refusing one that holds a control character.
+# @arg $1 string A directory.
+#
+function physical_dir() {
+    local dir
+    # The '.' keeps command substitution from stripping newlines that end the path itself.
+    dir=$(cd -P -- "$1" 2> /dev/null && pwd -P && printf .) || return 1
+    dir=${dir%.}
+    dir=${dir%$'\n'}
+    [[ ${dir} != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow a control-character content test
+    printf '%s\n' "${dir}"
+}
+
+#
 # @description Print the physical path of a file, following every link of it and of its directories.
 # @arg $1 string An absolute path.
-# @exitcode 1 A link cannot be read, the chain is longer than 40 links, or a directory does not exist.
+# @exitcode 1 The path is relative, it or a link holds a control character, a link cannot be read, the chain is
+#   longer than 40 links, or a directory does not exist.
 #
 function physical() {
     local path=$1 link dir hops=0
+    [[ ${path} == /* && ${path} != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow an absolute-path and content test
     while [[ -L ${path} ]]; do
         ((++hops <= 40)) || return 1
-        link=$(/usr/bin/readlink -- "${path}") || return 1
+        # -n adds no delimiter (macOS's plain form drops one for a target that ends in a newline), and the '.' keeps
+        # the target's own trailing newlines from command substitution.
+        link=$(/usr/bin/readlink -n -- "${path}" && printf .) || return 1
+        link=${link%.}
+        [[ ${link} != *[[:cntrl:]]* ]] || return 1
         [[ ${link} == /* ]] || link=${path%/*}/${link} # lint-comparisons: allow an absolute-path prefix test
         path=${link}
     done
-    dir=$(cd -P -- "${path%/*}/" 2> /dev/null && pwd -P) || return 1
+    dir=$(physical_dir "${path%/*}/") || return 1
     printf '%s/%s\n' "${dir%/}" "${path##*/}"
 }
 
 #
-# @description Succeed when a tool is a shim: its physical file is the mise binary, or the directory it was found in
-#   or resolves to is named shims in any letter case (a case-insensitive file system accepts every spelling).
+# @description Succeed when a tool is a shim: its physical file is named mise in any letter case or is the mise
+#   binary, or the directory it was found in or resolves to is named shims in any letter case (a case-insensitive
+#   file system accepts every spelling).
 # @arg $1 string The path the tool was found at.
 # @arg $2 string Its physical path.
 #
 function is_shim() {
     local dir
+    [[ ${2##*/} == [Mm][Ii][Ss][Ee] ]] && return 0 # lint-comparisons: allow a file-name test, not a comparison of two paths
     [[ -n ${mise_bin} && $2 -ef ${mise_bin} ]] && return 0
     for dir in "${1%/*}/" "${2%/*}/"; do
-        dir=$(cd -P -- "${dir}" 2> /dev/null && pwd -P) || return 0
+        dir=$(physical_dir "${dir}") || return 0
         [[ ${dir}/ == */[Ss][Hh][Ii][Mm][Ss]/* ]] && return 0 # lint-comparisons: allow a directory-name test, not a comparison of two paths
     done
     return 1
 }
 
-mise_bin=$(command -v mise) && [[ ${mise_bin} == /* ]] && mise_bin=$(physical "${mise_bin}") || mise_bin='' # lint-comparisons: allow an absolute-path prefix test
+mise_bin=$(command -v mise) && mise_bin=$(physical "${mise_bin}") || mise_bin=''
 for tool in python3 uv gh jq git mkdir; do
     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
     # A missing or non-executable link target would be skipped by PATH lookup and fall through to /usr/bin.
-    if ! { [[ ${found} == /* ]] && real=$(physical "${found}") && [[ -f ${real} && -x ${real} ]]; }; then # lint-comparisons: allow an absolute-path prefix test
+    if ! { real=$(physical "${found}") && [[ -f ${real} && -x ${real} ]]; }; then
         echo "ci-rerun: ${tool} is not an executable file ('${found}')" >&2
         exit 1
     fi
@@ -100,9 +123,9 @@ for tool in python3 uv gh jq git mkdir; do
         exit 1
     fi
     if [[ ${tool} == python3 ]]; then
-        py=${found}
+        py=${real}
     else
-        /bin/ln -s -- "${found}" "${bin}/${tool}"
+        /bin/ln -s -- "${real}" "${bin}/${tool}"
     fi
 done
 PATH="${bin}:/usr/bin:/bin"

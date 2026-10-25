@@ -3666,6 +3666,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/apply-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/apply-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/check-sleep/" class="md-nav__link">
         
   
@@ -3926,10 +3954,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_10" id="__nav_9_4_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
             
   
   
@@ -3947,8 +3975,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_10">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4009,10 +4037,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -4030,8 +4058,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4176,10 +4204,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_13" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_13" id="__nav_9_4_13_label" tabindex="0">
             
   
   
@@ -4197,8 +4225,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_12">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4752,7 +4780,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">95</span>
+  <span class="landing-stat__value">96</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -4762,7 +4790,7 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">25</span>
+  <span class="landing-stat__value">26</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
@@ -4827,7 +4855,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **95** source reference pages are generated from tracked shell assets
+- **96** source reference pages are generated from tracked shell assets
 - **28** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -4885,16 +4913,16 @@ _28 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_25 documented entries_
+_26 documented entries_
 
+- [`scripts/apply-check.sh`](reference/scripts/apply-check.md): The disposable check `make apply-check` runs inside a container, for client and server. It copies the parts of the wo...
 - [`scripts/check-sleep.sh`](reference/scripts/check-sleep.md): An orchestrator Mac that sleeps overnight stalls every seat, so `make doctor` runs this check after the tools check. ...
 - [`scripts/check-tools.sh`](reference/scripts/check-tools.md): Reports the availability and versions of the commands that participate in the dotfiles lifecycle. This script does no...
 - [`scripts/ci/masked-dirname-check.sh`](reference/scripts/ci/masked-dirname-check.md): ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape `dir=$(cd "$(dirname ...
 - [`scripts/generate-docs.sh`](reference/scripts/generate-docs.md): Collects tracked shell sources, renders Markdown reference pages, creates a curated landing page, and writes a chezmo...
 - [`scripts/gh-auth.sh`](reference/scripts/gh-auth.md): Every seat on a machine acts as that machine's one GitHub account, stored in gh's default configuration directory. Wh...
-- [`scripts/lib/asset-manifest.sh`](reference/scripts/lib/asset-manifest.md): list cannot be read or does not name it: the manifest records what it could not read as such.
 
-[19 more entries in the full catalog](catalog/)
+[20 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

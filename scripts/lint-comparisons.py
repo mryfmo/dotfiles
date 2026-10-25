@@ -5,17 +5,16 @@ each hit as `<file>:<line>: <rule id> <rule text>` and exits 1 when a hit outsid
 no hit, is in a changed file (a normaliser in the statement, or `# lint-comparisons: allow <reason>` on the line,
 accepts; paths as git ls-files prints). In an unchanged file both are warnings. The changed files are --changed's, else
 `git diff --name-only --no-renames origin/main...HEAD`'s (a rename changes both paths); --all prints every hit and
-stale row and exits 0. Shell is read only from shfmt's JSON AST (`-ln zsh` for zsh, else bash): a missing shfmt, a parse
-failure or output that is no JSON refuses, and nothing stands in for the parser. A command is read at command position,
-after its leading assignments and the known WRAPPERS, whose option grammar is not modelled (resolve): past a wrapper,
-option words, a word after one and NAME=value or duration operands are skipped up to the first word that names a
-command a rule reads, a wrapper or a DATA command. An unknown wrapper hides the command after it, accepted for
-precision, so a data argument (`printf '%s' jq "…"`, `command -v jq`) is never read as a command; the residual is an
-unrecognised command right after a wrapper option (`nice -n5 cat jq …`), read as that option's value. A shell's -c
-string, eval's arguments and env -S's string are shell code: they are parsed again, every rule reads them, and their
-hits are reported on the outer lines; an expansion the outer shell performs is an unknown value there, whatever quoting
-the nested text puts around it. Options and command names are read from a word's literal text after the shell joins its
-fragments (`''-i` is `-i`)."""
+stale row and exits 0. The findings are the union, deduplicated by line and rule, of two readers: origin/main's line
+rules (line_lint, kept as they were) and the token rules on shfmt's JSON AST (`-ln zsh` for zsh, else bash), so the
+lint never reports less than the line rules did and the token rules only add (#432 closes their detection gaps, not
+their false positives). For a shell file, a missing shfmt, a parse failure or output that is no JSON refuses. The token
+rules read a command at command position, after its leading assignments and the known WRAPPERS, past whose words up to
+the first one naming a command a rule reads, a wrapper or a DATA command (resolve). A shell's -c string and eval's
+arguments are shell code: they are parsed again, their hits are reported on the outer lines, and an expansion the outer
+shell performs is an unknown value there whatever quoting the nested text puts around it; a string shfmt cannot parse
+adds nothing. Options and command names are read from a word's literal text after the shell joins its fragments
+(`''-i` is `-i`)."""
 
 import argparse
 import ast
@@ -25,6 +24,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -105,22 +105,28 @@ def blank(m):  # a chezmoi action is no shell: blanked to spaces, newlines and o
     return (":" if lone else " ") + re.sub(r"[^\n]", " ", m[0][1:])
 
 
-def shfmt_tree(rel, text, zsh=None, label=None):  # (AST, text as parsed): shfmt's JSON AST is the only shell reader,
-    # and it refuses; zsh set: a nested string (-c, eval) in that dialect, already free of chezmoi actions
-    if zsh is None:
+def shfmt_tree(rel, text, zsh=None):  # (AST, text as parsed): shfmt's JSON AST is the token rules' only
+    # shell reader, and it refuses; zsh set: a nested string (-c, eval) in that dialect, which yields (None, text)
+    # instead, since its parse is no file's
+    nested = zsh is not None
+    if not nested:
         zsh = rel.removesuffix(".tmpl").endswith(".zsh") or re.match(r"#!.*\bzsh\b", text)
         if rel.endswith(".tmpl"):
             text = re.sub(r"\{\{.*?\}\}", blank, text, flags=re.DOTALL)
     cmd = [*shfmt(), "-ln", "zsh" if zsh else "bash", "--tojson"]
     run = subprocess.run(cmd, input=text, capture_output=True, text=True, check=False)
+    if run.returncode and nested:
+        return None, text
     if run.returncode:
-        sys.exit(f"lint-comparisons: {label or rel}: {run.stderr.strip()}")
+        sys.exit(f"lint-comparisons: {rel}: {run.stderr.strip()}")
     try:
         tree = json.loads(run.stdout)
     except (ValueError, RecursionError):
         tree = None
     if not isinstance(tree, dict) or tree.get("Type") != "File":  # JSON that is no shfmt file node is no AST either
-        sys.exit(f"lint-comparisons: {label or rel}: shfmt gave no JSON AST")
+        if nested:
+            return None, text
+        sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON AST")
     return tree, text
 
 
@@ -200,10 +206,10 @@ def option(word, signs="-"):  # a literal option: the word's text starts with on
     return bool(first) and first[0]["Type"] in LITS and static(word)[:1] in signs
 
 
-def resolve(args):  # (index of the command word, env -S's command line as (word, literal prefix length) or None).
-    # Past a known wrapper, its option grammar is not modelled: an option word is skipped, and so is a word after one
-    # (its value, as in env -iu HOME or sudo --chdir /x) or an operand (NAME=value, a duration), unless the word names
-    # a command a rule reads, a wrapper or a DATA command; command -v and -V only look names up, so they run nothing
+def resolve(args):  # the index of the command word. Past a known wrapper, its option grammar is not modelled: an
+    # option word is skipped, and so is a word after one (its value, as in env -iu HOME or sudo --chdir /x) or an
+    # operand (NAME=value, a duration), unless the word names a command a rule reads, a wrapper or a DATA command;
+    # command -v and -V only look names up, so they run nothing
     i = 0
     while i < len(args) and (wrapper := os.path.basename(static(args[i]))) in WRAPPERS:
         at, i, value = i, i + 1, False
@@ -211,13 +217,7 @@ def resolve(args):  # (index of the command word, env -S's command line as (word
             word = static(args[i])
             if option(args[i]):
                 if wrapper == "command" and re.fullmatch(r"-[A-Za-z]*[vV][A-Za-z]*", word):
-                    return at, None  # the words from `command` on: no rule reads them
-                split = wrapper == "env" and re.fullmatch(r"--split-string(?:=(.*))?|-[A-Za-z]*S(.*)", word, re.DOTALL)
-                if split:  # env -S STRING, -iS STRING, -SSTRING, --split-string[=]STRING: a command line
-                    rest = split[1] if word.startswith("--") else split[2]
-                    if rest:
-                        return len(args), (args[i], len(word) - len(rest))
-                    return len(args), ((args[i + 1], 0) if i + 1 < len(args) else None)
+                    return at  # the words from `command` on: no rule reads them
                 i, value = i + 1, word != "--"
                 continue
             name = os.path.basename(word)
@@ -226,12 +226,12 @@ def resolve(args):  # (index of the command word, env -S's command line as (word
             if not (value or WRAPPER_OPERAND.fullmatch(word)):
                 break
             i, value = i + 1, False
-    return i, None
+    return i
 
 
 def command(call):  # a CallExpr's words and argument nodes from its command word on, past the known WRAPPERS
     args = call.get("Args") or []
-    i = resolve(args)[0]
+    i = resolve(args)
     return [static(a) for a in args[i:]], args[i:]
 
 
@@ -322,9 +322,11 @@ def jq_tokens(prog, i=0, inner=False):  # ([(kind, text, offset)], end): str (it
     return out, i
 
 
-def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell rules on shfmt's AST; a marker counts
-    # only in a comment node; zsh and label: a nested string's dialect and its place in the file, for an error
-    tree, text = shfmt_tree(rel, text, zsh, label)
+def shell_hits(rel, text, zsh=None):  # (hits, comments): the shell rules on shfmt's AST; a marker counts only in a
+    # comment node; zsh: a nested string's dialect
+    tree, text = shfmt_tree(rel, text, zsh)
+    if tree is None:  # a nested string shfmt cannot parse: the line rules still read its outer line
+        return [], {}
     data, hits = text.encode(), []
     comments = [c for c in nodes(tree) if "Hash" in c and "Text" in c]
     note = {c["Hash"]["Line"]: "#" + c["Text"] for c in comments}
@@ -365,7 +367,7 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
         if not isinstance(cmd, dict):
             continue
         call = (cmd.get("Args") or []) if cmd.get("Type") == "CallExpr" else []
-        start, split = resolve(call)
+        start = resolve(call)
         t, words, args, at = cmd.get("Type"), [static(a) for a in call[start:]], call[start:], cmd["Pos"]["Line"]
         tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
         if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
@@ -410,13 +412,11 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
                 hits.extend((lines[p], "R3", ok or accepted(lo, hi)) for p, ok in found)
                 break
         nested, nested_zsh = executed(words, args) if t == "CallExpr" else ([], False)
-        if split:  # env -S: its string is a command line, read past its option prefix when attached (-SSTRING)
-            nested, nested_zsh = [split[0]], False
         if nested:  # the nested hits land on the outer lines their text came from
-            text_lines = shell_text(nested)[split[1] if split else 0 :]
+            text_lines = shell_text(nested)
             starts = [0] + [k + 1 for k, (c, _) in enumerate(text_lines) if c == "\n"]
             where = [text_lines[min(s, len(text_lines) - 1)][1] if text_lines else at for s in starts]
-            inner, inner_note = shell_hits(rel, "".join(c for c, _ in text_lines), nested_zsh, f"{rel}:{at}")
+            inner, inner_note = shell_hits(rel, "".join(c for c, _ in text_lines), nested_zsh)
             hits.extend((where[n - 1], rule, ok or accepted(lo, hi, NORM.get(rule))) for n, rule, ok in inner)
             for n, c in inner_note.items():
                 note.setdefault(where[n - 1], c)
@@ -557,10 +557,10 @@ def git(*args):  # plan 024 5.14 item 2: env -i, a system git by its absolute pa
     return filter(None, subprocess.run(cmd, env=env, capture_output=True, text=True, check=True).stdout.split("\0"))
 
 
-def default_files():
+def default_files():  # the line rules' files; the token rules read the shell and Python ones among them (lint)
     for rel in git("ls-files", "-z", "--", "home", "scripts", "install"):
         first = (ROOT / rel).read_text(errors="replace").split("\n", 1)[0]
-        if rel.removesuffix(".tmpl").endswith((".sh", ".bash", ".zsh", ".py")) or SHEBANG.match(first):
+        if rel.endswith((".sh", ".bash", ".zsh", ".py", ".tmpl")) or SHEBANG.match(first):
             yield rel, ROOT / rel
 
 
@@ -572,15 +572,143 @@ def notes(text):  # each line's Python comment token, where alone the allow mark
         return {}
 
 
-def lint(rel, text):
+def lint(rel, text):  # the union of the line rules and the token rules; a .tmpl that renders no shell or Python
+    # (no such name, no such shebang) is read by the line rules alone, as shfmt would refuse it
     lines = text.split("\n")
+    yield from line_lint(rel, text)
     py = rel.removesuffix(".tmpl").endswith(".py") or re.match(r"#!.*python", lines[0])
+    sh = rel.removesuffix(".tmpl").endswith((".sh", ".bash", ".zsh")) or SHEBANG.match(lines[0])
+    if rel.endswith(".tmpl") and not (py or sh):
+        return
     hits, note = (python_hits(text), notes(text)) if py else shell_hits(rel, text)
     for n, rule, accepted in hits:
         mark = MARKER.search(note.get(n, ""))
         if not accepted and not (mark and mark.group(1)):
             yield n, "R0" if mark else rule
     yield from ((n, "R0") for n, c in note.items() if (m := MARKER.search(c)) and not m.group(1))
+
+
+# origin/main's line rules (9c6de41d), kept as they were apart from their names: lint() adds the token rules to them
+JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
+JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
+JQ_QUOTE = re.compile(r"""(?:\\[\s\S]|"(?:[^"\\\n]|\\[\s\S])*"|[^'"\\\n]|")*+('[^']*')""")  # skips a closed "…" whole
+JQ_ARG = re.compile(r"(?<!\S)(?:--(?:arg|argjson|slurpfile|rawfile)(?:[\s\\]+\S+)?|--indent|-L|--library-path)[\s\\]+$")
+PS = re.compile(
+    r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
+)
+PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
+GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
+
+
+def line_operand(tok):
+    name = re.match(r"\$\{?([A-Za-z_]\w*)", tok)
+    if name:
+        return bool(TOKEN.search(name.group(1)))
+    return bool(LITERAL.search(re.sub(r"\$\{[^}]*\}|\$\w+", "", tok)))
+
+
+def line_words(line):
+    while (folded := re.sub(r"\$\([^()]*\)", "", line)) != line:
+        line = folded
+    try:
+        return shlex.split(line)
+    except ValueError:
+        return line.split()
+
+
+def line_programs(code):
+    for m in re.finditer(r"\bjq\b[\"})]*", code):  # also "$jq", "${jq}" and "$(command -v jq)"
+        q = JQ_QUOTE.match(code, m.end())  # the first single-quoted string on the jq word's logical line
+        while q and JQ_ARG.search(code, m.end(), q.start(1)):  # an option's argument (jq 1.8 --help), not the program
+            q = JQ_QUOTE.match(code, q.end())
+        if q:
+            yield q.start(1), q[1]
+
+
+def line_span(prog, p, fn):
+    stop, lo, hi, d = (",;" if fn else ",;|"), p, p, 0
+    while lo > 0 and not (d == 0 and prog[lo - 1] in stop + "([{"):
+        lo -= 1
+        d += (prog[lo] in ")]}") - (prog[lo] in "([{")
+    d = 0
+    while hi < len(prog) and not (d == 0 and prog[hi] in stop + ")]}"):
+        d += (prog[hi] in "([{") - (prog[hi] in ")]}")
+        hi += 1
+    return lo, hi
+
+
+def line_shell_hits(text):
+    lines = text.split("\n")
+    for n, raw in enumerate(lines, 1):
+        line = "" if raw.lstrip().startswith("#") else re.split(r"\s#", raw, maxsplit=1)[0]
+        toks = line_words(line)
+        for i, tok in enumerate(toks):
+            test = tok in ("==", "!=", "=") and 0 < i < len(toks) - 1 and ("[[" in toks[:i] or "[" in toks[:i])
+            if test and (line_operand(toks[i - 1]) or line_operand(toks[i + 1])):
+                yield n, "R1", SH_NORM.search(line)
+            if tok == "in" and i > 1 and toks[i - 2] == "case" and line_operand(toks[i - 1]):
+                yield n, "R2", SH_NORM.search(line)
+        if PS.search(line) or PGREP.search(line):
+            yield n, "R5", False
+        for cmd, flags, pattern in GREP.findall(line):
+            ere = cmd == "egrep" or re.search(r"\s-\w*E|--extended-regexp", flags)
+            if ere and re.search(r"\$\{?[A-Za-z_]", pattern) and "-F" not in flags.split():
+                yield n, "R6", "escape_regex" in line
+    code = "\n".join("" if line.lstrip().startswith("#") else line for line in lines)
+    for begin, region in line_programs(code):
+        prog, first = re.sub(r"\\\([^)]*\)", "", region), code.count("\n", 0, begin) + 1
+        for op in JQ_OP.finditer(prog):
+            lo, hi = line_span(prog, op.start(), op.group(0).endswith("("))
+            expr, sides = prog[lo:hi], (prog[lo : op.start()], prog[op.start() : hi])
+            hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
+            if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
+                bare = [re.sub(r'"(?:[^"\\]|\\.)*"|#.*', "", side) for side in sides]  # strings/comments apply nothing
+                ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in bare) for d in JQ_DEF.findall(prog))
+                yield first + prog.count("\n", 0, op.start()), "R3", ok or MARKER.search(lines[first - 1])
+
+
+def line_python_hits(text):
+    def dotted(node):
+        if isinstance(node, ast.Attribute):
+            return dotted(node.value) + "." + node.attr
+        return dotted(node.func) + "()" if isinstance(node, ast.Call) else getattr(node, "id", "?")
+
+    def py_operand(node):
+        if isinstance(node, ast.Constant):
+            return isinstance(node.value, str) and bool(LITERAL.search(node.value))
+        return bool(TOKEN.search(node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")))
+
+    def py_calls(nodes, accept):
+        return any(accept(dotted(c.func)) for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
+
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return
+    for node in ast.walk(tree):
+        call = isinstance(node, ast.Call)
+        if isinstance(node, ast.Compare) and any(isinstance(o, OPS) for o in node.ops):
+            parts = [node.left, *node.comparators]
+        elif call and isinstance(node.func, ast.Attribute) and node.func.attr in ("startswith", "endswith"):
+            parts = [node.func.value, *node.args]
+        elif call and dotted(node.func) in RE_FUNCS and node.args and isinstance(node.args[0], ast.JoinedStr):
+            values = [v.value for v in node.args[0].values if isinstance(v, ast.FormattedValue)]
+            yield node.lineno, "R6", bool(values) and all("re.escape" in map(dotted, ast.walk(v)) for v in values)
+            continue
+        else:
+            continue
+        if any(py_operand(p) for p in parts):
+            yield node.lineno, "R4", py_calls(parts, PY_NORM.match)
+
+
+def line_lint(rel, text):
+    lines = text.split("\n")
+    py = rel.removesuffix(".tmpl").endswith(".py") or re.match(r"#!.*python", lines[0])
+    for n, rule, accepted in line_python_hits(text) if py else line_shell_hits(text):
+        mark = MARKER.search(lines[n - 1])
+        if not accepted and not (mark and mark.group(1)):
+            yield n, "R0" if mark else rule
+    yield from ((n, "R0") for n, raw in enumerate(lines, 1) if (m := MARKER.search(raw)) and not m.group(1))
 
 
 def main(argv=None):

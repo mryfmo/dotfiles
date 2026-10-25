@@ -142,19 +142,19 @@ OWNED_ROWS = {
         (
             "k4.sh",
             "jq -r 'select(.url == $p)\n  | .x' # lint-comparisons: allow the fixture\n",
-            [],
-        ),  # the whole program
+            [("R3", 1)],
+        ),  # the line rules read the marker on the hit's own line only, and the union keeps their hit
     ],
     "audit:4f5be51:1": [  # and/or bound each comparison's operands; if…end is one operand
         ("l.sh", JQ_AND, [("R3", 1)]),
         ("l2.sh", "jq -r 'select(if .a then .url else .path end == $p)'\n", [("R3", 1)]),
     ],
-    "audit:4f5be51:3": [  # a single-quoted pattern interpolates nothing; a pattern word with an expanded $ does
-        ("g.sh", "grep -E '^$name$' file\n", []),
+    "audit:4f5be51:3": [  # a pattern word with an expanded $ is R6; the line rules also read a single-quoted one
+        ("g.sh", "grep -E '^$name$' file\n", [("R6", 1)]),
         ("g2.sh", "grep -E \"^\\\\$name\" f\ngrep -E '^'\"$name\"'$' f\n", [("R6", 1), ("R6", 2)]),
     ],
-    "audit:4f5be51:5": [  # a jq string and a jq comment hold no operator; a long literal shifts no later one
-        ("s.sh", 'jq -n \'"path == /x" # .url == "/x"\'\n', []),
+    "audit:4f5be51:5": [  # a long literal shifts no later operator; a jq string or comment is the line rules' hit
+        ("s.sh", 'jq -n \'"path == /x" # .url == "/x"\'\n', [("R3", 1)]),
         ("s2.sh", "jq -r 'select(.name != \"" + "a" * 40 + '") | select(.x == "/y")\'\n', [("R3", 1)]),
     ],
     "audit:4f5be51:6": [  # the whole pattern word, mixed quotes too; an escaped $ expands nothing
@@ -485,19 +485,9 @@ class LintComparisonsTest(unittest.TestCase):
                 else:  # case matches on its word, here the variable: no path operand, as on one line
                     self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
-    def test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment(self):
-        # thread 4313892783: shell comments are read with the quote state carried across lines and heredoc bodies skipped
-        for name, text in (
-            ("ms.sh", 'msg="\n# lint-comparisons: allow\n"\n'),
-            ("ms2.sh", "msg='a\n  # lint-comparisons: allow\nb'\n"),
-            ("hd.sh", "cat <<EOF\n# lint-comparisons: allow\nEOF\n"),
-            ("hd2.sh", "cat <<-'X' > f\n\t# lint-comparisons: allow\n\tX\n"),
-            ("hd3.sh", "cat <<'END-DATA'\n# lint-comparisons: allow\nEND-DATA\n"),  # a delimiter with a hyphen
-        ):
-            with self.subTest(fixture=name):
-                result = self.run_fixture(name, text)
-                self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
-        # a real comment after both is still one: its reasonless marker is R0
+    def test_a_real_comment_after_a_multiline_string_and_a_heredoc_is_one(self):
+        # thread 4313892783: the quote state is carried across lines and the heredoc body skipped, so a reasonless
+        # marker in a real comment after both is R0 (one in the string or the body is the line rules' R0 as well)
         result = self.run_fixture("rc.sh", 'msg="\na"\ncat <<EOF\nb\nEOF\n# lint-comparisons: allow\n')
         self.assertEqual((1, ["rc.sh:6: R0"]), (result.returncode, [x[:11] for x in result.stdout.splitlines()]))
 
@@ -515,7 +505,8 @@ class LintComparisonsTest(unittest.TestCase):
         # audit:b24d313:1: positional and special parameters are expansions; a quoted or escaped $ is a literal
         spellings = ('"$1"', '"${10}"', '"$@"', '"x$?"', '"$$"', "$!")
         self.assert_hits([(f"p{i}.sh", f"pgrep -f {s}\n", [("R5", 1)]) for i, s in enumerate(spellings)])
-        self.assert_hits([("pl.sh", "pgrep -f 'x$1'\npgrep -f \"x\\$1\"\n", [])])
+        # a quoted or escaped $ is a literal to the token rules; the line rules report both lines
+        self.assert_hits([("pl.sh", "pgrep -f 'x$1'\npgrep -f \"x\\$1\"\n", [("R5", 1), ("R5", 2)])])
 
     def test_double_quoted_jq_joins_split_operator_and_path(self):
         # audit:b24d313:2: bash deletes a backslash-newline inside "…", so the operator and the field arrive whole
@@ -544,31 +535,22 @@ class LintComparisonsTest(unittest.TestCase):
             ]
         )
 
-    def test_heredoc_data_is_excluded_from_shell_rules(self):
-        # audit:b24d313:5: a heredoc body's literal text is data no shell rule reads; the substitutions of an unquoted
-        # body run, so they are code (audit of f366de80), comments in them included
-        body = "[[ $path == /x ]]\n"  # no marker: read as code, it would be R1
+    def test_heredoc_substitutions_are_code(self):
+        # audit of f366de80: the substitutions of an unquoted heredoc body run, so the token rules read them, comments
+        # in them included; the body's literal text and a quoted body are the line rules' to report, as on main
+        body = "[[ $path == /x ]]\n"
         hu = f"cat <<EOF\n{body}$([[ $path == /y ]] && echo y)\n$(true # lint-comparisons: allow\n)\nEOF\n"
         self.assert_hits(
-            [("hq.sh", f"cat <<'EOF'\n{body}$([[ $path == /y ]])\nEOF\n", []), ("hu.sh", hu, [("R1", 3), ("R0", 4)])]
+            [
+                ("hq.sh", f"cat <<'EOF'\n{body}$([[ $path == /y ]])\nEOF\n", [("R1", 2)]),
+                ("hu.sh", hu, [("R1", 2), ("R1", 3), ("R0", 4)]),
+            ]
         )
 
     def test_ansi_c_quotes_preserve_following_marker_comments(self):
         # audit:b24d313:6: $'…' closes at its unescaped quote; the comment after the next statement is one
         self.assert_hits(
             [("ac.sh", "msg=$'it\\'s fine'\n[[ $path == /x ]] # lint-comparisons: allow the fixture\n", [])]
-        )
-
-    def test_all_valid_heredoc_delimiters_exclude_body_markers(self):
-        # audit:b24d313:7: every delimiter bash accepts ends its body where bash ends it; a body marker is no R0
-        marker = "# lint-comparisons: allow\n"
-        self.assert_hits(
-            [
-                (f"d{i}.sh", f"cat <<{open_}\n{marker}{close}\n", [])
-                for i, (open_, close) in enumerate(
-                    (("'123'", "123"), ("'END-DATA'", "END-DATA"), ('E"N"D', "END"), ("\\EOF", "EOF"), ("-'T'", "\tT"))
-                )
-            ]
         )
 
     def test_shfmt_missing_refuses_without_fallback(self):
@@ -651,7 +633,7 @@ class LintComparisonsTest(unittest.TestCase):
         # worker review round 1: as on one physical line, a marker or a normaliser anywhere in its && chain accepts it
         self.assert_hits(
             [
-                ("ch.sh", "[[ $path == /x ]] \\\n  && echo y # lint-comparisons: allow the fixture\n", []),
+                ("ch.sh", "[[ $path == /x ]] \\\n  && echo y # lint-comparisons: allow the fixture\n", [("R1", 1)]),
                 ("ch2.sh", 'case "$url" \\\n  in file://*) ;; esac # lint-comparisons: allow the fixture\n', []),
                 ("ch3.sh", 'cd -P "$dir" && [[ "$PWD" == /x/* ]]\nx=$(realpath "$p") && [[ $x == /y ]]\n', []),
                 ("ch4.sh", 're=$(escape_regex "$x"); grep -E "^$re" f\n', []),
@@ -695,10 +677,11 @@ class LintComparisonsTest(unittest.TestCase):
         self.assert_hits([("ox.sh", 'pgrep -f "$name-x"\n', [("R5", 1)]), ("oy.sh", 'grep -E "$v-x" f\n', [("R6", 1)])])
 
     def test_audit_6_jq_is_the_command_word_only(self):
-        # audit:6434c27:6: a jq inside another command's argument runs no program there; j"q" and command jq do
+        # audit:6434c27:6: j"q" and command jq run a program; a jq word inside another command's argument is the line
+        # rules' hit, which the union keeps
         self.assert_hits(
             [
-                ("jx.sh", "echo \"$(jq -r .name input)\" 'select(.url == $p)'\n", []),
+                ("jx.sh", "echo \"$(jq -r .name input)\" 'select(.url == $p)'\n", [("R3", 1)]),
                 ("jy.sh", "j\"q\" 'select(.url == $p)'\n", [("R3", 1)]),
                 ("jz.sh", "command jq -r 'select(.url == $p)'\n", [("R3", 1)]),
             ]
@@ -757,7 +740,7 @@ class LintComparisonsTest(unittest.TestCase):
                 ("h3.sh", sub.format("jq -r 'select(.url == $p)' input.json"), [("R3", 2)]),
                 ("h5.sh", sub.format("ps aux | grep needle"), [("R5", 2)]),
                 ("h6.sh", sub.format('grep -E "$name" f'), [("R6", 2)]),
-                ("hn.sh", "cat <<'EOF'\n$(jq -r 'select(.url == $p)' input.json)\nEOF\n", []),
+                ("hn.sh", "cat <<'EOF'\n$(jq -r 'select(.url == $p)' input.json)\nEOF\n", [("R3", 2)]),  # line rules
             ]
         )
         # a known wrapper never hides the jq or [ command after it
@@ -766,8 +749,8 @@ class LintComparisonsTest(unittest.TestCase):
             [(f"wj{i}.sh", f"{w} jq -r 'select(.url == $p)'\n", [("R3", 1)]) for i, w in enumerate(wrapped)]
             + [(f"wb{i}.sh", f'{w} [ "$path" = /x ]\n', [("R1", 1)]) for i, w in enumerate(wrapped)]
             + [("wt.sh", 'timeout 5 test "$path" = /x\n', [("R1", 1)])]
-            # out of contract: a command is read at command position, so an unknown wrapper hides it (precision)
-            + [("wu.sh", "unknownwrap --flag jq -r 'select(.url == $p)'\n", [])]
+            # an unknown wrapper hides the command from the token rules; the line rules still find it
+            + [("wu.sh", "unknownwrap --flag jq -r 'select(.url == $p)'\n", [("R3", 1)])]
         )
         # a substitution before a path variable hides nothing: any part of the word counts
         self.assert_hits(
@@ -798,19 +781,23 @@ class LintComparisonsTest(unittest.TestCase):
                 ("sl.sh", "bash -c '\ntrue\ngrep -E \"$name\" f'\n", [("R6", 3)]),  # the hit on its own outer line
                 ("sm.sh", "bash -c 'grep -E \"$name\" f' # lint-comparisons: allow the fixture\n", []),
                 ("sn.sh", 'bash -c \'grep -E "$(escape_regex "$name")" f\'\n', []),
-                ("so.sh", "bash -c 'echo hi' 'grep -E \"$name\" f'\n", []),  # $0, not code
-                ("sp.sh", "bash script.sh 'grep -E \"$name\" f'\n", []),  # no -c: arguments, not code
+                (
+                    "so.sh",
+                    "bash -c 'echo hi' 'grep -E \"$name\" f'\n",
+                    [("R6", 1)],
+                ),  # $0 to the token rules; line rules
+                ("sp.sh", "bash script.sh 'grep -E \"$name\" f'\n", [("R6", 1)]),  # no -c: the line rules' hit
             ]
         )
         # jq under a versioned or platform name
         names = ("jq-1.7", "/opt/tools/jq-linux64", "jq.exe", '"$bin/jq-1.7"')
         self.assert_hits([(f"jn{i}.sh", f"{n} -r 'select(.url == $p)'\n", [("R3", 1)]) for i, n in enumerate(names)])
-        # a data argument that spells a command is no command
+        # a data argument that spells a command is no command to the token rules; the line rules read the line
         self.assert_hits(
             [
                 ("pd.sh", "printf '%s\\n' jq \"select(.url == \\$p)\"\n", []),
-                ("pe.sh", 'echo [ "$path" = /x ]\n', []),
-                ("pf.sh", "printf '%s\\n' grep -E \"$name\"\n", []),
+                ("pe.sh", 'echo [ "$path" = /x ]\n', [("R1", 1)]),
+                ("pf.sh", "printf '%s\\n' grep -E \"$name\"\n", [("R6", 1)]),
                 ("pg.sh", "jqx -r 'select(.url == $p)'\n", []),
             ]
         )
@@ -864,7 +851,7 @@ class LintComparisonsTest(unittest.TestCase):
             "sudo env -i nice -n 5",
         )
         self.assert_hits([(f"ww{i}.sh", f"{w} {jq}\n", [("R3", 1)]) for i, w in enumerate(wrappers)])
-        # env -S's string is a command line, parsed like a shell's -c string
+        # env -S's string is no shell syntax: the token rules leave it to the line rules, which read the line
         split = (
             (f'env -S "{jq}"\n', "R3"),
             (f'env -iS "{jq}"\n', "R3"),
@@ -874,7 +861,7 @@ class LintComparisonsTest(unittest.TestCase):
             ("env -S \"grep -E '$name' f\"\n", "R6"),
         )
         self.assert_hits([(f"es{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(split)])
-        # a shell's long options come before -c; a script path ends the options, so no string follows
+        # a shell's long options come before -c; after a script path no string follows (the line rules still read it)
         shells = (
             "bash --rcfile /dev/null -c",
             "bash --rcfile=/dev/null -c",
@@ -884,12 +871,35 @@ class LintComparisonsTest(unittest.TestCase):
         pgrep = "'pgrep -f \"$name\"'"
         self.assert_hits([(f"sl{i}.sh", f"{s} {pgrep}\n", [("R5", 1)]) for i, s in enumerate(shells)])
         self.assert_hits(
-            [("sm.sh", f"bash script.sh -c {pgrep}\n", []), ("sn.sh", f"bash -o pipefail x.sh {pgrep}\n", [])]
+            [
+                ("sm.sh", f"bash script.sh -c {pgrep}\n", [("R5", 1)]),
+                ("sn.sh", f"bash -o pipefail x.sh {pgrep}\n", [("R5", 1)]),
+            ]
         )
         # a name query or a printer runs nothing: its arguments are data, behind a wrapper too
         data = ("command -v", "command -V", "command -pv", "type", "hash", "sudo which", "env -i printf '%s'")
         sel = 'jq "select(.url == \\$p)"'
         self.assert_hits([(f"nq{i}.sh", f"{d} {sel}\n", []) for i, d in enumerate(data)])
+
+    def test_audit_531_round_6_the_union_never_reports_less_than_the_line_rules(self):
+        # audit of b48fd26e: what the token rules miss (an option value read as the command, env -S's arguments), the
+        # line rules, kept as on origin/main, still report
+        self.assert_hits(
+            [
+                ("u1.sh", "env -u jq jq -n 'select(.url == $p)'\n", [("R3", 1)]),
+                ("u2.sh", "env -S jq 'select(.url == $p)'\n", [("R3", 1)]),
+                ("u3.sh", 'env -S "grep -E" "$name" f\n', [("R6", 1)]),
+            ]
+        )
+        # a nested string shfmt cannot parse adds no token finding and refuses nothing; env -S is no shell syntax
+        self.assert_hits(
+            [
+                ("u4.sh", "env -S 'printf %s ('\n", []),
+                ("u5.sh", "env -S 'printf %s; jq .url'\n", []),
+                ("u6.sh", "bash -c 'printf %s ('\n", []),
+                ("u7.sh", "eval 'echo ('\n", []),
+            ]
+        )
 
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []

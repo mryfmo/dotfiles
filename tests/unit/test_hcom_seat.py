@@ -1085,6 +1085,11 @@ class HcomSeatTest(unittest.TestCase):
     def test_relative_path_worktrees_launch_for_both_roles(self):
         """U85 round 15: `git worktree add --relative-paths` stores relative `gitdir` and `.git` values; they are
         resolved against their own directories, so both roles launch from such a worktree and next to one."""
+        usage = subprocess.run(
+            ["git", "worktree", "add", "-h"], cwd=self.repo, env=self.env, capture_output=True, text=True, check=False
+        )
+        if "relative-paths" not in usage.stdout + usage.stderr:  # listed as `--[no-]relative-paths`
+            self.skipTest("this git has no `worktree add --relative-paths` (git 2.48 and later)")
         linked = Path(self.temp.name).resolve() / "relative"
         self.git("worktree", "add", "-q", "--relative-paths", "--detach", str(linked), "HEAD")
         gitdir = (self.repo / ".git/worktrees/relative/gitdir").read_text().strip()
@@ -1146,6 +1151,39 @@ class HcomSeatTest(unittest.TestCase):
         (seats / ".state/worker").mkdir(parents=True)
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_srt_write_roots_resolve_cleanly_on_each_os(self):
+        """U85 round 27: srt's own TMPDIR roots are chosen per OS (`/private/tmp/claude` on macOS, and on Linux only
+        if it exists), and physical_path never prints `//`: a path whose first component does not exist (Linux's
+        `/private`) walks up to `/`, whose `cd //` form pwd prints as `//`, and must still come out clean."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("clean_path", "physical_path", "srt_tmp_roots_for")
+        )
+
+        def bash(script, *args):
+            return subprocess.run(
+                ["/bin/bash", "-c", f"set -euo pipefail\n{functions}\n{script}", "_", *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=20,
+            )
+
+        for path in ("/", "/u85-absent", "/u85-absent/tmp/claude", "/u85-absent/a/b/c"):
+            with self.subTest(path=path):
+                run = bash('physical_path "$1"', path)
+                self.assertEqual((run.returncode, run.stdout), (0, f"{path}\n"), run.stderr)
+        listing = 'srt_tmp_roots_for "$1"\nfor r in "${srt_tmp_roots[@]}"; do p=$(physical_path "$r"); clean_path "$p"; echo "$r"; done'
+        private = ["/private/tmp/claude"] if Path("/private/tmp/claude").exists() else []
+        for system, expected in (
+            ("Darwin", ["/tmp/claude", "/private/tmp/claude"]),
+            ("Linux", ["/tmp/claude", *private]),
+        ):
+            with self.subTest(os=system):
+                run = bash(listing, system)
+                self.assertEqual((run.returncode, run.stdout.splitlines()), (0, expected), run.stderr)
 
     def test_a_self_referencing_link_chain_refuses_promptly(self):
         """U85 round 23: physical_path is iterative with one 40-hop budget per call, so a dangling link naming a

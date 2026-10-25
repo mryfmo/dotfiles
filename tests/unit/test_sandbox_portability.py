@@ -12,14 +12,9 @@ writing it the plain way, never by teaching the guard a new spelling.
   shfmt keeps a substitution inside `${x:-<(...)}` as text. Redirection targets are no arguments.
 - shell /tmp: a literal `/tmp` path, single-quoted text included, is refused unless it is the operand of a
   `${TMPDIR...}` expansion or its word expands TMPDIR outside single quotes.
-- The sandbox's own directory is no `/tmp` path in this sense: exactly `/tmp/claude` or `/private/tmp/claude`, or
-  either followed by `/` and components of `[A-Za-z0-9._-]` (no `.` or `..` component), standing as a whole path
-  (start, whitespace, a quote, `=`, `:` or a bracket before it; end, whitespace, a quote, `:`, `;`, `,` or a bracket
-  after it). Anything else after `claude` (`@`, `+`, a glob character, `$`) is refused. These paths are the TMPDIR srt
-  hands the sandboxed child and keeps writable whatever the policy says
-  (`SANDBOX_OWN_WRITE_PATHS` and `generateProxyEnvVars` in @anthropic-ai/sandbox-runtime 0.0.81
-  dist/sandbox/sandbox-utils.js:499-508, 687-691), so a script naming them (hcom-seat lists them as srt's implicit
-  write roots) runs inside the sandbox too. Nothing else under `/tmp` is.
+- Allowed occurrences, by exact (file, word) pair only (`ALLOWED_TMP`, each with its reason): a shell word that is
+  exactly one unquoted literal in the named file. No pattern: the same spelling in another file, quoted, or with any
+  suffix or prefix (`/tmp/claude cache`, `/tmp/claude,escape`, `/tmp/claude/x`) is refused as before.
 - Python /tmp: a string constant holding a `/tmp` path is refused unless its statement reads TMPDIR by a canonical
   spelling (`os.environ.get("TMPDIR"...)`, `os.environ["TMPDIR"]`, `os.getenv("TMPDIR"...)`) or calls `tempfile.*` with
   the constant outside that call's arguments (an explicit `dir="/tmp"` bypasses TMPDIR). Aliased reads (`from os import
@@ -44,20 +39,19 @@ ROOTS = ("scripts", "home", "install")
 SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
 PYTHON = re.compile(r"#!.*python")
 TMP = re.compile(r"/tmp(/|\b)")
-# srt's own TMPDIR, writable in the sandbox; a `..` component may follow nowhere in the path.
-# srt's own TMPDIR as a whole path: a path boundary before, `/claude` or components under it, a path boundary after.
-SANDBOX_TMP = re.compile(
-    r"(?:(?<=^)|(?<=[\s\"'=:(\[{]))(?:/private)?/tmp/claude(?:/(?!\.\.?(?:/|$|[\s\"':;,)\]}]))[A-Za-z0-9._-]+)*"
-    r"(?=$|[\s\"':;,)\]}])"
-)
+# The exact /tmp words the guard lets through, per file. srt keeps `/tmp/claude` and `/private/tmp/claude` writable
+# whatever the policy says and hands the child TMPDIR=/tmp/claude (@anthropic-ai/sandbox-runtime 0.0.81,
+# dist/sandbox/sandbox-utils.js:499-508 `SANDBOX_OWN_WRITE_PATHS`, 687-691 `generateProxyEnvVars`); hcom-seat lists both
+# as srt's implicit write roots so that no seat write root and no tool may overlap them. It writes nothing there.
+SRT_OWN_WRITE_PATHS = "srt's built-in writable directories (sandbox-runtime 0.0.81 sandbox-utils.js:499-508, 687-691)"
+ALLOWED_TMP = {
+    (rel, word): SRT_OWN_WRITE_PATHS
+    for rel in ("scripts/orchestrator/hcom-seat", "home/dot_local/bin/common/executable_hcom-seat")
+    for word in ("/tmp/claude", "/private/tmp/claude")
+}
 
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 ENV_READS = ("os.environ.get", "os.getenv")
-
-
-def tmp_hits(value):
-    """The /tmp matches of `value` outside the sandbox's own directory, at their offsets in `value`."""
-    return TMP.finditer(SANDBOX_TMP.sub(lambda m: "_" * len(m.group()), value))
 
 
 @functools.cache
@@ -142,7 +136,12 @@ def diff_lines(tree):
     """Lines of each command with a `diff` argument followed by an argument that substitutes a process."""
     for n in nodes(tree):
         args = n.get("Args") or [] if n.get("Type") == "CallExpr" else []
-        names = [i for i, w in enumerate(args) if (lit := literal(w)) and (lit == "diff" or lit.endswith("/diff"))]
+        names = [
+            i
+            for i, w in enumerate(args)
+            if (lit := literal(w))
+            and (lit == "diff" or lit.endswith("/diff"))  # lint-comparisons: allow a command word
+        ]
         if names and any(substitutes(w) for w in args[names[0] + 1 :]):
             yield n["Pos"]["Line"]
 
@@ -161,8 +160,9 @@ def word_expands_tmpdir(word):
     return False
 
 
-def shell_tmp_lines(tree):
-    """Lines of each literal /tmp outside a TMPDIR expansion's operand and outside a word that expands TMPDIR."""
+def shell_tmp_lines(tree, allowed=frozenset()):
+    """Lines of each literal /tmp outside a TMPDIR expansion's operand and outside a word that expands TMPDIR; a word
+    that is exactly one unquoted literal in `allowed` (the file's ALLOWED_TMP words) is let through."""
     todo = [(tree, False)]
     while todo:
         n, ok = todo.pop()
@@ -174,10 +174,13 @@ def shell_tmp_lines(tree):
         if n.get("Type") in ("CmdSubst", "ProcSubst"):
             ok = False  # a nested command is judged on its own words
         if "Parts" in n and "Type" not in n:  # a Word
+            parts = n["Parts"]
+            if len(parts) == 1 and parts[0].get("Type") == "Lit" and parts[0].get("Value") in allowed:
+                continue
             ok = ok or word_expands_tmpdir(n)
         if n.get("Type") in ("Lit", "SglQuoted") and not ok:
             value = n.get("Value", "")
-            for m in tmp_hits(value):
+            for m in TMP.finditer(value):
                 yield n["Pos"]["Line"] + value[: m.start()].count("\n")
         todo.extend((v, ok or expands_tmpdir(n)) for v in n.values())
 
@@ -223,7 +226,7 @@ def python_tmp_lines(text):
             if isinstance(n, ast.Constant) and isinstance(n.value, str):
                 if tempfile_calls and id(n) not in in_tempfile_args:
                     continue
-                yield from (n.lineno + n.value[: m.start()].count("\n") for m in tmp_hits(n.value))
+                yield from (n.lineno + n.value[: m.start()].count("\n") for m in TMP.finditer(n.value))
 
 
 def misread_lines(tree):
@@ -239,7 +242,8 @@ def findings(rel, text):
     if rel.removesuffix(".tmpl").endswith(".py") or PYTHON.match(text):
         return {"diff": [], "tmp": sorted(set(python_tmp_lines(text))), "misread": []}
     tree = shell_tree(rel, text)
-    rules = {"diff": diff_lines, "tmp": shell_tmp_lines, "misread": misread_lines}
+    allowed = frozenset(w for (f, w) in ALLOWED_TMP if f == rel)  # lint-comparisons: allow git ls-files names
+    rules = {"diff": diff_lines, "tmp": lambda t: shell_tmp_lines(t, allowed), "misread": misread_lines}
     return {rule: sorted(set(lines(tree))) for rule, lines in rules.items()}
 
 
@@ -323,20 +327,17 @@ TMP_REFUSED = {
     ("bad.py", 'from os import getenv as env\nout = env("TMPDIR", "/tmp")\n'): [2],
     ("bad.py", "from tempfile import gettempdir\nd = gettempdir() or '/tmp'\n"): [2],
     ("bad.py", 'os.environ["TMPDIR"] = "/tmp/work"\n'): [1],
-    ("bad.sh", SH + "roots=(/tmp/claudex /tmp/claude.d /tmp/claude-1)\n"): [2],
-    ("bad.sh", SH + "out=/tmp/claude/../x\n"): [2],
-    ("bad.sh", SH + "out=/tmp/claude/a/.. /tmp/y\n"): [2],
-    ("bad.py", 'out = "/private/tmp/claudes"\n'): [1],
-    ("bad.sh", SH + "out=/tmp/claude@escape\n"): [2],
-    ("bad.sh", SH + "out=/tmp/claude+escape\n"): [2],
-    ("bad.sh", SH + "rm -rf /tmp/claude*\n"): [2],
-    ("bad.sh", SH + "rm -rf /tmp/claude/*\n"): [2],
-    ("bad.sh", SH + "out=/tmp/claude/./x\n"): [2],
-    ("bad.sh", SH + "out=/tmp/claude/x/\n"): [2],
-    ("bad.sh", SH + "out=/x/tmp/claude\n"): [2],
-    ("bad.py", 'out = "/tmp/claude@escape"\n'): [1],
-    ("bad.py", 'out = "/tmp/claude+escape"\n'): [1],
-    ("bad.py", 'out = "/tmp/claude*"\n'): [1],
+    # srt's directories outside the files ALLOWED_TMP names, and every other spelling, stay refused.
+    ("bad.sh", SH + 'roots=("${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)\n'): [2],
+    ("bad.sh", SH + 'out="/tmp/claude cache"\n'): [2],
+    ("bad.sh", SH + "out=/tmp/claude,escape\n"): [2],
+    ("bad.sh", SH + "out=/tmp/claude/x\n"): [2],
+    ("bad.py", 'roots = ["/tmp/claude", "/private/tmp/claude"]\n'): [1],
+    ("scripts/orchestrator/hcom-seat", SH + 'out="/tmp/claude cache"\n'): [2],
+    ("scripts/orchestrator/hcom-seat", SH + "out=/tmp/claude,escape\n"): [2],
+    ("scripts/orchestrator/hcom-seat", SH + 'out="/tmp/claude"\n'): [2],
+    ("scripts/orchestrator/hcom-seat", SH + "out=/tmp/claude/x /tmp/claude$x\n"): [2],
+    ("scripts/orchestrator/hcom-seat", SH + "out=/tmp/claudex\n"): [2],
 }
 TMP_ACCEPTED = (
     ("ok.sh", SH + 't="${TMPDIR:-/tmp}/x"\nx=1 # a comment may name /tmp\n'),
@@ -348,9 +349,8 @@ TMP_ACCEPTED = (
     ("ok.py", "d = tempfile.gettempdir() or '/tmp'\n"),
     ("ok.py", 'd = tempfile.mkdtemp(dir=os.environ.get("TMPDIR", "/tmp"))\n'),
     ("ok.py", 'x = os.environ["TMPDIR"] or "/tmp"\n'),
-    ("ok.sh", SH + 'roots=("${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)\nout=/tmp/claude/x\n'),
-    ("ok.py", 'roots = ["/tmp/claude", "/private/tmp/claude/x"]\n'),
-    ("ok.sh", SH + 'printf "%s\\n" /tmp/claude:/private/tmp/claude/a.b/c-d_1\n'),
+    ("scripts/orchestrator/hcom-seat", SH + 'roots=("${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)\n'),
+    ("home/dot_local/bin/common/executable_hcom-seat", SH + "for p in /tmp/claude /private/tmp/claude; do :; done\n"),
 )
 
 

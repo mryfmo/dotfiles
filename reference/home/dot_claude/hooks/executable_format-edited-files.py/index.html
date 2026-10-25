@@ -4739,12 +4739,16 @@
 <span class="s2">formatter for that suffix without going through a shell. ruff and prettier come</span>
 <span class="s2">from PATH: their versions are pinned in the mise config, and ruff.toml and</span>
 <span class="s2">.prettierignore keep vendored and record paths untouched.</span>
+
+<span class="s2">The hook runs outside the Claude sandbox, so it never loads configuration that a</span>
+<span class="s2">sandboxed command could have written as code: prettier runs with --no-config</span>
+<span class="s2">(a prettier.config.js, .prettierrc.js or plugin in the edited tree is ignored and</span>
+<span class="s2">the built-in defaults apply). ruff reads only TOML, which is data.</span>
 <span class="s2">"""</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
 
 import<span class="w"> </span>json
-import<span class="w"> </span>shlex
 import<span class="w"> </span>subprocess
 import<span class="w"> </span>sys
 from<span class="w"> </span>pathlib<span class="w"> </span>import<span class="w"> </span>Path
@@ -4754,7 +4758,8 @@ from<span class="w"> </span>typing<span class="w"> </span>import<span class="w">
 <span class="w">    </span><span class="o">[</span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"format"</span><span class="o">]</span>,
 <span class="o">]</span>
 <span class="nv">MARKDOWN_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">    </span><span class="o">[</span><span class="s2">"prettier"</span>,<span class="w"> </span><span class="s2">"--write"</span><span class="o">]</span>,
+<span class="w">    </span><span class="c1"># --no-config: project prettier configs may be JavaScript, and plugins they name are code.</span>
+<span class="w">    </span><span class="o">[</span><span class="s2">"prettier"</span>,<span class="w"> </span><span class="s2">"--write"</span>,<span class="w"> </span><span class="s2">"--no-config"</span><span class="o">]</span>,
 <span class="o">]</span>
 
 

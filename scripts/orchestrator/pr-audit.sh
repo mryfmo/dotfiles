@@ -305,7 +305,9 @@ group_supervisor='
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
 #   no XDG base directories, under the group supervisor bounded by $1 seconds; a supervisor that could not create the
 #   group is a refusal (exit 2, codex never ran). The supervisor runs in the background
-#   and the shell waits for it, so the INT, TERM and HUP traps of the lever run while it is running and stop it.
+#   and the shell waits for it, so the INT, TERM and HUP traps of the lever run while it is running and stop it. The
+#   launch and the assignment of its pid run with the signals held (hold_signals), so a signal in between is acted on
+#   as soon as the pid is known.
 # @arg $1 int Seconds the run may take.
 # @arg $2 path The file codex reads as stdin.
 # @arg $3 path The file that gets codex's stdout and stderr.
@@ -315,6 +317,7 @@ codex_scratch() {
     local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark reason
     shift 3
     rm -f -- "${mark}" || fail "cannot remove ${mark}"
+    hold_signals
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
@@ -322,6 +325,7 @@ codex_scratch() {
             exec perl -e "${group_supervisor}" "${seconds}" "${mark}" codex "$@" < "${input}" > "${output}" 2>&1
     ) &
     codex_pid=$!
+    release_signals
     wait "${codex_pid}" || status=$?
     codex_pid=''
     # A supervisor that could not start codex safely ran nothing it did not stop; a status of 125 without the mark is
@@ -333,13 +337,23 @@ codex_scratch() {
     return "${status}"
 }
 
-# @description On INT, TERM or HUP: stop the running supervisor (which stops codex's whole process group) and wait for
-#   it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be caught: a KILL
-#   to the lever leaves the supervisor running, which still stops the group at its deadline; a KILL to the supervisor
-#   itself leaves the group unsupervised (residual).
+# Bash has no sigprocmask, so the lever defers its INT, TERM and HUP handling itself (U71b audit round 11: TERM or HUP
+# between a supervisor's background launch and `codex_pid=$!` found no pid, and the lever exited leaving the supervisor
+# and codex running). Every window in which the handler depends on a name set after an action is held: the launch of
+# a supervisor until its pid is recorded (codex_scratch), and the creation of the run directory until the EXIT trap
+# that removes it is set. A signal inside a held window is only recorded; release_signals acts on it at once. The one
+# window left is a single assignment: `codex_pid=''` after `wait` returned, where a signal makes the handler TERM a
+# pid already reaped (harmless unless the system reused it in between; residual).
+signal_hold=0
+signal_pending=''
+
+# @description Stop the running supervisor, if any (which stops codex's whole process group), wait for it, then exit
+#   128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be caught: a KILL to the lever
+#   leaves the supervisor running, which still stops the group at its deadline; a KILL to the supervisor itself leaves
+#   the group unsupervised (residual).
 # @arg $1 string The signal's name.
 # @arg $2 int The signal's number.
-on_signal() {
+stop_on_signal() {
     trap '' INT TERM HUP
     if [[ -n ${codex_pid:-} ]]; then
         kill -TERM "${codex_pid}" 2> /dev/null || true
@@ -347,6 +361,32 @@ on_signal() {
     fi
     echo "${lever}: stopped by SIG$1; codex was stopped and no verdict was written" >&2
     exit $((128 + $2))
+}
+
+# @description The INT, TERM and HUP trap: inside a held window record the first signal and return; else stop now.
+# @arg $1 string The signal's name.
+# @arg $2 int The signal's number.
+on_signal() {
+    if ((signal_hold)); then
+        [[ -n ${signal_pending} ]] || signal_pending="$1 $2"
+        return 0
+    fi
+    stop_on_signal "$1" "$2"
+}
+
+# @description Open a held window: from here a signal is only recorded.
+hold_signals() {
+    signal_hold=1
+}
+
+# @description Close the held window and act on a signal recorded inside it.
+release_signals() {
+    local name number
+    signal_hold=0
+    if [[ -n ${signal_pending} ]]; then
+        read -r name number <<< "${signal_pending}"
+        stop_on_signal "${name}" "${number}"
+    fi
 }
 codex_pid=''
 trap 'on_signal INT 2' INT
@@ -476,9 +516,11 @@ IFS=$'\t' read -r state base want pr_url <<< "${view}"
 [[ ${want} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${want}"
 [[ ${base} == main ]] || refuse "pull request ${pr} targets ${base:-nothing}, not main"
 
-run=$(mktemp -d "${TMPDIR:-/tmp}/pr-audit-${pr}.XXXXXX") || fail 'mktemp failed'
 codex_started=0
+hold_signals
+run=$(mktemp -d "${TMPDIR:-/tmp}/pr-audit-${pr}.XXXXXX") || fail 'mktemp failed'
 trap cleanup EXIT
+release_signals
 run=$(cd "${run}" && pwd -P) || fail "cannot resolve the run directory"
 work=${run}/work
 clone=${work}/repo

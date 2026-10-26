@@ -35,6 +35,7 @@ MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FAKE_CODEX = ROOT / "tests/fixtures/pr-audit/fake-codex.py"
 PERL_FIXTURES = ROOT / "tests/fixtures/pr-audit/perl"
+PAUSE_AFTER_LAUNCH = ROOT / "tests/fixtures/pr-audit/pause-after-launch.bash"
 RULES = "## Audit\n\nThe standing audit rules.\n"
 BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
 
@@ -428,6 +429,72 @@ class PrAuditTest(unittest.TestCase):
         self.assertIn("codex exec exited 143", stderr)
         time.sleep(4)
         self.assertFalse(marker.exists(), "the child outlived a signal sent before its pid was stored")
+
+    def test_a_signal_between_the_launch_and_the_pid_stops_supervisor_and_codex(self):
+        """U71b audit round 11: TERM or HUP after the lever launched the supervisor but before `codex_pid=$!` found no
+        pid, so the lever exited and left the supervisor and codex running. The signal is now held until the pid is
+        known. A BASH_ENV fixture pauses the lever in that window for the `codex exec` launch."""
+        for signum in (signal.SIGTERM, signal.SIGHUP):
+            with self.subTest(signal=signum.name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                marker = self.root / f"codex-still-ran-{signum.name}"
+                pidfile = self.root / f"lever-{signum.name}.pid"
+                lever = subprocess.Popen(
+                    [str(LEVER), "7"],
+                    cwd=self.repo,
+                    env={
+                        **self.env,
+                        "BASH_ENV": str(PAUSE_AFTER_LAUNCH),
+                        "PR_AUDIT_TEST_PAUSE_FILE": str(pidfile),
+                        "PR_AUDIT_TIMEOUT": "600",
+                        "FAKE_CODEX_HANG": str(marker),
+                    },
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                deadline = time.monotonic() + 60
+                while not pidfile.exists():
+                    self.assertIsNone(lever.poll(), "the lever ended before it launched codex exec")
+                    self.assertLess(time.monotonic(), deadline)
+                    time.sleep(0.02)
+                os.kill(int(pidfile.read_text()), signum)  # inside the 2 s window before `codex_pid=$!`
+                stdout, stderr = lever.communicate(timeout=60)
+                self.assertEqual(lever.returncode, 128 + signum, stderr)
+                self.assertEqual(stdout, "")
+                self.assertIn(f"stopped by SIG{signum.name[3:]}", stderr)
+                time.sleep(4)
+                self.assertFalse(marker.exists(), "codex outlived a signal sent before its supervisor's pid was known")
+
+    def test_a_signal_before_the_cleanup_trap_still_removes_the_run_directory(self):
+        """The run directory's creation and the EXIT trap that removes it are one held window too."""
+        pidfile = self.root / "lever-mktemp.pid"
+        lever = subprocess.Popen(
+            [str(LEVER), "7"],
+            cwd=self.repo,
+            env={
+                **self.env,
+                "BASH_ENV": str(PAUSE_AFTER_LAUNCH),
+                "PR_AUDIT_TEST_PAUSE_FILE": str(pidfile),
+                "PR_AUDIT_TEST_PAUSE_COMMAND": "trap cleanup EXIT",
+                "PR_AUDIT_TEST_PAUSE_AT": "1",
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + 60
+        while not pidfile.exists():
+            self.assertIsNone(lever.poll(), "the lever ended before it made the run directory")
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.02)
+        os.kill(int(pidfile.read_text()), signal.SIGTERM)
+        _, stderr = lever.communicate(timeout=60)
+        self.assertEqual(lever.returncode, 143, stderr)
+        self.assertEqual(list(self.tmp.iterdir()), [], "the run directory made before the trap is removed")
+        self.assertEqual(self.codex_calls(), [])
 
     def test_a_supervisor_that_cannot_unblock_its_signals_runs_nothing(self):
         action = f'exec "$REAL" -I{PERL_FIXTURES} -MFailUnblock "$@"'

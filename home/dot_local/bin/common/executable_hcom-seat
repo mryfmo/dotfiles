@@ -1231,19 +1231,19 @@ physical_paths() {
         else
             printf 'fail\n' || exit 1
         fi
-    done) || refuse 'cannot resolve the worktrees (the resolving subshell failed)'
+    done) || refuse 'cannot resolve the paths (the resolving subshell failed)'
     while IFS= read -r line; do
-        ((i < $#)) || refuse 'cannot resolve the worktrees (more records than paths)'
+        ((i < $#)) || refuse 'cannot resolve the paths (more records than paths)'
         case ${line} in
-        other) resolved=$(physical_path "${args[i]}") || refuse "cannot resolve the worktree ${args[i]}" ;;
+        other) resolved=$(physical_path "${args[i]}") || refuse "cannot resolve the path ${args[i]}" ;;
         ok$'\t'*) resolved=${line#ok$'\t'} ;;
-        *) refuse "cannot resolve the worktree ${args[i]} ('${line}')" ;;
+        *) refuse "cannot resolve the path ${args[i]} ('${line}')" ;;
         esac
-        clean_path "${resolved}" || refuse "the worktree ${args[i]} resolves to '${resolved}', not a clean absolute path"
+        clean_path "${resolved}" || refuse "the path ${args[i]} resolves to '${resolved}', not a clean absolute path"
         phys_list[i]=${resolved}
         i=$((i + 1))
     done <<< "${out}"
-    ((i == $# && ${#phys_list[@]} == $#)) || refuse "cannot resolve every worktree (${#phys_list[@]} of $#)"
+    ((i == $# && ${#phys_list[@]} == $#)) || refuse "cannot resolve every path (${#phys_list[@]} of $#)"
 }
 
 # @description Set `worktree_paths` to the worktrees git records for this repository, main worktree first, and
@@ -1373,7 +1373,7 @@ fi
 #   an admin directory no listed worktree owns, or one the scan missed, refuses. One read and one resolving batch.
 # @arg $1 string The physical git common directory.
 admin_dirs_match() {
-    local a v listed='' seen='' i derived=() gitdirs=() pointer_hint=${git_fix_hint}
+    local a v listed='' seen='' i derived=() gitdirs=()
     dir_entries "$1/worktrees"
     ((${#dir_list[@]} == ${#admin_dirs[@]})) ||
         refuse "the worktree git directories of $1 changed while hcom-seat ran (${#dir_list[@]} now, ${#admin_dirs[@]} checked)"
@@ -1424,7 +1424,7 @@ if ((${#worktree_paths[@]} > 1 || ${#admin_dirs[@]} > 0)); then admin_dirs_match
 # @arg $2 string The seat directory, physical.
 # @arg $@ string The seat's allowWrite roots after them, physical, its own slots first (seat_write_roots).
 seat_overlap_check() {
-    local own_role=$1 own_dir=$2 r p i j k nroots seats_phys labels=() protected=() own=() roots=()
+    local own_role=$1 own_dir=$2 r p i j k nroots seats_phys labels=() protected=() own=() roots=() seat_dirs=()
     shift 2
     roots=("$@")
     nroots=$#
@@ -1432,12 +1432,18 @@ seat_overlap_check() {
     labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
     protected+=("${checkout}" "${seats_phys}" "${seats_phys}/.sandbox")
     # Every directory in the seats root, dot names included (dir_entries); `.state` and `.sandbox` are protected or
-    # exempt by their own rules above.
+    # exempt by their own rules above. All resolved in one batch (physical_paths), so more seats start no process.
     dir_entries "${seats_phys}"
+    seat_dirs=()
     for p in ${dir_list[@]+"${dir_list[@]}"}; do
         [[ -d ${p} ]] || continue
         case ${p##*/} in .state | .sandbox) continue ;; esac
-        p=$(physical_path "${p}") || refuse "cannot resolve the seat directory ${p}"
+        seat_dirs+=("${p}")
+    done
+    physical_paths ${seat_dirs[@]+"${seat_dirs[@]}"}
+    ((${#phys_list[@]} == ${#seat_dirs[@]})) ||
+        refuse "the seat directories in ${seats_phys} were not all resolved (${#phys_list[@]} of ${#seat_dirs[@]})"
+    for p in ${phys_list[@]+"${phys_list[@]}"}; do
         labels+=("the seat directory")
         protected+=("${p}")
     done

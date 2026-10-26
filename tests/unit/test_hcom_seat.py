@@ -2,8 +2,9 @@
 
 The fakes (tests/fixtures/hcom-seat/fake-tool.py under the three names) record argv; the fake hcom plays the herdr
 terminal preset so the test sees what omp receives. HOME is a scratch directory holding the three policy overlays and
-the three extension directories (the two routes and the stop gate's); the cwd is a scratch git repository with an `origin/main` ref; `HCOM_DIR` is
-`$TMPDIR/u7-hcom`. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
+the three extension directories (the two routes and the stop gate's); the cwd is a scratch git repository with an
+`origin/main` ref; `HCOM_DIR` is `hcom` in a directory of each test's own (`tempfile.mkdtemp` under TMPDIR), so
+concurrent suites never share it. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
 """
 
 import collections
@@ -76,8 +77,12 @@ class HcomSeatTest(unittest.TestCase):
         self.calls = root / "calls"
         self.calls.mkdir()
         self.seats = str(root / "seats")
-        self.store = Path(os.environ.get("TMPDIR", self.temp.name)) / "u7-hcom"
-        self.store.mkdir(exist_ok=True)
+        # The hcom store lies outside the scratch tree (a seat write root of its own, beside the seats root) in a
+        # directory of this test's own under TMPDIR, so two suites running at once never share it.
+        store_parent = Path(tempfile.mkdtemp(prefix="hcom-seat-store-"))
+        self.addCleanup(shutil.rmtree, store_parent, True)
+        self.store = store_parent / "hcom"
+        self.store.mkdir()
         self.repo = root / "repo"
         self.repo.mkdir()
         # The environment is built, never inherited: the fake bin and the system directories only, under the scratch
@@ -1165,11 +1170,13 @@ class HcomSeatTest(unittest.TestCase):
         printf; it calls no pwd and prints nothing back), sizes_of (stat), pointer_values (cat, and its sizes), and
         the identity table (stat; its fold is builtin, so a fold that keeps case, changes length or fails refuses).
         Round 3: every result is assigned to its input's index, and the overlap check refuses when a worktree has no
-        resolved path, so it cannot miss one. dir_entries (the one enumeration) refuses a failed or short read."""
+        resolved path, so it cannot miss one. dir_entries (the one enumeration) refuses a failed or short read, and
+        admin_dirs_match refuses an orphan, an unlisted or a duplicated record, and its producers (stat, cat, cd)
+        failing after plausible output."""
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("dir_entries",)
+        names += ("dir_entries", "admin_dirs_match")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1320,6 +1327,56 @@ class HcomSeatTest(unittest.TestCase):
                 result = run(entries_call, [str(target)], replace)
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn("cannot list", result.stderr)
+        # admin_dirs_match: the admin directories, one to one with the worktrees git lists. Two admin directories
+        # recording one worktree, one recording an unlisted path, and an orphan refuse; so do its producers failing
+        # after plausible output (the gitdir sizes, the gitdir read, the resolving cd).
+        admin_root = root / "common"
+        for t in ("a", "b"):
+            (admin_root / "worktrees" / t).mkdir(parents=True)
+            (root / "trees" / t).mkdir(parents=True)
+            (admin_root / "worktrees" / t / "gitdir").write_text(f"{root}/trees/{t}/.git\n")
+        listed = f"{root}/trees/a {root}/trees/b"
+        match_call = (
+            f"git_fix_hint='' worktree_phys=({listed})\n"
+            'dir_entries "$1/worktrees"\nadmin_dirs=("${dir_list[@]}")\nadmin_dirs_match "$1"\necho matched'
+        )
+        good = run(match_call, [str(admin_root)])
+        self.assertEqual((good.returncode, good.stdout), (0, "matched\n"), good.stderr)
+        gitdir_b = admin_root / "worktrees/b/gitdir"
+
+        def recorded(text):
+            return lambda: gitdir_b.write_text(text)
+
+        def orphan():
+            (admin_root / "worktrees/c").mkdir()
+            (admin_root / "worktrees/c/gitdir").write_text(f"{root}/trees/a/.git\n")
+
+        match_cases = {
+            "two admin directories recording one worktree": (recorded(f"{root}/trees/a/.git\n"), None, "", "records too"),
+            "a record git does not list": (recorded(f"{root}/elsewhere/.git\n"), None, "", "does not list"),
+            "an orphan admin directory": (orphan, None, "", "holds 3 worktree git directories but git lists 2"),
+            "stat fails after plausible output": (
+                None, {"/usr/bin/stat": fake("stat-pass-fail", '/usr/bin/stat "$@"\nexit 7')}, "", "cannot read the size",
+            ),
+            "cat fails after plausible output": (
+                None, {"/bin/cat": fake("cat-pass-fail", '/bin/cat "$@"\nexit 7')}, "", "cannot read the git pointer files",
+            ),
+            "cd fails after a plausible PWD": (
+                None, None, 'cd() { if [[ $3 == */trees/b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
+                "cannot resolve the path",
+            ),
+        }  # fmt: skip
+        for label, (mutate, replace, prelude, message) in match_cases.items():
+            with self.subTest(producer="admin_dirs_match", case=label):
+                if mutate:
+                    mutate()
+                try:
+                    result = run(match_call, [str(admin_root)], replace, prelude)
+                    self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                    self.assertIn(message, result.stderr)
+                finally:
+                    gitdir_b.write_text(f"{root}/trees/b/.git\n")
+                    shutil.rmtree(admin_root / "worktrees/c", ignore_errors=True)
         # The overlap consumer: worktrees outside every write root pass; one without its resolved path refuses.
         checkout, seats, away = root / "checkout", root / "seats", root / "away"
         checkout.mkdir()
@@ -1706,6 +1763,19 @@ class HcomSeatTest(unittest.TestCase):
         few = self.spawn_counts()
         self.add_worktrees(10, 290)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
+        self.assert_same_counts(few, self.spawn_counts())
+
+    def test_more_seat_directories_start_no_more_processes(self):
+        """U95 round 13: the seat directories under the seats root are resolved in one batch (physical_paths) in both
+        overlap checks, so a dry run with 10 of them starts exactly as many processes as one with 1. Before, each cost
+        one physical_path subshell per check (1 vs 10 seats: 2 vs 11 substitutions per check)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        seats = Path(self.seats)
+        (seats / "s0").mkdir(parents=True)
+        few = self.spawn_counts()
+        for n in range(1, 10):
+            (seats / f"s{n}").mkdir()
+        self.assertEqual(len([p for p in seats.iterdir() if p.name.startswith("s")]), 10)
         self.assert_same_counts(few, self.spawn_counts())
 
     def test_absent_worktrees_start_no_more_processes_either(self):

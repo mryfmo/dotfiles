@@ -139,11 +139,12 @@ class PinnedLintToolsTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.scratch)
 
-    def fake(self, tool: str, version: str | None, *, fails: bool = False) -> None:
-        """A `tool` on PATH whose --version prints the real banner for `version` (none: no version line); every
-        call is logged to <tool>.log, and any other call succeeds without output."""
+    def fake(self, tool: str, version: str | None, *, fails: bool = False, status: int = 0) -> None:
+        """A `tool` on PATH whose --version prints the real banner for `version` (none: no version line) and exits
+        `status`; fails: prints nothing and exits 3. Every call is logged to <tool>.log, and any other call succeeds
+        without output."""
         banner = TOOLS[tool][1].format(v=version) if version is not None else f"{tool}\n"
-        body = "exit 3" if fails else f"printf '%s' '{banner}'"
+        body = "exit 3" if fails else f"printf '%s' '{banner}'; exit {status}"
         path = self.bin / tool
         path.write_text(f'#!/bin/sh\necho "$*" >> "$0.log"\nif [ "$1" = --version ]; then {body}; fi\nexit 0\n')
         path.chmod(0o755)
@@ -198,6 +199,55 @@ class PinnedLintToolsTest(unittest.TestCase):
                 failed = self.guard(MISE_CONFIG, tool)
                 self.assertEqual(1, failed.returncode)
                 self.assertIn(f'"{tool} --version" failed; {MISE_CONFIG} pins {tool} {version}', failed.stderr)
+
+    def test_a_producer_that_prints_a_valid_value_and_fails_is_refused(self):
+        # Round-2 audit of 473b63a1: each producer's status decides, not only its output. awk printing the right pin
+        # and exiting non-zero, and a tool printing the pinned banner and exiting non-zero, are each refused.
+        real_awk = shutil.which("awk")
+        awk = self.bin / "awk"
+        awk.write_text(f'#!/bin/sh\n"{real_awk}" "$@"\nexit 4\n')
+        awk.chmod(0o755)
+        for tool, version in pins().items():
+            with self.subTest(tool, producer="awk"):
+                self.fake(tool, version)
+                refused = self.guard(MISE_CONFIG, tool)
+                self.assertEqual(1, refused.returncode, refused.stdout)
+                self.assertIn(f"cannot read {MISE_CONFIG}", refused.stderr)
+                self.assertEqual("", refused.stdout)
+        awk.unlink()
+        for tool, version in pins().items():
+            with self.subTest(tool, producer="--version"):
+                self.fake(tool, version, status=5)
+                refused = self.guard(MISE_CONFIG, tool)
+                self.assertEqual(1, refused.returncode, refused.stdout)
+                self.assertIn(f'"{tool} --version" failed; {MISE_CONFIG} pins {tool} {version}', refused.stderr)
+                self.assertEqual("", refused.stdout)
+
+    def test_no_script_lets_a_variable_select_a_lint_tool(self):
+        # Round-2 audit of 473b63a1: the guard checks the tool on PATH, so a consumer that honoured SHFMT (or the like)
+        # could run a binary the guard never saw. No script, Makefile rule or test reads such a variable.
+        pattern = re.compile(
+            r"\$\{?(SHFMT|SHELLCHECK|RUFF|PRETTIER)\b|environ(?:\.get)?\(?\[?[\"'](SHFMT|SHELLCHECK|RUFF|PRETTIER)[\"']"
+        )
+        listed = (
+            subprocess.run(
+                ["git", "ls-files", "-z", "--", "Makefile", "scripts", "install", "home", "tests", ".github"],
+                cwd=ROOT,
+                capture_output=True,
+                check=True,
+                timeout=60,
+            )
+            .stdout.decode()
+            .split("\0")
+        )
+        found = []
+        for name in filter(None, listed):
+            path = ROOT / name
+            if path == Path(__file__).resolve() or path.is_symlink() or not path.is_file():
+                continue
+            text = path.read_text(errors="replace")
+            found += [f"{name}:{number}" for number, line in enumerate(text.splitlines(), 1) if pattern.search(line)]
+        self.assertEqual([], found)
 
     def test_every_tool_is_checked_and_one_skew_fails_the_whole_call(self):
         versions = pins()

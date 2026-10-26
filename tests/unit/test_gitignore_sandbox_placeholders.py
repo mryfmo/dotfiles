@@ -8,6 +8,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PLACEHOLDERS = (
@@ -23,7 +27,7 @@ class SandboxPlaceholderIgnoreTest(unittest.TestCase):
         # .git/info/exclude and the user's global excludes cannot mask a gap.
         self.repo = Path(tempfile.mkdtemp(prefix="gitignore-placeholders-"))
         self.addCleanup(shutil.rmtree, self.repo)
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        git_init(self.repo)
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
 
     def check_ignore(self, path: str) -> int:

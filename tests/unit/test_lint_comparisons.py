@@ -16,6 +16,9 @@ import tomllib
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "scripts/lint-comparisons.py"
 # plan 024 5.14 item 2: env -i, a system git by its absolute path, an explicit -C, no system or global config
@@ -419,7 +422,8 @@ class LintComparisonsTest(unittest.TestCase):
         (repo / "scripts/lint-comparisons-baseline.tsv").write_text(f"scripts/old.sh\tR1\t{row}\n")
         for name, text in (("main.sh", "true\n"), ("old.sh", refused)):
             (repo / "scripts" / name).write_text(text)
-        for args in (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-qm", "base"), ("switch", "-qc", "pr")):
+        git_init(repo, "-b", "main", env=env)
+        for args in (("add", "."), ("commit", "-qm", "base"), ("switch", "-qc", "pr")):
             git(*args)
         (repo / "scripts/pr.sh").write_text(refused)  # the change: a new hit, and a rename that strands old.sh's row
         for args in (

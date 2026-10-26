@@ -7,6 +7,10 @@ serial run's. A module of more than `--split` tests runs as several shards of th
 selecting its own tests with exact `-k` patterns. The run fails when any shard fails, when a shard
 prints no unittest summary, or when a shard ran a different number of tests than discovery found
 for it in this process: a shard that dies or stops early cannot read as a pass.
+
+Every shard runs with tests/unit/scratch_git.py's settings in its environment (regime-cutover U100), so no git a test
+runs in a scratch repository starts background maintenance (`git maintenance run --auto`, detached and holding
+maintenance.lock since git 2.55), however the test made the repository.
 """
 
 from __future__ import annotations
@@ -24,6 +28,9 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests/unit"))
+from scratch_git import quiet_git_env  # noqa: E402
 
 RAN = re.compile(r"^Ran (\d+) tests? in ", re.MULTILINE)
 # The last line unittest prints: "OK", "OK (skipped=2)", "FAILED (failures=1, errors=2)" or "NO TESTS RAN".
@@ -124,6 +131,7 @@ def run_shard(start: Path, shard: Shard) -> Result:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL,
+        env=quiet_git_env(os.environ),
         text=True,
         errors="replace",
         check=False,

@@ -7,6 +7,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 VERIFIER = "scripts/orchestrator/regime-ci.py"
@@ -49,7 +53,7 @@ class RegimeCiTest(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.repo = Path(temp.name).resolve()
-        self.git("init", "-q", "-b", "main")
+        git_init(self.repo, "-b", "main", env=self.env)
         stores = {f".orchestration/orchestrate/{p}/units.tsv": "id\n" for p in ("regime-cutover", "other-program")}
         self.commit({VERIFIER: (ROOT / VERIFIER).read_text(), "README": "base\n"} | stores, "base")
         self.git("switch", "-q", "-c", branch)

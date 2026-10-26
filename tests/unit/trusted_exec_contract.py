@@ -16,6 +16,8 @@ import threading
 import time
 from pathlib import Path
 
+from scratch_git import git_init
+
 SHIMS = ("uv", "python3", "gh", "git", "bash")
 ALLOWED = ("PATH", "HOME", "LANG")
 SAFE_PATH = "/usr/bin:/bin"
@@ -61,7 +63,7 @@ class HostileGit:
         self.hook_marker, self._env = base / "attacker-hook-ran", {"PATH": SAFE_PATH, "HOME": str(base)}
         for repo, text in ((self.legit, LEGIT), (self.attacker, ATTACKER)):
             repo.mkdir()
-            self._git(repo, "init", "-q")
+            git_init(repo, env=self._env | QUIET)
             (repo / "probe.txt").write_text(text)
             self._git(repo, "add", "probe.txt")  # an index, so status consults core.fsmonitor
         hook = self.attacker / "hook"

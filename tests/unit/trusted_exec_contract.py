@@ -1,15 +1,19 @@
 """Shared probes of design-quality 5.14 item 7: one attack each in a temporary fixture, and the trusted parent."""
 
 import contextlib
+import errno
 import functools
 import hashlib
 import json
 import os
 import pwd
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 SHIMS = ("uv", "python3", "gh", "git", "bash")
@@ -98,37 +102,190 @@ class HostileGit:
             raise AssertionError("hostile git: " + "; ".join(found))
 
 
+_CONSUMER_ERRORS = {}  # consume()'s worker thread -> its outcome, while it runs
+_previous_excepthook = threading.excepthook
+
+
+def _consumer_excepthook(args):
+    """threading.excepthook: a consume() worker's exception goes to its caller, which raises it; any other thread's
+    goes to the hook that was installed before (no exception is caught, so none can be swallowed)."""
+    outcome = _CONSUMER_ERRORS.get(args.thread)
+    if outcome is None:
+        _previous_excepthook(args)
+    else:
+        outcome["error"] = args.exc_value
+
+
+threading.excepthook = _consumer_excepthook
+
+
 class WorkerRoot:
-    """An input, an output and a new output under a worker root. A read shows as the input's access time leaving 0; a
-    filesystem where a read leaves it at 0 (measured on a scratch file) refuses the probe instead of passing vacuously."""
+    """An input, an output and a new output under a worker root; the consumer runs through consume().
+
+    The input is a FIFO read sentinel, never a regular file: opening it for reading is a kernel event the probe sees
+    from outside the consumer. consume(target) runs the consumer step in a worker thread and, while it runs, the
+    probe itself alternates a short join with one `os.open(input, O_WRONLY | O_NONBLOCK)`:
+      - ENXIO: no process has the input open for reading;
+      - success: a reader holds it (the consumer step's thread, a thread it starts, or a subprocess, by any path):
+        the read is recorded and the descriptor closed, which gives the reader EOF, so it cannot hang;
+      - ENOENT or ELOOP: the input is removed or replaced by a link at this poll, which is recorded;
+      - any other errno: recorded as an error, so the check fails closed.
+    One last attempt runs after the join. At the deadline the probe makes one more attempt (which releases a reader
+    blocked on the sentinel) and waits GRACE_S; a consumer thread still running then fails consume() with
+    "consumer thread still running after the deadline". Python cannot stop a thread, so nothing is claimed about it. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
+    for writing is released (its write then fails, EPIPE) instead of waiting for the deadline. No thread runs in the
+    probe outside consume(), and stat() opens nothing, so metadata checks never count.
+
+    The input's access time is not used: another process that reads a fresh regular file sets it too (the macOS
+    host's Spotlight importer or endpoint scanner reads new temporary files within a second); none opens a FIFO.
+    The output stays a regular file the consumer must not write, checked by inode, mode, mtime and content.
+
+    Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
+    the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
+    the same PR, and the probe guards against an accidental read, not against an adversary inside the test process.
+    So it does not claim to detect (residual): a replacement swapped in and restored between two polls (about a
+    millisecond apart); reads made by audit hooks or other callbacks running inside the probe's own calls; a read
+    open that never blocks (O_NONBLOCK, or O_RDWR) and closes between two polls; a write to the input in place (a
+    FIFO keeps no content).
+    """
+
+    POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        check = base / "atime-check"
-        for path in (check, self.input, self.output):
-            path.write_text(LEGIT)
-            os.utime(path, ns=(0, BASELINE_NS))
-        if check.read_text() and os.stat(check).st_atime_ns == 0:
-            raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
+        self.reads, self.errors, self.replaced, self.attempts = [], [], [], 0
+        os.mkfifo(self.input, 0o600)
+        self.output.write_text(LEGIT)
+        os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
+        self._self_test()
+
+    def _open_writer(self):
+        """One write-open attempt on the input: a descriptor when a reader holds it, None when none does (ENXIO)."""
+        try:
+            return os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        except OSError as error:
+            if error.errno == errno.ENXIO:
+                return None
+            raise
+
+    def _self_test(self):
+        """Synchronous: no reader means ENXIO; the probe's own reader makes the write-open succeed on this very
+        FIFO; closing it brings ENXIO back. Any other answer refuses the probe, since reads would not be seen."""
+        if (fd := self._open_writer()) is not None:
+            os.close(fd)
+            raise RuntimeError(f"{self.input} has a reader before the consumer ran")
+        reader = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        try:
+            writer = self._open_writer()
+            if writer is None:
+                raise RuntimeError(f"a reader of {self.input} did not make the write-open succeed")
+            try:
+                st = os.fstat(writer)
+                if not (stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]):
+                    raise RuntimeError(f"the write-open of {self.input} reached another file")
+            finally:
+                os.close(writer)
+        finally:
+            os.close(reader)
+        if (fd := self._open_writer()) is not None:
+            os.close(fd)
+            raise RuntimeError(f"{self.input} still has a reader after the self-test closed its own")
+
+    def _not_sentinel(self, error=None, fd=None):
+        """Whether the input is not the probe's FIFO at this poll, recorded, so the check fails even if the FIFO is
+        back by then (a swap and restore between two polls is out of scope). ENOENT is a removal and ELOOP a link
+        put in its place."""
+        if error is not None:
+            if error.errno in (errno.ENOENT, errno.ELOOP):
+                self.replaced.append(f"{self.input} was {'removed' if error.errno == errno.ENOENT else 'a link'}")
+                return True
+            raise error
+        st = os.fstat(fd)
+        if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]:
+            return False
+        self.replaced.append(f"{self.input} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
+        return True
+
+    def _attempt(self):
+        """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
+        self.attempts += 1
+        try:
+            fd = self._open_writer()
+        except OSError as error:
+            if error.errno not in (errno.ENOENT, errno.ELOOP):
+                self.errors.append(f"cannot tell whether {self.input} is being read: {error!r}")
+                return
+            self._not_sentinel(error=error)
+            return
+        if fd is not None:
+            try:
+                if not self._not_sentinel(fd=fd):
+                    self.reads.append(f"{self.input} opened for reading")
+            finally:
+                os.close(fd)  # the reader now sees EOF
+        try:
+            fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        except OSError as error:
+            if error.errno not in (errno.ENOENT, errno.ELOOP):
+                self.errors.append(f"cannot release a writer of {self.input}: {error!r}")
+                return
+            self._not_sentinel(error=error)
+            return
+        try:
+            self._not_sentinel(fd=fd)
+        finally:
+            os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
+
+    def consume(self, target, deadline=None):
+        """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
+        its exception. A step still running GRACE_S after DEADLINE seconds fails with AssertionError ("consumer
+        thread still running after the deadline"); the thread itself is left running (it cannot be stopped)."""
+        outcome = {}
+        worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
+        _CONSUMER_ERRORS[worker] = outcome
+        try:
+            end = time.monotonic() + (self.DEADLINE_S if deadline is None else deadline)
+            worker.start()
+            while worker.is_alive():
+                if time.monotonic() > end:
+                    # Python cannot stop a thread: release a reader blocked on the sentinel, give it a short grace,
+                    # and fail if it is still running (nothing is claimed about cleaning it up).
+                    self._attempt()
+                    worker.join(self.GRACE_S)
+                    if worker.is_alive():
+                        raise AssertionError("worker root: consumer thread still running after the deadline")
+                    break
+                self._attempt()
+                worker.join(self.POLL_S)
+            self._attempt()
+        finally:
+            _CONSUMER_ERRORS.pop(worker, None)
+        if "error" in outcome:
+            raise outcome["error"]
+        return outcome.get("value")
 
     def assert_untouched(self):
-        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory. The
-        content is compared too, since a write in place can keep the inode, the size and a coarse clock's mtime."""
+        """Nothing opened the input for reading during consume(), or replaced or removed it; nothing wrote, replaced
+        or removed the output, or created the new output's directory. The output's content is compared too, since a
+        write in place can keep the inode, the size and a coarse clock's mtime."""
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):
                 found.append(f"removed {path}")
                 continue
             st = os.lstat(path)
-            found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
+            if path == self.input:
+                found += [] if (st.st_ino, st.st_mode) == identity else [f"wrote {path} (replaced)"]
+                continue
             content = path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""  # the same regular file only
-            os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)  # puts this read's access back
             if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
+        found += [f"wrote {entry} (replaced)" for entry in self.replaced]
+        found = [f"read {entry}" for entry in self.reads] + found + self.errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
 
@@ -162,8 +319,10 @@ class SwappedFile:
 @contextlib.contextmanager
 def _probe(cls, *args):
     base = Path(tempfile.mkdtemp(prefix="trusted-exec-")).resolve()
+    probe = None
     try:
-        yield cls(base, *args)
+        probe = cls(base, *args)
+        yield probe
     finally:
         shutil.rmtree(base, ignore_errors=True)
 

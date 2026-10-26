@@ -13,6 +13,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
+# The rendered omp pin: update_omp builds its tarball URL from it when the script is sourced (OMP_TARBALL_URL is
+# readonly), so the fixtures install at that version rather than at a literal one.
+INSTALLER_PINS = (ROOT / "scripts/lib/installer-pins.sh").read_text()
+OMP_PIN = re.search(r'^OMP_PIN_VERSION="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)[1]
 PLATFORMS = {
     "Darwin/arm64": "DARWIN_ARM64",
     "Darwin/x86_64": "DARWIN_AMD64",
@@ -83,7 +87,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             payload.write_bytes(b"reproduced artifact bytes; no real package or binary\n")
             digest = hashlib.sha256(payload.read_bytes()).hexdigest()
             log = home / "calls.jsonl"
-            pin = "18.11.3" if tool == "omp" else "0.7.30"
+            pin = OMP_PIN if tool == "omp" else "0.7.30"
             search_path = str(binary) + os.pathsep + os.environ["PATH"]
             if shadow_version is not None:
                 shadows = home / "shadows"
@@ -93,7 +97,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                 shadow.write_text(f"#!/usr/bin/env bash\nprintf '{tool} {version}\\n'\n")
                 shadow.chmod(0o755)
                 search_path = str(shadows) + os.pathsep + search_path
-            constants = 'OMP_PIN_VERSION=18.11.3; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
+            constants = f'OMP_PIN_VERSION={OMP_PIN}; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
             for key in PLATFORMS.values():
                 constants += f'HCOM_{key}_SHA256="$2"; HCOM_{key}_URL="https://fixture.invalid/{key}/hcom-0.7.30-py3-none-any.whl"; '
 
@@ -219,7 +223,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         payload = home / "payload"
         payload.write_bytes(b"fixture omp tarball\n")
         return subprocess.run(
-            ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+            ["bash", "-c", f'source "$1"; OMP_PIN_VERSION={OMP_PIN}; OMP_TARBALL_SHA256="$2"; update_omp']
             + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
             env=os.environ
             | {
@@ -244,7 +248,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             home = Path(directory)
             sandbox_tmp = home / "sandbox-tmp"
             sandbox_tmp.mkdir()
-            result = self.update_omp_in(home, "18.11.3", tmpdir=sandbox_tmp)
+            result = self.update_omp_in(home, OMP_PIN, tmpdir=sandbox_tmp)
             log = home / "calls.jsonl"
             calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
             outputs = [Path(row["argv"][row["argv"].index("-o") + 1]) for row in calls if row["tool"] == "curl"]
@@ -262,7 +266,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             target = home / ".local/bin/omp"
             target.parent.mkdir(parents=True)
             target.symlink_to(escaping)
-            result = self.update_omp_in(home, "18.11.3")
+            result = self.update_omp_in(home, OMP_PIN)
             output = result.stdout + result.stderr
             self.assertEqual(0, result.returncode, output)
             self.assertIn(f"resolves to {home}/.local/lib/node_modules/outside", result.stdout)
@@ -275,7 +279,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         # stay for npm to judge.
         npm_link = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp")
         for entry in ("dangling", "external", "foreign", "file", "npm", "directory", None):
-            for version in ("18.11.3", "0.0.1"):
+            for version in (OMP_PIN, "0.0.1"):
                 with self.subTest(entry=entry, version=version), tempfile.TemporaryDirectory() as directory:
                     home = Path(directory)
                     binary = home / ".local/bin"
@@ -305,7 +309,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         self.assertIn(str(links[entry]), result.stdout)
                     if entry == "directory":
                         self.assertTrue(target.is_dir())
-                    elif version == "18.11.3" or not moved:
+                    elif version == OMP_PIN or not moved:
                         self.assertEqual(npm_link, target.readlink(), output)
                         self.assertEqual(moved, aside.is_symlink() or aside.is_file(), output)
                     elif entry == "file":  # the failed install puts the previous entry back as it was
@@ -320,7 +324,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             target = home / ".local/bin/omp"
             target.parent.mkdir(parents=True)
             target.symlink_to(link.format(home=home))
-            result = self.update_omp_in(home, "18.11.3", spelling="/")
+            result = self.update_omp_in(home, OMP_PIN, spelling="/")
             output = result.stdout + result.stderr
             self.assertEqual(0, result.returncode, output)
             self.assertNotIn("Moving", result.stdout)
@@ -350,11 +354,11 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (
-            ("omp/18.11.3", True),
-            ("18.11.3", True),
-            ("other/18.11.3", False),
-            ("omp/omp/18.11.3", False),
-            ("omp/18.11.3-extra", False),
+            (f"omp/{OMP_PIN}", True),
+            (OMP_PIN, True),
+            (f"other/{OMP_PIN}", False),
+            (f"omp/omp/{OMP_PIN}", False),
+            (f"omp/{OMP_PIN}-extra", False),
         ):
             with self.subTest(output=output), tempfile.TemporaryDirectory() as directory:
                 target = Path(directory) / ".local/bin/omp"
@@ -365,7 +369,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                     [
                         "bash",
                         "-c",
-                        'source "$1"; OMP_PIN_VERSION=18.11.3; has_command() { return 0; }; curl() { return 42; }; update_omp',
+                        f'source "$1"; OMP_PIN_VERSION={OMP_PIN}; has_command() {{ return 0; }}; curl() {{ return 42; }}; update_omp',
                         "bash",
                         str(UPDATER),
                     ],

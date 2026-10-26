@@ -1,10 +1,10 @@
 # omp seat policy for the orchestrator seat; the seat launcher passes it as
 # `--config ~/.agents/omp/policies/orchestrator.yml`. Schema: `tools.approvalMode`
-# (src/tools/settings.ts:311-318), `tools.approval` (src/tools/settings.ts:295-305)
-# and `bash.patterns` (src/exec/settings.ts:134-145) of @oh-my-pi/pi-coding-agent
-# 18.11.3. Rules are ordered and the first match wins; a `deny` matches the whole
+# (src/tools/settings.ts:313-320), `tools.approval` (src/tools/settings.ts:295-305)
+# and `bash.patterns` (src/exec/settings.ts:137-148) of @oh-my-pi/pi-coding-agent
+# 18.12.6. Rules are ordered and the first match wins; a `deny` matches the whole
 # command or any one segment, an `allow` must match the whole command and never a
-# compound line (src/tools/bash.ts:301-307). Approval is not containment: the OS boundary
+# compound line (src/tools/bash.ts:303-309). Approval is not containment: the OS boundary
 # is the seat's srt sandbox, which `hcom-seat` sets up (regime-cutover U85).
 tools:
   approvalMode: yolo

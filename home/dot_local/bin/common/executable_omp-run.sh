@@ -7,7 +7,7 @@
 #   --config ~/.agents/omp/profiles/<role>.yml [--append-system-prompt ~/.agents/omp/rules/<role>.md]
 #   -e <dir>... --no-session --max-time <s>
 #   [--model <provider/id>] --mode <text|json> -p <prompt>`
-#   (omp 18.11.3 `omp --help`: `--mode` is "text (default), json, rpc, or rpc-ui",
+#   (omp 18.12.6 `omp --help`: `--mode` is "text (default), json, rpc, or rpc-ui",
 #   `--config` loads an overlay and is repeatable, `-e` loads an extension, `-p` is
 #   print mode and `--max-time` stops the session). The profile name equals the role
 #   and the two overlays are the ones `hcom-seat` passes every role: a named profile

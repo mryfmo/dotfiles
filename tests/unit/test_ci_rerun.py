@@ -19,6 +19,9 @@ import time
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 STUB = """#!@PYTHON@
 import json, os, subprocess, sys, time
@@ -139,7 +142,7 @@ class CiRerunTest(unittest.TestCase):
         self.repo = self.t / "repo"
         (self.repo / "scripts/orchestrator").mkdir(parents=True)
         (self.repo / ".github").mkdir()
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        git_init(self.repo)
         shutil.copy(ROOT / "scripts/orchestrator/ci-rerun.sh", self.repo / "scripts/orchestrator")
         (self.repo / ".github/flakes.yaml").write_text(FLAKES)
         (self.t / "bin").mkdir()

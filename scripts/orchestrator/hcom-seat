@@ -995,17 +995,20 @@ esac
 # @description Fill the identity table for the physical paths `$@` (regime-cutover U95), which every containment
 #   decision of the overlap check reads: per path, whether it exists, the (device, inode) identities of its deepest
 #   existing ancestor (the path itself when it exists) and of every directory above it, and the absent remainder below
-#   that ancestor, ASCII case-folded. One `/usr/bin/stat` (through xargs, order kept) and one `tr` serve every path,
-#   so the check over hundreds of worktrees runs a handful of processes instead of several per pair.
+#   that ancestor, ASCII case-folded by ascii_lower (builtins only). One `/usr/bin/stat` (through xargs, order kept)
+#   serves every path, so the check over hundreds of worktrees runs a handful of processes instead of several per
+#   pair. Fail-closed per record: every input must be a clean path; every identity line must be `<dev>:<ino>`, and
+#   their number exactly what the ancestor walks asked for; every folded remainder must have its input's length and
+#   the grammar `(/<lower-case component>)*/`; each table must hold one entry per input.
 # @set tbl_exists 1 or 0 per path.
 # @set tbl_first The identity of the deepest existing ancestor per path.
 # @set tbl_chain `\n<id>\n<id>…\n` per path: that ancestor's identity first, then each directory above it.
 # @set tbl_rest The absent remainder per path, case-folded, ending in `/` (`/` when the path exists).
 identity_table() {
-    local p d rest rests='' ids line folded chain='' i=0 k=0 all=() counts=()
+    local p d rest ids line folded chain='' i=0 k=0 all=() counts=()
     tbl_exists=() tbl_first=() tbl_chain=() tbl_rest=()
     for p in "$@"; do
-        [[ ${p} == /* ]] || refuse "the seat path ${p} is not absolute" # lint-comparisons: allow an absolute-path test
+        require_clean_path 'a seat path' "${p}"
         # Absolute, so each step shortens it and the walk ends at `/`, which exists.
         d=${p} rest=''
         while [[ ! -e ${d} && ! -L ${d} ]]; do
@@ -1017,7 +1020,11 @@ identity_table() {
         ancestors_of "${d}"
         all+=("${ancestors[@]}")
         counts+=("${#ancestors[@]}")
-        rests+=${rest}/$'\n'
+        rest=${rest}/
+        ascii_lower "${rest}" folded || refuse "cannot fold the absent part of ${p}"
+        [[ ${#folded} == "${#rest}" && ${folded} =~ ^(/[a-z0-9._@+-]+)*/$ ]] ||
+            refuse "cannot fold the absent part of ${p} ('${folded}')"
+        tbl_rest+=("${folded}")
     done
     (($#)) || return 0
     ids=$(printf '%s\0' "${all[@]}" | /usr/bin/xargs -0 /usr/bin/stat "${stat_args[@]}" --) ||
@@ -1034,10 +1041,32 @@ identity_table() {
         fi
     done <<< "${ids}"
     ((i == $# && k == 0)) || refuse "cannot read the identity of every seat path (${i} of $#)"
-    folded=$(printf '%s' "${rests}" | LC_ALL=C /usr/bin/tr '[:upper:]' '[:lower:]') ||
-        refuse 'cannot compare the absent parts of the seat paths'
-    while IFS= read -r line; do tbl_rest+=("${line}"); done <<< "${folded}"
-    ((${#tbl_rest[@]} == $#)) || refuse 'cannot compare the absent parts of every seat path'
+    ((${#tbl_exists[@]} == $# && ${#tbl_first[@]} == $# && ${#tbl_chain[@]} == $# && ${#tbl_rest[@]} == $#)) ||
+        refuse 'the identity table does not hold one entry per seat path'
+}
+
+# @description Set the variable named `$2` to `$1` with A-Z made a-z (regime-cutover U95), by builtins only (a case
+#   table, no `tr` and no locale; bash 3.2 has no `${x,,}`), so no producer's output is read back.
+# @arg $1 string ASCII text.
+# @arg $2 string The name of the variable to set.
+# @exitcode 1 The variable cannot be set.
+ascii_lower() {
+    # The locals carry a prefix, so the caller's variable `$2` is never one of them (printf -v sets the nearest).
+    local LC_ALL=C al_text=$1 al_out='' al_c al_before al_upper=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+    local al_lower=abcdefghijklmnopqrstuvwxyz
+    [[ $2 != al_* && $2 != LC_ALL ]] || return 1
+    while [[ -n ${al_text} ]]; do
+        al_c=${al_text:0:1}
+        al_text=${al_text:1}
+        case ${al_c} in
+        [ABCDEFGHIJKLMNOPQRSTUVWXYZ])
+            al_before=${al_upper%%"${al_c}"*}
+            al_c=${al_lower:${#al_before}:1}
+            ;;
+        esac
+        al_out+=${al_c}
+    done
+    printf -v "$2" '%s' "${al_out}"
 }
 
 # @description Decide from the identity table whether path `$2` is path `$1` or lies under it (regime-cutover U85,
@@ -1062,18 +1091,19 @@ within_ix() {
     [[ ${tbl_rest[$2]} == "${tbl_rest[$1]}"* ]]              # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
 }
 
-# @description Print the physical form of each absolute path `$@`, one per line, in order (regime-cutover U95): an
-#   existing directory by `cd -P` in one subshell for all of them, anything else by physical_path, so hundreds of
-#   worktrees cost one fork instead of one each. Fail-closed per record: the subshell writes exactly one record per
-#   path, `ok<TAB><physical path>` after a `cd -P` whose status was 0, `other` for a path that is no directory, or
-#   `fail` after a failed `cd`; the result is used only when there are exactly N records, in order, each `other`
-#   (then resolved by physical_path, its status checked) or `ok` with an absolute path. Anything else fails, so no
-#   later success masks an earlier failure and no output of a failed resolution is used.
+# @description Set `phys_list` to the physical form of each absolute path `$@`, in order (regime-cutover U95), or
+#   refuse (exit 2): an existing directory by `cd -P` in one subshell for all of them, anything else by
+#   physical_path, so hundreds of worktrees cost one fork instead of one each. Fail-closed per record: the subshell
+#   writes exactly one record per path, `ok<TAB><physical path>` after a `cd -P` whose status was 0, `other` for a
+#   path that is no directory, or `fail` after a failed `cd`, and fails when a record cannot be written. Each record
+#   is checked against its grammar and its result assigned to its own index (nothing is printed and read back): `ok`
+#   with a clean path, or `other` resolved by physical_path, its status checked and the result clean. Anything else,
+#   a record too many or too few, or an index left without its result refuses.
 # @arg $@ string Absolute paths free of control characters.
-# @stdout The physical paths.
-# @exitcode 1 A path cannot be resolved, or the records are not exactly one good record per path.
+# @set phys_list The physical paths, one per input.
 physical_paths() {
-    local out line i=0 args=("$@")
+    local out line resolved i=0 args=("$@")
+    phys_list=()
     (($#)) || return 0
     out=$(for p in "$@"; do
         if [[ ! -d ${p} ]]; then
@@ -1083,18 +1113,19 @@ physical_paths() {
         else
             printf 'fail\n' || exit 1
         fi
-    done) || return 1
+    done) || refuse 'cannot resolve the worktrees (the resolving subshell failed)'
     while IFS= read -r line; do
-        ((i < $#)) || return 1
+        ((i < $#)) || refuse 'cannot resolve the worktrees (more records than paths)'
         case ${line} in
-        other) line=$(physical_path "${args[i]}") || return 1 ;;
-        ok$'\t'/*) line=${line#ok$'\t'} ;;
-        *) return 1 ;;
+        other) resolved=$(physical_path "${args[i]}") || refuse "cannot resolve the worktree ${args[i]}" ;;
+        ok$'\t'*) resolved=${line#ok$'\t'} ;;
+        *) refuse "cannot resolve the worktree ${args[i]} ('${line}')" ;;
         esac
-        printf '%s\n' "${line}"
+        clean_path "${resolved}" || refuse "the worktree ${args[i]} resolves to '${resolved}', not a clean absolute path"
+        phys_list[i]=${resolved}
         i=$((i + 1))
     done <<< "${out}"
-    ((i == $#))
+    ((i == $# && ${#phys_list[@]} == $#)) || refuse "cannot resolve every worktree (${#phys_list[@]} of $#)"
 }
 
 # @description Set `worktree_paths` to the worktrees git records for this repository, main worktree first, and
@@ -1215,8 +1246,8 @@ other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'c
 # Every linked worktree git records, resolved once for both overlap checks (the first record is the main worktree).
 worktree_phys=()
 if ((${#worktree_paths[@]} > 1)); then
-    phys_out=$(physical_paths "${worktree_paths[@]:1}") || refuse "cannot resolve the worktrees of ${repo}"
-    while IFS= read -r root; do worktree_phys+=("${root}"); done <<< "${phys_out}"
+    physical_paths "${worktree_paths[@]:1}"
+    worktree_phys=("${phys_list[@]}")
 fi
 
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
@@ -1252,6 +1283,9 @@ seat_overlap_check() {
         labels+=("the seat directory")
         protected+=("${p}")
     done
+    # One resolved path per linked worktree git records (physical_paths), or the deny list below could miss one.
+    ((${#worktree_phys[@]} == ${#worktree_paths[@]} - 1)) ||
+        refuse "the worktrees of ${repo} were not all resolved (${#worktree_phys[@]} of $((${#worktree_paths[@]} - 1)))"
     for p in ${worktree_phys[@]+"${worktree_phys[@]}"}; do
         labels+=("the worktree")
         protected+=("${p}")
@@ -1293,8 +1327,15 @@ seat_overlap_check() {
             fi
         done
     done
+    # The deny list is derived from the full table: every protected index holds exactly one result, 0 or 1.
+    ((${#nested[@]} == ${#protected[@]} && ${#own[@]} == ${#protected[@]})) ||
+        refuse "the overlap table of the ${own_role} seat does not hold one result per protected path"
     for ((i = 0; i < ${#protected[@]}; i++)); do
-        ((! nested[i])) || seat_nested+=("${protected[i]}")
+        case ${nested[i]-} in
+        0) ;;
+        1) seat_nested+=("${protected[i]}") ;;
+        *) refuse "the overlap table of the ${own_role} seat has no result for ${protected[i]}" ;;
+        esac
     done
 }
 

@@ -1128,43 +1128,47 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         return "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "ancestors_of", "identity_table", "within_ix")
-        )
+            for name in (
+                "refuse", "clean_path", "require_clean_path", "ancestors_of", "identity_table", "ascii_lower",
+                "within_ix",
+            )
+        )  # fmt: skip
 
     def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
-        """U85 round 15, U95: the identity table's producers (stat, tr) are checked: one that prints a plausible answer
-        and fails refuses instead of deciding."""
+        """U85 round 15, U95: the identity table's one producer (stat) is checked: one that prints a plausible answer
+        and fails refuses instead of deciding. The case fold is builtin (ascii_lower), no `tr` runs."""
+        self.assertNotIn("/usr/bin/tr", self.identity_functions())
         stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
         outer = Path(self.temp.name).resolve() / "outer"
         outer.mkdir()
         fakes = Path(self.temp.name).resolve() / "failing"
         fakes.mkdir()
         (fakes / "stat").write_text("#!/bin/sh\nfor a; do echo 1:2; done\nexit 7\n")
-        (fakes / "tr").write_text("#!/bin/sh\ncat\nexit 7\n")
-        for fake in ("stat", "tr"):
-            (fakes / fake).chmod(0o755)
-        for producer, message in (("stat", "cannot read the identity"), ("tr", "cannot compare the absent parts")):
-            for label, inner in (("exists", outer / "a/b"), ("neither exists", outer / "x/y")):
-                with self.subTest(producer=producer, case=label):
-                    functions = self.identity_functions().replace(f"/usr/bin/{producer}", str(fakes / producer))
-                    script = (
-                        f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
-                        f'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho decided=$status\n'
-                    )
-                    run = subprocess.run(
-                        ["/bin/bash", "-c", script, "_", str(outer), str(inner)],
-                        capture_output=True, text=True, check=False,
-                    )  # fmt: skip
-                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
-                    self.assertIn(message, run.stderr)
+        (fakes / "stat").chmod(0o755)
+        for label, inner in (("exists", outer / "a/b"), ("neither exists", outer / "x/y")):
+            with self.subTest(case=label):
+                functions = self.identity_functions().replace("/usr/bin/stat", str(fakes / "stat"))
+                script = (
+                    f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
+                    'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho decided=$status\n'
+                )
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script, "_", str(outer), str(inner)],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
+                self.assertIn("cannot read the identity", run.stderr)
 
     def test_every_batched_producer_fails_closed(self):
         """U95: each batch hcom-seat runs over many paths refuses when its producer fails after printing plausible
-        output, prints too few records, or prints a malformed one: physical_paths (cd, physical_path, printf; it
-        calls no pwd), sizes_of (stat), pointer_values (cat, and its sizes), and the identity table (stat, tr)."""
+        output, prints too few records, or prints a malformed one: physical_paths (cd, physical_path, a record's
+        printf; it calls no pwd and prints nothing back), sizes_of (stat), pointer_values (cat, and its sizes), and
+        the identity table (stat; its fold is builtin, so a fold that keeps case, changes length or fails refuses).
+        Round 3: every result is assigned to its input's index, and the overlap check refuses when a worktree has no
+        resolved path or a protected path no result, so the nested deny list cannot omit one."""
         text = SEAT.read_text()
-        names = ("refuse", "physical_path", "physical_paths", "sizes_of", "pointer_values", "ancestors_of")
-        names += ("identity_table", "within_ix")
+        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
+        names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1200,7 +1204,7 @@ class HcomSeatTest(unittest.TestCase):
                 ["/bin/bash", "-c", script, "_", *script_args], capture_output=True, text=True, check=False, timeout=30
             )
 
-        paths_call = 'out=$(physical_paths "$@") || refuse physical_paths failed\nprintf "%s\\n" "$out"'
+        paths_call = 'physical_paths "$@"\nprintf "%s\\n" "${phys_list[@]}"'
         good = run(paths_call, dirs)
         self.assertEqual(good.returncode, 0, good.stderr)
         self.assertEqual(
@@ -1209,6 +1213,8 @@ class HcomSeatTest(unittest.TestCase):
         paths_cases = {
             "cd fails after a plausible PWD": 'cd() { if [[ $3 == */b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
             "a record is dropped": 'printf() { [[ $# == 2 && $2 == */b ]] && return 0; builtin printf "$@"; }',
+            "a record's printf fails (the audit's case)": 'printf() { [[ $# == 2 && $2 == */b ]] && return 7; builtin printf "$@"; }',
+            "physical_path fails after plausible output": "physical_path() { echo /plausible/absent; return 7; }",
             "a malformed record": 'cd() { builtin cd "$@" || return; [[ $PWD != */b ]] || PWD=relative; }',
         }
         for label, prelude in paths_cases.items():
@@ -1243,8 +1249,10 @@ class HcomSeatTest(unittest.TestCase):
             result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
             self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
         table_call = 'identity_table "$@"\nwithin_ix 0 1 && echo inside || echo outside'
-        table_args = [str(root), str(root / "a/new")]
+        table_args = [str(root), str(root / "a/NEW")]
         self.assertEqual(run(table_call, table_args).stdout, "inside\n")
+        fold = run('ascii_lower "$1" out\nprintf "%s\\n" "$out"', ["/New/ABC.x-Y_z@1+Q/"])
+        self.assertEqual(fold.stdout, "/new/abc.x-y_z@1+q/\n", fold.stderr)
         table_cases = {
             ("stat", "too few lines"): ("/usr/bin/stat", fake("id-short", "echo 1:2")),
             ("stat", "a malformed line"): ("/usr/bin/stat", fake("id-bad", "for a; do echo id; done")),
@@ -1252,13 +1260,49 @@ class HcomSeatTest(unittest.TestCase):
                 "/usr/bin/stat",
                 fake("id-fail", "for a; do echo 1:2; done\nexit 7"),
             ),
-            ("tr", "too few lines"): ("/usr/bin/tr", fake("tr-short", "head -n 1")),
-            ("tr", "fails after plausible output"): ("/usr/bin/tr", fake("tr-fail", "cat\nexit 7")),
         }
         for (producer, label), (real, stand_in) in table_cases.items():
             with self.subTest(producer=f"identity_table ({producer})", case=label):
                 result = run(table_call, table_args, {real: stand_in})
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        fold_cases = {
+            "keeps upper case": 'ascii_lower() { printf -v "$2" \'%s\' "$1"; }',
+            "changes the length": "ascii_lower() { printf -v \"$2\" '%s' /new/; }",
+            "fails": "ascii_lower() { return 1; }",
+        }
+        for label, prelude in fold_cases.items():
+            with self.subTest(producer="identity_table (fold)", case=label):
+                result = run(table_call, table_args, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot fold the absent part", result.stderr)
+        # The overlap consumer: two worktrees under the checkout both reach the deny list; one without its resolved
+        # path, or a protected path without its result, refuses.
+        checkout, seats = root / "checkout", root / "seats"
+        for tree in ("w1", "w2"):
+            (checkout / ".claude/worktrees" / tree).mkdir(parents=True)
+        seats.mkdir()
+        trees = [str(checkout / ".claude/worktrees" / t) for t in ("w1", "w2")]
+        overlap = (
+            f"seats_root={seats} checkout={checkout} common={root}/no-git repo={checkout} root_ids=$'\\n'\n"
+            f'worktree_paths=({checkout} "$@")\nworktree_phys=("$@")\n'
+        )
+        overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\nprintf "%s\\n" "${seat_nested[@]}"'
+        whole = run(overlap_call, trees, prelude=overlap)
+        self.assertEqual((whole.returncode, whole.stdout.split()), (0, trees), whole.stderr)
+        overlap_cases = {
+            "a worktree without its resolved path": (overlap + 'worktree_phys=("$1")', "were not all resolved"),
+            # Each decision first drops the result of the first worktree (index 3), as an omitted record would.
+            "a protected path without its result": (
+                overlap + "within_ix() { unset 'nested[3]'; real_within_ix \"$@\"; }",
+                "does not hold one result per protected path",
+            ),
+        }
+        for label, (prelude, message) in overlap_cases.items():
+            with self.subTest(producer="seat_overlap_check", case=label):
+                swap = {"within_ix() {": "real_within_ix() {"} if "real_within_ix" in prelude else None
+                result = run(overlap_call, trees, swap, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
 
     def test_own_slots_that_are_links_are_refused(self):
         """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be

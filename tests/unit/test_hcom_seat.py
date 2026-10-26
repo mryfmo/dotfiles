@@ -1465,6 +1465,80 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((nested / ".git").read_text().split()[0], "gitdir:")
         self.assertFalse((nested / "new").exists())
 
+    def test_an_absent_nested_worktree_is_denied_on_macos_and_refused_on_linux(self):
+        """U95 (PR #567 review): a worktree git still records under the checkout whose directory is gone. srt on Linux
+        cannot deny an absent path, so there the orchestrator's launch is refused, naming `git worktree prune`, and a
+        worker launch says so (nested_worktree_plan, run with each system's name). On macOS the path is write-denied
+        and, with an srt on this host, a seat's attempt to recreate it and write its `.git` file is denied live. Each
+        message says what the launch does."""
+        gone = self.repo / ".claude/worktrees/gone"
+        self.git("worktree", "add", "-q", "--detach", str(gone), "HEAD")
+        gone = gone.resolve()
+        shutil.rmtree(gone)
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "nested_worktree_plan")
+        )
+        present = Path(self.temp.name).resolve() / "present"
+        present.mkdir()
+        cases = {
+            ("Linux", "orchestrator", "1"): (
+                2,
+                "its directory is absent; srt on Linux cannot deny a path that does not exist",
+            ),
+            ("Linux", "orchestrator", "0"): (
+                0,
+                "the orchestrator's launch is refused until `git worktree prune` removes it",
+            ),
+            ("Darwin", "orchestrator", "1"): (0, "the path is write-denied to the seat, creating it included"),
+            ("Darwin", "orchestrator", "0"): (
+                0,
+                "the orchestrator's launch write-denies the path, creating it included",
+            ),
+        }
+        for (system, seat, mine), (status, message) in cases.items():
+            with self.subTest(system=system, own=mine):
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'set -euo pipefail\n{functions}\nnested_worktree_plan "$@"', "_", system, seat,
+                     mine, str(present), str(gone)], capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, status, run.stderr)
+                self.assertIn(f"the worktree {gone} lies inside a write root of the orchestrator seat", run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertIn(f"the worktree {present} lies inside a write root", run.stderr)
+        if sys.platform != "darwin":
+            run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertIn("run `git worktree prune`", run.stderr)
+            return
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                dry = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(dry.returncode, 0, dry.stderr)
+                self.assertIn(
+                    f"the worktree {gone} lies inside a write root of the orchestrator seat and its", dry.stderr
+                )
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(str(gone), self.settings_of("orchestrator")["filesystem"]["denyWrite"])
+        srt = shutil.which("srt")
+        if srt is None:
+            self.skipTest("no srt on this host's PATH for the live recreate probe")
+        settings_file = Path(self.seats, ".sandbox/orchestrator/srt-settings.json")
+        probe = (
+            'if mkdir -p "$1" 2>/dev/null; then echo made; else echo mkdir-denied; fi; '
+            'if (printf "gitdir: /evil\\n" > "$1/.git") 2>/dev/null; then echo wrote-git; else echo git-denied; fi; '
+            'if mkdir "$2" 2>/dev/null; then echo sibling-made; fi'
+        )
+        sibling = gone.parent / "sibling"
+        live = subprocess.run(
+            [srt, "--settings", str(settings_file), "--", "/bin/sh", "-c", probe, "_", str(gone), str(sibling)],
+            cwd=self.repo, capture_output=True, text=True, check=False, timeout=120,
+        )  # fmt: skip
+        self.assertEqual(live.stdout.split(), ["mkdir-denied", "git-denied", "sibling-made"], live.stderr)
+        self.assertFalse(gone.exists())
+
     def add_worktrees(self, first, count, nested):
         """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first
         `nested` of them under `<checkout>/.claude/worktrees`, every other one with an empty `config.worktree`."""

@@ -1348,14 +1348,46 @@ while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_r
 # directory its write list holds; the main checkout stays protected for it only when it is not that checkout.
 repo_phys=$(physical_path "${repo}") || refuse "cannot resolve the launch checkout ${repo}"
 seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
-# Each protected worktree is named, so an operator sees what the seat's settings write-deny (regime-cutover U95).
-for p in ${launch_nested[@]+"${launch_nested[@]}"}; do
-    echo "hcom-seat: the worktree ${p} lies inside a write root of the ${role} seat; its directory is write-denied to the seat" >&2
-done
-if [[ ${role} != orchestrator ]]; then
-    for p in ${seat_nested[@]+"${seat_nested[@]}"}; do
-        echo "hcom-seat: the worktree ${p} lies inside a write root of the orchestrator seat; the orchestrator's launch write-denies it" >&2
+# @description Say, and decide, what a launch does with each worktree that lies inside a seat's write roots
+#   (regime-cutover U95), one line per worktree on stderr, dry runs included. An existing directory is write-denied
+#   whole. An absent one (git still records it, its directory is gone) is write-denied on macOS, where srt's
+#   `(deny file-write* (subpath …))` also refuses creating it and anything under it (measured live: mkdir, a `.git`
+#   file and a tracked file were all denied, while a sibling under the same allowed root was made). On Linux srt can
+#   deny only an existing path (it would mount a placeholder there, which makes the path on the host), so the seat
+#   could recreate the directory and populate it where host git and host tools take it for the registered worktree:
+#   the launch of that seat is refused, naming `git worktree prune`. For a worker launch, the orchestrator's
+#   worktrees are reported with what the orchestrator's launch will do; they do not concern the worker's own
+#   sandbox.
+# @arg $1 string The operating system (`uname -s`).
+# @arg $2 string The seat the worktrees concern (`orchestrator` or the launching role).
+# @arg $3 int 1 when the worktrees are the launching seat's own, 0 when they are the orchestrator's, reported.
+# @arg $@ string The worktrees after them.
+nested_worktree_plan() {
+    local system=$1 seat=$2 mine=$3 p
+    shift 3
+    for p in "$@"; do
+        if [[ -e ${p} ]]; then
+            if ((mine)); then
+                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; its directory is write-denied to the seat" >&2
+            else
+                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; the ${seat}'s launch write-denies its directory" >&2
+            fi
+        elif [[ ${system} == Darwin ]]; then
+            if ((mine)); then
+                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the path is write-denied to the seat, creating it included" >&2
+            else
+                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the ${seat}'s launch write-denies the path, creating it included" >&2
+            fi
+        elif ((mine)); then
+            refuse "the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; srt on Linux cannot deny a path that does not exist, so the seat could recreate it: run \`git worktree prune\` (or restore the directory) first"
+        else
+            echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the ${seat}'s launch is refused until \`git worktree prune\` removes it (or the directory is restored)" >&2
+        fi
     done
+}
+nested_worktree_plan "${os}" "${role}" 1 ${launch_nested[@]+"${launch_nested[@]}"}
+if [[ ${role} != orchestrator ]]; then
+    nested_worktree_plan "${os}" orchestrator 0 ${seat_nested[@]+"${seat_nested[@]}"}
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
@@ -1480,11 +1512,10 @@ seat_sandbox_write() {
     # `<checkout>/.claude/worktrees/*`) is write-denied whole, its `.git` file and tracked files included, which host
     # git and host tools read. srt 0.0.81 keeps a deny inside an allowed root on both systems: on macOS the deny rule
     # follows the allow (`(deny file-write* (subpath …))`, macos-sandbox-utils.js:713-733), on Linux the deny's
-    # `--ro-bind` is emitted after every write bind (linux-sandbox-utils.js:2434-2455). On Linux srt binds only what
-    # exists (an absent path gets a placeholder mount), so an absent worktree (a prunable record) is denied on macOS
-    # only; its git state above stays denied everywhere.
+    # `--ro-bind` is emitted after every write bind (linux-sandbox-utils.js:2434-2455). An absent worktree is denied
+    # on macOS, which also refuses creating it (nested_worktree_plan, measured); on Linux the launch was refused there.
     for path in ${launch_nested[@]+"${launch_nested[@]}"}; do
-        if [[ ${os} == Darwin || -e ${path} ]]; then deny_write+=("${path}"); fi
+        deny_write+=("${path}")
     done
     # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
     # write denies only, and the next launch's git_state_check covers it.

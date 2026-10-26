@@ -5041,10 +5041,14 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Install the optional Ubuntu client packages.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   The install runs with the noninteractive debconf frontend, as setup_timezone.sh's does: a package that asks a</span>
+<span class="c1">#   question (keyboard, locale, fonts) then takes its default instead of waiting on a terminal it does not have. The</span>
+<span class="c1">#   frontend is an argument to sudo, because sudo's env_reset drops it from the caller's environment.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_misc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>sudo<span class="w"> </span><span class="nv">DEBIAN_FRONTEND</span><span class="o">=</span>noninteractive<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5054,17 +5058,30 @@
 <span class="c1">#   transitional snap wrapper). Google Chrome is not used instead because</span>
 <span class="c1">#   Google does not publish a linux-arm64 build. Skips gracefully when snap</span>
 <span class="c1">#   is unavailable (e.g. minimal or container images). The Snap Store</span>
-<span class="c1">#   intermittently answers HTTP 408 while fetching assertions, so the install</span>
-<span class="c1">#   is tried up to 3 times before its failure is returned.</span>
+<span class="c1">#   intermittently answers HTTP 408 while fetching assertions, so a failed</span>
+<span class="c1">#   install is tried up to 3 times before its failure is returned. `snap</span>
+<span class="c1">#   install` itself waits on snapd without any time limit, so each attempt</span>
+<span class="c1">#   runs under `timeout`; an attempt that outlives it is not retried, because</span>
+<span class="c1">#   snapd keeps running the change after its client stops, and a second</span>
+<span class="c1">#   install would only report that change as in progress.</span>
 <span class="c1"># @env SNAP_RETRY_DELAY Seconds between attempts; tests set 0. Default: 10, then 30.</span>
+<span class="c1"># @env SNAP_INSTALL_TIMEOUT Seconds one attempt may take; default 600 (a passing CI run spends</span>
+<span class="c1">#   under 90 s on the whole misc install, apt packages included).</span>
+<span class="c1"># @exitcode 124 An attempt outlived SNAP_INSTALL_TIMEOUT.</span>
 <span class="c1"># @exitcode The last `snap install` exit status after the final failed attempt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_chromium<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>snap<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">delays</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNAP_RETRY_DELAY</span><span class="k">:-</span><span class="nv">10</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SNAP_RETRY_DELAY</span><span class="k">:-</span><span class="nv">30</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">attempt</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">limit</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNAP_INSTALL_TIMEOUT</span><span class="k">:-</span><span class="nv">600</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nv">attempt</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span>sudo<span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="c1"># timeout runs as root, so it can stop the snap client it starts.</span>
+<span class="w">        </span>sudo<span class="w"> </span>timeout<span class="w"> </span>--kill-after<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">124</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">137</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'install_chromium: snap install chromium timed out after %s s (SNAP_INSTALL_TIMEOUT); snapd may still finish it (snap changes)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s2">"</span><span class="si">${</span><span class="nv">limit</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">124</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'install_chromium: snap install chromium failed (attempt %d/3, exit %d)\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">attempt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">attempt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-lt<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>

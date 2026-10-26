@@ -4993,7 +4993,7 @@
 
 
 <h1 id="scriptsrun_unit_testsh">scripts/run_unit_test.sh<a class="headerlink" href="#scriptsrun_unit_testsh" title="Permanent link">&para;</a></h1>
-<p>Dispatches the common Bats suite and the OS/system-specific Bats suite selected by the <code>OS</code> and <code>SYSTEM</code> environment variables.</p>
+<p>Dispatches the common Bats suite and the OS/system-specific Bats suite selected by the <code>OS</code> and <code>SYSTEM</code> environment variables. Every Bats run goes through run_bats, which fails a test by name when it outlives BATS_PER_TEST_TIMEOUT.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/run_unit_test.sh</code></li>
@@ -5003,6 +5003,7 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>main</code></li>
+<li><code>run_bats</code></li>
 <li><code>run_common_test</code></li>
 <li><code>run_files_test</code></li>
 <li><code>run_os_specific_test</code></li>
@@ -5014,7 +5015,9 @@
 <span class="c1"># @brief Run the repository's shell unit tests.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Dispatches the common Bats suite and the OS/system-specific Bats suite</span>
-<span class="c1">#   selected by the `OS` and `SYSTEM` environment variables.</span>
+<span class="c1">#   selected by the `OS` and `SYSTEM` environment variables. Every Bats run</span>
+<span class="c1">#   goes through run_bats, which fails a test by name when it outlives</span>
+<span class="c1">#   BATS_PER_TEST_TIMEOUT.</span>
 
 <span class="c1"># Keep this wrapper minimal: CI invokes this script through `bashcov`.</span>
 <span class="c1"># `-u` is intentionally omitted because strict nounset can propagate through</span>
@@ -5022,11 +5025,36 @@
 <span class="nb">set</span><span class="w"> </span>-Eeo<span class="w"> </span>pipefail
 
 <span class="c1">#</span>
+<span class="c1"># @description Run Bats, failing by name a test that runs longer than BATS_PER_TEST_TIMEOUT.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Bats' own BATS_TEST_TIMEOUT is not used. Bats 1.10.0 (the ubuntu-24.04 apt package) kills only a</span>
+<span class="c1">#   timed-out test's direct children, so a stalled grandchild such as `sudo snap` keeps Bats' output pipe</span>
+<span class="c1">#   open and the run still hangs (bats-core#1020). Bats 1.13.0 (ubuntu-26.04) and 1.14.0 (Homebrew) hold</span>
+<span class="c1">#   the run for the whole bound after any failing test (bats-core#1206).</span>
+<span class="c1">#   Instead scripts/ci/run-bats.py reads Bats' extended stream (`--formatter cat`): it prints</span>
+<span class="c1">#   `running: &lt;n&gt; &lt;name&gt;` as each test starts, then the TAP lines; when a test has no result within the</span>
+<span class="c1">#   bound it prints `not ok &lt;n&gt; &lt;name&gt; # timeout after &lt;s&gt; s` and fails with 124. Time spent outside a</span>
+<span class="c1">#   test, such as loading a file, gets the same bound. A run that plans no test fails. It signals</span>
+<span class="c1">#   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.</span>
+<span class="c1">#   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.</span>
+<span class="c1"># @arg $@ string Arguments passed to bats.</span>
+<span class="c1"># @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 1200 (scripts/ci/run-bats.py).</span>
+<span class="c1"># @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.</span>
+<span class="c1"># @exitcode 1 Bats planned no test, or dirname failed.</span>
+<span class="c1"># @exitcode Bats' exit status otherwise.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_bats<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>here
+<span class="w">    </span><span class="nv">here</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/run-bats.py"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run the install tests shared across all CI targets.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>run_common_test<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># Common install tests executed on every matrix target.</span>
-<span class="w">    </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/common/"</span>
+<span class="w">    </span>run_bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/common/"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5035,15 +5063,15 @@
 <span class="k">function</span><span class="w"> </span>run_os_specific_test<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>macos-*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># macOS-only install tests.</span>
-<span class="w">        </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/macos/common/"</span>
+<span class="w">        </span>run_bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/macos/common/"</span>
 
 <span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>ubuntu-*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># Ubuntu install tests shared by client and server targets.</span>
-<span class="w">        </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/ubuntu/common/"</span>
+<span class="w">        </span>run_bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/ubuntu/common/"</span>
 
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"client"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"server"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="c1"># Ubuntu install tests for the selected system target.</span>
-<span class="w">            </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/ubuntu/</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">/"</span>
+<span class="w">            </span>run_bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">"tests/install/ubuntu/</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">/"</span>
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2"> are not supported"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
@@ -5059,7 +5087,6 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>run_files_test<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>bats_args
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>test_count
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>macos-*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"client"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">bats_args</span><span class="o">=(</span>tests/files/macos.bats<span class="o">)</span>
@@ -5070,12 +5097,9 @@
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nv">test_count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">FILES_TEST_HOME</span><span class="p">:?FILES_TEST_HOME is required</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>bats<span class="w"> </span>--count<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">bats_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">test_count</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Expected at least one files test; got </span><span class="si">${</span><span class="nv">test_count</span><span class="k">:-</span><span class="nv">no</span><span class="p"> count</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">FILES_TEST_HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>bats<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">bats_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># No separate `bats --count`: it would load the files outside the bound. run_bats fails a run that plans</span>
+<span class="w">    </span><span class="c1"># no test.</span>
+<span class="w">    </span><span class="nv">HOME</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">FILES_TEST_HOME</span><span class="p">:?FILES_TEST_HOME is required</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>run_bats<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">bats_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

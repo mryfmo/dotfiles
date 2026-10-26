@@ -5085,7 +5085,9 @@
 <span class="w">    </span><span class="c1"># Signed-By keys make apt refuse to update.</span>
 <span class="w">    </span>sudo<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>/etc/apt/sources.list.d/docker.list<span class="w"> </span>/etc/apt/keyrings/docker.gpg
 <span class="w">    </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span>-d<span class="w"> </span>/etc/apt/keyrings
-<span class="w">    </span>sudo<span class="w"> </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://download.docker.com/linux/ubuntu/gpg<span class="w"> </span>-o<span class="w"> </span>/etc/apt/keyrings/docker.asc
+<span class="w">    </span><span class="c1"># 30 s to connect, and a transfer under 1 KB/s for 60 s fails, so a stalled download ends.</span>
+<span class="w">    </span>sudo<span class="w"> </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span>https://download.docker.com/linux/ubuntu/gpg<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-o<span class="w"> </span>/etc/apt/keyrings/docker.asc
 <span class="w">    </span>sudo<span class="w"> </span>chmod<span class="w"> </span>a+r<span class="w"> </span>/etc/apt/keyrings/docker.asc
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="se">\</span>

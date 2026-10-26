@@ -1,9 +1,10 @@
-"""Every CI Bats run fails a stalled test by name, and the installers' network calls end (regime-cutover U99).
+"""Every CI Bats run fails a stalled test by name, and every scripted network call ends (regime-cutover U99).
 
-The installers' convention: curl gets `--connect-timeout 30` and fails a transfer under 1 KB/s for 60 s
-(`--speed-limit 1024 --speed-time 60`); wget gets `--timeout=60 --tries=3`; `snap install` runs under `timeout`.
-apt-get needs nothing: its http and https methods give up a connection or a read that stays silent for
-Acquire::http::Timeout, 30 s unless configured (apt methods/basehttp.cc), and https inherits the http value.
+The convention, for setup.sh, install/**, scripts/** (make update, the levers, the CI helpers) and the workflow
+steps: curl gets `--connect-timeout 30` and fails a transfer under 1 KB/s for 60 s (`--speed-limit 1024
+--speed-time 60`); wget gets `--timeout=60 --tries=3`; `snap install` runs under `timeout`. apt-get needs nothing:
+its http and https methods give up a connection or a read that stays silent for Acquire::http::Timeout, 30 s unless
+configured (apt methods/basehttp.cc), and https inherits the http value.
 """
 
 from __future__ import annotations
@@ -13,18 +14,42 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import textwrap
 import time
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts/run_unit_test.sh"
 WORKFLOWS = ROOT / ".github/workflows"
 BASH = shutil.which("bash") or "/bin/bash"
-# What a host runs to install: the bootstrap, the installers and the release helper they share.
-INSTALL_SOURCES = [ROOT / "setup.sh", ROOT / "scripts/lib/github-release.sh", *sorted((ROOT / "install").rglob("*.sh"))]
+# Every file that runs a network command on a host or a runner: the bootstrap, the installers, everything under
+# scripts/ (update-agent-assets.sh and upgrade-tools.sh behind make update, the release helper, the orchestrator
+# levers, the CI helpers) and the workflows. Compiled Python caches are not sources.
+NETWORK_SOURCES = [
+    ROOT / "setup.sh",
+    *sorted((ROOT / "install").rglob("*.sh")),
+    *sorted(p for p in (ROOT / "scripts").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
+    *sorted(WORKFLOWS.glob("*.y*ml")),
+]
+# The only lines that name a download without running it. update-agent-assets.sh's manifest_record writes, as data in
+# ~/.agents/.installed-manifest.json, the source each asset came from ("curl -fsSL <url>", then its sha256 check); it
+# fetches nothing, and the bound flags say nothing about where an asset came from.
+NOT_A_CALL = ("manifest_record ",)
 # A command, not a mention: the tool followed by an option, or `snap install`/`snap refresh`.
 CURL = re.compile(r"(?<![\w.-])curl\s+-")
 WGET = re.compile(r"(?<![\w.-])wget\s+-")
@@ -51,16 +76,19 @@ def logical_lines(path: Path) -> list[tuple[int, str]]:
 
 
 def commands(path: Path) -> list[tuple[int, str]]:
-    """logical_lines without the messages a script prints, which may name a command without running it."""
+    """logical_lines without the messages a script prints and the NOT_A_CALL records, which name a command they do
+    not run."""
     return [
-        (number, line) for number, line in logical_lines(path) if not line.lstrip().startswith(("printf ", "echo "))
+        (number, line)
+        for number, line in logical_lines(path)
+        if not line.lstrip().startswith(("printf ", "echo ", *NOT_A_CALL))
     ]
 
 
-class InstallerNetworkBoundTest(unittest.TestCase):
+class NetworkBoundTest(unittest.TestCase):
     def test_every_curl_wget_and_snap_call_carries_its_bound(self) -> None:
         unbounded = []
-        for path in INSTALL_SOURCES:
+        for path in NETWORK_SOURCES:
             for number, line in commands(path):
                 where = f"{path.relative_to(ROOT)}:{number}: {line.strip()}"
                 if CURL.search(line) and not (
@@ -78,7 +106,7 @@ class InstallerNetworkBoundTest(unittest.TestCase):
         # A scan that matched nothing would pass every tree, so it must find these calls.
         found = {
             (path.relative_to(ROOT).as_posix(), kind)
-            for path in INSTALL_SOURCES
+            for path in NETWORK_SOURCES
             for _, line in commands(path)
             for kind, pattern in (("curl", CURL), ("wget", WGET), ("snap", SNAP))
             if pattern.search(line)
@@ -90,8 +118,24 @@ class InstallerNetworkBoundTest(unittest.TestCase):
             ("install/common/aws_cli.sh", "curl"),
             ("install/ubuntu/client/docker.sh", "curl"),
             ("install/ubuntu/client/misc.sh", "snap"),
+            ("scripts/update-agent-assets.sh", "curl"),
+            (".github/workflows/test.yaml", "curl"),
+            (".github/workflows/agent-assets.yml", "curl"),
         ):
             self.assertIn(expected, found)
+
+    def test_only_records_are_left_out(self) -> None:
+        # The exclusion takes manifest_record lines and nothing else: each names curl and runs no command itself.
+        records = [
+            line
+            for path in NETWORK_SOURCES
+            for _, line in logical_lines(path)
+            if line.lstrip().startswith(NOT_A_CALL) and CURL.search(line)
+        ]
+        self.assertTrue(records)
+        for line in records:
+            self.assertRegex(line.lstrip(), r'^manifest_record "\w+" installer ')
+            self.assertNotRegex(line, r"\$\(|`")
 
 
 class RunBatsBoundTest(unittest.TestCase):

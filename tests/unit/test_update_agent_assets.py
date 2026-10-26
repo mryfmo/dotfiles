@@ -151,7 +151,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
             # npm's three-day cooldown reaches the install too, so the tarball's dependencies resolve under it.
             self.assertEqual(["3", "3"], [row["min_release_age"] for row in records])
-            url = records[0]["argv"][1]
+            argv = records[0]["argv"]
+            url = argv[argv.index("-o") - 1]  # the URL comes right before the output file
             if tool == "omp":
                 self.assertEqual(
                     f"https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-{pin}.tgz", url

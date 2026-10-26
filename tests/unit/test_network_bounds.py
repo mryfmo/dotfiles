@@ -35,6 +35,7 @@ def tearDownModule() -> None:
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts/run_unit_test.sh"
+SUPERVISOR = ROOT / "scripts/ci/run-bats.py"
 WORKFLOWS = ROOT / ".github/workflows"
 BASH = shutil.which("bash") or "/bin/bash"
 # Every file that runs a network command on a host or a runner: the bootstrap, the installers, everything under
@@ -139,62 +140,105 @@ class NetworkBoundTest(unittest.TestCase):
 
 
 class RunBatsBoundTest(unittest.TestCase):
-    """run_bats (scripts/run_unit_test.sh) against a fake `bats` that writes Bats' extended stream."""
+    """run_bats (scripts/run_unit_test.sh, then scripts/ci/run-bats.py) against a fake `bats` that writes
+    Bats' extended stream."""
 
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="run-bats-"))
         self.addCleanup(shutil.rmtree, self.temp, True)
         (self.temp / "bin").mkdir()
+        # The python3 the runner calls, so the case does not depend on the host's.
+        (self.temp / "bin/python3").symlink_to(sys.executable)
+        self.pids = self.temp / "pids"
+        self.addCleanup(self.kill_recorded)
+
+    def kill_recorded(self) -> None:
+        for pid in self.recorded():
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+    def recorded(self) -> list[int]:
+        return [int(line) for line in self.pids.read_text().split()] if self.pids.exists() else []
 
     def fake_bats(self, body: str) -> None:
         script = self.temp / "bin/bats"
         script.write_text(f'#!{BASH}\nprintf "%s\\n" "$*" > "{self.temp}/args"\n' + textwrap.dedent(body))
         script.chmod(0o755)
 
-    def run_bats(self, bound: str, *args: str) -> tuple[subprocess.CompletedProcess[str], float]:
+    def run_bats(self, bound: str, *args: str, **extra: str) -> tuple[subprocess.CompletedProcess[str], float]:
         env = {
             "PATH": f"{self.temp / 'bin'}:/usr/bin:/bin",
             "HOME": str(self.temp),
             "TMPDIR": str(self.temp),
             "BATS_PER_TEST_TIMEOUT": bound,
+            "PIDS": str(self.pids),
+            **extra,
         }
         started = time.monotonic()
+        # capture_output returns only once every writer of the output pipe is gone, as CI's step would.
         result = subprocess.run(
             [BASH, "-c", 'source "$1" && shift && run_bats "$@"', "_", str(RUNNER), *args],
             env=env, capture_output=True, text=True, timeout=60, check=False,
         )  # fmt: skip
         return result, time.monotonic() - started
 
-    def assert_gone(self, pid_file: Path) -> None:
-        pid = int(pid_file.read_text())
+    def survivors(self) -> list[int]:
+        """The recorded pids still running (a zombie has exited), after up to 5 s for init to reap them."""
+        left: list[int] = []
         for _ in range(50):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                return
+            out = subprocess.run(["ps", "-A", "-o", "pid=", "-o", "stat="], capture_output=True, text=True, check=True)
+            live = {int(f[0]) for f in (line.split() for line in out.stdout.splitlines()) if not f[1].startswith("Z")}
+            left = [pid for pid in self.recorded() if pid in live]  # lint-comparisons: allow integer-pids
+            if not left:
+                return []
             time.sleep(0.1)
-        os.kill(pid, signal.SIGKILL)
-        self.fail(f"process {pid} outlived run_bats")
+        return left
 
-    def test_a_stalled_test_fails_by_name_and_its_whole_process_group_stops(self) -> None:
+    def test_a_stalled_test_fails_by_name_and_every_process_it_started_stops(self) -> None:
         # The stalled test's grandchild is what kept the PR #570 jobs alive until the job timeout.
         self.fake_bats(
-            f"""\
+            """\
             printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast\\nbegin 2 [x] misc\\n'
+            echo $$ >> "${PIDS}"
             sleep 300 &
-            echo $! > "{self.temp}/grandchild"
+            echo $! >> "${PIDS}"
             wait
             """
         )
         result, elapsed = self.run_bats("2", "-r", "tests/x/")
         self.assertEqual(124, result.returncode, result.stdout + result.stderr)
-        self.assertLess(elapsed, 30)
+        self.assertLess(elapsed, 4)
         self.assertEqual(
             "1..2\nok 1 [x] fast\nnot ok 2 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT); stopping Bats\n",
             result.stdout,
         )
-        self.assert_gone(self.temp / "grandchild")
+        self.assertEqual(2, len(self.recorded()))
+        self.assertEqual([], self.survivors())
         self.assertEqual("--formatter cat -r tests/x/\n", (self.temp / "args").read_text())
+
+    def test_descendants_that_leave_the_process_group_or_the_session_are_stopped_too(self) -> None:
+        # Audit of f35e47e6: an exported SHELLOPTS=monitor gives Bats' pipeline children process groups of their
+        # own. Here one child also calls setpgid itself, one calls setsid, and both hold Bats' output open.
+        leave = 'import os, sys, time; os.{}; open(sys.argv[1], "a").write(f"{{os.getpid()}}\\n"); time.sleep(300)'
+        self.fake_bats(
+            f"""\
+            printf '1..1\\nbegin 1 [x] stall\\n'
+            echo $$ >> "${{PIDS}}"
+            python3 -c '{leave.format("setpgid(0, 0)")}' "${{PIDS}}" | cat &
+            echo $! >> "${{PIDS}}"
+            python3 -c '{leave.format("setsid()")}' "${{PIDS}}" &
+            while [ "$(wc -l < "${{PIDS}}")" -lt 4 ]; do sleep 0.05; done
+            wait
+            """
+        )
+        result, elapsed = self.run_bats("2", "tests/x.bats", SHELLOPTS="monitor")
+        self.assertEqual(124, result.returncode, result.stdout + result.stderr)
+        self.assertLess(elapsed, 4)
+        self.assertIn("not ok 1 [x] stall # timeout after 2 s", result.stdout)
+        self.assertEqual(4, len(self.recorded()))
+        self.assertEqual([], self.survivors())
 
     def test_output_from_a_running_test_does_not_extend_its_bound(self) -> None:
         self.fake_bats(
@@ -205,14 +249,15 @@ class RunBatsBoundTest(unittest.TestCase):
         )
         result, elapsed = self.run_bats("2", "tests/x.bats")
         self.assertEqual(124, result.returncode, result.stdout + result.stderr)
-        self.assertLess(elapsed, 30)
+        self.assertLess(elapsed, 4)
         self.assertIn("not ok 1 [x] chatty # timeout after 2 s", result.stdout)
 
-    def test_silence_outside_a_test_is_bounded_too(self) -> None:
-        self.fake_bats("printf '1..1\\n'\nsleep 300\n")
+    def test_loading_the_files_is_bounded_too(self) -> None:
+        # Bats sources every file before its plan line; nothing runs Bats outside the bound (no `bats --count`).
+        self.fake_bats("sleep 300\n")
         result, elapsed = self.run_bats("2", "tests/x.bats")
         self.assertEqual(124, result.returncode, result.stdout + result.stderr)
-        self.assertLess(elapsed, 30)
+        self.assertLess(elapsed, 4)
         self.assertIn("not ok - Bats printed nothing for 2 s outside a test", result.stdout)
 
     def test_a_run_within_the_bound_keeps_bats_lines_and_status(self) -> None:
@@ -227,19 +272,37 @@ class RunBatsBoundTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertEqual("1..2\nok 1 [x] a\n# output of b\nnot ok 2 [x] b\n", result.stdout)
 
+    def test_a_run_that_plans_no_test_fails(self) -> None:
+        for body, shown in (("printf '1..0\\n'\n", "0"), ("exit 0\n", "nothing")):
+            with self.subTest(plan=shown):
+                self.fake_bats(body)
+                result, _ = self.run_bats("30", "--filter-tags", "common,ubuntu:client", "tests/files/ubuntu.bats")
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"expected at least one test; Bats planned {shown}", result.stderr)
+
+    def test_a_process_a_passing_run_leaves_behind_is_stopped(self) -> None:
+        self.fake_bats(
+            """\
+            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a\\n'
+            sleep 300 &
+            echo $! >> "${PIDS}"
+            exit 0
+            """
+        )
+        result, elapsed = self.run_bats("30", "tests/x.bats")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertLess(elapsed, 10)
+        self.assertIn("Bats exited and left 1 process(es) running", result.stderr)
+        self.assertEqual([], self.survivors())
+
 
 class CiBatsRunTest(unittest.TestCase):
-    """Every Bats run CI starts goes through run_bats."""
+    """Every Bats run CI starts goes through run_bats, and nothing else starts Bats."""
 
     def test_the_runner_calls_bats_only_through_run_bats(self) -> None:
         calls = [line.strip() for _, line in logical_lines(RUNNER) if BARE_BATS.search(line)]
-        self.assertEqual(
-            [
-                'bats --formatter cat "$@" < /dev/null > "${dir}/stream" &',
-                'test_count="$(HOME="${FILES_TEST_HOME:?FILES_TEST_HOME is required}" bats --count "${bats_args[@]}")"',
-            ],
-            calls,
-        )
+        self.assertEqual([], calls)
+        self.assertIn('["bats", "--formatter", "cat", *argv]', SUPERVISOR.read_text())
         text = RUNNER.read_text()
         for function in ("run_common_test", "run_os_specific_test", "run_files_test"):
             start = text.index(f"function {function}() {{\n")

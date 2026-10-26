@@ -20,78 +20,20 @@ set -Eeo pipefail
 #   timed-out test's direct children, so a stalled grandchild such as `sudo snap` keeps Bats' output pipe
 #   open and the run still hangs (bats-core#1020). Bats 1.13.0 (ubuntu-26.04) and 1.14.0 (Homebrew) hold
 #   the run for the whole bound after any failing test (bats-core#1206).
-#   Instead Bats writes its extended stream (`--formatter cat`), whose `begin <n> <name>` line names each
-#   test as it starts. This function prints the TAP lines from that stream. When a test has no result
-#   within the bound, it prints `not ok <n> <name> # timeout after <s> s`, stops Bats' whole process group
-#   (SIGTERM, then SIGKILL after 10 s) and fails. Time spent outside a test, such as loading a file, gets
-#   the same bound, counted from the last line.
+#   Instead scripts/ci/run-bats.py starts Bats in a session of its own and reads its extended stream
+#   (`--formatter cat`), whose `begin <n> <name>` line names each test as it starts. It prints the TAP
+#   lines; when a test has no result within the bound it prints `not ok <n> <name> # timeout after <s> s`,
+#   kills every process of that session and of Bats' process tree, and fails. Time spent outside a test,
+#   such as loading a file, gets the same bound. A run that plans no test fails. python3 runs it with
+#   `-I`, so no PYTHON* variable or user site directory changes it.
 # @arg $@ string Arguments passed to bats.
-# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 900, ten times the slowest passing test
-#   measured on main (`[ubuntu-client] misc`, 89 s on ubuntu-24.04, October 2026) and four times the
-#   slowest test of a passing run on a slow mirror (`[ubuntu-client] ghostty`, 214 s).
+# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 900 (scripts/ci/run-bats.py).
 # @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.
-# @exitcode 1 The stream FIFO could not be created.
+# @exitcode 1 Bats planned no test.
 # @exitcode Bats' exit status otherwise.
 #
 function run_bats() {
-    local limit="${BATS_PER_TEST_TIMEOUT:-900}" dir pid line left running="" deadline timed_out="" status=0 i
-    dir="$(mktemp -d "${TMPDIR:-/tmp}/run-bats.XXXXXX")" || return 1
-    if ! mkfifo "${dir}/stream"; then
-        rm -rf "${dir}"
-        return 1
-    fi
-    # Job control gives Bats its own process group, so a stalled test's whole tree can be stopped. A
-    # background job that reads the terminal is stopped, so Bats reads /dev/null.
-    set -m
-    bats --formatter cat "$@" < /dev/null > "${dir}/stream" &
-    pid=$!
-    set +m
-    deadline=$((SECONDS + limit))
-    while true; do
-        left=$((deadline - SECONDS))
-        if [ "${left}" -le 0 ]; then
-            timed_out=1
-            break
-        fi
-        if IFS= read -r -t "${left}" line; then
-            case "${line}" in
-            'begin '*)
-                running="${line#begin }"
-                deadline=$((SECONDS + limit))
-                continue
-                ;;
-            'suite '*) continue ;;
-            'ok '* | 'not ok '*) running="" ;;
-            esac
-            # A test's own output lines do not extend its bound.
-            [ -n "${running}" ] || deadline=$((SECONDS + limit))
-            printf '%s\n' "${line}"
-        else
-            # A timed-out read returns over 128 on bash 4 and later, and 1, as at end of input, on bash 3.2.
-            [ "$?" -le 128 ] && [ "${SECONDS}" -lt "${deadline}" ] || timed_out=1
-            break
-        fi
-    done < "${dir}/stream"
-    if [ -n "${timed_out}" ]; then
-        if [ -n "${running}" ]; then
-            printf 'not ok %s # timeout after %d s (BATS_PER_TEST_TIMEOUT); stopping Bats\n' "${running}" "${limit}"
-        else
-            printf 'not ok - Bats printed nothing for %d s outside a test (BATS_PER_TEST_TIMEOUT); stopping Bats\n' \
-                "${limit}"
-        fi
-        kill -TERM -- "-${pid}" 2> /dev/null || true
-        for ((i = 0; i < 10; i++)); do
-            kill -0 -- "-${pid}" 2> /dev/null || break
-            sleep 1
-        done
-        kill -KILL -- "-${pid}" 2> /dev/null || true
-        wait "${pid}" 2> /dev/null || true
-        rm -rf "${dir}"
-        return 124
-    fi
-    wait "${pid}" || status=$?
-    rm -rf "${dir}"
-    return "${status}"
+    python3 -I "$(dirname "${BASH_SOURCE[0]}")/ci/run-bats.py" "$@"
 }
 
 #
@@ -132,7 +74,6 @@ function run_os_specific_test() {
 #
 function run_files_test() {
     local -a bats_args
-    local test_count
 
     if [[ "${OS}" == macos-* ]] && [ "${SYSTEM}" == "client" ]; then
         bats_args=(tests/files/macos.bats)
@@ -143,12 +84,9 @@ function run_files_test() {
         exit 1
     fi
 
-    test_count="$(HOME="${FILES_TEST_HOME:?FILES_TEST_HOME is required}" bats --count "${bats_args[@]}")"
-    if [[ ! ${test_count} =~ ^[1-9][0-9]*$ ]]; then
-        echo "Expected at least one files test; got ${test_count:-no count}" >&2
-        exit 1
-    fi
-    HOME="${FILES_TEST_HOME}" run_bats "${bats_args[@]}"
+    # No separate `bats --count`: it would load the files outside the bound. run_bats fails a run that plans
+    # no test.
+    HOME="${FILES_TEST_HOME:?FILES_TEST_HOME is required}" run_bats "${bats_args[@]}"
 }
 
 #

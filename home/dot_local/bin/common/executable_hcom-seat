@@ -1432,6 +1432,40 @@ for ext in "${exts[@]}"; do
     argv+=(-e "${ext}")
 done
 argv+=(--hcom-team "${HCOM_TEAM}")
+# @description Make sure the hcom store `HCOM_DIR` is a real directory before anything else is created (regime-cutover
+#   U85): it is already clean (require_clean_path) and clear of every protected root by the identity of its deepest
+#   existing ancestor (seat_overlap_check, a write root of every seat). An existing store must be a directory and no
+#   symbolic link. A missing one is made 0700 one component at a time below its deepest existing ancestor, which must
+#   be a real directory, not a symbolic link; each made component is checked again. A dry run creates nothing and
+#   says what it would make.
+# @arg $1 int 1 for a dry run.
+hcom_store_ensure() {
+    local top=${HCOM_DIR} rest=() path part
+    if [[ -e ${HCOM_DIR} || -L ${HCOM_DIR} ]]; then
+        [[ -d ${HCOM_DIR} && ! -L ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} is not a real directory"
+        return 0
+    fi
+    while [[ ! -e ${top} && ! -L ${top} ]]; do
+        # bash 3.2 reads an empty array as unset under `set -u`, so the expansion is guarded.
+        rest=("${top##*/}" ${rest[@]+"${rest[@]}"})
+        top=${top%/*}
+        [[ -n ${top} ]] || top=/
+    done
+    [[ -d ${top} && ! -L ${top} ]] ||
+        refuse "the hcom store ${HCOM_DIR} would be made under ${top}, which is not a real directory (a symbolic link or a file)"
+    if (($1)); then
+        echo "hcom-seat: the hcom store ${HCOM_DIR} does not exist; a launch creates it (0700)" >&2
+        return 0
+    fi
+    path=${top%/}
+    for part in "${rest[@]}"; do
+        path=${path}/${part}
+        (umask 077 && /bin/mkdir "${path}") || refuse "cannot create the hcom store ${path}"
+        [[ -d ${path} && ! -L ${path} ]] || refuse "${path} is not a real directory"
+    done
+}
+
+hcom_store_ensure "${dry_run}"
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo

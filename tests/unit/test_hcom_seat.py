@@ -1204,6 +1204,37 @@ class HcomSeatTest(unittest.TestCase):
                 run = bash(listing, system)
                 self.assertEqual((run.returncode, run.stdout.splitlines()), (0, expected), run.stderr)
 
+    def test_a_fresh_hcom_store_is_created_before_anything_else(self):
+        """U85 round 29: an explicit HCOM_DIR that does not exist yet is made (0700, one component at a time) before
+        the worktree or any metadata, so a first launch works for both roles; a dry run leaves it absent and says so;
+        a store whose deepest existing ancestor is a symbolic link is refused before anything is created."""
+        root = Path(self.temp.name).resolve()
+        # The seats root exists (an earlier program's launch made it), so the identity check can decide the new
+        # store's place; two absent roots under one existing directory stay undecidable and refused.
+        Path(self.seats).mkdir()
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                store = root / f"fresh-{role}" / "hcom"
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run", HCOM_DIR=str(store))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"the hcom store {store} does not exist; a launch creates it", run.stderr)
+                self.assertFalse(store.parent.exists())
+                run = self.seat(role, "--seats-root", self.seats, HCOM_DIR=str(store))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertTrue(store.is_dir() and not store.is_symlink())
+                for made in (store, store.parent):
+                    self.assertEqual(made.stat().st_mode & 0o777, 0o700, made)
+        target = root / "elsewhere"
+        target.mkdir()
+        (root / "linked").symlink_to(target)
+        store = root / "linked" / "new" / "hcom"
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-link", HCOM_DIR=str(store))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"would be made under {root / 'linked'}, which is not a real directory", run.stderr)
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertFalse(Path(self.seats, "w-link").exists())
+        self.assertNotIn("w-link", self.git("worktree", "list"))
+
     def test_a_self_referencing_link_chain_refuses_promptly(self):
         """U85 round 23: physical_path is iterative with one 40-hop budget per call, so a dangling link naming a
         path under itself (`.state/<name> -> <name>/child`) fails instead of recursing without bound, and a launch

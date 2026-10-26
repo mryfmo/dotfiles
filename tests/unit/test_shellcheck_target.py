@@ -20,6 +20,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/test.yaml"
@@ -117,7 +121,7 @@ class ShellCheckTargetBehaviourTest(unittest.TestCase):
             ("tool.py", "#!/usr/bin/env python3\nprint('ok')\n"),
         ):
             (self.repo / name).write_text(body)
-        self.git("init", "-q")
+        git_init(self.repo, env=os.environ | GIT_ENV)
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "fixture")
 

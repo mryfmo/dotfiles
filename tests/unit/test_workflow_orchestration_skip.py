@@ -85,6 +85,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+from scratch_git import git_clone, git_init  # noqa: E402
 
 
 def setUpModule() -> None:
@@ -203,6 +204,10 @@ def run_decision(script: str, env: dict[str, str], cwd: Path) -> str:
         return path.read_text()
 
 
+def isolated_env() -> dict[str, str]:
+    return {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+
+
 def scratch_repository(temp: Path):
     """A clone whose origin/main holds home/a and .orchestration/x.md; returns (clone, git)."""
     origin, clone = temp / "origin.git", temp / "clone"
@@ -210,14 +215,14 @@ def scratch_repository(temp: Path):
     def git(*args: str, cwd: Path = clone) -> str:
         return subprocess.run(
             ["git", "-C", str(cwd), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
-            env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"},
+            env=isolated_env(),
             check=True,
             capture_output=True,
             text=True,
         ).stdout.strip()
 
-    git("init", "-q", "--bare", "-b", "main", str(origin), cwd=temp)
-    git("clone", "-q", str(origin), str(clone), cwd=temp)
+    git_init(origin, "--bare", "-b", "main", env=isolated_env())
+    git_clone(origin, clone, env=isolated_env())
     (clone / "home").mkdir()
     (clone / ".orchestration").mkdir()
     (clone / "home/a").write_text("a\n")
@@ -243,7 +248,7 @@ def pull_request_head(clone: Path, git, branch: str, writes=(), moves=()) -> str
 def advance_origin(temp: Path, git) -> None:
     """Another clone pushes to origin/main: main moved after the job's checkout."""
     other = temp / "other"
-    git("clone", "-q", str(temp / "origin.git"), str(other), cwd=temp)
+    git_clone(temp / "origin.git", other, env=isolated_env())
     (other / "home/b").write_text("b\n")
     git("add", "-A", cwd=other)
     git("commit", "-q", "-m", "advance", cwd=other)

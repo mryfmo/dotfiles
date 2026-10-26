@@ -21,6 +21,9 @@ from unittest import mock
 
 from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 sys.dont_write_bytecode = True
 
 
@@ -209,8 +212,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         escaped.unlink()
 
     def test_recursive_scans_skip_gitignored_local_state(self) -> None:
-        git = ["git", "-C", str(self.temp_dir), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
-        subprocess.run([*git, "init", "-q"], check=True)
+        git_init(self.temp_dir)
         self.write_text_file(".gitignore", ".claude/contextdb/state/*\n")
         ledger_text = "high-impact" + "-journal-publishing " + "ghp_" + "x" * 25 + " /home/alice/x\n"
         self.write_text_file(".claude/contextdb/state/context.db", ledger_text)

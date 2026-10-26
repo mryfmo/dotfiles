@@ -18,6 +18,12 @@
       "target": null
     },
     {
+      "source": "home/dot_agents/codex-audit/config.toml",
+      "target": ".agents/codex-audit/config.toml",
+      "kind": "file",
+      "executable": false
+    },
+    {
       "source": "home/dot_agents/model-profiles.env",
       "target": ".agents/model-profiles.env",
       "kind": "file",
@@ -358,6 +364,13 @@
       "sha256": "2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c"
     },
     {
+      "source": "home/dot_local/bin/common/executable_pr-audit.sh",
+      "target": ".local/bin/common/pr-audit.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "fe45d1e72ccd539032233311def9c6286f0f706d6edb95a4b303460199fe8e79"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
@@ -494,6 +507,11 @@
   ],
   "scopes": [
     {
+      "source": "home/dot_agents/codex-audit",
+      "target": ".agents/codex-audit",
+      "glob": "*"
+    },
+    {
       "source": "home/dot_agents/omp/profiles",
       "target": ".agents/omp/profiles",
       "glob": "*"
@@ -547,6 +565,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "omp-run.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-audit.sh"
     },
     {
       "source": "home/dot_local/bin/common",

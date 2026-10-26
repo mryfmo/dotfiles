@@ -343,6 +343,95 @@ def codex_command_hook_lines(event: str, hook: dict[str, Any]) -> list[str]:
     ]
 
 
+# The Codex audit route's config (regime-cutover U71b, operator decision G18): scripts/orchestrator/pr-audit.sh reads
+# it beside the manifest (~/.agents/codex-audit/config.toml installed, else the checkout's copy) and writes it into
+# each run's scratch CODEX_HOME, replacing every path key with absolute paths. The filesystem is an allowlist
+# (`":root" = "deny"`, U71b audit round 4).
+AUDIT_CODEX_CONFIG = "home/dot_agents/codex-audit/config.toml"
+AUDIT_TOKENS = ("$AUDIT_TREE", "$AUDIT_CWD", "$CODEX_HOME", "$CODEX_LOGIN_HOME")
+AUDIT_SPECIAL = (":root", ":minimal", ":tmpdir", ":slash_tmp")
+AUDIT_PATH = re.compile(r"^(?:~/|/)(?!(?:.*/)?\.\.?(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+# The entries the lever's guarantees rest on: nothing readable by default, the head's tree readable, the login denied.
+AUDIT_REQUIRED = {
+    ":root": "deny",
+    "$AUDIT_TREE": "read",
+    "$CODEX_HOME": "deny",
+    "$CODEX_LOGIN_HOME": "deny",
+}
+
+
+def render_codex_audit_config(manifest: dict[str, Any]) -> str:
+    """pr-audit.sh's CODEX_HOME config: model pin, no skills, web search or project instructions, the `audit`
+    permission profile as default.
+
+    Project instructions are off (U71b audit round 21): the audit rules arrive in the prompt, so codex must load no
+    AGENTS.md from its cwd or an ancestor. Codex's config reference (developers.openai.com/codex/config-reference)
+    documents `project_doc_max_bytes`, `project_doc_fallback_filenames` and `project_root_markers`; in codex-rs
+    core/src/agents_md.rs a budget of 0 returns before any discovery, and an empty marker list disables the walk to
+    a project root.
+
+    The path keys keep their manifest spelling (`~/<path>`, `/<path>`, `$AUDIT_TREE`, `$AUDIT_CWD`, `$CODEX_HOME`,
+    `$CODEX_LOGIN_HOME`, or one of Codex's `:root`, `:minimal`, `:tmpdir`, `:slash_tmp`); the lever resolves them per
+    run, so the file is the same on every host. Only `:tmpdir` may be `write`.
+    """
+    audit = manifest["codex"].get("audit")
+    if not isinstance(audit, dict):
+        fail("codex.audit must be a mapping with model_profile and filesystem")
+    profile = model_profiles(manifest).get(audit.get("model_profile"))
+    if profile is None:
+        fail(f"codex.audit.model_profile names no model_profiles entry: {audit.get('model_profile')!r}")
+    filesystem = audit.get("filesystem")
+    if not isinstance(filesystem, dict) or not filesystem:
+        fail("codex.audit.filesystem must be a non-empty mapping of path keys to read, write or deny")
+    for key, access in filesystem.items():
+        if not isinstance(key, str) or not (key in AUDIT_TOKENS or key in AUDIT_SPECIAL or AUDIT_PATH.match(key)):
+            fail(
+                f"codex.audit.filesystem key {key!r} is not ~/<path>, /<path>, one of {AUDIT_TOKENS}"
+                f" or one of {AUDIT_SPECIAL}"
+            )
+        if access not in ("read", "write", "deny"):
+            fail(f"codex.audit.filesystem.{key} must be read, write or deny, not {access!r}")
+        if access == "write" and key != ":tmpdir":
+            fail(f"codex.audit.filesystem.{key}: only :tmpdir (the run's scratch TMPDIR) may be write")
+    for key, access in AUDIT_REQUIRED.items():
+        if filesystem.get(key) != access:
+            fail(f"codex.audit.filesystem must set {key} to {access}")
+    lines = [
+        f"# {GENERATED_HEADER} Change codex.audit there.",
+        "# scripts/orchestrator/pr-audit.sh writes this file into each audit run's scratch CODEX_HOME, with every path",
+        "# key resolved to absolute paths; the run refuses unless `audit` is the default permission profile.",
+        "",
+        'default_permissions = "audit"',
+        f"model = {quote_toml(profile['codex']['model'])}",
+        f"model_reasoning_effort = {quote_toml(profile['codex']['model_reasoning_effort'])}",
+        'web_search = "disabled"',
+        "project_doc_max_bytes = 0",
+        "project_doc_fallback_filenames = []",
+        "project_root_markers = []",
+        "",
+        "[skills]",
+        "include_instructions = false",
+        "",
+        "[skills.bundled]",
+        "enabled = false",
+        "",
+        "[shell_environment_policy]",
+        'inherit = "core"',
+        "ignore_default_excludes = false",
+        "",
+        "[permissions.audit]",
+        'description = "Audit: reads only the head and the tools, no network, credential stores denied."',
+        'extends = ":read-only"',
+        "",
+        "[permissions.audit.filesystem]",
+        *(f"{quote_toml(key)} = {quote_toml(access)}" for key, access in filesystem.items()),
+        "",
+        "[permissions.audit.network]",
+        "enabled = false",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -2276,6 +2365,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             name, profile, manifest
         )
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
+    outputs[ROOT / AUDIT_CODEX_CONFIG] = render_codex_audit_config(manifest)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     for role in omp_roles(manifest):
@@ -2420,6 +2510,7 @@ OUTPUT_INDEX_PATH = "scripts/generated-agent-outputs.json"
 # directory and a pathlib glob; generated_scopes() adds the lever rule, and the doctor checks the deployed side of
 # every scope it returns.
 GENERATED_SCOPES = (
+    ("home/dot_agents/codex-audit", "*"),
     ("home/dot_agents/omp/profiles", "*"),
     ("home/dot_agents/plugins", "**/*"),
     ("home/dot_claude/agents", "*"),

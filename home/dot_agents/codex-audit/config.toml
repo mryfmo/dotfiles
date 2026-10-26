@@ -1,0 +1,57 @@
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py. Change codex.audit there.
+# scripts/orchestrator/pr-audit.sh writes this file into each audit run's scratch CODEX_HOME, with every path
+# key resolved to absolute paths; the run refuses unless `audit` is the default permission profile.
+
+default_permissions = "audit"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "xhigh"
+web_search = "disabled"
+project_doc_max_bytes = 0
+project_doc_fallback_filenames = []
+project_root_markers = []
+
+[skills]
+include_instructions = false
+
+[skills.bundled]
+enabled = false
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+
+[permissions.audit]
+description = "Audit: reads only the head and the tools, no network, credential stores denied."
+extends = ":read-only"
+
+[permissions.audit.filesystem]
+":root" = "deny"
+":minimal" = "read"
+"$AUDIT_TREE" = "read"
+"$AUDIT_CWD" = "read"
+":tmpdir" = "write"
+"/opt/homebrew" = "read"
+"~/.local/share/mise/installs" = "read"
+":slash_tmp" = "deny"
+"/var/tmp" = "deny"
+"$CODEX_LOGIN_HOME" = "deny"
+"$CODEX_HOME" = "deny"
+"~/.codex" = "deny"
+"~/.ssh" = "deny"
+"~/.gnupg" = "deny"
+"~/.config/gh" = "deny"
+"~/.local/share/gh" = "deny"
+"~/.claude" = "deny"
+"~/.claude.json" = "deny"
+"~/.omp" = "deny"
+"~/.config/chezmoi-private" = "deny"
+"~/.local/share/chezmoi-private" = "deny"
+"~/.aws" = "deny"
+"~/.netrc" = "deny"
+"~/.docker" = "deny"
+"~/Library/Keychains" = "deny"
+"~/.local/state/hcom-regime" = "deny"
+"~/.local/state/hcom" = "deny"
+
+[permissions.audit.network]
+enabled = false

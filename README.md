@@ -482,7 +482,11 @@ SKILL, step 4): omp on the omp model of the `audit` profile, through the
 `home/dot_agents/omp/policies/audit.yml` (`always-ask`, the write tools
 denied). That policy gates tools; it is not an operating-system read-only
 sandbox, and the run's account stays the containment boundary. When that route
-cannot run, the `## Audit` section of `AGENTS.md` names the fallback review.
+cannot run, the `## Audit` section of `AGENTS.md` names the fallback review;
+its Codex route is `~/.local/bin/common/pr-audit.sh <pr>`, whose commands run
+under the Codex permission profile `audit` (an allowlist: the head's tree and
+the tools only, no network, credential stores denied, probed before every run;
+`scripts/orchestrator/README.md`).
 The responsibility boundaries live in
 `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/regime.md`, and the `## Audit` section of

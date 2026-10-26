@@ -28,10 +28,14 @@ readonly PACKAGES=(
 
 #
 # @description Install the optional Ubuntu client packages.
+# @description
+#   The install runs with the noninteractive debconf frontend, as setup_timezone.sh's does: a package that asks a
+#   question (keyboard, locale, fonts) then takes its default instead of waiting on a terminal it does not have. The
+#   frontend is an argument to sudo, because sudo's env_reset drops it from the caller's environment.
 #
 function install_misc() {
     sudo apt-get update
-    sudo apt-get install -y "${PACKAGES[@]}"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${PACKAGES[@]}"
 }
 
 #

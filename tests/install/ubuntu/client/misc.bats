@@ -52,7 +52,8 @@ function teardown() {
     run bash -c 'source "'"${SCRIPT_PATH}"'"; sudo() { echo "$*" >> "'"${BATS_TEST_TMPDIR}"'/sudo.log"; }; install_misc'
     [ "${status}" -eq 0 ]
     [ "$(sed -n 1p "${BATS_TEST_TMPDIR}/sudo.log")" = "apt-get update" ]
-    [[ "$(sed -n 2p "${BATS_TEST_TMPDIR}/sudo.log")" == "apt-get install -y "* ]]
+    # The frontend must be an argument to sudo: env_reset drops it from the caller's environment.
+    [[ "$(sed -n 2p "${BATS_TEST_TMPDIR}/sudo.log")" == "DEBIAN_FRONTEND=noninteractive apt-get install -y "* ]]
 }
 
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {

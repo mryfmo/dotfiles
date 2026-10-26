@@ -622,11 +622,13 @@ class RunBatsBoundTest(unittest.TestCase):
         status, out, err, elapsed = self.run_bats("2", "-r", "tests/x/")
         self.assertEqual(124, status, out + err)
         self.assertLess(elapsed, 4)
-        self.assertEqual(
+        named = (
             "1..2\nrunning: 1 [x] fast\nok 1 [x] fast\nrunning: 2 [x] misc\n"
-            "not ok 2 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT)\n",
-            out,
+            "not ok 2 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT)\n"
         )
+        self.assertTrue(out.startswith(named), out)
+        # Everything after the named line is the diagnosis, as TAP comments.
+        self.assertTrue(all(line.startswith("#") for line in out[len(named) :].splitlines()), out)
         self.assertEqual("--formatter cat -r tests/x/\n", (self.temp / "args").read_text())
 
     def test_output_from_a_running_test_does_not_extend_its_bound(self) -> None:
@@ -724,12 +726,47 @@ class RunBatsBoundTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
                 self.assertFalse((self.temp / "args").exists(), "Bats ran")
 
+    def test_a_timed_out_test_is_diagnosed_with_the_command_it_stalled_in(self) -> None:
+        # The PR #570 and #571 stalls ended with only the test's name; the diagnosis names the stalled process.
+        probe = self.temp / "bin/stall-probe"
+        probe.write_text('#!/bin/sh\necho $$ >> "${PIDS}"\nsleep 300\n')
+        probe.chmod(0o755)
+        self.fake_bats(
+            """\
+            printf '1..1\\nbegin 1 [x] misc\\n'
+            echo $$ >> "${PIDS}"
+            stall-probe --waiting-on dpkg
+            """
+        )
+        status, out, err, elapsed = self.run_bats("2", "tests/x.bats")
+        self.assertEqual(124, status, out + err)
+        self.assertLess(elapsed, 4 + 10)  # the bound, 2 s of slack, and at most PS_TIMEOUT for the listing
+        after = out[out.index("not ok 1 [x] misc # timeout after 2 s") :]
+        self.assertIn("# diagnosis: the processes under Bats (pid, elapsed, state, wchan, command)", after)
+        probe_line = next(line for line in after.splitlines() if "stall-probe" in line)
+        self.assertIn("--waiting-on dpkg", probe_line)
+        self.assertTrue(any("sleep 300" in line for line in after.splitlines()), after)
+
+    def test_a_failed_or_hung_ps_leaves_the_timeout_exit(self) -> None:
+        for body, reason in (("exit 3", "ps exited 3"), ("exec sleep 60", "timed out after 10 seconds")):
+            with self.subTest(ps=body):
+                (self.temp / "bin/ps").write_text(f"#!/bin/sh\n{body}\n")
+                (self.temp / "bin/ps").chmod(0o755)
+                self.fake_bats("printf '1..1\\nbegin 1 [x] misc\\n'\necho $$ >> \"${PIDS}\"\nsleep 300\n")
+                status, out, err, _ = self.run_bats("2", "tests/x.bats")
+                self.assertEqual(124, status, out + err)
+                self.assertIn("not ok 1 [x] misc # timeout after 2 s", out)
+                line = next(line for line in out.splitlines() if line.startswith("# diagnosis unavailable: "))
+                self.assertIn(reason, line)
+
     def test_the_wrapper_signals_nothing(self) -> None:
-        # Stopping processes is the step's timeout-minutes and the runner's job, not this wrapper's.
+        # Stopping processes is the step's timeout-minutes and the runner's job, not this wrapper's; its one `ps`
+        # call only lists them.
         text = WRAPPER.read_text()
-        for api in (r"import signal", r"os\.kill", r"killpg", r"setsid", r"start_new_session", r'"ps"'):
+        for api in (r"import signal", r"os\.kill", r"killpg", r"setsid", r"start_new_session", r"\bkill\b"):
             with self.subTest(api=api):
                 self.assertNotRegex(text, api)
+        self.assertEqual(1, text.count('["ps", '))
         self.assertIn('python3 -I -S "${here}/ci/run-bats.py"', RUNNER.read_text())
 
 

@@ -5,7 +5,10 @@
 #   The one definition of which files each formatting check reads (regime-cutover U97). `make format` and CI's
 #   `Run shfmt` and formatting steps call this with the same set and command, so a local run and CI check the same
 #   files. The sets are tracked files only (`git ls-files`): an untracked or gitignored file, such as a worklog copy, is
-#   never read. The listing's status is checked and an empty set is refused, so no check passes on no files.
+#   never read. The listing's status is checked and an empty set is refused, so no check passes on no files. Each
+#   path reaches the command as `./<path>`, so a tracked file named like an option (`-version`, `--help`, `-l`) is
+#   read as a file: shfmt, ruff and prettier all take `./`-prefixed paths as paths, ruff's force-exclude and
+#   .prettierignore still match them, and the form needs no `--` support from the command.
 #   - shell: every tracked bash or sh script: a `*.sh` or `*.bash` file, or a file whose first line is a bash or sh
 #     shebang (the executable_* scripts and hooks under home/, chezmoi modify_ scripts), less the exclusions
 #     in_shell_set names, each with its reason.
@@ -14,7 +17,8 @@
 # @arg $1 string The set: shell, python or markdown.
 # @arg $@ string The command and its arguments, after the set; the set's paths are appended.
 # @exitcode 0 The command passed on the set.
-# @exitcode 2 An unknown set, no command, a failed listing or an empty set: nothing was checked.
+# @exitcode 2 An unknown set, no command, a failed listing, a tracked file of the shell set's candidates that cannot
+#   be read, or an empty set: nothing was checked.
 # @exitcode * The command's own status otherwise.
 # @example
 #   scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d
@@ -40,7 +44,9 @@ esac
 # @description Whether a tracked path belongs to the shell set: a bash or sh script that shfmt formats.
 # @arg $1 path The tracked path, relative to the repository root.
 # @exitcode 0 It belongs to the set.
-# @exitcode 1 It does not.
+# @exitcode 1 It does not: excluded by name, not a regular file (a symlink, a directory, a file deleted from the work
+#   tree), or not a bash or sh script.
+# @exitcode 2 Its first line cannot be read: the caller stops, never drops the file.
 #
 function in_shell_set() {
     local path=$1 first=
@@ -54,7 +60,8 @@ function in_shell_set() {
     *.tmpl) return 1 ;;
     esac
     [[ -f ${path} && ! -L ${path} ]] || return 1
-    IFS= read -r first < "${path}" || [[ -n ${first} ]] || return 1
+    # The redirection's failure (an unreadable file) fails the group; a short or empty file only ends the read.
+    { IFS= read -r first || :; } < "${path}" || return 2
     # zsh: shfmt does not parse zsh (its zsh dialect is incomplete), so a zsh script is never formatted, even one named
     # *.sh. A *.zsh file, or a zsh file without one, has no bash or sh shebang and never enters the set below.
     if [[ ${first} == '#!'*zsh* ]]; then
@@ -78,12 +85,26 @@ if ! git ls-files -z -- "${pathspecs[@]}" > "${listing}"; then
     exit 2
 fi
 files=()
+unreadable=
 while IFS= read -r -d '' path; do
-    if [[ ${set_name} != shell ]] || in_shell_set "${path}"; then
-        files+=("${path}")
+    member=0
+    if [[ ${set_name} == shell ]]; then
+        in_shell_set "${path}" || member=$?
     fi
+    case ${member} in
+    0) files+=("./${path}") ;;
+    1) ;;
+    *)
+        unreadable=${path}
+        break
+        ;;
+    esac
 done < "${listing}"
 rm -f "${listing}"
+if [[ -n ${unreadable} ]]; then
+    printf 'run-on-lint-files: cannot read %s to tell whether it is a shell script; nothing was checked\n' "${unreadable}" >&2
+    exit 2
+fi
 if ((${#files[@]} == 0)); then
     printf 'run-on-lint-files: the %s set lists no tracked file; nothing was checked\n' "${set_name}" >&2
     exit 2

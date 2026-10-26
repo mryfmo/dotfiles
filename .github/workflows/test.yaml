@@ -395,10 +395,8 @@ jobs:
         # [tools."http:shfmt"], copied by "Prepare statusline tool config"); mise checks each download against that
         # sha256. Neither apt nor brew installs either tool, and the lint steps refuse any other version (U97).
         # make shellcheck, scripts/ci/masked-dirname-check.sh and the unit tests get the same two from PATH.
-        run: |
-          mise -C "${RUNNER_TEMP}/statusline-mise" install http:shellcheck http:shfmt
-          dirname "$(mise -C "${RUNNER_TEMP}/statusline-mise" which --tool http:shellcheck shellcheck)" >> "${GITHUB_PATH}"
-          dirname "$(mise -C "${RUNNER_TEMP}/statusline-mise" which --tool http:shfmt shfmt)" >> "${GITHUB_PATH}"
+        # scripts/ci/install-pinned-lint-tools.sh checks each install and lookup before it touches GITHUB_PATH.
+        run: scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt
 
       - name: Run `shfmt`
         if: ${{ steps.decide.outputs.should_test == 'true' }}

@@ -42,17 +42,18 @@ TOOLS = {
 CONSUMERS = (
     MAKEFILE,
     GUARD,
+    ROOT / "scripts/ci/install-pinned-lint-tools.sh",
+    ROOT / "scripts/ci/run-on-lint-files.sh",
     ROOT / "scripts/lint-comparisons.py",
     ROOT / "scripts/ci/masked-dirname-check.sh",
     ROOT / "tests/unit/test_sandbox_portability.py",
 )
 COPY = '"${RUNNER_TEMP}/statusline-mise"'
+COMMAND_SECONDS = 60
 INSTALL_STEP = "Put the pinned `ShellCheck` and `shfmt` on PATH"
-INSTALL_RUN = (
-    f"mise -C {COPY} install http:shellcheck http:shfmt\n"
-    f'dirname "$(mise -C {COPY} which --tool http:shellcheck shellcheck)" >> "${{GITHUB_PATH}}"\n'
-    f'dirname "$(mise -C {COPY} which --tool http:shfmt shfmt)" >> "${{GITHUB_PATH}}"\n'
-)
+INSTALL = ROOT / "scripts/ci/install-pinned-lint-tools.sh"
+# The step's whole run: every install and lookup is checked inside the script, none in the YAML (round-1 audit).
+INSTALL_RUN = f"scripts/ci/install-pinned-lint-tools.sh {COPY} shellcheck shfmt\n"
 SHFMT_RUN = (
     "scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shfmt\n"
     "scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d\n"
@@ -352,6 +353,20 @@ class PinnedLintToolsTest(unittest.TestCase):
 
 
 BAD_SHELL = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
+
+
+def dotted(paths: list[str]) -> list[str]:
+    return [f"./{path}" for path in paths]
+
+
+def runnable(tool: str, cwd: Path) -> bool:
+    """Whether the tool answers --version from cwd: a mise shim with no config there is on PATH but runs nothing."""
+    if not shutil.which(tool):
+        return False
+    probe = subprocess.run([tool, "--version"], cwd=cwd, capture_output=True, timeout=60, check=False)
+    return probe.returncode == 0
+
+
 # The shell set of LintFileSetTest's repository: its .sh files, its scripts by bash or sh shebang, nothing excluded.
 SHELL_SET = [
     "home/dot_local/bin/executable_tool",
@@ -373,6 +388,102 @@ EXCLUDED = (
     "home/executable_py",
     "home/link.sh",
 )
+
+
+class InstallPinnedLintToolsTest(unittest.TestCase):
+    """scripts/ci/install-pinned-lint-tools.sh against a fake mise: every install and lookup is checked before PATH."""
+
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp(prefix="install-pinned-lint-tools-")).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        (self.scratch / "bin").mkdir()
+        self.installs = self.scratch / "installs"
+        for tool in ("shellcheck", "shfmt"):
+            binary = self.installs / tool / tool
+            binary.parent.mkdir(parents=True)
+            binary.write_text("#!/bin/sh\n")
+            binary.chmod(0o755)
+        self.github_path = self.scratch / "github_path"
+        self.github_path.write_text("")
+        mise = self.scratch / "bin/mise"
+        # `mise -C <dir> install <keys>` and `mise -C <dir> which --tool <key> <tool>`; WHICH_<tool> overrides the
+        # path printed, WHICH_RC_<tool> the status; every call is logged.
+        mise.write_text(
+            "#!/bin/bash\n"
+            'printf "%s\\n" "$*" >> "$MISE_LOG"\n'
+            'case "$3" in\n'
+            '  install) exit "${INSTALL_RC:-0}" ;;\n'
+            '  which) tool=$6; rc_var="WHICH_RC_$tool"; path_var="WHICH_$tool"\n'
+            '    [ "${!rc_var:-0}" -eq 0 ] || exit "${!rc_var}"\n'
+            '    printf "%s\\n" "${!path_var-$INSTALLS/$tool/$tool}" ;;\n'
+            "esac\n"
+        )
+        mise.chmod(0o755)
+
+    def run_install(self, *tools: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        env = os.environ | {
+            "PATH": f"{self.scratch / 'bin'}:{os.environ['PATH']}",
+            "GITHUB_PATH": str(self.github_path),
+            "INSTALLS": str(self.installs),
+            "MISE_LOG": str(self.scratch / "mise.log"),
+            **extra,
+        }
+        return subprocess.run(
+            [str(INSTALL), str(self.scratch / "copy"), *tools],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+
+    def test_each_checked_binary_directory_goes_on_path(self):
+        result = self.run_install("shellcheck", "shfmt")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            [str(self.installs / "shellcheck"), str(self.installs / "shfmt")], self.github_path.read_text().splitlines()
+        )
+        copy = self.scratch / "copy"
+        self.assertEqual(
+            [
+                f"-C {copy} install http:shellcheck http:shfmt",
+                f"-C {copy} which --tool http:shellcheck shellcheck",
+                f"-C {copy} which --tool http:shfmt shfmt",
+            ],
+            (self.scratch / "mise.log").read_text().splitlines(),
+        )
+
+    def test_a_failed_install_or_lookup_puts_nothing_on_path(self):
+        not_executable = self.scratch / "plain"
+        not_executable.write_text("")
+        for name, extra, message in (
+            ("install fails", {"INSTALL_RC": "1"}, "mise install http:shellcheck http:shfmt failed"),
+            ("lookup fails", {"WHICH_RC_shfmt": "37"}, "mise which --tool http:shfmt shfmt failed"),
+            ("lookup prints nothing", {"WHICH_shfmt": ""}, "mise named nothing for shfmt"),
+            ("lookup prints a relative path", {"WHICH_shfmt": "shfmt"}, "mise named shfmt for shfmt"),
+            ("lookup names no executable", {"WHICH_shfmt": str(not_executable)}, f"mise named {not_executable}"),
+            ("lookup names a directory", {"WHICH_shfmt": str(self.installs)}, f"mise named {self.installs}"),
+        ):
+            with self.subTest(name):
+                self.github_path.write_text("")
+                result = self.run_install("shellcheck", "shfmt", **extra)
+                self.assertEqual(1, result.returncode, result.stdout)
+                self.assertIn(message, result.stderr)
+                # Not even shellcheck's directory, though its lookup succeeded: nothing is appended before all pass.
+                self.assertEqual("", self.github_path.read_text())
+
+    def test_a_call_it_cannot_serve_installs_nothing(self):
+        for name, tools, extra, message in (
+            ("no tool", (), {}, "usage:"),
+            ("unknown tool", ("ruff",), {}, "ruff is not a pinned lint tool this step installs"),
+            ("no GITHUB_PATH", ("shfmt",), {"GITHUB_PATH": ""}, "usage:"),
+        ):
+            with self.subTest(name):
+                (self.scratch / "mise.log").unlink(missing_ok=True)
+                result = self.run_install(*tools, **extra)
+                self.assertEqual(2, result.returncode)
+                self.assertIn(message, result.stderr)
+                self.assertFalse((self.scratch / "mise.log").exists())
 
 
 class LintFileSetTest(unittest.TestCase):
@@ -471,10 +582,11 @@ class LintFileSetTest(unittest.TestCase):
             with self.subTest(name):
                 result = self.run_set(name, "printf", "%s\\n")
                 self.assertEqual(0, result.returncode, result.stderr)
-                self.assertEqual(expected, sorted(result.stdout.splitlines()))
+                # Each path reaches the command as ./<path>, so none can read as an option.
+                self.assertEqual(dotted(expected), sorted(result.stdout.splitlines()))
 
     def test_the_shell_set_excludes_records_zsh_bats_templates_other_shells_and_symlinks(self):
-        listed = self.run_set("shell", "printf", "%s\\n").stdout.splitlines()
+        listed = [line.removeprefix("./") for line in self.run_set("shell", "printf", "%s\\n").stdout.splitlines()]
         self.assertEqual(
             "", self.git_output("ls-files", "--others", "--exclude-standard", "home", ".orchestration", "tests")
         )
@@ -485,6 +597,49 @@ class LintFileSetTest(unittest.TestCase):
 
     def git_output(self, *args: str) -> str:
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True).stdout
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads any file")
+    def test_a_tracked_file_that_cannot_be_read_stops_the_shell_set(self):
+        # Round-1 audit of 35739993: a failed first-line read was an exclusion, so the file was dropped and the check
+        # passed on the rest. It is now a failure that names the file.
+        unreadable = self.repo / "scripts/lib/deep.sh"
+        unreadable.chmod(0)
+        self.addCleanup(unreadable.chmod, 0o644)
+        result = self.run_set("shell", "true")
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn(
+            "cannot read scripts/lib/deep.sh to tell whether it is a shell script; nothing was checked", result.stderr
+        )
+
+    def test_a_tracked_file_named_like_an_option_is_checked_as_a_file(self):
+        # Round-1 audit of 35739993: `shfmt -d -version …` printed the version and exited 0. Each path is passed as
+        # ./<path>, which shfmt, ruff and prettier all read as a path.
+        names = {
+            "shell": ("-version", "--help", "-l"),
+            "python": ("-version.py", "--help.py"),
+            "markdown": ("--help.md", "-l.md"),
+        }
+        bad = {"shell": BAD_SHELL, "python": "x=( 1 )\n", "markdown": "# a\n\n\n\nb\n"}
+        for kind, files in names.items():
+            for name in files:
+                (self.repo / name).write_text(bad[kind])
+        self.git("add", "--", *(name for files in names.values() for name in files))
+        self.git("commit", "-q", "-m", "option-named files")
+        listed = self.run_set("shell", "printf", "%s\\n").stdout.splitlines()
+        for name in names["shell"]:
+            self.assertIn(f"./{name}", listed)
+        for kind, command in (
+            ("shell", ("shfmt", "-i", "4", "-sr", "-d")),
+            ("python", ("ruff", "format", "--check")),
+            ("markdown", ("prettier", "--check")),
+        ):
+            with self.subTest(kind):
+                if not runnable(command[0], self.repo):
+                    self.skipTest(f"{command[0]} does not run here")
+                result = self.run_set(kind, *command)
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                for name in names[kind]:
+                    self.assertIn(name, result.stdout + result.stderr)
 
     def test_a_set_that_cannot_be_listed_is_refused_never_empty(self):
         for args, message in (
@@ -523,9 +678,9 @@ class LintFileSetTest(unittest.TestCase):
         # The untracked and ignored files are badly formatted; none is read, so make format passes.
         clean = make_format()
         self.assertEqual(0, clean.returncode, clean.stdout + clean.stderr)
-        self.assertEqual(SHELL_SET, self.logged("shfmt"))
-        self.assertEqual(["tool.py"], self.logged("ruff"))
-        self.assertEqual(["notes.md"], self.logged("prettier"))
+        self.assertEqual(dotted(SHELL_SET), self.logged("shfmt"))
+        self.assertEqual(["./tool.py"], self.logged("ruff"))
+        self.assertEqual(["./notes.md"], self.logged("prettier"))
         # The same bad text in a tracked file of the set fails it.
         (self.repo / "home/dot_local/bin/executable_tool").write_text(BAD_SHELL)
         dirty = make_format()

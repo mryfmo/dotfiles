@@ -62,9 +62,11 @@ class ShellCheckStepTest(unittest.TestCase):
         steps = run_steps(WORKFLOW.read_text())
         shellcheck = [run for name, run in steps if name == "Run `ShellCheck`"]
         self.assertEqual(["make shellcheck"], shellcheck)
-        # No other step lints shell, so the target is the only ShellCheck the workflow runs.
+        # No other step lints shell, so the target is the only ShellCheck the workflow runs. The one other step that
+        # names it installs the pin and runs nothing else (tests/unit/test_pinned_lint_tools.py holds its text, U97).
+        install = 'scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt'
         others = [(name, run) for name, run in steps if "shellcheck" in run.lower() and name != "Run `ShellCheck`"]
-        self.assertEqual([], others)
+        self.assertEqual([("Put the pinned `ShellCheck` and `shfmt` on PATH", install)], others)
 
     def test_the_target_dry_run_names_both_groups_and_both_checks(self):
         result = subprocess.run(

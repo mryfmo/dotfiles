@@ -2418,19 +2418,24 @@ class ScanIdentifiersModeTest(unittest.TestCase):
 
     def test_each_kind_is_a_finding_and_a_clean_file_passes(self) -> None:
         token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
-        cases = {
-            "a secret pattern": f"token {token}\n",
-            "a home directory path": "ran in /Users/someone/x\n",
-            "redact word 1": "seen on MBP-KANA\n",
-            "redact word 2": '{"host": "operator1"}\n',
-        }
-        for finding, text in cases.items():
-            with self.subTest(finding):
+        # The words sit on physical lines 2 and 4 of the file (a comment and a blank line around them).
+        cases = (
+            ("a secret pattern", f"token {token}\n"),
+            ("a home directory path", "ran in /Users/someone/x\n"),
+            ("redact word on line 2", "seen on MBP-KANA\n"),
+            ("redact word on line 4", '{"host": "operator1"}\n'),
+            # U101 audit P2: a KELVIN SIGN (U+212A) is no ASCII letter, so it bounds the word; inside the word it
+            # folds to k, as the word's case-insensitive match allows.
+            ("redact word on line 4", "\u212aoperator1-test\n"),
+            ("redact word on line 2", "mbp-\u212aana\n"),
+        )
+        for finding, text in cases:
+            with self.subTest(finding=finding, text=text):
                 path = self.temp_dir / "evidence.md"
                 path.write_text(text)
                 result = self.scan(path)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-                self.assertEqual(result.stderr, f"--scan-identifiers: {path}: {finding}\n")
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): {finding}\n")
                 self.assertNotIn(token, result.stderr)
         clean = self.temp_dir / "clean.md"
         clean.write_text("mbp-kanax and xoperator1 are other words; ~/x is masked\n")
@@ -2438,10 +2443,16 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
-    def test_a_redact_word_in_the_path_is_a_finding(self) -> None:
+    def test_a_redact_word_in_the_path_is_a_finding_that_never_prints_the_path(self) -> None:
+        # U101 audit P2: the finding printed the raw path, and so the word in it; the file is now named by its place.
+        clean = self.temp_dir / "clean.md"
+        clean.write_text("clean\n")
         path = self.temp_dir / "notes-operator1.md"
         path.write_text("clean\n")
-        self.assertEqual(self.scan(path).returncode, 1)
+        result = self.scan(clean, path)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "--scan-identifiers: file 2: redact word on line 4\n")
+        self.assertNotIn("operator1", (result.stdout + result.stderr).lower())
         self.assertEqual(self.scan(path, words=False).returncode, 0)
 
     def test_usage_and_unreadable_files_exit_2(self) -> None:

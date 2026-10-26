@@ -10,11 +10,13 @@
 #   The copy set (U101) is exactly the program store `.orchestration/orchestrate/<program>/`: its files on disk,
 #   tracked or untracked and not ignored (`git ls-files --cached --others --exclude-standard`), compared with the
 #   same paths in `origin/main` by content, so a file the store lacks but `origin/main` holds is deleted and the
-#   checkout's `HEAD`, however stale, is never the base. `.orchestration/validation/` files go in only when a
-#   `--validation <path>` names them. The store's `redact-words.txt` (one literal word per line, `#` comments) is
-#   never copied, deleted or published. Every path must lie under `.orchestration/`, no component of it may be a
-#   symlink (git lists the files below a linked directory too, U28b F2), and an existing source must be a regular
-#   file whose directory resolves (`pwd -P`) inside the store, else the run is refused before anything is created.
+#   checkout's `HEAD`, however stale, is never the base; nothing outside the store is carried. Both listings are
+#   read NUL-delimited from files: a git failure, even after output, or a listing that ends mid-entry refuses the
+#   run before anything is created. The store's `redact-words.txt` (one literal word per line, `#` comments) is
+#   never copied, deleted or published. Every path must lie under `.orchestration/`, hold no control character
+#   (a newline would hide a component from the symlink check), no component of it may be a symlink (git lists the
+#   files below a linked directory too, U28b F2), and an existing source must be a regular file whose directory
+#   resolves (`pwd -P`) inside the store, else the run is refused before anything is created.
 #   In a new detached worktree under `$TMPDIR` at `origin/main` it copies the set, deletes what the store lacks,
 #   masks the copies with the worktree's own `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files
 #   are never changed; a masking failure aborts), then refuses the run if that validator's `--scan-identifiers`
@@ -37,7 +39,6 @@
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
 # @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
-# @option --validation <path> A file under `.orchestration/validation/` to carry too; repeatable.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
 # @exitcode 0 The pull request was opened.
@@ -104,7 +105,7 @@ lever_self_check() {
 lever_self_check
 
 lever='records-sync.sh'
-usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)] [--validation <path>]...'
+usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 footer='Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>'
 pr_footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
@@ -165,6 +166,9 @@ gh_plain() {
 check_path() {
     local path=$1 prefix='' part source_dir
     local -a parts
+    # U101: a newline would end the component split below early and leave the leaf unchecked.
+    [[ ${path} != *[[:cntrl:]]* ]] || refuse 'a path of the copy set holds a control character' # lint-comparisons: allow a character test on the raw git path
+
     case ${path} in # lint-comparisons: allow a repository-relative path as git prints it, refused unless under the store
     .orchestration/*) ;;
     *) refuse "a path of the copy set is outside .orchestration/: ${path}" ;;
@@ -186,16 +190,14 @@ check_path() {
 base=origin/main
 program=''
 unit=U20
-validation=()
 while (($#)); do
     case $1 in
-    --base | --program | --unit | --validation)
+    --base | --program | --unit)
         (($# >= 2)) || refuse "${usage}"
         case $1 in
         --base) base=$2 ;;
         --program) program=$2 ;;
         --unit) unit=$2 ;;
-        --validation) validation+=("$2") ;;
         esac
         shift 2
         ;;
@@ -244,12 +246,6 @@ if [[ -e ${words} || -L ${words} ]]; then
 else
     words_real=''
 fi
-for path in ${validation[@]+"${validation[@]}"}; do
-    [[ ${path} == .orchestration/validation/?* ]] || # lint-comparisons: allow a repository-relative path as the operator names it
-        refuse "--validation names a file outside .orchestration/validation/: ${path}"
-    check_path "${path}"
-    [[ -f ${path} ]] || refuse "--validation names no regular file: ${path}"
-done
 # The commit's identity is the operator's, read once here; the commit itself then runs with no user config.
 author_name=$(git config user.name) || refuse 'git config user.name is unset'
 author_email=$(git config user.email) || refuse 'git config user.email is unset'
@@ -266,31 +262,37 @@ elif (($? != 1)); then
 fi
 
 git fetch --quiet origin main || fail 'git fetch origin main failed'
-# U101: the copy set is the store's files on disk (tracked or not, not ignored) and the named validation files,
-# compared with origin/main by content; the checkout's HEAD, however stale, is never the base.
-listed=$(git ls-files -z --cached --others --exclude-standard -- "${records}/" | tr '\0' '\n' | sort -u) ||
-    fail 'git ls-files failed'
-on_main=$(git ls-tree -r -z --name-only "${base}" -- "${records}/" | tr '\0' '\n') || fail "git ls-tree ${base} failed"
-files=(${validation[@]+"${validation[@]}"})
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
+trap cleanup EXIT
+# U101: the copy set is the store's files on disk (tracked or not, not ignored), compared with origin/main by
+# content; the checkout's HEAD, however stale, is never the base. Each listing goes to a file and is read
+# NUL-delimited: a git failure, even after output, and a listing whose last entry has no NUL end (cut short) refuse
+# here, before the worktree, the branch or any gh call.
+listing=${scratch}/listing
+git ls-files -z --cached --others --exclude-standard -- "${records}/" > "${listing}" || fail 'git ls-files failed'
+files=()
 present=$'\n'
-while IFS= read -r path; do
-    [[ -n ${path} && ${path} != "${words}" ]] || continue # lint-comparisons: allow both are repository-relative paths as git prints them
+path=''
+while IFS= read -r -d '' path; do
+    [[ ${path} != "${words}" ]] || continue # lint-comparisons: allow both are repository-relative paths as git prints them
     check_path "${path}"
-    if [[ -e ${path} ]]; then
+    if [[ -e ${path} && ${present} != *$'\n'"${path}"$'\n'* ]]; then # lint-comparisons: allow repository-relative paths as git prints them
         files+=("${path}")
         present+=${path}$'\n'
     fi
-done <<< "${listed}"
+done < "${listing}"
+[[ -z ${path} ]] || refuse "the listing of ${records}/ ends mid-entry; nothing was created"
+git ls-tree -r -z --name-only "${base}" -- "${records}/" > "${listing}" || fail "git ls-tree ${base} failed"
 gone=()
-while IFS= read -r path; do
-    [[ -n ${path} && ${path} != "${words}" && ${present} != *$'\n'"${path}"$'\n'* ]] || continue # lint-comparisons: allow repository-relative paths as git prints them
+path=''
+while IFS= read -r -d '' path; do
     check_path "${path}"
+    [[ ${path} != "${words}" && ${present} != *$'\n'"${path}"$'\n'* ]] || continue # lint-comparisons: allow repository-relative paths as git prints them
     gone+=("${path}")
-done <<< "${on_main}"
+done < "${listing}"
+[[ -z ${path} ]] || refuse "the listing of ${base}:${records}/ ends mid-entry; nothing was created"
 ((${#files[@]} + ${#gone[@]} > 0)) || refuse "nothing to sync under ${records}/"
 
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
-trap cleanup EXIT
 tree=${scratch}/tree
 git worktree add --quiet --detach "${tree}" "${base}" || fail 'git worktree add failed'
 masked=()
@@ -303,7 +305,8 @@ for path in ${gone[@]+"${gone[@]}"}; do
     git -C "${tree}" rm --quiet -- "${path}" || fail "git rm ${path} failed"
 done
 if ((${#masked[@]})); then
-    uv run --no-project python -I "${tree}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" >&2 ||
+    # The per-file counts name each copy's path, which may hold a redact word; only errors reach stderr.
+    uv run --no-project python -I "${tree}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" > /dev/null ||
         fail 'masking the copies failed; nothing was committed or pushed'
     # U101: after masking, no copy may still name a secret, a home path or a redact word, its path included.
     scan=(--scan-identifiers)
@@ -341,10 +344,8 @@ units=$(git -C "${tree}" diff --cached -U0 -- "${records}/units.tsv" | sed -n -E
 decisions=$(git -C "${tree}" diff --cached -U0 -- "${records}/decisions.tsv" | sed -n -E 's/^\+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)\t.*/\1/p' | sort -u | paste -sd ' ' -) ||
     fail 'cannot list the decisions'
 title="chore(records): ${program} sync ${n}"
-carried="${records}/"
-((${#validation[@]} == 0)) || carried+=" and ${#validation[@]} named file(s) of .orchestration/validation/"
 git_plain -C "${tree}" -c "user.name=${author_name}" -c "user.email=${author_email}" commit --quiet -m "${title}" \
-    -m "Carries ${count} file(s) of ${carried} from the main checkout, compared with origin/main (records-sync.sh)." -m "${footer}" ||
+    -m "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." -m "${footer}" ||
     fail 'git commit failed'
 git_plain -C "${tree}" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     push --quiet "${push_url}" "refs/heads/${branch}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"

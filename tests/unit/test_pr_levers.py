@@ -1068,10 +1068,15 @@ import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     sys.exit("fake-git: failing as asked")
 run = subprocess.run([os.environ["REAL_GIT"], *sys.argv[1:]], stdout=subprocess.PIPE)
-sys.stdout.buffer.write(run.stdout)
+out = run.stdout
+if os.environ.get("FAKE_GIT_TRUNCATE") in sys.argv[1:]:
+    out = out[:-3]  # the last entry cut short, its NUL end gone
+sys.stdout.buffer.write(out)
 extra = os.environ.get("FAKE_GIT_EXTRA_OTHERS")
 if extra and "--others" in sys.argv:
     sys.stdout.buffer.write(extra.encode() + b"\\0")
+if os.environ.get("FAKE_GIT_FAIL_AFTER") in sys.argv[1:]:
+    sys.exit(1)  # a failure after plausible output
 sys.exit(run.returncode)
 """
 
@@ -1329,23 +1334,6 @@ class RecordsSyncTest(PrLeverTestCase):
         )
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 files=2 "), run.stdout)
 
-    def test_a_validation_file_goes_in_only_when_named(self):
-        self.github()
-        validation = self.repo / ".orchestration/validation"
-        validation.mkdir()
-        (validation / "U101.md").write_text("named\n")
-        (validation / "other.md").write_text("not named\n")
-        for path, message in (
-            ("scripts/x.md", "outside .orchestration/validation/"),
-            (".orchestration/validation/absent.md", "names no regular file"),
-            (".orchestration/orchestrate/prog/units.tsv", "outside .orchestration/validation/"),
-        ):
-            with self.subTest(path):
-                self.assert_refused(self.run_lever("records-sync.sh", "--validation", path), message)
-        run = self.run_lever("records-sync.sh", "--validation", ".orchestration/validation/U101.md")
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(self.branch_changes(), ["A\t.orchestration/validation/U101.md"])
-
     def test_a_push_instead_of_in_the_user_config_does_not_redirect_the_push(self):
         """U101: the operator's global config rewrites https://github.com/ to an SSH URL for pushes, and the host has
         no SSH key; the push, the commit and the gh steps read no user config, and the identity is read once."""
@@ -1401,8 +1389,9 @@ class RecordsSyncTest(PrLeverTestCase):
                 run = self.run_lever("records-sync.sh")
                 self.assert_refused(run, "identifier scan")
                 self.assertIn("redact word", run.stderr)
-                self.assertNotIn("mbp-kana", run.stderr.lower(), "the refusal never quotes a word")
-                self.assertNotIn("operator1", run.stderr.replace(name, ""))
+                self.assertIn("redact word on line", run.stderr)
+                for word in ("mbp-kana", "operator1"):
+                    self.assertNotIn(word, run.stderr.lower(), "no output line quotes a word, in a path either")
                 self.assert_nothing_left()
                 (self.records / name).unlink()
         (self.records / "notes.md").write_text("mbp-kanax is another word\n")
@@ -1429,9 +1418,51 @@ class RecordsSyncTest(PrLeverTestCase):
                 (self.records / "notes.md").write_text(text)
                 run = self.run_lever("records-sync.sh")
                 self.assert_refused(run, "identifier scan")
-                self.assertIn(f"notes.md: {kind}", run.stderr)
+                self.assertIn(f"(.orchestration/orchestrate/prog/notes.md): {kind}", run.stderr)
                 self.assertNotIn(planted, run.stderr)
                 self.assert_nothing_left()
+
+    def test_a_listing_that_fails_or_is_cut_short_refuses_before_anything_is_created(self):
+        """U101 audit P2: the origin/main listing decides what is deleted, and the store listing what is carried; a
+        git failure before or after output and a listing whose last entry is cut short each stop the run first."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        cases = (
+            ("FAKE_GIT_FAIL", "ls-tree", 1, "git ls-tree origin/main failed"),
+            ("FAKE_GIT_FAIL_AFTER", "ls-tree", 1, "git ls-tree origin/main failed"),
+            (
+                "FAKE_GIT_TRUNCATE",
+                "ls-tree",
+                2,
+                "the listing of origin/main:.orchestration/orchestrate/prog/ ends mid-entry",
+            ),
+            ("FAKE_GIT_FAIL_AFTER", "ls-files", 1, "git ls-files failed"),
+            ("FAKE_GIT_TRUNCATE", "ls-files", 2, "the listing of .orchestration/orchestrate/prog/ ends mid-entry"),
+        )
+        for variable, command, code, message in cases:
+            with self.subTest(variable=variable, command=command):
+                self.env[variable] = command
+                run = self.run_lever("records-sync.sh")
+                del self.env[variable]
+                self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_path_with_a_newline_is_refused_before_any_copy(self):
+        """U101 audit P1: a newline in a name ended the component split early, so a symlink at the real name went
+        unchecked and cp published its target. Any control character in a path of the copy set is refused."""
+        self.github()
+        outside = self.root / "outside.md"
+        outside.write_text("outside the store\n")
+        (self.records / "x\nnotes.md").symlink_to(outside)
+        run = self.run_lever("records-sync.sh")
+        self.assert_refused(run, "holds a control character")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
 
 
 if __name__ == "__main__":

@@ -1986,46 +1986,59 @@ def mask_secrets(paths: list[str]) -> int:
     return status
 
 
-def redact_words(path: Path) -> list[str]:
-    """The literal words of a redact-words file: one per line, blank lines and `#` comments skipped."""
+def redact_words(path: Path) -> list[tuple[int, str]]:
+    """The literal words of a redact-words file with their physical line numbers: one word per line, blank lines and
+    `#` comments skipped."""
     words = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         word = line.strip()
         if word and not word.startswith("#"):
-            words.append(word)
+            words.append((number, word))
     return words
 
 
-def identifier_findings(path: Path, words: list[str]) -> list[str]:
-    """What --scan-identifiers refuses in one file, never quoting a redact word or a match.
+def redact_word_pattern(word: str) -> re.Pattern[str]:
+    """WORD, case-insensitively, where no ASCII letter or digit adjoins it.
+
+    Only the word is case-folded, by a scoped `(?i:...)` group: under a global IGNORECASE the boundary class
+    `[A-Za-z0-9]` would also match the letters that fold to ASCII (U+212A KELVIN SIGN folds to `k`), so a word glued
+    to one would escape. The boundaries stay ASCII: any other character, a Kelvin sign included, is a boundary."""
+    return re.compile(rf"(?<![A-Za-z0-9])(?i:{re.escape(word)})(?![A-Za-z0-9])")
+
+
+def identifier_findings(path: Path, words: list[tuple[int, str]]) -> list[str]:
+    """What --scan-identifiers refuses in one file, as reasons; none quotes a redact word, a match or the path.
 
     The secret and home-path tests are validate_no_obvious_secrets()' (per key and string value of a JSON document,
-    the whole text otherwise). A redact word matches case-insensitively where no ASCII letter or digit adjoins it,
-    in the path as given and in the text; a finding names the word by its line number in the words file."""
+    the whole text otherwise). A redact word (redact_word_pattern) is searched in the path as given and in the text;
+    a finding names the word by its physical line number in the words file."""
     data = path.read_bytes()
     if b"\0" in data or data.startswith((b"\xff\xfe", b"\xfe\xff")):
-        return [f"{path}: not UTF-8 text"]
+        return ["not UTF-8 text"]
     try:
         text = data.decode()
     except UnicodeDecodeError:
-        return [f"{path}: not UTF-8 text"]
+        return ["not UTF-8 text"]
     strings = json_strings(text) or [text]
     findings = []
     if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
-        findings.append(f"{path}: a secret pattern")
+        findings.append("a secret pattern")
     if any(home_path_pattern().search(s) for s in (text, *strings)):
-        findings.append(f"{path}: a home directory path")
-    for number, word in enumerate(words, 1):
-        pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(word)}(?![A-Za-z0-9])", re.IGNORECASE)
+        findings.append("a home directory path")
+    for number, word in words:
+        pattern = redact_word_pattern(word)
         if pattern.search(str(path)) or any(pattern.search(s) for s in (text, *strings)):
-            findings.append(f"{path}: redact word {number}")
+            findings.append(f"redact word on line {number}")
     return findings
 
 
 def scan_identifiers(args: list[str]) -> int:
     """`--scan-identifiers [--redact-words <file>] [--] <files>`: 0 when no file names a secret, a home path or a
-    redact word; 1 listing each finding (records-sync.sh refuses its commit on it); 2 on usage or an unreadable file."""
-    words: list[str] = []
+    redact word; 1 listing each finding (records-sync.sh refuses its commit on it); 2 on usage or an unreadable file.
+
+    A file is named `file <n>` (its place among the arguments), followed by its path only when no redact word
+    occurs in that path, so no output line discloses a word."""
+    words: list[tuple[int, str]] = []
     if args[:1] == ["--redact-words"]:
         if len(args) < 2:
             print("--scan-identifiers: --redact-words needs a file", file=sys.stderr)
@@ -2033,7 +2046,7 @@ def scan_identifiers(args: list[str]) -> int:
         try:
             words = redact_words(Path(args[1]))
         except (OSError, UnicodeDecodeError) as error:
-            print(f"--scan-identifiers: cannot read {args[1]}: {error}", file=sys.stderr)
+            print(f"--scan-identifiers: cannot read the redact-words file: {type(error).__name__}", file=sys.stderr)
             return 2
         args = args[2:]
     if args[:1] == ["--"]:
@@ -2041,12 +2054,16 @@ def scan_identifiers(args: list[str]) -> int:
     if not args:
         print("--scan-identifiers: no files", file=sys.stderr)
         return 2
+    patterns = [redact_word_pattern(word) for _, word in words]
     findings = []
-    for name in args:
+    for index, name in enumerate(args, 1):
+        label = f"file {index}"
+        if not any(pattern.search(name) for pattern in patterns):
+            label += f" ({name})"
         try:
-            findings += identifier_findings(Path(name), words)
+            findings += [f"{label}: {reason}" for reason in identifier_findings(Path(name), words)]
         except OSError as error:
-            print(f"--scan-identifiers: cannot read {name}: {error}", file=sys.stderr)
+            print(f"--scan-identifiers: cannot read {label}: {type(error).__name__}", file=sys.stderr)
             return 2
     for finding in findings:
         print(f"--scan-identifiers: {finding}", file=sys.stderr)

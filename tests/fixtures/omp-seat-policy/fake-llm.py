@@ -9,6 +9,7 @@ with one `task` tool call; a turn whose messages already hold a tool result answ
 import http.server
 import json
 import pathlib
+import socketserver
 import sys
 
 OUT = pathlib.Path(sys.argv[2])
@@ -52,6 +53,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"data: [DONE]\n\n")
 
 
-server = http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), Handler)
+class LoopbackHTTPServer(http.server.HTTPServer):
+    """Binds without `HTTPServer.server_bind`'s `socket.getfqdn` reverse lookup (about 35 s on some macOS hosts)."""
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
+server = LoopbackHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler)
 print(f"listening {server.server_address[1]}", flush=True)
 server.serve_forever()

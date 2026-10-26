@@ -193,6 +193,30 @@ class OpenerStartTest(unittest.TestCase):
             self.assertIn(f"cannot bind 127.0.0.1:{port}", result.stderr)
             self.assertRegex(log.read_text(), rf"^\S+Z failed to bind 127\.0\.0\.1:{port}: .+\n$")
 
+    def test_the_opener_starts_without_a_reverse_dns_lookup(self) -> None:
+        """HTTPServer.server_bind calls socket.getfqdn, which took about 35 s per start on macos-15 runners."""
+        probe = (
+            "import runpy, socket, sys\n"
+            "def refuse(*args):\n"
+            "    print('getfqdn called', file=sys.stderr, flush=True)\n"
+            "    raise SystemExit(3)\n"
+            "socket.getfqdn = refuse\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            server = subprocess.Popen(
+                [sys.executable, "-I", "-c", probe, str(OPENER), "--port", "0", "--log", f"{temp}/opener.log"],
+                env={"PATH": "/usr/bin:/bin", "HOME": temp}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )  # fmt: skip
+            try:
+                line = server.stdout.readline()
+            finally:
+                server.terminate()
+                _, stderr = server.communicate(timeout=10)
+            self.assertTrue(line.startswith("regime-url-opener: listening on 127.0.0.1:"), line + stderr)
+            self.assertNotIn("getfqdn called", stderr)
+
 
 class TokenExportTest(unittest.TestCase):
     """The login shells export CLAUDE_CODE_OAUTH_TOKEN from the operator's token file and from nothing else."""

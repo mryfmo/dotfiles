@@ -420,7 +420,12 @@ def runnable(tool: str, cwd: Path) -> bool:
 # The shell set of LintFileSetTest's repository: its .sh files, its scripts by bash or sh shebang, nothing excluded.
 SHELL_SET = [
     "home/dot_local/bin/executable_tool",
+    # Round-4 audit of 3b293cd5: the interpreter is a token, so a comment naming zsh does not exclude the script.
+    "home/env-comment",
+    "home/env-i",
     "home/env-split",
+    "home/env-u",
+    "home/locked/inner.sh",
     "home/modify_config.yml",
     "home/outside.sh",
     "install/common/tracked.sh",
@@ -432,6 +437,8 @@ EXCLUDED = (
     ".orchestration/tasks/copy.sh",
     "home/prompt.zsh",
     "home/zsh-script.sh",
+    "home/zsh-abs",
+    "home/zsh-env",
     "tests/install/t.bats",
     "home/run_once.sh.tmpl",
     "home/dash-only",
@@ -561,6 +568,12 @@ class LintFileSetTest(unittest.TestCase):
             "home/dot_local/bin/executable_tool": "#!/usr/bin/env bash\necho tool\n",
             "home/modify_config.yml": "#!/bin/sh\nexec cat\n",
             "home/env-split": "#!/usr/bin/env -S bash -e\necho split\n",
+            "home/env-comment": "#!/usr/bin/env -S bash # zsh is not supported\necho comment\n",
+            "home/env-i": "#!/usr/bin/env -i PATH=/x bash\necho i\n",
+            "home/env-u": "#!/usr/bin/env -u FOO sh\necho u\n",
+            "home/locked/inner.sh": "#!/usr/bin/env bash\necho inner\n",
+            "home/zsh-abs": bad.replace("/usr/bin/env bash", "/bin/zsh"),
+            "home/zsh-env": bad.replace("bash", "zsh"),
             # Tracked but excluded, each badly formatted so that reading it would fail the check.
             ".orchestration/tasks/copy.sh": bad,
             "home/prompt.zsh": bad.replace("bash", "zsh"),
@@ -685,6 +698,71 @@ class LintFileSetTest(unittest.TestCase):
         self.assertEqual(0, clean.returncode, clean.stderr)
         self.assertIn("./home/dot_local/bin/executable_tool", clean.stdout.splitlines())
         self.assertEqual("", clean.stderr)
+
+    def assert_stops(self, message: str) -> None:
+        result = self.run_set("shell", "true")
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"run-on-lint-files: {message}; nothing was checked", result.stderr)
+
+    @unittest.skipIf(os.geteuid() == 0, "root searches any directory")
+    def test_a_script_under_an_unsearchable_directory_stops_the_shell_set(self):
+        # Round-4 audit of 3b293cd5: `-f` was false under an unsearchable parent, so the script was excluded. The index
+        # says it is a regular file, so the failed read is an error that names it.
+        locked = self.repo / "home/locked"
+        locked.chmod(0)
+        self.addCleanup(locked.chmod, 0o755)
+        self.assert_stops("cannot read home/locked/inner.sh to tell whether it is a shell script")
+
+    def test_a_file_deleted_from_the_work_tree_but_indexed_stops_the_shell_set(self):
+        (self.repo / "scripts/lib/deep.sh").unlink()
+        self.assert_stops("cannot read scripts/lib/deep.sh to tell whether it is a shell script")
+
+    def test_a_symlink_and_a_gitlink_are_excluded_by_their_index_mode(self):
+        # Neither is read: a gitlink has no file in the work tree here, and a .sh name does not bring it in.
+        head = self.git_output("rev-parse", "HEAD").strip()
+        self.git("update-index", "--add", "--cacheinfo", f"160000,{head},vendor/sub.sh")
+        modes = dict(
+            line.split(" ", 1)[0:1] + [line.split("\t", 1)[1]]
+            for line in self.git_output("ls-files", "-s", "--", "home/link.sh", "vendor/sub.sh").splitlines()
+        )
+        self.assertEqual({"120000": "home/link.sh", "160000": "vendor/sub.sh"}, modes)
+        result = self.run_set("shell", "printf", "%s\\n")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(dotted(SHELL_SET), sorted(result.stdout.splitlines()))
+
+    def test_an_env_option_it_does_not_know_stops_the_shell_set(self):
+        (self.repo / "home/env-unknown").write_text("#!/usr/bin/env --frobnicate bash\necho x\n")
+        self.git("add", "--", "home/env-unknown")
+        self.assert_stops(
+            "cannot tell the interpreter of home/env-unknown: its env shebang carries an option this script does not know"
+        )
+
+    def test_an_unmerged_index_stops_every_set(self):
+        blob = (
+            subprocess.run(
+                ["git", "-C", str(self.repo), "hash-object", "-w", "--stdin"],
+                input=b"x\n",
+                capture_output=True,
+                check=True,
+                timeout=COMMAND_SECONDS,
+            )
+            .stdout.decode()
+            .strip()
+        )
+        subprocess.run(
+            ["git", "-C", str(self.repo), "update-index", "--index-info"],
+            input=f"100644 {blob} 1\tnotes.md\n100644 {blob} 2\tnotes.md\n".encode(),
+            check=True,
+            timeout=COMMAND_SECONDS,
+        )
+        for name in ("shell", "python", "markdown"):
+            with self.subTest(name):
+                result = self.run_set(name, "true")
+                if name == "python":
+                    self.assertEqual(0, result.returncode, result.stderr)  # notes.md is outside the python set
+                    continue
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn("notes.md is unmerged in the index; nothing was checked", result.stderr)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads any file")
     def test_a_tracked_file_that_cannot_be_read_stops_the_shell_set(self):

@@ -16,6 +16,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+
+quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+
 ROOT = Path(__file__).resolve().parents[2]
 LEVERS = ROOT / "scripts/orchestrator"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
@@ -106,18 +111,20 @@ class PrLeverTestCase(unittest.TestCase):
         gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
         self.calls = self.root / "gh-calls"
         self.responses = self.root / "gh-responses.json"
-        self.env = {
-            "PATH": f"{bindir}:{os.environ['PATH']}",
-            "HOME": str(self.root / "home"),
-            "TMPDIR": str(self.tmp),
-            "LC_ALL": "C",
-            "GIT_CONFIG_GLOBAL": str(gitconfig),
-            "GIT_CONFIG_NOSYSTEM": "1",
-            "FAKE_GH_CALLS": str(self.calls),
-            "FAKE_GH_RESPONSES": str(self.responses),
-            "FAKE_GH_STATE": str(self.root / "gh-state.json"),
-            "FAKE_GH_JQ": JQ,
-        }
+        self.env = quiet_git_env(
+            {
+                "PATH": f"{bindir}:{os.environ['PATH']}",
+                "HOME": str(self.root / "home"),
+                "TMPDIR": str(self.tmp),
+                "LC_ALL": "C",
+                "GIT_CONFIG_GLOBAL": str(gitconfig),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "FAKE_GH_CALLS": str(self.calls),
+                "FAKE_GH_RESPONSES": str(self.responses),
+                "FAKE_GH_STATE": str(self.root / "gh-state.json"),
+                "FAKE_GH_JQ": JQ,
+            }
+        )
         (self.root / "home").mkdir()
         self.repo = self.root / "repo"
         self.repo.mkdir()

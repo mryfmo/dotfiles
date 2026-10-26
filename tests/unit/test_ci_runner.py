@@ -16,6 +16,12 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import quiet_git  # noqa: E402
+
+quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
 ROOT = Path(__file__).resolve().parents[2]
 LIB = ROOT / "scripts/lib/ci-runner.sh"

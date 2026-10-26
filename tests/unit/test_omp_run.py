@@ -15,6 +15,12 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+
+quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/orchestrator/omp-run.sh"
@@ -73,12 +79,14 @@ class OmpRunTest(unittest.TestCase):
         self.registry = self.omp_package(self.root / "omp-pkg")
         (bindir / "omp").symlink_to(self.root / "omp-pkg/dist/cli.js")
         (bindir / "bun").symlink_to(FIXTURES / "fake-bun.py")
-        self.env = {
-            "PATH": f"{bindir}:{os.environ['PATH']}",
-            "HOME": str(self.home),
-            "FAKE_OMP_CALLS": str(self.calls),
-            "TMPDIR": str(self.tmp),
-        }
+        self.env = quiet_git_env(
+            {
+                "PATH": f"{bindir}:{os.environ['PATH']}",
+                "HOME": str(self.home),
+                "FAKE_OMP_CALLS": str(self.calls),
+                "TMPDIR": str(self.tmp),
+            }
+        )
 
     @staticmethod
     def omp_package(package, registry=True):
@@ -99,7 +107,7 @@ class OmpRunTest(unittest.TestCase):
             text=True,
             check=True,
             cwd=cwd or self.repo,
-            env={"PATH": os.environ["PATH"], "HOME": str(self.home), "GIT_CONFIG_NOSYSTEM": "1"},
+            env=quiet_git_env({"PATH": os.environ["PATH"], "HOME": str(self.home), "GIT_CONFIG_NOSYSTEM": "1"}),
         ).stdout.strip()
 
     def run_script(self, *args, **overrides):

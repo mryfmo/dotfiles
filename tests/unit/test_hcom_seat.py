@@ -17,6 +17,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+
+quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+
 ROOT = Path(__file__).resolve().parents[2]
 SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 FAKE = ROOT / "tests/fixtures/hcom-seat/fake-tool.py"
@@ -27,14 +32,17 @@ BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 SYSTEM_PATH = "/usr/bin:/bin"
 
 
-GIT_IDENTITY = {
-    "GIT_CONFIG_GLOBAL": "/dev/null",
-    "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "t",
-    "GIT_AUTHOR_EMAIL": "t@example.invalid",
-    "GIT_COMMITTER_NAME": "t",
-    "GIT_COMMITTER_EMAIL": "t@example.invalid",
-}
+# U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
+GIT_IDENTITY = quiet_git_env(
+    {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.invalid",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    }
+)
 
 
 class HcomSeatTest(unittest.TestCase):

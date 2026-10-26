@@ -6,6 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import quiet_git  # noqa: E402
+
+quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+
 ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / "home/dot_claude/hooks/executable_format-edited-files.py"
 

@@ -1177,7 +1177,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("dir_entries", "admin_dirs_match", "git_state_check")
+        names += ("dir_entries", "admin_dirs_match", "git_state_check", "git_form_path")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1398,6 +1398,15 @@ class HcomSeatTest(unittest.TestCase):
                 finally:
                     gitdir_b.write_text(f"{root}/trees/b/.git\n")
                     shutil.rmtree(admin_root / "worktrees/c", ignore_errors=True)
+        # git_form_path: git's own pointer form only.
+        form_call = 'for v in "$@"; do if git_form_path "$v"; then echo "ok $v"; else echo "no $v"; fi; done'
+        forms = {
+            "/abs/.git/worktrees/t": "ok", "../..": "ok", "../../.git/worktrees/t": "ok", "t/.git": "ok",
+            "/abs/link/": "no", "/abs/link/.": "no", "/abs/./x": "no", "a/../b": "no", "/abs/..": "no", "": "no",
+            "/abs//x": "no", "../": "no", ".": "no", "/": "no",
+        }  # fmt: skip
+        result = run(form_call, list(forms))
+        self.assertEqual(result.stdout.splitlines(), [f"{v} {k}" for k, v in forms.items()], result.stderr)
         # git_state_check's mkdir batch (a real launch): every missing info/ and hooks/ in one /bin/mkdir run. A mkdir
         # that fails outright, one that creates some directories and then fails, and one after which a directory
         # is a link each refuse; the real mkdir makes all three.
@@ -1736,6 +1745,63 @@ class HcomSeatTest(unittest.TestCase):
         )  # fmt: skip
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(log.exists(), "the logging git is the one hcom-seat runs")
+
+    def test_git_pointers_must_be_in_git_s_form(self):
+        """U95 round 19: a path read from a git pointer file must be in git's own form before any type test: a trailing
+        `/` or `/.` makes `[[ -L … ]]` follow a link, so a `.git` naming `<link>/` passed as a real directory. The
+        launch checkout's `.git` (`<link>/`, `<link>/.`, `a/../b`, empty) refuses before any git command; another
+        worktree's `commondir` (`../../`, `../../.`, `../x/../..`) and `gitdir` back-pointer (`<tree>/./.git`,
+        `<tree>/.git/`) refuse in the checks."""
+        common = (self.repo / ".git").resolve()
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        admin = common / "worktrees/t"
+        alias = Path(self.temp.name).resolve() / "alias"
+        alias.symlink_to(admin)
+        log = Path(self.temp.name) / "git-calls"
+        wrapper = Path(self.temp.name) / "logging-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        (wrapper / "git").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real_git}" "$@"\n')
+        (wrapper / "git").chmod(0o755)
+        env = {**self.env, "PATH": f"{wrapper}:{self.env['PATH']}"}
+        dot_git = (tree / ".git").read_text()
+        for label, value in (
+            ("a link with a trailing slash", f"{alias}/"),
+            ("a link with a trailing dot", f"{alias}/."),
+            ("a .. after a name", f"{common}/worktrees/x/../t"),
+            ("empty", ""),
+        ):
+            with self.subTest(pointer=".git", form=label):
+                (tree / ".git").write_text(f"gitdir: {value}\n")
+                log.unlink(missing_ok=True)
+                run = subprocess.run(
+                    [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+                    capture_output=True, text=True, check=False, timeout=60,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("not a path in git's own form", run.stderr)
+                self.assertFalse(log.exists(), "a git command ran before the refusal")
+        (tree / ".git").write_text(dot_git)
+        for name, values, original in (
+            ("commondir", ("../../", "../../.", "../x/../.."), "../..\n"),
+            ("gitdir", (f"{tree}/./.git", f"{tree}/.git/"), f"{tree}/.git\n"),
+        ):
+            for value in values:
+                with self.subTest(pointer=name, form=value):
+                    (admin / name).write_text(f"{value}\n")
+                    run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    # git lists `<tree>/.git/` itself as the worktree (it strips only a final `/.git`), so that record
+                    # refuses one step earlier, as not backed by a directory.
+                    self.assertTrue(
+                        f"{admin / name} holds '{value}', not a path in git's own form" in run.stderr
+                        or f"the worktree record {value} is not backed by a directory" in run.stderr,
+                        run.stderr,
+                    )
+            (admin / name).write_text(original)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
 
     def add_worktrees(self, first, count, absent=False):
         """Register worktrees w<first>..w<first+count-1> outside every seat write root the way `git worktree add

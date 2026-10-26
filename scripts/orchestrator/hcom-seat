@@ -381,6 +381,33 @@ seat_settings_files() {
     done
 }
 
+# @description Succeed when `$1`, a path read from a git pointer file (a `.git` file's `gitdir:`, a `commondir`, a
+#   `gitdir` back-pointer), is in git's own form (regime-cutover U95): non-empty, no control character, no empty
+#   component (`//`), no trailing `/`, no `.` component, and `..` only as the leading components of a relative path
+#   (git's relative form, `../..` or `../../.git/worktrees/x`). git writes its pointers so. Anything else refuses at
+#   the caller before any type test, since a trailing `/` or `/.` makes `[[ -L … ]]` follow a link and a `..` after
+#   a link resolves differently from the text. Builtins only.
+# @arg $1 string The path as read.
+# @exitcode 1 It is not in git's form.
+git_form_path() {
+    local rest c lead=1
+    [[ -n $1 && $1 != */ && $1 != *//* && $1 != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow a form test on one path, no compare
+    rest=$1
+    if [[ ${rest} == /* ]]; then # lint-comparisons: allow an absolute-path test
+        rest=${rest#/}
+        lead=0
+    fi
+    while [[ -n ${rest} ]]; do
+        c=${rest%%/*}
+        if [[ ${rest} == */* ]]; then rest=${rest#*/}; else rest=''; fi # lint-comparisons: allow splitting one path into components
+        case ${c} in
+        .) return 1 ;;
+        ..) ((lead)) || return 1 ;;
+        *) lead=0 ;;
+        esac
+    done
+}
+
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all,
 #   one budget for the whole resolution) and the directory in its `pwd -P` form. A path that does not exist yet is
 #   its nearest existing ancestor's physical form with the rest appended, so a write root a launch has not created
@@ -746,6 +773,8 @@ if [[ -n ${top} || -e /.git ]]; then
         line=$(pointer_value "${gitdir}") || refuse "cannot read ${gitdir} as one line free of control characters"
         [[ ${line} == 'gitdir: '* ]] || refuse "${gitdir} holds no 'gitdir: ' line" # lint-comparisons: allow the literal prefix git writes, no path compare
         gitdir=${line#gitdir: }
+        git_form_path "${gitdir}" ||
+            refuse "${top}/.git names '${gitdir}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path); repair the worktree (\`git worktree repair\`)"
         case ${gitdir} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) ;;
         *) gitdir=${top}/${gitdir} ;;
@@ -759,6 +788,8 @@ if [[ -n ${top} || -e /.git ]]; then
             refuse "the git state ${gitdir}/commondir is not a regular file (a symbolic link, FIFO, device, socket or directory), which git would follow or block on; replace it with a regular file holding ../.., or delete the worktree and run \`git worktree prune\` from the main checkout"
         line=$(pointer_value "${gitdir}/commondir") ||
             refuse "cannot read ${gitdir}/commondir as one line free of control characters"
+        git_form_path "${line}" ||
+            refuse "${gitdir}/commondir holds '${line}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path); replace it with ../.."
         case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) common_guess=${line} ;;
         *) common_guess=${gitdir}/${line} ;;
@@ -943,6 +974,8 @@ git_state_check() {
     for ((i = 0; i < ${#pointers[@]}; i++)); do
         wt=${pointers[i]%/commondir}
         line=${pointer_list[i]}
+        git_form_path "${line}" ||
+            refuse "${pointers[i]} holds '${line}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path)${git_fix_hint}"
         case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) target=${line} ;;
         *) target=${wt}/${line} ;;
@@ -1402,6 +1435,8 @@ admin_dirs_match() {
     done
     pointer_values "${gitdirs[@]}"
     for ((i = 0; i < n; i++)); do
+        git_form_path "${pointer_list[i]}" ||
+            refuse "${gitdirs[i]} holds '${pointer_list[i]}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path)${git_fix_hint}"
         v=${pointer_list[i]%/.git}
         case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) derived+=("${v}") ;;

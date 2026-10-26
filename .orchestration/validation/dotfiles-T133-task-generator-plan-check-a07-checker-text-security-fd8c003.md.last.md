@@ -1,0 +1,8 @@
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:36` Moving authority to the orchestrator’s bare `gh` does not authenticate its executable: PATH/mise substitution can forge acceptance reads, while “non-authoritative” checker execution still exposes forwarded credentials; sandbox labels do not close either risk, and the named binding-owner text specifies uv/Python/Node/permgate binding, not `gh`.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` The authoritative API command omits `--hostname github.com`; inherited `GH_HOST` can redirect the fixed repository endpoint even with a genuine executable, so the stated command does not establish the canonical-main source required by design item 8.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` Authenticating the main SHA does not authenticate the shared local objects consumed by `git merge-base` and `git diff --numstat`; same-user object substitution can change ancestry and measured counts even after inherited `GIT_*` sanitization, so acceptance needs authenticated changeset bytes or a worker-inaccessible clone.
+
+📝 まとめ: Reviewed the task’s threat rows, inherited controls, and cited acceptance/review evidence; three findings remain for orchestrator disposition. No files changed.
+
+Not run: implementation tests or live host probes; executable and changeset binding remain unresolved.
+Verdict: incorrect

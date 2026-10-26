@@ -1,0 +1,8040 @@
+Reading additional input from stdin...
+OpenAI Codex v0.163.0
+--------
+workdir: ~/Workspace/dotfiles
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: concise
+session id: 01a16122-9350-7fb0-851c-7c15c394d63d
+--------
+user
+Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-gh-binding-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+codex
+🤖 I read the AGENTS.md for mryfmo/dotfiles.
+対象の task text と threat_table、参照されている acceptance・review を読み、検証時の判断が実行対象に結び付く設計かを確認します。Ponytail と agmsg-orchestration の該当手順を使い、読み取り専用でレビューします。
+exec
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: agmsg-orchestration
+description: Coordinate structured agmsg task orchestration between an orchestrator seat and worker seats (Codex or Claude Code). Use when Codex or Claude Code needs to run or supervise AGMSG-TASK / AGMSG-RESULT / AGMSG-ACCEPTANCE workflows, bootstrap workers in herdr panes, manage .orchestration artifacts, act as an agmsg worker, or document the flue-pi style orchestration protocol.
+---
+
+# agmsg orchestration
+
+Use this skill for structured multi-agent work where an orchestrator seat assigns bounded tasks to worker seats through `agmsg` teams. The `agmsg-orchestration` rule states the invariants; this skill holds the procedure. Use the regular `agmsg` skill for simple send/inbox/history commands.
+
+## Architecture
+
+- The orchestrator writes task files, starts workers, reviews artifacts, and sends acceptance or revision messages. It is Claude Code in the `herdr-agents` pair, or Codex under `codex-orchestrate` when the manifest's `orchestrator_kind` is `codex` (README "Codex orchestration without a pane").
+- Workers, seats of the manifest's `worker_kind` (Codex or Claude Code), execute one assigned task: they read the task file, obey file and action constraints, write artifacts, and send the required result message.
+- `agmsg` is the message bus. Use only scripts under `~/.agents/skills/agmsg/scripts/`.
+- `herdr` panes are optional worker terminals; they are a launch surface, not the protocol.
+
+## Regime activation and progress
+
+- Activate this regime when the operator requests agmsg/Codex collaboration, or when the agmsg bus is available and a seated worker exists for the repository, such as in a herdr-managed workspace. agmsg is then the always-on communication path and Claude acts only as orchestrator: lightweight grep/read, judgment, task authoring, and acceptance review. The operator may opt out for the current task; only then may the orchestrator mutate the repository directly. When the bus exists but no worker is seated, seat one before any repository mutation (`herdr-agents --add-worker [<worktree>]`, default the manifest `worker_worktree`), and remove it with `herdr-agents --remove-worker <worktree>` once its task is accepted; "no worker" is never an implicit opt-out. In a regime repository the SessionStart `herdr-agents --attach` hook prints this directive as an `agmsg-orchestration:` line after `seat_claim=` in the orchestrator's Herdr pane, or after the summary line in a pane-less session.
+- On activation, verify CompactionDB opt-in for the active repository and install it with `compactiondb-install` if missing. Regime start is operator-initiated consent to the install; acceptance-time decision consolidation then applies.
+- A Claude session started in the repository root outside Herdr (a plain shell, mosh/ssh, or `claude -p`) is a pane-less orchestrator: nothing seats a worker automatically, and the SessionStart `herdr-agents --attach` hook prints a summary line naming that state, the on-demand commands, and any seated worker, followed in a regime repository by the `agmsg-orchestration:` directive line. Bring the regime up on demand: claim the seat outside the sandbox with the composite instance id, `actas-claim.sh <repo> claude-code <name> <session_id>.<claude pid>` (a claim from sandboxed Bash writes the bare session id and turn delivery then skips silently; see the seat-lock bullet below); seat the worker with `herdr-agents --add-worker <worktree>` (it derives `HERDR_SOCKET_PATH` from the default Herdr server socket `~/.config/herdr/herdr.sock`, the path the Claude sandbox allowlists, before creating anything, accepts a claude worker's workspace-trust dialog during spawn's readiness wait, and takes `--ready-timeout <seconds>`); confirm the worker's placement from its `run/spawn.*` placement record itself (the `herdr:<socket>:<pane>` row that upstream `agmsg_spawn_path` resolves) and the `linkage=` line `--add-worker` prints, never from `team.sh <team> --json`, which observes Codex members by reading their pane; treat the `linkage=` line `--add-worker` prints as the `AGMSG-PING` evidence, and on `pong=no` or `linkage=unreached` wake again with `agmsg-dispatch <team> <orchestrator> <worker> <pane> 'AGMSG-PING v1 task_id=<id> reason=<reason>'` and verify the PING's `read_at` (`poke.sh` only for a viewed workspace); and dispatch no AGMSG-TASK before its `AGMSG-PONG` arrives. Without a managed workspace the auditor runs headless, in the form the task-level audit bullet below names. A pane-less session uses turn delivery when the Monitor cannot run; see "Identity, delivery, and storage" for the platform limits.
+- Start checklist (operator or orchestrator, repository cwd, plain shell or Herdr): the workspace created by `herdr-agents <DIR>` full mode holds the orchestrator pane only, and only the operator creates or relaunches it; inside a Herdr pane the SessionStart `--attach` hook claims the orchestrator seat and prints the directive, and never seats, restarts or repairs a worker. Inside Herdr or outside it, the orchestrator seats a worker on demand with `herdr-agents --add-worker [<worktree>]` (its own tab of the managed workspace, or its own workspace for a pane-less orchestrator), confirms it by PING/PONG before any task, and removes it with `--remove-worker` when the task is done. A Claude that finds itself outside Herdr is the pane-less orchestrator of the bullet above: its SessionStart line reports the state, and it brings the regime up on demand exactly as that bullet describes (composite seat claim outside the sandbox, `--add-worker`, PING/PONG before any task, headless auditor); anything neither bullet describes is not improvised.
+- Seat and remove a worker only with `herdr-agents --add-worker` and `herdr-agents --remove-worker`; `--restart-worker` is retired and exits 2. Never run full mode from inside an existing managed workspace; the orchestrator and its worker tabs share one workspace. Activate a worker model or profile change by removing the worker with `herdr-agents --remove-worker <worktree>` and seating it again with `herdr-agents --add-worker <worktree>`, which sources launch args from `~/.agents/model-profiles.env`; never pass ad-hoc flags.
+- Do not idle-wait while worker work is in flight; prepare or delegate independent work.
+- A blocker reported to the operator carries attached evidence: the exact command, its exit code, and the messages.db `read_at`/PONG query, after the wake path that worked in earlier sessions (`agmsg-dispatch`) has been tried. An inference (for example "trust dialog" from a `poke.sh` exit 15 plus a spawn readiness timeout) is not a reportable blocker. `herdr-agents --add-worker` ends with that evidence for a fresh seat: one `linkage=ok read_at=<ts> pong=<yes|no>` or `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>` line from an `agmsg-dispatch` PING, and it exits non-zero only when the PING was not read.
+- Detect worker completion only when an `AGMSG-RESULT` arrives through monitor/turn delivery. Send liveness checks only as `AGMSG-PING`/`AGMSG-PONG`; never read worker panes or screens (including read-only probes such as `pane read`/`pane wait-output` against another agent's pane, even to learn output shapes; use `--help` and fake CLIs), infer completion from pane/agent status, or use ad-hoc polling sleep loops. Limit pane interaction to prompt injection and the submit key.
+- If an out-of-band Codex completion signal is needed, use the official `notify` config: the `agent-turn-complete` event sends a JSON payload to an external command.
+
+## Parallel workers
+
+- Add and remove parallel workers only with `herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME]` and `herdr-agents --remove-worker <worktree> [--force]` (worktree under `.claude/worktrees/`). For Codex, seat ordinary tasks with `--profile standard`; use `--profile security` only for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy), per the model-selection rule, with an identity such as `codex-security-dot-aNNN`. Add-worker seats the worker in its own tab of the pair workspace, labeled `<team>:<name>` with the pair tab untouched (in its own workspace only when no pair workspace exists, as in the pane-less bring-up), through upstream `spawn.sh --project <worktree> --terminal-driver herdr` with the profile's launch args in a generated spawn options file, so a placement record exists and `poke.sh`/`despawn.sh` work. Remove-worker despawns it, then turns delivery off, leaves, and closes that tab (or workspace), refusing a dirty worktree without `--force`. Keep at most `worker_cap` workers (4 in the manifest today); raw herdr topology commands stay forbidden (T21 G7).
+- Under upstream agmsg 1.5.0 self-naming, a pair's panes carry `<team>:<name>` labels rather than `claude-orchestrator`/`<kind>-worker`; `herdr-agents` recognizes the pair through the repository's agmsg seats (the orchestrator identity at the main checkout and the pair's own worker seat, never other team members) and never relabels a self-named pane.
+- Delegate all repository-mutating work — file edits, builds, test runs, and git state changes — to seated workers, with at most one seated worker per git worktree and sequential assignments within one worktree. Add worktrees for parallelism; never use parallel `codex exec` or per-task Codex spawning, except that the read-only, non-interactive task-level audit the orchestrator runs during acceptance (the task-level audit bullet below) is not worker spawning and is permitted; it is identity-less. agmsg/herdr control-plane commands (`delivery.sh`, `watch.sh`, `actas-claim.sh`, `send.sh`, `join.sh`, and herdr agent/pane commands) are orchestrator-side exemptions.
+- The orchestrator acts directly, without delegation, only under these exemptions: agmsg/herdr control-plane operations and evidence-sync bookkeeping; acceptance and final integration, including merging an already-reviewed, CI-green PR; and machine-state hygiene that touches no repository (tool-manager operations such as `mise install`/`mise prune`, removal of unmanaged `$HOME` files), provided tracked worktrees stay diff-clean throughout. It declares which exemption applies in one line before mutating anything.
+- A parallel assignment is valid only when every concurrent worker has all four of: (1) its own git worktree registered as its agmsg `project`; (2) the shared default agmsg store for same-repository work, never a per-worker `AGMSG_STORAGE_PATH`, because identity-addressed delivery and worktree-specific `whoami` already isolate inboxes and one activation watcher observes every RESULT/PONG without extra watchers (which `watch.sh` actas locking cannot support for one claimed identity); (3) an `-aNNN` identity suffix on every concurrent worker, including the first; and (4) an AGMSG-TASK whose expanded `allowed_files` are pairwise-disjoint from all other in-flight tasks for code files; a shared prose file (README, SKILL) may appear in two in-flight tasks only when their sections do not overlap. The orchestrator verifies disjointness and performs all cross-worktree merge, rebase, and conflict integration.
+- Parallel execution procedure:
+  - At plan approval, partition the approved tasks into waves by dependency and file overlap: code files pairwise-disjoint, and shared prose files in disjoint sections. Write the wave table into the plan file.
+  - Keep at most `worker_cap` workers in total (4 in the manifest today; `herdr-agents --add-worker` refuses the next seat). Seat workers with `herdr-agents --add-worker` only up to that cap. Dispatch at once as many tasks of the current wave as there are free seats, each with a distinct `-aNNN` identity and its own worktree, and queue the rest of the wave.
+  - When a RESULT arrives, run acceptance for that task while the others continue; acceptance follows RESULT arrival order.
+  - A freed worker is re-tasked immediately with the next dependency-free task whose files overlap no in-flight task. Never leave a seated worker idle while a dispatchable task exists. The next task starts on a fresh branch from `origin/main`, and the previous task's branch stays in the worktree, untouched, for its revise rounds and until its acceptance. The worker commits and pushes everything before each RESULT, and before every branch switch it commits the newer task's work (or stashes it under a named tag and restores it afterwards), so a switch never carries edits across branches. When a `status=revise` arrives for the earlier task, it checks that branch out again, does the round, and returns to the newer task's branch, so the worktree is reused sequentially and nothing uncommitted is ever left behind.
+  - When a merge moves `main`, every in-flight PR whose base moved, prose or code, merges the new base into its branch with `gh pr update-branch` before its CI, Bot wait and gate. The ruleset's strict up-to-date policy refuses the merge otherwise. `gh pr update-branch` creates a merge commit by default, not a rebase. A real conflict blocks only that PR.
+  - Record the wave table and the per-task worker in the acceptance records.
+  - Some steps stay sequential. The single audit tab serializes audits; the task-level audit of T67 reduces them to one per task. The orchestrator-side gate (`make require-crit-review`) and merges also run one at a time.
+- At parallel-worker teardown, run `delivery.sh set off <type> <worker worktree path>` to stop every watcher on that exact path, then `leave.sh <team> <worker identity>` for each finished worker. The last member of a task-scoped team leaves so the team is deleted while message history remains. Verify with `identities.sh <project> <type>` by counting distinct identity names in the second TSV column: while a worker is seated, one distinct name per type at its worktree is healthy, including multiple rows for that name across teams; the only active seat, the main checkout, holds exactly one name across both types, and a worker worktree holds none once its worker is removed, which `make check-regime-boundary` enforces. More than one distinct name indicates leftover identities that trigger the herdr-agents ambiguity warning at attach and must be cleaned with `leave.sh`; preserve legitimate multi-team memberships of the retained name. Zero names for a project that should remain active must be restored with `join.sh`, never leave-side edits.
+
+## Identity, delivery, and storage
+
+- Give each physical agent one unique identity: `<runtime>-<profile>-<project-suffix>` (for example, `codex-standard-dot`, or a `-flue` suffix for flue-pi). The project suffix derives from the repository, not the checkout; model IDs belong only in `model_profiles` in `agent-config.yaml`. A solo worker has no instance suffix. For parallel workers, rename the incumbent to `-a001` so team registration and message history follow, give every worker an `-aNNN` suffix, re-claim actas locks after rename, and never mix suffixed and unsuffixed identities.
+- Before joining, search every `~/.agents/skills/agmsg/teams/*/config.json` for the candidate name. On collision, choose a unique suffix; never reuse one identity for different physical agents.
+- Register `project` as the worker's real working-tree path (the dedicated worktree for parallel workers), byte-identical across join, delivery setup, and hook arguments. Trailing slashes and unresolved symlinks orphan inboxes through exact-string mismatch. `$HOME` registrations are forbidden because they create Codex-hook ambiguity and steal inbox messages.
+- Register a worker identity at its own worktree path with resolution off: `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>`, and point its delivery at the same path with `delivery.sh set <mode> <type> <worktree>` so the hook bakes the worktree into the session's project marker. Every `join.sh`/`whoami.sh`/`actas-claim.sh`/`reset.sh`/`watch.sh` call a worker makes runs with `AGMSG_RESOLVE_PROJECT=0` (herdr-agents sets it in every worker pane it creates; `spawn.sh --project` sets it for agmsg-spawned seats). Upstream project resolution (#92, `docs/design.md` "Project resolution") otherwise rewrites the path in order: the live SessionStart marker `run/proj.<agent_pid>.project`, then the nearest registered ancestor, then the registered main checkout via `git rev-parse --git-common-dir`. Verified against a scratch v1.5.0 install: a `join.sh` from inside `.claude/worktrees/<x>` without the opt-out registers at the main checkout; a session whose marker names the main checkout (a seat launched from the main path) makes `whoami.sh` inside the worktree answer with the main checkout's identities; the opt-out restores the worktree in both cases. `session-start.sh` exits before the watcher and marker for any session whose cwd is under `.claude/worktrees/` (#367), so a Claude seat launched inside a nested worktree gets no Monitor watch from that hook: the herdr-agents pair worker relies on turn delivery (a spawn-seated worker starts its Monitor through its actas boot) or the inbox checks below. `identities.sh` stays a pure lookup of the exact path.
+- On activation, check `delivery.sh status <type> <repo>`. This repo runs Claude Code seats on `both` (monitor's push plus turn's pull), one notch more redundant than upstream's Claude Code default `monitor`, since an unattended worker pane has no one to notice a Monitor watch that silently failed to re-arm; Codex seats run on `turn` (see the next bullet). If weaker than that, run `delivery.sh set both claude-code <repo>` (or `delivery.sh set turn codex <repo>` for a Codex identity), use the SessionStart-provided `watch.sh <session_id> <repo> <type>` started outside the sandbox as a persistent in-session monitor, and claim exclusivity with `actas-claim.sh <project> <type> <name> <session_id>`. A Claude worker seated by `--add-worker` gets its Monitor watch through its actas boot; when it is seated in its own workspace (no managed workspace exists), `herdr-agents` also sets `AGMSG_CC_MONITOR_KEEP_ALIVE=1` in that workspace's environment so the watch re-arms unconditionally on expiry, not only when the expired watch delivered something (upstream's default).
+- `herdr-agents --bootstrap-agmsg` (and full or attach mode) sets the main checkout's orchestrator hooks, Claude Code on `both`; a worker seat gets its own hooks from `herdr-agents --add-worker`, Codex on `turn` and Claude Code on `both`, so the Stop/SessionStart hook in the worktree's tree-scoped, gitignored `.codex/hooks.json` or `.claude/settings.local.json` delivers inbox messages. Codex deliberately stays on `turn` instead of upstream's shim-based `monitor` bridge (the upstream README names `monitor` as the Codex default in one place and `turn` in its delivery table): as of agmsg v1.5.0 that bridge has open reliability defects an unattended resident worker cannot risk — no teardown on session end (upstream #149), a mode switch that does not start the bridge in a live session (#151), and a bridge that restarts forever while its status reports it alive (#1236), all still open. Storage resolution is env-only: keep `AGMSG_STORAGE_PATH` unset for same-repository default-store workers, or set it to the regime's dedicated store for separate cross-project regimes; a wrong or stray value silently reroutes the worker to another database. Pane nudges are only generic wakes; message content always travels over agmsg.
+- Worker panes run in their worktree: `herdr-agents --add-worker [<worktree>]` seats the worker in that worktree (default the manifest's `worker_worktree`, created from `origin/main` when missing), registers its identity there with `AGMSG_RESOLVE_PROJECT=0`, sets delivery on that path, and starts it through upstream `spawn.sh`, so turn delivery reaches the worker directly through the worktree's Stop hook and its Monitor watch comes from the actas boot (upstream `session-start.sh` skips sessions under `.claude/worktrees/`, #367). The interim worker inbox discipline (running `~/.agents/skills/agmsg/scripts/inbox.sh <team> <identity>` at each milestone: task start, push, CI green, before RESULT, after any PONG) is retired for a worktree-seated worker; it applies only to a worker still acting under a worktree-registered identity from a main-path pane, until `herdr-agents --remove-worker` and `--add-worker` re-seat it.
+- A codex worker in a nested worktree gets `<common>/objects`, `<common>/refs`, `<common>/logs` and `<common>/worktrees/<name>` (`<common>` from `git -C <worktree> rev-parse --git-common-dir`) as writable roots from `herdr-agents` (`-c sandbox_workspace_write.writable_roots`, with the configured agmsg roots kept first), so local git operations need no escalation. The common dir itself, `config`, `hooks`, `info`, `HEAD` and `packed-refs` stay read-only. The worker seat runs with `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`, so a GitHub fetch, push or `gh` call works inside the sandbox and the worker never prompts: there is no escalation for a worker, and an action outside the sandbox or forbidden by the execpolicy fails and is reported as `AGMSG-PONG v1 status=blocked`. The `sandbox_workspace_write.network_access` switch is a boolean, so the worker reaches any host (no domain allowlist is configured, unlike Claude Code's `allowedDomains`), and the permgate PermissionRequest hook never fires for the worker seat; it stays live for interactive Codex sessions, which keep on-request approvals and no sandbox network.
+- The orchestrator's actas seat lock must hold the composite instance id `<sid>.<pid>`; check it with `cat ~/.agents/skills/agmsg/run/actas.<team>__<name>.session`. `actas-claim.sh` run from sandboxed Bash cannot read the Claude pid, writes the bare session id, and the Stop-hook inbox check then skips delivery silently (`other:<sid>`). On macOS, the Claude Seatbelt sandbox denies `ps`; a `watch.sh` Monitor started outside the sandbox (by SessionStart or the orchestrator pane) keeps running, but one started inside computes the bare session id and exits against the composite actas lock. On Linux, the bubblewrap pid namespace hides the Claude pid: a sandbox-started Monitor exits "no longer alive", and `pgrep` sees only the sandbox. No seat starts its watch from sandboxed Bash. `herdr-agents` therefore claims the seat outside the sandbox when it starts the orchestrator pane and from its SessionStart `--attach` hook, printing `seat_claim=ok owner=<sid>.<pid>` (or `seat_claim=unresolved`, never a bare-id lock), and `make doctor` warns on a bare-id orchestrator lock while a claude session runs in the repository. When the Monitor is unavailable, turn delivery is the working path, and an idle orchestrator is woken by the worker's `agmsg-dispatch` to the orchestrator pane.
+- Reserve store separation for concurrent regimes in different projects, such as flue-pi. When using it, set the same `AGMSG_STORAGE_PATH` in the worker pane and on orchestrator send/watch/history calls or tasks, results, and pongs become unreachable. Same-repository parallel workers always share the default store.
+
+## Live verification
+
+- Accept changes to live desktop behavior — herdr layout/session, pane lifecycle, or delivery hooks — only after live end-to-end verification covers both a fresh session and a persisted-session restore; unit and static tests alone are insufficient.
+- Launch orchestrator-driven E2E test-subject panes with express-profile arguments from `~/.agents/model-profiles.env` (`MODEL_PROFILE_EXPRESS_CLAUDE_ARGS` / `MODEL_PROFILE_EXPRESS_CODEX_ARGS`), never ad-hoc `--model` flags.
+
+## Review and integration invariants
+
+- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.
+- Only acceptance decisions and final merge stay orchestrator-side. Seats and scripts handle integration, adversarial RESULT review, review-profile work, gate and records through `verdict.sh`, `audit-pool.sh`, `result-precheck.sh`, `acceptance-front-matter.py` and `dispatch.sh --next`. Pending each mechanism, Delegation's interim exemption permits manual orchestrator execution. Every code-changing RESULT gets one task-level audit of its final head; findings are input, never approval (the "Task-level audit" bullet).
+- A design review runs in paired rounds. Both reviewers, a fresh Claude context on the `review` profile and a Codex read-only run under a `codex-review` identity, get the same design hash at the same time. The orchestrator revises once per pair of results and opens no round while one is still open. The third pair is the last: on its accept the design is frozen at the hash the pair last accepted, the third pair's own, and whatever is still open at that hash becomes a residual list that is worker input; on its revise or reject nothing is frozen and the design goes back to a context other than its author, never to a fourth pair; a revision after the third pair is not made, and any later change to a hashed key is a new pair (INV-7). The review judges the invariants, threat model, trust anchors and premises for contradiction and enforceability, never implementation detail.
+- A task-file review is one round with a fixed stop condition: no contradiction with the design, the premises hold, `allowed_files` covers every touch point that grep finds, and one invariant check (for a task that carries an `invariants` key: the task id maps to its `implementing_tasks` entry, the invariant ids match, and each invariant's sentence equals the design's byte-for-byte, the design read from main (INV-2), checked by hand in the review; a task without the key needs no entry). Anything finer belongs to the worker and the implementation PR.
+- A boundary PR synchronizes records at a boundary. It carries no task draft under review. A design not yet on `main` lands through a merged boundary PR before its implementing TASK is dispatched (INV-2), and any merged boundary that carries the design meets that precondition.
+- A task that touches a trust boundary (anything the design tier lists, CI that decides a required check, code that executes PR-controlled input) carries a `threat_table` in its front matter: one `{control, disposition}` row per thing the PR or the orchestrator controls (the tree and its tests, task.md, workflow files, interpreter and environment files, in-process effects, new or renamed scripts, metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, new or renamed scripts, metadata separators), carried by the declared test module's row where that is where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a wildcard over test fixtures or other data files keeps one row; C4 and C7b of `scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file review checks the rest. A disposition takes one of three forms: `closed: tests/<file>::<name>`, the test that closes the row; `residual: <sentence>`, the compensating control; `out-of-scope: <task id>`, the task that owns the row. The task-file review checks the three shape rules by hand: a `closed` selector names a test present in the PR tree at acceptance, an `out-of-scope` owner is a task id in the design's `implementing_tasks`, a `residual` payload is a sentence of at least 20 characters (the gate's minimum for a reason). For a `closed` row it checks the selector's form only, since the test does not exist before implementation. Substance is the reviewers': the task-file review, the Bot and the auditor judge each row against the diff. The table is the task's completion condition: a missing row is added once, counted as an amendment, never fixed finding by finding.
+- Before every acceptance action (revise, accept, merge) the orchestrator runs `scripts/regime-counters.sh <task id>` and pastes its output into the acceptance record. S2 is decided from INV-6's counts: each component the script prints is read from its output, and for each component it prints as `unknown` the record pastes the command and output that read the source INV-6 names for that component, or, while that source has no entry for the task, says so and pastes the reading of the interim record the orchestrator used in its place. S1 (plan 006: the same finding class three times on one artifact, from any reviewer) is decided from the record's finding-class table, which gives a class to every finding the PR-feedback sweep lists, whatever its disposition, and to every task-level audit finding; three rows of one class stop the artifact. Read that table over non-advisory rows only: list advisory P2 rows with their classes (`advisory-p2` and the `local:<sha7>:<n>` rows `local-advisory.sh` writes), exclude them from S1's three-rows count, and name the excluded rows in the record. The gate's S6 check still sees every ledger row, so an advisory class at three rows gets its `searches` entry from `acceptance-front-matter.py` like any other. INV-6's message and head counts and the S2 lines (`revises`, `amendments`, `questions`, `bot_p1_heads`) take no ledger rows; `scripts/regime-counters.sh` prints them unchanged.
+- A change to a rule sentence requested of a worker travels as a task amendment (hashed, checked by `scripts/orchestrator/task-consistency-check.py` (C1 to C10 and C7b) before dispatch and at acceptance, confirmed by the review seat), never as a PONG answer.
+- When a finding class reaches three on one artifact (the record's ledger) or `scripts/regime-counters.sh` prints an S1 candidate, the next acceptance action is the records search for that class, pasted into the record as the line `search: <class> -> <the matching mistake records or none>`, and the matching correction is applied when its mechanism is landed, or landed first when it is pending, mechanism by mechanism, before any dispatch; a class is a slug of `[a-z0-9-]` assigned at disposition time, never text taken from a review title. `scripts/orchestrator/three-repeat.sh <class>` validates the slug, runs the records search and the CompactionDB search without a shell and prints the line. The gate (`scripts/require-crit-review.py`, S6) refuses the merge for a ledger class at three or more rows whose `searches` entry does not equal the mistake records naming the class; `acceptance-front-matter.py` writes the entry from the same lookup. Pasting the `search:` line and applying the correction before any dispatch remain the orchestrator's rule. Every `not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.
+- At regime or session boundaries, write pending acceptance records, then mechanically commit every `.orchestration` file so no untracked tail remains. The sync needs no per-task artifact set: its audit record is the commit, whose message lists covered task IDs, plus agmsg ACCEPTANCE history. `make check-regime-boundary` reports a canonical clone with unmerged entries, a stash, or a difference from `origin/main` under `home/`, `install/` or `scripts/` as a sign that something ran where it must not. Lessons from a session are codified in this repository (a rule, the skill, or a check) through a task; Claude auto-memory is not a durable store for regime procedure. The canonical clone is pull and apply only and untouched by any seat: no edits, no apply from a dirty tree (the run_before guard refuses it), and one orchestrator identity per repository, seated at the working clone.
+- Stop checklist, at every regime or session boundary and in this order: write pending acceptance records; mask every `.orchestration` file the boundary commit adds or changes with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`, which also normalises home directories to `~`; run `make validate-agent-assets` (real exit status); make the `.orchestration` boundary commit with zero untracked tail on a fresh `orchestration/boundary-<YYYY-MM-DD>` branch from `origin/main` and merge its PR with `gh pr merge --squash --auto`, queued only while no other PR is between its final head and its merge (plan 020 step 3; otherwise the boundary PR waits and is merged after that PR); remove every worker with `herdr-agents --remove-worker <worktree>` (despawn, delivery off, leave, tab or workspace closed); check stale identities with `identities.sh <path> <type>` (exactly one name at the main checkout, none at a worker worktree); close Crit review servers (`pgrep -f 'crit _serve'` must be empty); in a CompactionDB-opted-in project, review `uv run --no-project .claude/hooks/contextdb_cli.py memory candidates --limit 20` and promote each candidate worth keeping with `uv run --no-project .claude/hooks/contextdb_cli.py memory promote <id> --scope project`, or leave it. The orchestrator workspace itself stays resident for the next session unless the operator restarts the machine. `make check-regime-boundary` (`scripts/check-regime-boundary.sh`) checks this list and the orchestrator seat lock, one line per violation.
+- Before every `.orchestration` boundary commit, run the masker on the files it adds or changes (`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`), then `make validate-agent-assets`, and branch on its real exit status, never through a pipe; fix a failure before pushing, because committed audit evidence can trip the secret scan, which also rejects a home directory path in `.orchestration/**`.
+- The orchestrator never pushes a repository change to `main` directly. `main` is protected by the GitHub ruleset "main integration gate": a pull request is required, review threads must be resolved, the seven required checks must pass under the strict up-to-date policy, and `main` cannot be deleted or rewound. The `.orchestration` boundary commit goes on a fresh branch from `origin/main`, `orchestration/boundary-<YYYY-MM-DD>` (suffix `-2`, `-3`, … for another boundary the same day, since merged branches are kept), opens as a PR, and is merged with `gh pr merge --squash --auto`: each required job decides inside itself and reports success on an `.orchestration`-only diff; a skipped required job would report Success (fail-open), so no required job carries a job-level `if` or a `needs`. An acceptance merge happens only on GitHub using step 10.5; a local merge followed by a push is no longer a path.
+- For CompactionDB-opted-in projects, verify during the sync that every accepted task has a consolidated decision record.
+- A `.ua/` graph RESULT is accepted only when its validation file pastes the table from `ua-symbol-coverage <previous-graph> <new-graph> --old-ref <previous-graph-rev> --repo-ref <new-graph-rev>` (on PATH from `~/.local/bin/common`; each rev is that graph's `.ua/meta.json` `gitCommitHash`, the new one normally `HEAD` and never the pre-change base; `--old-ref` tells renames from deletions) with zero regressions, or cites the source change behind each decrease; `validateGraph` passing does not prove extraction completeness.
+- Task-level audit: every RESULT that changes repository code gets one audit of the task on its final head, covering the whole PR diff (`git diff <merge-base> <head>`).
+  - Pair form, in the pair workspace's dedicated audit tab: `herdr-agents --audit <head-sha> --task <id> [--out <path>] <main DIR>`. It writes `.orchestration/validation/<id>-audit-<sha7>.md` and codex's final message to that file's `.last.md` companion, whose last non-blank line is the verdict.
+  - Headless form, without a pair workspace, with `<out>` = `.orchestration/validation/<id>-audit-<sha7>.md`, run from the orchestrator's own checkout (never one that sits at the audited head):
+    - Give codex the same task-level inputs the pair form builds: the task file `.orchestration/tasks/<id>.md` (required), the worker's report, validation and sandbox files and `<id>-pr-feedback.json` (those present), the final head `<head-sha>` and the PR diff `git diff $(git merge-base origin/main <head-sha>) <head-sha>`. Ask for findings as `[P0-P3] confidence dimension file:line rationale` and exactly one concluding `Verdict: correct|incorrect|blocked` line.
+    - Run `rm -f <out> <out>.last.md && set -o pipefail && codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C <repo> -o <out>.last.md '<that prompt>' 2>&1 | tee <out>`. Removing both files first means a failed rerun can never leave an earlier `Verdict: correct` behind, as the pair form also ensures, and `pipefail` keeps codex's exit status through `tee`. A nonzero codex exit means no audit: there is nothing to gate, so rerun it.
+    - Only after a zero exit, mask both files with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <out> <out>.last.md` from a trusted checkout. Like the pair form, refuse when that checkout's HEAD is the audited commit, or when its validator is missing, untracked, or changed against HEAD (`git diff --quiet HEAD -- scripts/validate-agent-assets.py`), so a PR can never run its own validator on the orchestrator. Treat a refused or failed masking as a failed audit.
+    - The gate needs both the transcript file and its non-empty `.last.md` companion.
+  - Run either form from a clean tree: the only untracked content in the audited checkout is this task's `.orchestration` evidence that the audit prompt names (task file, report, validation, sandbox file, feedback JSON). Otherwise run it from a dedicated clean checkout, so no other edit can reach the auditor.
+  - A new push, including a `gh pr update-branch` merge, needs a new audit of the new head.
+  - The orchestrator dispositions every `[P0-P3]` finding in the acceptance record, whatever the verdict, numbered 1..N in the audit's order of `[P0-P3]` lines (the audit's finding lines may be bulleted). For an `incorrect` verdict the dispositions are the record's JSON `audit_findings`, the only form the gate reads: one `{n, reason, evidence}` entry per finding, `n` the number as a string and `reason` at least 20 characters, written with `scripts/orchestrator/acceptance-front-matter.py --audit-dispositions <tsv>`; an entry never cites a fix, since a fix moves the head and needs its own audit. A finding under `Verdict: correct` is dispositioned all the same, as an `audit-finding: <n> …` line in the record's prose: `fixed:<sha>` with a fresh audit of that sha, otherwise `not-applicable:<reason of at least 20 characters>`. Deferral ("later", a follow-up task, a stopgap or a suppression) is not a disposition except under the advisory-P2 policy in Orchestrator Playbook step 10.
+  - The audit evidence and the PR-feedback JSON quote reviewed content, so mask them with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>` before they are committed. The gate compares PR-feedback bodies after the same masking, so masked feedback evidence still matches the live collection (T93, #251).
+  - Audit findings are input, never approval; acceptance authority stays with the orchestrator, and each RESULT gets its own acceptance record.
+- Crit is agent-side only for Claude Code and Codex alike, as in `home/dot_config/claude/rules/crit-review.md`: record crit-data evidence (`crit status --json`, `crit comments --all --json <review.json>`) and never open a browser review to ask the user. When Crit data is unavailable, save the independent agent review as the same repo-local JSON list (objects with non-empty string `id`, `body`, `scope` and `resolved: true`, at least one `scope: "review"` or path-bound `line`/`file` record; hand-written records are acceptable because the guard validates shape, not provenance) and reference it from a `review_surface: crit-data` receipt with `reviewer: claude-code`, `claude`, or `codex`, `review_source: <that JSON>`, and `review_outcome: approved` or `addressed`. Run `crit share` or any other publish step only when the user explicitly asks for it. Close a Crit session opened by the Plan Mode hook once its review is done, so no local Crit web server stays resident.
+
+## Message Contract v1
+
+Send messages as single-line records so inbox/history output stays parseable.
+
+`AGMSG-TASK v1` fields:
+
+```text
+AGMSG-TASK v1 task_id=<id> repo=<absolute-repo-path> task_file=<path>
+allowed_files=<paths-or-see-task-file-section> forbidden_actions=<semicolon-list>
+expected_result_file=<path> expected_validation_file=<path>
+expected_sandbox_file=<path> expected_learning_file=<path>
+expected_autoskill_file=<path> done_signal=AGMSG-RESULT max_turns=<n>
+note=act-as-worker-<task-or-role>
+```
+
+Task files must state durable facts with `[memory:decision]` or `[memory:failure]` markers using the tag form, bracket form, and kind aliases defined by the vendored CompactionDB README.
+
+Task front matter's optional `requires_decision:` lists decision ids without which the task may not proceed. The task-consistency checker verifies each id exists in `.orchestration/decisions.tsv` with a result other than `pending`.
+
+`AGMSG-RESULT v1` fields:
+
+```text
+AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
+report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
+```
+
+Before sending, the worker writes the RESULT line's `key=value` pairs to `.orchestration/<task>/result.txt`; `result-precheck.sh` reads that file.
+
+Tasks that create persistent side effects outside the repository working tree, such as global asset installs, writes under `$HOME`, or external service registrations, include the optional field `effects=<semicolon-list-of-short-ids>`. In-repository edits within `allowed_files` are not effects. For each declared effect, the report must state its reverse mapping: a named `~/.agents/.installed-manifest.json` step removable with `remove-agent-asset`, a documented removal procedure, or an `irreversible:` statement with rationale.
+
+The RESULT field `precheck=<sha256 of precheck.json>` is the digest of the precheck evidence already emitted by P1-5.
+
+RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `uv run --no-project .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
+
+RESULT validation files must contain the verbatim output of every validation command actually executed — not summaries or PASS labels alone — and any identifier the report claims to have created (commit hash, PR number, CompactionDB memory/decision ID) must appear in that pasted output. A claim without its pasted output is treated as unexecuted and grounds for `status=revise`.
+
+`AGMSG-ACCEPTANCE v1` fields:
+
+```text
+AGMSG-ACCEPTANCE v1 task_id=<id> status=accepted|revise reason=<short-reason> next_action=<action>
+```
+
+Each acceptance record also includes a `cost:` line with worker-reported token/cost figures when available, otherwise `cost: n/a`.
+
+A RESULT with a P0/P1 surviving the one worker-side fix round carries `bot_rounds=2` and lists it as `open:<thread id>` (`open:review-<review id>` for a review-body finding); the PR stops for the operator's decision (Worker Playbook step 15). A `status=revise` ACCEPTANCE carries `previous_head=<the RESULT head being revised>` and one failing-test selector per finding (`check=tests/<file>::<name>`); the worker records both in `.orchestration/<task id>/revise.yaml`, beside the task.md copy.
+
+Liveness messages:
+
+```text
+AGMSG-PING v1 task_id=<id> reason=<short-reason>
+AGMSG-PONG v1 task_id=<id> status=alive|blocked|question note=<short-note>
+```
+
+The optional PONG field `context=<percent>` reports the seat's context usage. `dispatch.sh --next` reads it and refuses a seat above its context threshold.
+
+`question`: the worker holds and asks; INV-6 counts it.
+
+## `.orchestration` Workspace Layout
+
+- `tasks/`: orchestrator-authored task specs.
+- `reports/`: worker reports and blocked-task reports.
+- `validation/`: command output and validation evidence.
+- `acceptance/`: orchestrator acceptance, revision, or rejection records.
+- `sandboxes/`: per-task isolation records (sandbox/worktree evidence).
+- `autoskill/config/`, `autoskill/inputs/`, `autoskill/runs/`, `autoskill/outputs/`: redacted AutoSkill artifacts.
+- `learning/`: task learning triage records.
+- `learning/rule_candidates/`: candidate reusable rules only.
+- `skills/candidates/`, `skills/promoted/`, `skills/rejected/`, `skills/merged/`: separated skill registry states.
+- `agmsg/`: exported or summarized agmsg history when needed for review.
+
+## Orchestrator Playbook
+
+1. Join or confirm the agmsg team and identities with the `agmsg` scripts.
+2. Create the `.orchestration` directories before assigning work.
+3. Write a task file that includes objective, scope, allowed files, forbidden actions, expected artifacts, validation commands, and max turns. Name the render check as `make render-check`, never the bare `python3 scripts/generate-agent-configs.py --check`, which fails without PyYAML. Ground `allowed_files` by grepping the repository for every touch point the task names (tests that pin call sequences, mirrors, fixtures) before dispatch. Verify every CLI constraint the task asserts by running the real command in a safe form, not by reading `--help`. Presume an auditor finding that contradicts your own review is right until you refute it with evidence. Decide the worker kind from the allowed files before dispatch: a seat never edits the source of its own execution boundary, so a change is routed by the boundary it touches. A change that touches only Claude's boundary goes to a Codex seat: the `claude.permissions`, `claude.sandbox` and `claude.hooks` blocks of `home/dot_agents/agent-config.yaml` (including excludedCommands, allowUnsandboxedCommands, writable roots, network and the PermissionRequest hook), the Claude-rendering parts of `scripts/generate-agent-configs.py`, the rendered `home/.chezmoitemplates/claude-settings-managed.json`, and `home/dot_claude/modify_private_settings.json`. A change that touches only Codex's boundary goes to a Claude seat: `codex.sandbox_workspace_write`, `codex.approval_policy`, the Codex-rendering parts of the renderer, and `home/.chezmoitemplates/codex-config-managed.toml`. A change that touches both, or a shared source the orchestrator cannot split (such as `codex.sandbox_workspace_write.writable_roots`, which also renders into Claude's `allowWrite`), goes to the operator. The orchestrator decides the kind from the diff the task will produce and records it and the chosen worker profile in the task file. The Claude Code auto-mode classifier also refuses a Claude-boundary task on a Claude seat as Self-Modification. A task that edits permgate (`home/dot_agents/permgate-policy.yaml`, `home/dot_local/bin/common/executable_permgate`), the PermissionRequest hook of both seats, goes to the operator; a Codex `security`-profile worker reviews the change before the orchestrator accepts it, per the model-selection rule. `auto` is Claude Code's built-in starting permission mode since 2.1.283. A project-level `defaultMode: auto` (`.claude/settings.json` or `.claude/settings.local.json`) does not take effect, and the session then also ignores the user-level `defaultMode`, so `auto` belongs only in user or managed settings. Before dispatch, read the task's verbatim blocks against each other for contradictions, and state each rule once; a second artifact references the first instead of restating it.
+4. Start or relaunch worker panes only through `herdr-agents` modes. Deliver messages and wakes as in step 6; never use `pane send-text` followed by `send-keys Enter`, because the separate Enter races the TUI composer and fails nondeterministically.
+5. Configure delivery deliberately. `delivery.sh set turn` is useful for turn-end inbox checks; changing delivery mode can kill project watcher processes, so do it before starting long-running project watchers.
+6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`. Pass every `send.sh`/`poke.sh` body with `--body-file <path>` (both take it in agmsg v1.5.0), never as a positional argument: a positional `<text>` passes through the caller's own shell first, where a backtick or `$( )` in the body silently executes and vanishes from what arrives (upstream #378). `agmsg-dispatch` is the one exception and takes a single-line, shell-safe positional message. Pick the path by how the recipient is seated, never by inferring pane or agent status: a worker in a `herdr-agents` pane gets `agmsg-dispatch <team> <from> <to> <pane_id> "<message>"` (send, generic wake, `read_at` wait; single-line shell-safe text only), the sanctioned wake path until worker seating writes placement records at launch, because `poke.sh` exits 1 with "no placement record" for a hand-joined member, and a herdr-agents worker gets a record only once it acts from its own pane (upstream `send.sh`/`inbox.sh` record the acting pane, #1109); a spawn-seated member (placement record `run/spawn.*`; `team.sh <team> --json` shows its pane) gets `poke.sh <team> <name> --body-file <path> [--retries N --retry-delay SECONDS --backoff fixed|exponential]`, which types and submits in one call and refuses to type over an in-progress draft (#1321/#1322); a pane-less member gets `send.sh <team> <from> <to> --body-file <path>` and its own delivery mode. Verify delivery via the messages.db `read_at` column. `poke.sh` exit codes: 10 = terminal unreachable, 12 = pane gone or no live agent, 14/15 = refused to type over a changing or unlocatable input box, 13 = the driver has no poke path for this pane (for example a `plain` terminal); where poke.sh's narrow agmsg-message fallback succeeds it exits 0, so 13 means nothing was delivered, and the printed reason names the native channel, asks the caller to claim its own identity first, or reports that the fallback failed. Never retry a 13 as `send.sh` yourself: that overrides the driver's considered refusal and can double-deliver. Seating case: a worker in an unviewed or headless Herdr workspace (no client attached, a small pane rect such as 18x41) makes `poke.sh` exit 14/15 from its TUI input locator; that is a locator refusal, not evidence about the worker's state, so wake it with `agmsg-dispatch` and verify `read_at`. Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a `dispatch:` key as the bus line with its read marker, so the orchestrator creates that record, `.orchestration/acceptance/<task>.md`, before the task's first dispatch (`scripts/orchestrator/dispatch.sh` refuses a record that does not exist or that names another task); a seat is reported as working only from such a line, and after a context compaction the open TASK list is re-derived from a bus read that is refused when it reaches its limit (`bus-read.sh` exits when the history reaches `BUS_READ_LIMIT`; the orchestrator raises the limit and reads again), never from a default-limited one and never from a read whose truncation went unnoticed. A seated worker idle for 20 minutes since its latest bus event for the task while a dispatchable task exists (INV-10's idle figure; its 30 minutes is the first-push deadline) gets a bus read, then a PING; a longer silent wait is never the answer. `scripts/orchestrator/dispatch.sh` writes the line and `scripts/orchestrator/bus-read.sh` performs the read and prints the minutes since each open task's latest event (both on main since a03c1daa, plan 007 T718); the orchestrator applies the 20-minute figure to the minutes the script prints (the script's own silence flag still uses 30 minutes, a recorded residual of the tools lineage).
+7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
+8. On `AGMSG-RESULT`, read the task file and every referenced artifact before deciding.
+9. For a RESULT carrying `effects`, verify that every declared effect has the report's stated reverse mapping before acceptance; record any irreversible effect in the acceptance note.
+10. For a RESULT that carries a pull request, integrate in this order. This is the single procedure that the PR integration rule, `AGENTS.md`, the README and the gh-first-workflow skill cite. A `gh pr update-branch` moves the head, so steps 1 to 4 run again on the new head. After an update-branch the orchestrator runs it, the order is CI on the new head, then the sweep, then the audit; an audit started before CI finishes sees incomplete evidence and returns an evidence-only `incorrect`. Select a checkout with git -C <absolute path>, never with cd, which the sandboxed Bash may not honour. After moving the review worktree to the audited head, verify git -C <review> rev-parse HEAD equals that head and git -C <main> symbolic-ref --short HEAD prints main before the audit and the gate.
+    1. Sweep the final head's feedback with `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json` and give every item a `fixed:<commit>` or `not-applicable:<reason>` disposition, leaving none on `failure` or `warning` annotations. Optionally request `@coderabbitai full review` on the final head first; when a CodeRabbit review exists it is swept like any other item, and the gate does not require a bot review. An `open:<thread id>` or `open:review-<review id>` item surviving the worker's fix round follows Worker Playbook step 15's operator-decision path; the PR is not merged, never with the thread open.
+       - A P2 finding of the Codex Bot, local review or task-level audit is advisory: disposition it `not-applicable:advisory P2 owned by <lineage>-followup-a0<n>` and record an `<id><TAB><class>` row under `## Owned by <owner>` in the lineage's acceptance record, with the orchestrator writing the owner task file before the row.
+       - Except that a small P2 on the PR's own change whose fix stays within the task's `allowed_files` is fixed in a revise round sent by the orchestrator with a `check=` while INV-6's counts allow it.
+       - The post-round audit of the final head is the single authority on the PR's findings, dispositioned finding by finding before the gate; a P0/P1 it leaves is the operator's decision, and the merge follows sub-step 5.
+    2. Run the task-level audit of that head in the pair or headless form of the task-level audit bullet. It exits nonzero for every verdict other than `correct`. An exit with `Audit verdict: incorrect` is not a failed step: continue to step 3 and disposition its findings. A `blocked` or missing verdict means re-running the audit.
+    3. Write the acceptance record, summarising the dispositions, with every audit finding dispositioned as the task-level audit bullet says: for an `incorrect` verdict the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE`.
+    4. Run the gate: `AUDIT_EVIDENCE=<audit> AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
+       - A `review` sweep item whose body carries a `P0`–`P3` badge is a finding with its own `fixed:<commit>` or `not-applicable:<reason>` disposition, never a container for its inline threads.
+       - The sweep covers issue comments, reviews, inline review comments with thread resolution, non-passing check runs, check-run annotations at every level (`notice`, `warning`, `failure`), and commit statuses. A `failure` marked `not-applicable` needs a concrete reason of at least 20 characters.
+       - A CodeRabbit full review is optional, at most once on the final head: the plan allows one review per hour and every review event spends one (docs.coderabbit.ai/management/rate-limits).
+       - The feedback JSON may be masked with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets`, which masks its keys and string values; the gate identifies an item by its source, url, level, path, line and body, and accepts a body or path that is verbatim or exactly that masked form.
+       - The gate rejects evidence outside `.orchestration/validation/` or without the `-pr-feedback.json` suffix. It binds `BASE` to the PR's GitHub base before running the collector from that authenticated SHA: an older base must be outside HEAD's first-parent chain, an advanced base must preserve the merge-base with the PR head, and PR branch commits (including `HEAD`) cannot substitute for the base. Evidence must match the local GitHub repository independently of `GH_REPO`, and `fixed:` commits must be in the authenticated GitHub base-to-head range whatever `BASE` is selected.
+       - `AUDIT_EVIDENCE` must be the task-level file `.orchestration/validation/<task>-audit-<sha7>.md` (the same `<task>` as the feedback JSON); a per-commit `audit-<sha>.md` is rejected. Its verdict comes only from the non-empty `<file>.last.md` and must be `correct`, or `incorrect` with an `audit_findings` entry in the acceptance record for each of its findings. PRs that change only `.orchestration/` files need no audit.
+       - A boundary PR (`orchestration/boundary-<date>[-n]`, `.orchestration` files only) skips the gate, the sweep JSON and the audit (with `BASE` set the gate would demand `PR_FEEDBACK_EVIDENCE`); each Bot thread on it still gets a disposition reply and is resolved, and the next boundary commit message names the PR.
+    5. After the required checks pass and the threads are resolved, merge with `gh pr merge <pr> --squash --match-head-commit <audited head sha>`, so a newer head can never be merged on the evidence of the audited one. Every seat acts as the machine's one GitHub account, so no approval is required or possible. Who merges is decided by the integration gate and by native denial of merge commands in Codex seats; `herdr-agents` writes the Claude worker deny rules (`Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`, `Bash(gh api graphql:*)`) into the worker worktree's `.claude/settings.local.json`, where [deny rules take precedence over allow rules and cover nested subcommands in every permission mode](https://code.claude.com/docs/en/permissions), but a method flag after the path escapes these prefix rules, so the integration gate remains the authority.
+    6. Send `AGMSG-ACCEPTANCE` (step 11).
+11. Send `AGMSG-ACCEPTANCE v1 status=accepted` when done, or `status=revise` with a narrow `reason` and `next_action` when more work is required.
+
+## Worker Playbook
+
+1. Read the full `AGMSG-TASK v1` message.
+2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR as a draft with `gh pr create --draft --head <branch>`. Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there; for a Claude seat only the push leaves the sandbox, and a Codex seat pushes from inside it (step 4). A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator. Remove a scratch worktree (for example one that proves a test fails on `origin/main`) with `git worktree remove <path>` only; never run `git worktree prune` from a sandboxed seat, because other worktrees' paths look missing inside the sandbox and prune then targets their admin directories in the shared `.git/worktrees`.
+3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Fetch and fast-forward inside the sandbox; a public remote needs no credential. For Claude seats on macOS, Seatbelt denies the Mach lookup of `com.apple.trustd.agent`, so Go-based CLIs (`gh`, `gcloud`, `terraform`) fail TLS verification with `x509: OSStatus -26276` (`errSecInternal`); `git` uses Apple libcurl, LibreSSL and `/etc/ssl/cert.pem` and succeeds. On Linux, the bubblewrap sandbox denies the AF_UNIX keyring socket, so `gh` answers HTTP 401; `allowUnixSockets` cannot grant a path. Monitor and process visibility limits are in "Identity, delivery, and storage". On both platforms a Claude seat runs three commands outside the sandbox through the permission gate: `gh`, `git push`, and an authenticated `git fetch` (a private HTTPS remote, whose credential helper is `gh`); `excludedCommands` and `enableWeakerNetworkIsolation` are operator options, not selected alternatives. Look up a VERIFY item's external reference (upstream documentation, release notes, an API schema) with the WebFetch tool, not Bash `curl`. Three documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox; writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox; and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.
+5. Write artifacts to the exact expected paths (a Claude seat writes them through the permission gate, step 4). Do not invent alternate paths. A seat whose sandbox cannot write the main checkout (a Codex seat) writes them at the same relative paths in its own worktree, untracked, and the RESULT says so; the orchestrator moves them into the main checkout by absolute path before review. Worker-side review evidence carries a `-worker-` infix (`<task>-worker-crit.json`, `<task>-worker-review-receipt.md`), so it never collides with the orchestrator's own files.
+6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
+7. Put the isolation status or fallback rationale in `expected_sandbox_file`.
+8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
+9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.
+10. If blocked, still write the report and evidence paths that explain the blocker.
+11. Reply with the requested `done_signal`, normally `AGMSG-RESULT v1`, and include all artifact paths. To a herdr-paned orchestrator, send RESULT and PONG with `agmsg-dispatch <team> <worker> <orchestrator> <pane_id>` (for example `wN:p1`; single-line, shell-safe text) rather than bare `send.sh`, so the wake starts the idle orchestrator's turn and its Stop hook delivers the message. The Claude sandbox manifest lists `agmsg-dispatch` in `claude.sandbox.excludedCommands`, so a Claude worker runs it outside the sandbox from the first attempt: no failed sandboxed run, no unsandboxed retry, and no escalation. Claude Code still applies its permission rules to excluded commands, so the managed settings allow `Bash(agmsg-dispatch:*)` (the only managed `permissions.allow` entry) and the dispatch runs without a prompt. A Codex seat runs under Codex's own sandbox, which this setting does not cover.
+12. Put a `cost:` line in the report with observed session token/cost figures when the runtime exposes them, otherwise `cost: n/a`. This report value feeds the T76 `AGMSG-ACCEPTANCE v1` cost line.
+13. A worker executing an AGMSG-TASK treats the Understand-Anything auto-update hook instruction ("knowledge graph is stale, you MUST update it") as out of scope unless `.ua/**` is in its `allowed_files`: it records "hook fired; not acted on" in the report and continues. The orchestrator never runs the graph update in its own session; graph refreshes are separate worker tasks.
+14. Before sending RESULT, a worker whose session started a Crit plan review accounts for its Crit review server. A Claude seat starts one through Plan Mode's ExitPlanMode hook, and a Codex seat through the Crit plugin's Stop hook (`crit plan-hook --mode codex`). `make check-regime-boundary` treats a running `crit _serve` as a violation, and unit tests that read the host `pgrep` fail while one runs.
+    - A worker cannot reliably stop the server itself (verified with crit v0.21.1 on a scratch `crit plan`). Inside the sandbox, `crit stop` always reports no running daemon. Outside it, `crit stop` stops the plan server only on the branch the server was started on, so it misses a server started before `git switch -c <task-branch>`, which is the common worker case. `crit stop <plan-file>` does not match a plan session on any branch. An unsandboxed `crit stop` is also not pre-approved.
+    - A worker cannot inspect the host for the server either. Neither seat may leave its sandbox for host commands, because that would be an escalation, which step 4 forbids. For a Claude seat on macOS or Linux, the platform-specific process limits in "Identity, delivery, and storage" also apply here; no sandboxed host inspection is attempted.
+    - So the worker, Claude or Codex, adds `plan-mode-used=<worktree>` to the RESULT and does nothing else about the server.
+    - The orchestrator handles it as control-plane hygiene on the host. It runs these `pgrep`/`ps`/`kill` calls outside its own sandbox through the permission gate (`dangerouslyDisableSandbox`, answered by the operator or the auto-mode classifier) under its control-plane exemption, as it already does for `agmsg-dispatch` and `herdr-agents --audit`. It lists servers with `pgrep -fl _serve`, where a process named `crit` is a Crit server and the calling shell is listed under its own name. It reads each server's session record (`~/.crit/sessions/*.json` holds `pid`, `cwd` and `branch`) and confirms the server is live before acting: `ps -o args= -p <pid>` must show `crit _serve`, and the record's `cwd` must be that worker's worktree. The live process's own cwd must also match: `readlink /proc/<pid>/cwd` on Linux (`lsof -a -d cwd -p <pid> -Fn` on macOS) must equal the record's `cwd`. A mismatch means the pid was reused, and the record is stale. Only then does it stop the server with `kill <pid>`. A record whose pid is gone or runs another command is stale; it is removed, never killed. Never use `crit stop --all`, which stops every seat's server.
+15. After the final push, wait for CI and the Codex Bot before sending RESULT. The Bot reviews at PR open and, after the one P0/P1 fix round, once more on `@codex review`; the review count is 1 + the fix rounds (plan 020 step 2).
+    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head's wait skips it): the Codex Bot reviews non-draft PRs, and a draft only on an explicit `@codex review` comment. When no Bot review of the final head arrives within 10 minutes, post `@codex review` on the PR and wait out the rest of the window.
+    - Run `gh pr checks <pr> --watch` in the background and the Bot wait below at the same time: the 10-minute and 15-minute marks count from `gh pr ready` (from the push, for a later head), never from the end of CI. Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure. Wait for that watcher's exit status before the RESULT: a non-zero exit means no RESULT until CI passes.
+    - Then list the Bot's reviews of the final head with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")|[.commit_id,.submitted_at]|@tsv'` and the Bot's top-level review comments raised on it with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")|[.id,.original_commit_id,.path]|@tsv'`. A human comment, a CodeRabbit review or an earlier head's review never ends the wait. A comment's `commit_id` moves to the newest head, so findings are matched by `original_commit_id`. Repeat until a review of the final head appears or 15 minutes pass; the report records the latter as `bot: none`. The final head here is the diff head, the last commit that changes the PR's content: a head that only merges the new base with `gh pr update-branch` needs green CI but no new Bot wait. Both endpoints return 30 items per page by default, so keep `--paginate`.
+    - This bounded wait is the permitted exception to the no-polling rule in "Regime activation and progress", which governs detecting worker completion and pane status, not a worker's wait on CI and the Bot. List at most every 30 seconds, stop at 15 minutes, and run the loop as a background command or a foreground command with a timeout. Never use bare foreground `sleep`.
+    - A 👍 reaction alone is not evidence of a review.
+    - Read each listed review's body too: the Codex Bot sometimes places a finding (a `P0`–`P3` badge with a blob link) in the review body instead of an inline thread. Such a review-body finding is listed alongside the top-level inline comments and fixed or dispositioned the same way.
+    - Fix P0/P1 findings, inline or review-body, in at most one worker-side fix round before RESULT, then request `@codex review` and restart the wait from the push. A P0/P1 surviving that round is not fixed again: send `AGMSG-RESULT … bot_rounds=2` with each listed as `open:<thread id>` (`open:review-<review id>` for a review-body finding); this stops the PR for the operator's decision, and the next bullet's `fixed:`/`not-applicable:` rule does not override it.
+    - Apart from those surviving P0/P1 items, the RESULT names every unresolved thread id with `fixed:<sha>` or a proposed `not-applicable:<reason>` under Orchestrator Playbook step 10. The worker resolves no thread.
+
+## Codex seat worklogs
+
+Project layouts vary by language. Set up this worklog structure only when it
+does not already exist, and use timestamped filenames in `YYYYMMDD_HHMMSS`
+form:
+
+- `.agents/worklog/codex/plan/<timestamp>_plan.md` stores the plan and design
+  written before implementation. Ask the user questions when needed, and
+  update the plan when questions, learning, or completed tasks change it. It
+  must contain `Goal`, `Scope`, `Assumptions`, `Design`, `Tests`, and
+  `Open Questions`.
+- `.agents/worklog/codex/todo/<timestamp>_todo.md` derives its tasks from the
+  plan. Move completed items from `TODO` to `Done`; when `TODO` is empty, set
+  its status to `done` and rename it to `<timestamp>_done.md`. It must contain
+  `TODO` and `Done`.
+- `.agents/worklog/codex/learn/<timestamp>_learn.md` records only reusable,
+  validated knowledge that speeds a future decision. State what was learned
+  and where it applies, update the plan's `Assumptions`, `Design`, or `Tests`
+  when relevant. A learn file must contain `Date`, `Learnings`, and
+  `Plan Updates`.
+
+Every plan, todo, and learn file starts with YAML frontmatter containing
+`type` (`plan`, `todo`, or `learn`), `id` (`YYYYMMDD_HHMMSS`), `owner` (for
+example, `codex-a`), and ISO8601 `created_at` and `updated_at`. Additionally:
+
+- todo requires `status`, `workstream`, and `related_plan`; status is one of
+  `active`, `blocked`, `done`, or `superseded`;
+- plan requires `status`, one of `draft`, `active`, `done`, or `superseded`;
+- learn requires `validated` (`true` or `false`) and `apply_to` (plan/tests),
+  and may be created only when reusable and validated.
+
+Optional frontmatter keys are `depends_on` (todo ID array), `blocked_reason`
+for blocked work, `evidence` (path array), and `tags`.
+
+## Pitfalls
+
+- Do not start work from the agmsg message alone; read `task_file` first.
+- Do not edit outside `allowed_files`, even for convenient cleanup.
+- Do not perform forbidden actions such as dependency changes, gate changes, product changes, promotion decisions, image builds, or LLM calls when listed.
+- Do not collapse candidate, promoted, rejected, and merged skill registry states into one directory.
+- Do not put secrets, raw logs with credentials, or unredacted AutoSkill inputs in artifacts.
+- Do not wake workers with `pane send-text` + `send-keys Enter`; use `agmsg-dispatch`, `poke.sh --body-file`, or `send.sh --body-file` as step 6 selects, and verify `read_at` in messages.db.
+- Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
+
+exec
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: ponytail
+description: >
+  Lazy senior dev mode: the smallest change that fully solves the task, and a
+  reply a busy human understands in one read. Use on any coding task (writing,
+  fixing, refactoring, reviewing, choosing dependencies) and when the user says
+  "ponytail", "be lazy", "simplest solution", "yagni", or complains about
+  over-engineering or bloat. Levels: lite, full (default), ultra.
+argument-hint: "[lite|full|ultra|off]"
+license: MIT
+---
+
+# Ponytail
+
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+Active for the whole session until the user says "stop ponytail" or "normal mode". Switch level: `/ponytail lite|full|ultra`.
+
+## Before you write
+
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+## The smallest complete change
+
+Take the first option that fully works:
+
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+## Levels
+
+| Level | Behavior |
+|-------|----------|
+| **lite** | Build what was asked. Name the smaller option in one line and let the user pick. |
+| **full** | The rules above. Default. |
+| **ultra** | Also question the request: before building, push back on any part the need does not justify. |
+
+exec
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+     1	---
+     2	format: 2
+     3	task_id: dotfiles-T133-gh-binding-a02
+     4	kind: code
+     5	security: true
+     6	dispatch_status: blocked-pre-anchor
+     7	design_review: {design: .orchestration/plans/024-design-quality.md}
+     8	requires_decision: [D-024-69]
+     9	after: []
+    10	allowed_files:
+    11	  - home/dot_mise/config.toml
+    12	  - home/dot_agents/agent-config.yaml
+    13	  - scripts/validate-agent-assets.py
+    14	  - scripts/orchestrator/*.sh
+    15	  - scripts/require-crit-review.py
+    16	  - scripts/pr-feedback.py
+    17	  - tests/unit/test_*.py
+    18	  - .orchestration/dotfiles-T133-gh-binding-a02/**
+    19	threat_table:
+    20	  - {control: "home/dot_mise/config.toml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    21	  - {control: "home/dot_agents/agent-config.yaml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    22	  - {control: "scripts/validate-agent-assets.py", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    23	  - {control: "scripts/orchestrator/chain-integrate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_chain_integrate_authenticated_decoy"}
+    24	  - {control: "scripts/orchestrator/orch-gate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_orch_gate_authenticated_decoy"}
+    25	  - {control: "scripts/orchestrator/local-review.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_local_review_authenticated_decoy"}
+    26	  - {control: "scripts/require-crit-review.py", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    27	  - {control: "scripts/pr-feedback.py", disposition: "closed: tests/unit/test_pr_feedback.py::GhBindingTest::test_collector_hostile_repository"}
+    28	  - {control: "tests/unit/test_*.py", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence-integrity automation; independently inspect the four authorized modules and their behavioral red/green logs."}
+    29	  - {control: ".orchestration/dotfiles-T133-gh-binding-a02/** including task.md", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence automation; compare anchored bytes, task-copy digest and literal full head against the independently audited PR."}
+    30	  - {control: "pin", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    31	  - {control: "declaration", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    32	  - {control: "consumer binding", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_consumer_binding_matrix"}
+    33	  - {control: "minimal environment", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_gh_environment_is_minimal"}
+    34	  - {control: "gh configuration inputs", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_protected_gh_configuration"}
+    35	  - {control: "fixed repository and host in gate descendants", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    36	  - {control: "collector interpreter startup", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_collector_ignores_startup_hooks"}
+    37	  - {control: "trusted parent before first instruction", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns automatic parent binding; authenticated use is blocked until the orchestrator measures design 5.14 items 2/9 for every non-gh process in the route."}
+    38	  - {control: "task metadata", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns dispatch automation; compare the reviewed inventory and populated Checks with the complete anchored task before dispatch."}
+    39	  - {control: "metadata separators", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns byte-integrity automation; compare front matter, separators and Checks, with no paste after anchor."}
+    40	  - {control: "in-process effects", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_git_environment_cannot_redirect_fixture_writes"}
+    41	  - {control: "workflow and interpreter or environment inputs", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns uv/Python/Node, permgate and launcher binding; unchanged resolvers require the measured design 5.14 items 2/9 parent, otherwise authenticated use is blocked."}
+    42	  - {control: "new or renamed scripts; future gh routes", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns absent chain-finish and future checker adoption; add no consumer here and require their own positive authenticated fixtures."}
+    43	  - {control: "remaining git/date/mise executable provenance", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns remaining-tool binding; retain today's resolver algorithms only under the measured parent, with token-free discovery."}
+    44	  - {control: "orchestrator effect merge", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns integration follow-through; only the orchestrator integrates the exact audited head through Playbook step 10."}
+    45	  - {control: "orchestrator effect update-branch", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence refresh; repeat CI, feedback, audit, acceptance and gate for each changed head."}
+    46	  - {control: "orchestrator effect forced worker removal", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns teardown records; none is planned and dirty state requires separate authorization before discard."}
+    47	  - {control: "orchestrator effect owner-stub amendment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns all assigned residuals; the orchestrator creates or expands its owner stub before anchor, outside worker scope."}
+    48	  - {control: "orchestrator effect canonical measurements", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns measurement automation; gh-free private-clone and trusted-parent evidence precedes review of the complete populated bytes."}
+    49	  - {control: "orchestrator effect installation and deployment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; observe the pinned install, protected configuration and positive real consumer probes before enabling acceptance reads."}
+    50	  - {control: "design 5.14 item 0", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 0 obligations; this task establishes no same-UID or credential-separation boundary."}
+    51	  - {control: "design 5.14 item 1", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns host protection evidence; item 1 must cover declaration, binary, configuration source and parent namespace before authenticated use."}
+    52	  - {control: "design 5.14 item 2", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 2 integration; measured parent evidence is mandatory now."}
+    53	  - {control: "design 5.14 item 3", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 3 integration; apply it to gh inputs without certifying other runtime boundaries."}
+    54	  - {control: "design 5.14 item 4", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 4 integration; consume checked gh directly, with replacement risk retained under item 0."}
+    55	  - {control: "design 5.14 item 5", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 5 obligations; retain full head identities and change no locks or reservations."}
+    56	  - {control: "design 5.14 item 6", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; distinguish fixture success, CI and observed host execution."}
+    57	  - {control: "design 5.14 item 7", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns wider coverage; inspect behavioral assertions and never count setup failure or absent routes as closure."}
+    58	  - {control: "design 5.14 item 8", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns future canonical-reader adoption; bind active gh routes without certifying local-object checkers."}
+    59	  - {control: "design 5.14 item 9", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 9 integration; measured isolated runtimes and absolute UV_CACHE_DIR remain mandatory."}
+    60	  - {control: "design 5.14 item 10", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns denial records; apply item 10 and stop with a blocked PONG on any denial."}
+    61	premises: []
+    62	---
+    63	
+    64	# AGMSG-TASK dotfiles-T133-gh-binding-a02 — bind gh and its gate descendants
+    65	
+    66	D-024-69 advances this remedy ahead of slices 2-5. This S-R5 reset supersedes the 2026-10-21 owner stub and a01 round-2 text; TASK names Codex worker a012. pins-a01 merged as #449; after is empty and later binding adds sibling declarations.
+    67	Seven C-80 refusals share the unbound-gh P1: a07-checker 922292d/0edbd8c/fd8c003/c6cebe4/a3125e1; regime-ci-followup-a02 a232baf/a18a67d. A substitute can forge main, design, merge state and PR data and read forwarded credentials.
+    68	a01 rounds 3bf2a79 (3 P1, 3 P2) and 6486b79 (1 P1, 1 P2) are superseded; Items 6/7 authorize and test the refused descendant changes while retaining the other round-2 requirements.
+    69	Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does not redefine that contract.
+    70	
+    71	## Items
+    72	
+    73	0. Inventory: local HEAD/origin/main observed at 7da0cdfab9de9fbea673b82379acd4e317115065; chain-finish.sh is absent and regime-ci.py/task-consistency-check.py currently use Git, not gh. These are local observations, pending gh-free canonical confirmation before C-80/anchor.
+    74	   Implement the three present shell routes and their real gate/collector descendants. Do not invent chain-finish or add canonical-network behavior to the checkers; dotfiles-T133-gh-binding-followup-a01 owns all three future routes and their positive authenticated decoy fixtures.
+    75	   The shell wildcard authorizes only chain-integrate.sh, orch-gate.sh and local-review.sh; the test wildcard authorizes only test_supply_chain_policy.py, test_chain_glue.py, test_require_crit_review.py and test_pr_feedback.py. If canonical inventory differs, reauthor/review the whole inventory and threat table before dispatch.
+    76	1. Pin `"github:cli/cli" = "2.102.0"` in home/dot_mise/config.toml with one adjacent English reason comment following pins-a01; retain unrelated pins. Installed target: `~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh`.
+    77	2. Declare trusted_tools.gh with version "2.102.0" and that home-relative absolute target in agent-config.yaml; later uv/Python/Node entries are siblings.
+    78	   validate-agent-assets.py checks pin equality, normalized home-anchored spelling, absolute expansion under the real user's home, and no shims component in spelling or resolved path. Refuse missing/malformed declarations, traversal, forged HOME and mismatched identities; give every rule a separate refusal subtest.
+    79	   Runtime reads protected deployed ~/.agents/agent-config.yaml as data with existing parsing facilities under design 5.14 items 2/9, never source/eval or a worker/PR copy. Chezmoi deploys this plain source; create no rendered artifact and leave generator/rendering tests unchanged.
+    80	3. Replace gh discovery in chain-integrate.sh/orch-gate.sh; bind local-review.sh's descendant namespace and both authorized Python consumers to the declaration. No PATH, mise-which, latest, wrapper or caller-selected executable override may supply gh.
+    81	   Require the version-specific absolute realpath, regular executable, existence, non-shim/trusted-root checks and matching reported version; consume that checked target under design 5.14 items 3/4. Missing/mismatching identity emits exactly `refused: gh binding`, exits nonzero and performs no canonical operation or fallback.
+    82	   Every repository REST read names literal repos/mryfmo/dotfiles endpoints and --hostname github.com; GraphQL fixes owner=mryfmo/name=dotfiles and accepts node IDs only from those bound queries. gh pr uses --repo github.com/mryfmo/dotfiles, never unsupported --hostname; account/auth probes bind the host and version probes make no network call.
+    83	   Preserve today's uv/git/date/mise and other non-gh resolver algorithms only within the orchestrator's measured design 5.14 items 2/9 parent/namespace, established before the first credential-bearing process. Discovery is token-free; without that evidence authenticated operation remains blocked.
+    84	4. Construct minimal environments for every bound gh, including token-free identity probes; use protected GH_CONFIG_DIR=/var/empty, verify the resolved directory and ancestors are protected and the directory itself is empty with no symlink/config payloads, and refuse unsafe/missing configuration without creation or fallback.
+    85	   Normalize only the call's explicitly supplied token to GH_TOKEN; no implicit home/keychain credentials. Supply trusted HOME/PATH, absolute UV_CACHE_DIR, fixed configuration, disabled prompts/update notices and plain output explicitly; record allowed names without values. Every env -i contract includes UV_CACHE_DIR.
+    86	   Exclude ambient GH_HOST/GH_REPO/GH_CONFIG_DIR/XDG_CONFIG_HOME, proxies, loader/startup variables and Git overrides. Test planted home/XDG config with http_unix_socket, aliases and alternate hosts, unsafe-config refusal and a positive controlled authenticated operation.
+    87	5. No workflow/regime.yml, launcher, permission, dependency, unrelated resolver-algorithm or acceptance-semantic change; regime-ci-followup-a02 owns the workflow. Add/rename no executable and keep evidence non-executable; other runtime binding remains dotfiles-T133-trusted-entrypoint-binding-a01's scope.
+    88	6. Edit scripts/require-crit-review.py and scripts/pr-feedback.py: the gate's pr_base_errors must use the bound gh and --repo github.com/mryfmo/dotfiles, never discover authority from local Git context after removing GH_REPO. The collector uses the same declared target and host/repository binding for REST, GraphQL and auth calls.
+    89	   Reject conflicting CLI/evidence repositories; hostile remote, GH_REPO and GH_HOST cannot redirect authority. Preserve authenticated-base collector selection and all feedback checks; never execute a PR collector in place of that selected source.
+    90	   Test the real gate path through PR view and collector launch, and separately the real collector, with a foreign remote plus hostile GH_REPO/GH_HOST. Require successful fixed-host/repository responses, consumed results and observed descendant argv/environment; mocking subprocess launch or pre-sanitizing away the attack does not close the row.
+    91	7. Replace the gate's bare sys.executable collector launch with the gate's measured absolute Python plus -I and design 5.14 item 9's constructed environment, including absolute UV_CACHE_DIR. PYTHONSAFEPATH alone is insufficient; preserve the selected collector bytes and subprocess failure propagation.
+    92	   A real-descendant test launches the gate and its selected real collector with planted user-site .pth/sitecustomize.py/usercustomize.py and PYTHONSTARTUP markers; prove the same hook can execute without isolation, then assert no marker and a successful collected response with production isolation.
+    93	
+    94	## Check
+    95	
+    96	The final diff has at most 350 changed lines outside `tests/` and `.orchestration/`, and at most 700 under `tests/`.
+    97	Measure with `git diff --numstat <merge-base40> <head40>`.
+    98	Caps are PR-wide additions plus deletions from git merge-base <authenticated-main40> <head40> (C-123), never round deltas; record dispatch measurement_base40, final main/head/merge-base SHAs, every numstat row and both totals, and recount after update-branch. Expected width is about 200/400; 350/700 includes fixtures and one Bot fix round, with no exemption from a07's 446/709 rewrite.
+    99	Write fixtures first and implement every closed selector. Each active shell route and both Python consumers needs a positive authenticated operation, synthetic credential, fixed host/repository and consumed response through declared gh; separately test missing/version/path refusals. Matrices cover all five consumers, including review/gate descendants; absent checkers/chain-finish are not passing entries.
+   100	Plant executable PATH gh and hostile mise answers without prebinding gh in the trusted-parent fixture; assert neither executes nor receives the synthetic credential. Minimal-environment/configuration matrices observe every consumer's actual child environment.
+   101	Reuse trusted_exec_contract.py without modification. Before fixture Git init/add/commit/reset/fetch, construct fresh environments and explicit roots, never os.environ merges; test hostile GIT_DIR/GIT_WORK_TREE/GIT_CONFIG_* and local includes/hooks, preserving a second repository's refs/index/bytes and external markers.
+   102	For each behavioral requirement in Items 1-4/6/7, record red at origin/main production bytes and green at the fix commit: selector, full baseline/red-fixture/fix SHAs, exact commands, stdout/stderr and real status. Red reaches the intended assertion, never missing API/import/setup/tool failure. Items 0/5 use inventory/diff evidence; no fabricated red or closure for future consumers.
+   103	Run `uv run python -m unittest tests.unit.test_supply_chain_policy tests.unit.test_chain_glue tests.unit.test_require_crit_review tests.unit.test_pr_feedback -v` through measured absolute uv/Python with item 9 isolation and temporary absolute UV_CACHE_DIR; record the expanded invocation.
+   104	Run bash -n, shellcheck and shfmt --indent 4 --space-redirects --diff on the three changed shells; ruff check --config ruff.toml and ruff format --check --config ruff.toml on changed Python; make validate-agent-assets and the review gate. Never run Bats locally.
+   105	Resolve observations with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" UV_CACHE_DIR="$UV_CACHE_DIR" "$HOME/.local/bin/mise" which uv`, repeat for python, and paste actual outputs; uv's installed path has no assumed bin component. Discovery is not trusted-parent deployment evidence.
+   106	
+   107	## Execution and evidence
+   108	
+   109	Worker Playbook step 4 applies: every command sandboxed; any denial sends AGMSG-PONG v1 task_id=dotfiles-T133-gh-binding-a02 status=blocked with exact command, exit status and boundary, then holds. Never escalate, probe Herdr sockets or retry through another surface.
+   110	Create fresh branch with `git switch -c tools/gh-binding-a02 --no-track origin/main`; push `git push https://github.com/mryfmo/dotfiles.git tools/gh-binding-a02`, never -u or shared-config changes; open one draft PR. Follow step 15's ready/CI/Bot wait, with at most one worker Bot fix round; surviving P0/P1 stops for the operator. Worker never merges.
+   111	Under .orchestration/dotfiles-T133-gh-binding-a02/ write task.md byte-identical to the complete anchored dispatch, report.md, validation.md with verbatim stdout/stderr and real exit statuses, sandbox.md, learning.md, autoskill.md and result.txt; normalize home paths and retain no secrets.
+   112	Each evidence item names producer/seat: worker (Codex seat), orchestrator (Claude seat, sandboxed Bash), or author (Codex review-profile seat, sandboxed exec). report.md maps all rows/selectors, scope, counts, red/green pairs and limitations; sandbox.md records denials, learning.md triage, autoskill.md actual use/not-used, and cost is n/a unless measured.
+   113	Write AGMSG-RESULT v1 before sending: task_id, status, PR, literal head=<full40>, authenticated_main=<full40>, merge_base=<full40>, measurement_base40, source_cap=350, test_cap=700, source_changed/test_changed, every red/green SHA pair, task_copy=<repo-local task.md>, task_copy_sha256 and artifact paths. ready_for_review requires passing CI; include Bot findings and dispositions per step 15.
+   114	Keep plan/todo/learn updated and uncommitted, one active todo per owner. Use agent-side Crit data/evidence only, no browser/publication; pass make require-crit-review with its receipt before RESULT. The orchestrator alone follows Playbook step 10's feedback, audit, acceptance, gate and integration order.
+   115	
+   116	## Anchor
+   117	
+   118	Authoring is read-only: canonical clone and trusted-parent deployment are unmeasured here; incomplete Checks block anchor/dispatch. Host observations supplied by orchestrator, sandboxed Bash, 2026-10-22 07:5x JST: config.toml:43 declares "github:cli/cli" = "latest"; installed ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh reports 2.102.0 (2026-09-30).
+   119	Before C-80/anchor the orchestrator creates/expands dotfiles-T133-gh-binding-followup-a01's owner stub for every assigned residual and three future routes, updates its a02 dependency, and confirms Item 0 against canonical main; all owner-stub edits are outside worker scope.
+   120	Obtain main40 and design digest gh-free from a fresh private HTTPS bare clone of https://github.com/mryfmo/dotfiles.git with an independent object store. Record exact sanitized producer commands/outputs and design 5.14 items 1/2/9 protection/parent observations, then paste the five payload lines below before review.
+   121	Change dispatch_status only after evidence exists; C-80 reviews and anchors the whole populated text, with no later paste. Inventory differences require reauthoring, not extra files or invented passing fixtures.
+   122	Installation/deployment is separate from code/CI: observe the version-specific declared install, protected manifest/config and positive real consumer probes under the measured parent before enabling authenticated acceptance reads. Future checker adoption stays unclosed.
+   123	## Checks
+   124	
+   125	```text
+   126	canonical main (gh-free): git clone --bare --filter=blob:none https://github.com/mryfmo/dotfiles.git <private dir>; git rev-parse main -> 7da0cdfab9de9fbea673b82379acd4e317115065; design digest: git show main:.orchestration/plans/024-design-quality.md | shasum -a 256 -> a027b0210981ca4c4d4e832dc849af6a03cd71c408801f74d098c3b778dd9dbe (observed 2026-10-22T01:02Z by the orchestrator, sandboxed Bash, every exit 0)
+   127	mise pin: home/dot_mise/config.toml:43 at that main = "github:cli/cli" = "latest"; installed: ~/.local/share/mise/installs/github-cli-cli/{2, 2.102, 2.102.0, latest -> ./2.102.0}; env -i PATH=/usr/bin:/bin HOME=<home> ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh --version -> gh version 2.102.0 (2026-09-30)
+   128	interpreter bindings (design 5.14 item 9): uv = ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv (env -i PATH=/usr/bin:/bin HOME=<home> mise which uv); Python installs 3.12.15 and 3.15.0 (pins-a01, #449: python = "3.15.0", uv = "0.13.1", node = "26.12.0"); UV_CACHE_DIR: every env -i contract of this task sets an absolute private cache created with mktemp -d under $TMPDIR and refuses when it is absent
+   129	item 1 (host protection): ~/.agents/agent-config.yaml -rw-r--r-- <user>:staff and ~/.agents drwxr-xr-x <user>:staff, the same UID as every seat; the same-UID and credential-separation residual of item 0 stands
+   130	item 2 (trusted parent): not deployed on this host; dotfiles-T133-trusted-entrypoint-binding-a01 is unstarted, so authenticated acceptance reads stay disabled until the orchestrator measures an absolutely bound parent (residual rows above); this paste is the only Checks content and nothing is pasted after the anchor
+   131	```
+
+exec
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | sed -n '1,64p'" in ~/Workspace/dotfiles
+ succeeded in 0ms:
+     1	---
+     2	format: 2
+     3	task_id: dotfiles-T133-gh-binding-a02
+     4	kind: code
+     5	security: true
+     6	dispatch_status: blocked-pre-anchor
+     7	design_review: {design: .orchestration/plans/024-design-quality.md}
+     8	requires_decision: [D-024-69]
+     9	after: []
+    10	allowed_files:
+    11	  - home/dot_mise/config.toml
+    12	  - home/dot_agents/agent-config.yaml
+    13	  - scripts/validate-agent-assets.py
+    14	  - scripts/orchestrator/*.sh
+    15	  - scripts/require-crit-review.py
+    16	  - scripts/pr-feedback.py
+    17	  - tests/unit/test_*.py
+    18	  - .orchestration/dotfiles-T133-gh-binding-a02/**
+    19	threat_table:
+    20	  - {control: "home/dot_mise/config.toml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    21	  - {control: "home/dot_agents/agent-config.yaml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    22	  - {control: "scripts/validate-agent-assets.py", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    23	  - {control: "scripts/orchestrator/chain-integrate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_chain_integrate_authenticated_decoy"}
+    24	  - {control: "scripts/orchestrator/orch-gate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_orch_gate_authenticated_decoy"}
+    25	  - {control: "scripts/orchestrator/local-review.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_local_review_authenticated_decoy"}
+    26	  - {control: "scripts/require-crit-review.py", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    27	  - {control: "scripts/pr-feedback.py", disposition: "closed: tests/unit/test_pr_feedback.py::GhBindingTest::test_collector_hostile_repository"}
+    28	  - {control: "tests/unit/test_*.py", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence-integrity automation; independently inspect the four authorized modules and their behavioral red/green logs."}
+    29	  - {control: ".orchestration/dotfiles-T133-gh-binding-a02/** including task.md", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence automation; compare anchored bytes, task-copy digest and literal full head against the independently audited PR."}
+    30	  - {control: "pin", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    31	  - {control: "declaration", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    32	  - {control: "consumer binding", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_consumer_binding_matrix"}
+    33	  - {control: "minimal environment", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_gh_environment_is_minimal"}
+    34	  - {control: "gh configuration inputs", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_protected_gh_configuration"}
+    35	  - {control: "fixed repository and host in gate descendants", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    36	  - {control: "collector interpreter startup", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_collector_ignores_startup_hooks"}
+    37	  - {control: "trusted parent before first instruction", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns automatic parent binding; authenticated use is blocked until the orchestrator measures design 5.14 items 2/9 for every non-gh process in the route."}
+    38	  - {control: "task metadata", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns dispatch automation; compare the reviewed inventory and populated Checks with the complete anchored task before dispatch."}
+    39	  - {control: "metadata separators", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns byte-integrity automation; compare front matter, separators and Checks, with no paste after anchor."}
+    40	  - {control: "in-process effects", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_git_environment_cannot_redirect_fixture_writes"}
+    41	  - {control: "workflow and interpreter or environment inputs", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns uv/Python/Node, permgate and launcher binding; unchanged resolvers require the measured design 5.14 items 2/9 parent, otherwise authenticated use is blocked."}
+    42	  - {control: "new or renamed scripts; future gh routes", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns absent chain-finish and future checker adoption; add no consumer here and require their own positive authenticated fixtures."}
+    43	  - {control: "remaining git/date/mise executable provenance", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns remaining-tool binding; retain today's resolver algorithms only under the measured parent, with token-free discovery."}
+    44	  - {control: "orchestrator effect merge", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns integration follow-through; only the orchestrator integrates the exact audited head through Playbook step 10."}
+    45	  - {control: "orchestrator effect update-branch", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence refresh; repeat CI, feedback, audit, acceptance and gate for each changed head."}
+    46	  - {control: "orchestrator effect forced worker removal", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns teardown records; none is planned and dirty state requires separate authorization before discard."}
+    47	  - {control: "orchestrator effect owner-stub amendment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns all assigned residuals; the orchestrator creates or expands its owner stub before anchor, outside worker scope."}
+    48	  - {control: "orchestrator effect canonical measurements", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns measurement automation; gh-free private-clone and trusted-parent evidence precedes review of the complete populated bytes."}
+    49	  - {control: "orchestrator effect installation and deployment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; observe the pinned install, protected configuration and positive real consumer probes before enabling acceptance reads."}
+    50	  - {control: "design 5.14 item 0", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 0 obligations; this task establishes no same-UID or credential-separation boundary."}
+    51	  - {control: "design 5.14 item 1", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns host protection evidence; item 1 must cover declaration, binary, configuration source and parent namespace before authenticated use."}
+    52	  - {control: "design 5.14 item 2", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 2 integration; measured parent evidence is mandatory now."}
+    53	  - {control: "design 5.14 item 3", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 3 integration; apply it to gh inputs without certifying other runtime boundaries."}
+    54	  - {control: "design 5.14 item 4", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 4 integration; consume checked gh directly, with replacement risk retained under item 0."}
+    55	  - {control: "design 5.14 item 5", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 5 obligations; retain full head identities and change no locks or reservations."}
+    56	  - {control: "design 5.14 item 6", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; distinguish fixture success, CI and observed host execution."}
+    57	  - {control: "design 5.14 item 7", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns wider coverage; inspect behavioral assertions and never count setup failure or absent routes as closure."}
+    58	  - {control: "design 5.14 item 8", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns future canonical-reader adoption; bind active gh routes without certifying local-object checkers."}
+    59	  - {control: "design 5.14 item 9", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 9 integration; measured isolated runtimes and absolute UV_CACHE_DIR remain mandatory."}
+    60	  - {control: "design 5.14 item 10", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns denial records; apply item 10 and stop with a blocked PONG on any denial."}
+    61	premises: []
+    62	---
+    63	
+    64	# AGMSG-TASK dotfiles-T133-gh-binding-a02 — bind gh and its gate descendants
+
+exec
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |threat.table'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
+ succeeded in 0ms:
+10:## Architecture
+17:## Regime activation and progress
+29:## Parallel workers
+46:## Identity, delivery, and storage
+59:## Live verification
+64:## Review and integration invariants
+71:- A task that touches a trust boundary (anything the design tier lists, CI that decides a required check, code that executes PR-controlled input) carries a `threat_table` in its front matter: one `{control, disposition}` row per thing the PR or the orchestrator controls (the tree and its tests, task.md, workflow files, interpreter and environment files, in-process effects, new or renamed scripts, metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, new or renamed scripts, metadata separators), carried by the declared test module's row where that is where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a wildcard over test fixtures or other data files keeps one row; C4 and C7b of `scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file review checks the rest. A disposition takes one of three forms: `closed: tests/<file>::<name>`, the test that closes the row; `residual: <sentence>`, the compensating control; `out-of-scope: <task id>`, the task that owns the row. The task-file review checks the three shape rules by hand: a `closed` selector names a test present in the PR tree at acceptance, an `out-of-scope` owner is a task id in the design's `implementing_tasks`, a `residual` payload is a sentence of at least 20 characters (the gate's minimum for a reason). For a `closed` row it checks the selector's form only, since the test does not exist before implementation. Substance is the reviewers': the task-file review, the Bot and the auditor judge each row against the diff. The table is the task's completion condition: a missing row is added once, counted as an amendment, never fixed finding by finding.
+95:## Message Contract v1
+152:## `.orchestration` Workspace Layout
+165:## Orchestrator Playbook
+195:## Worker Playbook
+225:## Codex seat worklogs
+259:## Pitfalls
+
+exec
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: ponytail
+description: >
+  Lazy senior dev mode: the smallest change that fully solves the task, and a
+  reply a busy human understands in one read. Use on any coding task (writing,
+  fixing, refactoring, reviewing, choosing dependencies) and when the user says
+  "ponytail", "be lazy", "simplest solution", "yagni", or complains about
+  over-engineering or bloat. Levels: lite, full (default), ultra.
+argument-hint: "[lite|full|ultra|off]"
+license: MIT
+---
+
+# Ponytail
+
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+Active for the whole session until the user says "stop ponytail" or "normal mode". Switch level: `/ponytail lite|full|ultra`.
+
+## Before you write
+
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+## The smallest complete change
+
+Take the first option that fully works:
+
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+## Levels
+
+| Level | Behavior |
+|-------|----------|
+| **lite** | Build what was asked. Name the smaller option in one line and let the user pick. |
+| **full** | The rules above. Default. |
+| **ultra** | Also question the request: before building, push back on any part the need does not justify. |
+
+**Organizing focused readings**
+exec
+/bin/zsh -lc 'git status --short; git rev-parse HEAD' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "sed -n '225,258p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg -n '5\\.14|D-024-69|gh-binding|trusted.entrypoint' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'ls -l .ua/knowledge-graph.json .ua/meta.json; cat .ua/meta.json' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg --files .orchestration | rg '(accept|review|gh-binding|trusted-entrypoint)'" in ~/Workspace/dotfiles
+ succeeded in 190ms:
+## Codex seat worklogs
+
+Project layouts vary by language. Set up this worklog structure only when it
+does not already exist, and use timestamped filenames in `YYYYMMDD_HHMMSS`
+form:
+
+- `.agents/worklog/codex/plan/<timestamp>_plan.md` stores the plan and design
+  written before implementation. Ask the user questions when needed, and
+  update the plan when questions, learning, or completed tasks change it. It
+  must contain `Goal`, `Scope`, `Assumptions`, `Design`, `Tests`, and
+  `Open Questions`.
+- `.agents/worklog/codex/todo/<timestamp>_todo.md` derives its tasks from the
+  plan. Move completed items from `TODO` to `Done`; when `TODO` is empty, set
+  its status to `done` and rename it to `<timestamp>_done.md`. It must contain
+  `TODO` and `Done`.
+- `.agents/worklog/codex/learn/<timestamp>_learn.md` records only reusable,
+  validated knowledge that speeds a future decision. State what was learned
+  and where it applies, update the plan's `Assumptions`, `Design`, or `Tests`
+  when relevant. A learn file must contain `Date`, `Learnings`, and
+  `Plan Updates`.
+
+Every plan, todo, and learn file starts with YAML frontmatter containing
+`type` (`plan`, `todo`, or `learn`), `id` (`YYYYMMDD_HHMMSS`), `owner` (for
+example, `codex-a`), and ISO8601 `created_at` and `updated_at`. Additionally:
+
+- todo requires `status`, `workstream`, and `related_plan`; status is one of
+  `active`, `blocked`, `done`, or `superseded`;
+- plan requires `status`, one of `draft`, `active`, `done`, or `superseded`;
+- learn requires `validated` (`true` or `false`) and `apply_to` (plan/tests),
+  and may be created only when reusable and validated.
+
+Optional frontmatter keys are `depends_on` (todo ID array), `blocked_reason`
+for blocked work, `evidence` (path array), and `tags`.
+
+
+ succeeded in 396ms:
+ M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
+ M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a02.md
+ M .orchestration/acceptance/dotfiles-T133-pre-send-check-a03.md
+ M .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md
+ M .orchestration/decisions.tsv
+ M .orchestration/learning/corrections-inventory.tsv
+ M .orchestration/plans/024-progress.tsv
+ M .orchestration/plans/024-replan-20261021-v2.md
+ M .orchestration/tasks/dotfiles-T133-audit-pool-a02.md
+ M .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md
+ M .orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md
+ M .orchestration/tasks/dotfiles-T133-gh-binding-a01.md
+ M .orchestration/tasks/dotfiles-T133-hold-playbook-a02.md
+ M .orchestration/tasks/dotfiles-T133-pre-send-check-a03.md
+ M .orchestration/tasks/dotfiles-T133-pre-send-check-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-record-ledger-carry-a01.md
+ M .orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md
+ M .orchestration/tasks/dotfiles-T133-regime-ci-token-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-result-precheck-a04.md
+ M .orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md
+ M .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-crit.json
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-pr-feedback.json
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-review-receipt.md
+?? .orchestration/acceptance/dotfiles-T133-install-ppa-resilience-a01.md
+?? .orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+?? .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/
+?? .orchestration/dotfiles-T133-ci-efficiency-a01/task.md
+?? .orchestration/dotfiles-T133-result-precheck-a01/
+?? .orchestration/dotfiles-T133-result-precheck-a02/
+?? .orchestration/dotfiles-T133-verdict-audit-pool-a01/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-a01/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-a02/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/
+?? .orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01/
+?? .orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02/
+?? .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a05.md
+?? .orchestration/tasks/dotfiles-T133-agmsg-hardening-a01.md
+?? .orchestration/tasks/dotfiles-T133-gh-binding-a02.md
+?? .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-followup-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-review-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01.md
+?? .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md
+?? .orchestration/tasks/dotfiles-T133-record-json-sync-a01.md
+?? .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md
+?? .orchestration/tasks/dotfiles-T133-regime-ci-followup-a03.md
+?? .orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice2-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice3-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice4-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice5-a01.md
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-chain-2b58663.log
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-local-review-2b58663.md
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md.last.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md.last.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-1d72f16.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-1d72f16.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-7888241.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-chain-1d72f16.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-chain-7888241.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-1d72f16.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-security-7888241.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-audit-a30a43b.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-audit-a30a43b.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-chain-128a208.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-chain-a30a43b.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-crit.json
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-128a208.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-a30a43b.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md.last.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a232baf.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a232baf.md.last.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-audit-08b8add.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-chain-08b8add.log
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-security-08b8add.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-security-a8c03fa.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-audit-c439b63.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-audit-c439b63.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-chain-c439b63.log
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-crit.json
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-c439b63.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-0edbd8c.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-0edbd8c.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-922292d.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-922292d.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-c6cebe4.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-c6cebe4.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-fd8c003.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-fd8c003.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-chain-28dde0f.log
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-crit.json
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-local-review-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-audit-f66b27f.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-audit-f66b27f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-chain-f66b27f.log
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-crit.json
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-local-review-f66b27f.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-audit-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-audit-c8c712f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-chain-2d1d095.log
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-chain-c8c712f.log
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-crit.json
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-2d1d095.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-2d1d095.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-2d1d095.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a04-text-security-d562c68.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a04-text-security-d562c68.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0b96f40.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0b96f40.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0e9bf3f.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0e9bf3f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0f87501.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0f87501.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-3844d93.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-3844d93.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-4e8b427.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-4e8b427.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-e39dc8f.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-e39dc8f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-f4246e9.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-f4246e9.md.last.md
+?? .orchestration/validation/records-sync-30-pr-comments.json
+?? .orchestration/validation/records-sync-30-pr-feedback.json
+7da0cdfab9de9fbea673b82379acd4e317115065
+
+ succeeded in 402ms:
+-rw-r--r--@ 1 a0004262  staff  1041907 Oct  8 09:08 .ua/knowledge-graph.json
+-rw-r--r--@ 1 a0004262  staff      156 Oct  8 09:08 .ua/meta.json
+{
+  "lastAnalyzedAt": "2026-10-02T14:12:51Z",
+  "gitCommitHash": "940a3a2b07adfd14140a0acff96784ef53a0a509",
+  "version": "1.0.0",
+  "analyzedFiles": 368
+}
+
+ succeeded in 436ms:
+.orchestration/dotfiles-T133-inv6-reset-anchors-review-a01/review.md
+.orchestration/dotfiles-T131-claude-pinned-merge-gate-review-a01/review-85e40e77.md
+.orchestration/dotfiles-T131-claude-pinned-merge-gate-review-a01/sandbox-85e40e77.md
+.orchestration/reports/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/reports/permgate-shadow-review-2026-07-24.md
+.orchestration/reports/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/reports/T24-usage-review-automation.md
+.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a04/dotfiles-T129-assets-omp-hcom-followup-a04-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/a05-gh-calls.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/revise.yaml
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/sandbox.md
+.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/dotfiles-T133-trusted-exec-contract-tests-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/revise.yaml
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/sandbox.md
+.orchestration/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01/review.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-generator-base.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/red-pin.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amendment-1-received.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-render-check.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-supply-chain-pins.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-policy-green.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-crit-status.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-privacy.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/autoskill.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-supply-chain-pins-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-uv-resolve.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-review-gate-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-format.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-generator-module-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-policy-green-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-render-check-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-validate-agent-assets.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-source-bindings.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-comparison-lint.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-supply-chain-candidate.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-supply-chain-module.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-validate-agent-assets-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-check-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-supply-chain-base.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-source-verification.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/independent-review-amend1.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/learning.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-budget.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-pin-green.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/dotfiles-T133-trusted-entrypoint-pins-a01-worker-crit.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-pin-green-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/validation.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/dotfiles-T133-trusted-entrypoint-pins-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-uv-resolve.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/report.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-review-gate.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/resume-2952.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-generator-candidate.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/rebase-record.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/independent-review.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-check.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-supply-chain-module-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/sandbox.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/record-selection.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-comparison-lint-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/red-pin-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-format-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task-before-amendment-1.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/runtime-bindings.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-numstat.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-baseline-comparison.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-generator-module.log
+.orchestration/dotfiles-T133-regime-ci-a02/dotfiles-T133-regime-ci-a02-worker-review-receipt.md
+.orchestration/reports/T18-pr76-review-fixes.md
+.orchestration/reports/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/dotfiles-T133-pre-send-check-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T128-project-map-pane-open-a01/dotfiles-T128-project-map-pane-open-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-project-map-reload-hook-a01/dotfiles-T128-project-map-reload-hook-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend5/review-gate.txt
+.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend5/bot-reviews.json
+.orchestration/dotfiles-T128-project-map-reload-hook-followup-a01/dotfiles-T128-project-map-reload-hook-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-ci-efficiency-followup-a01/dotfiles-T133-ci-efficiency-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02/review.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/review-gate.txt
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/acceptance-pr.json
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/bot-reviews.json
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/dotfiles-T133-worker-cap-hookspath-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/dotfiles-T129-normalised-comparison-lint-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/round2/bot-final-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/round2/previous-bot-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/round2/bot-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/bot-reviews.json
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/dotfiles-T133-worker-cap-hookspath-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-audit-inherit-replan-json-followup-a01/dotfiles-T129-audit-inherit-replan-json-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/dotfiles-T129-assets-omp-hcom-followup-a05-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/sandbox.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend4/peer-review-pending.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend4/review-gate-blocked.txt
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/raw/review-gate-approved.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/raw/review-gate.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment2/raw/review-gate-wip.log
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/report.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/all-reviews.json
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/sandbox.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment3/worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment3/raw/review-gate-approved.log
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend3/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend3/bot-reviews.json
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/codex-review-request.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/review-gate-approved.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/review-gate.log
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a02/dotfiles-T129-assets-omp-hcom-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend2/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend2/bot-reviews.json
+.orchestration/dotfiles-T133-ci-efficiency-a02/dotfiles-T133-ci-efficiency-a02-worker-review-receipt.md
+.orchestration/learning/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/dotfiles-T133-python-pin-a02/dotfiles-T133-python-pin-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-python-pin-a02/gate-reviewed.txt
+.orchestration/dotfiles-T133-python-pin-a02/bot-reviews-7f7665b9.jsonl
+.orchestration/dotfiles-T133-python-pin-a02/bot-reviews-8c727728.jsonl
+.orchestration/dotfiles-T133-python-pin-a02/gate-records-reviewed.txt
+.orchestration/dotfiles-T133-regime-ci-followup-a01/dotfiles-T133-regime-ci-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/sandbox.md
+.orchestration/learning/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/sandbox.md
+.orchestration/learning/T24-usage-review-automation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/sandbox.md
+.orchestration/tasks/dotfiles-T128-seat-launch-args-review-a01.md
+.orchestration/tasks/dotfiles-T128-settings-hook-dedupe-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/tasks/dotfiles-T129-pstack-asset-review-a01.md
+.orchestration/dotfiles-T128-s1-replan-gate-a01/s1-worker-review-receipt.md
+.orchestration/tasks/dotfiles-T128-validator-offline-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a04.md
+.orchestration/tasks/dotfiles-T128-playbook-rules-a04-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-review-a03.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-gate-wrapper-path-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04-review-a01.md
+.orchestration/tasks/dotfiles-T133-pre-send-check-a03-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-doctor-codex-trust-review-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-descendants-followup-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md
+.orchestration/dotfiles-T130-claude-sandbox-integration-a01/dotfiles-T130-claude-sandbox-integration-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/acceptance-pr.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/bot-reviews.json
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a04-review-a01.md
+.orchestration/dotfiles-T133-regime-ci-token-a01/dotfiles-T133-regime-ci-token-a01-worker-review-receipt.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-integrate-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a05.md
+.orchestration/tasks/dotfiles-T133-inv6-reset-anchors-review-a01.md
+.orchestration/tasks/dotfiles-T128-s1-replan-gate-review-a01.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/evidence2/bot-reviews.json
+.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-audit-inherit-replan-json-followup-a02/dotfiles-T129-audit-inherit-replan-json-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend1/bot-final-reviews.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend1/bot-reviews.json
+.orchestration/dotfiles-T129-doctor-sleep-disabled-a01/dotfiles-T129-doctor-sleep-disabled-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/result/bot-reviews.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-regime-ci-a01/dotfiles-T133-regime-ci-a01-worker-review-receipt.md
+.orchestration/learning/mistakes/M-20261019-05-text-review-rounds-unbounded.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a03/dotfiles-T129-assets-omp-hcom-followup-a03-worker-review-receipt.md
+.orchestration/dotfiles-T132-make-update-followups-a01/dotfiles-T132-make-update-followups-a01-worker-review-receipt.md
+.orchestration/learning/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/raw/review-gate-required.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/dotfiles-T133-worker-cap-hookspath-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/raw/review-gate-approved.log
+.orchestration/autoskill/runs/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/autoskill/runs/T24-usage-review-automation.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/dotfiles-T129-anthropic-auth-route-check-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-evidence-read.log
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-required.log
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a05-amend-review-a01.md
+.orchestration/tasks/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T129-audit-inherit-replan-json-review-a01.md
+.orchestration/tasks/dotfiles-T128-process-hardening-review-a01.md
+.orchestration/tasks/dotfiles-T133-pre-send-check-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-followup-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+.orchestration/tasks/dotfiles-T128-task-checkers-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a03.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-t718-a02.md
+.orchestration/tasks/T45-acceptance-memory-consolidation-rules.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-t718-a01.md
+.orchestration/tasks/T24-usage-review-automation.md
+.orchestration/tasks/dotfiles-T126-w3-headless-design-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a03-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-audit-s1-report-review-a01.md
+.orchestration/tasks/dotfiles-T128-design-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/worker-reviewed-source-hashes.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-review-gate.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-mask-review-closure.txt
+.orchestration/sandboxes/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-finish-a02-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T124-design-review-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-initial.txt
+.orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-after-read.log
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/final-review-evidence-read.json
+.orchestration/tasks/dotfiles-T128-settings-hook-dedupe-review-a01.md
+.orchestration/tasks/dotfiles-T131-claude-pinned-merge-gate-review-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-independent-review.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-independent-review-round2.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/tasks/dotfiles-T128-task-review-a201-a01.md
+.orchestration/tasks/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md
+.orchestration/acceptance/dotfiles-T82b-codex-hook-trust-pins-a01.md
+.orchestration/acceptance/refkit-P5.md
+.orchestration/acceptance/T66c.md
+.orchestration/acceptance/dotfiles-T133-record-json-sync-a01.md
+.orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+.orchestration/sandboxes/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a03/dotfiles-T129-normalised-comparison-lint-followup-a03-worker-review-receipt.md
+.orchestration/acceptance/T14-t13-pr-lifecycle.md
+.orchestration/acceptance/dot-validator-worktrees-T7-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a04.md
+.orchestration/acceptance/dot-ubuntu-parity-T11-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T2-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02.md
+.orchestration/acceptance/dotfiles-T133-codex-worker-network-a01.md
+.orchestration/acceptance/WP-B.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/codex-review-prompt-example.txt
+.orchestration/tasks/dotfiles-T128-worker-s1-stop-review-a01.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-review.sh
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-advisory.sh
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/sandbox-scan.sh
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-approved.log
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a03.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a04.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T84-orchestrator-kind-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a02.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a02.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a03.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a04.md
+.orchestration/acceptance/dot-herdr-agents-add-worker-T22-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-reload-hook-followup-a01.md
+.orchestration/acceptance/dot-pr-gate-trust-boundary-T40-a01.md
+.orchestration/acceptance/T51a.md
+.orchestration/acceptance/dotfiles-T77-harness-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a02.md
+.orchestration/acceptance/T67c.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-final.log
+.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-rules-s1-replan-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-a02.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-process-hardening-review-a02.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-a01-amend-review-a02.md
+.orchestration/tasks/dotfiles-T128-followup-owners-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a01-review-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a05.md
+.orchestration/acceptance/plan-003-review-round-2.md
+.orchestration/acceptance/dotfiles-T119-rolling-release-assets-a01.md
+.orchestration/acceptance/WP-F.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a07.md
+.orchestration/acceptance/dotfiles-T121-claude-hook-install-hint-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a06.md
+.orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md
+.orchestration/acceptance/dot-herdr-sheldon-T1-a02.md
+.orchestration/acceptance/dotfiles-T95-sandbox-placeholder-files-on-disk-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a06.md
+.orchestration/acceptance/refkit-P1.md
+.orchestration/acceptance/dot-agmsg-dispatch-T4-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-a01.md
+.orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+.orchestration/acceptance/T48b.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a03-design-reset.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a03.md
+.orchestration/acceptance/dotfiles-T114-canonical-clone-reconcile-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T120-npm-provenance-and-claude-channel-a01.md
+.orchestration/acceptance/T76b.md
+.orchestration/acceptance/T62b.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a01.md
+.orchestration/acceptance/dotfiles-T75-shell-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01.md
+.orchestration/acceptance/dot-adh-baseline-T6-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-redesign-a02.md
+.orchestration/acceptance/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a01.md
+.orchestration/acceptance/T87-boundary-bookkeeping-147.md
+.orchestration/acceptance/T48c.md
+.orchestration/acceptance/T65b.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a02.md
+.orchestration/acceptance/T59b.md
+.orchestration/acceptance/T61b.md
+.orchestration/acceptance/dotfiles-T124-wave1-task-validator-a01-design-reset.md
+.orchestration/acceptance/dot-herdr-agents-seat-labels-T35-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/acceptance/dot-ua-refresh-policy-T52-a01.md
+.orchestration/acceptance/dotfiles-T103-gh-auth-stores-a01.md
+.orchestration/acceptance/dotfiles-T102-add-worker-credential-notice-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a01.md
+.orchestration/acceptance/dot-sandbox-unix-sockets-T44-a01.md
+.orchestration/acceptance/T83b-acceptance.md
+.orchestration/acceptance/WP-G.md
+.orchestration/acceptance/refkit-P2-A.md
+.orchestration/acceptance/dotfiles-T124-wave1-task-validator-a01.md
+.orchestration/acceptance/dotfiles-T133-dispositions-a01.md
+.orchestration/acceptance/dot-audit-pane-visibility-T32-a01.md
+.orchestration/acceptance/dotfiles-T120-npm-provenance-and-claude-channel-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a04.md
+.orchestration/acceptance/T64b.md
+.orchestration/sandboxes/T24-usage-review-automation.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a01.md
+.orchestration/acceptance/T41-remove-cognee.md
+.orchestration/acceptance/T27-pr87-npm-allow-scripts-rebase.md
+.orchestration/acceptance/T66b.md
+.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a03.md
+.orchestration/tasks/dotfiles-T128-plan-007-review-a01.md
+.orchestration/tasks/dotfiles-T128-rules-step8-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T125-acceptance-automation-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md
+.orchestration/tasks/T68c-security-review-fixes.md
+.orchestration/tasks/dotfiles-T128-aws-cli-macos-review-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/tasks/dotfiles-T128-owner-tasks-refresh-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a06.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-review-a01.md
+.orchestration/tasks/dotfiles-T129-assets-omp-hcom-review-a01.md
+.orchestration/tasks/T61b-bot-review-fixes.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/tasks/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/sandboxes/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T130-codex-local-review-exclusion-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-finish-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a09.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a01.md
+.orchestration/acceptance/T23-agmsg-nudge-guidance.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a01-design-reset.md
+.orchestration/acceptance/T62c.md
+.orchestration/acceptance/T67b.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a02.md
+.orchestration/acceptance/dotfiles-T133-inv6-reset-anchors-review-a01.md
+.orchestration/acceptance/T19-herdr-file-viewer-popup-config.md
+.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-followup-a01.md
+.orchestration/acceptance/dot-macos-crit-pinned-install-T17-a01.md
+.orchestration/acceptance/T44-marker-extraction-redesign.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a05.md
+.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-a01.md
+.orchestration/acceptance/T79-acceptance.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a03.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
+.orchestration/acceptance/dot-pr-feedback-gate-T38-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a02.md
+.orchestration/acceptance/WP-C.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a03.md
+.orchestration/acceptance/dotfiles-T133-record-ledger-carry-a01.md
+.orchestration/acceptance/dot-ua-refresh-T5-a01.md
+.orchestration/acceptance/T84b-acceptance.md
+.orchestration/acceptance/dotfiles-T98-evidence-home-path-masking-a01.md
+.orchestration/acceptance/dot-orchestration-hygiene-T33i-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T133-rule-text-reduction-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T13-a01.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-redesign-a01.md
+.orchestration/acceptance/refkit-P4.md
+.orchestration/acceptance/dotfiles-T111-project-map-subagent-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01.md
+.orchestration/acceptance/plan-001.md
+.orchestration/acceptance/dotfiles-T73-tool-versions-from-config-a01.md
+.orchestration/acceptance/T70.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a04.md
+.orchestration/acceptance/dot-mosh-and-asset-bumps-T31-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+.orchestration/acceptance/refkit-P0-07.md
+.orchestration/acceptance/dotfiles-T110-gh-auth-file-storage-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a01.md
+.orchestration/acceptance/dotfiles-T124-wave3b-audit-grammar-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a03.md
+.orchestration/acceptance/WP-H.md
+.orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+.orchestration/acceptance/T50.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a01.md
+.orchestration/acceptance/T64.md
+.orchestration/acceptance/T74.md
+.orchestration/acceptance/dotfiles-T128-v0-main-tests-a01.md
+.orchestration/acceptance/dotfiles-T98c-claude-seat-artifact-write-exception-a01.md
+.orchestration/acceptance/dot-main-push-guard-revert-T60-a01.md
+.orchestration/acceptance/T79b-acceptance.md
+.orchestration/acceptance/dotfiles-T91-secret-scan-sk-boundary-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a06-design-reset.md
+.orchestration/acceptance/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/acceptance/dotfiles-T128-validator-offline-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-a01.md
+.orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a04.md
+.orchestration/acceptance/dot-update-convergence-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-wrapper-path-a01.md
+.orchestration/acceptance/T84-acceptance.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-entrypoint-pins-a01.md
+.orchestration/acceptance/dot-builtin-git-auto-T1-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-a01.md
+.orchestration/acceptance/T86-herdr-agents-082-api-port.md
+.orchestration/acceptance/dotfiles-T128-task-review-t718-a02.md
+.orchestration/acceptance/refkit-P0-06.md
+.orchestration/acceptance/dotfiles-T68-gate-audit-evidence-a01.md
+.orchestration/acceptance/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-rules-s1-replan-a01.md
+.orchestration/acceptance/WP-L.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a07.md
+.orchestration/acceptance/dot-ubuntu-parity-T4-a01.md
+.orchestration/acceptance/dotfiles-T78-dead-docs-adh-a01.md
+.orchestration/acceptance/T83-acceptance.md
+.orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T8-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+.orchestration/acceptance/T60.md
+.orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md
+.orchestration/acceptance/dotfiles-T133-hold-playbook-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+.orchestration/acceptance/T54.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-omp-config-render-a01.md
+.orchestration/acceptance/dotfiles-T128-design-review-a01.md
+.orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a02.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a06.md
+.orchestration/acceptance/WP-M.md
+.orchestration/acceptance/T80-acceptance.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03-design-reset.md
+.orchestration/acceptance/T13-agmsg-orchestration-rule-file.md
+.orchestration/acceptance/T25-permgate-harness.md
+.orchestration/acceptance/T21-model-profiles-pr.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-project-map-reload-hook-a01.md
+.orchestration/acceptance/dotfiles-T76-ineffective-settings-a01.md
+.orchestration/acceptance/dotfiles-T128-doctor-codex-trust-a01.md
+.orchestration/acceptance/T40-understand-anything-search-first.md
+.orchestration/acceptance/dot-pr-feedback-gate-T16-a01.md
+.orchestration/acceptance/dotfiles-T133-loop-limits-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a02.md
+.orchestration/acceptance/refkit-P8-a.md
+.orchestration/acceptance/dot-ubuntu-parity-T6-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a02.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T67-audit-task-level-a01.md
+.orchestration/acceptance/T36-understand-anything-analysis.md
+.orchestration/acceptance/fix-chezmoi-pycache-modify-exec.md
+.orchestration/acceptance/T55.md
+.orchestration/acceptance/T28-ccgate-removal-permgate-deploy.md
+.orchestration/acceptance/dotfiles-T117-upgrade-outside-canonical-clone-a01.md
+.orchestration/acceptance/T45.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a01-design-reset.md
+.orchestration/acceptance/dot-ua-graph-refresh-T51-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a05-design-reset.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a03.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a02.md
+.orchestration/acceptance/T81-acceptance.md
+.orchestration/acceptance/refkit-P0-05.md
+.orchestration/acceptance/dot-permgate-codex-stdin-T33h-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-t718-a01.md
+.orchestration/acceptance/T17-herdr-attach-agmsg-bootstrap.md
+.orchestration/acceptance/dot-macos-brew-untrusted-taps-T57-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a02.md
+.orchestration/acceptance/dot-ccstatusline-ubuntu26-hang-T59-a01.md
+.orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-followup-a01.md
+.orchestration/acceptance/dotfiles-T88-parallel-execution-rule-a01.md
+.orchestration/acceptance/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+.orchestration/acceptance/WP-I.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a02.md
+.orchestration/acceptance/dot-env-converge-T10-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a01-design-reset.md
+.orchestration/acceptance/T37-understand-anything-codex-dist.md
+.orchestration/acceptance/dotfiles-T128-rules-step8-a01.md
+.orchestration/acceptance/dotfiles-T133-audit-pool-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-fixture-grammar-a01.md
+.orchestration/acceptance/T65.md
+.orchestration/acceptance/dot-worker-advisor-fable-T26-a01.md
+.orchestration/acceptance/dot-docs-align-T1-a01.md
+.orchestration/acceptance/dot-dependabot-verify-T8-a01.md
+.orchestration/acceptance/T24-usage-review-automation.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a01.md
+.orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a03.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-redesign-a01.md
+.orchestration/acceptance/dotfiles-T124-design-review-a01.md
+.orchestration/acceptance/dotfiles-T66-permgate-dead-lanes-a01.md
+.orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+.orchestration/acceptance/refkit-P0-01.md
+.orchestration/acceptance/dot-upgrade-pins-T2-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+.orchestration/acceptance/dot-mise-symlink-T3-a01.md
+.orchestration/acceptance/dotfiles-T108-one-login-per-machine-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a05.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a08.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md
+.orchestration/acceptance/T62.md
+.orchestration/acceptance/refkit-P8-b.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a04-design-reset.md
+.orchestration/acceptance/dot-audit-verdict-gate-T33b-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a01.md
+.orchestration/acceptance/T85-acceptance.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a01.md
+.orchestration/acceptance/T56.md
+.orchestration/acceptance/dotfiles-T128-audit-s1-report-a01.md
+.orchestration/acceptance/dotfiles-T89-add-worker-same-workspace-a01.md
+.orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
+.orchestration/acceptance/plan-003.md
+.orchestration/acceptance/dot-three-role-constellation-T28-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md
+.orchestration/acceptance/T46.md
+.orchestration/acceptance/dot-herdr-worker-relaunch-T25-a01.md
+.orchestration/acceptance/T10-herdr-files-pane.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a02.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a07-checker.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a01-design-reset.md
+.orchestration/acceptance/dot-restart-worker-name-wait-T27-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a02.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a03-design-reset.md
+.orchestration/acceptance/dot-ubuntu-fix-T1-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-a02.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a02.md
+.orchestration/acceptance/dot-ubuntu-parity-T10-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a02.md
+.orchestration/acceptance/dotfiles-T128-model-profiles-xhigh-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T3-a01.md
+.orchestration/acceptance/dotfiles-T128-task-checkers-followup-a01.md
+.orchestration/acceptance/WP-J.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a01.md
+.orchestration/acceptance/dotfiles-T83-docs-diet-a01.md
+.orchestration/acceptance/T52.md
+.orchestration/acceptance/dotfiles-T128-worker-s1-stop-a01.md
+.orchestration/acceptance/T26-pr86-herdr-rebase.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-fixture-grammar-a02.md
+.orchestration/acceptance/T66.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02.md
+.orchestration/acceptance/dotfiles-T71-generator-multi-target-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md
+.orchestration/acceptance/T76.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md
+.orchestration/acceptance/T47.md
+.orchestration/acceptance/T42-zero-tail-evidence-sync.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a03-design-reset.md
+.orchestration/acceptance/T11-agmsg-join-unique-identity-guard.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T132-make-update-followups-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a02.md
+.orchestration/acceptance/dotfiles-T129-integration-seat-result-gate-cap-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a03.md
+.orchestration/acceptance/dotfiles-T133-install-ppa-resilience-a01.md
+.orchestration/acceptance/dot-formatter-hook-root-fix-T61-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md
+.orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+.orchestration/acceptance/dot-audit-pane-hardening-T32b-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
+.orchestration/acceptance/dotfiles-T112-pins-2026-10-07-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a03-design-reset.md
+.orchestration/acceptance/dot-ua-core-build-shim-T33g-a01.md
+.orchestration/acceptance/dot-security-profile-model-T42-a01.md
+.orchestration/acceptance/WP-K.md
+.orchestration/acceptance/dot-ubuntu-parity-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md
+.orchestration/acceptance/T53.md
+.orchestration/acceptance/dot-ubuntu-parity-T12-a01.md
+.orchestration/acceptance/dotfiles-T100-compactiondb-claude-symlink-note-a01.md
+.orchestration/acceptance/T67.md
+.orchestration/acceptance/dot-ua-core-build-T33f-a01.md
+.orchestration/acceptance/dotfiles-T128-aws-cli-macos-a01.md
+.orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+.orchestration/acceptance/dotfiles-T70-make-update-unattended-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a04.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-result-evidence-check-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02-design-reset.md
+.orchestration/acceptance/dot-plain-start-visibility-T45-a01.md
+.orchestration/acceptance/dot-audit-exec-channel-T33e-a01.md
+.orchestration/acceptance/T63.md
+.orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md
+.orchestration/acceptance/dotfiles-T99-nix-plans-history-a01.md
+.orchestration/acceptance/T16-herdr-attach-layout-order-repair.md
+.orchestration/acceptance/T57.md
+.orchestration/acceptance/dot-ua-graph-refresh-T33c-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-hold-playbook-a02.md
+.orchestration/acceptance/dot-worker-kind-guard-T14-a01.md
+.orchestration/acceptance/plan-002.md
+.orchestration/acceptance/dot-ua-graph-refresh-T41-a01.md
+.orchestration/acceptance/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+.orchestration/acceptance/dot-git-ignore-cc-writes-T56-a01.md
+.orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md
+.orchestration/acceptance/dot-orchestrator-linkage-evidence-T46-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T9-a01.md
+.orchestration/acceptance/T56b.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a02.md
+.orchestration/acceptance/dotfiles-T124-design-receipt-canonical-a01.md
+.orchestration/acceptance/dotfiles-T130-codex-local-review-exclusion-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a02.md
+.orchestration/acceptance/dotfiles-T133-trusted-entrypoint-binding-a01.md
+.orchestration/acceptance/T66e.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a08-redesign-review-a01.md
+.orchestration/acceptance/refkit-P3.md
+.orchestration/acceptance/dot-asset-manifest-T15-a01.md
+.orchestration/acceptance/dotfiles-T129-integration-seat-result-gate-cap-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a04.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T5-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a02.md
+.orchestration/acceptance/T61a.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a03.md
+.orchestration/acceptance/T69.md
+.orchestration/acceptance/dotfiles-T113-codify-T111-lessons-a01.md
+.orchestration/acceptance/plan-003-review-round-1.md
+.orchestration/acceptance/dot-agmsg-upstream-sync-T19-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a06.md
+.orchestration/acceptance/dot-ci-runner-label-pin-T58-a01.md
+.orchestration/acceptance/T67d.md
+.orchestration/acceptance/refkit-P2-C.md
+.orchestration/acceptance/dotfiles-T94-upgrade-pins-a01.md
+.orchestration/acceptance/dot-audit-pane-prompt-detect-T33j-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a04.md
+.orchestration/acceptance/WP-E.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a04.md
+.orchestration/acceptance/dot-herdr-sheldon-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a03.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a05.md
+.orchestration/acceptance/remote-diff-01.md
+.orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a03.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-runtime-check-a01.md
+.orchestration/acceptance/dotfiles-T128-plan-007-review-a01.md
+.orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a05.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a05-slice1.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a03.md
+.orchestration/acceptance/T66d.md
+.orchestration/acceptance/dot-ubuntu-parity-T7-a01.md
+.orchestration/acceptance/dot-orchestration-rules-T33a-a01.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a05-checker.md
+.orchestration/acceptance/T68c.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md
+.orchestration/acceptance/dotfiles-T97-claude-sandbox-github-calls-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a05-design-reset.md
+.orchestration/acceptance/dot-permgate-bench-flake-T33d-a01.md
+.orchestration/acceptance/dot-orchestration-rules-T43-a01.md
+.orchestration/acceptance/T59.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a02.md
+.orchestration/acceptance/T43-compactiondb-integration.md
+.orchestration/acceptance/T18-herdr-agents-two-pane.md
+.orchestration/acceptance/dotfiles-T130-sandbox-portability-followup-a01.md
+.orchestration/acceptance/dot-upgrade-pins-sync-T37-a01.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a01.md
+.orchestration/acceptance/dot-ua-graph-refresh-T36-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07.md
+.orchestration/acceptance/WP-A.md
+.orchestration/acceptance/dot-ua-graph-refresh-T55-a01.md
+.orchestration/acceptance/plan-003-final-pr.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a01-design-reset.md
+.orchestration/acceptance/dot-ua-full-T9-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-integrate-a01.md
+.orchestration/acceptance/T38-evidence-sync.md
+.orchestration/acceptance/dotfiles-T104-pins-2026-10-06-a01.md
+.orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/acceptance/dotfiles-T118-rolling-tools-single-update-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a04.md
+.orchestration/acceptance/dotfiles-T129-orchestrator-load-mechanisms-a01.md
+.orchestration/acceptance/dotfiles-T65-agent-stop-gate-a01.md
+.orchestration/acceptance/T22-doctor-settings-idempotency.md
+.orchestration/acceptance/T49.md
+.orchestration/acceptance/dot-audit-profile-gpt6-sol-T48-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-pane-open-a01.md
+.orchestration/acceptance/T68b.md
+.orchestration/acceptance/T58.md
+.orchestration/acceptance/dot-orchestrator-delivery-sandbox-T49-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a03.md
+.orchestration/acceptance/dotfiles-T64-codex-worker-never-network-a01.md
+.orchestration/acceptance/dot-codex-apparmor-userns-T30-a01.md
+.orchestration/acceptance/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+.orchestration/acceptance/T84c-acceptance.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a01.md
+.orchestration/acceptance/dotfiles-T109-claude-worker-merge-deny-a01.md
+.orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03-design-reset.md
+.orchestration/acceptance/dot-claude-sandbox-T13-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a03-design-reset.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-doctor-sleep-disabled-a01.md
+.orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+.orchestration/acceptance/dot-worker-profile-opus55-T24-a01.md
+.orchestration/acceptance/T48.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a02-design-reset.md
+.orchestration/acceptance/T15-herdr-lazy-start-attach-layout.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-token-a01.md
+.orchestration/acceptance/refkit-P7.md
+.orchestration/acceptance/dotfiles-T62-claude-auto-deny-a01.md
+.orchestration/acceptance/dot-orchestrator-pane-profile-args-T47-a01.md
+.orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md
+.orchestration/acceptance/T68.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a02.md
+.orchestration/acceptance/T67e.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a05.md
+.orchestration/acceptance/refkit-P2-B.md
+.orchestration/acceptance/dot-version-currency-T29-a01.md
+.orchestration/acceptance/dotfiles-T74-bootstrap-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T101-codex-worker-profile-default-a01.md
+.orchestration/acceptance/dotfiles-T115-worker-audit-xhigh-a01.md
+.orchestration/acceptance/WP-D.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T128-task-checkers-a01.md
+.orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
+.orchestration/acceptance/dotfiles-T129-pstack-asset-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/acceptance/dotfiles-T116-on-demand-workers-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a04.md
+.orchestration/acceptance/dotfiles-T128-regime-v3-inv6-redesign-a01.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round3.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r13.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-ba451c6.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round24.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-2c8acdb.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a02-local-review-4fe2438.md
+.orchestration/validation/dot-git-ignore-cc-writes-T56-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-local-review-4460d52.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-157d8f3.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T109-claude-worker-merge-deny-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-00048df.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round7.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-local-review-c1f60f7.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-a01-codex.md
+.orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-stop-and-watch-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-crit.json
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r7.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-amend1-codex-r1.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a02-local-review-bb84bde.md
+.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-audit-d3e8acf.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r11.md
+.orchestration/validation/dotfiles-T99-nix-plans-history-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T81b-compactiondb-vendor-hygiene-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a01-local-review-c96697a.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round34.md
+.orchestration/validation/dotfiles-T103-gh-auth-stores-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-local-review-73f51ab.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r17.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r4.md
+.orchestration/validation/dotfiles-T117-upgrade-outside-canonical-clone-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round20.md
+.orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-ac0a527.log
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r10.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T101-codex-worker-profile-default-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-local-review-65a3d71.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-local-review-ac0a527.md
+.orchestration/validation/dotfiles-T95-sandbox-placeholder-files-on-disk-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-python-pin-a02-local-review-1327740.md
+.orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-pr-feedback.json
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-af86233.log
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-2fe135c.md
+.orchestration/validation/dotfiles-T121-claude-hook-install-hint-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round30-codex.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round31-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a01-local-review-cd47e1b.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-local-review-a588a98.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r3.md
+.orchestration/validation/dot-ccstatusline-ubuntu26-hang-T59-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round5.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-local-review-b6ce4ff.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-local-review-725b25b.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round30.md
+.orchestration/validation/dotfiles-T128-validator-offline-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-2db7830.log
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-claude-r2.md
+.orchestration/validation/dotfiles-T117-upgrade-outside-canonical-clone-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r11.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12-codex.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md
+.orchestration/validation/dotfiles-T128-regime-counters-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round2.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r16.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-crit.json
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r5.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-ca892e4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-a561e64.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a02-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-local-review-9e30542.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a01-local-review-d067910.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-local-review-000c5c6.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-7eab146.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-review-receipt.md
+.orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-local-review-d3bc745.md
+.orchestration/validation/dot-agmsg-upstream-sync-T19-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-990b607.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-review-receipt.md
+.orchestration/validation/dot-formatter-hook-root-fix-T61-a01-review-receipt.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round4.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-6e4e9aa.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-af86233.md.last.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T75-shell-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round31.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round25.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-1d72f16.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r2.md.last.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-audit-70f060e.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7-codex.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r12.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11.md
+.orchestration/validation/dotfiles-T104-pins-2026-10-06-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-21f52c7.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-local-review-707ed3a.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round19-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-token-a01-local-review-08b8add.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18-codex.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a01-codex.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-fbbc6d9.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a04-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16-codex.md.transcript.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-addendum-redesign-seat.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round6.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a02-review-receipt.md
+.orchestration/validation/T28-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-local-review-0740069.md
+.orchestration/validation/dotfiles-T128-ci-skip-orchestration-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a04-local-review-3838d0c.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a01-local-review-27613c0.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r6.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-6434c27.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-review-receipt.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-45b9dd9.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md.last.md
+.orchestration/validation/dotfiles-T129-integration-seat-result-gate-cap-a01-local-review-9c07098.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-local-review-7b574d3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round27-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round26-codex.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-review-receipt.md
+.orchestration/validation/dotfiles-T76-ineffective-settings-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-local-review-b84e81f.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a02-local-review-b8998de.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a01-codex.md
+.orchestration/validation/dot-macos-brew-untrusted-taps-T57-a01-review-receipt.md
+.orchestration/validation/dot-orchestrator-linkage-evidence-T46-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-local-review-5185dc1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-audit-8afc458.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-audit-b6ce4ff.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-a06c874.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-af86233.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r19.md
+.orchestration/validation/dotfiles-T119-rolling-release-assets-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-ba451c6.md.last.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-audit-000c5c6.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15-codex.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend4.md
+.orchestration/validation/024-replan-20261021-v2-review-r2.md
+.orchestration/validation/dot-main-push-guard-revert-T60-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T114-canonical-clone-reconcile-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-local-review-8afc458.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01.md
+.orchestration/validation/dotfiles-T62-claude-auto-deny-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-audit-000c5c6.md.last.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-40f3be4.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-local-review-b0d39dc.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round4.md
+.orchestration/validation/dotfiles-T133-regime-ci-followup-a01-local-review-380e7f4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-c439b63.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-c45f9b5.md.last.md
+.orchestration/validation/dotfiles-T111-project-map-subagent-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round11.md
+.orchestration/validation/dotfiles-T110-gh-auth-file-storage-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-crit.json
+.orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01-codex.md
+.orchestration/validation/dotfiles-T78-dead-docs-adh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round17-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r2.md
+.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-audit-c646472.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r4.md
+.orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-2e3ff49.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-local-review-c206774.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex.md
+.orchestration/validation/dotfiles-T115-worker-audit-xhigh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-a644a7d.log
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01.md
+.orchestration/validation/dotfiles-T71-generator-multi-target-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2c.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round9.md
+.orchestration/validation/dotfiles-T112-pins-2026-10-07-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r1.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-local-review-d15fa87.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a02-local-review-a64daf1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round21-codex.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a01-local-review-09e2e95.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-pr-feedback.json
+.orchestration/validation/dotfiles-T114-canonical-clone-reconcile-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-a644a7d.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-ci-skip-orchestration-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a01-local-review-85a4722.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round15.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-audit-b6ce4ff.md.last.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-a01-local-review-7f4f3f1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round20-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-3accc7b.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-c87546e.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a01-local-review-76ab18e.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a04-local-review-325f520.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T98c-claude-seat-artifact-write-exception-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-40f3be4.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r9.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3c.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-audit-d3e8acf.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round8.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2b.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round10-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T113-codify-T111-lessons-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend1.md
+.orchestration/validation/dotfiles-T102-add-worker-credential-notice-a01-review-receipt.md
+.orchestration/validation/dotfiles-T83-docs-diet-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round2.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a01-codex-r2.md
+.orchestration/validation/dot-orchestration-rules-T43-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-local-review-bdbbbf9.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex-r2.md
+.orchestration/validation/dot-sandbox-unix-sockets-T44-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-audit-8afc458.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-local-review-b49da6d.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-ef74eae.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a01-local-review-9da0ed3.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-local-review-19bd6de.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-review-receipt.md
+.orchestration/validation/dot-plain-start-visibility-T45-a01-review-receipt.md
+.orchestration/validation/dotfiles-T82b-codex-hook-trust-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-crit.json
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-chain-28dde0f.log
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend3b.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-local-review-ddf262d.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md.last.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review.md
+.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-review-receipt.md
+.orchestration/validation/dotfiles-T103-gh-auth-stores-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round14.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-34cc889.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r8.md
+.orchestration/validation/dotfiles-T119-rolling-release-assets-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3b.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-dbc8b67.log
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-local-review-6847aa9.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-a01-local-review-a235637.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-850fc54.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-local-review-9d13a06.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-34cc889.log
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-c646472.log
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-local-review-28dde0f.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-local-review-cb9ea17.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round19-codex.md.transcript.md
+.orchestration/validation/fix-chezmoi-pycache-modify-exec-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r3.md
+.orchestration/validation/dot-orchestrator-delivery-sandbox-T49-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-local-review-b24d313.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r18.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-pre-amend1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-8576645.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend6.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend5.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-local-review-bf650af.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r5.md
+.orchestration/validation/024-replan-20261021-v2-review-r3.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-8b210af.md
+.orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-21aa36b.log
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a02-local-review-8a09b93.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14-codex.md.transcript.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-c45f9b5.md
+.orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-local-review-fa47987.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-af86233.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-b879aac.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-local-review-bccb2de.md
+.orchestration/validation/agmsg-parallel-rule-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-b9f562e.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-crit.json
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex-premises.md
+.orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-3345c4d.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-local-review-3a8f809.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-pr-feedback.json
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-followup-a01-local-review-2d8b0fe.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round1.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-plan-007-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a02-codex.md
+.orchestration/validation/dot-agmsg-upstream-sync-T19-a01-round2-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend1.md
+.orchestration/validation/dot-orchestrator-pane-profile-args-T47-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-a01-local-review-86212a4.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round28.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round17.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-local-review-71eb920.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-local-review-7a201ea.md
+.orchestration/validation/dotfiles-T124-wave1-task-validator-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T116-on-demand-workers-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-9df6b0c.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a02-local-review-b139995.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round24-codex.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round25-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T129-omp-hcom-stage1-task-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-local-review-9f5eaee.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-ba451c6.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round2.md
+.orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex.md
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01-round3.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-crit.json
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-8607a87.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-review-receipt.md
+.orchestration/validation/T24-usage-review-automation.txt
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend5.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round10-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11-codex.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a01-local-review-2e77a33.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r8.md
+.orchestration/validation/dotfiles-T129-pstack-asset-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-5ef1c90.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-local-review-7ef55f0.md
+.orchestration/validation/dotfiles-T115-worker-audit-xhigh-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T132-make-update-followups-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r7.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-local-review-429a6c5.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-local-review-4d3d639.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-local-review-5b99a74.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-34cc889.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md
+.orchestration/validation/dotfiles-T96-codex-worker-gpt61-sol-high-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round13.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-audit-c646472.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a02-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex-premises.md.transcript.md
+.orchestration/validation/dot-audit-profile-gpt6-sol-T48-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-2e3ff49.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round6.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-a201-a01.md
+.orchestration/validation/dot-ua-refresh-policy-T52-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-local-review-2fb97db.md
+.orchestration/validation/T37-understand-anything-codex-dist-review-receipt.md
+.orchestration/validation/024-replan-20261021-review-r1.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-token-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-local-review-cfebc1f.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-local-review-7fad835.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r6.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend4.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01.md
+.orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md
+.orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-79ea98a.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-046901b.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-34cc889.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex.md
+.orchestration/validation/dotfiles-T133-python-pin-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round7.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-59eca2a.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-local-review-9ad0c15.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-v0-main-tests-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-crit.json
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round12.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-local-review-e9404a6.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r1.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round33-codex.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a02-local-review-2b9abca.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round32-codex.md
+.orchestration/validation/dotfiles-T81b-compactiondb-vendor-hygiene-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-f48593d.md
+.orchestration/validation/dotfiles-T130-codex-local-review-exclusion-a01-security-99b5f86.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01.md
+.orchestration/validation/dotfiles-T100-compactiondb-claude-symlink-note-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-local-review-f66b27f.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-f4d86ee.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-crit.json
+.orchestration/validation/dot-ci-runner-label-pin-T58-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend3.md
+.orchestration/validation/dotfiles-T109-claude-worker-merge-deny-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-dbc8b67.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a02-local-review-7329f0e.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-review-a01.md
+.orchestration/validation/dot-codex-worktree-git-writable-T50-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a02-a01.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-222b616.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r2.md
+.orchestration/validation/dotfiles-T104-pins-2026-10-06-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round29.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round16.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-local-review-f7d2c48.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-9cd5514.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-4ed1b27.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-a30a43b.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r9.md
+.orchestration/validation/dotfiles-T133-python-pin-a01-local-review-e9819d4.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-9c01191.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a01-local-review-9842d91.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-bf6beb5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-b9f562e.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r3.md
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01-round2.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-pr-feedback.json
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-fea3843.log
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01.md
+.orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-task-review-a02-a01-round2.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-claude-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round22.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r6.md
+.orchestration/validation/dotfiles-T113-codify-T111-lessons-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r15.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r9.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+.orchestration/validation/dotfiles-T101-codex-worker-profile-default-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a02-local-review-cfeca64.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r12.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md
+.orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+.orchestration/validation/dotfiles-T98-evidence-home-path-masking-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-process-rules-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-23f5144.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-crit.json
+.orchestration/validation/dotfiles-T94-upgrade-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-40f3be4.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-128a208.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-local-review-3e5cad3.md
+.orchestration/validation/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-pr-feedback.json
+.orchestration/validation/dotfiles-T129-doctor-sleep-disabled-a01-local-review-b8bb9a7.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a03-local-review-4f5be51.md
+.orchestration/validation/dotfiles-T108-one-login-per-machine-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-23d9af3.md
+.orchestration/validation/dotfiles-T112-pins-2026-10-07-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-2d1d095.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-bdefcbe.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-b9f562e.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8-codex.md.transcript.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-3cb02fc.md
+.orchestration/validation/dotfiles-T133-python-pin-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round32.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-3288959.md
+.orchestration/validation/dotfiles-T67-audit-task-level-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r11.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round1.md
+.orchestration/validation/dotfiles-T129-doctor-sleep-disabled-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-validator-offline-a01-local-review-39c186a.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round34-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-regime-ci-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-local-review-d3e8acf.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-permission-guard-gate-a04-local-review-911f520.md
+.orchestration/validation/dot-herdr-agents-add-worker-T22-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T99-nix-plans-history-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round26.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-local-review-c646472.md
+.orchestration/validation/dotfiles-T129-omp-hcom-stage1-task-review-codex-r1.md.last.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a04-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a02-local-review-2b58663.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12.md
+.orchestration/validation/dotfiles-T100-compactiondb-claude-symlink-note-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-3498973.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r5.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-b3c5076.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-local-review-0d19947.md
+.orchestration/validation/dotfiles-T128-process-rules-a07-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-a01-local-review-002f188.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-review-receipt.md
+.orchestration/validation/dotfiles-T62-claude-auto-deny-a01-review-receipt.md
+.orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a05-local-review-9bff92b.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-c14b967.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T111-project-map-subagent-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r1.md.last.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-a01-local-review-741e242.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-2e3ff49.md
+.orchestration/validation/dotfiles-T132-make-update-followups-a01-local-review-6121555.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round19.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-canonical.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a01-review-receipt.md
+.orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
+.orchestration/validation/dotfiles-T70-make-update-unattended-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r10.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-7888241.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13.md
+.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round27.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-23f5144.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round4.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-f364b7d.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a01-local-review-274a536.md
+.orchestration/validation/dotfiles-T128-process-rules-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-b9f562e.log
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round22-codex.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-amend1-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round23-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r12.md
+.orchestration/validation/dotfiles-T116-on-demand-workers-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a02-codex-r1.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round4.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round29-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round28-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round6.md
+.orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a01-local-review-a5cb73b.md
+.orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-2842c34.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a04-local-review-4e743a1.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round33.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T108-one-login-per-machine-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-94c36f4.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md
+.orchestration/validation/dotfiles-T129-integration-seat-result-gate-cap-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01-codex-r2.md
+.orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-local-review-7771082.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-c45f9b5.md
+.orchestration/validation/dotfiles-T130-codex-local-review-exclusion-a01-security-99b5f86.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round17-codex.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-local-review-1950a4d.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-07cdcee.md
+.orchestration/validation/dotfiles-T128-plan-007-review-a01.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-review-receipt.md
+.orchestration/validation/dot-herdr-agents-seat-labels-T35-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8-codex.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r7.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-audit-70f060e.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r14.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round4.md
+.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-pr-feedback.json
+.orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r8.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r13.md
+.orchestration/validation/dotfiles-T133-rule-text-reduction-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-9545e59.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-f20826e.md
+.orchestration/validation/dotfiles-T77-harness-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T65-agent-stop-gate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round18.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-a01-local-review-c1ba96f.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-crit.json
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md.last.md
+.orchestration/validation/dotfiles-T110-gh-auth-file-storage-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T84-orchestrator-kind-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T133-rule-text-reduction-a01-local-review-e2ea4a5.md
+.orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-c8c712f.md
+.orchestration/validation/dotfiles-T102-add-worker-credential-notice-a01-worker-review-receipt.md
+
+ succeeded in 442ms:
+95:### 5.14 残余（凍結後の計測事実、D-024-29）
+103:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
+115:9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+
+**Considering time constraints**
+exec
+/bin/zsh -lc "rg -l '3bf2a79|6486b79|D-024-69|gh-binding-a02' .orchestration/acceptance .orchestration/decisions.tsv" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '95,119p'" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home | head -15' in ~/Workspace/dotfiles
+ succeeded in 122ms:
+    95	### 5.14 残余（凍結後の計測事実、D-024-29）
+    96	
+    97	- 2026-10-20: 項目 2 の「passwd home を dscl/getent で読む」は、両席の sandbox 内で `dscl` が失敗する（Claude sandbox: `Operation failed with error: eServerError`、Codex sandbox: exit 70、helper task RESULT）ため、同じディレクトリサービスを libc 経由で読む `/usr/bin/id -P | cut -d: -f9`（macOS）/ `getent passwd "$(id -un)" | cut -d: -f6`（Linux）/ Python の `pwd.getpwuid(os.getuid()).pw_dir` を passwd home の読み方とする。項目の意図（HOME は passwd のもの、継承値ではない）は不変。
+    98	
+    99	5.12 **プログラム仕様** は `024-design-programs.md` に分離（17 項目: verdict.sh、audit-pool.sh と orch-audit.sh --json、schemas、result-precheck.sh、dispositions.py、regime.yml、dispatch.sh --next、acceptance-front-matter.py、git hooks、handoff.sh、flakes、task-from-plan.py）。
+   100	
+   101	結論: 第 1 段階で消えるのは今の直列点（S1 の一部、S2、S8 の一部）。残る天井は S3（hosted runner）、S4/S5（モデルと監査の枠）、S7（hot spot）で、これらは席数の上限 D10（4 → 6）の根拠になる。6 を超える並列は、S3 と S5 の実測が出るまで plan に入れない。
+   102	
+   103	## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
+   104	
+   105	orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispositions、audit-pool、verdict、chain）は、同じホスト上で同じ UID の worker プロセスと共存する。2026-10-19 の C-80 審査（a05、dispositions-a02、audit-pool-a01 の 3 文、計 19 件の P1）は、どの文も同じ前提を書かず同じ穴を持つことを示した。以後、`security: true` の orchestrator 側タスク文は本節を参照で適用し、本節の各項目に対応する threat 行を持つ。文ごとに言い換えない。
+   106	
+   107	1. **書き込み境界（前提 6、ランタイム別に正直に）** Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。worker 設定：除外コマンド無し、Herdr socket 無し、sandbox の allowWrite は自席 worktree と agmsg store と席別キャッシュだけ、`failIfUnavailable: true`、信頼パス（anchored checkout の `.claude/worktrees/` 以外、`~/.agents`、`~/.claude*`、`~/.local`、`~/.config`）への Edit deny（公式文書：file tool の permission 検査は要求パスと symlink 解決後のパスの両方に deny を適用し、symlink そのものへの書き込みは拒否する）、sandbox の強制範囲はユーザー設定ではなく **managed settings**（`/Library/Application Support/ClaudeCode/managed-settings.json`、公式文書 "Repository settings under an admin-required sandbox"：project/local 設定は sandbox を無効化したり除外・socket を足したりできない）に置く。chezmoi は user ではこのファイルを書けないので、描画した内容を操作者が `sudo` で一度配置する（操作者手順）。worker 設定は worktree 自身の `.claude/**` と `.mcp.json` への Edit deny（`//<anchored>/.claude/worktrees/*/.claude/**`）を持つ（Bash 側は sandbox 既定の settings/hooks の denyWithinAllow）。agmsg store（全席が書く）から配送 hook が driver や plugin を source する上流の経路（storage.sh の `drivers.partition` traversal、`db/trusted-plugins` と `plugins/partition/shared.sh` による差し替え承認）は別タスク（agmsg hardening）の行で、worker 設定は `~/.agents/skills/agmsg/plugins/**` と `~/.agents/skills/agmsg/db/trusted-plugins` への書き込みを deny し（Edit deny は sandbox の deny にも合流する）、hook 側は store 由来の設定値を検証するまで残余と書く。managed settings の配置先は OS で異なる（macOS `/Library/Application Support/ClaudeCode/managed-settings.json`、Linux `/etc/claude-code/managed-settings.json`）。hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。公式文書：linked worktree の session は **main checkout の `.claude/settings.local.json` を読む**ので、worker 向けの hook を worktree の settings.local.json に書いても読まれず、逆に orchestrator の local hooks が worker session でも走る。したがって orchestrator 側の local hooks も guard 経由にし、worker 側の hook は worker config dir の settings に置く。Edit deny の一覧は `git ls-tree` ではなく描画時の静的一覧（manifest に列挙、`.agents/worklog/**` と `.agents/worklog/uv-cache/**` を含む）とし、`~/.agents/**` の全面 deny は agmsg store の書き込みと矛盾するので、`~/.agents/agent-config.yaml`、`~/.agents/skills/**/scripts/**`、`~/.agents/model-profiles.env` などストア以外を列挙する。公式文書で確認した事実（2026-10-19）：`Edit(path)` の deny は Write/MultiEdit/NotebookEdit にも効き、deny → ask → allow の順で最初の一致が決まる；ただし Read/Edit の deny は **Bash sandbox の設定にも合流する**（"Paths and domains from both sandbox settings and permission rules are merged into the final sandbox configuration"）ので、ユーザー設定（全席共有）に `.orchestration/**` の Edit deny を書くと orchestrator の Bash による記録書き込みも止まる。hook は起動時に固定されず、設定ファイルの編集は file watcher が即座に反映する。`sandbox.failIfUnavailable` の既定は fail-open（依存が無ければ sandbox 無しで実行）。したがって Claude 席の境界は Edit deny 規則ではなく、**ユーザーレベルの PreToolUse hook**（`~/.claude/hooks/worker-write-boundary`、chezmoi が描画、`/bin/sh` または絶対パスの `python3 -I`）で作る：cwd の realpath が `<anchored>/.claude/worktrees/` 配下の session では、Write/Edit/MultiEdit/NotebookEdit の対象が cwd の外、または `<cwd>/.claude/**`・`<cwd>/.mcp.json` のとき `permissionDecision: deny` を返す。Bash 側は sandbox の既定 `denyWithinAllow`（settings、hooks）と `allowWrite`（自席 worktree）が担う。`failIfUnavailable: true` を全席に置く。 Codex 席は sandbox（workspace-write）がツールの書き込み全部を自席の worktree と列挙パスに限る。Claude 席は Seatbelt sandbox が Bash を限るだけで、Write/Edit/MultiEdit/NotebookEdit、hook、MCP プロセスは sandbox 外で動き、permission policy（permgate の決定論ポリシー）が path で拒否しない限り anchored checkout や `~/.agents` にも書ける（2026-10-19 時点、描画済み設定にその deny は無い）。したがって前提 6 は「Codex 席は成立、Claude 席は P1-15 が描画設定に Edit の path deny を入れるまで残余」と書く。P1-15 以前に「worker は信頼ルートに書けない」と書く文は誤りで、C-80 が拒否する。P1-15 が入るまで、承認の出所は項目 8 の「コミット済み台帳」で守る。書き込みは自席の worktree（`.claude/worktrees/<name>`）、scratch、列挙されたツールキャッシュに限る。anchored checkout（`.claude/worktrees/` 以外）、`~/.agents/agent-config.yaml`、`~/.claude/hooks`、信頼ルートのバイナリ、orchestrator の証跡・スナップショット・lock は worker から書けない。render テストが描画後の deny を検証する。残余は「どの席 sandbox にも属さない同一 UID プロセス」と、Worker Playbook step 4 が sandbox 外に出す少数のコマンド（gh）。後者は D-024-17（P1-15）で絶対パスの実行体に束縛する。 The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19). The inventory of executable configuration sources a worker start screens is the documented loading list of the installed Claude Code version, enumerated once from the documentation (settings: user, project, local and managed `settings.json`; project `.mcp.json`; the configuration directory's global state `.claude.json` with user-scoped and project-local MCP servers; plugins and skills directories (`.claude/skills/*/.claude-plugin/plugin.json`, enabled plugins); hook handlers of every documented type (`command`, `http` and any other `type` value the hooks reference lists: a handler is an executable input whether it names a command or a URL, and a worker start refuses every handler type but `command`), `apiKeyHelper`, `statusLine.command`, MCP server commands), and the launcher screens or disables every source before accepting workspace trust, refusing any executable payload it did not write; adding sources one review at a time is the anti-pattern (P1-15 a02 reviews 2ae9e2c and ebbb71b, 2026-10-19). The enumeration quotes the documentation's values (the page, its fetched_at and the listed values) in the text's premises so a reviewer can check them against the live page; naming a source by one of its fields ("hook commands" for hook handlers) is the same anti-pattern one level down (a02 review b2a186e, 2026-10-19T20:36Z; C-95).
+   108	2. **無害化した環境を最初に** 最初の処理として `env -i` に入り、PATH は信頼ルートで解決した絶対バイナリへのリンクだけの私設ディレクトリ（shims、空、相対は拒否）。git は毎回 `GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null -c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always` と明示 `-C`（https だけ許す。`protocol.allow=never` 単独は必要な fetch を止める）。 検査の読み取りは `GIT_NO_LAZY_FETCH=1` で部分クローンの遅延 fetch（checkout 設定の credential.helper を起動しうる）を止め、`-c submodule.recurse=false --ignore-submodules=all` で submodule 内の status/diff（submodule 自身の設定が filter を有効化しうる）を止める。`.gitmodules` を持つ checkout は検査対象として拒否する。 `-C` は作業木を束縛しないので（repo-local の `core.worktree` が読み先を checkout 外へ向けられる）、git は `--git-dir=<checkout>/.git --work-tree=<checkout>` を明示し、`git rev-parse --show-toplevel` の realpath が checkout と一致しないときは拒否する。 premise や検査の「コマンド実行」は、固定語彙の読み取り専用プローブ（`git rev-parse <ref>`、`test -e <path>`、`grep -c <pattern> <file>` のように検査器自身が解釈する形）だけを許し、任意のシェル文字列は実行しない（本文のハッシュはコマンド文を認証するだけで、`python -I scripts/x.py` のファイル被演算子や `source ./x.sh` の中身は認証しない）。diff と show は `--no-ext-diff --no-textconv` と `-c core.attributesFile=/dev/null -c core.sshCommand=false` を付け、PR 側の `.gitattributes`（external diff、textconv、filter）が検査内容や実行物を変えないようにする。Python は `-I`。PATH 探索で実行するものは無い。 A shell script that runs under a PR-controlled or worker-controlled environment (verdict.sh, the chain glue, CI steps) is executed as a program with `#!/bin/bash -p`, never as `bash <file>`, and only by a trusted parent that supplies the clean environment before the exec: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<passwd home> LANG=C.UTF-8 /bin/bash --noprofile --norc -p <absolute script path> …` (long options before `-p`). Privileged mode discards inherited functions, `BASH_ENV`/`ENV`, `SHELLOPTS`, `BASHOPTS`, `CDPATH` and `GLOBIGNORE`, but on Linux an inherited `LD_PRELOAD`/`LD_AUDIT` already executes while the loader maps `/bin/bash`, before `-p` or any statement runs, so a self re-exec inside the script is not a boundary and re-executing `"$0"` would reopen the caller's pathname (a worker-owned symlink can be swapped between the two executions); the program therefore verifies and refuses instead of repairing: its environment must consist of exactly the allowed names (checked through absolute paths `/usr/bin/env`, `/usr/bin/grep`), `$0` resolved with `realpath` must be a regular file under the repository root, and HOME must equal the passwd home of the real uid (`/usr/bin/dscl . -read /Users/<user> NFSHomeDirectory` on macOS, `/usr/bin/getent passwd <uid>` on Linux), otherwise exit 2 with a named message. A caller-set sentinel variable is not a sanitization proof, because the caller controls it (ci-efficiency a04 and verdict a04 C-80 reviews, 2026-10-19). No script accepts a caller-supplied executable directory; interpreters are the fixed absolute paths item 9 names.
+   109	3. **信頼パスの境界検査** 仕組みが信頼するパス（スクリプト、台帳、証跡、worktree、lock、出力先）は realpath で解決し、`.claude/worktrees/` または manifest の worker ルート配下なら拒否（ask/hold）。symlink 構成要素は解決後に比較し、大小文字を区別しないファイルシステムでは同一性比較を大小文字非依存で行う。 A validator or scanner enumerates its inputs by walking the filesystem under fixed roots (every regular file, ignored or untracked included), never by asking git which files exist: `git ls-files` trusts the index and the working-tree `.gitignore` rules, which a same-UID writer edits without a commit (a07 C-80 rounds 1 to 3, 2026-10-19); git is consulted only to confirm the root (`--show-toplevel` equality with a real `.git` directory) and never as an exclusion authority.
+   110	4. **検証したものを実行し、検証した内容を渡す** 検証した実行体はその realpath で実行する（再探索しない）。検証したファイル内容は信頼ルート配下のスナップショット（0600、一意名）として渡し、使用直前に sha256 を再照合する。判断に読んだ証跡は sha256 を出力に記録する。
+   111	5. **出力と予約の同一性** 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
+   112	6. **正直な残余** 境界だけが緩和するリスクを `closed` と書かない。各文は残余を 1 行で明記する。
+   113	0. **脅威モデル（D-024-21）** 席は同じ OS ユーザで動き、ホストは席間の信頼境界ではない（同一 UID のプロセスは symlink 差し替え、共有 `.git` の object 差し替え、hook の子プロセス、Herdr socket 経由の host 実行で、ホスト内のどの検査も迂回できる）。regime の硬い境界は GitHub（保護された main、必須チェック、orchestrator の identity によるマージ）。ただしこの境界は **worker 席が orchestrator の GitHub 資格情報を共有しない**ときだけ成立する（D-024-22：worker 席は専用の GitHub identity（別アカウントまたは App のトークン）で `gh` に login し、ruleset の bypass 一覧に入らない。orchestrator の keychain トークンを worker の config dir に持ち込まない。identity が分かれるまで「GitHub が境界」は未成立と書く）。**同一 macOS ユーザでは資格情報は分離できない**（gh は keychain の項目を host/user で引き、同じ UID の gh は orchestrator のトークンを読める。`GH_CONFIG_DIR` は設定を分けるだけ）。防止には worker 席を別の OS ユーザ（または別ホスト）で動かすしかなく、それは D-024-23 の将来項目（P1-16、操作者の判断）。それまで GitHub 境界は **検知**で守る：記録は boundary の記録 PR まで main に無いので、検知は次の記録 PR の regime ジョブで行う（`.orchestration/acceptance/**` に触れる PR で、前回 boundary 以降の main の各マージ commit に、gate 通過の証跡を持つ受け入れ記録が対応することを検査し、無ければその PR を失敗させる；P1-11 owner a02 の行 `ci:detection:1`）。main push 時点の検知は記録が無いので不可能であり、文は「次の記録 PR で検知、防止ではない」と書く。悪意ある worker に耐えるべき入力（承認台帳、gate が読む証跡 of record）は GitHub から sha 指定で API 経由（sandbox 内）に読み、ローカルファイルやローカル object database からは読まない。ホスト内の制御（本節 1〜10）は事故と prompt injection による損害の抑制であり、文はそう書く。
+   114	8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
+   115	9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+   116	10. **worker は sandbox 外でコマンドを実行しない（D-024-17 の改訂）** 2026-10-19T03:45Z の実測で `gh api` は Claude sandbox の中から成功した（sandbox の proxy は CONNECT 型で TLS を終端しない；keychain のトークンも読めた）。worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。Codex 席は `sandbox_workspace_write.network_access = true` で同じ状態にし、permgate の codex ポリシーは sandbox 外への escape を承認しない（permgate の変更は操作者の手順）。wrapper 方式（絶対パス、env -i、固定 GH_CONFIG_DIR）は LD_PRELOAD と引数転送（`gh repo clone -- --config`）を閉じられないので採らない。
+   117	7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
+
+ succeeded in 218ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:39` — Deferring parent/interpreter binding supplies no compensating control: retained mise/PATH-selected processes execute before the proposed `gh` checks and can replace their decisions or capture credentials; cleaning only the child environment cannot establish the claimed consumer binding, especially outside Linux’s sandbox.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — The environment allowlist omits a control and test for `gh`’s configuration-file inputs: default home configuration can select `http_unix_socket`, changing the actual transport despite a pinned executable and explicit hostname; require a protected, controlled configuration source. [GitHub CLI configuration](https://cli.github.com/manual/gh_config), [configuration discovery](https://cli.github.com/manual/gh_help_environment).
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:38` — The named child-environment test cannot close in-process effects: the reused chain/regime fixtures inherit `GIT_*` into Git writes, allowing `GIT_DIR`/`GIT_WORK_TREE` to redirect operations outside their temporary repositories and `GIT_CONFIG_*` to inject configuration. [Git environment](https://git-scm.com/docs/git), [configuration overrides](https://git-scm.com/docs/git-config).
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:80` — Allowing an identity refusal to satisfy each decoy test does not prove successful consumer binding; require a positive authenticated-operation fixture per route, alongside refusal cases, to prevent an always-refusing implementation from satisfying the binding evidence.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:105` — The stated baseline is inaccurate: `chain-finish.sh` is absent from this checkout and local `origin/main`, and neither Python checker contains the claimed `gh` lookup; with creation forbidden and `after: []`, the six-route implementation requires the reviewed amendment this line prescribes.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:110` — `Checks` is empty despite requiring populated measurements before C-80; these bytes provide no observed canonical-source, installation or interpreter-binding evidence, and approval cannot cover a later paste.
+
+📝 まとめ: Reviewed all 37 threat rows and cited acceptance/review history; findings remain input for the orchestrator. No files changed.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-user replacement and credential-sharing risks remain.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — Forbidding descendant edits and wrappers prevents the promised fixed-repository binding: `scripts/require-crit-review.py:519` removes `GH_REPO`, then discovers the repository from local Git context and passes that result to `gh pr view`; `scripts/pr-feedback.py:84` also omits `--hostname`. A pinned executable does not bind these decisions to `github.com/mryfmo/dotfiles`; authorize the descendant changes and test hostile repository configuration through the real gate. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:83` — Applying item 9 to every descendant conflicts with the excluded gate’s collector launch at `scripts/require-crit-review.py:615`, which starts `[sys.executable, collector, …]` without `-I`; the parent’s isolation flags do not propagate, and `PYTHONSAFEPATH` alone does not disable user-site startup code. Authorize this launch change and require a real-descendant startup-hook test before claiming the isolation contract is satisfied. [Python isolation options](https://docs.python.org/3/using/cmdline.html#cmdoption-I)
+
+📝 まとめ: Reviewed all 37 threat rows, existing consumer paths, and cited acceptance/review history. Two findings remain for orchestrator disposition; no files changed.
+
+Not checked: future implementation, CI, or live Linux/race behavior; same-user replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrectNo findings in the 41 threat rows. Items 6–7 address the previous descendant repository-binding and Python-isolation findings; the referenced contract covers resolved paths, replacement risks and Git environment controls.
+
+This assesses the design only. Dispatch remains blocked pending populated Checks, expanded residual ownership and measured host protections.
+
+📝 まとめ: Completed the read-only task and cited-history review; no files changed.
+
+Not checked: implementation, CI or live Linux execution; same-UID replacement and credential separation remain explicit residual risks.
+Verdict: correct
+ succeeded in 275ms:
+home/.chezmoiexternal.yaml.tmpl
+home/.chezmoiremove
+home/.chezmoiscripts/common/run_after_03-install-sheldon.sh.tmpl
+home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl
+home/.chezmoiscripts/common/run_once_after_02-install-mise.sh.tmpl
+home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_05-client-install-zed.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_10-install-starship.sh.tmpl
+home/.chezmoitemplates/chezmoiexternal.d/macos.yaml.tmpl
+home/.chezmoitemplates/chezmoiexternal.d/ubuntu.yaml.tmpl
+home/.chezmoitemplates/claude-settings-managed.json
+home/.chezmoitemplates/codex-config-managed.toml
+home/dot_agents/README.md
+home/dot_agents/agent-config.yaml
+
+ succeeded in 318ms:
+---
+format: 2
+task_id: dotfiles-T133-gh-binding-followup-a01
+kind: code
+security: true
+dispatch_status: draft-owner-stub
+allowed_files:
+  - home/dot_agents/agent-config.yaml
+  - scripts/validate-agent-assets.py
+  - .orchestration/dotfiles-T133-gh-binding-followup-a01/**
+after: [dotfiles-T133-gh-binding-a02]
+---
+
+# AGMSG-TASK dotfiles-T133-gh-binding-followup-a01 — owner of the gh-binding-a01 residual rows (owner stub)
+
+Owner stub written 2026-10-21T22:59Z by the orchestrator seat (C-51); expanded 2026-10-22T01:10Z before the C-80/anchor of the reset text `dotfiles-T133-gh-binding-a02` (sha256 0ecdc07c05c377f9793965aa43a324e23b95808afcd53658c0d7b66790a516d8 after the Checks paste; the a01 text was withdrawn at its S-R5 stop, C-80 rounds 3bf2a79 and 6486b79). Never dispatched as a stub; its dispatch text is authored after a02 merges.
+
+## Owned rows (the residual rows of the a02 threat table that name this task)
+
+1. `tests/unit/test_*.py`: evidence-integrity automation for the four test modules a02 edits (independent inspection of assertions and red/green logs).
+2. `.orchestration/dotfiles-T133-gh-binding-a02/**` including task.md: evidence automation (anchored bytes, task-copy digest, literal full head compared against the independently authenticated PR head).
+3. task metadata: dispatch automation (reviewed inventory and populated Checks compared with the complete anchored task before dispatch).
+4. metadata separators: byte-integrity automation (front matter, separators and Checks compared, no paste after anchor).
+5. new or renamed scripts and the three future gh routes: adoption of the declared gh by the absent `scripts/orchestrator/chain-finish.sh` (PR #378 lineage) and by the two Python checkers `scripts/orchestrator/regime-ci.py` and `scripts/orchestrator/task-consistency-check.py` when they gain canonical gh reads; each route needs its own positive authenticated fixture with a synthetic credential, the fixed host and repository, and descendant coverage; a02 creates no consumer there.
+6. remaining git/date/mise executable provenance: permanent binding of the remaining tools (today their resolver algorithms run only inside the measured parent namespace, token-free).
+7. orchestrator effect merge: integration follow-through (only the orchestrator integrates the exact audited head through Playbook step 10).
+8. orchestrator effect update-branch: evidence refresh (CI, feedback, audit, acceptance and gate rerun for every changed head).
+9. orchestrator effect forced worker removal: teardown records (none planned; no dirty state discarded without separate authorization).
+10. orchestrator effect owner-stub amendment: every residual assigned here; the orchestrator expands this stub before anchor, outside worker scope (this expansion).
+11. orchestrator effect canonical measurements: measurement automation (gh-free private-clone evidence and trusted-parent observations before a fresh review of the complete populated text).
+12. orchestrator effect installation and deployment: deployment follow-through (the pinned install, the protected configuration and real authenticated consumer probes verified separately, under the measured parent, before authenticated acceptance reads are enabled).
+13. design 5.14 item 0: the unchanged same-UID and credential-separation residual.
+14. design 5.14 item 1: host protection evidence for the declaration, binary, configuration source and parent namespace before authenticated use.
+15. design 5.14 item 5, 16. item 6, 17. item 7, 18. item 8, 19. item 10: the items a02 applies by reference and does not close; each gets its own row and fixture when this task is authored, never a blanket claim.
+
+Dependency: this task starts after `dotfiles-T133-gh-binding-a02` merges (`after:` above). The parent binding of uv/Python/Node and the launcher stays with `dotfiles-T133-trusted-entrypoint-binding-a01` (design 5.14 items 2 and 9), not here.
+
+## Checks (pasted by the orchestrator before each send)
+
+```text
+(empty until the dispatch text is authored)
+```
+---
+format: 2
+task_id: dotfiles-T133-trusted-entrypoint-binding-a01
+kind: code
+security: true
+allowed_files: ["home/dot_agents/agent-config.yaml","home/.chezmoitemplates/claude-settings-managed.json","home/dot_claude*/modify_private_settings.json","scripts/generate-agent-configs.py","scripts/validate-agent-assets.py","Makefile","tests/unit/test_claude_managed_settings.py","tests/unit/test_validate_agent_assets.py","tests/unit/test_generate_agent_configs.py","scripts/orchestrator/trusted-launch.sh",".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**"]
+after: [dotfiles-T133-worker-write-boundary-slice2-a01, dotfiles-T133-ci-efficiency-followup-a04]
+rendered_forms: [claude-settings-managed.json, permgate claude]
+out_of_scope:
+  - {"path":"home/dot_mise/config.toml","reason":"dotfiles-T133-trusted-entrypoint-pins-a01 pins the real declaration before this task is sent; it is read-only here."}
+  - {"path":"tests/unit/test_claude_settings_merge.py","reason":"Existing legacy/custom/idempotence cases remain valid through the modify script's native expansion; run this real module unchanged."}
+  - {"path":"tests/unit/test_statusline_tools.py","reason":"Its native renderer must continue to parse the template without deployment installations; run unchanged."}
+  - {"path":"tests/unit/test_herdr_agents.py","reason":"The synthetic SessionStart-only template is unaffected; retain its tests."}
+  - {"path":"tests/install/common/lifecycle.bats","reason":"Legacy migration fixture data is retained; Bats runs only in GitHub Actions."}
+  - {"path":"tests/fixtures/gate-evidence/pr-feedback-right.json","reason":"Historical feedback fixture text is data and is not rewritten."}
+  - {"path":"scripts/orchestrator/trusted-interpreter.sh","reason":"The a04 resolver remains read-only for its existing consumers. This re-plan's launcher validates the exact Python declared by its parent-selected manifest; it must not impose the resolver's production-only pin on fixture execution."}
+  - {"path":"home/dot_local/bin/common/executable_permgate","reason":"Unchanged dependency-free script, executed through explicit isolated Python rather than its shebang."}
+  - {"path":"home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl","reason":"Complete guard, delivery and formatter/map descendant binding is outside this split; retain its named deployment residuals."}
+threat_table:
+  - {"control":"home/dot_agents/agent-config.yaml","disposition":"residual: Declare exact home-relative uv, Python and node identities and compare their production versions with the read-only mise declaration; deterministic rendering supplies the launcher manifest, while protected inputs still share the OS uid."}
+  - {"control":"home/.chezmoitemplates/claude-settings-managed.json","disposition":"residual: Render the PermissionRequest exec-form clean prefix with an exact absolute --manifest operand and retain onFailure block; no outer shell starts, but the hook host and first executable's loader environment remain outside launcher validation."}
+  - {"control":"home/dot_claude/modify_private_settings.json","disposition":"residual: Classify the legacy form separately and compare the bound command string and ordered args array, including --manifest, exactly with the rendered canonical exec form; preserve raw quoting distinctions, custom hooks and idempotence."}
+  - {"control":"home/dot_claude-worker/modify_private_settings.json","disposition":"residual: Apply the same native expansion and exact bound command/args comparison to this consumer without importing live orchestrator settings or adding an event the surface lacks."}
+  - {"control":"scripts/generate-agent-configs.py","disposition":"residual: Render exact relative declarations, the launcher manifest data and exec-form command/args without filesystem discovery; ordinary generation and render-check require no installed tools or deployed manifest."}
+  - {"control":"scripts/validate-agent-assets.py","disposition":"residual: Validate exact rendered command/args and expose the opt-in effective-settings identity check; checker and yaml-importing children consume the same parent-selected manifest, verified uv/Python and private cache without substituting production pins into fixtures."}
+  - {"control":"Makefile","disposition":"residual: Expose concrete manifest preparation, trusted seed and deployment-check commands and give the formatter the pinned node directory; unrelated inherited recipes remain outside this boundary."}
+  - {"control":"scripts/orchestrator/trusted-launch.sh","disposition":"residual: Before any declared binary executes, validate the absolute parent-selected manifest and optional fixture root, parse declarations as data, require canonical regular executable paths and compare exact versions; fixture and production inputs use these same checks, while concurrent same-UID replacement remains possible."}
+  - {"control":"tests/unit/test_claude_managed_settings.py","disposition":"residual: Exercise exact exec-form rendering, migration, a real fixture-manifest uv/Python/permgate execution and the separate pinned-installation case; fixture execution proves the shared launcher path, not production installation or administrative protection."}
+  - {"control":"tests/unit/test_validate_agent_assets.py","disposition":"residual: Exercise manifest containment, shim, symlink, worker-root and version refusals, quote-preserving comparisons and the clean online seed; recording fake uv cases prove argv and refusal behavior only."}
+  - {"control":"tests/unit/test_generate_agent_configs.py","disposition":"closed: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_managed_hooks_use_installed_permgate_paths asserts the executable leaf and the permission-request operand from args; the pins refactor rsplit form raises ValueError on the env+args command (pins audit:28dde0f:1)"}
+  - {"control":".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**","disposition":"residual: Only task copies, reports, manifest test data and review or validation evidence are authorized; no executable helper or alternative hook may hide under this wildcard."}
+  - {"control":"task copy .orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/task.md","disposition":"residual: Compare the complete dispatched file byte-for-byte and verify its SHA-256; preserve predecessor copies and the three-review history."}
+  - {"control":"task metadata","disposition":"residual: Verify identity, both after dependencies, the pin prerequisite and exactly ten allowed_files entries before dispatch and acceptance; the modify-script glob has only its two named consumers."}
+  - {"control":"metadata separators","disposition":"residual: Parse front matter as data with duplicate keys refused and compare the whole task copy, including both separate task texts and their separators."}
+  - {"control":"in-process effects","disposition":"residual: Fixture execution writes temporary data and markers only; the effective-settings check is read-only and the worker performs no live deployment."}
+  - {"control":"workflow and interpreter or environment inputs","disposition":"residual: The trusted parent names the manifest and any fixture root under the clean prefix; launcher discovery, environment overrides and production-only fixture gates are forbidden."}
+  - {"control":"new or renamed scripts","disposition":"residual: Only the named launcher is added; manifest parsing and exact-path validation stay there, and no second resolver, wrapper executable or artifact-directory runtime helper is introduced."}
+  - {"control":"orchestrator effect manifest provisioning","disposition":"residual: The operator materializes deterministic production manifest data under the protected repository root before enabling the changed hook; fixture manifests cannot become effective production bindings."}
+  - {"control":"orchestrator effect merge","disposition":"residual: Only the orchestrator merges the reviewed final head after Playbook step 10; shared credentials remain a bypass risk."}
+  - {"control":"orchestrator effect update-branch","disposition":"residual: Only the orchestrator updates the branch and refreshes evidence after any head change."}
+  - {"control":"orchestrator effect forced worker removal","disposition":"residual: None is planned; only the orchestrator may remove a worker and must record any discarded state."}
+  - {"control":"design 5.14 item 0 same-UID model","disposition":"residual: These controls limit accidents and prompt injection; shared credentials and unrestricted same-UID processes remain outside prevention."}
+  - {"control":"design 5.14 item 1 executable inputs","disposition":"residual: Retain P1-15 protection of policy, user-site locations, settings, rendered manifest and installed tools; executable binding alone does not protect mutable inputs."}
+  - {"control":"design 5.14 item 2 trusted parent","disposition":"residual: Exec form starts /usr/bin/env -i with literal argv before the privileged launcher validates entry state and the selected manifest; the hook host and loader starting /usr/bin/env still require host-supplied clean execution or the P1-16 OS user boundary."}
+  - {"control":"design 5.14 item 3 resolved boundaries","disposition":"residual: Apply canonical path, regular-file, shim, worker-root and temporary-root checks to the supplied manifest and its declarations; the explicitly named fixture root is a scoped test allowance, not a production setting."}
+  - {"control":"design 5.14 item 4 verified executable","disposition":"residual: Execute only the checked declared realpaths without rediscovery and record the selected manifest identity; unrestricted same-UID replacement after validation remains possible."}
+  - {"control":"design 5.14 item 5 output identity","disposition":"residual: Record full base/head identities, task-copy hash and manifest hashes; no new reservation or slot lock is introduced."}
+  - {"control":"design 5.14 item 6 honest residuals","disposition":"residual: Report declaration checks, real fixture execution, the named pinned-installation skip, CI and operator-host deployment separately; no fixture or skip substitutes for production evidence."}
+  - {"control":"design 5.14 item 7 verification","disposition":"residual: Run the eight named regressions and scoped hostile-input cases, recording Class::test selectors without claiming system-wide closure or treating an earlier refusal as coverage of a later check."}
+  - {"control":"design 5.14 item 8 authenticated evidence","disposition":"residual: A parent-selected manifest supplies executable declarations, not permission or merge approval; integration evidence and live agmsg hardening retain their separate owners."}
+  - {"control":"design 5.14 item 9 isolation and cache","disposition":"residual: Bound Python children use -I and isolated offline uv with an absolute parent-supplied private cache; the explicit online seed uses the same manifest, clean parent and verified uv/Python, retaining --no-config --no-project --isolated --with pyyaml --python and -I while omitting only --offline."}
+  - {"control":"design 5.14 item 10 sandbox","disposition":"residual: Every worker command stays inside the sandbox; denial produces blocked evidence without escalation or an alternative execution surface."}
+premises:
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/uv/\" | paste -sd '|' -","output":"0|0.12|0.12.17|0.12.18|0.12.19|0.12.20|0.13|0.13.0|0.13.1|global|latest"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/uv/0.13.1/\" | paste -sd '|' -","output":"uv-aarch64-apple-darwin"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/python/\" | paste -sd '|' -","output":"3|3.15|3.15.0|global|latest"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15"}
+  - {"command":"head -1 \"$HOME/.local/share/mise/installs/npm-prettier/3.9.10/bin/prettier\"","output":"#!/usr/bin/env node"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/node/\" | paste -sd '|' -","output":"26|26.12|26.12.0|global|latest"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/node/26.12.0/bin/node\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/node/26.12.0/bin/node"}
+  - {"command":"grep -nE '^(uv|python|node) = ' home/dot_mise/config.toml | paste -sd '|' -","output":"3:node = \"latest\"|5:python = \"latest\"|17:uv = \"latest\""}
+  - {"command":"ls -1 .mise.toml mise.toml 2>&1 | paste -sd '|' -","output":"ls: .mise.toml: No such file or directory|mise.toml"}
+  - {"command":"cat mise.toml | paste -sd '|' -","output":"[tools]"}
+  - {"command":"grep -n '\"command\": \".*permgate claude\"' home/.chezmoitemplates/claude-settings-managed.json","output":"207:            \"command\": \"~/.local/bin/common/permgate claude\","}
+  - {"command":"head -1 home/dot_local/bin/common/executable_permgate","output":"#!/usr/bin/env -S uv run --no-cache --script"}
+  - {"command":"grep -cE '^# ///|^# dependencies[[:space:]]*=' home/dot_local/bin/common/executable_permgate","output":"0"}
+  - {"command":"sed -n '179,182p' Makefile | paste -sd '|' -","output":"format:| shfmt --indent 4 --space-redirects --diff .| git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check| git ls-files -z '*.md' | xargs -0 prettier --check"}
+  - {"command":"grep -cE '(^|[[:space:]])(export[[:space:]]+)?PATH[[:space:]:?+]*=' Makefile","output":"0"}
+  - {"command":"git ls-tree -r --name-only origin/main -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json home/dot_claude/modify_private_settings.json home/dot_claude-worker/modify_private_settings.json scripts/generate-agent-configs.py scripts/validate-agent-assets.py Makefile tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py | paste -sd '|' -","output":"Makefile|home/.chezmoitemplates/claude-settings-managed.json|home/dot_agents/agent-config.yaml|home/dot_claude/modify_private_settings.json|scripts/generate-agent-configs.py|scripts/validate-agent-assets.py|tests/unit/test_validate_agent_assets.py"}
+  - {"command":"grep -nE '^  - (home/dot_claude-worker/modify_private_settings.json|tests/unit/test_claude_managed_settings.py)$' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | paste -sd '|' -","output":"12:  - home/dot_claude-worker/modify_private_settings.json|27:  - tests/unit/test_claude_managed_settings.py"}
+  - {"command":"grep -nE '^def (render_claude_settings|render_template_text|validate_claude_settings|validate_model_profile_assets|validate_generated_agent_configs|main|render_managed_template|is_managed_permission_hook)\\(' scripts/generate-agent-configs.py scripts/validate-agent-assets.py home/dot_claude/modify_private_settings.json | paste -sd '|' -","output":"scripts/generate-agent-configs.py:400:def render_claude_settings(manifest: dict[str, Any]) -> str:|scripts/generate-agent-configs.py:1401:def main() -> None:|scripts/validate-agent-assets.py:88:def render_template_text(path: Path, os_name: str = \"darwin\") -> str:|scripts/validate-agent-assets.py:374:def validate_claude_settings(manifest: dict[str, Any], os_name: str = \"darwin\") -> None:|scripts/validate-agent-assets.py:1187:def validate_model_profile_assets(manifest: dict[str, Any]) -> None:|scripts/validate-agent-assets.py:1294:def validate_generated_agent_configs() -> None:|scripts/validate-agent-assets.py:1660:def main() -> None:|home/dot_claude/modify_private_settings.json:48:def render_managed_template(text: str) -> str:|home/dot_claude/modify_private_settings.json:68:def is_managed_permission_hook(hook: Any) -> bool:|home/dot_claude/modify_private_settings.json:196:def main() -> int:"}
+  - {"command":"sed -n '400,487p' scripts/generate-agent-configs.py | wc -l | xargs","output":"88"}
+  - {"command":"sed -n '88,100p;374,406p;1187,1265p;1294,1304p;1660,1685p' scripts/validate-agent-assets.py | wc -l | xargs","output":"162"}
+  - {"command":"sed -n '48,55p;68,79p' home/dot_claude/modify_private_settings.json | wc -l | xargs","output":"20"}
+  - {"command":"wc -l .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | xargs","output":"63 .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json 95 .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py 1781 tests/unit/test_validate_agent_assets.py 79 home/dot_mise/config.toml 2350 tests/unit/test_generate_agent_configs.py 4368 total"}
+  - {"command":"ls tests/unit/test_task_consistency_c11_c15.py 2>&1 | paste -sd '|' -","output":"ls: tests/unit/test_task_consistency_c11_c15.py: No such file or directory"}
+  - {"command":"sed -n '63,66p' .claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py | paste -sd '|' -","output":"CASES = {|    \"C11\": (|        '\"closed: tests/unit/test_tool.py::test_tool_prints_findings\"',|        '\"closed: tests/unit/test_tool.py::two words\"',"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\" --version","output":"uv 0.13.1 (62faed335 2026-10-13 aarch64-apple-darwin)"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15\" -I -B --version","output":"Python 3.15.0"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/node/26.12.0/bin/node\" --version","output":"v26.12.0"}
+  - {"command":"rg -l 'claude-settings-managed|is_managed_permission_hook|permgate claude' home scripts tests .github Makefile --glob '!*.md' --glob '!*.lock' | sort | paste -sd '|' -","output":"home/dot_agents/agent-config.yaml|home/dot_claude/modify_private_settings.json|scripts/validate-agent-assets.py|tests/fixtures/gate-evidence/pr-feedback-right.json|tests/install/common/lifecycle.bats|tests/unit/test_claude_settings_merge.py|tests/unit/test_generate_agent_configs.py|tests/unit/test_herdr_agents.py|tests/unit/test_statusline_tools.py|tests/unit/test_validate_agent_assets.py"}
+  - {"command":"grep -nE '^class (ClaudeManagedSettingsTest|ValidateAgentAssetsTest)' .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py | paste -sd '|' -","output":".claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py:12:class ClaudeManagedSettingsTest(unittest.TestCase):|tests/unit/test_validate_agent_assets.py:84:class ValidateAgentAssetsTest(unittest.TestCase):"}
+  - {"command":"sed -n '117p' .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md | cut -d . -f 1-2","output":"On success print exactly one absolute interpreter realpath and exit 0. On every refusal print exactly one line `trusted-interpreter: refused: <code>` to stderr, print no interpreter on stdout, and exit 2"}
+  - {"command":"printf '%s\\n' \"$PATH\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$HOME/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:$HOME/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin"}
+  - {"command":"grep -nE '^    import yaml|PyYAML is required' scripts/validate-agent-assets.py | paste -sd '|' -","output":"22:    import yaml|81:        fail(\"PyYAML is required\")|175:        fail(\"PyYAML is required to validate skill frontmatter\")"}
+  - {"command":"sed -n '340,346p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | paste -sd '|' -","output":"   Its managed PermissionRequest command remains exactly:||   ```text|   ~/.local/bin/common/permgate claude|   ```||   Do not add an env prefix, guard selector, absolute uv/Python invocation or new command-form validator for this hook. Keep its existing timeout and add the task's common `onFailure: \"block\"` entry policy. The unchanged command's shebang, interpreter discovery and inherited environment are explicit residuals owned by the binding task."}
+  - {"command":"head -1 .claude/worktrees/worker-e/home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl","output":"#!/bin/bash"}
+  - {"command":"test ! -e scripts/orchestrator/trusted-launch.sh","output":"","exit_status":0}
+  - {"command":"python3 -I -B -c 'from pathlib import Path; roots=(Path(\"home\"),Path(\".claude/worktrees/worker-e/home\")); print(\"|\".join(str(p) for root in roots for p in sorted(root.glob(\"dot_claude*/modify_private_settings.json\"))))'","output":"home/dot_claude/modify_private_settings.json|.claude/worktrees/worker-e/home/dot_claude/modify_private_settings.json|.claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json"}
+  - {"command":"python3 -I -B -c 'import os,pwd,stat; from pathlib import Path; h=Path(pwd.getpwuid(os.getuid()).pw_dir); u=h/\".local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\"; r=u.resolve(strict=True); print(\"home_matches_passwd=\"+str(Path.home()==h)); print(\"uv_regular=\"+str(stat.S_ISREG(u.lstat().st_mode))); print(\"uv_symlink=\"+str(u.is_symlink())); print(\"uv_under_passwd_install_root=\"+str(r.is_relative_to(h/\".local/share/mise/installs\"))); print(\"uv_declared_equals_realpath=\"+str(u==r)); print(\"trusted_launch_exists=\"+str(Path(\"scripts/orchestrator/trusted-launch.sh\").exists()))'","output":"home_matches_passwd=True\nuv_regular=True\nuv_symlink=False\nuv_under_passwd_install_root=True\nuv_declared_equals_realpath=True\ntrusted_launch_exists=False"}
+  - {"command":"rg -n '^    import yaml|PyYAML is required' scripts/generate-agent-configs.py | paste -sd '|' -","output":"14:    import yaml|34:        fail(\"PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py\")"}
+  - {"command":"sed -n '1294,1298p' scripts/validate-agent-assets.py | paste -sd '|' -","output":"def validate_generated_agent_configs() -> None:|    result = subprocess.run(|        [sys.executable, str(ROOT / \"scripts/generate-agent-configs.py\"), \"--check\"],|        cwd=ROOT,|        text=True,"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15\" -I -B scripts/generate-agent-configs.py --check","output":"ERROR: PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py","exit_status":1}
+  - {"command":"claude --version","output":"2.1.300 (Claude Code)","exit_status":0}
+  - {"command":"python3 -I -B -c 'from pathlib import Path; b=(Path.home()/\".local/share/mise/installs/npm-anthropic-ai-claude-code/latest/bin/claude\").read_bytes(); s=b\"Command hooks require `command`. For exec form (no shell)\"; i=b.find(s); print(b[i:b.index(b\"\\0\",i)].decode() if i>=0 else \"missing exec-form help\")'","output":"Command hooks require `command`. For exec form (no shell), set `command` to the executable and `args` to its arguments: {\"type\": \"command\", \"command\": \"echo\", \"args\": [\"hi\"]}. For shell form, set `command` to the full shell string: {\"type\": \"command\", \"command\": \"echo hi\"}.","exit_status":0}
+  - {"command":"web.open https://code.claude.com/docs/en/hooks#exec-form-and-shell-form","output":"Command hook args present selects direct executable spawn without a shell; args omitted selects shell form (sh -c on macOS/Linux). command is the executable path and args is its argument vector. Documented path placeholders include ${CLAUDE_PROJECT_DIR} and are substituted as plain strings."}
+---
+
+# AGMSG-TASK dotfiles-T133-trusted-entrypoint-binding-a01 — bind trusted entrypoints to a parent-selected manifest
+
+Worker: a Codex seat (worktree named at dispatch)
+
+Use the security profile for this Claude-boundary change. D-024-26 split this family from P1-15. Read the last 60 lines of .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md and .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{f810c30,772cde0,e5c055e,5204254}.md.last.md: shebang discovery, Python startup injection, the checker's own execution, shim discovery, the real uv layout and Prettier's node must be handled together.
+
+Read the complete binding acceptance record and these three pre-dispatch reviews:
+
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md.last.md
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md.last.md
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md.last.md
+
+This is the C-92 fixture-vs-binding re-plan recorded by the acceptance record's `re-plan:` line, not a fourth repair under the predecessor design. Preserve the earlier findings and their dispositions. The new design retains round 3's exec-form hook, quote-preserving comparisons and bound online seed, and replaces its contradictory positive-fixture requirement.
+
+The launcher validates the manifest its trusted parent explicitly names. Production passes the rendered production manifest; tests pass a fixture manifest declaring the runner's real tools. Both use the same manifest parser, exact-path checks, containment checks, version comparisons and command construction. A fixture cannot bypass a check, and a production-only resolver or hard-coded installation gate must not run before the fixture's declared interpreter.
+
+These are two separate task files. This primary task has exactly ten allowed_files entries: eight exact implementation/test paths, one modify-script glob and one evidence wildcard. The glob authorizes only home/dot_claude/modify_private_settings.json and home/dot_claude-worker/modify_private_settings.json, each with its own threat row. An additional match requires a reviewed split. The second file below owns mise pins and the generator assertion; do not combine their front matter or dispatch this task before that prerequisite is accepted.
+
+## Dispatch prerequisites and scope
+
+Accept dotfiles-T133-trusted-entrypoint-pins-a01 before the Python-resolver dependency is dispatched; the historical probe says latest for all three tools. Accept both after dependencies and verify P1-15's deployed protection before sending this task.
+
+The seven existing concrete allowlist paths were on origin/main at the recorded probe. P1-15 creates the worker modify script and ClaudeManagedSettingsTest module. Add scripts/orchestrator/trusted-launch.sh as the only new executable source. Recheck these paths and measurements on the actual dispatch baseline; refresh changed premises through a reviewed, hashed amendment before dispatch, never only in the Checks paste.
+
+The installed a04 resolver remains read-only. Its existing consumers retain its production-pinned contract. For the scoped launcher, this re-plan explicitly replaces the earlier instruction to obtain Python unconditionally from that resolver: resolve and validate the exact Python declaration in the parent-selected manifest, using the same code for production and fixtures. Do not edit the resolver, add PATH discovery to production, or make a fixture satisfy an unrelated host's mise pin.
+
+The root C11 test file was absent at the recorded probe, and the inspected worker-g copy accepted tests/<path>::<identifier> rather than a Class::test payload. The orchestrator must obtain and read the accepted checker/test revision before dispatch, check C1–C10, C7b and C11, and manually re-probe premises. Never execute arbitrary premise shell strings through an unchecked checker.
+
+Each threat-table file row names one file or one allowed wildcard only. This draft makes no closed claims. Any later closed row must name exactly one selector in the form tests/<path>::<Class>::<test>; a module name, free-function selector or prose reference is insufficient.
+
+## Applicable design — C-88 verbatim quotations
+
+`$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md`, section 5.14, is uncommitted design input. The relied-on sentences of items 1, 2 and 9 are quoted verbatim below. The parent-selected manifest contract is this re-plan's explicit scoped replacement for an unconditional production-pinned resolver call.
+
+> The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19).
+>
+> A shell script that runs under a PR-controlled or worker-controlled environment (verdict.sh, the chain glue, CI steps) is executed as a program with `#!/bin/bash -p`, never as `bash <file>`, and only by a trusted parent that supplies the clean environment before the exec: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<passwd home> LANG=C.UTF-8 /bin/bash --noprofile --norc -p <absolute script path> …` (long options before `-p`). Privileged mode discards inherited functions, `BASH_ENV`/`ENV`, `SHELLOPTS`, `BASHOPTS`, `CDPATH` and `GLOBIGNORE`, but on Linux an inherited `LD_PRELOAD`/`LD_AUDIT` already executes while the loader maps `/bin/bash`, before `-p` or any statement runs, so a self re-exec inside the script is not a boundary and re-executing `"$0"` would reopen the caller's pathname (a worker-owned symlink can be swapped between the two executions); the program therefore verifies and refuses instead of repairing: its environment must consist of exactly the allowed names (checked through absolute paths `/usr/bin/env`, `/usr/bin/grep`), `$0` resolved with `realpath` must be a regular file under the repository root, and HOME must equal the passwd home of the real uid (`/usr/bin/dscl . -read /Users/<user> NFSHomeDirectory` on macOS, `/usr/bin/getent passwd <uid>` on Linux), otherwise exit 2 with a named message. A caller-set sentinel variable is not a sanitization proof, because the caller controls it (ci-efficiency a04 and verdict a04 C-80 reviews, 2026-10-19). No script accepts a caller-supplied executable directory; interpreters are the fixed absolute paths item 9 names.
+>
+> One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+
+## Implementation contract
+
+### Declarations and deterministic rendering
+
+Declare production uv 0.13.1 at .local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv, Python 3.15.0 at .local/share/mise/installs/python/3.15.0/bin/python3.15, and node 26.12.0 at .local/share/mise/installs/node/26.12.0/bin/node, relative to the real uid's passwd home. A test compares all three production versions with home/dot_mise/config.toml. No wildcard, version alias, latest, shim, traversal or missing required declaration is accepted. If accepted pins differ from these probes, stop for a re-probed amendment rather than substituting an installed version.
+
+Rendering composes the supplied home and repository bindings with these declarations and validates shape only. It remains deterministic on a host with no installs. Use the same native expansion in both modify-script consumers and the validator renderer, with correct JSON and shell quoting, including homes and repository paths containing spaces.
+
+Render the launcher manifest as data from the source manifest. The fixed production destination is <canonical repository root>/.agents/worklog/trusted-entrypoint-manifest, outside worker-writable roots. It is an operator-provisioned runtime data artifact, not a new tracked source file or an executable under the evidence wildcard. The operator materializes it during deployment preparation before enabling the changed hook. Tests render into their temporary fixture root. Ordinary generation and render-check compare the deterministic rendering without requiring or writing the installed production artifact.
+
+Use one small, documented data grammar that the privileged-shell launcher can parse with fixed absolute system tools before executing any declared uv or Python. Treat every field as literal data: no source, eval, shell expansion, command substitution or declared-interpreter bootstrap. Reject malformed, duplicate, unknown or missing required fields. Declare exact relative paths and exact versions; declarations must not select arbitrary commands. The production manifest also carries the rendered worker-root inventory used by containment checks.
+
+### Parent-selected manifest and shared checks
+
+Every launcher invocation requires exactly one `--manifest <absolute path>` before its operation. There is no implicit manifest, environment-variable replacement or discovery fallback. The only additional root argument is one optional `--fixture-root <absolute directory>`, also supplied by the trusted parent before the operation.
+
+Validate the launcher entry state before reading the manifest. Retain #!/bin/bash -p, English shdoc comments, the exact accepted clean environment, the canonical non-symlinked launcher pathname under its repository root and HOME equality with the real uid's passwd home. Account explicitly for Bash-maintained environment entries. Refuse rather than repairing the environment or self-re-executing.
+
+Resolve the manifest and require a regular, non-symlinked file whose canonical path is under the repository root or, when explicitly supplied, under the canonical fixture root. Reject sibling-prefix lookalikes, path traversal and symlink escapes. A fixture root must be an existing canonical directory; it does not replace passwd HOME, the launcher repository root or the launcher's own entry checks.
+
+Apply the same checks to every declared executable required by the selected operation:
+
+1. Require the exact declared relative path, composed with passwd home for production or the explicitly named fixture root for fixture bindings. Do not accept an arbitrary absolute executable operand, a parent traversal or a different installation chosen by discovery.
+2. Require a regular executable file, reject a symlinked binary or redirected installation component, and require the declared composed pathname to equal the canonical executable pathname.
+3. Reject a `shims` path component before and after resolution.
+4. Reject containment under worker-writable roots, worker caches or temporary roots, including $TMPDIR. The explicitly named fixture root is the sole scoped allowance for fixture files under temporary storage; it does not waive regular-file, symlink, shim, exact-path or version checks. Explicit worker subroots within a fixture remain forbidden.
+5. Complete identity and containment checks before executing that binary, including a --version probe. Compare the reported version exactly with that manifest's declared pin, then use only the verified absolute realpath.
+
+The production manifest pins must match the repository's mise declaration. A fixture manifest instead pins the actual versions of its real fixture tools. Comparing fixture versions with production mise pins, calling the production-only resolver first, or accepting arbitrary runner paths without the shared checks would reproduce the rejected design.
+
+No launcher-side command -v, mise which, newest-version selection, PATH fallback, download or alternative resolver is permitted. Test-harness discovery described below is preparation of trusted fixture input, not launcher discovery.
+
+Refusals exit 2, emit exactly one stderr line `trusted-launch: refused: <code>`, and produce no operation output. Use dirty-environment, script-path, home-mismatch, cache-path, manifest-path, manifest-shape, fixture-root, uv-path, python-path, node-path, version-mismatch or invocation for the corresponding failed check. Version probes may run only after path checks; capture their output for validation rather than leaking it into hook stdout. Preserve underlying operation exit status after successful validation. A negative test must reach and assert its intended reason, rather than passing through an earlier refusal.
+
+### Exec-form hook and migration
+
+The installed Claude Code probe reports 2.1.300. Its embedded hook help and the [exec-form documentation](https://code.claude.com/docs/en/hooks#exec-form-and-shell-form) establish command plus args without an outer shell. Retain that round-3 decision.
+
+The managed PermissionRequest hook uses the following clean prefix, with absolute rendered host bindings and the parent-selected private cache and manifest. Each args element is one argument; paths containing spaces have no embedded shell quotes. CLAUDE_PROJECT_DIR is the documented host-substituted placeholder, and CLAUDE_ENV_FILE is explicitly empty. Do not assume exec form expands arbitrary environment variables.
+
+```json
+{"command":"/usr/bin/env","args":["-i","PATH=/usr/bin:/bin","HOME=<rendered passwd-home>","LANG=C.UTF-8","TERM=dumb","CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}","CLAUDE_ENV_FILE=","UV_CACHE_DIR=<private cache>","/bin/bash","--noprofile","--norc","-p","<abs trusted launch>","--manifest","<abs rendered production manifest>","permission-request"]}
+```
+
+A fixture uses the same form, substituting its rendered manifest operand and inserting `--fixture-root`, `<abs fixture root>` immediately before permission-request. Effective production settings must match the production form exactly and must not contain --fixture-root.
+
+This starts no sh -c, bash -c, eval, command substitution or intermediate wrapper. The launcher constructs the verified uv/Python/permgate argv. Do not fall back to shell form when exec-form support is absent: stop for a reviewed amendment.
+
+Exec form removes the extra outer-shell startup path. The hook host's own process environment and inherited loader inputs while starting /usr/bin/env remain residual until the host supplies a clean environment at exec or the P1-16 OS user boundary exists. Neither env -i, -p nor a launcher check retroactively closes that residual.
+
+Replace the validator's literal permgate-claude substring rule with exact equality of the command string and ordered args array against the complete rendered canonical exec form, including --manifest. Both modify scripts use that same comparison for bound-form classification. Do not join args into a shell string, compare shlex tokens, normalize strings or discard quoting from legacy comparisons.
+
+Refuse absent args, shell-form substitutes, missing, reordered or extra args, an altered manifest operand, production --fixture-root, --script, nonisolated Python, shim paths and shell suffixes. Retain ccgate refusal, hook order, duplicate detection, synchronous timeout budgets and onFailure block.
+
+Classify the legacy managed form separately. Replace stale managed hooks once, preserve custom hooks and converge idempotently. Retain quote-preserving raw-string distinctions for legacy shell fixtures. Keep each surface's P1-15 event inventory; do not import live orchestrator settings or add an event to a surface that lacks it. Run the existing ClaudeSettingsMergeTest legacy/custom fixtures unchanged.
+
+### Scoped entrypoint inventory
+
+The render regression checks exact command/args, executes the hook as [command, *args] with shell=False, and resolves the executable and interpreter operands in actual invocations under PATH=/usr/bin:/bin.
+
+- PermissionRequest: /usr/bin/env with the literal clean-prefix args, /bin/bash --noprofile --norc -p, the canonical launcher, --manifest and optional explicitly named fixture root, then permission-request. After manifest and binary validation the parent execs `<abs uv> run --no-config --no-project --isolated --offline --python <abs python> python -I <abs permgate> claude`, preserving hook stdin, stdout and exit status.
+- Deployment: the same launcher, clean prefix, production manifest and verified uv/Python perform the explicit online seed below. Subsequent checker/generator commands use isolated offline uv/Python with cached --with pyyaml and the same private cache. The checker runs validate-agent-assets.py --check-effective-settings. Its generated-config child re-enters the same parent with the same manifest and runs `<abs uv> run --no-config --no-project --isolated --offline --with pyyaml --python <abs python> python -I <abs generator> --check` from the canonical repository cwd.
+- Fixture subjects: the same launcher with the explicitly named fixture manifest and root, real uv/Python and unchanged permgate bytes, together with the generator, validator and both modify scripts. Every bound Python child uses -I. A child importing yaml uses the same offline --with pyyaml pattern after explicit fixture-cache provisioning.
+- Formatter interpreter check: the same launcher validates the declared node and starts its verified realpath with the probed installed Prettier script. Makefile format PATH includes node's declared bin directory so its env-node shebang resolves.
+
+Only canonical scoped invocations are accepted. PermissionRequest accepts its selector after the required manifest arguments and constructs the fixed command internally. Other scoped operations, including the seed, must match their exact bound argv. Arbitrary executable forwarding, caller-selected executable directories and alternate executable operands are forbidden.
+
+Add --check-effective-settings as an opt-in mode and expose the concrete trusted launch in Makefile. Ordinary validate-agent-assets and render-check stay pure. The opt-in mode reads effective installed settings, requires their exact production wiring and manifest operand, and checks existence, regular/executable identity, canonical protected paths and exact declared versions before operation execution. It consumes checked realpaths without rediscovery. It does not silently create a manifest, provision a cache, install tools or retry online.
+
+### Private cache and explicit online seed
+
+The trusted parent supplies an absolute UV_CACHE_DIR: protected main-checkout .agents/worklog/uv-cache for orchestrator/deploy runs, launcher-supplied <worktree>/.uv-cache for workers, and a temporary cache for tests. Parent and child refuse absent or relative caches; children do not derive defaults.
+
+Retain round 3's bound online-seed decision. The operator's deployment sequence is: make update and deterministic production-manifest preparation, explicit private-cache seed through the trusted parent, then the isolated offline deployment check. The worker does not perform live deployment.
+
+Use this seed command, replacing placeholders with shell-quoted absolute bound operands and using the canonical repository cwd:
+
+```text
+/usr/bin/env -i PATH=/usr/bin:/bin HOME=<rendered passwd-home> LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=<canonical repository root> CLAUDE_ENV_FILE= UV_CACHE_DIR=<private cache> /bin/bash --noprofile --norc -p <abs trusted launch> --manifest <abs rendered production manifest> <abs uv> run --no-config --no-project --isolated --with pyyaml --python <abs python> python -I -c "import yaml"
+```
+
+The parent performs the same entry, manifest, cache, uv and Python checks before the seed as before every other bound operation. It compares executable operands with its verified manifest paths and execs only the exact PyYAML-import argv. Relative to the offline PyYAML form, only --offline is omitted. Retain --no-config, --no-project, --isolated, --with pyyaml, --python <verified abs python> and python -I. The [uv command reference](https://docs.astral.sh/uv/reference/cli/#uv-run) supplies the option semantics.
+
+Record the selected manifest's canonical path and SHA-256, the complete seed command with expanded bound paths, output and actual exit status in validation.md. Carry the seed status and evidence into acceptance. Propagate the seed's exit status. A failed seed blocks later offline deployment commands; none downloads or seeds implicitly.
+
+The checker and its yaml-importing generator child use that same manifest and cache through the parent. Never substitute the resolver's base Python or sys.executable directly for the uv-provided PyYAML environment.
+
+Record the actual positive deployment result from the operator's host after make update and manifest preparation. CI fixture execution does not substitute for that host result.
+
+## Fixture and regression contract
+
+### Real fixture-manifest execution on runners
+
+The harness discovers real uv by inspecting shutil.which("uv"), rejecting a shims component before and after resolution, then searching the actual mise uv install root if needed. Prefer the pinned version's directory when present and use the newest exact installed version only as a harness fallback. Handle the probed platform subdirectory rather than assuming <version>/uv. Resolve sys.executable for real Python and reject shims. Record the discovery result, canonical identities and actual versions.
+
+The harness renders a fixture manifest with exact declarations and versions for those real tools, then supplies that manifest through --manifest and the test's canonical temporary directory through --fixture-root. HOME remains the real uid's passwd home.
+
+The fixture must satisfy exact relative-path composition and containment. If a discovered executable is outside the permitted home/fixture binding, materialize the real executable bytes and the Python runtime support needed for a working installation under the fixture root, using regular files rather than symlink bindings. Verify the copied executable bytes against their discovered sources and verify the staged interpreter actually runs with -I. Copy necessary runtime/stdlib files; do not replace Python with a wrapper or a fake executable. Preserve unchanged real permgate bytes under the fixture root.
+
+The launcher sees only the declared fixture paths, validates them through the production code path and compares their actual versions with the fixture pins. Do not pass a runner's external absolute sys.executable as an unchecked exception, redirect production HOME, disable a check, or force the fixture through the production-only mise resolver.
+
+Execute the rendered hook as [command, *args] with shell=False and a fake PermissionRequest payload. Substitute only the documented host placeholder. Require real uv, real isolated Python and unchanged real permgate, with no wrapper or fake on the positive path. Assert the expected permgate decision, not merely process startup or argv recording.
+
+Plant .pth and usercustomize.py markers in a fake user site and assert neither executes. Include hostile uv.toml, .venv and startup/PYTHON* inputs. Confirm the supplied clean prefix and isolated invocation prevent their consumption without changing real user-site files or installations.
+
+This fixture execution is required on CI runners with setup-uv and their ordinary Python installation; it does not require the production mise installation. There is no fixture-execution skip for missing production pins. Failure to discover or prepare real fixture tools is a failed or blocked check with its exact reason, never green evidence.
+
+### Separate pinned-installation case
+
+Add a separate test of the exact production manifest bindings on a host with the pinned mise installation. It must execute the real bound hook path without substituting fixture pins or accepting a fallback version.
+
+Elsewhere, skip only this pinned-installation test with the named reason `pinned-installation-unavailable`, recording the missing exact installation paths. An existing symlinked, malformed, mismatched or otherwise invalid installation is a refusal/failure, not absence and not a skip. Record every such skip in validation.md and report.md. Obtain the real host result during operator deployment; a runner's required fixture execution remains separate.
+
+### Named regressions
+
+Add or extend these eight regressions in the real existing classes, recording the full selectors and running their unittest dotted equivalents red before implementation and green afterward:
+
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_trusted_entrypoint_manifest_matches_mise
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_every_bound_entrypoint_resolves_with_system_path
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_permission_request_uses_real_isolated_uv
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_permission_request_uses_pinned_installation
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_trusted_entrypoint_consumers_migrate
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_bound_permission_request_structure
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_effective_settings_checks_binary_identity
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_trusted_launch_validates_manifest
+
+The manifest/mise regression checks production declarations, deterministic manifest rendering and exact version equality with the read-only mise declaration. Fixture pins are tested against their actual fixture executables, not against production versions.
+
+The system-PATH regression checks /usr/bin/env as the hook executable, the exact clean assignments before /bin/bash --noprofile --norc -p, the canonical launcher, required manifest operand and operation. Assert shell=False, no outer-shell invocation, and exact fixture-root argument placement when testing the fixture form.
+
+The structure and migration regressions include a hostile CLAUDE_PROJECT_DIR value containing spaces and a -- word, such as `project path -- injected`. Host substitution must preserve one args element. Both bound classifiers compare the exact command string and ordered args array; splitting the value or joining args into a shell string must fail.
+
+Retain the round-2 quoted/unquoted legacy shell fixture pair whose shlex tokens are equal. Refuse both as the active canonical hook and preserve their raw-string distinction during legacy classification. Preserve custom hooks, stale managed-form replacement and repeated-merge idempotence.
+
+The manifest regression exercises the actual launcher with otherwise valid fixture bindings and covers:
+
+- A regular manifest outside both the repository and named fixture root, refused with manifest-path before any declared binary executes.
+- A sibling-prefix or symlink escape outside those roots, also refused with manifest-path.
+- A missing, relative or duplicated --manifest operand, malformed manifest data and an invalid fixture-root operand, with their specific refusal codes.
+- A valid regular fixture manifest under the explicitly named fixture root, proving the same path accepts its declared real uv/Python without the production mise installation.
+
+The binary-identity regression uses that accepted fixture-manifest path to reach the intended binary check. Cover a declaration naming a shim, a symlinked binary pointing to a marker-writing fake uv, and a path under an explicitly forbidden worker-writable root. Assert exit 2, the specific uv-path or python-path refusal and absent marker. A prior manifest, HOME or missing-installation refusal does not cover these cases. Also cover an exact-version mismatch after valid path checks.
+
+In a separate non-skippable seed subcase, place an argument-recording fake uv as a regular executable at the fixture's declared canonical path. Its --version response matches the fixture pin. Execute the actual seed launch through the parent with shell=False and --manifest/--fixture-root. Assert the complete /usr/bin/env -i … /bin/bash --noprofile --norc -p prefix, verified absolute uv/Python operands and the recorded argv:
+
+```text
+run --no-config --no-project --isolated --with pyyaml --python <abs python> python -I -c "import yaml"
+```
+
+The final import is one argument. Assert absence of --offline, the exact clean environment and absolute private UV_CACHE_DIR, and seed exit-status propagation. Missing or relative caches must refuse without executing fake uv. This case uses no network and is evidence of invocation and refusal behavior only.
+
+Also seed a fixture private cache explicitly through the same parent and isolated seed argv with real bound uv/Python, then prove the generator child's exact offline --with pyyaml argv, shared cache and successful yaml import. An isolated base-Python-only child must not satisfy this assertion. Sandbox or network denial is reported as blocked, without an outside-sandbox retry.
+
+The fake-uv refusal and seed-recording subcases are not positive hook or deployment evidence. Structural, migration, manifest-boundary, identity and seed-recording cases never depend on the pinned-installation skip.
+
+Exercise design item 7's hostile PATH, hostile Git environment/configuration, worker-root path and validation-to-consumption replacement cases for the scoped mechanisms, using the common helper when available. Prove no planted payload executes and state the same-UID replacement residual honestly.
+
+No guard/delivery/state-helper descendant migration, permgate policy/source change, dependency, workflow change or worker live deployment is authorized.
+
+## Measurement and caps
+
+Historical touched-function spans are renderer 88, validator 13+33+79+11+26=162 and orchestrator modify 8+12=20 lines. P1-15's inspected worker modify module is 63 lines: 88+162+20+63=333 existing touched lines. The launcher has a zero-line baseline because the probed path is absent: 333+0=333. Existing target test modules total 95+1781=1876 lines.
+
+The P1-15 files are an unmerged worker-e snapshot, not accepted-base measurements. Remeasure on the dispatch baseline and record the actual spans and file totals before implementation.
+
+Production allowance, counted as additions plus deletions, is manifest/template 50 + renderer and manifest serialization 80 + both modify scripts 100 + validator 190 + Makefile 40 + launcher including shared manifest parsing, containment, identity and hook/seed dispatch 160 + margin 10 = 630 changed lines.
+
+Test allowance is real execution/rendering and fixture preparation 260 + migration 100 + validator identities/refusals 220 + pin/shape checks 70 + environment/node cases 90 + pre-exec symlink case 40 + hostile quoting case 20 + yaml-child/cache case 20 + exec-form hook case 10 + online-seed prefix/argv case 30 + manifest-boundary cases 80 + separate pinned-installation case 40 = 980 changed lines.
+
+The re-plan therefore raises the production cap from 500 to 630 and the test cap from 800 to 980 for the explicitly named manifest and fixture work. Runtime manifest data is not an executable helper. Count any tracked runtime configuration as production rather than hiding it in evidence totals. Reports and review evidence are excluded. Do not raise a cap or omit a consumer: stop for another split.
+
+## Check
+
+Run make unit-test, make format, make validate-agent-assets and make render-check, the eight named regressions, and unchanged tests.unit.test_claude_settings_merge, tests.unit.test_generate_agent_configs, tests.unit.test_statusline_tools and tests.unit.test_herdr_agents. Do not run Bats locally.
+
+Record exact commands, statuses, red/green commits, discovered and staged real-tool identities, manifest hashes, fixture results, the named pinned-installation skip or host result, and baseline failures in validation.md. A failed or blocked check is not green. CI must execute the real fixture-manifest hook case without the pinned mise installation; the pinned-installation case has its separate recorded outcome.
+
+Measure git diff --numstat origin/main...HEAD: at most 630 changed lines outside tests/ and .orchestration/, and at most 980 under tests/. Include any production configuration placed elsewhere in the production total.
+
+The orchestrator compares the dispatched copy and TASK SHA-256 and runs the accepted base's regime-ci.py --base <base40> --head <head40> --root <base-checkout> under the trusted Python prefix. Report any unverifiable-copy warning. Check C7b row units and any C11 closed-row selectors explicitly.
+
+Before completion run make require-crit-review with read/resolved local agent evidence and its receipt, then use Playbook step 10 at integration. Neither drafting this text nor passing a fixture authorizes deployment or merging.
+
+## Completion
+
+Current bindings override the historical identifiers, paths, branch/PR and deletion instructions inside the following source quotation: create tools/trusted-entrypoint-binding-a01 and one new PR from the accepted dispatch baseline; all artifacts, PONG ids and task_copy bind to dotfiles-T133-trusted-entrypoint-binding-a01, no predecessor deletion is authorized, and the orchestrator creates dotfiles-T133-trusted-entrypoint-binding-followup-a01 before advisory dispositions. Preserve the full executable-binding finding history, the C-92 fixture-vs-binding re-plan and D-024-26. The source Completion is otherwise verbatim, with the requested advisory-owner substitution.
+
+Report the production and fixture manifest identities separately. Include the real fixture-hook outcome, pinned-installation result or named skip, each manifest/binary refusal, quote-preserving comparison evidence and bound seed evidence. The operator's later deployment result remains a distinct acceptance item; do not claim it from CI.
+
+> Bindings for this new task: create a fresh `tools/loop-limits-a01` branch and one new PR from the dispatched baseline; predecessor head is not applicable. All current artifact paths, task-copy hashes and PONG task ids bind to `dotfiles-T133-loop-limits-a01`. Keep the first push's task copy byte-identical; no predecessor deletion is authorized. The orchestrator creates `dotfiles-T133-trusted-entrypoint-binding-followup-a01` before dispositioning advisory rows. The quotation below preserves the source Completion verbatim except for the requested advisory-owner substitution; its historical PR, branch and predecessor bindings are superseded by this paragraph.
+>
+> One existing PR, #424, on `tools/ci-efficiency-followup-a02`, continuing from `67e2cc98`; the predecessor’s fresh-branch requirement is superseded. Keep its implementation, tests, commits and historical evidence. In the first a04 push delete `.orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md` and add `.orchestration/dotfiles-T133-ci-efficiency-followup-a04/task.md` byte-identically to the dispatched a04 text. That single predecessor-file deletion is the reset transition authorized by C3; do not rewrite or move the predecessor’s other evidence.
+>
+> Write current `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `autoskill.md` and worker review evidence under `.orchestration/dotfiles-T133-ci-efficiency-followup-a04/`. Record the predecessor head, exact final head and base, branch, PR, changed files, row-to-test mapping, red/green commits, cap totals, evidence paths and `task_copy=<sha256 of .orchestration/dotfiles-T133-ci-efficiency-followup-a04/task.md>`. Preserve historical claims as historical; they do not approve the new head.
+>
+> The inherited Completion rules apply with these explicit bindings: advisory P2 and P3 belong to `dotfiles-T133-trusted-entrypoint-binding-followup-a01`, with rows recorded by the orchestrator before disposition. Do not reopen that owner’s advisory work in this task unless a narrow revise explicitly authorizes it.
+>
+> Every fix round counts toward INV-6, including worker-side fixes before the first RESULT; C-61 permits at most two in this task, and amendments and questions retain their own counters. A rebase repair qualifies only under D-024-24 and cannot hide a security fix. Another repeated-class finding or exhausted counter stops work for the orchestrator’s recorded re-plan; do not continue under a new label.
+>
+> A P0/P1 surviving the permitted worker-side fix round is sent as `open:<id>` in the RESULT, including `open:review-<id>` for a review-body finding, with the applicable round count. It stops integration for the operator’s decision; never convert it into an advisory disposition or perform another unauthorized fix round.
+>
+> Wait for final-head CI and the bounded automatic Bot-review window. Record `bot: none` if the window expires. **Do not post `@codex review`**, at the ten-minute mark or after a fix. The orchestrator replies to and resolves GitHub review threads.
+>
+> Every `gh` command and every `git` write is an individual command **inside the sandbox**, including pushes and authenticated fetches. No compound write commands, outside-sandbox retries, excluded-command workaround, permission escalation or alternate tool to bypass a denial. Anything that cannot complete there produces `AGMSG-PONG v1 task_id=dotfiles-T133-ci-efficiency-followup-a04 status=blocked` naming the exact command, failure and crossed boundary; preserve the evidence and wait.
+>
+> The orchestrator performs final-head review and the security-profile review, then follows Orchestrator Playbook step 10 for CI, feedback sweep, task-level audit, finding dispositions, acceptance, gate and head-bound merge. The worker does not merge or remove workers.
+>
+> Implementation, runtime tests and CI are not claimed checked by this task draft; dispatch remains held on the stated prerequisites. Same-UID replacement and shared-credential risks remain residual.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+(pasted at dispatch)
+Not checked: implementation, runtime tests, CI, live dispatch or operator-host deployment.
+Risk: pending prerequisites, same-UID replacement, shared credentials and inherited descendant bindings remain residual.
+```
+
+---
+format: 2
+task_id: dotfiles-T133-trusted-entrypoint-pins-a01
+kind: code
+security: true
+allowed_files: ["home/dot_mise/config.toml","tests/unit/test_generate_agent_configs.py",".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/**"]
+after: []
+threat_table:
+  - {"control":"home/dot_mise/config.toml","disposition":"residual: Pin only uv, Python and node to the primary task's probed versions; this intentionally stops their latest-version tracking."}
+  - {"control":"tests/unit/test_generate_agent_configs.py","disposition":"residual: Keep an exact source-manifest/rendered-command equality check and executable leaf/argument checks, plus explicit pin assertions; do not delete legacy fixture coverage."}
+  - {"control":".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/**","disposition":"residual: Only task copy and review/validation/report data are authorized; no helper or runtime code is placed here."}
+  - {"control":"task copy .orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task.md","disposition":"residual: The orchestrator compares the full dispatched bytes and SHA-256 before accepting this prerequisite."}
+  - {"control":"task metadata","disposition":"residual: This is an independent three-entry prerequisite task; it grants no write permission for the later binding implementation."}
+  - {"control":"metadata separators","disposition":"residual: Parse as data with duplicate keys refused and compare the complete dispatched task copy."}
+  - {"control":"in-process effects","disposition":"residual: Tests and fixture renders use temporary directories; no mise install, update, apply or live hook execution is authorized."}
+  - {"control":"workflow and interpreter or environment inputs","disposition":"residual: The exact declaration is changed intentionally; trusted-entrypoint implementation remains in the primary task."}
+  - {"control":"new or renamed scripts","disposition":"residual: None is authorized; retain existing generator and test helpers."}
+  - {"control":"orchestrator effect merge","disposition":"residual: The orchestrator alone integrates after full final-head evidence and Playbook step 10."}
+  - {"control":"orchestrator effect update-branch","disposition":"residual: A moved head requires refreshed checks and integration evidence under the orchestrator's control."}
+  - {"control":"orchestrator effect forced worker removal","disposition":"residual: None is planned; the worker cannot remove seats or discard another worktree."}
+  - {"control":"design 5.14 item 0 same-UID model","disposition":"residual: Exact pins do not separate OS identities or shared GitHub credentials."}
+  - {"control":"design 5.14 item 1 protected inputs","disposition":"residual: The exact declaration becomes a trusted input; worker write protection remains pending until P1-15 is accepted and deployed."}
+  - {"control":"design 5.14 item 2 clean environment","disposition":"residual: No new production execution path is introduced; inherited check launch trust is not established by a pin."}
+  - {"control":"design 5.14 item 3 paths","disposition":"residual: The declaration path is fixed and unchanged; installation path validation belongs to the resolver and primary task."}
+  - {"control":"design 5.14 item 4 verified bytes","disposition":"residual: Whole-task and final-head evidence are compared; local files remain replaceable by unrestricted same-UID processes."}
+  - {"control":"design 5.14 item 5 identity","disposition":"residual: Use full head/base and task-copy SHA-256 in evidence; no new lock or reservation is created."}
+  - {"control":"design 5.14 item 6 honest residuals","disposition":"residual: Pin assertions prove declarations only, not installed binary identity or successful hook execution."}
+  - {"control":"design 5.14 item 7 verification","disposition":"residual: Run the pin regression red then green and retain generator/merge consumers; general hostile-execution closure is not claimed."}
+  - {"control":"design 5.14 item 8 approval","disposition":"residual: Pins and local evidence are proposals until integration; neither grants permission or merge authority."}
+  - {"control":"design 5.14 item 9 isolation","disposition":"residual: This task supplies exact version input only; the accepted resolver and primary task implement isolated execution and private caches."}
+  - {"control":"design 5.14 item 10 sandbox","disposition":"residual: All commands stay in the sandbox; denied commands produce blocked evidence without escalation."}
+premises:
+  - {"command":"grep -nE '^(uv|python|node) = ' home/dot_mise/config.toml | paste -sd '|' -","output":"3:node = \"latest\"|5:python = \"latest\"|17:uv = \"latest\""}
+  - {"command":"git ls-tree -r --name-only origin/main -- home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | paste -sd '|' -","output":"home/dot_mise/config.toml|tests/unit/test_generate_agent_configs.py"}
+  - {"command":"wc -l .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | xargs","output":"63 .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json 95 .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py 1781 tests/unit/test_validate_agent_assets.py 79 home/dot_mise/config.toml 2350 tests/unit/test_generate_agent_configs.py 4368 total"}
+  - {"command":"grep -nE '^    def test_managed_hooks_use_installed_permgate_paths' tests/unit/test_generate_agent_configs.py | paste -sd '|' -","output":"1417:    def test_managed_hooks_use_installed_permgate_paths(self) -> None:"}
+  - {"command":"sed -n '1417,1422p' tests/unit/test_generate_agent_configs.py | wc -l | xargs","output":"6"}
+---
+
+# AGMSG-TASK dotfiles-T133-trusted-entrypoint-pins-a01 — prerequisite split for exact tool pins
+
+Worker: a Codex seat (worktree named at dispatch)
+
+This is the second, separate task file, with exactly three allowed_files entries. Accept it before dispatching ci-efficiency-followup-a04 or the primary binding task. The primary task above contains the shared host probes and C-88 quotations; these bind the version choices here and do not authorize the primary implementation in this prerequisite.
+
+Pin uv=0.13.1, python=3.15.0 and node=26.12.0 in home/dot_mise/config.toml, replacing only those latest values. Add one English comment explaining the trusted-entrypoint pins; preserve every other tool and setting. Do not install or apply anything.
+
+In GenerateAgentConfigsTest add test_trusted_entrypoint_mise_versions_are_exact, red before the config change and green afterward. Refactor test_managed_hooks_use_installed_permgate_paths to compare the complete rendered PermissionRequest command with the real manifest declaration rendered through the existing template helper; retain exactly one managed entry, permgate executable-leaf/claude-argument checks and the Codex assertion. Keep synthetic legacy-command fixtures. The primary task adds strict bound-sequence and parent-selected-manifest validation.
+
+Measured declaration: 79 lines; touched existing test: 6 lines at 1417–1422 in a 2350-line module. Source allowance is 3 additions+3 deletions+1 reason comment+1 margin=8 lines; fixture/assertion work 60+margin 20=80 test lines. Enforce these separate caps with git diff --numstat origin/main...HEAD; evidence is excluded, executable source is not.
+
+Check: make unit-test, make format, make validate-agent-assets, make render-check, tests.unit.test_generate_agent_configs and the new pin regression. Do not run Bats locally. Use the primary task's accepted-checker and regime-copy checks for this task's own id/copy; report blocked or baseline-failing checks honestly.
+
+Completion: create tools/trusted-entrypoint-pins-a01 and one PR; write task.md, report.md, validation.md, sandbox.md, learning.md, autoskill.md and worker review evidence under .orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/. The primary task's quoted Completion round, sandbox, CI/Bot and integration rules apply with this task's own identifiers; no predecessor deletion is authorized. Advisory owner is dotfiles-T133-trusted-entrypoint-binding-followup-a01, created before disposition. Only the orchestrator integrates; no deployment is claimed.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+(pasted at dispatch)
+Not checked: implementation, runtime tests, CI or deployment.
+Risk: the primary binding work and same-UID/shared-credential residuals remain.
+```
+
+## Orchestrator note (2026-10-21T08:31Z): the pins test moves with the command form
+
+The pins PR (#449, head 28dde0f5) refactored `test_managed_hooks_use_installed_permgate_paths` to split the rendered PermissionRequest command with `rsplit(" ", 1)` and assert the permgate executable leaf and the `claude` argument; that assertion encodes the pre-binding shell form and raises ValueError on this task's `command: "/usr/bin/env"` plus `args` form (audit:28dde0f:1 of the pins lineage). `tests/unit/test_generate_agent_configs.py` is therefore in this task's allowed_files: the worker updates that test together with the command form, asserting the executable leaf and the `permission-request` operand from `args` instead of a split string, and keeps the exact-pins test green. Its former out_of_scope row read: "dotfiles-T133-trusted-entrypoint-pins-a01 removes the installed-template legacy literal pin without relaxing synthetic legacy migration cases"; that constraint still holds (the synthetic legacy migration cases stay unrelaxed), only the ownership of the file moved here.
+
+ succeeded in 324ms:
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+.orchestration/decisions.tsv
+
+**Optimizing output size**
+codex
+文面は、同一 UID による差し替えを残余リスクとして明記し、trusted parent 未配備の間は認証付き実行を止めています。既知の残余そのものを再指摘せず、その停止条件やテストが実際の子プロセスまで及ぶかを、過去の拒否理由と照合しています。
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:39` — Deferring parent/interpreter binding supplies no compensating control: retained mise/PATH-selected processes execute before the proposed `gh` checks and can replace their decisions or capture credentials; cleaning only the child environment cannot establish the claimed consumer binding, especially outside Linux’s sandbox.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — The environment allowlist omits a control and test for `gh`’s configuration-file inputs: default home configuration can select `http_unix_socket`, changing the actual transport despite a pinned executable and explicit hostname; require a protected, controlled configuration source. [GitHub CLI configuration](https://cli.github.com/manual/gh_config), [configuration discovery](https://cli.github.com/manual/gh_help_environment).
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:38` — The named child-environment test cannot close in-process effects: the reused chain/regime fixtures inherit `GIT_*` into Git writes, allowing `GIT_DIR`/`GIT_WORK_TREE` to redirect operations outside their temporary repositories and `GIT_CONFIG_*` to inject configuration. [Git environment](https://git-scm.com/docs/git), [configuration overrides](https://git-scm.com/docs/git-config).
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:80` — Allowing an identity refusal to satisfy each decoy test does not prove successful consumer binding; require a positive authenticated-operation fixture per route, alongside refusal cases, to prevent an always-refusing implementation from satisfying the binding evidence.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:105` — The stated baseline is inaccurate: `chain-finish.sh` is absent from this checkout and local `origin/main`, and neither Python checker contains the claimed `gh` lookup; with creation forbidden and `after: []`, the six-route implementation requires the reviewed amendment this line prescribes.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:110` — `Checks` is empty despite requiring populated measurements before C-80; these bytes provide no observed canonical-source, installation or interpreter-binding evidence, and approval cannot cover a later paste.
+
+📝 まとめ: Reviewed all 37 threat rows and cited acceptance/review history; findings remain input for the orchestrator. No files changed.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-user replacement and credential-sharing risks remain.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — Forbidding descendant edits and wrappers prevents the promised fixed-repository binding: `scripts/require-crit-review.py:519` removes `GH_REPO`, then discovers the repository from local Git context and passes that result to `gh pr view`; `scripts/pr-feedback.py:84` also omits `--hostname`. A pinned executable does not bind these decisions to `github.com/mryfmo/dotfiles`; authorize the descendant changes and test hostile repository configuration through the real gate. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:83` — Applying item 9 to every descendant conflicts with the excluded gate’s collector launch at `scripts/require-crit-review.py:615`, which starts `[sys.executable, collector, …]` without `-I`; the parent’s isolation flags do not propagate, and `PYTHONSAFEPATH` alone does not disable user-site startup code. Authorize this launch change and require a real-descendant startup-hook test before claiming the isolation contract is satisfied. [Python isolation options](https://docs.python.org/3/using/cmdline.html#cmdoption-I)
+
+📝 まとめ: Reviewed all 37 threat rows, existing consumer paths, and cited acceptance/review history. Two findings remain for orchestrator disposition; no files changed.
+
+Not checked: future implementation, CI, or live Linux/race behavior; same-user replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrectNo findings in the 41 threat rows. Items 6–7 address the previous descendant repository-binding and Python-isolation findings; the referenced contract covers resolved paths, replacement risks and Git environment controls.
+
+This assesses the design only. Dispatch remains blocked pending populated Checks, expanded residual ownership and measured host protections.
+
+📝 まとめ: Completed the read-only task and cited-history review; no files changed.
+
+Not checked: implementation, CI or live Linux execution; same-UID replacement and credential separation remain explicit residual risks.
+Verdict: correct
+exec
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md; cat .orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+format: 2
+task_id: dotfiles-T133-gh-binding-followup-a01
+kind: code
+security: true
+dispatch_status: draft-owner-stub
+allowed_files:
+  - home/dot_agents/agent-config.yaml
+  - scripts/validate-agent-assets.py
+  - .orchestration/dotfiles-T133-gh-binding-followup-a01/**
+after: [dotfiles-T133-gh-binding-a02]
+---
+
+# AGMSG-TASK dotfiles-T133-gh-binding-followup-a01 — owner of the gh-binding-a01 residual rows (owner stub)
+
+Owner stub written 2026-10-21T22:59Z by the orchestrator seat (C-51); expanded 2026-10-22T01:10Z before the C-80/anchor of the reset text `dotfiles-T133-gh-binding-a02` (sha256 0ecdc07c05c377f9793965aa43a324e23b95808afcd53658c0d7b66790a516d8 after the Checks paste; the a01 text was withdrawn at its S-R5 stop, C-80 rounds 3bf2a79 and 6486b79). Never dispatched as a stub; its dispatch text is authored after a02 merges.
+
+## Owned rows (the residual rows of the a02 threat table that name this task)
+
+1. `tests/unit/test_*.py`: evidence-integrity automation for the four test modules a02 edits (independent inspection of assertions and red/green logs).
+2. `.orchestration/dotfiles-T133-gh-binding-a02/**` including task.md: evidence automation (anchored bytes, task-copy digest, literal full head compared against the independently authenticated PR head).
+3. task metadata: dispatch automation (reviewed inventory and populated Checks compared with the complete anchored task before dispatch).
+4. metadata separators: byte-integrity automation (front matter, separators and Checks compared, no paste after anchor).
+5. new or renamed scripts and the three future gh routes: adoption of the declared gh by the absent `scripts/orchestrator/chain-finish.sh` (PR #378 lineage) and by the two Python checkers `scripts/orchestrator/regime-ci.py` and `scripts/orchestrator/task-consistency-check.py` when they gain canonical gh reads; each route needs its own positive authenticated fixture with a synthetic credential, the fixed host and repository, and descendant coverage; a02 creates no consumer there.
+6. remaining git/date/mise executable provenance: permanent binding of the remaining tools (today their resolver algorithms run only inside the measured parent namespace, token-free).
+7. orchestrator effect merge: integration follow-through (only the orchestrator integrates the exact audited head through Playbook step 10).
+8. orchestrator effect update-branch: evidence refresh (CI, feedback, audit, acceptance and gate rerun for every changed head).
+9. orchestrator effect forced worker removal: teardown records (none planned; no dirty state discarded without separate authorization).
+10. orchestrator effect owner-stub amendment: every residual assigned here; the orchestrator expands this stub before anchor, outside worker scope (this expansion).
+11. orchestrator effect canonical measurements: measurement automation (gh-free private-clone evidence and trusted-parent observations before a fresh review of the complete populated text).
+12. orchestrator effect installation and deployment: deployment follow-through (the pinned install, the protected configuration and real authenticated consumer probes verified separately, under the measured parent, before authenticated acceptance reads are enabled).
+13. design 5.14 item 0: the unchanged same-UID and credential-separation residual.
+14. design 5.14 item 1: host protection evidence for the declaration, binary, configuration source and parent namespace before authenticated use.
+15. design 5.14 item 5, 16. item 6, 17. item 7, 18. item 8, 19. item 10: the items a02 applies by reference and does not close; each gets its own row and fixture when this task is authored, never a blanket claim.
+
+Dependency: this task starts after `dotfiles-T133-gh-binding-a02` merges (`after:` above). The parent binding of uv/Python/Node and the launcher stays with `dotfiles-T133-trusted-entrypoint-binding-a01` (design 5.14 items 2 and 9), not here.
+
+## Checks (pasted by the orchestrator before each send)
+
+```text
+(empty until the dispatch text is authored)
+```
+# Acceptance: dotfiles-T133-regime-ci-followup-a02
+
+Dispatch text of the owner stub (2026-10-19) authored by author-loop on 2026-10-21T22:54Z from `brief-regime-ci-followup-a02.md` (D-024-67: fix the regime verifier's three gaps and set UV_CACHE_DIR for its step; essential remedy for the regime refusals of 2026-10-21). Security: true.
+
+- Round 1 `…-text-security-a232baf.md`: Verdict incorrect, six findings. Round 2 `…-text-security-a18a67d.md`: Verdict incorrect, six findings; the loop stopped (exit 7). Round 2: P1 the bindings cover uv/Python/Git but not gh, whose responses authenticate the verifier's reads (the executable-provenance wall, as a07); P1 merge-driver configuration uncontrolled in the patch-id recomputation (fixable: isolated git config and a hostile-driver regression); P1 empty Checks (pasted before review, as every text); P2 the workflow row's closed claim too broad; P2 cache-refusal ownership circular between a07 and this task (fix: this task takes the checker file into allowed_files and owns the restoration); P2 the followup-a03 owner stub missing (created 2026-10-21T22:54Z).
+
+text-security:a232baf:1	executable-provenance
+text-security:a18a67d:1	executable-provenance
+text-security:a18a67d:2	merge-driver-isolation
+text-security:a18a67d:3	checks-omission
+text-security:a18a67d:4	closed-claim-scope
+text-security:a18a67d:5	ownership-circular
+text-security:a18a67d:6	owner-stub-missing
+
+Decision pending (2026-10-21T22:54Z): the gh-provenance P1 is the same wall that holds a07 (D-024-65); two lineages now wait on the gh binding, so the orchestrator escalates whether to pull `dotfiles-T133-gh-binding-a01` (and the trusted-entrypoint binding) ahead of slices 2-5.
+- 2026-10-21T22:58Z: D-024-69: the operator ruled for the essential remedy; gh-binding-a01 goes first; this text's C-80 resumes after that binding merges (its fixable findings 2-6 are folded into the amendment then).
+
+
+**Assessing Git command inconsistencies**
+exec
+/bin/zsh -lc "sed -n '114,118p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md.last.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-trusted-entrypoint-pins-a01.md .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg -n 'resolve|mise|GH_|PATH=|env -i|require-crit|pr-feedback|python|git ' scripts/orchestrator/chain-integrate.sh scripts/orchestrator/orch-gate.sh scripts/orchestrator/local-review.sh" in ~/Workspace/dotfiles
+ succeeded in 121ms:
+Reading additional input from stdin...
+OpenAI Codex v0.163.0
+--------
+workdir: ~/Workspace/dotfiles
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: concise
+session id: 01a16122-9350-7fb0-851c-7c15c394d63d
+--------
+user
+Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-gh-binding-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+codex
+🤖 I read the AGENTS.md for mryfmo/dotfiles.
+対象の task text と threat_table、参照されている acceptance・review を読み、検証時の判断が実行対象に結び付く設計かを確認します。Ponytail と agmsg-orchestration の該当手順を使い、読み取り専用でレビューします。
+exec
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: agmsg-orchestration
+description: Coordinate structured agmsg task orchestration between an orchestrator seat and worker seats (Codex or Claude Code). Use when Codex or Claude Code needs to run or supervise AGMSG-TASK / AGMSG-RESULT / AGMSG-ACCEPTANCE workflows, bootstrap workers in herdr panes, manage .orchestration artifacts, act as an agmsg worker, or document the flue-pi style orchestration protocol.
+---
+
+# agmsg orchestration
+
+Use this skill for structured multi-agent work where an orchestrator seat assigns bounded tasks to worker seats through `agmsg` teams. The `agmsg-orchestration` rule states the invariants; this skill holds the procedure. Use the regular `agmsg` skill for simple send/inbox/history commands.
+
+## Architecture
+
+- The orchestrator writes task files, starts workers, reviews artifacts, and sends acceptance or revision messages. It is Claude Code in the `herdr-agents` pair, or Codex under `codex-orchestrate` when the manifest's `orchestrator_kind` is `codex` (README "Codex orchestration without a pane").
+- Workers, seats of the manifest's `worker_kind` (Codex or Claude Code), execute one assigned task: they read the task file, obey file and action constraints, write artifacts, and send the required result message.
+- `agmsg` is the message bus. Use only scripts under `~/.agents/skills/agmsg/scripts/`.
+- `herdr` panes are optional worker terminals; they are a launch surface, not the protocol.
+
+## Regime activation and progress
+
+- Activate this regime when the operator requests agmsg/Codex collaboration, or when the agmsg bus is available and a seated worker exists for the repository, such as in a herdr-managed workspace. agmsg is then the always-on communication path and Claude acts only as orchestrator: lightweight grep/read, judgment, task authoring, and acceptance review. The operator may opt out for the current task; only then may the orchestrator mutate the repository directly. When the bus exists but no worker is seated, seat one before any repository mutation (`herdr-agents --add-worker [<worktree>]`, default the manifest `worker_worktree`), and remove it with `herdr-agents --remove-worker <worktree>` once its task is accepted; "no worker" is never an implicit opt-out. In a regime repository the SessionStart `herdr-agents --attach` hook prints this directive as an `agmsg-orchestration:` line after `seat_claim=` in the orchestrator's Herdr pane, or after the summary line in a pane-less session.
+- On activation, verify CompactionDB opt-in for the active repository and install it with `compactiondb-install` if missing. Regime start is operator-initiated consent to the install; acceptance-time decision consolidation then applies.
+- A Claude session started in the repository root outside Herdr (a plain shell, mosh/ssh, or `claude -p`) is a pane-less orchestrator: nothing seats a worker automatically, and the SessionStart `herdr-agents --attach` hook prints a summary line naming that state, the on-demand commands, and any seated worker, followed in a regime repository by the `agmsg-orchestration:` directive line. Bring the regime up on demand: claim the seat outside the sandbox with the composite instance id, `actas-claim.sh <repo> claude-code <name> <session_id>.<claude pid>` (a claim from sandboxed Bash writes the bare session id and turn delivery then skips silently; see the seat-lock bullet below); seat the worker with `herdr-agents --add-worker <worktree>` (it derives `HERDR_SOCKET_PATH` from the default Herdr server socket `~/.config/herdr/herdr.sock`, the path the Claude sandbox allowlists, before creating anything, accepts a claude worker's workspace-trust dialog during spawn's readiness wait, and takes `--ready-timeout <seconds>`); confirm the worker's placement from its `run/spawn.*` placement record itself (the `herdr:<socket>:<pane>` row that upstream `agmsg_spawn_path` resolves) and the `linkage=` line `--add-worker` prints, never from `team.sh <team> --json`, which observes Codex members by reading their pane; treat the `linkage=` line `--add-worker` prints as the `AGMSG-PING` evidence, and on `pong=no` or `linkage=unreached` wake again with `agmsg-dispatch <team> <orchestrator> <worker> <pane> 'AGMSG-PING v1 task_id=<id> reason=<reason>'` and verify the PING's `read_at` (`poke.sh` only for a viewed workspace); and dispatch no AGMSG-TASK before its `AGMSG-PONG` arrives. Without a managed workspace the auditor runs headless, in the form the task-level audit bullet below names. A pane-less session uses turn delivery when the Monitor cannot run; see "Identity, delivery, and storage" for the platform limits.
+- Start checklist (operator or orchestrator, repository cwd, plain shell or Herdr): the workspace created by `herdr-agents <DIR>` full mode holds the orchestrator pane only, and only the operator creates or relaunches it; inside a Herdr pane the SessionStart `--attach` hook claims the orchestrator seat and prints the directive, and never seats, restarts or repairs a worker. Inside Herdr or outside it, the orchestrator seats a worker on demand with `herdr-agents --add-worker [<worktree>]` (its own tab of the managed workspace, or its own workspace for a pane-less orchestrator), confirms it by PING/PONG before any task, and removes it with `--remove-worker` when the task is done. A Claude that finds itself outside Herdr is the pane-less orchestrator of the bullet above: its SessionStart line reports the state, and it brings the regime up on demand exactly as that bullet describes (composite seat claim outside the sandbox, `--add-worker`, PING/PONG before any task, headless auditor); anything neither bullet describes is not improvised.
+- Seat and remove a worker only with `herdr-agents --add-worker` and `herdr-agents --remove-worker`; `--restart-worker` is retired and exits 2. Never run full mode from inside an existing managed workspace; the orchestrator and its worker tabs share one workspace. Activate a worker model or profile change by removing the worker with `herdr-agents --remove-worker <worktree>` and seating it again with `herdr-agents --add-worker <worktree>`, which sources launch args from `~/.agents/model-profiles.env`; never pass ad-hoc flags.
+- Do not idle-wait while worker work is in flight; prepare or delegate independent work.
+- A blocker reported to the operator carries attached evidence: the exact command, its exit code, and the messages.db `read_at`/PONG query, after the wake path that worked in earlier sessions (`agmsg-dispatch`) has been tried. An inference (for example "trust dialog" from a `poke.sh` exit 15 plus a spawn readiness timeout) is not a reportable blocker. `herdr-agents --add-worker` ends with that evidence for a fresh seat: one `linkage=ok read_at=<ts> pong=<yes|no>` or `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>` line from an `agmsg-dispatch` PING, and it exits non-zero only when the PING was not read.
+- Detect worker completion only when an `AGMSG-RESULT` arrives through monitor/turn delivery. Send liveness checks only as `AGMSG-PING`/`AGMSG-PONG`; never read worker panes or screens (including read-only probes such as `pane read`/`pane wait-output` against another agent's pane, even to learn output shapes; use `--help` and fake CLIs), infer completion from pane/agent status, or use ad-hoc polling sleep loops. Limit pane interaction to prompt injection and the submit key.
+- If an out-of-band Codex completion signal is needed, use the official `notify` config: the `agent-turn-complete` event sends a JSON payload to an external command.
+
+## Parallel workers
+
+- Add and remove parallel workers only with `herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME]` and `herdr-agents --remove-worker <worktree> [--force]` (worktree under `.claude/worktrees/`). For Codex, seat ordinary tasks with `--profile standard`; use `--profile security` only for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy), per the model-selection rule, with an identity such as `codex-security-dot-aNNN`. Add-worker seats the worker in its own tab of the pair workspace, labeled `<team>:<name>` with the pair tab untouched (in its own workspace only when no pair workspace exists, as in the pane-less bring-up), through upstream `spawn.sh --project <worktree> --terminal-driver herdr` with the profile's launch args in a generated spawn options file, so a placement record exists and `poke.sh`/`despawn.sh` work. Remove-worker despawns it, then turns delivery off, leaves, and closes that tab (or workspace), refusing a dirty worktree without `--force`. Keep at most `worker_cap` workers (4 in the manifest today); raw herdr topology commands stay forbidden (T21 G7).
+- Under upstream agmsg 1.5.0 self-naming, a pair's panes carry `<team>:<name>` labels rather than `claude-orchestrator`/`<kind>-worker`; `herdr-agents` recognizes the pair through the repository's agmsg seats (the orchestrator identity at the main checkout and the pair's own worker seat, never other team members) and never relabels a self-named pane.
+- Delegate all repository-mutating work — file edits, builds, test runs, and git state changes — to seated workers, with at most one seated worker per git worktree and sequential assignments within one worktree. Add worktrees for parallelism; never use parallel `codex exec` or per-task Codex spawning, except that the read-only, non-interactive task-level audit the orchestrator runs during acceptance (the task-level audit bullet below) is not worker spawning and is permitted; it is identity-less. agmsg/herdr control-plane commands (`delivery.sh`, `watch.sh`, `actas-claim.sh`, `send.sh`, `join.sh`, and herdr agent/pane commands) are orchestrator-side exemptions.
+- The orchestrator acts directly, without delegation, only under these exemptions: agmsg/herdr control-plane operations and evidence-sync bookkeeping; acceptance and final integration, including merging an already-reviewed, CI-green PR; and machine-state hygiene that touches no repository (tool-manager operations such as `mise install`/`mise prune`, removal of unmanaged `$HOME` files), provided tracked worktrees stay diff-clean throughout. It declares which exemption applies in one line before mutating anything.
+- A parallel assignment is valid only when every concurrent worker has all four of: (1) its own git worktree registered as its agmsg `project`; (2) the shared default agmsg store for same-repository work, never a per-worker `AGMSG_STORAGE_PATH`, because identity-addressed delivery and worktree-specific `whoami` already isolate inboxes and one activation watcher observes every RESULT/PONG without extra watchers (which `watch.sh` actas locking cannot support for one claimed identity); (3) an `-aNNN` identity suffix on every concurrent worker, including the first; and (4) an AGMSG-TASK whose expanded `allowed_files` are pairwise-disjoint from all other in-flight tasks for code files; a shared prose file (README, SKILL) may appear in two in-flight tasks only when their sections do not overlap. The orchestrator verifies disjointness and performs all cross-worktree merge, rebase, and conflict integration.
+- Parallel execution procedure:
+  - At plan approval, partition the approved tasks into waves by dependency and file overlap: code files pairwise-disjoint, and shared prose files in disjoint sections. Write the wave table into the plan file.
+  - Keep at most `worker_cap` workers in total (4 in the manifest today; `herdr-agents --add-worker` refuses the next seat). Seat workers with `herdr-agents --add-worker` only up to that cap. Dispatch at once as many tasks of the current wave as there are free seats, each with a distinct `-aNNN` identity and its own worktree, and queue the rest of the wave.
+  - When a RESULT arrives, run acceptance for that task while the others continue; acceptance follows RESULT arrival order.
+  - A freed worker is re-tasked immediately with the next dependency-free task whose files overlap no in-flight task. Never leave a seated worker idle while a dispatchable task exists. The next task starts on a fresh branch from `origin/main`, and the previous task's branch stays in the worktree, untouched, for its revise rounds and until its acceptance. The worker commits and pushes everything before each RESULT, and before every branch switch it commits the newer task's work (or stashes it under a named tag and restores it afterwards), so a switch never carries edits across branches. When a `status=revise` arrives for the earlier task, it checks that branch out again, does the round, and returns to the newer task's branch, so the worktree is reused sequentially and nothing uncommitted is ever left behind.
+  - When a merge moves `main`, every in-flight PR whose base moved, prose or code, merges the new base into its branch with `gh pr update-branch` before its CI, Bot wait and gate. The ruleset's strict up-to-date policy refuses the merge otherwise. `gh pr update-branch` creates a merge commit by default, not a rebase. A real conflict blocks only that PR.
+  - Record the wave table and the per-task worker in the acceptance records.
+  - Some steps stay sequential. The single audit tab serializes audits; the task-level audit of T67 reduces them to one per task. The orchestrator-side gate (`make require-crit-review`) and merges also run one at a time.
+- At parallel-worker teardown, run `delivery.sh set off <type> <worker worktree path>` to stop every watcher on that exact path, then `leave.sh <team> <worker identity>` for each finished worker. The last member of a task-scoped team leaves so the team is deleted while message history remains. Verify with `identities.sh <project> <type>` by counting distinct identity names in the second TSV column: while a worker is seated, one distinct name per type at its worktree is healthy, including multiple rows for that name across teams; the only active seat, the main checkout, holds exactly one name across both types, and a worker worktree holds none once its worker is removed, which `make check-regime-boundary` enforces. More than one distinct name indicates leftover identities that trigger the herdr-agents ambiguity warning at attach and must be cleaned with `leave.sh`; preserve legitimate multi-team memberships of the retained name. Zero names for a project that should remain active must be restored with `join.sh`, never leave-side edits.
+
+## Identity, delivery, and storage
+
+- Give each physical agent one unique identity: `<runtime>-<profile>-<project-suffix>` (for example, `codex-standard-dot`, or a `-flue` suffix for flue-pi). The project suffix derives from the repository, not the checkout; model IDs belong only in `model_profiles` in `agent-config.yaml`. A solo worker has no instance suffix. For parallel workers, rename the incumbent to `-a001` so team registration and message history follow, give every worker an `-aNNN` suffix, re-claim actas locks after rename, and never mix suffixed and unsuffixed identities.
+- Before joining, search every `~/.agents/skills/agmsg/teams/*/config.json` for the candidate name. On collision, choose a unique suffix; never reuse one identity for different physical agents.
+- Register `project` as the worker's real working-tree path (the dedicated worktree for parallel workers), byte-identical across join, delivery setup, and hook arguments. Trailing slashes and unresolved symlinks orphan inboxes through exact-string mismatch. `$HOME` registrations are forbidden because they create Codex-hook ambiguity and steal inbox messages.
+- Register a worker identity at its own worktree path with resolution off: `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>`, and point its delivery at the same path with `delivery.sh set <mode> <type> <worktree>` so the hook bakes the worktree into the session's project marker. Every `join.sh`/`whoami.sh`/`actas-claim.sh`/`reset.sh`/`watch.sh` call a worker makes runs with `AGMSG_RESOLVE_PROJECT=0` (herdr-agents sets it in every worker pane it creates; `spawn.sh --project` sets it for agmsg-spawned seats). Upstream project resolution (#92, `docs/design.md` "Project resolution") otherwise rewrites the path in order: the live SessionStart marker `run/proj.<agent_pid>.project`, then the nearest registered ancestor, then the registered main checkout via `git rev-parse --git-common-dir`. Verified against a scratch v1.5.0 install: a `join.sh` from inside `.claude/worktrees/<x>` without the opt-out registers at the main checkout; a session whose marker names the main checkout (a seat launched from the main path) makes `whoami.sh` inside the worktree answer with the main checkout's identities; the opt-out restores the worktree in both cases. `session-start.sh` exits before the watcher and marker for any session whose cwd is under `.claude/worktrees/` (#367), so a Claude seat launched inside a nested worktree gets no Monitor watch from that hook: the herdr-agents pair worker relies on turn delivery (a spawn-seated worker starts its Monitor through its actas boot) or the inbox checks below. `identities.sh` stays a pure lookup of the exact path.
+- On activation, check `delivery.sh status <type> <repo>`. This repo runs Claude Code seats on `both` (monitor's push plus turn's pull), one notch more redundant than upstream's Claude Code default `monitor`, since an unattended worker pane has no one to notice a Monitor watch that silently failed to re-arm; Codex seats run on `turn` (see the next bullet). If weaker than that, run `delivery.sh set both claude-code <repo>` (or `delivery.sh set turn codex <repo>` for a Codex identity), use the SessionStart-provided `watch.sh <session_id> <repo> <type>` started outside the sandbox as a persistent in-session monitor, and claim exclusivity with `actas-claim.sh <project> <type> <name> <session_id>`. A Claude worker seated by `--add-worker` gets its Monitor watch through its actas boot; when it is seated in its own workspace (no managed workspace exists), `herdr-agents` also sets `AGMSG_CC_MONITOR_KEEP_ALIVE=1` in that workspace's environment so the watch re-arms unconditionally on expiry, not only when the expired watch delivered something (upstream's default).
+- `herdr-agents --bootstrap-agmsg` (and full or attach mode) sets the main checkout's orchestrator hooks, Claude Code on `both`; a worker seat gets its own hooks from `herdr-agents --add-worker`, Codex on `turn` and Claude Code on `both`, so the Stop/SessionStart hook in the worktree's tree-scoped, gitignored `.codex/hooks.json` or `.claude/settings.local.json` delivers inbox messages. Codex deliberately stays on `turn` instead of upstream's shim-based `monitor` bridge (the upstream README names `monitor` as the Codex default in one place and `turn` in its delivery table): as of agmsg v1.5.0 that bridge has open reliability defects an unattended resident worker cannot risk — no teardown on session end (upstream #149), a mode switch that does not start the bridge in a live session (#151), and a bridge that restarts forever while its status reports it alive (#1236), all still open. Storage resolution is env-only: keep `AGMSG_STORAGE_PATH` unset for same-repository default-store workers, or set it to the regime's dedicated store for separate cross-project regimes; a wrong or stray value silently reroutes the worker to another database. Pane nudges are only generic wakes; message content always travels over agmsg.
+- Worker panes run in their worktree: `herdr-agents --add-worker [<worktree>]` seats the worker in that worktree (default the manifest's `worker_worktree`, created from `origin/main` when missing), registers its identity there with `AGMSG_RESOLVE_PROJECT=0`, sets delivery on that path, and starts it through upstream `spawn.sh`, so turn delivery reaches the worker directly through the worktree's Stop hook and its Monitor watch comes from the actas boot (upstream `session-start.sh` skips sessions under `.claude/worktrees/`, #367). The interim worker inbox discipline (running `~/.agents/skills/agmsg/scripts/inbox.sh <team> <identity>` at each milestone: task start, push, CI green, before RESULT, after any PONG) is retired for a worktree-seated worker; it applies only to a worker still acting under a worktree-registered identity from a main-path pane, until `herdr-agents --remove-worker` and `--add-worker` re-seat it.
+- A codex worker in a nested worktree gets `<common>/objects`, `<common>/refs`, `<common>/logs` and `<common>/worktrees/<name>` (`<common>` from `git -C <worktree> rev-parse --git-common-dir`) as writable roots from `herdr-agents` (`-c sandbox_workspace_write.writable_roots`, with the configured agmsg roots kept first), so local git operations need no escalation. The common dir itself, `config`, `hooks`, `info`, `HEAD` and `packed-refs` stay read-only. The worker seat runs with `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`, so a GitHub fetch, push or `gh` call works inside the sandbox and the worker never prompts: there is no escalation for a worker, and an action outside the sandbox or forbidden by the execpolicy fails and is reported as `AGMSG-PONG v1 status=blocked`. The `sandbox_workspace_write.network_access` switch is a boolean, so the worker reaches any host (no domain allowlist is configured, unlike Claude Code's `allowedDomains`), and the permgate PermissionRequest hook never fires for the worker seat; it stays live for interactive Codex sessions, which keep on-request approvals and no sandbox network.
+- The orchestrator's actas seat lock must hold the composite instance id `<sid>.<pid>`; check it with `cat ~/.agents/skills/agmsg/run/actas.<team>__<name>.session`. `actas-claim.sh` run from sandboxed Bash cannot read the Claude pid, writes the bare session id, and the Stop-hook inbox check then skips delivery silently (`other:<sid>`). On macOS, the Claude Seatbelt sandbox denies `ps`; a `watch.sh` Monitor started outside the sandbox (by SessionStart or the orchestrator pane) keeps running, but one started inside computes the bare session id and exits against the composite actas lock. On Linux, the bubblewrap pid namespace hides the Claude pid: a sandbox-started Monitor exits "no longer alive", and `pgrep` sees only the sandbox. No seat starts its watch from sandboxed Bash. `herdr-agents` therefore claims the seat outside the sandbox when it starts the orchestrator pane and from its SessionStart `--attach` hook, printing `seat_claim=ok owner=<sid>.<pid>` (or `seat_claim=unresolved`, never a bare-id lock), and `make doctor` warns on a bare-id orchestrator lock while a claude session runs in the repository. When the Monitor is unavailable, turn delivery is the working path, and an idle orchestrator is woken by the worker's `agmsg-dispatch` to the orchestrator pane.
+- Reserve store separation for concurrent regimes in different projects, such as flue-pi. When using it, set the same `AGMSG_STORAGE_PATH` in the worker pane and on orchestrator send/watch/history calls or tasks, results, and pongs become unreachable. Same-repository parallel workers always share the default store.
+
+## Live verification
+
+- Accept changes to live desktop behavior — herdr layout/session, pane lifecycle, or delivery hooks — only after live end-to-end verification covers both a fresh session and a persisted-session restore; unit and static tests alone are insufficient.
+- Launch orchestrator-driven E2E test-subject panes with express-profile arguments from `~/.agents/model-profiles.env` (`MODEL_PROFILE_EXPRESS_CLAUDE_ARGS` / `MODEL_PROFILE_EXPRESS_CODEX_ARGS`), never ad-hoc `--model` flags.
+
+## Review and integration invariants
+
+- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.
+- Only acceptance decisions and final merge stay orchestrator-side. Seats and scripts handle integration, adversarial RESULT review, review-profile work, gate and records through `verdict.sh`, `audit-pool.sh`, `result-precheck.sh`, `acceptance-front-matter.py` and `dispatch.sh --next`. Pending each mechanism, Delegation's interim exemption permits manual orchestrator execution. Every code-changing RESULT gets one task-level audit of its final head; findings are input, never approval (the "Task-level audit" bullet).
+- A design review runs in paired rounds. Both reviewers, a fresh Claude context on the `review` profile and a Codex read-only run under a `codex-review` identity, get the same design hash at the same time. The orchestrator revises once per pair of results and opens no round while one is still open. The third pair is the last: on its accept the design is frozen at the hash the pair last accepted, the third pair's own, and whatever is still open at that hash becomes a residual list that is worker input; on its revise or reject nothing is frozen and the design goes back to a context other than its author, never to a fourth pair; a revision after the third pair is not made, and any later change to a hashed key is a new pair (INV-7). The review judges the invariants, threat model, trust anchors and premises for contradiction and enforceability, never implementation detail.
+- A task-file review is one round with a fixed stop condition: no contradiction with the design, the premises hold, `allowed_files` covers every touch point that grep finds, and one invariant check (for a task that carries an `invariants` key: the task id maps to its `implementing_tasks` entry, the invariant ids match, and each invariant's sentence equals the design's byte-for-byte, the design read from main (INV-2), checked by hand in the review; a task without the key needs no entry). Anything finer belongs to the worker and the implementation PR.
+- A boundary PR synchronizes records at a boundary. It carries no task draft under review. A design not yet on `main` lands through a merged boundary PR before its implementing TASK is dispatched (INV-2), and any merged boundary that carries the design meets that precondition.
+- A task that touches a trust boundary (anything the design tier lists, CI that decides a required check, code that executes PR-controlled input) carries a `threat_table` in its front matter: one `{control, disposition}` row per thing the PR or the orchestrator controls (the tree and its tests, task.md, workflow files, interpreter and environment files, in-process effects, new or renamed scripts, metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, new or renamed scripts, metadata separators), carried by the declared test module's row where that is where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a wildcard over test fixtures or other data files keeps one row; C4 and C7b of `scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file review checks the rest. A disposition takes one of three forms: `closed: tests/<file>::<name>`, the test that closes the row; `residual: <sentence>`, the compensating control; `out-of-scope: <task id>`, the task that owns the row. The task-file review checks the three shape rules by hand: a `closed` selector names a test present in the PR tree at acceptance, an `out-of-scope` owner is a task id in the design's `implementing_tasks`, a `residual` payload is a sentence of at least 20 characters (the gate's minimum for a reason). For a `closed` row it checks the selector's form only, since the test does not exist before implementation. Substance is the reviewers': the task-file review, the Bot and the auditor judge each row against the diff. The table is the task's completion condition: a missing row is added once, counted as an amendment, never fixed finding by finding.
+- Before every acceptance action (revise, accept, merge) the orchestrator runs `scripts/regime-counters.sh <task id>` and pastes its output into the acceptance record. S2 is decided from INV-6's counts: each component the script prints is read from its output, and for each component it prints as `unknown` the record pastes the command and output that read the source INV-6 names for that component, or, while that source has no entry for the task, says so and pastes the reading of the interim record the orchestrator used in its place. S1 (plan 006: the same finding class three times on one artifact, from any reviewer) is decided from the record's finding-class table, which gives a class to every finding the PR-feedback sweep lists, whatever its disposition, and to every task-level audit finding; three rows of one class stop the artifact. Read that table over non-advisory rows only: list advisory P2 rows with their classes (`advisory-p2` and the `local:<sha7>:<n>` rows `local-advisory.sh` writes), exclude them from S1's three-rows count, and name the excluded rows in the record. The gate's S6 check still sees every ledger row, so an advisory class at three rows gets its `searches` entry from `acceptance-front-matter.py` like any other. INV-6's message and head counts and the S2 lines (`revises`, `amendments`, `questions`, `bot_p1_heads`) take no ledger rows; `scripts/regime-counters.sh` prints them unchanged.
+- A change to a rule sentence requested of a worker travels as a task amendment (hashed, checked by `scripts/orchestrator/task-consistency-check.py` (C1 to C10 and C7b) before dispatch and at acceptance, confirmed by the review seat), never as a PONG answer.
+- When a finding class reaches three on one artifact (the record's ledger) or `scripts/regime-counters.sh` prints an S1 candidate, the next acceptance action is the records search for that class, pasted into the record as the line `search: <class> -> <the matching mistake records or none>`, and the matching correction is applied when its mechanism is landed, or landed first when it is pending, mechanism by mechanism, before any dispatch; a class is a slug of `[a-z0-9-]` assigned at disposition time, never text taken from a review title. `scripts/orchestrator/three-repeat.sh <class>` validates the slug, runs the records search and the CompactionDB search without a shell and prints the line. The gate (`scripts/require-crit-review.py`, S6) refuses the merge for a ledger class at three or more rows whose `searches` entry does not equal the mistake records naming the class; `acceptance-front-matter.py` writes the entry from the same lookup. Pasting the `search:` line and applying the correction before any dispatch remain the orchestrator's rule. Every `not-applicable` disposition carries `; evidence=<command>` with the output pasted in the record.
+- At regime or session boundaries, write pending acceptance records, then mechanically commit every `.orchestration` file so no untracked tail remains. The sync needs no per-task artifact set: its audit record is the commit, whose message lists covered task IDs, plus agmsg ACCEPTANCE history. `make check-regime-boundary` reports a canonical clone with unmerged entries, a stash, or a difference from `origin/main` under `home/`, `install/` or `scripts/` as a sign that something ran where it must not. Lessons from a session are codified in this repository (a rule, the skill, or a check) through a task; Claude auto-memory is not a durable store for regime procedure. The canonical clone is pull and apply only and untouched by any seat: no edits, no apply from a dirty tree (the run_before guard refuses it), and one orchestrator identity per repository, seated at the working clone.
+- Stop checklist, at every regime or session boundary and in this order: write pending acceptance records; mask every `.orchestration` file the boundary commit adds or changes with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`, which also normalises home directories to `~`; run `make validate-agent-assets` (real exit status); make the `.orchestration` boundary commit with zero untracked tail on a fresh `orchestration/boundary-<YYYY-MM-DD>` branch from `origin/main` and merge its PR with `gh pr merge --squash --auto`, queued only while no other PR is between its final head and its merge (plan 020 step 3; otherwise the boundary PR waits and is merged after that PR); remove every worker with `herdr-agents --remove-worker <worktree>` (despawn, delivery off, leave, tab or workspace closed); check stale identities with `identities.sh <path> <type>` (exactly one name at the main checkout, none at a worker worktree); close Crit review servers (`pgrep -f 'crit _serve'` must be empty); in a CompactionDB-opted-in project, review `uv run --no-project .claude/hooks/contextdb_cli.py memory candidates --limit 20` and promote each candidate worth keeping with `uv run --no-project .claude/hooks/contextdb_cli.py memory promote <id> --scope project`, or leave it. The orchestrator workspace itself stays resident for the next session unless the operator restarts the machine. `make check-regime-boundary` (`scripts/check-regime-boundary.sh`) checks this list and the orchestrator seat lock, one line per violation.
+- Before every `.orchestration` boundary commit, run the masker on the files it adds or changes (`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`), then `make validate-agent-assets`, and branch on its real exit status, never through a pipe; fix a failure before pushing, because committed audit evidence can trip the secret scan, which also rejects a home directory path in `.orchestration/**`.
+- The orchestrator never pushes a repository change to `main` directly. `main` is protected by the GitHub ruleset "main integration gate": a pull request is required, review threads must be resolved, the seven required checks must pass under the strict up-to-date policy, and `main` cannot be deleted or rewound. The `.orchestration` boundary commit goes on a fresh branch from `origin/main`, `orchestration/boundary-<YYYY-MM-DD>` (suffix `-2`, `-3`, … for another boundary the same day, since merged branches are kept), opens as a PR, and is merged with `gh pr merge --squash --auto`: each required job decides inside itself and reports success on an `.orchestration`-only diff; a skipped required job would report Success (fail-open), so no required job carries a job-level `if` or a `needs`. An acceptance merge happens only on GitHub using step 10.5; a local merge followed by a push is no longer a path.
+- For CompactionDB-opted-in projects, verify during the sync that every accepted task has a consolidated decision record.
+- A `.ua/` graph RESULT is accepted only when its validation file pastes the table from `ua-symbol-coverage <previous-graph> <new-graph> --old-ref <previous-graph-rev> --repo-ref <new-graph-rev>` (on PATH from `~/.local/bin/common`; each rev is that graph's `.ua/meta.json` `gitCommitHash`, the new one normally `HEAD` and never the pre-change base; `--old-ref` tells renames from deletions) with zero regressions, or cites the source change behind each decrease; `validateGraph` passing does not prove extraction completeness.
+- Task-level audit: every RESULT that changes repository code gets one audit of the task on its final head, covering the whole PR diff (`git diff <merge-base> <head>`).
+  - Pair form, in the pair workspace's dedicated audit tab: `herdr-agents --audit <head-sha> --task <id> [--out <path>] <main DIR>`. It writes `.orchestration/validation/<id>-audit-<sha7>.md` and codex's final message to that file's `.last.md` companion, whose last non-blank line is the verdict.
+  - Headless form, without a pair workspace, with `<out>` = `.orchestration/validation/<id>-audit-<sha7>.md`, run from the orchestrator's own checkout (never one that sits at the audited head):
+    - Give codex the same task-level inputs the pair form builds: the task file `.orchestration/tasks/<id>.md` (required), the worker's report, validation and sandbox files and `<id>-pr-feedback.json` (those present), the final head `<head-sha>` and the PR diff `git diff $(git merge-base origin/main <head-sha>) <head-sha>`. Ask for findings as `[P0-P3] confidence dimension file:line rationale` and exactly one concluding `Verdict: correct|incorrect|blocked` line.
+    - Run `rm -f <out> <out>.last.md && set -o pipefail && codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C <repo> -o <out>.last.md '<that prompt>' 2>&1 | tee <out>`. Removing both files first means a failed rerun can never leave an earlier `Verdict: correct` behind, as the pair form also ensures, and `pipefail` keeps codex's exit status through `tee`. A nonzero codex exit means no audit: there is nothing to gate, so rerun it.
+    - Only after a zero exit, mask both files with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <out> <out>.last.md` from a trusted checkout. Like the pair form, refuse when that checkout's HEAD is the audited commit, or when its validator is missing, untracked, or changed against HEAD (`git diff --quiet HEAD -- scripts/validate-agent-assets.py`), so a PR can never run its own validator on the orchestrator. Treat a refused or failed masking as a failed audit.
+    - The gate needs both the transcript file and its non-empty `.last.md` companion.
+  - Run either form from a clean tree: the only untracked content in the audited checkout is this task's `.orchestration` evidence that the audit prompt names (task file, report, validation, sandbox file, feedback JSON). Otherwise run it from a dedicated clean checkout, so no other edit can reach the auditor.
+  - A new push, including a `gh pr update-branch` merge, needs a new audit of the new head.
+  - The orchestrator dispositions every `[P0-P3]` finding in the acceptance record, whatever the verdict, numbered 1..N in the audit's order of `[P0-P3]` lines (the audit's finding lines may be bulleted). For an `incorrect` verdict the dispositions are the record's JSON `audit_findings`, the only form the gate reads: one `{n, reason, evidence}` entry per finding, `n` the number as a string and `reason` at least 20 characters, written with `scripts/orchestrator/acceptance-front-matter.py --audit-dispositions <tsv>`; an entry never cites a fix, since a fix moves the head and needs its own audit. A finding under `Verdict: correct` is dispositioned all the same, as an `audit-finding: <n> …` line in the record's prose: `fixed:<sha>` with a fresh audit of that sha, otherwise `not-applicable:<reason of at least 20 characters>`. Deferral ("later", a follow-up task, a stopgap or a suppression) is not a disposition except under the advisory-P2 policy in Orchestrator Playbook step 10.
+  - The audit evidence and the PR-feedback JSON quote reviewed content, so mask them with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>` before they are committed. The gate compares PR-feedback bodies after the same masking, so masked feedback evidence still matches the live collection (T93, #251).
+  - Audit findings are input, never approval; acceptance authority stays with the orchestrator, and each RESULT gets its own acceptance record.
+- Crit is agent-side only for Claude Code and Codex alike, as in `home/dot_config/claude/rules/crit-review.md`: record crit-data evidence (`crit status --json`, `crit comments --all --json <review.json>`) and never open a browser review to ask the user. When Crit data is unavailable, save the independent agent review as the same repo-local JSON list (objects with non-empty string `id`, `body`, `scope` and `resolved: true`, at least one `scope: "review"` or path-bound `line`/`file` record; hand-written records are acceptable because the guard validates shape, not provenance) and reference it from a `review_surface: crit-data` receipt with `reviewer: claude-code`, `claude`, or `codex`, `review_source: <that JSON>`, and `review_outcome: approved` or `addressed`. Run `crit share` or any other publish step only when the user explicitly asks for it. Close a Crit session opened by the Plan Mode hook once its review is done, so no local Crit web server stays resident.
+
+## Message Contract v1
+
+Send messages as single-line records so inbox/history output stays parseable.
+
+`AGMSG-TASK v1` fields:
+
+```text
+AGMSG-TASK v1 task_id=<id> repo=<absolute-repo-path> task_file=<path>
+allowed_files=<paths-or-see-task-file-section> forbidden_actions=<semicolon-list>
+expected_result_file=<path> expected_validation_file=<path>
+expected_sandbox_file=<path> expected_learning_file=<path>
+expected_autoskill_file=<path> done_signal=AGMSG-RESULT max_turns=<n>
+note=act-as-worker-<task-or-role>
+```
+
+Task files must state durable facts with `[memory:decision]` or `[memory:failure]` markers using the tag form, bracket form, and kind aliases defined by the vendored CompactionDB README.
+
+Task front matter's optional `requires_decision:` lists decision ids without which the task may not proceed. The task-consistency checker verifies each id exists in `.orchestration/decisions.tsv` with a result other than `pending`.
+
+`AGMSG-RESULT v1` fields:
+
+```text
+AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
+report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
+```
+
+Before sending, the worker writes the RESULT line's `key=value` pairs to `.orchestration/<task>/result.txt`; `result-precheck.sh` reads that file.
+
+Tasks that create persistent side effects outside the repository working tree, such as global asset installs, writes under `$HOME`, or external service registrations, include the optional field `effects=<semicolon-list-of-short-ids>`. In-repository edits within `allowed_files` are not effects. For each declared effect, the report must state its reverse mapping: a named `~/.agents/.installed-manifest.json` step removable with `remove-agent-asset`, a documented removal procedure, or an `irreversible:` statement with rationale.
+
+The RESULT field `precheck=<sha256 of precheck.json>` is the digest of the precheck evidence already emitted by P1-5.
+
+RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `uv run --no-project .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
+
+RESULT validation files must contain the verbatim output of every validation command actually executed — not summaries or PASS labels alone — and any identifier the report claims to have created (commit hash, PR number, CompactionDB memory/decision ID) must appear in that pasted output. A claim without its pasted output is treated as unexecuted and grounds for `status=revise`.
+
+`AGMSG-ACCEPTANCE v1` fields:
+
+```text
+AGMSG-ACCEPTANCE v1 task_id=<id> status=accepted|revise reason=<short-reason> next_action=<action>
+```
+
+Each acceptance record also includes a `cost:` line with worker-reported token/cost figures when available, otherwise `cost: n/a`.
+
+A RESULT with a P0/P1 surviving the one worker-side fix round carries `bot_rounds=2` and lists it as `open:<thread id>` (`open:review-<review id>` for a review-body finding); the PR stops for the operator's decision (Worker Playbook step 15). A `status=revise` ACCEPTANCE carries `previous_head=<the RESULT head being revised>` and one failing-test selector per finding (`check=tests/<file>::<name>`); the worker records both in `.orchestration/<task id>/revise.yaml`, beside the task.md copy.
+
+Liveness messages:
+
+```text
+AGMSG-PING v1 task_id=<id> reason=<short-reason>
+AGMSG-PONG v1 task_id=<id> status=alive|blocked|question note=<short-note>
+```
+
+The optional PONG field `context=<percent>` reports the seat's context usage. `dispatch.sh --next` reads it and refuses a seat above its context threshold.
+
+`question`: the worker holds and asks; INV-6 counts it.
+
+## `.orchestration` Workspace Layout
+
+- `tasks/`: orchestrator-authored task specs.
+- `reports/`: worker reports and blocked-task reports.
+- `validation/`: command output and validation evidence.
+- `acceptance/`: orchestrator acceptance, revision, or rejection records.
+- `sandboxes/`: per-task isolation records (sandbox/worktree evidence).
+- `autoskill/config/`, `autoskill/inputs/`, `autoskill/runs/`, `autoskill/outputs/`: redacted AutoSkill artifacts.
+- `learning/`: task learning triage records.
+- `learning/rule_candidates/`: candidate reusable rules only.
+- `skills/candidates/`, `skills/promoted/`, `skills/rejected/`, `skills/merged/`: separated skill registry states.
+- `agmsg/`: exported or summarized agmsg history when needed for review.
+
+## Orchestrator Playbook
+
+1. Join or confirm the agmsg team and identities with the `agmsg` scripts.
+2. Create the `.orchestration` directories before assigning work.
+3. Write a task file that includes objective, scope, allowed files, forbidden actions, expected artifacts, validation commands, and max turns. Name the render check as `make render-check`, never the bare `python3 scripts/generate-agent-configs.py --check`, which fails without PyYAML. Ground `allowed_files` by grepping the repository for every touch point the task names (tests that pin call sequences, mirrors, fixtures) before dispatch. Verify every CLI constraint the task asserts by running the real command in a safe form, not by reading `--help`. Presume an auditor finding that contradicts your own review is right until you refute it with evidence. Decide the worker kind from the allowed files before dispatch: a seat never edits the source of its own execution boundary, so a change is routed by the boundary it touches. A change that touches only Claude's boundary goes to a Codex seat: the `claude.permissions`, `claude.sandbox` and `claude.hooks` blocks of `home/dot_agents/agent-config.yaml` (including excludedCommands, allowUnsandboxedCommands, writable roots, network and the PermissionRequest hook), the Claude-rendering parts of `scripts/generate-agent-configs.py`, the rendered `home/.chezmoitemplates/claude-settings-managed.json`, and `home/dot_claude/modify_private_settings.json`. A change that touches only Codex's boundary goes to a Claude seat: `codex.sandbox_workspace_write`, `codex.approval_policy`, the Codex-rendering parts of the renderer, and `home/.chezmoitemplates/codex-config-managed.toml`. A change that touches both, or a shared source the orchestrator cannot split (such as `codex.sandbox_workspace_write.writable_roots`, which also renders into Claude's `allowWrite`), goes to the operator. The orchestrator decides the kind from the diff the task will produce and records it and the chosen worker profile in the task file. The Claude Code auto-mode classifier also refuses a Claude-boundary task on a Claude seat as Self-Modification. A task that edits permgate (`home/dot_agents/permgate-policy.yaml`, `home/dot_local/bin/common/executable_permgate`), the PermissionRequest hook of both seats, goes to the operator; a Codex `security`-profile worker reviews the change before the orchestrator accepts it, per the model-selection rule. `auto` is Claude Code's built-in starting permission mode since 2.1.283. A project-level `defaultMode: auto` (`.claude/settings.json` or `.claude/settings.local.json`) does not take effect, and the session then also ignores the user-level `defaultMode`, so `auto` belongs only in user or managed settings. Before dispatch, read the task's verbatim blocks against each other for contradictions, and state each rule once; a second artifact references the first instead of restating it.
+4. Start or relaunch worker panes only through `herdr-agents` modes. Deliver messages and wakes as in step 6; never use `pane send-text` followed by `send-keys Enter`, because the separate Enter races the TUI composer and fails nondeterministically.
+5. Configure delivery deliberately. `delivery.sh set turn` is useful for turn-end inbox checks; changing delivery mode can kill project watcher processes, so do it before starting long-running project watchers.
+6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`. Pass every `send.sh`/`poke.sh` body with `--body-file <path>` (both take it in agmsg v1.5.0), never as a positional argument: a positional `<text>` passes through the caller's own shell first, where a backtick or `$( )` in the body silently executes and vanishes from what arrives (upstream #378). `agmsg-dispatch` is the one exception and takes a single-line, shell-safe positional message. Pick the path by how the recipient is seated, never by inferring pane or agent status: a worker in a `herdr-agents` pane gets `agmsg-dispatch <team> <from> <to> <pane_id> "<message>"` (send, generic wake, `read_at` wait; single-line shell-safe text only), the sanctioned wake path until worker seating writes placement records at launch, because `poke.sh` exits 1 with "no placement record" for a hand-joined member, and a herdr-agents worker gets a record only once it acts from its own pane (upstream `send.sh`/`inbox.sh` record the acting pane, #1109); a spawn-seated member (placement record `run/spawn.*`; `team.sh <team> --json` shows its pane) gets `poke.sh <team> <name> --body-file <path> [--retries N --retry-delay SECONDS --backoff fixed|exponential]`, which types and submits in one call and refuses to type over an in-progress draft (#1321/#1322); a pane-less member gets `send.sh <team> <from> <to> --body-file <path>` and its own delivery mode. Verify delivery via the messages.db `read_at` column. `poke.sh` exit codes: 10 = terminal unreachable, 12 = pane gone or no live agent, 14/15 = refused to type over a changing or unlocatable input box, 13 = the driver has no poke path for this pane (for example a `plain` terminal); where poke.sh's narrow agmsg-message fallback succeeds it exits 0, so 13 means nothing was delivered, and the printed reason names the native channel, asks the caller to claim its own identity first, or reports that the fallback failed. Never retry a 13 as `send.sh` yourself: that overrides the driver's considered refusal and can double-deliver. Seating case: a worker in an unviewed or headless Herdr workspace (no client attached, a small pane rect such as 18x41) makes `poke.sh` exit 14/15 from its TUI input locator; that is a locator refusal, not evidence about the worker's state, so wake it with `agmsg-dispatch` and verify `read_at`. Every dispatch (TASK, ACCEPTANCE, PING) is recorded in the current acceptance record under a `dispatch:` key as the bus line with its read marker, so the orchestrator creates that record, `.orchestration/acceptance/<task>.md`, before the task's first dispatch (`scripts/orchestrator/dispatch.sh` refuses a record that does not exist or that names another task); a seat is reported as working only from such a line, and after a context compaction the open TASK list is re-derived from a bus read that is refused when it reaches its limit (`bus-read.sh` exits when the history reaches `BUS_READ_LIMIT`; the orchestrator raises the limit and reads again), never from a default-limited one and never from a read whose truncation went unnoticed. A seated worker idle for 20 minutes since its latest bus event for the task while a dispatchable task exists (INV-10's idle figure; its 30 minutes is the first-push deadline) gets a bus read, then a PING; a longer silent wait is never the answer. `scripts/orchestrator/dispatch.sh` writes the line and `scripts/orchestrator/bus-read.sh` performs the read and prints the minutes since each open task's latest event (both on main since a03c1daa, plan 007 T718); the orchestrator applies the 20-minute figure to the minutes the script prints (the script's own silence flag still uses 30 minutes, a recorded residual of the tools lineage).
+7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
+8. On `AGMSG-RESULT`, read the task file and every referenced artifact before deciding.
+9. For a RESULT carrying `effects`, verify that every declared effect has the report's stated reverse mapping before acceptance; record any irreversible effect in the acceptance note.
+10. For a RESULT that carries a pull request, integrate in this order. This is the single procedure that the PR integration rule, `AGENTS.md`, the README and the gh-first-workflow skill cite. A `gh pr update-branch` moves the head, so steps 1 to 4 run again on the new head. After an update-branch the orchestrator runs it, the order is CI on the new head, then the sweep, then the audit; an audit started before CI finishes sees incomplete evidence and returns an evidence-only `incorrect`. Select a checkout with git -C <absolute path>, never with cd, which the sandboxed Bash may not honour. After moving the review worktree to the audited head, verify git -C <review> rev-parse HEAD equals that head and git -C <main> symbolic-ref --short HEAD prints main before the audit and the gate.
+    1. Sweep the final head's feedback with `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json` and give every item a `fixed:<commit>` or `not-applicable:<reason>` disposition, leaving none on `failure` or `warning` annotations. Optionally request `@coderabbitai full review` on the final head first; when a CodeRabbit review exists it is swept like any other item, and the gate does not require a bot review. An `open:<thread id>` or `open:review-<review id>` item surviving the worker's fix round follows Worker Playbook step 15's operator-decision path; the PR is not merged, never with the thread open.
+       - A P2 finding of the Codex Bot, local review or task-level audit is advisory: disposition it `not-applicable:advisory P2 owned by <lineage>-followup-a0<n>` and record an `<id><TAB><class>` row under `## Owned by <owner>` in the lineage's acceptance record, with the orchestrator writing the owner task file before the row.
+       - Except that a small P2 on the PR's own change whose fix stays within the task's `allowed_files` is fixed in a revise round sent by the orchestrator with a `check=` while INV-6's counts allow it.
+       - The post-round audit of the final head is the single authority on the PR's findings, dispositioned finding by finding before the gate; a P0/P1 it leaves is the operator's decision, and the merge follows sub-step 5.
+    2. Run the task-level audit of that head in the pair or headless form of the task-level audit bullet. It exits nonzero for every verdict other than `correct`. An exit with `Audit verdict: incorrect` is not a failed step: continue to step 3 and disposition its findings. A `blocked` or missing verdict means re-running the audit.
+    3. Write the acceptance record, summarising the dispositions, with every audit finding dispositioned as the task-level audit bullet says: for an `incorrect` verdict the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE`.
+    4. Run the gate: `AUDIT_EVIDENCE=<audit> AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> ACCEPTANCE_EVIDENCE=<acceptance record> BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
+       - A `review` sweep item whose body carries a `P0`–`P3` badge is a finding with its own `fixed:<commit>` or `not-applicable:<reason>` disposition, never a container for its inline threads.
+       - The sweep covers issue comments, reviews, inline review comments with thread resolution, non-passing check runs, check-run annotations at every level (`notice`, `warning`, `failure`), and commit statuses. A `failure` marked `not-applicable` needs a concrete reason of at least 20 characters.
+       - A CodeRabbit full review is optional, at most once on the final head: the plan allows one review per hour and every review event spends one (docs.coderabbit.ai/management/rate-limits).
+       - The feedback JSON may be masked with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets`, which masks its keys and string values; the gate identifies an item by its source, url, level, path, line and body, and accepts a body or path that is verbatim or exactly that masked form.
+       - The gate rejects evidence outside `.orchestration/validation/` or without the `-pr-feedback.json` suffix. It binds `BASE` to the PR's GitHub base before running the collector from that authenticated SHA: an older base must be outside HEAD's first-parent chain, an advanced base must preserve the merge-base with the PR head, and PR branch commits (including `HEAD`) cannot substitute for the base. Evidence must match the local GitHub repository independently of `GH_REPO`, and `fixed:` commits must be in the authenticated GitHub base-to-head range whatever `BASE` is selected.
+       - `AUDIT_EVIDENCE` must be the task-level file `.orchestration/validation/<task>-audit-<sha7>.md` (the same `<task>` as the feedback JSON); a per-commit `audit-<sha>.md` is rejected. Its verdict comes only from the non-empty `<file>.last.md` and must be `correct`, or `incorrect` with an `audit_findings` entry in the acceptance record for each of its findings. PRs that change only `.orchestration/` files need no audit.
+       - A boundary PR (`orchestration/boundary-<date>[-n]`, `.orchestration` files only) skips the gate, the sweep JSON and the audit (with `BASE` set the gate would demand `PR_FEEDBACK_EVIDENCE`); each Bot thread on it still gets a disposition reply and is resolved, and the next boundary commit message names the PR.
+    5. After the required checks pass and the threads are resolved, merge with `gh pr merge <pr> --squash --match-head-commit <audited head sha>`, so a newer head can never be merged on the evidence of the audited one. Every seat acts as the machine's one GitHub account, so no approval is required or possible. Who merges is decided by the integration gate and by native denial of merge commands in Codex seats; `herdr-agents` writes the Claude worker deny rules (`Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)`, `Bash(gh api graphql:*)`) into the worker worktree's `.claude/settings.local.json`, where [deny rules take precedence over allow rules and cover nested subcommands in every permission mode](https://code.claude.com/docs/en/permissions), but a method flag after the path escapes these prefix rules, so the integration gate remains the authority.
+    6. Send `AGMSG-ACCEPTANCE` (step 11).
+11. Send `AGMSG-ACCEPTANCE v1 status=accepted` when done, or `status=revise` with a narrow `reason` and `next_action` when more work is required.
+
+## Worker Playbook
+
+1. Read the full `AGMSG-TASK v1` message.
+2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR as a draft with `gh pr create --draft --head <branch>`. Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there; for a Claude seat only the push leaves the sandbox, and a Codex seat pushes from inside it (step 4). A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator. Remove a scratch worktree (for example one that proves a test fails on `origin/main`) with `git worktree remove <path>` only; never run `git worktree prune` from a sandboxed seat, because other worktrees' paths look missing inside the sandbox and prune then targets their admin directories in the shared `.git/worktrees`.
+3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Fetch and fast-forward inside the sandbox; a public remote needs no credential. For Claude seats on macOS, Seatbelt denies the Mach lookup of `com.apple.trustd.agent`, so Go-based CLIs (`gh`, `gcloud`, `terraform`) fail TLS verification with `x509: OSStatus -26276` (`errSecInternal`); `git` uses Apple libcurl, LibreSSL and `/etc/ssl/cert.pem` and succeeds. On Linux, the bubblewrap sandbox denies the AF_UNIX keyring socket, so `gh` answers HTTP 401; `allowUnixSockets` cannot grant a path. Monitor and process visibility limits are in "Identity, delivery, and storage". On both platforms a Claude seat runs three commands outside the sandbox through the permission gate: `gh`, `git push`, and an authenticated `git fetch` (a private HTTPS remote, whose credential helper is `gh`); `excludedCommands` and `enableWeakerNetworkIsolation` are operator options, not selected alternatives. Look up a VERIFY item's external reference (upstream documentation, release notes, an API schema) with the WebFetch tool, not Bash `curl`. Three documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox; writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox; and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.
+5. Write artifacts to the exact expected paths (a Claude seat writes them through the permission gate, step 4). Do not invent alternate paths. A seat whose sandbox cannot write the main checkout (a Codex seat) writes them at the same relative paths in its own worktree, untracked, and the RESULT says so; the orchestrator moves them into the main checkout by absolute path before review. Worker-side review evidence carries a `-worker-` infix (`<task>-worker-crit.json`, `<task>-worker-review-receipt.md`), so it never collides with the orchestrator's own files.
+6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
+7. Put the isolation status or fallback rationale in `expected_sandbox_file`.
+8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
+9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.
+10. If blocked, still write the report and evidence paths that explain the blocker.
+11. Reply with the requested `done_signal`, normally `AGMSG-RESULT v1`, and include all artifact paths. To a herdr-paned orchestrator, send RESULT and PONG with `agmsg-dispatch <team> <worker> <orchestrator> <pane_id>` (for example `wN:p1`; single-line, shell-safe text) rather than bare `send.sh`, so the wake starts the idle orchestrator's turn and its Stop hook delivers the message. The Claude sandbox manifest lists `agmsg-dispatch` in `claude.sandbox.excludedCommands`, so a Claude worker runs it outside the sandbox from the first attempt: no failed sandboxed run, no unsandboxed retry, and no escalation. Claude Code still applies its permission rules to excluded commands, so the managed settings allow `Bash(agmsg-dispatch:*)` (the only managed `permissions.allow` entry) and the dispatch runs without a prompt. A Codex seat runs under Codex's own sandbox, which this setting does not cover.
+12. Put a `cost:` line in the report with observed session token/cost figures when the runtime exposes them, otherwise `cost: n/a`. This report value feeds the T76 `AGMSG-ACCEPTANCE v1` cost line.
+13. A worker executing an AGMSG-TASK treats the Understand-Anything auto-update hook instruction ("knowledge graph is stale, you MUST update it") as out of scope unless `.ua/**` is in its `allowed_files`: it records "hook fired; not acted on" in the report and continues. The orchestrator never runs the graph update in its own session; graph refreshes are separate worker tasks.
+14. Before sending RESULT, a worker whose session started a Crit plan review accounts for its Crit review server. A Claude seat starts one through Plan Mode's ExitPlanMode hook, and a Codex seat through the Crit plugin's Stop hook (`crit plan-hook --mode codex`). `make check-regime-boundary` treats a running `crit _serve` as a violation, and unit tests that read the host `pgrep` fail while one runs.
+    - A worker cannot reliably stop the server itself (verified with crit v0.21.1 on a scratch `crit plan`). Inside the sandbox, `crit stop` always reports no running daemon. Outside it, `crit stop` stops the plan server only on the branch the server was started on, so it misses a server started before `git switch -c <task-branch>`, which is the common worker case. `crit stop <plan-file>` does not match a plan session on any branch. An unsandboxed `crit stop` is also not pre-approved.
+    - A worker cannot inspect the host for the server either. Neither seat may leave its sandbox for host commands, because that would be an escalation, which step 4 forbids. For a Claude seat on macOS or Linux, the platform-specific process limits in "Identity, delivery, and storage" also apply here; no sandboxed host inspection is attempted.
+    - So the worker, Claude or Codex, adds `plan-mode-used=<worktree>` to the RESULT and does nothing else about the server.
+    - The orchestrator handles it as control-plane hygiene on the host. It runs these `pgrep`/`ps`/`kill` calls outside its own sandbox through the permission gate (`dangerouslyDisableSandbox`, answered by the operator or the auto-mode classifier) under its control-plane exemption, as it already does for `agmsg-dispatch` and `herdr-agents --audit`. It lists servers with `pgrep -fl _serve`, where a process named `crit` is a Crit server and the calling shell is listed under its own name. It reads each server's session record (`~/.crit/sessions/*.json` holds `pid`, `cwd` and `branch`) and confirms the server is live before acting: `ps -o args= -p <pid>` must show `crit _serve`, and the record's `cwd` must be that worker's worktree. The live process's own cwd must also match: `readlink /proc/<pid>/cwd` on Linux (`lsof -a -d cwd -p <pid> -Fn` on macOS) must equal the record's `cwd`. A mismatch means the pid was reused, and the record is stale. Only then does it stop the server with `kill <pid>`. A record whose pid is gone or runs another command is stale; it is removed, never killed. Never use `crit stop --all`, which stops every seat's server.
+15. After the final push, wait for CI and the Codex Bot before sending RESULT. The Bot reviews at PR open and, after the one P0/P1 fix round, once more on `@codex review`; the review count is 1 + the fix rounds (plan 020 step 2).
+    - Mark the PR ready for review with `gh pr ready <n>` before the first wait, while it is still a draft (`gh pr ready` exits non-zero on a PR that is already ready, so a later head's wait skips it): the Codex Bot reviews non-draft PRs, and a draft only on an explicit `@codex review` comment. When no Bot review of the final head arrives within 10 minutes, post `@codex review` on the PR and wait out the rest of the window.
+    - Run `gh pr checks <pr> --watch` in the background and the Bot wait below at the same time: the 10-minute and 15-minute marks count from `gh pr ready` (from the push, for a later head), never from the end of CI. Right after a push GitHub can report no checks yet, and the watcher then exits 1 with `no checks reported`: start it once a check is listed, and restart it on that message instead of reading it as a CI failure. Wait for that watcher's exit status before the RESULT: a non-zero exit means no RESULT until CI passes.
+    - Then list the Bot's reviews of the final head with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")|[.commit_id,.submitted_at]|@tsv'` and the Bot's top-level review comments raised on it with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")|[.id,.original_commit_id,.path]|@tsv'`. A human comment, a CodeRabbit review or an earlier head's review never ends the wait. A comment's `commit_id` moves to the newest head, so findings are matched by `original_commit_id`. Repeat until a review of the final head appears or 15 minutes pass; the report records the latter as `bot: none`. The final head here is the diff head, the last commit that changes the PR's content: a head that only merges the new base with `gh pr update-branch` needs green CI but no new Bot wait. Both endpoints return 30 items per page by default, so keep `--paginate`.
+    - This bounded wait is the permitted exception to the no-polling rule in "Regime activation and progress", which governs detecting worker completion and pane status, not a worker's wait on CI and the Bot. List at most every 30 seconds, stop at 15 minutes, and run the loop as a background command or a foreground command with a timeout. Never use bare foreground `sleep`.
+    - A 👍 reaction alone is not evidence of a review.
+    - Read each listed review's body too: the Codex Bot sometimes places a finding (a `P0`–`P3` badge with a blob link) in the review body instead of an inline thread. Such a review-body finding is listed alongside the top-level inline comments and fixed or dispositioned the same way.
+    - Fix P0/P1 findings, inline or review-body, in at most one worker-side fix round before RESULT, then request `@codex review` and restart the wait from the push. A P0/P1 surviving that round is not fixed again: send `AGMSG-RESULT … bot_rounds=2` with each listed as `open:<thread id>` (`open:review-<review id>` for a review-body finding); this stops the PR for the operator's decision, and the next bullet's `fixed:`/`not-applicable:` rule does not override it.
+    - Apart from those surviving P0/P1 items, the RESULT names every unresolved thread id with `fixed:<sha>` or a proposed `not-applicable:<reason>` under Orchestrator Playbook step 10. The worker resolves no thread.
+
+## Codex seat worklogs
+
+Project layouts vary by language. Set up this worklog structure only when it
+does not already exist, and use timestamped filenames in `YYYYMMDD_HHMMSS`
+form:
+
+- `.agents/worklog/codex/plan/<timestamp>_plan.md` stores the plan and design
+  written before implementation. Ask the user questions when needed, and
+  update the plan when questions, learning, or completed tasks change it. It
+  must contain `Goal`, `Scope`, `Assumptions`, `Design`, `Tests`, and
+  `Open Questions`.
+- `.agents/worklog/codex/todo/<timestamp>_todo.md` derives its tasks from the
+  plan. Move completed items from `TODO` to `Done`; when `TODO` is empty, set
+  its status to `done` and rename it to `<timestamp>_done.md`. It must contain
+  `TODO` and `Done`.
+- `.agents/worklog/codex/learn/<timestamp>_learn.md` records only reusable,
+  validated knowledge that speeds a future decision. State what was learned
+  and where it applies, update the plan's `Assumptions`, `Design`, or `Tests`
+  when relevant. A learn file must contain `Date`, `Learnings`, and
+  `Plan Updates`.
+
+Every plan, todo, and learn file starts with YAML frontmatter containing
+`type` (`plan`, `todo`, or `learn`), `id` (`YYYYMMDD_HHMMSS`), `owner` (for
+example, `codex-a`), and ISO8601 `created_at` and `updated_at`. Additionally:
+
+- todo requires `status`, `workstream`, and `related_plan`; status is one of
+  `active`, `blocked`, `done`, or `superseded`;
+- plan requires `status`, one of `draft`, `active`, `done`, or `superseded`;
+- learn requires `validated` (`true` or `false`) and `apply_to` (plan/tests),
+  and may be created only when reusable and validated.
+
+Optional frontmatter keys are `depends_on` (todo ID array), `blocked_reason`
+for blocked work, `evidence` (path array), and `tags`.
+
+## Pitfalls
+
+- Do not start work from the agmsg message alone; read `task_file` first.
+- Do not edit outside `allowed_files`, even for convenient cleanup.
+- Do not perform forbidden actions such as dependency changes, gate changes, product changes, promotion decisions, image builds, or LLM calls when listed.
+- Do not collapse candidate, promoted, rejected, and merged skill registry states into one directory.
+- Do not put secrets, raw logs with credentials, or unredacted AutoSkill inputs in artifacts.
+- Do not wake workers with `pane send-text` + `send-keys Enter`; use `agmsg-dispatch`, `poke.sh --body-file`, or `send.sh --body-file` as step 6 selects, and verify `read_at` in messages.db.
+- Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
+
+exec
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: ponytail
+description: >
+  Lazy senior dev mode: the smallest change that fully solves the task, and a
+  reply a busy human understands in one read. Use on any coding task (writing,
+  fixing, refactoring, reviewing, choosing dependencies) and when the user says
+  "ponytail", "be lazy", "simplest solution", "yagni", or complains about
+  over-engineering or bloat. Levels: lite, full (default), ultra.
+argument-hint: "[lite|full|ultra|off]"
+license: MIT
+---
+
+# Ponytail
+
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+Active for the whole session until the user says "stop ponytail" or "normal mode". Switch level: `/ponytail lite|full|ultra`.
+
+## Before you write
+
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+## The smallest complete change
+
+Take the first option that fully works:
+
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+## Levels
+
+| Level | Behavior |
+|-------|----------|
+| **lite** | Build what was asked. Name the smaller option in one line and let the user pick. |
+| **full** | The rules above. Default. |
+| **ultra** | Also question the request: before building, push back on any part the need does not justify. |
+
+exec
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+     1	---
+     2	format: 2
+     3	task_id: dotfiles-T133-gh-binding-a02
+     4	kind: code
+     5	security: true
+     6	dispatch_status: blocked-pre-anchor
+     7	design_review: {design: .orchestration/plans/024-design-quality.md}
+     8	requires_decision: [D-024-69]
+     9	after: []
+    10	allowed_files:
+    11	  - home/dot_mise/config.toml
+    12	  - home/dot_agents/agent-config.yaml
+    13	  - scripts/validate-agent-assets.py
+    14	  - scripts/orchestrator/*.sh
+    15	  - scripts/require-crit-review.py
+    16	  - scripts/pr-feedback.py
+    17	  - tests/unit/test_*.py
+    18	  - .orchestration/dotfiles-T133-gh-binding-a02/**
+    19	threat_table:
+    20	  - {control: "home/dot_mise/config.toml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    21	  - {control: "home/dot_agents/agent-config.yaml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    22	  - {control: "scripts/validate-agent-assets.py", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    23	  - {control: "scripts/orchestrator/chain-integrate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_chain_integrate_authenticated_decoy"}
+    24	  - {control: "scripts/orchestrator/orch-gate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_orch_gate_authenticated_decoy"}
+    25	  - {control: "scripts/orchestrator/local-review.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_local_review_authenticated_decoy"}
+    26	  - {control: "scripts/require-crit-review.py", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    27	  - {control: "scripts/pr-feedback.py", disposition: "closed: tests/unit/test_pr_feedback.py::GhBindingTest::test_collector_hostile_repository"}
+    28	  - {control: "tests/unit/test_*.py", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence-integrity automation; independently inspect the four authorized modules and their behavioral red/green logs."}
+    29	  - {control: ".orchestration/dotfiles-T133-gh-binding-a02/** including task.md", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence automation; compare anchored bytes, task-copy digest and literal full head against the independently audited PR."}
+    30	  - {control: "pin", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    31	  - {control: "declaration", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    32	  - {control: "consumer binding", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_consumer_binding_matrix"}
+    33	  - {control: "minimal environment", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_gh_environment_is_minimal"}
+    34	  - {control: "gh configuration inputs", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_protected_gh_configuration"}
+    35	  - {control: "fixed repository and host in gate descendants", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    36	  - {control: "collector interpreter startup", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_collector_ignores_startup_hooks"}
+    37	  - {control: "trusted parent before first instruction", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns automatic parent binding; authenticated use is blocked until the orchestrator measures design 5.14 items 2/9 for every non-gh process in the route."}
+    38	  - {control: "task metadata", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns dispatch automation; compare the reviewed inventory and populated Checks with the complete anchored task before dispatch."}
+    39	  - {control: "metadata separators", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns byte-integrity automation; compare front matter, separators and Checks, with no paste after anchor."}
+    40	  - {control: "in-process effects", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_git_environment_cannot_redirect_fixture_writes"}
+    41	  - {control: "workflow and interpreter or environment inputs", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns uv/Python/Node, permgate and launcher binding; unchanged resolvers require the measured design 5.14 items 2/9 parent, otherwise authenticated use is blocked."}
+    42	  - {control: "new or renamed scripts; future gh routes", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns absent chain-finish and future checker adoption; add no consumer here and require their own positive authenticated fixtures."}
+    43	  - {control: "remaining git/date/mise executable provenance", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns remaining-tool binding; retain today's resolver algorithms only under the measured parent, with token-free discovery."}
+    44	  - {control: "orchestrator effect merge", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns integration follow-through; only the orchestrator integrates the exact audited head through Playbook step 10."}
+    45	  - {control: "orchestrator effect update-branch", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence refresh; repeat CI, feedback, audit, acceptance and gate for each changed head."}
+    46	  - {control: "orchestrator effect forced worker removal", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns teardown records; none is planned and dirty state requires separate authorization before discard."}
+    47	  - {control: "orchestrator effect owner-stub amendment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns all assigned residuals; the orchestrator creates or expands its owner stub before anchor, outside worker scope."}
+    48	  - {control: "orchestrator effect canonical measurements", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns measurement automation; gh-free private-clone and trusted-parent evidence precedes review of the complete populated bytes."}
+    49	  - {control: "orchestrator effect installation and deployment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; observe the pinned install, protected configuration and positive real consumer probes before enabling acceptance reads."}
+    50	  - {control: "design 5.14 item 0", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 0 obligations; this task establishes no same-UID or credential-separation boundary."}
+    51	  - {control: "design 5.14 item 1", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns host protection evidence; item 1 must cover declaration, binary, configuration source and parent namespace before authenticated use."}
+    52	  - {control: "design 5.14 item 2", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 2 integration; measured parent evidence is mandatory now."}
+    53	  - {control: "design 5.14 item 3", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 3 integration; apply it to gh inputs without certifying other runtime boundaries."}
+    54	  - {control: "design 5.14 item 4", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 4 integration; consume checked gh directly, with replacement risk retained under item 0."}
+    55	  - {control: "design 5.14 item 5", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 5 obligations; retain full head identities and change no locks or reservations."}
+    56	  - {control: "design 5.14 item 6", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; distinguish fixture success, CI and observed host execution."}
+    57	  - {control: "design 5.14 item 7", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns wider coverage; inspect behavioral assertions and never count setup failure or absent routes as closure."}
+    58	  - {control: "design 5.14 item 8", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns future canonical-reader adoption; bind active gh routes without certifying local-object checkers."}
+    59	  - {control: "design 5.14 item 9", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 9 integration; measured isolated runtimes and absolute UV_CACHE_DIR remain mandatory."}
+    60	  - {control: "design 5.14 item 10", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns denial records; apply item 10 and stop with a blocked PONG on any denial."}
+    61	premises: []
+    62	---
+    63	
+    64	# AGMSG-TASK dotfiles-T133-gh-binding-a02 — bind gh and its gate descendants
+    65	
+    66	D-024-69 advances this remedy ahead of slices 2-5. This S-R5 reset supersedes the 2026-10-21 owner stub and a01 round-2 text; TASK names Codex worker a012. pins-a01 merged as #449; after is empty and later binding adds sibling declarations.
+    67	Seven C-80 refusals share the unbound-gh P1: a07-checker 922292d/0edbd8c/fd8c003/c6cebe4/a3125e1; regime-ci-followup-a02 a232baf/a18a67d. A substitute can forge main, design, merge state and PR data and read forwarded credentials.
+    68	a01 rounds 3bf2a79 (3 P1, 3 P2) and 6486b79 (1 P1, 1 P2) are superseded; Items 6/7 authorize and test the refused descendant changes while retaining the other round-2 requirements.
+    69	Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does not redefine that contract.
+    70	
+    71	## Items
+    72	
+    73	0. Inventory: local HEAD/origin/main observed at 7da0cdfab9de9fbea673b82379acd4e317115065; chain-finish.sh is absent and regime-ci.py/task-consistency-check.py currently use Git, not gh. These are local observations, pending gh-free canonical confirmation before C-80/anchor.
+    74	   Implement the three present shell routes and their real gate/collector descendants. Do not invent chain-finish or add canonical-network behavior to the checkers; dotfiles-T133-gh-binding-followup-a01 owns all three future routes and their positive authenticated decoy fixtures.
+    75	   The shell wildcard authorizes only chain-integrate.sh, orch-gate.sh and local-review.sh; the test wildcard authorizes only test_supply_chain_policy.py, test_chain_glue.py, test_require_crit_review.py and test_pr_feedback.py. If canonical inventory differs, reauthor/review the whole inventory and threat table before dispatch.
+    76	1. Pin `"github:cli/cli" = "2.102.0"` in home/dot_mise/config.toml with one adjacent English reason comment following pins-a01; retain unrelated pins. Installed target: `~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh`.
+    77	2. Declare trusted_tools.gh with version "2.102.0" and that home-relative absolute target in agent-config.yaml; later uv/Python/Node entries are siblings.
+    78	   validate-agent-assets.py checks pin equality, normalized home-anchored spelling, absolute expansion under the real user's home, and no shims component in spelling or resolved path. Refuse missing/malformed declarations, traversal, forged HOME and mismatched identities; give every rule a separate refusal subtest.
+    79	   Runtime reads protected deployed ~/.agents/agent-config.yaml as data with existing parsing facilities under design 5.14 items 2/9, never source/eval or a worker/PR copy. Chezmoi deploys this plain source; create no rendered artifact and leave generator/rendering tests unchanged.
+    80	3. Replace gh discovery in chain-integrate.sh/orch-gate.sh; bind local-review.sh's descendant namespace and both authorized Python consumers to the declaration. No PATH, mise-which, latest, wrapper or caller-selected executable override may supply gh.
+    81	   Require the version-specific absolute realpath, regular executable, existence, non-shim/trusted-root checks and matching reported version; consume that checked target under design 5.14 items 3/4. Missing/mismatching identity emits exactly `refused: gh binding`, exits nonzero and performs no canonical operation or fallback.
+    82	   Every repository REST read names literal repos/mryfmo/dotfiles endpoints and --hostname github.com; GraphQL fixes owner=mryfmo/name=dotfiles and accepts node IDs only from those bound queries. gh pr uses --repo github.com/mryfmo/dotfiles, never unsupported --hostname; account/auth probes bind the host and version probes make no network call.
+    83	   Preserve today's uv/git/date/mise and other non-gh resolver algorithms only within the orchestrator's measured design 5.14 items 2/9 parent/namespace, established before the first credential-bearing process. Discovery is token-free; without that evidence authenticated operation remains blocked.
+    84	4. Construct minimal environments for every bound gh, including token-free identity probes; use protected GH_CONFIG_DIR=/var/empty, verify the resolved directory and ancestors are protected and the directory itself is empty with no symlink/config payloads, and refuse unsafe/missing configuration without creation or fallback.
+    85	   Normalize only the call's explicitly supplied token to GH_TOKEN; no implicit home/keychain credentials. Supply trusted HOME/PATH, absolute UV_CACHE_DIR, fixed configuration, disabled prompts/update notices and plain output explicitly; record allowed names without values. Every env -i contract includes UV_CACHE_DIR.
+    86	   Exclude ambient GH_HOST/GH_REPO/GH_CONFIG_DIR/XDG_CONFIG_HOME, proxies, loader/startup variables and Git overrides. Test planted home/XDG config with http_unix_socket, aliases and alternate hosts, unsafe-config refusal and a positive controlled authenticated operation.
+    87	5. No workflow/regime.yml, launcher, permission, dependency, unrelated resolver-algorithm or acceptance-semantic change; regime-ci-followup-a02 owns the workflow. Add/rename no executable and keep evidence non-executable; other runtime binding remains dotfiles-T133-trusted-entrypoint-binding-a01's scope.
+    88	6. Edit scripts/require-crit-review.py and scripts/pr-feedback.py: the gate's pr_base_errors must use the bound gh and --repo github.com/mryfmo/dotfiles, never discover authority from local Git context after removing GH_REPO. The collector uses the same declared target and host/repository binding for REST, GraphQL and auth calls.
+    89	   Reject conflicting CLI/evidence repositories; hostile remote, GH_REPO and GH_HOST cannot redirect authority. Preserve authenticated-base collector selection and all feedback checks; never execute a PR collector in place of that selected source.
+    90	   Test the real gate path through PR view and collector launch, and separately the real collector, with a foreign remote plus hostile GH_REPO/GH_HOST. Require successful fixed-host/repository responses, consumed results and observed descendant argv/environment; mocking subprocess launch or pre-sanitizing away the attack does not close the row.
+    91	7. Replace the gate's bare sys.executable collector launch with the gate's measured absolute Python plus -I and design 5.14 item 9's constructed environment, including absolute UV_CACHE_DIR. PYTHONSAFEPATH alone is insufficient; preserve the selected collector bytes and subprocess failure propagation.
+    92	   A real-descendant test launches the gate and its selected real collector with planted user-site .pth/sitecustomize.py/usercustomize.py and PYTHONSTARTUP markers; prove the same hook can execute without isolation, then assert no marker and a successful collected response with production isolation.
+    93	
+    94	## Check
+    95	
+    96	The final diff has at most 350 changed lines outside `tests/` and `.orchestration/`, and at most 700 under `tests/`.
+    97	Measure with `git diff --numstat <merge-base40> <head40>`.
+    98	Caps are PR-wide additions plus deletions from git merge-base <authenticated-main40> <head40> (C-123), never round deltas; record dispatch measurement_base40, final main/head/merge-base SHAs, every numstat row and both totals, and recount after update-branch. Expected width is about 200/400; 350/700 includes fixtures and one Bot fix round, with no exemption from a07's 446/709 rewrite.
+    99	Write fixtures first and implement every closed selector. Each active shell route and both Python consumers needs a positive authenticated operation, synthetic credential, fixed host/repository and consumed response through declared gh; separately test missing/version/path refusals. Matrices cover all five consumers, including review/gate descendants; absent checkers/chain-finish are not passing entries.
+   100	Plant executable PATH gh and hostile mise answers without prebinding gh in the trusted-parent fixture; assert neither executes nor receives the synthetic credential. Minimal-environment/configuration matrices observe every consumer's actual child environment.
+   101	Reuse trusted_exec_contract.py without modification. Before fixture Git init/add/commit/reset/fetch, construct fresh environments and explicit roots, never os.environ merges; test hostile GIT_DIR/GIT_WORK_TREE/GIT_CONFIG_* and local includes/hooks, preserving a second repository's refs/index/bytes and external markers.
+   102	For each behavioral requirement in Items 1-4/6/7, record red at origin/main production bytes and green at the fix commit: selector, full baseline/red-fixture/fix SHAs, exact commands, stdout/stderr and real status. Red reaches the intended assertion, never missing API/import/setup/tool failure. Items 0/5 use inventory/diff evidence; no fabricated red or closure for future consumers.
+   103	Run `uv run python -m unittest tests.unit.test_supply_chain_policy tests.unit.test_chain_glue tests.unit.test_require_crit_review tests.unit.test_pr_feedback -v` through measured absolute uv/Python with item 9 isolation and temporary absolute UV_CACHE_DIR; record the expanded invocation.
+   104	Run bash -n, shellcheck and shfmt --indent 4 --space-redirects --diff on the three changed shells; ruff check --config ruff.toml and ruff format --check --config ruff.toml on changed Python; make validate-agent-assets and the review gate. Never run Bats locally.
+   105	Resolve observations with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" UV_CACHE_DIR="$UV_CACHE_DIR" "$HOME/.local/bin/mise" which uv`, repeat for python, and paste actual outputs; uv's installed path has no assumed bin component. Discovery is not trusted-parent deployment evidence.
+   106	
+   107	## Execution and evidence
+   108	
+   109	Worker Playbook step 4 applies: every command sandboxed; any denial sends AGMSG-PONG v1 task_id=dotfiles-T133-gh-binding-a02 status=blocked with exact command, exit status and boundary, then holds. Never escalate, probe Herdr sockets or retry through another surface.
+   110	Create fresh branch with `git switch -c tools/gh-binding-a02 --no-track origin/main`; push `git push https://github.com/mryfmo/dotfiles.git tools/gh-binding-a02`, never -u or shared-config changes; open one draft PR. Follow step 15's ready/CI/Bot wait, with at most one worker Bot fix round; surviving P0/P1 stops for the operator. Worker never merges.
+   111	Under .orchestration/dotfiles-T133-gh-binding-a02/ write task.md byte-identical to the complete anchored dispatch, report.md, validation.md with verbatim stdout/stderr and real exit statuses, sandbox.md, learning.md, autoskill.md and result.txt; normalize home paths and retain no secrets.
+   112	Each evidence item names producer/seat: worker (Codex seat), orchestrator (Claude seat, sandboxed Bash), or author (Codex review-profile seat, sandboxed exec). report.md maps all rows/selectors, scope, counts, red/green pairs and limitations; sandbox.md records denials, learning.md triage, autoskill.md actual use/not-used, and cost is n/a unless measured.
+   113	Write AGMSG-RESULT v1 before sending: task_id, status, PR, literal head=<full40>, authenticated_main=<full40>, merge_base=<full40>, measurement_base40, source_cap=350, test_cap=700, source_changed/test_changed, every red/green SHA pair, task_copy=<repo-local task.md>, task_copy_sha256 and artifact paths. ready_for_review requires passing CI; include Bot findings and dispositions per step 15.
+   114	Keep plan/todo/learn updated and uncommitted, one active todo per owner. Use agent-side Crit data/evidence only, no browser/publication; pass make require-crit-review with its receipt before RESULT. The orchestrator alone follows Playbook step 10's feedback, audit, acceptance, gate and integration order.
+   115	
+   116	## Anchor
+   117	
+   118	Authoring is read-only: canonical clone and trusted-parent deployment are unmeasured here; incomplete Checks block anchor/dispatch. Host observations supplied by orchestrator, sandboxed Bash, 2026-10-22 07:5x JST: config.toml:43 declares "github:cli/cli" = "latest"; installed ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh reports 2.102.0 (2026-09-30).
+   119	Before C-80/anchor the orchestrator creates/expands dotfiles-T133-gh-binding-followup-a01's owner stub for every assigned residual and three future routes, updates its a02 dependency, and confirms Item 0 against canonical main; all owner-stub edits are outside worker scope.
+   120	Obtain main40 and design digest gh-free from a fresh private HTTPS bare clone of https://github.com/mryfmo/dotfiles.git with an independent object store. Record exact sanitized producer commands/outputs and design 5.14 items 1/2/9 protection/parent observations, then paste the five payload lines below before review.
+   121	Change dispatch_status only after evidence exists; C-80 reviews and anchors the whole populated text, with no later paste. Inventory differences require reauthoring, not extra files or invented passing fixtures.
+   122	Installation/deployment is separate from code/CI: observe the version-specific declared install, protected manifest/config and positive real consumer probes under the measured parent before enabling authenticated acceptance reads. Future checker adoption stays unclosed.
+   123	## Checks
+   124	
+   125	```text
+   126	canonical main (gh-free): git clone --bare --filter=blob:none https://github.com/mryfmo/dotfiles.git <private dir>; git rev-parse main -> 7da0cdfab9de9fbea673b82379acd4e317115065; design digest: git show main:.orchestration/plans/024-design-quality.md | shasum -a 256 -> a027b0210981ca4c4d4e832dc849af6a03cd71c408801f74d098c3b778dd9dbe (observed 2026-10-22T01:02Z by the orchestrator, sandboxed Bash, every exit 0)
+   127	mise pin: home/dot_mise/config.toml:43 at that main = "github:cli/cli" = "latest"; installed: ~/.local/share/mise/installs/github-cli-cli/{2, 2.102, 2.102.0, latest -> ./2.102.0}; env -i PATH=/usr/bin:/bin HOME=<home> ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh --version -> gh version 2.102.0 (2026-09-30)
+   128	interpreter bindings (design 5.14 item 9): uv = ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv (env -i PATH=/usr/bin:/bin HOME=<home> mise which uv); Python installs 3.12.15 and 3.15.0 (pins-a01, #449: python = "3.15.0", uv = "0.13.1", node = "26.12.0"); UV_CACHE_DIR: every env -i contract of this task sets an absolute private cache created with mktemp -d under $TMPDIR and refuses when it is absent
+   129	item 1 (host protection): ~/.agents/agent-config.yaml -rw-r--r-- <user>:staff and ~/.agents drwxr-xr-x <user>:staff, the same UID as every seat; the same-UID and credential-separation residual of item 0 stands
+   130	item 2 (trusted parent): not deployed on this host; dotfiles-T133-trusted-entrypoint-binding-a01 is unstarted, so authenticated acceptance reads stay disabled until the orchestrator measures an absolutely bound parent (residual rows above); this paste is the only Checks content and nothing is pasted after the anchor
+   131	```
+
+exec
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | sed -n '1,64p'" in ~/Workspace/dotfiles
+ succeeded in 0ms:
+     1	---
+     2	format: 2
+     3	task_id: dotfiles-T133-gh-binding-a02
+     4	kind: code
+     5	security: true
+     6	dispatch_status: blocked-pre-anchor
+     7	design_review: {design: .orchestration/plans/024-design-quality.md}
+     8	requires_decision: [D-024-69]
+     9	after: []
+    10	allowed_files:
+    11	  - home/dot_mise/config.toml
+    12	  - home/dot_agents/agent-config.yaml
+    13	  - scripts/validate-agent-assets.py
+    14	  - scripts/orchestrator/*.sh
+    15	  - scripts/require-crit-review.py
+    16	  - scripts/pr-feedback.py
+    17	  - tests/unit/test_*.py
+    18	  - .orchestration/dotfiles-T133-gh-binding-a02/**
+    19	threat_table:
+    20	  - {control: "home/dot_mise/config.toml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    21	  - {control: "home/dot_agents/agent-config.yaml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    22	  - {control: "scripts/validate-agent-assets.py", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    23	  - {control: "scripts/orchestrator/chain-integrate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_chain_integrate_authenticated_decoy"}
+    24	  - {control: "scripts/orchestrator/orch-gate.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_orch_gate_authenticated_decoy"}
+    25	  - {control: "scripts/orchestrator/local-review.sh", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_local_review_authenticated_decoy"}
+    26	  - {control: "scripts/require-crit-review.py", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    27	  - {control: "scripts/pr-feedback.py", disposition: "closed: tests/unit/test_pr_feedback.py::GhBindingTest::test_collector_hostile_repository"}
+    28	  - {control: "tests/unit/test_*.py", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence-integrity automation; independently inspect the four authorized modules and their behavioral red/green logs."}
+    29	  - {control: ".orchestration/dotfiles-T133-gh-binding-a02/** including task.md", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence automation; compare anchored bytes, task-copy digest and literal full head against the independently audited PR."}
+    30	  - {control: "pin", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
+    31	  - {control: "declaration", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
+    32	  - {control: "consumer binding", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_consumer_binding_matrix"}
+    33	  - {control: "minimal environment", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_gh_environment_is_minimal"}
+    34	  - {control: "gh configuration inputs", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_protected_gh_configuration"}
+    35	  - {control: "fixed repository and host in gate descendants", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
+    36	  - {control: "collector interpreter startup", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_collector_ignores_startup_hooks"}
+    37	  - {control: "trusted parent before first instruction", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns automatic parent binding; authenticated use is blocked until the orchestrator measures design 5.14 items 2/9 for every non-gh process in the route."}
+    38	  - {control: "task metadata", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns dispatch automation; compare the reviewed inventory and populated Checks with the complete anchored task before dispatch."}
+    39	  - {control: "metadata separators", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns byte-integrity automation; compare front matter, separators and Checks, with no paste after anchor."}
+    40	  - {control: "in-process effects", disposition: "closed: tests/unit/test_chain_glue.py::GhBindingTest::test_git_environment_cannot_redirect_fixture_writes"}
+    41	  - {control: "workflow and interpreter or environment inputs", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns uv/Python/Node, permgate and launcher binding; unchanged resolvers require the measured design 5.14 items 2/9 parent, otherwise authenticated use is blocked."}
+    42	  - {control: "new or renamed scripts; future gh routes", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns absent chain-finish and future checker adoption; add no consumer here and require their own positive authenticated fixtures."}
+    43	  - {control: "remaining git/date/mise executable provenance", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns remaining-tool binding; retain today's resolver algorithms only under the measured parent, with token-free discovery."}
+    44	  - {control: "orchestrator effect merge", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns integration follow-through; only the orchestrator integrates the exact audited head through Playbook step 10."}
+    45	  - {control: "orchestrator effect update-branch", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence refresh; repeat CI, feedback, audit, acceptance and gate for each changed head."}
+    46	  - {control: "orchestrator effect forced worker removal", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns teardown records; none is planned and dirty state requires separate authorization before discard."}
+    47	  - {control: "orchestrator effect owner-stub amendment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns all assigned residuals; the orchestrator creates or expands its owner stub before anchor, outside worker scope."}
+    48	  - {control: "orchestrator effect canonical measurements", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns measurement automation; gh-free private-clone and trusted-parent evidence precedes review of the complete populated bytes."}
+    49	  - {control: "orchestrator effect installation and deployment", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; observe the pinned install, protected configuration and positive real consumer probes before enabling acceptance reads."}
+    50	  - {control: "design 5.14 item 0", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 0 obligations; this task establishes no same-UID or credential-separation boundary."}
+    51	  - {control: "design 5.14 item 1", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns host protection evidence; item 1 must cover declaration, binary, configuration source and parent namespace before authenticated use."}
+    52	  - {control: "design 5.14 item 2", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 2 integration; measured parent evidence is mandatory now."}
+    53	  - {control: "design 5.14 item 3", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 3 integration; apply it to gh inputs without certifying other runtime boundaries."}
+    54	  - {control: "design 5.14 item 4", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns wider item 4 integration; consume checked gh directly, with replacement risk retained under item 0."}
+    55	  - {control: "design 5.14 item 5", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns unchanged item 5 obligations; retain full head identities and change no locks or reservations."}
+    56	  - {control: "design 5.14 item 6", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns deployment verification; distinguish fixture success, CI and observed host execution."}
+    57	  - {control: "design 5.14 item 7", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns wider coverage; inspect behavioral assertions and never count setup failure or absent routes as closure."}
+    58	  - {control: "design 5.14 item 8", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns future canonical-reader adoption; bind active gh routes without certifying local-object checkers."}
+    59	  - {control: "design 5.14 item 9", disposition: "residual: dotfiles-T133-trusted-entrypoint-binding-a01 owns permanent item 9 integration; measured isolated runtimes and absolute UV_CACHE_DIR remain mandatory."}
+    60	  - {control: "design 5.14 item 10", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns denial records; apply item 10 and stop with a blocked PONG on any denial."}
+    61	premises: []
+    62	---
+    63	
+    64	# AGMSG-TASK dotfiles-T133-gh-binding-a02 — bind gh and its gate descendants
+
+exec
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |threat.table'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
+ succeeded in 0ms:
+10:## Architecture
+17:## Regime activation and progress
+29:## Parallel workers
+46:## Identity, delivery, and storage
+59:## Live verification
+64:## Review and integration invariants
+71:- A task that touches a trust boundary (anything the design tier lists, CI that decides a required check, code that executes PR-controlled input) carries a `threat_table` in its front matter: one `{control, disposition}` row per thing the PR or the orchestrator controls (the tree and its tests, task.md, workflow files, interpreter and environment files, in-process effects, new or renamed scripts, metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, new or renamed scripts, metadata separators), carried by the declared test module's row where that is where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a wildcard over test fixtures or other data files keeps one row; C4 and C7b of `scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file review checks the rest. A disposition takes one of three forms: `closed: tests/<file>::<name>`, the test that closes the row; `residual: <sentence>`, the compensating control; `out-of-scope: <task id>`, the task that owns the row. The task-file review checks the three shape rules by hand: a `closed` selector names a test present in the PR tree at acceptance, an `out-of-scope` owner is a task id in the design's `implementing_tasks`, a `residual` payload is a sentence of at least 20 characters (the gate's minimum for a reason). For a `closed` row it checks the selector's form only, since the test does not exist before implementation. Substance is the reviewers': the task-file review, the Bot and the auditor judge each row against the diff. The table is the task's completion condition: a missing row is added once, counted as an amendment, never fixed finding by finding.
+95:## Message Contract v1
+152:## `.orchestration` Workspace Layout
+165:## Orchestrator Playbook
+195:## Worker Playbook
+225:## Codex seat worklogs
+259:## Pitfalls
+
+exec
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+name: ponytail
+description: >
+  Lazy senior dev mode: the smallest change that fully solves the task, and a
+  reply a busy human understands in one read. Use on any coding task (writing,
+  fixing, refactoring, reviewing, choosing dependencies) and when the user says
+  "ponytail", "be lazy", "simplest solution", "yagni", or complains about
+  over-engineering or bloat. Levels: lite, full (default), ultra.
+argument-hint: "[lite|full|ultra|off]"
+license: MIT
+---
+
+# Ponytail
+
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+Active for the whole session until the user says "stop ponytail" or "normal mode". Switch level: `/ponytail lite|full|ultra`.
+
+## Before you write
+
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+## The smallest complete change
+
+Take the first option that fully works:
+
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+## Levels
+
+| Level | Behavior |
+|-------|----------|
+| **lite** | Build what was asked. Name the smaller option in one line and let the user pick. |
+| **full** | The rules above. Default. |
+| **ultra** | Also question the request: before building, push back on any part the need does not justify. |
+
+**Organizing focused readings**
+exec
+/bin/zsh -lc 'git status --short; git rev-parse HEAD' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "sed -n '225,258p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg -n '5\\.14|D-024-69|gh-binding|trusted.entrypoint' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'ls -l .ua/knowledge-graph.json .ua/meta.json; cat .ua/meta.json' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg --files .orchestration | rg '(accept|review|gh-binding|trusted-entrypoint)'" in ~/Workspace/dotfiles
+ succeeded in 190ms:
+## Codex seat worklogs
+
+Project layouts vary by language. Set up this worklog structure only when it
+does not already exist, and use timestamped filenames in `YYYYMMDD_HHMMSS`
+form:
+
+- `.agents/worklog/codex/plan/<timestamp>_plan.md` stores the plan and design
+  written before implementation. Ask the user questions when needed, and
+  update the plan when questions, learning, or completed tasks change it. It
+  must contain `Goal`, `Scope`, `Assumptions`, `Design`, `Tests`, and
+  `Open Questions`.
+- `.agents/worklog/codex/todo/<timestamp>_todo.md` derives its tasks from the
+  plan. Move completed items from `TODO` to `Done`; when `TODO` is empty, set
+  its status to `done` and rename it to `<timestamp>_done.md`. It must contain
+  `TODO` and `Done`.
+- `.agents/worklog/codex/learn/<timestamp>_learn.md` records only reusable,
+  validated knowledge that speeds a future decision. State what was learned
+  and where it applies, update the plan's `Assumptions`, `Design`, or `Tests`
+  when relevant. A learn file must contain `Date`, `Learnings`, and
+  `Plan Updates`.
+
+Every plan, todo, and learn file starts with YAML frontmatter containing
+`type` (`plan`, `todo`, or `learn`), `id` (`YYYYMMDD_HHMMSS`), `owner` (for
+example, `codex-a`), and ISO8601 `created_at` and `updated_at`. Additionally:
+
+- todo requires `status`, `workstream`, and `related_plan`; status is one of
+  `active`, `blocked`, `done`, or `superseded`;
+- plan requires `status`, one of `draft`, `active`, `done`, or `superseded`;
+- learn requires `validated` (`true` or `false`) and `apply_to` (plan/tests),
+  and may be created only when reusable and validated.
+
+Optional frontmatter keys are `depends_on` (todo ID array), `blocked_reason`
+for blocked work, `evidence` (path array), and `tags`.
+
+
+ succeeded in 396ms:
+ M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
+ M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a02.md
+ M .orchestration/acceptance/dotfiles-T133-pre-send-check-a03.md
+ M .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md
+ M .orchestration/decisions.tsv
+ M .orchestration/learning/corrections-inventory.tsv
+ M .orchestration/plans/024-progress.tsv
+ M .orchestration/plans/024-replan-20261021-v2.md
+ M .orchestration/tasks/dotfiles-T133-audit-pool-a02.md
+ M .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md
+ M .orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md
+ M .orchestration/tasks/dotfiles-T133-gh-binding-a01.md
+ M .orchestration/tasks/dotfiles-T133-hold-playbook-a02.md
+ M .orchestration/tasks/dotfiles-T133-pre-send-check-a03.md
+ M .orchestration/tasks/dotfiles-T133-pre-send-check-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-record-ledger-carry-a01.md
+ M .orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md
+ M .orchestration/tasks/dotfiles-T133-regime-ci-token-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-result-precheck-a04.md
+ M .orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md
+ M .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md
+ M .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-crit.json
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-pr-feedback.json
+ M .orchestration/validation/dotfiles-T133-pre-send-check-a02-review-receipt.md
+?? .orchestration/acceptance/dotfiles-T133-install-ppa-resilience-a01.md
+?? .orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+?? .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/
+?? .orchestration/dotfiles-T133-ci-efficiency-a01/task.md
+?? .orchestration/dotfiles-T133-result-precheck-a01/
+?? .orchestration/dotfiles-T133-result-precheck-a02/
+?? .orchestration/dotfiles-T133-verdict-audit-pool-a01/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-a01/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-a02/
+?? .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/
+?? .orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01/
+?? .orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02/
+?? .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a05.md
+?? .orchestration/tasks/dotfiles-T133-agmsg-hardening-a01.md
+?? .orchestration/tasks/dotfiles-T133-gh-binding-a02.md
+?? .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-followup-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-review-a01.md
+?? .orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01.md
+?? .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md
+?? .orchestration/tasks/dotfiles-T133-record-json-sync-a01.md
+?? .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md
+?? .orchestration/tasks/dotfiles-T133-regime-ci-followup-a03.md
+?? .orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice2-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice3-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice4-a01.md
+?? .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice5-a01.md
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-chain-2b58663.log
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-local-review-2b58663.md
+?? .orchestration/validation/dotfiles-T128-chain-glue-finish-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md.last.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md.last.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md
+?? .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md
+?? .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-1d72f16.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-1d72f16.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-audit-7888241.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-chain-1d72f16.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-chain-7888241.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-1d72f16.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a02-security-7888241.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-audit-a30a43b.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-audit-a30a43b.md.last.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-chain-128a208.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-chain-a30a43b.log
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-crit.json
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-128a208.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-a30a43b.md
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-pre-send-check-a03-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md.last.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a232baf.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a232baf.md.last.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-audit-08b8add.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-chain-08b8add.log
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-security-08b8add.md
+?? .orchestration/validation/dotfiles-T133-regime-ci-token-a01-security-a8c03fa.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-audit-c439b63.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-audit-c439b63.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-chain-c439b63.log
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-crit.json
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-c439b63.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-0edbd8c.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-0edbd8c.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-922292d.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-922292d.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-c6cebe4.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-c6cebe4.md.last.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-fd8c003.md
+?? .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-fd8c003.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-chain-28dde0f.log
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-crit.json
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-local-review-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md
+?? .orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-audit-f66b27f.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-audit-f66b27f.md.last.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-chain-f66b27f.log
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-crit.json
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-local-review-f66b27f.md
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-audit-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-audit-c8c712f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-chain-2d1d095.log
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-chain-c8c712f.log
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-crit.json
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-2d1d095.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-pr-feedback.json
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-review-receipt.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-2d1d095.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-2d1d095.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md
+?? .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a04-text-security-d562c68.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a04-text-security-d562c68.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0b96f40.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0b96f40.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0e9bf3f.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0e9bf3f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0f87501.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-0f87501.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-3844d93.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-3844d93.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-4e8b427.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-4e8b427.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-e39dc8f.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-e39dc8f.md.last.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-f4246e9.md
+?? .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-f4246e9.md.last.md
+?? .orchestration/validation/records-sync-30-pr-comments.json
+?? .orchestration/validation/records-sync-30-pr-feedback.json
+7da0cdfab9de9fbea673b82379acd4e317115065
+
+ succeeded in 402ms:
+-rw-r--r--@ 1 a0004262  staff  1041907 Oct  8 09:08 .ua/knowledge-graph.json
+-rw-r--r--@ 1 a0004262  staff      156 Oct  8 09:08 .ua/meta.json
+{
+  "lastAnalyzedAt": "2026-10-02T14:12:51Z",
+  "gitCommitHash": "940a3a2b07adfd14140a0acff96784ef53a0a509",
+  "version": "1.0.0",
+  "analyzedFiles": 368
+}
+
+ succeeded in 436ms:
+.orchestration/dotfiles-T133-inv6-reset-anchors-review-a01/review.md
+.orchestration/dotfiles-T131-claude-pinned-merge-gate-review-a01/review-85e40e77.md
+.orchestration/dotfiles-T131-claude-pinned-merge-gate-review-a01/sandbox-85e40e77.md
+.orchestration/reports/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/reports/permgate-shadow-review-2026-07-24.md
+.orchestration/reports/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/reports/T24-usage-review-automation.md
+.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a04/dotfiles-T129-assets-omp-hcom-followup-a04-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/a05-gh-calls.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/revise.yaml
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/sandbox.md
+.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/dotfiles-T133-trusted-exec-contract-tests-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/revise.yaml
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a01/sandbox.md
+.orchestration/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01/review.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-generator-base.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/red-pin.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amendment-1-received.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-render-check.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-supply-chain-pins.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-policy-green.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-crit-status.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-privacy.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/autoskill.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-supply-chain-pins-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-uv-resolve.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-review-gate-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-format.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-generator-module-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-policy-green-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-render-check-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-validate-agent-assets.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-source-bindings.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-comparison-lint.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-supply-chain-candidate.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-supply-chain-module.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-validate-agent-assets-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-check-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-supply-chain-base.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-source-verification.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/independent-review-amend1.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/learning.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-budget.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-pin-green.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/dotfiles-T133-trusted-entrypoint-pins-a01-worker-crit.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-pin-green-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/validation.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/dotfiles-T133-trusted-entrypoint-pins-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/final-uv-resolve.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/report.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-review-gate.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/resume-2952.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-generator-candidate.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/rebase-record.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/independent-review.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-check.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-supply-chain-module-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/sandbox.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/record-selection.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-comparison-lint-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/red-pin-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-format-command.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task-before-amendment-1.md
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/runtime-bindings.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-numstat.log
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-ruff-baseline-comparison.json
+.orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/amend1-generator-module.log
+.orchestration/dotfiles-T133-regime-ci-a02/dotfiles-T133-regime-ci-a02-worker-review-receipt.md
+.orchestration/reports/T18-pr76-review-fixes.md
+.orchestration/reports/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/dotfiles-T133-pre-send-check-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T128-project-map-pane-open-a01/dotfiles-T128-project-map-pane-open-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-project-map-reload-hook-a01/dotfiles-T128-project-map-reload-hook-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend5/review-gate.txt
+.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend5/bot-reviews.json
+.orchestration/dotfiles-T128-project-map-reload-hook-followup-a01/dotfiles-T128-project-map-reload-hook-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-ci-efficiency-followup-a01/dotfiles-T133-ci-efficiency-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02/review.md
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/review-gate.txt
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/acceptance-pr.json
+.orchestration/dotfiles-T128-rules-step8-a01/amend6/bot-reviews.json
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/dotfiles-T133-worker-cap-hookspath-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/dotfiles-T129-normalised-comparison-lint-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/project-map-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/round2/bot-final-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/round2/previous-bot-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/round2/bot-reviews.json
+.orchestration/dotfiles-T128-rules-step8-a01/dotfiles-T128-rules-step8-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-rules-step8-a01/bot-reviews.json
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/dotfiles-T133-worker-cap-hookspath-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-audit-inherit-replan-json-followup-a01/dotfiles-T129-audit-inherit-replan-json-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/dotfiles-T129-assets-omp-hcom-followup-a05-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a04/sandbox.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend4/peer-review-pending.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend4/review-gate-blocked.txt
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/raw/review-gate-approved.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/raw/review-gate.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment2/raw/review-gate-wip.log
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/report.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/all-reviews.json
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a03/sandbox.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment3/worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment3/raw/review-gate-approved.log
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend3/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend3/bot-reviews.json
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/codex-review-request.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/review-gate-approved.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a01/amendment1/raw/review-gate.log
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a02/dotfiles-T129-assets-omp-hcom-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend2/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend2/bot-reviews.json
+.orchestration/dotfiles-T133-ci-efficiency-a02/dotfiles-T133-ci-efficiency-a02-worker-review-receipt.md
+.orchestration/learning/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/dotfiles-T133-python-pin-a02/dotfiles-T133-python-pin-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-python-pin-a02/gate-reviewed.txt
+.orchestration/dotfiles-T133-python-pin-a02/bot-reviews-7f7665b9.jsonl
+.orchestration/dotfiles-T133-python-pin-a02/bot-reviews-8c727728.jsonl
+.orchestration/dotfiles-T133-python-pin-a02/gate-records-reviewed.txt
+.orchestration/dotfiles-T133-regime-ci-followup-a01/dotfiles-T133-regime-ci-followup-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a02/sandbox.md
+.orchestration/learning/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-a01/sandbox.md
+.orchestration/learning/T24-usage-review-automation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/autoskill.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/task.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/learning.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/validation.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a05/sandbox.md
+.orchestration/tasks/dotfiles-T128-seat-launch-args-review-a01.md
+.orchestration/tasks/dotfiles-T128-settings-hook-dedupe-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/tasks/dotfiles-T129-pstack-asset-review-a01.md
+.orchestration/dotfiles-T128-s1-replan-gate-a01/s1-worker-review-receipt.md
+.orchestration/tasks/dotfiles-T128-validator-offline-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a04.md
+.orchestration/tasks/dotfiles-T128-playbook-rules-a04-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-review-a03.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-gate-wrapper-path-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a04-review-a01.md
+.orchestration/tasks/dotfiles-T133-pre-send-check-a03-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-doctor-codex-trust-review-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-descendants-followup-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md
+.orchestration/dotfiles-T130-claude-sandbox-integration-a01/dotfiles-T130-claude-sandbox-integration-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/review-gate.txt
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/acceptance-pr.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend5/bot-reviews.json
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a04-review-a01.md
+.orchestration/dotfiles-T133-regime-ci-token-a01/dotfiles-T133-regime-ci-token-a01-worker-review-receipt.md
+.orchestration/tasks/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-integrate-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a05.md
+.orchestration/tasks/dotfiles-T133-inv6-reset-anchors-review-a01.md
+.orchestration/tasks/dotfiles-T128-s1-replan-gate-review-a01.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/evidence2/bot-reviews.json
+.orchestration/dotfiles-T129-normalised-comparison-lint-a01/dotfiles-T129-normalised-comparison-lint-a01-worker-review-receipt.md
+.orchestration/dotfiles-T129-audit-inherit-replan-json-followup-a02/dotfiles-T129-audit-inherit-replan-json-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend1/bot-final-reviews.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/amend1/bot-reviews.json
+.orchestration/dotfiles-T129-doctor-sleep-disabled-a01/dotfiles-T129-doctor-sleep-disabled-a01-worker-review-receipt.md
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/result/bot-reviews.json
+.orchestration/dotfiles-T128-settings-hook-dedupe-a01/dotfiles-T128-settings-hook-dedupe-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-regime-ci-a01/dotfiles-T133-regime-ci-a01-worker-review-receipt.md
+.orchestration/learning/mistakes/M-20261019-05-text-review-rounds-unbounded.md
+.orchestration/dotfiles-T129-assets-omp-hcom-followup-a03/dotfiles-T129-assets-omp-hcom-followup-a03-worker-review-receipt.md
+.orchestration/dotfiles-T132-make-update-followups-a01/dotfiles-T132-make-update-followups-a01-worker-review-receipt.md
+.orchestration/learning/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/raw/review-gate-required.log
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/dotfiles-T133-worker-cap-hookspath-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-cap-hookspath-a02/raw/review-gate-approved.log
+.orchestration/autoskill/runs/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/autoskill/runs/T24-usage-review-automation.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/dotfiles-T129-anthropic-auth-route-check-followup-a02-worker-review-receipt.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-evidence-read.log
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-required.log
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a05-amend-review-a01.md
+.orchestration/tasks/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T129-audit-inherit-replan-json-review-a01.md
+.orchestration/tasks/dotfiles-T128-process-hardening-review-a01.md
+.orchestration/tasks/dotfiles-T133-pre-send-check-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-followup-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+.orchestration/tasks/dotfiles-T128-task-checkers-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a03.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-t718-a02.md
+.orchestration/tasks/T45-acceptance-memory-consolidation-rules.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-review-a03.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-t718-a01.md
+.orchestration/tasks/T24-usage-review-automation.md
+.orchestration/tasks/dotfiles-T126-w3-headless-design-review-a01.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a03-amend-review-a01.md
+.orchestration/tasks/dotfiles-T128-audit-s1-report-review-a01.md
+.orchestration/tasks/dotfiles-T128-design-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/worker-reviewed-source-hashes.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-review-gate.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-mask-review-closure.txt
+.orchestration/sandboxes/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-finish-a02-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T124-design-review-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-initial.txt
+.orchestration/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01/review.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-after-read.log
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/final-review-evidence-read.json
+.orchestration/tasks/dotfiles-T128-settings-hook-dedupe-review-a01.md
+.orchestration/tasks/dotfiles-T131-claude-pinned-merge-gate-review-a01.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-independent-review.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-independent-review-round2.md
+.orchestration/tasks/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/tasks/dotfiles-T128-task-review-a201-a01.md
+.orchestration/tasks/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md
+.orchestration/acceptance/dotfiles-T82b-codex-hook-trust-pins-a01.md
+.orchestration/acceptance/refkit-P5.md
+.orchestration/acceptance/T66c.md
+.orchestration/acceptance/dotfiles-T133-record-json-sync-a01.md
+.orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md
+.orchestration/sandboxes/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/dotfiles-T129-normalised-comparison-lint-followup-a03/dotfiles-T129-normalised-comparison-lint-followup-a03-worker-review-receipt.md
+.orchestration/acceptance/T14-t13-pr-lifecycle.md
+.orchestration/acceptance/dot-validator-worktrees-T7-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a04.md
+.orchestration/acceptance/dot-ubuntu-parity-T11-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T2-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02.md
+.orchestration/acceptance/dotfiles-T133-codex-worker-network-a01.md
+.orchestration/acceptance/WP-B.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/codex-review-prompt-example.txt
+.orchestration/tasks/dotfiles-T128-worker-s1-stop-review-a01.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-review.sh
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-advisory.sh
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/sandbox-scan.sh
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-approved.log
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a03.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a04.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T84-orchestrator-kind-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a02.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a02.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a03.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a04.md
+.orchestration/acceptance/dot-herdr-agents-add-worker-T22-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-reload-hook-followup-a01.md
+.orchestration/acceptance/dot-pr-gate-trust-boundary-T40-a01.md
+.orchestration/acceptance/T51a.md
+.orchestration/acceptance/dotfiles-T77-harness-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a02.md
+.orchestration/acceptance/T67c.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/raw/review-gate-final.log
+.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-rules-s1-replan-review-a01.md
+.orchestration/tasks/dotfiles-T133-gh-binding-a02.md
+.orchestration/tasks/dotfiles-T128-seat-liveness-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-process-hardening-review-a02.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-checkers-a01-amend-review-a02.md
+.orchestration/tasks/dotfiles-T128-followup-owners-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a01-review-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a05.md
+.orchestration/acceptance/plan-003-review-round-2.md
+.orchestration/acceptance/dotfiles-T119-rolling-release-assets-a01.md
+.orchestration/acceptance/WP-F.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a07.md
+.orchestration/acceptance/dotfiles-T121-claude-hook-install-hint-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a06.md
+.orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md
+.orchestration/acceptance/dot-herdr-sheldon-T1-a02.md
+.orchestration/acceptance/dotfiles-T95-sandbox-placeholder-files-on-disk-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a06.md
+.orchestration/acceptance/refkit-P1.md
+.orchestration/acceptance/dot-agmsg-dispatch-T4-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-a01.md
+.orchestration/acceptance/dotfiles-T90-github-identity-separation-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+.orchestration/acceptance/T48b.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a03-design-reset.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a03.md
+.orchestration/acceptance/dotfiles-T114-canonical-clone-reconcile-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T120-npm-provenance-and-claude-channel-a01.md
+.orchestration/acceptance/T76b.md
+.orchestration/acceptance/T62b.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a01.md
+.orchestration/acceptance/dotfiles-T75-shell-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01.md
+.orchestration/acceptance/dot-adh-baseline-T6-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-redesign-a02.md
+.orchestration/acceptance/dotfiles-T63-codex-execpolicy-forbidden-a01.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a01.md
+.orchestration/acceptance/T87-boundary-bookkeeping-147.md
+.orchestration/acceptance/T48c.md
+.orchestration/acceptance/T65b.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a02.md
+.orchestration/acceptance/T59b.md
+.orchestration/acceptance/T61b.md
+.orchestration/acceptance/dotfiles-T124-wave1-task-validator-a01-design-reset.md
+.orchestration/acceptance/dot-herdr-agents-seat-labels-T35-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/acceptance/dot-ua-refresh-policy-T52-a01.md
+.orchestration/acceptance/dotfiles-T103-gh-auth-stores-a01.md
+.orchestration/acceptance/dotfiles-T102-add-worker-credential-notice-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a01.md
+.orchestration/acceptance/dot-sandbox-unix-sockets-T44-a01.md
+.orchestration/acceptance/T83b-acceptance.md
+.orchestration/acceptance/WP-G.md
+.orchestration/acceptance/refkit-P2-A.md
+.orchestration/acceptance/dotfiles-T124-wave1-task-validator-a01.md
+.orchestration/acceptance/dotfiles-T133-dispositions-a01.md
+.orchestration/acceptance/dot-audit-pane-visibility-T32-a01.md
+.orchestration/acceptance/dotfiles-T120-npm-provenance-and-claude-channel-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a04.md
+.orchestration/acceptance/T64b.md
+.orchestration/sandboxes/T24-usage-review-automation.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a01.md
+.orchestration/acceptance/T41-remove-cognee.md
+.orchestration/acceptance/T27-pr87-npm-allow-scripts-rebase.md
+.orchestration/acceptance/T66b.md
+.orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a03.md
+.orchestration/tasks/dotfiles-T128-plan-007-review-a01.md
+.orchestration/tasks/dotfiles-T128-rules-step8-review-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T125-acceptance-automation-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md
+.orchestration/tasks/T68c-security-review-fixes.md
+.orchestration/tasks/dotfiles-T128-aws-cli-macos-review-a01.md
+.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/tasks/dotfiles-T128-owner-tasks-refresh-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a06.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01-review-a01.md
+.orchestration/tasks/dotfiles-T129-assets-omp-hcom-review-a01.md
+.orchestration/tasks/T61b-bot-review-fixes.md
+.orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a02-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a01-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/tasks/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/sandboxes/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08-redesign-review-a01.md
+.orchestration/tasks/dotfiles-T130-codex-local-review-exclusion-a01.md
+.orchestration/tasks/dotfiles-T128-chain-glue-finish-review-a01.md
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a09.md
+.orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a01.md
+.orchestration/acceptance/T23-agmsg-nudge-guidance.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a01-design-reset.md
+.orchestration/acceptance/T62c.md
+.orchestration/acceptance/T67b.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a02.md
+.orchestration/acceptance/dotfiles-T133-inv6-reset-anchors-review-a01.md
+.orchestration/acceptance/T19-herdr-file-viewer-popup-config.md
+.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-followup-a01.md
+.orchestration/acceptance/dot-macos-crit-pinned-install-T17-a01.md
+.orchestration/acceptance/T44-marker-extraction-redesign.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a05.md
+.orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-a01.md
+.orchestration/acceptance/T79-acceptance.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a03.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
+.orchestration/acceptance/dot-pr-feedback-gate-T38-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a02.md
+.orchestration/acceptance/WP-C.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a03.md
+.orchestration/acceptance/dotfiles-T133-record-ledger-carry-a01.md
+.orchestration/acceptance/dot-ua-refresh-T5-a01.md
+.orchestration/acceptance/T84b-acceptance.md
+.orchestration/acceptance/dotfiles-T98-evidence-home-path-masking-a01.md
+.orchestration/acceptance/dot-orchestration-hygiene-T33i-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T133-rule-text-reduction-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T13-a01.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-redesign-a01.md
+.orchestration/acceptance/refkit-P4.md
+.orchestration/acceptance/dotfiles-T111-project-map-subagent-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01-redesign-review-a01.md
+.orchestration/acceptance/plan-001.md
+.orchestration/acceptance/dotfiles-T73-tool-versions-from-config-a01.md
+.orchestration/acceptance/T70.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a04.md
+.orchestration/acceptance/dot-mosh-and-asset-bumps-T31-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a02.md
+.orchestration/acceptance/refkit-P0-07.md
+.orchestration/acceptance/dotfiles-T110-gh-auth-file-storage-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a01.md
+.orchestration/acceptance/dotfiles-T124-wave3b-audit-grammar-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a03.md
+.orchestration/acceptance/WP-H.md
+.orchestration/acceptance/dotfiles-T85-launcher-orchestrator-kind-a01.md
+.orchestration/acceptance/T50.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a01.md
+.orchestration/acceptance/T64.md
+.orchestration/acceptance/T74.md
+.orchestration/acceptance/dotfiles-T128-v0-main-tests-a01.md
+.orchestration/acceptance/dotfiles-T98c-claude-seat-artifact-write-exception-a01.md
+.orchestration/acceptance/dot-main-push-guard-revert-T60-a01.md
+.orchestration/acceptance/T79b-acceptance.md
+.orchestration/acceptance/dotfiles-T91-secret-scan-sk-boundary-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a06-design-reset.md
+.orchestration/acceptance/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/acceptance/dotfiles-T128-validator-offline-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-a01.md
+.orchestration/acceptance/dotfiles-T81-compactiondb-vendor-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a04.md
+.orchestration/acceptance/dot-update-convergence-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-gate-wrapper-path-a01.md
+.orchestration/acceptance/T84-acceptance.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-entrypoint-pins-a01.md
+.orchestration/acceptance/dot-builtin-git-auto-T1-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-a01.md
+.orchestration/acceptance/T86-herdr-agents-082-api-port.md
+.orchestration/acceptance/dotfiles-T128-task-review-t718-a02.md
+.orchestration/acceptance/refkit-P0-06.md
+.orchestration/acceptance/dotfiles-T68-gate-audit-evidence-a01.md
+.orchestration/acceptance/dotfiles-T96-codex-worker-gpt61-sol-high-a01.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-rules-s1-replan-a01.md
+.orchestration/acceptance/WP-L.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a07.md
+.orchestration/acceptance/dot-ubuntu-parity-T4-a01.md
+.orchestration/acceptance/dotfiles-T78-dead-docs-adh-a01.md
+.orchestration/acceptance/T83-acceptance.md
+.orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T8-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md
+.orchestration/acceptance/T60.md
+.orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md
+.orchestration/acceptance/dotfiles-T133-hold-playbook-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+.orchestration/acceptance/T54.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-omp-config-render-a01.md
+.orchestration/acceptance/dotfiles-T128-design-review-a01.md
+.orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a02.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a06.md
+.orchestration/acceptance/WP-M.md
+.orchestration/acceptance/T80-acceptance.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03-design-reset.md
+.orchestration/acceptance/T13-agmsg-orchestration-rule-file.md
+.orchestration/acceptance/T25-permgate-harness.md
+.orchestration/acceptance/T21-model-profiles-pr.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-project-map-reload-hook-a01.md
+.orchestration/acceptance/dotfiles-T76-ineffective-settings-a01.md
+.orchestration/acceptance/dotfiles-T128-doctor-codex-trust-a01.md
+.orchestration/acceptance/T40-understand-anything-search-first.md
+.orchestration/acceptance/dot-pr-feedback-gate-T16-a01.md
+.orchestration/acceptance/dotfiles-T133-loop-limits-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a02.md
+.orchestration/acceptance/refkit-P8-a.md
+.orchestration/acceptance/dot-ubuntu-parity-T6-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a02.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T67-audit-task-level-a01.md
+.orchestration/acceptance/T36-understand-anything-analysis.md
+.orchestration/acceptance/fix-chezmoi-pycache-modify-exec.md
+.orchestration/acceptance/T55.md
+.orchestration/acceptance/T28-ccgate-removal-permgate-deploy.md
+.orchestration/acceptance/dotfiles-T117-upgrade-outside-canonical-clone-a01.md
+.orchestration/acceptance/T45.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a01-design-reset.md
+.orchestration/acceptance/dot-ua-graph-refresh-T51-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a05-design-reset.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a03.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a02.md
+.orchestration/acceptance/T81-acceptance.md
+.orchestration/acceptance/refkit-P0-05.md
+.orchestration/acceptance/dot-permgate-codex-stdin-T33h-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-t718-a01.md
+.orchestration/acceptance/T17-herdr-attach-agmsg-bootstrap.md
+.orchestration/acceptance/dot-macos-brew-untrusted-taps-T57-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a02.md
+.orchestration/acceptance/dot-ccstatusline-ubuntu26-hang-T59-a01.md
+.orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-followup-a01.md
+.orchestration/acceptance/dotfiles-T88-parallel-execution-rule-a01.md
+.orchestration/acceptance/dotfiles-T93-gate-masked-feedback-bodies-a01.md
+.orchestration/acceptance/WP-I.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a02.md
+.orchestration/acceptance/dot-env-converge-T10-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a01-design-reset.md
+.orchestration/acceptance/T37-understand-anything-codex-dist.md
+.orchestration/acceptance/dotfiles-T128-rules-step8-a01.md
+.orchestration/acceptance/dotfiles-T133-audit-pool-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-fixture-grammar-a01.md
+.orchestration/acceptance/T65.md
+.orchestration/acceptance/dot-worker-advisor-fable-T26-a01.md
+.orchestration/acceptance/dot-docs-align-T1-a01.md
+.orchestration/acceptance/dot-dependabot-verify-T8-a01.md
+.orchestration/acceptance/T24-usage-review-automation.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a01.md
+.orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a03.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-redesign-a01.md
+.orchestration/acceptance/dotfiles-T124-design-review-a01.md
+.orchestration/acceptance/dotfiles-T66-permgate-dead-lanes-a01.md
+.orchestration/acceptance/dotfiles-T77b-enforce-uv-hook-contract-a01.md
+.orchestration/acceptance/refkit-P0-01.md
+.orchestration/acceptance/dot-upgrade-pins-T2-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-pane-open-a01-followup-a01.md
+.orchestration/acceptance/dot-mise-symlink-T3-a01.md
+.orchestration/acceptance/dotfiles-T108-one-login-per-machine-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a05.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a08.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-a01.md
+.orchestration/acceptance/T62.md
+.orchestration/acceptance/refkit-P8-b.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a04-design-reset.md
+.orchestration/acceptance/dot-audit-verdict-gate-T33b-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a01.md
+.orchestration/acceptance/T85-acceptance.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-a01.md
+.orchestration/acceptance/T56.md
+.orchestration/acceptance/dotfiles-T128-audit-s1-report-a01.md
+.orchestration/acceptance/dotfiles-T89-add-worker-same-workspace-a01.md
+.orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md
+.orchestration/acceptance/plan-003.md
+.orchestration/acceptance/dot-three-role-constellation-T28-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md
+.orchestration/acceptance/T46.md
+.orchestration/acceptance/dot-herdr-worker-relaunch-T25-a01.md
+.orchestration/acceptance/T10-herdr-files-pane.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a02.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a03.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a07-checker.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a01-design-reset.md
+.orchestration/acceptance/dot-restart-worker-name-wait-T27-a01.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a02.md
+.orchestration/acceptance/dotfiles-T128-ci-skip-orchestration-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T133-result-precheck-a03-design-reset.md
+.orchestration/acceptance/dot-ubuntu-fix-T1-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-a02.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a02.md
+.orchestration/acceptance/dot-ubuntu-parity-T10-a01.md
+.orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a02.md
+.orchestration/acceptance/dotfiles-T128-model-profiles-xhigh-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T3-a01.md
+.orchestration/acceptance/dotfiles-T128-task-checkers-followup-a01.md
+.orchestration/acceptance/WP-J.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a01.md
+.orchestration/acceptance/dotfiles-T83-docs-diet-a01.md
+.orchestration/acceptance/T52.md
+.orchestration/acceptance/dotfiles-T128-worker-s1-stop-a01.md
+.orchestration/acceptance/T26-pr86-herdr-rebase.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-fixture-grammar-a02.md
+.orchestration/acceptance/T66.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-a02.md
+.orchestration/acceptance/dotfiles-T71-generator-multi-target-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md
+.orchestration/acceptance/T76.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md
+.orchestration/acceptance/T47.md
+.orchestration/acceptance/T42-zero-tail-evidence-sync.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a03-design-reset.md
+.orchestration/acceptance/T11-agmsg-join-unique-identity-guard.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T132-make-update-followups-a01.md
+.orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-redesign-a02.md
+.orchestration/acceptance/dotfiles-T129-integration-seat-result-gate-cap-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a03.md
+.orchestration/acceptance/dotfiles-T133-install-ppa-resilience-a01.md
+.orchestration/acceptance/dot-formatter-hook-root-fix-T61-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md
+.orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+.orchestration/acceptance/dot-audit-pane-hardening-T32b-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
+.orchestration/acceptance/dotfiles-T112-pins-2026-10-07-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a03-design-reset.md
+.orchestration/acceptance/dot-ua-core-build-shim-T33g-a01.md
+.orchestration/acceptance/dot-security-profile-model-T42-a01.md
+.orchestration/acceptance/WP-K.md
+.orchestration/acceptance/dot-ubuntu-parity-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md
+.orchestration/acceptance/T53.md
+.orchestration/acceptance/dot-ubuntu-parity-T12-a01.md
+.orchestration/acceptance/dotfiles-T100-compactiondb-claude-symlink-note-a01.md
+.orchestration/acceptance/T67.md
+.orchestration/acceptance/dot-ua-core-build-T33f-a01.md
+.orchestration/acceptance/dotfiles-T128-aws-cli-macos-a01.md
+.orchestration/acceptance/dotfiles-T86-codex-orchestrate-a01.md
+.orchestration/acceptance/dotfiles-T70-make-update-unattended-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a04.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-result-evidence-check-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a02-design-reset.md
+.orchestration/acceptance/dot-plain-start-visibility-T45-a01.md
+.orchestration/acceptance/dot-audit-exec-channel-T33e-a01.md
+.orchestration/acceptance/T63.md
+.orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md
+.orchestration/acceptance/dotfiles-T99-nix-plans-history-a01.md
+.orchestration/acceptance/T16-herdr-attach-layout-order-repair.md
+.orchestration/acceptance/T57.md
+.orchestration/acceptance/dot-ua-graph-refresh-T33c-a01.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-hold-playbook-a02.md
+.orchestration/acceptance/dot-worker-kind-guard-T14-a01.md
+.orchestration/acceptance/plan-002.md
+.orchestration/acceptance/dot-ua-graph-refresh-T41-a01.md
+.orchestration/acceptance/dotfiles-T92-stop-gate-sandbox-placeholders-a01.md
+.orchestration/acceptance/dot-git-ignore-cc-writes-T56-a01.md
+.orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md
+.orchestration/acceptance/dot-orchestrator-linkage-evidence-T46-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T9-a01.md
+.orchestration/acceptance/T56b.md
+.orchestration/acceptance/dotfiles-T128-regime-counters-a02.md
+.orchestration/acceptance/dotfiles-T124-design-receipt-canonical-a01.md
+.orchestration/acceptance/dotfiles-T130-codex-local-review-exclusion-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a02.md
+.orchestration/acceptance/dotfiles-T133-trusted-entrypoint-binding-a01.md
+.orchestration/acceptance/T66e.md
+.orchestration/acceptance/dotfiles-T128-gate-evidence-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a08-redesign-review-a01.md
+.orchestration/acceptance/refkit-P3.md
+.orchestration/acceptance/dot-asset-manifest-T15-a01.md
+.orchestration/acceptance/dotfiles-T129-integration-seat-result-gate-cap-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a04.md
+.orchestration/acceptance/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/acceptance/dot-ubuntu-parity-T5-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a02.md
+.orchestration/acceptance/T61a.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a03.md
+.orchestration/acceptance/T69.md
+.orchestration/acceptance/dotfiles-T113-codify-T111-lessons-a01.md
+.orchestration/acceptance/plan-003-review-round-1.md
+.orchestration/acceptance/dot-agmsg-upstream-sync-T19-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a06.md
+.orchestration/acceptance/dot-ci-runner-label-pin-T58-a01.md
+.orchestration/acceptance/T67d.md
+.orchestration/acceptance/refkit-P2-C.md
+.orchestration/acceptance/dotfiles-T94-upgrade-pins-a01.md
+.orchestration/acceptance/dot-audit-pane-prompt-detect-T33j-a01.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a04.md
+.orchestration/acceptance/WP-E.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a04.md
+.orchestration/acceptance/dot-herdr-sheldon-T1-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a03.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a05.md
+.orchestration/acceptance/remote-diff-01.md
+.orchestration/acceptance/dot-mise-pin-test-sync-T53-a01.md
+.orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a03.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-runtime-check-a01.md
+.orchestration/acceptance/dotfiles-T128-plan-007-review-a01.md
+.orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a05.md
+.orchestration/acceptance/dotfiles-T133-permission-guard-gate-a05-slice1.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a03.md
+.orchestration/acceptance/T66d.md
+.orchestration/acceptance/dot-ubuntu-parity-T7-a01.md
+.orchestration/acceptance/dot-orchestration-rules-T33a-a01.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a05-checker.md
+.orchestration/acceptance/T68c.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md
+.orchestration/acceptance/dotfiles-T97-claude-sandbox-github-calls-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a05-design-reset.md
+.orchestration/acceptance/dot-permgate-bench-flake-T33d-a01.md
+.orchestration/acceptance/dot-orchestration-rules-T43-a01.md
+.orchestration/acceptance/T59.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a02.md
+.orchestration/acceptance/T43-compactiondb-integration.md
+.orchestration/acceptance/T18-herdr-agents-two-pane.md
+.orchestration/acceptance/dotfiles-T130-sandbox-portability-followup-a01.md
+.orchestration/acceptance/dot-upgrade-pins-sync-T37-a01.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a01.md
+.orchestration/acceptance/dot-ua-graph-refresh-T36-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07.md
+.orchestration/acceptance/WP-A.md
+.orchestration/acceptance/dot-ua-graph-refresh-T55-a01.md
+.orchestration/acceptance/plan-003-final-pr.md
+.orchestration/acceptance/dotfiles-T133-python-pin-a01-design-reset.md
+.orchestration/acceptance/dot-ua-full-T9-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-glue-integrate-a01.md
+.orchestration/acceptance/T38-evidence-sync.md
+.orchestration/acceptance/dotfiles-T104-pins-2026-10-06-a01.md
+.orchestration/acceptance/dotfiles-T82-codex-compaction-hooks-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/acceptance/dotfiles-T118-rolling-tools-single-update-a01.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a04.md
+.orchestration/acceptance/dotfiles-T129-orchestrator-load-mechanisms-a01.md
+.orchestration/acceptance/dotfiles-T65-agent-stop-gate-a01.md
+.orchestration/acceptance/T22-doctor-settings-idempotency.md
+.orchestration/acceptance/T49.md
+.orchestration/acceptance/dot-audit-profile-gpt6-sol-T48-a01.md
+.orchestration/acceptance/dotfiles-T133-pre-send-check-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01.md
+.orchestration/acceptance/dotfiles-T128-project-map-pane-open-a01.md
+.orchestration/acceptance/T68b.md
+.orchestration/acceptance/T58.md
+.orchestration/acceptance/dot-orchestrator-delivery-sandbox-T49-a01.md
+.orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a03.md
+.orchestration/acceptance/dotfiles-T64-codex-worker-never-network-a01.md
+.orchestration/acceptance/dot-codex-apparmor-userns-T30-a01.md
+.orchestration/acceptance/dotfiles-T81b-compactiondb-vendor-hygiene-a01.md
+.orchestration/acceptance/T84c-acceptance.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a01.md
+.orchestration/acceptance/dotfiles-T109-claude-worker-merge-deny-a01.md
+.orchestration/acceptance/dotfiles-T79-remove-adh-profile-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03-design-reset.md
+.orchestration/acceptance/dot-claude-sandbox-T13-a01.md
+.orchestration/acceptance/dotfiles-T128-orchestrator-tools-a03-design-reset.md
+.orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a01.md
+.orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02-redesign-review-a01.md
+.orchestration/acceptance/dotfiles-T128-worker-stop-and-watch-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T80-codex-command-hooks-a01.md
+.orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01-design-reset.md
+.orchestration/acceptance/dotfiles-T129-doctor-sleep-disabled-a01.md
+.orchestration/acceptance/dotfiles-T90b-ruleset-sole-merger-a01.md
+.orchestration/acceptance/dot-worker-profile-opus55-T24-a01.md
+.orchestration/acceptance/T48.md
+.orchestration/acceptance/dotfiles-T128-process-rules-a02-design-reset.md
+.orchestration/acceptance/T15-herdr-lazy-start-attach-layout.md
+.orchestration/acceptance/dotfiles-T133-regime-ci-token-a01.md
+.orchestration/acceptance/refkit-P7.md
+.orchestration/acceptance/dotfiles-T62-claude-auto-deny-a01.md
+.orchestration/acceptance/dot-orchestrator-pane-profile-args-T47-a01.md
+.orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md
+.orchestration/acceptance/T68.md
+.orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a02.md
+.orchestration/acceptance/T67e.md
+.orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a05.md
+.orchestration/acceptance/refkit-P2-B.md
+.orchestration/acceptance/dot-version-currency-T29-a01.md
+.orchestration/acceptance/dotfiles-T74-bootstrap-dead-code-a01.md
+.orchestration/acceptance/dotfiles-T101-codex-worker-profile-default-a01.md
+.orchestration/acceptance/dotfiles-T115-worker-audit-xhigh-a01.md
+.orchestration/acceptance/WP-D.md
+.orchestration/acceptance/dotfiles-T128-playbook-rules-a02-design-reset.md
+.orchestration/acceptance/dotfiles-T128-task-checkers-a01.md
+.orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
+.orchestration/acceptance/dotfiles-T129-pstack-asset-a01.md
+.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/acceptance/dotfiles-T116-on-demand-workers-a01.md
+.orchestration/acceptance/dotfiles-T128-process-rules-redesign-a04.md
+.orchestration/acceptance/dotfiles-T128-regime-v3-inv6-redesign-a01.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round3.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r13.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-ba451c6.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round24.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-2c8acdb.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a02-local-review-4fe2438.md
+.orchestration/validation/dot-git-ignore-cc-writes-T56-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-local-review-4460d52.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-157d8f3.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T109-claude-worker-merge-deny-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-00048df.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round7.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-local-review-c1f60f7.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-a01-codex.md
+.orchestration/validation/dot-ua-graph-refresh-T55-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-stop-and-watch-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-crit.json
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a02-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r7.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-amend1-codex-r1.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a02-local-review-bb84bde.md
+.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review.json
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-audit-d3e8acf.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r11.md
+.orchestration/validation/dotfiles-T99-nix-plans-history-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T81b-compactiondb-vendor-hygiene-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T79-remove-adh-profile-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a01-local-review-c96697a.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round34.md
+.orchestration/validation/dotfiles-T103-gh-auth-stores-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-local-review-73f51ab.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r17.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r4.md
+.orchestration/validation/dotfiles-T117-upgrade-outside-canonical-clone-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round20.md
+.orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T68-gate-audit-evidence-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-ac0a527.log
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r10.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T101-codex-worker-profile-default-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-local-review-65a3d71.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-local-review-ac0a527.md
+.orchestration/validation/dotfiles-T95-sandbox-placeholder-files-on-disk-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-python-pin-a02-local-review-1327740.md
+.orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-pr-feedback.json
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-af86233.log
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-2fe135c.md
+.orchestration/validation/dotfiles-T121-claude-hook-install-hint-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round30-codex.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round31-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a01-local-review-cd47e1b.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-local-review-a588a98.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r3.md
+.orchestration/validation/dot-ccstatusline-ubuntu26-hang-T59-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round5.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-local-review-b6ce4ff.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-local-review-725b25b.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round30.md
+.orchestration/validation/dotfiles-T128-validator-offline-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-2db7830.log
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-claude-r2.md
+.orchestration/validation/dotfiles-T117-upgrade-outside-canonical-clone-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r11.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12-codex.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md
+.orchestration/validation/dotfiles-T128-regime-counters-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round2.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r16.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-crit.json
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r5.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-ca892e4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-a561e64.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a02-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-local-review-9e30542.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a01-local-review-d067910.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-local-review-000c5c6.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-7eab146.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-review-receipt.md
+.orchestration/validation/dotfiles-T90-github-identity-separation-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-local-review-d3bc745.md
+.orchestration/validation/dot-agmsg-upstream-sync-T19-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-990b607.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-review-receipt.md
+.orchestration/validation/dot-formatter-hook-root-fix-T61-a01-review-receipt.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round4.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-6e4e9aa.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-af86233.md.last.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T75-shell-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round31.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round25.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-1d72f16.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r2.md.last.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-audit-70f060e.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7-codex.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r12.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11.md
+.orchestration/validation/dotfiles-T104-pins-2026-10-06-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-21f52c7.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-local-review-707ed3a.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round19-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-token-a01-local-review-08b8add.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18-codex.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a01-codex.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-fbbc6d9.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-0908b8f.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a04-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16-codex.md.transcript.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-addendum-redesign-seat.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round6.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a02-review-receipt.md
+.orchestration/validation/T28-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-local-review-0740069.md
+.orchestration/validation/dotfiles-T128-ci-skip-orchestration-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a04-local-review-3838d0c.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a01-local-review-27613c0.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r6.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-6434c27.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-review-receipt.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-45b9dd9.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md.last.md
+.orchestration/validation/dotfiles-T129-integration-seat-result-gate-cap-a01-local-review-9c07098.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-local-review-7b574d3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round27-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round26-codex.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-review-receipt.md
+.orchestration/validation/dotfiles-T76-ineffective-settings-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-local-review-b84e81f.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a02-local-review-b8998de.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a01-codex.md
+.orchestration/validation/dot-macos-brew-untrusted-taps-T57-a01-review-receipt.md
+.orchestration/validation/dot-orchestrator-linkage-evidence-T46-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-local-review-5185dc1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-audit-8afc458.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-audit-b6ce4ff.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-a06c874.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-af86233.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r19.md
+.orchestration/validation/dotfiles-T119-rolling-release-assets-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-ba451c6.md.last.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-audit-000c5c6.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round15-codex.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend4.md
+.orchestration/validation/024-replan-20261021-v2-review-r2.md
+.orchestration/validation/dot-main-push-guard-revert-T60-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T114-canonical-clone-reconcile-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-local-review-8afc458.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01.md
+.orchestration/validation/dotfiles-T62-claude-auto-deny-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-audit-000c5c6.md.last.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-40f3be4.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-local-review-b0d39dc.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round4.md
+.orchestration/validation/dotfiles-T133-regime-ci-followup-a01-local-review-380e7f4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-c439b63.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-c45f9b5.md.last.md
+.orchestration/validation/dotfiles-T111-project-map-subagent-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round11.md
+.orchestration/validation/dotfiles-T110-gh-auth-file-storage-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-crit.json
+.orchestration/validation/dotfiles-T92-stop-gate-sandbox-placeholders-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01-codex.md
+.orchestration/validation/dotfiles-T78-dead-docs-adh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round17-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r2.md
+.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-audit-c646472.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r4.md
+.orchestration/validation/dotfiles-T89-add-worker-same-workspace-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-2e3ff49.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-local-review-c206774.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex.md
+.orchestration/validation/dotfiles-T115-worker-audit-xhigh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-a644a7d.log
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01.md
+.orchestration/validation/dotfiles-T71-generator-multi-target-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2c.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round9.md
+.orchestration/validation/dotfiles-T112-pins-2026-10-07-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r1.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-local-review-d15fa87.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a02-local-review-a64daf1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round21-codex.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a01-local-review-09e2e95.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-pr-feedback.json
+.orchestration/validation/dotfiles-T114-canonical-clone-reconcile-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-a644a7d.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-ci-skip-orchestration-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a01-local-review-85a4722.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round15.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-audit-b6ce4ff.md.last.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-a01-local-review-7f4f3f1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round20-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-3accc7b.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-c87546e.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a01-local-review-76ab18e.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a04-local-review-325f520.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T98c-claude-seat-artifact-write-exception-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-40f3be4.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r9.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3c.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-audit-d3e8acf.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round8.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2b.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round10-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T113-codify-T111-lessons-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend1.md
+.orchestration/validation/dotfiles-T102-add-worker-credential-notice-a01-review-receipt.md
+.orchestration/validation/dotfiles-T83-docs-diet-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round2.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a01-codex-r2.md
+.orchestration/validation/dot-orchestration-rules-T43-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-local-review-bdbbbf9.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex-r2.md
+.orchestration/validation/dot-sandbox-unix-sockets-T44-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-audit-8afc458.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-local-review-b49da6d.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-ef74eae.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a01-local-review-9da0ed3.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-local-review-19bd6de.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-39b60bd.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T93-gate-masked-feedback-bodies-a01-review-receipt.md
+.orchestration/validation/dot-plain-start-visibility-T45-a01-review-receipt.md
+.orchestration/validation/dotfiles-T82b-codex-hook-trust-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-crit.json
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-chain-28dde0f.log
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend3b.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-local-review-ddf262d.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-bff1eef.md.last.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review.md
+.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-review-receipt.md
+.orchestration/validation/dotfiles-T103-gh-auth-stores-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round14.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-34cc889.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r8.md
+.orchestration/validation/dotfiles-T119-rolling-release-assets-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend3b.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-dbc8b67.log
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-local-review-6847aa9.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-a01-local-review-a235637.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-850fc54.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-local-review-9d13a06.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-34cc889.log
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-c646472.log
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-local-review-28dde0f.md
+.orchestration/validation/dotfiles-T128-seat-liveness-a01-local-review-cb9ea17.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round19-codex.md.transcript.md
+.orchestration/validation/fix-chezmoi-pycache-modify-exec-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r3.md
+.orchestration/validation/dot-orchestrator-delivery-sandbox-T49-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-local-review-b24d313.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r18.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-pre-amend1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-8576645.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend6.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend5.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-local-review-bf650af.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r5.md
+.orchestration/validation/024-replan-20261021-v2-review-r3.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a01.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-8b210af.md
+.orchestration/validation/dotfiles-T64-codex-worker-never-network-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-chain-21aa36b.log
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a02-local-review-8a09b93.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round14-codex.md.transcript.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-c45f9b5.md
+.orchestration/validation/dotfiles-T66-permgate-dead-lanes-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-dispositions-a01-local-review-fa47987.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-af86233.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-b879aac.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-local-review-bccb2de.md
+.orchestration/validation/agmsg-parallel-rule-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-b9f562e.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-crit.json
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex-premises.md
+.orchestration/validation/dotfiles-T81-compactiondb-vendor-a01-review-receipt.md
+.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-local-review-3345c4d.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-local-review-3a8f809.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-pr-feedback.json
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-followup-a01-local-review-2d8b0fe.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a06-taskfile-review-codex-round1.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-plan-007-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a02-codex.md
+.orchestration/validation/dot-agmsg-upstream-sync-T19-a01-round2-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend1.md
+.orchestration/validation/dot-orchestrator-pane-profile-args-T47-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-validator-offline-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-a01-local-review-86212a4.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round28.md
+.orchestration/validation/dotfiles-T128-seat-liveness-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round17.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a04-local-review-71eb920.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-local-review-7a201ea.md
+.orchestration/validation/dotfiles-T124-wave1-task-validator-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T116-on-demand-workers-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-9df6b0c.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a02-local-review-b139995.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round24-codex.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round25-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T129-omp-hcom-stage1-task-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-hold-playbook-a01-local-review-9f5eaee.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-ba451c6.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round2.md
+.orchestration/validation/dotfiles-T73-tool-versions-from-config-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex.md
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01-round3.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-crit.json
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-8607a87.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-review-receipt.md
+.orchestration/validation/T24-usage-review-automation.txt
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend5.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round10-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round11-codex.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a01-local-review-2e77a33.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r8.md
+.orchestration/validation/dotfiles-T129-pstack-asset-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-5ef1c90.md
+.orchestration/validation/dotfiles-T133-result-precheck-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-local-review-7ef55f0.md
+.orchestration/validation/dotfiles-T115-worker-audit-xhigh-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T132-make-update-followups-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r7.md
+.orchestration/validation/dotfiles-T128-model-profiles-xhigh-a01-local-review-429a6c5.md
+.orchestration/validation/dotfiles-T128-rules-step8-a01-local-review-4d3d639.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round18.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-local-review-5b99a74.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-34cc889.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md
+.orchestration/validation/dotfiles-T96-codex-worker-gpt61-sol-high-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-phase1-amend-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round13.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-audit-c646472.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a02-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13-codex-premises.md.transcript.md
+.orchestration/validation/dot-audit-profile-gpt6-sol-T48-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-2e3ff49.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round6.md
+.orchestration/validation/dotfiles-T128-playbook-rules-followup-a01-amend-review-a01.md
+.orchestration/validation/dotfiles-T128-task-review-a201-a01.md
+.orchestration/validation/dot-ua-refresh-policy-T52-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-local-review-2fb97db.md
+.orchestration/validation/T37-understand-anything-codex-dist-review-receipt.md
+.orchestration/validation/024-replan-20261021-review-r1.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md
+.orchestration/validation/dotfiles-T128-task-checkers-review-a01-codex.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-token-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-gate-wrapper-path-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-local-review-cfebc1f.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-local-review-7fad835.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r6.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-amend-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-amend4.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01.md
+.orchestration/validation/dotfiles-T85-launcher-orchestrator-kind-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md
+.orchestration/validation/dotfiles-T90-github-identity-separation-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-79ea98a.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-046901b.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-34cc889.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex.md
+.orchestration/validation/dotfiles-T133-python-pin-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round7.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-local-review-59eca2a.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a02-local-review-9ad0c15.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-v0-main-tests-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-crit.json
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round12.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-local-review-e9404a6.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-review-a03-codex-r1.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round33-codex.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a02-local-review-2b9abca.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round32-codex.md
+.orchestration/validation/dotfiles-T81b-compactiondb-vendor-hygiene-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a05-local-review-f48593d.md
+.orchestration/validation/dotfiles-T130-codex-local-review-exclusion-a01-security-99b5f86.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9-codex.md.transcript.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01.md
+.orchestration/validation/dotfiles-T100-compactiondb-claude-symlink-note-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a02-local-review-f66b27f.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-f4d86ee.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-crit.json
+.orchestration/validation/dot-ci-runner-label-pin-T58-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-amend3.md
+.orchestration/validation/dotfiles-T109-claude-worker-merge-deny-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-dbc8b67.md
+.orchestration/validation/dotfiles-T128-s1-replan-gate-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-ci-efficiency-followup-a02-local-review-7329f0e.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-amend-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a01-review-a01.md
+.orchestration/validation/dot-codex-worktree-git-writable-T50-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-a02-a01.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a04-local-review-222b616.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r2.md
+.orchestration/validation/dotfiles-T104-pins-2026-10-06-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round29.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T86-codex-orchestrate-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round16.md
+.orchestration/validation/dotfiles-T133-regime-ci-a02-local-review-f7d2c48.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-9cd5514.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-4ed1b27.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-a30a43b.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r9.md
+.orchestration/validation/dotfiles-T133-python-pin-a01-local-review-e9819d4.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-9c01191.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a01-local-review-9842d91.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-bf6beb5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-local-review-b9f562e.md
+.orchestration/validation/dotfiles-T128-task-review-a7-a01-round3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review.md
+.orchestration/validation/dotfiles-T128-task-checkers-a01-amend-review-a02-codex-r3.md
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01-round2.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-cbc39be.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-pr-feedback.json
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-chain-fea3843.log
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01.md
+.orchestration/validation/dotfiles-T90b-ruleset-sole-merger-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-task-review-a02-a01-round2.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-claude-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round22.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r6.md
+.orchestration/validation/dotfiles-T113-codify-T111-lessons-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r15.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r9.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16.md
+.orchestration/validation/dotfiles-T101-codex-worker-profile-default-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-seat-liveness-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-verdict-audit-pool-a02-local-review-cfeca64.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r12.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md
+.orchestration/validation/dotfiles-T82-codex-compaction-hooks-a01-review-receipt.md
+.orchestration/validation/dotfiles-T98-evidence-home-path-masking-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-text-security-70feed4.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-review-a01.md
+.orchestration/validation/dotfiles-T128-process-rules-a02-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-1f17d05.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-23f5144.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-crit.json
+.orchestration/validation/dotfiles-T94-upgrade-pins-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-40f3be4.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a03-local-review-128a208.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a04-local-review-3e5cad3.md
+.orchestration/validation/dotfiles-T128-task-review-phase-a-a01.md
+.orchestration/validation/dotfiles-T77b-enforce-uv-hook-contract-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-pr-feedback.json
+.orchestration/validation/dotfiles-T129-doctor-sleep-disabled-a01-local-review-b8bb9a7.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r1.md
+.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a03-local-review-4f5be51.md
+.orchestration/validation/dotfiles-T108-one-login-per-machine-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-a01-local-review-23d9af3.md
+.orchestration/validation/dotfiles-T112-pins-2026-10-07-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-2d1d095.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-a01-local-review-bdefcbe.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-audit-b9f562e.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8-codex.md.transcript.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a02-review-receipt.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-3cb02fc.md
+.orchestration/validation/dotfiles-T133-python-pin-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round32.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-3288959.md
+.orchestration/validation/dotfiles-T67-audit-task-level-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-cap-hookspath-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r11.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round1.md
+.orchestration/validation/dotfiles-T129-doctor-sleep-disabled-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-validator-offline-a01-local-review-39c186a.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round34-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-regime-ci-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round7.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-local-review-d3e8acf.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-permission-guard-gate-a04-local-review-911f520.md
+.orchestration/validation/dot-herdr-agents-add-worker-T22-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r2.md
+.orchestration/validation/dotfiles-T99-nix-plans-history-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round26.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-local-review-c646472.md
+.orchestration/validation/dotfiles-T129-omp-hcom-stage1-task-review-codex-r1.md.last.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a04-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-security-28dde0f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a02-local-review-2b58663.md
+.orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round12.md
+.orchestration/validation/dotfiles-T100-compactiondb-claude-symlink-note-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-local-review-3498973.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r5.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-b3c5076.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a03-local-review-0d19947.md
+.orchestration/validation/dotfiles-T128-process-rules-a07-review-receipt.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-a01-local-review-002f188.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round5.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-a01-review-receipt.md
+.orchestration/validation/dotfiles-T62-claude-auto-deny-a01-review-receipt.md
+.orchestration/validation/dotfiles-T74-bootstrap-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a05-local-review-9bff92b.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-a01-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-owner-tasks-refresh-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-c14b967.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T111-project-map-subagent-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-a01-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r1.md.last.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-a01-local-review-741e242.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round3.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-local-review-2e3ff49.md
+.orchestration/validation/dotfiles-T132-make-update-followups-a01-local-review-6121555.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round19.md
+.orchestration/validation/dotfiles-T124-design-gate-and-reset-rule-a01-design-review-canonical.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a01-review-receipt.md
+.orchestration/validation/dotfiles-T63-codex-execpolicy-forbidden-a01-review-receipt.md
+.orchestration/validation/dotfiles-T70-make-update-unattended-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r10.md
+.orchestration/validation/dotfiles-T133-pre-send-check-a02-local-review-7888241.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round13.md
+.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-gate-evidence-a03-amend-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T133-task-generator-plan-check-a02-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r3.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round27.md
+.orchestration/validation/dotfiles-T128-task-checkers-followup-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a08-text-security-23f5144.md.last.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round4.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-f364b7d.md
+.orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a01-local-review-274a536.md
+.orchestration/validation/dotfiles-T128-process-rules-a03-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a06-chain-b9f562e.log
+.orchestration/validation/dotfiles-T128-task-review-contracts-a01.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-pr-feedback.json
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round22-codex.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T128-aws-cli-macos-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-followup-owners-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-amend1-codex-r2.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-review-a01-codex-r4.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a05-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round23-codex.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r12.md
+.orchestration/validation/dotfiles-T116-on-demand-workers-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T80-codex-command-hooks-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r3.md
+.orchestration/validation/dotfiles-T128-process-hardening-review-a02-codex-r1.md
+.orchestration/validation/dotfiles-T126-regime-v2-a01-design-review-round4.md
+.orchestration/validation/dotfiles-T130-claude-sandbox-integration-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round29-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round28-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round6.md
+.orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-result-precheck-a01-local-review-a5cb73b.md
+.orchestration/validation/dotfiles-T88-parallel-execution-rule-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-local-review-2842c34.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a04-local-review-4e743a1.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-runtime-check-a01-task-review-codex-r1.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-review-a01.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round33.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T108-one-login-per-machine-a01-worker-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-local-review-94c36f4.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md
+.orchestration/validation/dotfiles-T129-integration-seat-result-gate-cap-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a02-review-a01.md
+.orchestration/validation/dotfiles-T128-settings-hook-dedupe-followup-review-a01-codex-r2.md
+.orchestration/validation/dot-upgrade-pin-path-codify-T54-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-local-review-7771082.md
+.orchestration/validation/dotfiles-T128-playbook-rules-a04-amend-review-a01-codex.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a01-audit-c45f9b5.md
+.orchestration/validation/dotfiles-T130-codex-local-review-exclusion-a01-security-99b5f86.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round17-codex.md
+.orchestration/validation/dotfiles-T129-normalised-comparison-lint-followup-a02-local-review-1950a4d.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round16-codex.md
+.orchestration/validation/dotfiles-T133-regime-ci-fixture-grammar-a02-local-review-07cdcee.md
+.orchestration/validation/dotfiles-T128-plan-007-review-a01.md
+.orchestration/validation/dotfiles-T128-seat-launch-args-a01-review-receipt.md
+.orchestration/validation/dot-herdr-agents-seat-labels-T35-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md.last.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round9-codex.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round8-codex.md
+.orchestration/validation/dotfiles-T128-rules-step8-review-a01.md
+.orchestration/validation/dotfiles-T128-project-map-reload-hook-a01-amend-review-a02-codex-r7.md
+.orchestration/validation/dotfiles-T98b-runner-home-and-review-body-a01-audit-70f060e.md
+.orchestration/validation/dotfiles-T128-worker-s1-stop-review-a01-codex-r8.md
+.orchestration/validation/dotfiles-T128-task-review-t718-a02-codex-r14.md
+.orchestration/validation/dotfiles-T128-process-rules-a05-taskfile-review-codex-round4.md
+.orchestration/validation/dotfiles-T118-rolling-tools-single-update-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-pins-a01-audit-28dde0f.md.last.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a03-pr-feedback.json
+.orchestration/validation/dotfiles-T91-secret-scan-sk-boundary-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-review-a01-codex-r6.md
+.orchestration/validation/dotfiles-T128-project-map-pane-open-a01-followup-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r8.md
+.orchestration/validation/dotfiles-T128-orchestrator-tools-followup-review-a03-codex-r13.md
+.orchestration/validation/dotfiles-T133-rule-text-reduction-a01-review-receipt.md
+.orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-local-review-9545e59.md
+.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-f20826e.md
+.orchestration/validation/dotfiles-T77-harness-dead-code-a01-review-receipt.md
+.orchestration/validation/dotfiles-T65-agent-stop-gate-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-task-review-v1-v2-a01-round18.md
+.orchestration/validation/dotfiles-T129-anthropic-auth-route-check-a01-local-review-c1ba96f.md
+.orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a04-crit.json
+.orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md.last.md
+.orchestration/validation/dotfiles-T110-gh-auth-file-storage-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-rules-s1-replan-review-a01-codex-r5.md
+.orchestration/validation/dotfiles-T128-chain-glue-integrate-review-a01-codex-r7.md
+.orchestration/validation/dotfiles-T128-chain-github-scripts-followup-review-a01-codex-r1.md
+.orchestration/validation/dotfiles-T128-audit-s1-report-review-a01-codex-r2.md
+.orchestration/validation/dotfiles-T84-orchestrator-kind-a01-review-receipt.md
+.orchestration/validation/dotfiles-T128-regime-v3-a01-design-review-round2.md
+.orchestration/validation/dotfiles-T133-rule-text-reduction-a01-local-review-e2ea4a5.md
+.orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md
+.orchestration/validation/dotfiles-T129-assets-omp-hcom-followup-a03-review-receipt.md
+.orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-local-review-c8c712f.md
+.orchestration/validation/dotfiles-T102-add-worker-credential-notice-a01-worker-review-receipt.md
+
+ succeeded in 442ms:
+95:### 5.14 残余（凍結後の計測事実、D-024-29）
+103:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
+115:9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+
+**Considering time constraints**
+exec
+/bin/zsh -lc "rg -l '3bf2a79|6486b79|D-024-69|gh-binding-a02' .orchestration/acceptance .orchestration/decisions.tsv" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '95,119p'" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home | head -15' in ~/Workspace/dotfiles
+ succeeded in 122ms:
+    95	### 5.14 残余（凍結後の計測事実、D-024-29）
+    96	
+    97	- 2026-10-20: 項目 2 の「passwd home を dscl/getent で読む」は、両席の sandbox 内で `dscl` が失敗する（Claude sandbox: `Operation failed with error: eServerError`、Codex sandbox: exit 70、helper task RESULT）ため、同じディレクトリサービスを libc 経由で読む `/usr/bin/id -P | cut -d: -f9`（macOS）/ `getent passwd "$(id -un)" | cut -d: -f6`（Linux）/ Python の `pwd.getpwuid(os.getuid()).pw_dir` を passwd home の読み方とする。項目の意図（HOME は passwd のもの、継承値ではない）は不変。
+    98	
+    99	5.12 **プログラム仕様** は `024-design-programs.md` に分離（17 項目: verdict.sh、audit-pool.sh と orch-audit.sh --json、schemas、result-precheck.sh、dispositions.py、regime.yml、dispatch.sh --next、acceptance-front-matter.py、git hooks、handoff.sh、flakes、task-from-plan.py）。
+   100	
+   101	結論: 第 1 段階で消えるのは今の直列点（S1 の一部、S2、S8 の一部）。残る天井は S3（hosted runner）、S4/S5（モデルと監査の枠）、S7（hot spot）で、これらは席数の上限 D10（4 → 6）の根拠になる。6 を超える並列は、S3 と S5 の実測が出るまで plan に入れない。
+   102	
+   103	## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
+   104	
+   105	orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispositions、audit-pool、verdict、chain）は、同じホスト上で同じ UID の worker プロセスと共存する。2026-10-19 の C-80 審査（a05、dispositions-a02、audit-pool-a01 の 3 文、計 19 件の P1）は、どの文も同じ前提を書かず同じ穴を持つことを示した。以後、`security: true` の orchestrator 側タスク文は本節を参照で適用し、本節の各項目に対応する threat 行を持つ。文ごとに言い換えない。
+   106	
+   107	1. **書き込み境界（前提 6、ランタイム別に正直に）** Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。worker 設定：除外コマンド無し、Herdr socket 無し、sandbox の allowWrite は自席 worktree と agmsg store と席別キャッシュだけ、`failIfUnavailable: true`、信頼パス（anchored checkout の `.claude/worktrees/` 以外、`~/.agents`、`~/.claude*`、`~/.local`、`~/.config`）への Edit deny（公式文書：file tool の permission 検査は要求パスと symlink 解決後のパスの両方に deny を適用し、symlink そのものへの書き込みは拒否する）、sandbox の強制範囲はユーザー設定ではなく **managed settings**（`/Library/Application Support/ClaudeCode/managed-settings.json`、公式文書 "Repository settings under an admin-required sandbox"：project/local 設定は sandbox を無効化したり除外・socket を足したりできない）に置く。chezmoi は user ではこのファイルを書けないので、描画した内容を操作者が `sudo` で一度配置する（操作者手順）。worker 設定は worktree 自身の `.claude/**` と `.mcp.json` への Edit deny（`//<anchored>/.claude/worktrees/*/.claude/**`）を持つ（Bash 側は sandbox 既定の settings/hooks の denyWithinAllow）。agmsg store（全席が書く）から配送 hook が driver や plugin を source する上流の経路（storage.sh の `drivers.partition` traversal、`db/trusted-plugins` と `plugins/partition/shared.sh` による差し替え承認）は別タスク（agmsg hardening）の行で、worker 設定は `~/.agents/skills/agmsg/plugins/**` と `~/.agents/skills/agmsg/db/trusted-plugins` への書き込みを deny し（Edit deny は sandbox の deny にも合流する）、hook 側は store 由来の設定値を検証するまで残余と書く。managed settings の配置先は OS で異なる（macOS `/Library/Application Support/ClaudeCode/managed-settings.json`、Linux `/etc/claude-code/managed-settings.json`）。hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。公式文書：linked worktree の session は **main checkout の `.claude/settings.local.json` を読む**ので、worker 向けの hook を worktree の settings.local.json に書いても読まれず、逆に orchestrator の local hooks が worker session でも走る。したがって orchestrator 側の local hooks も guard 経由にし、worker 側の hook は worker config dir の settings に置く。Edit deny の一覧は `git ls-tree` ではなく描画時の静的一覧（manifest に列挙、`.agents/worklog/**` と `.agents/worklog/uv-cache/**` を含む）とし、`~/.agents/**` の全面 deny は agmsg store の書き込みと矛盾するので、`~/.agents/agent-config.yaml`、`~/.agents/skills/**/scripts/**`、`~/.agents/model-profiles.env` などストア以外を列挙する。公式文書で確認した事実（2026-10-19）：`Edit(path)` の deny は Write/MultiEdit/NotebookEdit にも効き、deny → ask → allow の順で最初の一致が決まる；ただし Read/Edit の deny は **Bash sandbox の設定にも合流する**（"Paths and domains from both sandbox settings and permission rules are merged into the final sandbox configuration"）ので、ユーザー設定（全席共有）に `.orchestration/**` の Edit deny を書くと orchestrator の Bash による記録書き込みも止まる。hook は起動時に固定されず、設定ファイルの編集は file watcher が即座に反映する。`sandbox.failIfUnavailable` の既定は fail-open（依存が無ければ sandbox 無しで実行）。したがって Claude 席の境界は Edit deny 規則ではなく、**ユーザーレベルの PreToolUse hook**（`~/.claude/hooks/worker-write-boundary`、chezmoi が描画、`/bin/sh` または絶対パスの `python3 -I`）で作る：cwd の realpath が `<anchored>/.claude/worktrees/` 配下の session では、Write/Edit/MultiEdit/NotebookEdit の対象が cwd の外、または `<cwd>/.claude/**`・`<cwd>/.mcp.json` のとき `permissionDecision: deny` を返す。Bash 側は sandbox の既定 `denyWithinAllow`（settings、hooks）と `allowWrite`（自席 worktree）が担う。`failIfUnavailable: true` を全席に置く。 Codex 席は sandbox（workspace-write）がツールの書き込み全部を自席の worktree と列挙パスに限る。Claude 席は Seatbelt sandbox が Bash を限るだけで、Write/Edit/MultiEdit/NotebookEdit、hook、MCP プロセスは sandbox 外で動き、permission policy（permgate の決定論ポリシー）が path で拒否しない限り anchored checkout や `~/.agents` にも書ける（2026-10-19 時点、描画済み設定にその deny は無い）。したがって前提 6 は「Codex 席は成立、Claude 席は P1-15 が描画設定に Edit の path deny を入れるまで残余」と書く。P1-15 以前に「worker は信頼ルートに書けない」と書く文は誤りで、C-80 が拒否する。P1-15 が入るまで、承認の出所は項目 8 の「コミット済み台帳」で守る。書き込みは自席の worktree（`.claude/worktrees/<name>`）、scratch、列挙されたツールキャッシュに限る。anchored checkout（`.claude/worktrees/` 以外）、`~/.agents/agent-config.yaml`、`~/.claude/hooks`、信頼ルートのバイナリ、orchestrator の証跡・スナップショット・lock は worker から書けない。render テストが描画後の deny を検証する。残余は「どの席 sandbox にも属さない同一 UID プロセス」と、Worker Playbook step 4 が sandbox 外に出す少数のコマンド（gh）。後者は D-024-17（P1-15）で絶対パスの実行体に束縛する。 The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19). The inventory of executable configuration sources a worker start screens is the documented loading list of the installed Claude Code version, enumerated once from the documentation (settings: user, project, local and managed `settings.json`; project `.mcp.json`; the configuration directory's global state `.claude.json` with user-scoped and project-local MCP servers; plugins and skills directories (`.claude/skills/*/.claude-plugin/plugin.json`, enabled plugins); hook handlers of every documented type (`command`, `http` and any other `type` value the hooks reference lists: a handler is an executable input whether it names a command or a URL, and a worker start refuses every handler type but `command`), `apiKeyHelper`, `statusLine.command`, MCP server commands), and the launcher screens or disables every source before accepting workspace trust, refusing any executable payload it did not write; adding sources one review at a time is the anti-pattern (P1-15 a02 reviews 2ae9e2c and ebbb71b, 2026-10-19). The enumeration quotes the documentation's values (the page, its fetched_at and the listed values) in the text's premises so a reviewer can check them against the live page; naming a source by one of its fields ("hook commands" for hook handlers) is the same anti-pattern one level down (a02 review b2a186e, 2026-10-19T20:36Z; C-95).
+   108	2. **無害化した環境を最初に** 最初の処理として `env -i` に入り、PATH は信頼ルートで解決した絶対バイナリへのリンクだけの私設ディレクトリ（shims、空、相対は拒否）。git は毎回 `GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null -c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always` と明示 `-C`（https だけ許す。`protocol.allow=never` 単独は必要な fetch を止める）。 検査の読み取りは `GIT_NO_LAZY_FETCH=1` で部分クローンの遅延 fetch（checkout 設定の credential.helper を起動しうる）を止め、`-c submodule.recurse=false --ignore-submodules=all` で submodule 内の status/diff（submodule 自身の設定が filter を有効化しうる）を止める。`.gitmodules` を持つ checkout は検査対象として拒否する。 `-C` は作業木を束縛しないので（repo-local の `core.worktree` が読み先を checkout 外へ向けられる）、git は `--git-dir=<checkout>/.git --work-tree=<checkout>` を明示し、`git rev-parse --show-toplevel` の realpath が checkout と一致しないときは拒否する。 premise や検査の「コマンド実行」は、固定語彙の読み取り専用プローブ（`git rev-parse <ref>`、`test -e <path>`、`grep -c <pattern> <file>` のように検査器自身が解釈する形）だけを許し、任意のシェル文字列は実行しない（本文のハッシュはコマンド文を認証するだけで、`python -I scripts/x.py` のファイル被演算子や `source ./x.sh` の中身は認証しない）。diff と show は `--no-ext-diff --no-textconv` と `-c core.attributesFile=/dev/null -c core.sshCommand=false` を付け、PR 側の `.gitattributes`（external diff、textconv、filter）が検査内容や実行物を変えないようにする。Python は `-I`。PATH 探索で実行するものは無い。 A shell script that runs under a PR-controlled or worker-controlled environment (verdict.sh, the chain glue, CI steps) is executed as a program with `#!/bin/bash -p`, never as `bash <file>`, and only by a trusted parent that supplies the clean environment before the exec: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<passwd home> LANG=C.UTF-8 /bin/bash --noprofile --norc -p <absolute script path> …` (long options before `-p`). Privileged mode discards inherited functions, `BASH_ENV`/`ENV`, `SHELLOPTS`, `BASHOPTS`, `CDPATH` and `GLOBIGNORE`, but on Linux an inherited `LD_PRELOAD`/`LD_AUDIT` already executes while the loader maps `/bin/bash`, before `-p` or any statement runs, so a self re-exec inside the script is not a boundary and re-executing `"$0"` would reopen the caller's pathname (a worker-owned symlink can be swapped between the two executions); the program therefore verifies and refuses instead of repairing: its environment must consist of exactly the allowed names (checked through absolute paths `/usr/bin/env`, `/usr/bin/grep`), `$0` resolved with `realpath` must be a regular file under the repository root, and HOME must equal the passwd home of the real uid (`/usr/bin/dscl . -read /Users/<user> NFSHomeDirectory` on macOS, `/usr/bin/getent passwd <uid>` on Linux), otherwise exit 2 with a named message. A caller-set sentinel variable is not a sanitization proof, because the caller controls it (ci-efficiency a04 and verdict a04 C-80 reviews, 2026-10-19). No script accepts a caller-supplied executable directory; interpreters are the fixed absolute paths item 9 names.
+   109	3. **信頼パスの境界検査** 仕組みが信頼するパス（スクリプト、台帳、証跡、worktree、lock、出力先）は realpath で解決し、`.claude/worktrees/` または manifest の worker ルート配下なら拒否（ask/hold）。symlink 構成要素は解決後に比較し、大小文字を区別しないファイルシステムでは同一性比較を大小文字非依存で行う。 A validator or scanner enumerates its inputs by walking the filesystem under fixed roots (every regular file, ignored or untracked included), never by asking git which files exist: `git ls-files` trusts the index and the working-tree `.gitignore` rules, which a same-UID writer edits without a commit (a07 C-80 rounds 1 to 3, 2026-10-19); git is consulted only to confirm the root (`--show-toplevel` equality with a real `.git` directory) and never as an exclusion authority.
+   110	4. **検証したものを実行し、検証した内容を渡す** 検証した実行体はその realpath で実行する（再探索しない）。検証したファイル内容は信頼ルート配下のスナップショット（0600、一意名）として渡し、使用直前に sha256 を再照合する。判断に読んだ証跡は sha256 を出力に記録する。
+   111	5. **出力と予約の同一性** 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
+   112	6. **正直な残余** 境界だけが緩和するリスクを `closed` と書かない。各文は残余を 1 行で明記する。
+   113	0. **脅威モデル（D-024-21）** 席は同じ OS ユーザで動き、ホストは席間の信頼境界ではない（同一 UID のプロセスは symlink 差し替え、共有 `.git` の object 差し替え、hook の子プロセス、Herdr socket 経由の host 実行で、ホスト内のどの検査も迂回できる）。regime の硬い境界は GitHub（保護された main、必須チェック、orchestrator の identity によるマージ）。ただしこの境界は **worker 席が orchestrator の GitHub 資格情報を共有しない**ときだけ成立する（D-024-22：worker 席は専用の GitHub identity（別アカウントまたは App のトークン）で `gh` に login し、ruleset の bypass 一覧に入らない。orchestrator の keychain トークンを worker の config dir に持ち込まない。identity が分かれるまで「GitHub が境界」は未成立と書く）。**同一 macOS ユーザでは資格情報は分離できない**（gh は keychain の項目を host/user で引き、同じ UID の gh は orchestrator のトークンを読める。`GH_CONFIG_DIR` は設定を分けるだけ）。防止には worker 席を別の OS ユーザ（または別ホスト）で動かすしかなく、それは D-024-23 の将来項目（P1-16、操作者の判断）。それまで GitHub 境界は **検知**で守る：記録は boundary の記録 PR まで main に無いので、検知は次の記録 PR の regime ジョブで行う（`.orchestration/acceptance/**` に触れる PR で、前回 boundary 以降の main の各マージ commit に、gate 通過の証跡を持つ受け入れ記録が対応することを検査し、無ければその PR を失敗させる；P1-11 owner a02 の行 `ci:detection:1`）。main push 時点の検知は記録が無いので不可能であり、文は「次の記録 PR で検知、防止ではない」と書く。悪意ある worker に耐えるべき入力（承認台帳、gate が読む証跡 of record）は GitHub から sha 指定で API 経由（sandbox 内）に読み、ローカルファイルやローカル object database からは読まない。ホスト内の制御（本節 1〜10）は事故と prompt injection による損害の抑制であり、文はそう書く。
+   114	8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
+   115	9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+   116	10. **worker は sandbox 外でコマンドを実行しない（D-024-17 の改訂）** 2026-10-19T03:45Z の実測で `gh api` は Claude sandbox の中から成功した（sandbox の proxy は CONNECT 型で TLS を終端しない；keychain のトークンも読めた）。worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。Codex 席は `sandbox_workspace_write.network_access = true` で同じ状態にし、permgate の codex ポリシーは sandbox 外への escape を承認しない（permgate の変更は操作者の手順）。wrapper 方式（絶対パス、env -i、固定 GH_CONFIG_DIR）は LD_PRELOAD と引数転送（`gh repo clone -- --config`）を閉じられないので採らない。
+   117	7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
+
+ succeeded in 218ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:39` — Deferring parent/interpreter binding supplies no compensating control: retained mise/PATH-selected processes execute before the proposed `gh` checks and can replace their decisions or capture credentials; cleaning only the child environment cannot establish the claimed consumer binding, especially outside Linux’s sandbox.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — The environment allowlist omits a control and test for `gh`’s configuration-file inputs: default home configuration can select `http_unix_socket`, changing the actual transport despite a pinned executable and explicit hostname; require a protected, controlled configuration source. [GitHub CLI configuration](https://cli.github.com/manual/gh_config), [configuration discovery](https://cli.github.com/manual/gh_help_environment).
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:38` — The named child-environment test cannot close in-process effects: the reused chain/regime fixtures inherit `GIT_*` into Git writes, allowing `GIT_DIR`/`GIT_WORK_TREE` to redirect operations outside their temporary repositories and `GIT_CONFIG_*` to inject configuration. [Git environment](https://git-scm.com/docs/git), [configuration overrides](https://git-scm.com/docs/git-config).
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:80` — Allowing an identity refusal to satisfy each decoy test does not prove successful consumer binding; require a positive authenticated-operation fixture per route, alongside refusal cases, to prevent an always-refusing implementation from satisfying the binding evidence.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:105` — The stated baseline is inaccurate: `chain-finish.sh` is absent from this checkout and local `origin/main`, and neither Python checker contains the claimed `gh` lookup; with creation forbidden and `after: []`, the six-route implementation requires the reviewed amendment this line prescribes.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:110` — `Checks` is empty despite requiring populated measurements before C-80; these bytes provide no observed canonical-source, installation or interpreter-binding evidence, and approval cannot cover a later paste.
+
+📝 まとめ: Reviewed all 37 threat rows and cited acceptance/review history; findings remain input for the orchestrator. No files changed.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-user replacement and credential-sharing risks remain.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — Forbidding descendant edits and wrappers prevents the promised fixed-repository binding: `scripts/require-crit-review.py:519` removes `GH_REPO`, then discovers the repository from local Git context and passes that result to `gh pr view`; `scripts/pr-feedback.py:84` also omits `--hostname`. A pinned executable does not bind these decisions to `github.com/mryfmo/dotfiles`; authorize the descendant changes and test hostile repository configuration through the real gate. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:83` — Applying item 9 to every descendant conflicts with the excluded gate’s collector launch at `scripts/require-crit-review.py:615`, which starts `[sys.executable, collector, …]` without `-I`; the parent’s isolation flags do not propagate, and `PYTHONSAFEPATH` alone does not disable user-site startup code. Authorize this launch change and require a real-descendant startup-hook test before claiming the isolation contract is satisfied. [Python isolation options](https://docs.python.org/3/using/cmdline.html#cmdoption-I)
+
+📝 まとめ: Reviewed all 37 threat rows, existing consumer paths, and cited acceptance/review history. Two findings remain for orchestrator disposition; no files changed.
+
+Not checked: future implementation, CI, or live Linux/race behavior; same-user replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrectNo findings in the 41 threat rows. Items 6–7 address the previous descendant repository-binding and Python-isolation findings; the referenced contract covers resolved paths, replacement risks and Git environment controls.
+
+This assesses the design only. Dispatch remains blocked pending populated Checks, expanded residual ownership and measured host protections.
+
+📝 まとめ: Completed the read-only task and cited-history review; no files changed.
+
+Not checked: implementation, CI or live Linux execution; same-UID replacement and credential separation remain explicit residual risks.
+Verdict: correct
+ succeeded in 275ms:
+home/.chezmoiexternal.yaml.tmpl
+home/.chezmoiremove
+home/.chezmoiscripts/common/run_after_03-install-sheldon.sh.tmpl
+home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh.tmpl
+home/.chezmoiscripts/common/run_once_after_02-install-mise.sh.tmpl
+home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_05-client-install-zed.sh.tmpl
+home/.chezmoiscripts/ubuntu/run_after_10-install-starship.sh.tmpl
+home/.chezmoitemplates/chezmoiexternal.d/macos.yaml.tmpl
+home/.chezmoitemplates/chezmoiexternal.d/ubuntu.yaml.tmpl
+home/.chezmoitemplates/claude-settings-managed.json
+home/.chezmoitemplates/codex-config-managed.toml
+home/dot_agents/README.md
+home/dot_agents/agent-config.yaml
+
+ succeeded in 318ms:
+---
+format: 2
+task_id: dotfiles-T133-gh-binding-followup-a01
+kind: code
+security: true
+dispatch_status: draft-owner-stub
+allowed_files:
+  - home/dot_agents/agent-config.yaml
+  - scripts/validate-agent-assets.py
+  - .orchestration/dotfiles-T133-gh-binding-followup-a01/**
+after: [dotfiles-T133-gh-binding-a02]
+---
+
+# AGMSG-TASK dotfiles-T133-gh-binding-followup-a01 — owner of the gh-binding-a01 residual rows (owner stub)
+
+Owner stub written 2026-10-21T22:59Z by the orchestrator seat (C-51); expanded 2026-10-22T01:10Z before the C-80/anchor of the reset text `dotfiles-T133-gh-binding-a02` (sha256 0ecdc07c05c377f9793965aa43a324e23b95808afcd53658c0d7b66790a516d8 after the Checks paste; the a01 text was withdrawn at its S-R5 stop, C-80 rounds 3bf2a79 and 6486b79). Never dispatched as a stub; its dispatch text is authored after a02 merges.
+
+## Owned rows (the residual rows of the a02 threat table that name this task)
+
+1. `tests/unit/test_*.py`: evidence-integrity automation for the four test modules a02 edits (independent inspection of assertions and red/green logs).
+2. `.orchestration/dotfiles-T133-gh-binding-a02/**` including task.md: evidence automation (anchored bytes, task-copy digest, literal full head compared against the independently authenticated PR head).
+3. task metadata: dispatch automation (reviewed inventory and populated Checks compared with the complete anchored task before dispatch).
+4. metadata separators: byte-integrity automation (front matter, separators and Checks compared, no paste after anchor).
+5. new or renamed scripts and the three future gh routes: adoption of the declared gh by the absent `scripts/orchestrator/chain-finish.sh` (PR #378 lineage) and by the two Python checkers `scripts/orchestrator/regime-ci.py` and `scripts/orchestrator/task-consistency-check.py` when they gain canonical gh reads; each route needs its own positive authenticated fixture with a synthetic credential, the fixed host and repository, and descendant coverage; a02 creates no consumer there.
+6. remaining git/date/mise executable provenance: permanent binding of the remaining tools (today their resolver algorithms run only inside the measured parent namespace, token-free).
+7. orchestrator effect merge: integration follow-through (only the orchestrator integrates the exact audited head through Playbook step 10).
+8. orchestrator effect update-branch: evidence refresh (CI, feedback, audit, acceptance and gate rerun for every changed head).
+9. orchestrator effect forced worker removal: teardown records (none planned; no dirty state discarded without separate authorization).
+10. orchestrator effect owner-stub amendment: every residual assigned here; the orchestrator expands this stub before anchor, outside worker scope (this expansion).
+11. orchestrator effect canonical measurements: measurement automation (gh-free private-clone evidence and trusted-parent observations before a fresh review of the complete populated text).
+12. orchestrator effect installation and deployment: deployment follow-through (the pinned install, the protected configuration and real authenticated consumer probes verified separately, under the measured parent, before authenticated acceptance reads are enabled).
+13. design 5.14 item 0: the unchanged same-UID and credential-separation residual.
+14. design 5.14 item 1: host protection evidence for the declaration, binary, configuration source and parent namespace before authenticated use.
+15. design 5.14 item 5, 16. item 6, 17. item 7, 18. item 8, 19. item 10: the items a02 applies by reference and does not close; each gets its own row and fixture when this task is authored, never a blanket claim.
+
+Dependency: this task starts after `dotfiles-T133-gh-binding-a02` merges (`after:` above). The parent binding of uv/Python/Node and the launcher stays with `dotfiles-T133-trusted-entrypoint-binding-a01` (design 5.14 items 2 and 9), not here.
+
+## Checks (pasted by the orchestrator before each send)
+
+```text
+(empty until the dispatch text is authored)
+```
+---
+format: 2
+task_id: dotfiles-T133-trusted-entrypoint-binding-a01
+kind: code
+security: true
+allowed_files: ["home/dot_agents/agent-config.yaml","home/.chezmoitemplates/claude-settings-managed.json","home/dot_claude*/modify_private_settings.json","scripts/generate-agent-configs.py","scripts/validate-agent-assets.py","Makefile","tests/unit/test_claude_managed_settings.py","tests/unit/test_validate_agent_assets.py","tests/unit/test_generate_agent_configs.py","scripts/orchestrator/trusted-launch.sh",".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**"]
+after: [dotfiles-T133-worker-write-boundary-slice2-a01, dotfiles-T133-ci-efficiency-followup-a04]
+rendered_forms: [claude-settings-managed.json, permgate claude]
+out_of_scope:
+  - {"path":"home/dot_mise/config.toml","reason":"dotfiles-T133-trusted-entrypoint-pins-a01 pins the real declaration before this task is sent; it is read-only here."}
+  - {"path":"tests/unit/test_claude_settings_merge.py","reason":"Existing legacy/custom/idempotence cases remain valid through the modify script's native expansion; run this real module unchanged."}
+  - {"path":"tests/unit/test_statusline_tools.py","reason":"Its native renderer must continue to parse the template without deployment installations; run unchanged."}
+  - {"path":"tests/unit/test_herdr_agents.py","reason":"The synthetic SessionStart-only template is unaffected; retain its tests."}
+  - {"path":"tests/install/common/lifecycle.bats","reason":"Legacy migration fixture data is retained; Bats runs only in GitHub Actions."}
+  - {"path":"tests/fixtures/gate-evidence/pr-feedback-right.json","reason":"Historical feedback fixture text is data and is not rewritten."}
+  - {"path":"scripts/orchestrator/trusted-interpreter.sh","reason":"The a04 resolver remains read-only for its existing consumers. This re-plan's launcher validates the exact Python declared by its parent-selected manifest; it must not impose the resolver's production-only pin on fixture execution."}
+  - {"path":"home/dot_local/bin/common/executable_permgate","reason":"Unchanged dependency-free script, executed through explicit isolated Python rather than its shebang."}
+  - {"path":"home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl","reason":"Complete guard, delivery and formatter/map descendant binding is outside this split; retain its named deployment residuals."}
+threat_table:
+  - {"control":"home/dot_agents/agent-config.yaml","disposition":"residual: Declare exact home-relative uv, Python and node identities and compare their production versions with the read-only mise declaration; deterministic rendering supplies the launcher manifest, while protected inputs still share the OS uid."}
+  - {"control":"home/.chezmoitemplates/claude-settings-managed.json","disposition":"residual: Render the PermissionRequest exec-form clean prefix with an exact absolute --manifest operand and retain onFailure block; no outer shell starts, but the hook host and first executable's loader environment remain outside launcher validation."}
+  - {"control":"home/dot_claude/modify_private_settings.json","disposition":"residual: Classify the legacy form separately and compare the bound command string and ordered args array, including --manifest, exactly with the rendered canonical exec form; preserve raw quoting distinctions, custom hooks and idempotence."}
+  - {"control":"home/dot_claude-worker/modify_private_settings.json","disposition":"residual: Apply the same native expansion and exact bound command/args comparison to this consumer without importing live orchestrator settings or adding an event the surface lacks."}
+  - {"control":"scripts/generate-agent-configs.py","disposition":"residual: Render exact relative declarations, the launcher manifest data and exec-form command/args without filesystem discovery; ordinary generation and render-check require no installed tools or deployed manifest."}
+  - {"control":"scripts/validate-agent-assets.py","disposition":"residual: Validate exact rendered command/args and expose the opt-in effective-settings identity check; checker and yaml-importing children consume the same parent-selected manifest, verified uv/Python and private cache without substituting production pins into fixtures."}
+  - {"control":"Makefile","disposition":"residual: Expose concrete manifest preparation, trusted seed and deployment-check commands and give the formatter the pinned node directory; unrelated inherited recipes remain outside this boundary."}
+  - {"control":"scripts/orchestrator/trusted-launch.sh","disposition":"residual: Before any declared binary executes, validate the absolute parent-selected manifest and optional fixture root, parse declarations as data, require canonical regular executable paths and compare exact versions; fixture and production inputs use these same checks, while concurrent same-UID replacement remains possible."}
+  - {"control":"tests/unit/test_claude_managed_settings.py","disposition":"residual: Exercise exact exec-form rendering, migration, a real fixture-manifest uv/Python/permgate execution and the separate pinned-installation case; fixture execution proves the shared launcher path, not production installation or administrative protection."}
+  - {"control":"tests/unit/test_validate_agent_assets.py","disposition":"residual: Exercise manifest containment, shim, symlink, worker-root and version refusals, quote-preserving comparisons and the clean online seed; recording fake uv cases prove argv and refusal behavior only."}
+  - {"control":"tests/unit/test_generate_agent_configs.py","disposition":"closed: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_managed_hooks_use_installed_permgate_paths asserts the executable leaf and the permission-request operand from args; the pins refactor rsplit form raises ValueError on the env+args command (pins audit:28dde0f:1)"}
+  - {"control":".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**","disposition":"residual: Only task copies, reports, manifest test data and review or validation evidence are authorized; no executable helper or alternative hook may hide under this wildcard."}
+  - {"control":"task copy .orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/task.md","disposition":"residual: Compare the complete dispatched file byte-for-byte and verify its SHA-256; preserve predecessor copies and the three-review history."}
+  - {"control":"task metadata","disposition":"residual: Verify identity, both after dependencies, the pin prerequisite and exactly ten allowed_files entries before dispatch and acceptance; the modify-script glob has only its two named consumers."}
+  - {"control":"metadata separators","disposition":"residual: Parse front matter as data with duplicate keys refused and compare the whole task copy, including both separate task texts and their separators."}
+  - {"control":"in-process effects","disposition":"residual: Fixture execution writes temporary data and markers only; the effective-settings check is read-only and the worker performs no live deployment."}
+  - {"control":"workflow and interpreter or environment inputs","disposition":"residual: The trusted parent names the manifest and any fixture root under the clean prefix; launcher discovery, environment overrides and production-only fixture gates are forbidden."}
+  - {"control":"new or renamed scripts","disposition":"residual: Only the named launcher is added; manifest parsing and exact-path validation stay there, and no second resolver, wrapper executable or artifact-directory runtime helper is introduced."}
+  - {"control":"orchestrator effect manifest provisioning","disposition":"residual: The operator materializes deterministic production manifest data under the protected repository root before enabling the changed hook; fixture manifests cannot become effective production bindings."}
+  - {"control":"orchestrator effect merge","disposition":"residual: Only the orchestrator merges the reviewed final head after Playbook step 10; shared credentials remain a bypass risk."}
+  - {"control":"orchestrator effect update-branch","disposition":"residual: Only the orchestrator updates the branch and refreshes evidence after any head change."}
+  - {"control":"orchestrator effect forced worker removal","disposition":"residual: None is planned; only the orchestrator may remove a worker and must record any discarded state."}
+  - {"control":"design 5.14 item 0 same-UID model","disposition":"residual: These controls limit accidents and prompt injection; shared credentials and unrestricted same-UID processes remain outside prevention."}
+  - {"control":"design 5.14 item 1 executable inputs","disposition":"residual: Retain P1-15 protection of policy, user-site locations, settings, rendered manifest and installed tools; executable binding alone does not protect mutable inputs."}
+  - {"control":"design 5.14 item 2 trusted parent","disposition":"residual: Exec form starts /usr/bin/env -i with literal argv before the privileged launcher validates entry state and the selected manifest; the hook host and loader starting /usr/bin/env still require host-supplied clean execution or the P1-16 OS user boundary."}
+  - {"control":"design 5.14 item 3 resolved boundaries","disposition":"residual: Apply canonical path, regular-file, shim, worker-root and temporary-root checks to the supplied manifest and its declarations; the explicitly named fixture root is a scoped test allowance, not a production setting."}
+  - {"control":"design 5.14 item 4 verified executable","disposition":"residual: Execute only the checked declared realpaths without rediscovery and record the selected manifest identity; unrestricted same-UID replacement after validation remains possible."}
+  - {"control":"design 5.14 item 5 output identity","disposition":"residual: Record full base/head identities, task-copy hash and manifest hashes; no new reservation or slot lock is introduced."}
+  - {"control":"design 5.14 item 6 honest residuals","disposition":"residual: Report declaration checks, real fixture execution, the named pinned-installation skip, CI and operator-host deployment separately; no fixture or skip substitutes for production evidence."}
+  - {"control":"design 5.14 item 7 verification","disposition":"residual: Run the eight named regressions and scoped hostile-input cases, recording Class::test selectors without claiming system-wide closure or treating an earlier refusal as coverage of a later check."}
+  - {"control":"design 5.14 item 8 authenticated evidence","disposition":"residual: A parent-selected manifest supplies executable declarations, not permission or merge approval; integration evidence and live agmsg hardening retain their separate owners."}
+  - {"control":"design 5.14 item 9 isolation and cache","disposition":"residual: Bound Python children use -I and isolated offline uv with an absolute parent-supplied private cache; the explicit online seed uses the same manifest, clean parent and verified uv/Python, retaining --no-config --no-project --isolated --with pyyaml --python and -I while omitting only --offline."}
+  - {"control":"design 5.14 item 10 sandbox","disposition":"residual: Every worker command stays inside the sandbox; denial produces blocked evidence without escalation or an alternative execution surface."}
+premises:
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/uv/\" | paste -sd '|' -","output":"0|0.12|0.12.17|0.12.18|0.12.19|0.12.20|0.13|0.13.0|0.13.1|global|latest"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/uv/0.13.1/\" | paste -sd '|' -","output":"uv-aarch64-apple-darwin"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/python/\" | paste -sd '|' -","output":"3|3.15|3.15.0|global|latest"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15"}
+  - {"command":"head -1 \"$HOME/.local/share/mise/installs/npm-prettier/3.9.10/bin/prettier\"","output":"#!/usr/bin/env node"}
+  - {"command":"ls -1 \"$HOME/.local/share/mise/installs/node/\" | paste -sd '|' -","output":"26|26.12|26.12.0|global|latest"}
+  - {"command":"realpath \"$HOME/.local/share/mise/installs/node/26.12.0/bin/node\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/installs/node/26.12.0/bin/node"}
+  - {"command":"grep -nE '^(uv|python|node) = ' home/dot_mise/config.toml | paste -sd '|' -","output":"3:node = \"latest\"|5:python = \"latest\"|17:uv = \"latest\""}
+  - {"command":"ls -1 .mise.toml mise.toml 2>&1 | paste -sd '|' -","output":"ls: .mise.toml: No such file or directory|mise.toml"}
+  - {"command":"cat mise.toml | paste -sd '|' -","output":"[tools]"}
+  - {"command":"grep -n '\"command\": \".*permgate claude\"' home/.chezmoitemplates/claude-settings-managed.json","output":"207:            \"command\": \"~/.local/bin/common/permgate claude\","}
+  - {"command":"head -1 home/dot_local/bin/common/executable_permgate","output":"#!/usr/bin/env -S uv run --no-cache --script"}
+  - {"command":"grep -cE '^# ///|^# dependencies[[:space:]]*=' home/dot_local/bin/common/executable_permgate","output":"0"}
+  - {"command":"sed -n '179,182p' Makefile | paste -sd '|' -","output":"format:| shfmt --indent 4 --space-redirects --diff .| git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check| git ls-files -z '*.md' | xargs -0 prettier --check"}
+  - {"command":"grep -cE '(^|[[:space:]])(export[[:space:]]+)?PATH[[:space:]:?+]*=' Makefile","output":"0"}
+  - {"command":"git ls-tree -r --name-only origin/main -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json home/dot_claude/modify_private_settings.json home/dot_claude-worker/modify_private_settings.json scripts/generate-agent-configs.py scripts/validate-agent-assets.py Makefile tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py | paste -sd '|' -","output":"Makefile|home/.chezmoitemplates/claude-settings-managed.json|home/dot_agents/agent-config.yaml|home/dot_claude/modify_private_settings.json|scripts/generate-agent-configs.py|scripts/validate-agent-assets.py|tests/unit/test_validate_agent_assets.py"}
+  - {"command":"grep -nE '^  - (home/dot_claude-worker/modify_private_settings.json|tests/unit/test_claude_managed_settings.py)$' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | paste -sd '|' -","output":"12:  - home/dot_claude-worker/modify_private_settings.json|27:  - tests/unit/test_claude_managed_settings.py"}
+  - {"command":"grep -nE '^def (render_claude_settings|render_template_text|validate_claude_settings|validate_model_profile_assets|validate_generated_agent_configs|main|render_managed_template|is_managed_permission_hook)\\(' scripts/generate-agent-configs.py scripts/validate-agent-assets.py home/dot_claude/modify_private_settings.json | paste -sd '|' -","output":"scripts/generate-agent-configs.py:400:def render_claude_settings(manifest: dict[str, Any]) -> str:|scripts/generate-agent-configs.py:1401:def main() -> None:|scripts/validate-agent-assets.py:88:def render_template_text(path: Path, os_name: str = \"darwin\") -> str:|scripts/validate-agent-assets.py:374:def validate_claude_settings(manifest: dict[str, Any], os_name: str = \"darwin\") -> None:|scripts/validate-agent-assets.py:1187:def validate_model_profile_assets(manifest: dict[str, Any]) -> None:|scripts/validate-agent-assets.py:1294:def validate_generated_agent_configs() -> None:|scripts/validate-agent-assets.py:1660:def main() -> None:|home/dot_claude/modify_private_settings.json:48:def render_managed_template(text: str) -> str:|home/dot_claude/modify_private_settings.json:68:def is_managed_permission_hook(hook: Any) -> bool:|home/dot_claude/modify_private_settings.json:196:def main() -> int:"}
+  - {"command":"sed -n '400,487p' scripts/generate-agent-configs.py | wc -l | xargs","output":"88"}
+  - {"command":"sed -n '88,100p;374,406p;1187,1265p;1294,1304p;1660,1685p' scripts/validate-agent-assets.py | wc -l | xargs","output":"162"}
+  - {"command":"sed -n '48,55p;68,79p' home/dot_claude/modify_private_settings.json | wc -l | xargs","output":"20"}
+  - {"command":"wc -l .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | xargs","output":"63 .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json 95 .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py 1781 tests/unit/test_validate_agent_assets.py 79 home/dot_mise/config.toml 2350 tests/unit/test_generate_agent_configs.py 4368 total"}
+  - {"command":"ls tests/unit/test_task_consistency_c11_c15.py 2>&1 | paste -sd '|' -","output":"ls: tests/unit/test_task_consistency_c11_c15.py: No such file or directory"}
+  - {"command":"sed -n '63,66p' .claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py | paste -sd '|' -","output":"CASES = {|    \"C11\": (|        '\"closed: tests/unit/test_tool.py::test_tool_prints_findings\"',|        '\"closed: tests/unit/test_tool.py::two words\"',"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\" --version","output":"uv 0.13.1 (62faed335 2026-10-13 aarch64-apple-darwin)"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15\" -I -B --version","output":"Python 3.15.0"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/node/26.12.0/bin/node\" --version","output":"v26.12.0"}
+  - {"command":"rg -l 'claude-settings-managed|is_managed_permission_hook|permgate claude' home scripts tests .github Makefile --glob '!*.md' --glob '!*.lock' | sort | paste -sd '|' -","output":"home/dot_agents/agent-config.yaml|home/dot_claude/modify_private_settings.json|scripts/validate-agent-assets.py|tests/fixtures/gate-evidence/pr-feedback-right.json|tests/install/common/lifecycle.bats|tests/unit/test_claude_settings_merge.py|tests/unit/test_generate_agent_configs.py|tests/unit/test_herdr_agents.py|tests/unit/test_statusline_tools.py|tests/unit/test_validate_agent_assets.py"}
+  - {"command":"grep -nE '^class (ClaudeManagedSettingsTest|ValidateAgentAssetsTest)' .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py | paste -sd '|' -","output":".claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py:12:class ClaudeManagedSettingsTest(unittest.TestCase):|tests/unit/test_validate_agent_assets.py:84:class ValidateAgentAssetsTest(unittest.TestCase):"}
+  - {"command":"sed -n '117p' .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md | cut -d . -f 1-2","output":"On success print exactly one absolute interpreter realpath and exit 0. On every refusal print exactly one line `trusted-interpreter: refused: <code>` to stderr, print no interpreter on stdout, and exit 2"}
+  - {"command":"printf '%s\\n' \"$PATH\" | sed \"s|$HOME|\\$HOME|g\"","output":"$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$HOME/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:$HOME/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin"}
+  - {"command":"grep -nE '^    import yaml|PyYAML is required' scripts/validate-agent-assets.py | paste -sd '|' -","output":"22:    import yaml|81:        fail(\"PyYAML is required\")|175:        fail(\"PyYAML is required to validate skill frontmatter\")"}
+  - {"command":"sed -n '340,346p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | paste -sd '|' -","output":"   Its managed PermissionRequest command remains exactly:||   ```text|   ~/.local/bin/common/permgate claude|   ```||   Do not add an env prefix, guard selector, absolute uv/Python invocation or new command-form validator for this hook. Keep its existing timeout and add the task's common `onFailure: \"block\"` entry policy. The unchanged command's shebang, interpreter discovery and inherited environment are explicit residuals owned by the binding task."}
+  - {"command":"head -1 .claude/worktrees/worker-e/home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl","output":"#!/bin/bash"}
+  - {"command":"test ! -e scripts/orchestrator/trusted-launch.sh","output":"","exit_status":0}
+  - {"command":"python3 -I -B -c 'from pathlib import Path; roots=(Path(\"home\"),Path(\".claude/worktrees/worker-e/home\")); print(\"|\".join(str(p) for root in roots for p in sorted(root.glob(\"dot_claude*/modify_private_settings.json\"))))'","output":"home/dot_claude/modify_private_settings.json|.claude/worktrees/worker-e/home/dot_claude/modify_private_settings.json|.claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json"}
+  - {"command":"python3 -I -B -c 'import os,pwd,stat; from pathlib import Path; h=Path(pwd.getpwuid(os.getuid()).pw_dir); u=h/\".local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv\"; r=u.resolve(strict=True); print(\"home_matches_passwd=\"+str(Path.home()==h)); print(\"uv_regular=\"+str(stat.S_ISREG(u.lstat().st_mode))); print(\"uv_symlink=\"+str(u.is_symlink())); print(\"uv_under_passwd_install_root=\"+str(r.is_relative_to(h/\".local/share/mise/installs\"))); print(\"uv_declared_equals_realpath=\"+str(u==r)); print(\"trusted_launch_exists=\"+str(Path(\"scripts/orchestrator/trusted-launch.sh\").exists()))'","output":"home_matches_passwd=True\nuv_regular=True\nuv_symlink=False\nuv_under_passwd_install_root=True\nuv_declared_equals_realpath=True\ntrusted_launch_exists=False"}
+  - {"command":"rg -n '^    import yaml|PyYAML is required' scripts/generate-agent-configs.py | paste -sd '|' -","output":"14:    import yaml|34:        fail(\"PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py\")"}
+  - {"command":"sed -n '1294,1298p' scripts/validate-agent-assets.py | paste -sd '|' -","output":"def validate_generated_agent_configs() -> None:|    result = subprocess.run(|        [sys.executable, str(ROOT / \"scripts/generate-agent-configs.py\"), \"--check\"],|        cwd=ROOT,|        text=True,"}
+  - {"command":"/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 \"$HOME/.local/share/mise/installs/python/3.15.0/bin/python3.15\" -I -B scripts/generate-agent-configs.py --check","output":"ERROR: PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py","exit_status":1}
+  - {"command":"claude --version","output":"2.1.300 (Claude Code)","exit_status":0}
+  - {"command":"python3 -I -B -c 'from pathlib import Path; b=(Path.home()/\".local/share/mise/installs/npm-anthropic-ai-claude-code/latest/bin/claude\").read_bytes(); s=b\"Command hooks require `command`. For exec form (no shell)\"; i=b.find(s); print(b[i:b.index(b\"\\0\",i)].decode() if i>=0 else \"missing exec-form help\")'","output":"Command hooks require `command`. For exec form (no shell), set `command` to the executable and `args` to its arguments: {\"type\": \"command\", \"command\": \"echo\", \"args\": [\"hi\"]}. For shell form, set `command` to the full shell string: {\"type\": \"command\", \"command\": \"echo hi\"}.","exit_status":0}
+  - {"command":"web.open https://code.claude.com/docs/en/hooks#exec-form-and-shell-form","output":"Command hook args present selects direct executable spawn without a shell; args omitted selects shell form (sh -c on macOS/Linux). command is the executable path and args is its argument vector. Documented path placeholders include ${CLAUDE_PROJECT_DIR} and are substituted as plain strings."}
+---
+
+# AGMSG-TASK dotfiles-T133-trusted-entrypoint-binding-a01 — bind trusted entrypoints to a parent-selected manifest
+
+Worker: a Codex seat (worktree named at dispatch)
+
+Use the security profile for this Claude-boundary change. D-024-26 split this family from P1-15. Read the last 60 lines of .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md and .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{f810c30,772cde0,e5c055e,5204254}.md.last.md: shebang discovery, Python startup injection, the checker's own execution, shim discovery, the real uv layout and Prettier's node must be handled together.
+
+Read the complete binding acceptance record and these three pre-dispatch reviews:
+
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-faae5f4.md.last.md
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-8f5ac8d.md.last.md
+- .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-e3ae7cd.md.last.md
+
+This is the C-92 fixture-vs-binding re-plan recorded by the acceptance record's `re-plan:` line, not a fourth repair under the predecessor design. Preserve the earlier findings and their dispositions. The new design retains round 3's exec-form hook, quote-preserving comparisons and bound online seed, and replaces its contradictory positive-fixture requirement.
+
+The launcher validates the manifest its trusted parent explicitly names. Production passes the rendered production manifest; tests pass a fixture manifest declaring the runner's real tools. Both use the same manifest parser, exact-path checks, containment checks, version comparisons and command construction. A fixture cannot bypass a check, and a production-only resolver or hard-coded installation gate must not run before the fixture's declared interpreter.
+
+These are two separate task files. This primary task has exactly ten allowed_files entries: eight exact implementation/test paths, one modify-script glob and one evidence wildcard. The glob authorizes only home/dot_claude/modify_private_settings.json and home/dot_claude-worker/modify_private_settings.json, each with its own threat row. An additional match requires a reviewed split. The second file below owns mise pins and the generator assertion; do not combine their front matter or dispatch this task before that prerequisite is accepted.
+
+## Dispatch prerequisites and scope
+
+Accept dotfiles-T133-trusted-entrypoint-pins-a01 before the Python-resolver dependency is dispatched; the historical probe says latest for all three tools. Accept both after dependencies and verify P1-15's deployed protection before sending this task.
+
+The seven existing concrete allowlist paths were on origin/main at the recorded probe. P1-15 creates the worker modify script and ClaudeManagedSettingsTest module. Add scripts/orchestrator/trusted-launch.sh as the only new executable source. Recheck these paths and measurements on the actual dispatch baseline; refresh changed premises through a reviewed, hashed amendment before dispatch, never only in the Checks paste.
+
+The installed a04 resolver remains read-only. Its existing consumers retain its production-pinned contract. For the scoped launcher, this re-plan explicitly replaces the earlier instruction to obtain Python unconditionally from that resolver: resolve and validate the exact Python declaration in the parent-selected manifest, using the same code for production and fixtures. Do not edit the resolver, add PATH discovery to production, or make a fixture satisfy an unrelated host's mise pin.
+
+The root C11 test file was absent at the recorded probe, and the inspected worker-g copy accepted tests/<path>::<identifier> rather than a Class::test payload. The orchestrator must obtain and read the accepted checker/test revision before dispatch, check C1–C10, C7b and C11, and manually re-probe premises. Never execute arbitrary premise shell strings through an unchecked checker.
+
+Each threat-table file row names one file or one allowed wildcard only. This draft makes no closed claims. Any later closed row must name exactly one selector in the form tests/<path>::<Class>::<test>; a module name, free-function selector or prose reference is insufficient.
+
+## Applicable design — C-88 verbatim quotations
+
+`$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md`, section 5.14, is uncommitted design input. The relied-on sentences of items 1, 2 and 9 are quoted verbatim below. The parent-selected manifest contract is this re-plan's explicit scoped replacement for an unconditional production-pinned resolver call.
+
+> The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19).
+>
+> A shell script that runs under a PR-controlled or worker-controlled environment (verdict.sh, the chain glue, CI steps) is executed as a program with `#!/bin/bash -p`, never as `bash <file>`, and only by a trusted parent that supplies the clean environment before the exec: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<passwd home> LANG=C.UTF-8 /bin/bash --noprofile --norc -p <absolute script path> …` (long options before `-p`). Privileged mode discards inherited functions, `BASH_ENV`/`ENV`, `SHELLOPTS`, `BASHOPTS`, `CDPATH` and `GLOBIGNORE`, but on Linux an inherited `LD_PRELOAD`/`LD_AUDIT` already executes while the loader maps `/bin/bash`, before `-p` or any statement runs, so a self re-exec inside the script is not a boundary and re-executing `"$0"` would reopen the caller's pathname (a worker-owned symlink can be swapped between the two executions); the program therefore verifies and refuses instead of repairing: its environment must consist of exactly the allowed names (checked through absolute paths `/usr/bin/env`, `/usr/bin/grep`), `$0` resolved with `realpath` must be a regular file under the repository root, and HOME must equal the passwd home of the real uid (`/usr/bin/dscl . -read /Users/<user> NFSHomeDirectory` on macOS, `/usr/bin/getent passwd <uid>` on Linux), otherwise exit 2 with a named message. A caller-set sentinel variable is not a sanitization proof, because the caller controls it (ci-efficiency a04 and verdict a04 C-80 reviews, 2026-10-19). No script accepts a caller-supplied executable directory; interpreters are the fixed absolute paths item 9 names.
+>
+> One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+
+## Implementation contract
+
+### Declarations and deterministic rendering
+
+Declare production uv 0.13.1 at .local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv, Python 3.15.0 at .local/share/mise/installs/python/3.15.0/bin/python3.15, and node 26.12.0 at .local/share/mise/installs/node/26.12.0/bin/node, relative to the real uid's passwd home. A test compares all three production versions with home/dot_mise/config.toml. No wildcard, version alias, latest, shim, traversal or missing required declaration is accepted. If accepted pins differ from these probes, stop for a re-probed amendment rather than substituting an installed version.
+
+Rendering composes the supplied home and repository bindings with these declarations and validates shape only. It remains deterministic on a host with no installs. Use the same native expansion in both modify-script consumers and the validator renderer, with correct JSON and shell quoting, including homes and repository paths containing spaces.
+
+Render the launcher manifest as data from the source manifest. The fixed production destination is <canonical repository root>/.agents/worklog/trusted-entrypoint-manifest, outside worker-writable roots. It is an operator-provisioned runtime data artifact, not a new tracked source file or an executable under the evidence wildcard. The operator materializes it during deployment preparation before enabling the changed hook. Tests render into their temporary fixture root. Ordinary generation and render-check compare the deterministic rendering without requiring or writing the installed production artifact.
+
+Use one small, documented data grammar that the privileged-shell launcher can parse with fixed absolute system tools before executing any declared uv or Python. Treat every field as literal data: no source, eval, shell expansion, command substitution or declared-interpreter bootstrap. Reject malformed, duplicate, unknown or missing required fields. Declare exact relative paths and exact versions; declarations must not select arbitrary commands. The production manifest also carries the rendered worker-root inventory used by containment checks.
+
+### Parent-selected manifest and shared checks
+
+Every launcher invocation requires exactly one `--manifest <absolute path>` before its operation. There is no implicit manifest, environment-variable replacement or discovery fallback. The only additional root argument is one optional `--fixture-root <absolute directory>`, also supplied by the trusted parent before the operation.
+
+Validate the launcher entry state before reading the manifest. Retain #!/bin/bash -p, English shdoc comments, the exact accepted clean environment, the canonical non-symlinked launcher pathname under its repository root and HOME equality with the real uid's passwd home. Account explicitly for Bash-maintained environment entries. Refuse rather than repairing the environment or self-re-executing.
+
+Resolve the manifest and require a regular, non-symlinked file whose canonical path is under the repository root or, when explicitly supplied, under the canonical fixture root. Reject sibling-prefix lookalikes, path traversal and symlink escapes. A fixture root must be an existing canonical directory; it does not replace passwd HOME, the launcher repository root or the launcher's own entry checks.
+
+Apply the same checks to every declared executable required by the selected operation:
+
+1. Require the exact declared relative path, composed with passwd home for production or the explicitly named fixture root for fixture bindings. Do not accept an arbitrary absolute executable operand, a parent traversal or a different installation chosen by discovery.
+2. Require a regular executable file, reject a symlinked binary or redirected installation component, and require the declared composed pathname to equal the canonical executable pathname.
+3. Reject a `shims` path component before and after resolution.
+4. Reject containment under worker-writable roots, worker caches or temporary roots, including $TMPDIR. The explicitly named fixture root is the sole scoped allowance for fixture files under temporary storage; it does not waive regular-file, symlink, shim, exact-path or version checks. Explicit worker subroots within a fixture remain forbidden.
+5. Complete identity and containment checks before executing that binary, including a --version probe. Compare the reported version exactly with that manifest's declared pin, then use only the verified absolute realpath.
+
+The production manifest pins must match the repository's mise declaration. A fixture manifest instead pins the actual versions of its real fixture tools. Comparing fixture versions with production mise pins, calling the production-only resolver first, or accepting arbitrary runner paths without the shared checks would reproduce the rejected design.
+
+No launcher-side command -v, mise which, newest-version selection, PATH fallback, download or alternative resolver is permitted. Test-harness discovery described below is preparation of trusted fixture input, not launcher discovery.
+
+Refusals exit 2, emit exactly one stderr line `trusted-launch: refused: <code>`, and produce no operation output. Use dirty-environment, script-path, home-mismatch, cache-path, manifest-path, manifest-shape, fixture-root, uv-path, python-path, node-path, version-mismatch or invocation for the corresponding failed check. Version probes may run only after path checks; capture their output for validation rather than leaking it into hook stdout. Preserve underlying operation exit status after successful validation. A negative test must reach and assert its intended reason, rather than passing through an earlier refusal.
+
+### Exec-form hook and migration
+
+The installed Claude Code probe reports 2.1.300. Its embedded hook help and the [exec-form documentation](https://code.claude.com/docs/en/hooks#exec-form-and-shell-form) establish command plus args without an outer shell. Retain that round-3 decision.
+
+The managed PermissionRequest hook uses the following clean prefix, with absolute rendered host bindings and the parent-selected private cache and manifest. Each args element is one argument; paths containing spaces have no embedded shell quotes. CLAUDE_PROJECT_DIR is the documented host-substituted placeholder, and CLAUDE_ENV_FILE is explicitly empty. Do not assume exec form expands arbitrary environment variables.
+
+```json
+{"command":"/usr/bin/env","args":["-i","PATH=/usr/bin:/bin","HOME=<rendered passwd-home>","LANG=C.UTF-8","TERM=dumb","CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}","CLAUDE_ENV_FILE=","UV_CACHE_DIR=<private cache>","/bin/bash","--noprofile","--norc","-p","<abs trusted launch>","--manifest","<abs rendered production manifest>","permission-request"]}
+```
+
+A fixture uses the same form, substituting its rendered manifest operand and inserting `--fixture-root`, `<abs fixture root>` immediately before permission-request. Effective production settings must match the production form exactly and must not contain --fixture-root.
+
+This starts no sh -c, bash -c, eval, command substitution or intermediate wrapper. The launcher constructs the verified uv/Python/permgate argv. Do not fall back to shell form when exec-form support is absent: stop for a reviewed amendment.
+
+Exec form removes the extra outer-shell startup path. The hook host's own process environment and inherited loader inputs while starting /usr/bin/env remain residual until the host supplies a clean environment at exec or the P1-16 OS user boundary exists. Neither env -i, -p nor a launcher check retroactively closes that residual.
+
+Replace the validator's literal permgate-claude substring rule with exact equality of the command string and ordered args array against the complete rendered canonical exec form, including --manifest. Both modify scripts use that same comparison for bound-form classification. Do not join args into a shell string, compare shlex tokens, normalize strings or discard quoting from legacy comparisons.
+
+Refuse absent args, shell-form substitutes, missing, reordered or extra args, an altered manifest operand, production --fixture-root, --script, nonisolated Python, shim paths and shell suffixes. Retain ccgate refusal, hook order, duplicate detection, synchronous timeout budgets and onFailure block.
+
+Classify the legacy managed form separately. Replace stale managed hooks once, preserve custom hooks and converge idempotently. Retain quote-preserving raw-string distinctions for legacy shell fixtures. Keep each surface's P1-15 event inventory; do not import live orchestrator settings or add an event to a surface that lacks it. Run the existing ClaudeSettingsMergeTest legacy/custom fixtures unchanged.
+
+### Scoped entrypoint inventory
+
+The render regression checks exact command/args, executes the hook as [command, *args] with shell=False, and resolves the executable and interpreter operands in actual invocations under PATH=/usr/bin:/bin.
+
+- PermissionRequest: /usr/bin/env with the literal clean-prefix args, /bin/bash --noprofile --norc -p, the canonical launcher, --manifest and optional explicitly named fixture root, then permission-request. After manifest and binary validation the parent execs `<abs uv> run --no-config --no-project --isolated --offline --python <abs python> python -I <abs permgate> claude`, preserving hook stdin, stdout and exit status.
+- Deployment: the same launcher, clean prefix, production manifest and verified uv/Python perform the explicit online seed below. Subsequent checker/generator commands use isolated offline uv/Python with cached --with pyyaml and the same private cache. The checker runs validate-agent-assets.py --check-effective-settings. Its generated-config child re-enters the same parent with the same manifest and runs `<abs uv> run --no-config --no-project --isolated --offline --with pyyaml --python <abs python> python -I <abs generator> --check` from the canonical repository cwd.
+- Fixture subjects: the same launcher with the explicitly named fixture manifest and root, real uv/Python and unchanged permgate bytes, together with the generator, validator and both modify scripts. Every bound Python child uses -I. A child importing yaml uses the same offline --with pyyaml pattern after explicit fixture-cache provisioning.
+- Formatter interpreter check: the same launcher validates the declared node and starts its verified realpath with the probed installed Prettier script. Makefile format PATH includes node's declared bin directory so its env-node shebang resolves.
+
+Only canonical scoped invocations are accepted. PermissionRequest accepts its selector after the required manifest arguments and constructs the fixed command internally. Other scoped operations, including the seed, must match their exact bound argv. Arbitrary executable forwarding, caller-selected executable directories and alternate executable operands are forbidden.
+
+Add --check-effective-settings as an opt-in mode and expose the concrete trusted launch in Makefile. Ordinary validate-agent-assets and render-check stay pure. The opt-in mode reads effective installed settings, requires their exact production wiring and manifest operand, and checks existence, regular/executable identity, canonical protected paths and exact declared versions before operation execution. It consumes checked realpaths without rediscovery. It does not silently create a manifest, provision a cache, install tools or retry online.
+
+### Private cache and explicit online seed
+
+The trusted parent supplies an absolute UV_CACHE_DIR: protected main-checkout .agents/worklog/uv-cache for orchestrator/deploy runs, launcher-supplied <worktree>/.uv-cache for workers, and a temporary cache for tests. Parent and child refuse absent or relative caches; children do not derive defaults.
+
+Retain round 3's bound online-seed decision. The operator's deployment sequence is: make update and deterministic production-manifest preparation, explicit private-cache seed through the trusted parent, then the isolated offline deployment check. The worker does not perform live deployment.
+
+Use this seed command, replacing placeholders with shell-quoted absolute bound operands and using the canonical repository cwd:
+
+```text
+/usr/bin/env -i PATH=/usr/bin:/bin HOME=<rendered passwd-home> LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=<canonical repository root> CLAUDE_ENV_FILE= UV_CACHE_DIR=<private cache> /bin/bash --noprofile --norc -p <abs trusted launch> --manifest <abs rendered production manifest> <abs uv> run --no-config --no-project --isolated --with pyyaml --python <abs python> python -I -c "import yaml"
+```
+
+The parent performs the same entry, manifest, cache, uv and Python checks before the seed as before every other bound operation. It compares executable operands with its verified manifest paths and execs only the exact PyYAML-import argv. Relative to the offline PyYAML form, only --offline is omitted. Retain --no-config, --no-project, --isolated, --with pyyaml, --python <verified abs python> and python -I. The [uv command reference](https://docs.astral.sh/uv/reference/cli/#uv-run) supplies the option semantics.
+
+Record the selected manifest's canonical path and SHA-256, the complete seed command with expanded bound paths, output and actual exit status in validation.md. Carry the seed status and evidence into acceptance. Propagate the seed's exit status. A failed seed blocks later offline deployment commands; none downloads or seeds implicitly.
+
+The checker and its yaml-importing generator child use that same manifest and cache through the parent. Never substitute the resolver's base Python or sys.executable directly for the uv-provided PyYAML environment.
+
+Record the actual positive deployment result from the operator's host after make update and manifest preparation. CI fixture execution does not substitute for that host result.
+
+## Fixture and regression contract
+
+### Real fixture-manifest execution on runners
+
+The harness discovers real uv by inspecting shutil.which("uv"), rejecting a shims component before and after resolution, then searching the actual mise uv install root if needed. Prefer the pinned version's directory when present and use the newest exact installed version only as a harness fallback. Handle the probed platform subdirectory rather than assuming <version>/uv. Resolve sys.executable for real Python and reject shims. Record the discovery result, canonical identities and actual versions.
+
+The harness renders a fixture manifest with exact declarations and versions for those real tools, then supplies that manifest through --manifest and the test's canonical temporary directory through --fixture-root. HOME remains the real uid's passwd home.
+
+The fixture must satisfy exact relative-path composition and containment. If a discovered executable is outside the permitted home/fixture binding, materialize the real executable bytes and the Python runtime support needed for a working installation under the fixture root, using regular files rather than symlink bindings. Verify the copied executable bytes against their discovered sources and verify the staged interpreter actually runs with -I. Copy necessary runtime/stdlib files; do not replace Python with a wrapper or a fake executable. Preserve unchanged real permgate bytes under the fixture root.
+
+The launcher sees only the declared fixture paths, validates them through the production code path and compares their actual versions with the fixture pins. Do not pass a runner's external absolute sys.executable as an unchecked exception, redirect production HOME, disable a check, or force the fixture through the production-only mise resolver.
+
+Execute the rendered hook as [command, *args] with shell=False and a fake PermissionRequest payload. Substitute only the documented host placeholder. Require real uv, real isolated Python and unchanged real permgate, with no wrapper or fake on the positive path. Assert the expected permgate decision, not merely process startup or argv recording.
+
+Plant .pth and usercustomize.py markers in a fake user site and assert neither executes. Include hostile uv.toml, .venv and startup/PYTHON* inputs. Confirm the supplied clean prefix and isolated invocation prevent their consumption without changing real user-site files or installations.
+
+This fixture execution is required on CI runners with setup-uv and their ordinary Python installation; it does not require the production mise installation. There is no fixture-execution skip for missing production pins. Failure to discover or prepare real fixture tools is a failed or blocked check with its exact reason, never green evidence.
+
+### Separate pinned-installation case
+
+Add a separate test of the exact production manifest bindings on a host with the pinned mise installation. It must execute the real bound hook path without substituting fixture pins or accepting a fallback version.
+
+Elsewhere, skip only this pinned-installation test with the named reason `pinned-installation-unavailable`, recording the missing exact installation paths. An existing symlinked, malformed, mismatched or otherwise invalid installation is a refusal/failure, not absence and not a skip. Record every such skip in validation.md and report.md. Obtain the real host result during operator deployment; a runner's required fixture execution remains separate.
+
+### Named regressions
+
+Add or extend these eight regressions in the real existing classes, recording the full selectors and running their unittest dotted equivalents red before implementation and green afterward:
+
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_trusted_entrypoint_manifest_matches_mise
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_every_bound_entrypoint_resolves_with_system_path
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_permission_request_uses_real_isolated_uv
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_permission_request_uses_pinned_installation
+- tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_trusted_entrypoint_consumers_migrate
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_bound_permission_request_structure
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_effective_settings_checks_binary_identity
+- tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_trusted_launch_validates_manifest
+
+The manifest/mise regression checks production declarations, deterministic manifest rendering and exact version equality with the read-only mise declaration. Fixture pins are tested against their actual fixture executables, not against production versions.
+
+The system-PATH regression checks /usr/bin/env as the hook executable, the exact clean assignments before /bin/bash --noprofile --norc -p, the canonical launcher, required manifest operand and operation. Assert shell=False, no outer-shell invocation, and exact fixture-root argument placement when testing the fixture form.
+
+The structure and migration regressions include a hostile CLAUDE_PROJECT_DIR value containing spaces and a -- word, such as `project path -- injected`. Host substitution must preserve one args element. Both bound classifiers compare the exact command string and ordered args array; splitting the value or joining args into a shell string must fail.
+
+Retain the round-2 quoted/unquoted legacy shell fixture pair whose shlex tokens are equal. Refuse both as the active canonical hook and preserve their raw-string distinction during legacy classification. Preserve custom hooks, stale managed-form replacement and repeated-merge idempotence.
+
+The manifest regression exercises the actual launcher with otherwise valid fixture bindings and covers:
+
+- A regular manifest outside both the repository and named fixture root, refused with manifest-path before any declared binary executes.
+- A sibling-prefix or symlink escape outside those roots, also refused with manifest-path.
+- A missing, relative or duplicated --manifest operand, malformed manifest data and an invalid fixture-root operand, with their specific refusal codes.
+- A valid regular fixture manifest under the explicitly named fixture root, proving the same path accepts its declared real uv/Python without the production mise installation.
+
+The binary-identity regression uses that accepted fixture-manifest path to reach the intended binary check. Cover a declaration naming a shim, a symlinked binary pointing to a marker-writing fake uv, and a path under an explicitly forbidden worker-writable root. Assert exit 2, the specific uv-path or python-path refusal and absent marker. A prior manifest, HOME or missing-installation refusal does not cover these cases. Also cover an exact-version mismatch after valid path checks.
+
+In a separate non-skippable seed subcase, place an argument-recording fake uv as a regular executable at the fixture's declared canonical path. Its --version response matches the fixture pin. Execute the actual seed launch through the parent with shell=False and --manifest/--fixture-root. Assert the complete /usr/bin/env -i … /bin/bash --noprofile --norc -p prefix, verified absolute uv/Python operands and the recorded argv:
+
+```text
+run --no-config --no-project --isolated --with pyyaml --python <abs python> python -I -c "import yaml"
+```
+
+The final import is one argument. Assert absence of --offline, the exact clean environment and absolute private UV_CACHE_DIR, and seed exit-status propagation. Missing or relative caches must refuse without executing fake uv. This case uses no network and is evidence of invocation and refusal behavior only.
+
+Also seed a fixture private cache explicitly through the same parent and isolated seed argv with real bound uv/Python, then prove the generator child's exact offline --with pyyaml argv, shared cache and successful yaml import. An isolated base-Python-only child must not satisfy this assertion. Sandbox or network denial is reported as blocked, without an outside-sandbox retry.
+
+The fake-uv refusal and seed-recording subcases are not positive hook or deployment evidence. Structural, migration, manifest-boundary, identity and seed-recording cases never depend on the pinned-installation skip.
+
+Exercise design item 7's hostile PATH, hostile Git environment/configuration, worker-root path and validation-to-consumption replacement cases for the scoped mechanisms, using the common helper when available. Prove no planted payload executes and state the same-UID replacement residual honestly.
+
+No guard/delivery/state-helper descendant migration, permgate policy/source change, dependency, workflow change or worker live deployment is authorized.
+
+## Measurement and caps
+
+Historical touched-function spans are renderer 88, validator 13+33+79+11+26=162 and orchestrator modify 8+12=20 lines. P1-15's inspected worker modify module is 63 lines: 88+162+20+63=333 existing touched lines. The launcher has a zero-line baseline because the probed path is absent: 333+0=333. Existing target test modules total 95+1781=1876 lines.
+
+The P1-15 files are an unmerged worker-e snapshot, not accepted-base measurements. Remeasure on the dispatch baseline and record the actual spans and file totals before implementation.
+
+Production allowance, counted as additions plus deletions, is manifest/template 50 + renderer and manifest serialization 80 + both modify scripts 100 + validator 190 + Makefile 40 + launcher including shared manifest parsing, containment, identity and hook/seed dispatch 160 + margin 10 = 630 changed lines.
+
+Test allowance is real execution/rendering and fixture preparation 260 + migration 100 + validator identities/refusals 220 + pin/shape checks 70 + environment/node cases 90 + pre-exec symlink case 40 + hostile quoting case 20 + yaml-child/cache case 20 + exec-form hook case 10 + online-seed prefix/argv case 30 + manifest-boundary cases 80 + separate pinned-installation case 40 = 980 changed lines.
+
+The re-plan therefore raises the production cap from 500 to 630 and the test cap from 800 to 980 for the explicitly named manifest and fixture work. Runtime manifest data is not an executable helper. Count any tracked runtime configuration as production rather than hiding it in evidence totals. Reports and review evidence are excluded. Do not raise a cap or omit a consumer: stop for another split.
+
+## Check
+
+Run make unit-test, make format, make validate-agent-assets and make render-check, the eight named regressions, and unchanged tests.unit.test_claude_settings_merge, tests.unit.test_generate_agent_configs, tests.unit.test_statusline_tools and tests.unit.test_herdr_agents. Do not run Bats locally.
+
+Record exact commands, statuses, red/green commits, discovered and staged real-tool identities, manifest hashes, fixture results, the named pinned-installation skip or host result, and baseline failures in validation.md. A failed or blocked check is not green. CI must execute the real fixture-manifest hook case without the pinned mise installation; the pinned-installation case has its separate recorded outcome.
+
+Measure git diff --numstat origin/main...HEAD: at most 630 changed lines outside tests/ and .orchestration/, and at most 980 under tests/. Include any production configuration placed elsewhere in the production total.
+
+The orchestrator compares the dispatched copy and TASK SHA-256 and runs the accepted base's regime-ci.py --base <base40> --head <head40> --root <base-checkout> under the trusted Python prefix. Report any unverifiable-copy warning. Check C7b row units and any C11 closed-row selectors explicitly.
+
+Before completion run make require-crit-review with read/resolved local agent evidence and its receipt, then use Playbook step 10 at integration. Neither drafting this text nor passing a fixture authorizes deployment or merging.
+
+## Completion
+
+Current bindings override the historical identifiers, paths, branch/PR and deletion instructions inside the following source quotation: create tools/trusted-entrypoint-binding-a01 and one new PR from the accepted dispatch baseline; all artifacts, PONG ids and task_copy bind to dotfiles-T133-trusted-entrypoint-binding-a01, no predecessor deletion is authorized, and the orchestrator creates dotfiles-T133-trusted-entrypoint-binding-followup-a01 before advisory dispositions. Preserve the full executable-binding finding history, the C-92 fixture-vs-binding re-plan and D-024-26. The source Completion is otherwise verbatim, with the requested advisory-owner substitution.
+
+Report the production and fixture manifest identities separately. Include the real fixture-hook outcome, pinned-installation result or named skip, each manifest/binary refusal, quote-preserving comparison evidence and bound seed evidence. The operator's later deployment result remains a distinct acceptance item; do not claim it from CI.
+
+> Bindings for this new task: create a fresh `tools/loop-limits-a01` branch and one new PR from the dispatched baseline; predecessor head is not applicable. All current artifact paths, task-copy hashes and PONG task ids bind to `dotfiles-T133-loop-limits-a01`. Keep the first push's task copy byte-identical; no predecessor deletion is authorized. The orchestrator creates `dotfiles-T133-trusted-entrypoint-binding-followup-a01` before dispositioning advisory rows. The quotation below preserves the source Completion verbatim except for the requested advisory-owner substitution; its historical PR, branch and predecessor bindings are superseded by this paragraph.
+>
+> One existing PR, #424, on `tools/ci-efficiency-followup-a02`, continuing from `67e2cc98`; the predecessor’s fresh-branch requirement is superseded. Keep its implementation, tests, commits and historical evidence. In the first a04 push delete `.orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md` and add `.orchestration/dotfiles-T133-ci-efficiency-followup-a04/task.md` byte-identically to the dispatched a04 text. That single predecessor-file deletion is the reset transition authorized by C3; do not rewrite or move the predecessor’s other evidence.
+>
+> Write current `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `autoskill.md` and worker review evidence under `.orchestration/dotfiles-T133-ci-efficiency-followup-a04/`. Record the predecessor head, exact final head and base, branch, PR, changed files, row-to-test mapping, red/green commits, cap totals, evidence paths and `task_copy=<sha256 of .orchestration/dotfiles-T133-ci-efficiency-followup-a04/task.md>`. Preserve historical claims as historical; they do not approve the new head.
+>
+> The inherited Completion rules apply with these explicit bindings: advisory P2 and P3 belong to `dotfiles-T133-trusted-entrypoint-binding-followup-a01`, with rows recorded by the orchestrator before disposition. Do not reopen that owner’s advisory work in this task unless a narrow revise explicitly authorizes it.
+>
+> Every fix round counts toward INV-6, including worker-side fixes before the first RESULT; C-61 permits at most two in this task, and amendments and questions retain their own counters. A rebase repair qualifies only under D-024-24 and cannot hide a security fix. Another repeated-class finding or exhausted counter stops work for the orchestrator’s recorded re-plan; do not continue under a new label.
+>
+> A P0/P1 surviving the permitted worker-side fix round is sent as `open:<id>` in the RESULT, including `open:review-<id>` for a review-body finding, with the applicable round count. It stops integration for the operator’s decision; never convert it into an advisory disposition or perform another unauthorized fix round.
+>
+> Wait for final-head CI and the bounded automatic Bot-review window. Record `bot: none` if the window expires. **Do not post `@codex review`**, at the ten-minute mark or after a fix. The orchestrator replies to and resolves GitHub review threads.
+>
+> Every `gh` command and every `git` write is an individual command **inside the sandbox**, including pushes and authenticated fetches. No compound write commands, outside-sandbox retries, excluded-command workaround, permission escalation or alternate tool to bypass a denial. Anything that cannot complete there produces `AGMSG-PONG v1 task_id=dotfiles-T133-ci-efficiency-followup-a04 status=blocked` naming the exact command, failure and crossed boundary; preserve the evidence and wait.
+>
+> The orchestrator performs final-head review and the security-profile review, then follows Orchestrator Playbook step 10 for CI, feedback sweep, task-level audit, finding dispositions, acceptance, gate and head-bound merge. The worker does not merge or remove workers.
+>
+> Implementation, runtime tests and CI are not claimed checked by this task draft; dispatch remains held on the stated prerequisites. Same-UID replacement and shared-credential risks remain residual.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+(pasted at dispatch)
+Not checked: implementation, runtime tests, CI, live dispatch or operator-host deployment.
+Risk: pending prerequisites, same-UID replacement, shared credentials and inherited descendant bindings remain residual.
+```
+
+---
+format: 2
+task_id: dotfiles-T133-trusted-entrypoint-pins-a01
+kind: code
+security: true
+allowed_files: ["home/dot_mise/config.toml","tests/unit/test_generate_agent_configs.py",".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/**"]
+after: []
+threat_table:
+  - {"control":"home/dot_mise/config.toml","disposition":"residual: Pin only uv, Python and node to the primary task's probed versions; this intentionally stops their latest-version tracking."}
+  - {"control":"tests/unit/test_generate_agent_configs.py","disposition":"residual: Keep an exact source-manifest/rendered-command equality check and executable leaf/argument checks, plus explicit pin assertions; do not delete legacy fixture coverage."}
+  - {"control":".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/**","disposition":"residual: Only task copy and review/validation/report data are authorized; no helper or runtime code is placed here."}
+  - {"control":"task copy .orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task.md","disposition":"residual: The orchestrator compares the full dispatched bytes and SHA-256 before accepting this prerequisite."}
+  - {"control":"task metadata","disposition":"residual: This is an independent three-entry prerequisite task; it grants no write permission for the later binding implementation."}
+  - {"control":"metadata separators","disposition":"residual: Parse as data with duplicate keys refused and compare the complete dispatched task copy."}
+  - {"control":"in-process effects","disposition":"residual: Tests and fixture renders use temporary directories; no mise install, update, apply or live hook execution is authorized."}
+  - {"control":"workflow and interpreter or environment inputs","disposition":"residual: The exact declaration is changed intentionally; trusted-entrypoint implementation remains in the primary task."}
+  - {"control":"new or renamed scripts","disposition":"residual: None is authorized; retain existing generator and test helpers."}
+  - {"control":"orchestrator effect merge","disposition":"residual: The orchestrator alone integrates after full final-head evidence and Playbook step 10."}
+  - {"control":"orchestrator effect update-branch","disposition":"residual: A moved head requires refreshed checks and integration evidence under the orchestrator's control."}
+  - {"control":"orchestrator effect forced worker removal","disposition":"residual: None is planned; the worker cannot remove seats or discard another worktree."}
+  - {"control":"design 5.14 item 0 same-UID model","disposition":"residual: Exact pins do not separate OS identities or shared GitHub credentials."}
+  - {"control":"design 5.14 item 1 protected inputs","disposition":"residual: The exact declaration becomes a trusted input; worker write protection remains pending until P1-15 is accepted and deployed."}
+  - {"control":"design 5.14 item 2 clean environment","disposition":"residual: No new production execution path is introduced; inherited check launch trust is not established by a pin."}
+  - {"control":"design 5.14 item 3 paths","disposition":"residual: The declaration path is fixed and unchanged; installation path validation belongs to the resolver and primary task."}
+  - {"control":"design 5.14 item 4 verified bytes","disposition":"residual: Whole-task and final-head evidence are compared; local files remain replaceable by unrestricted same-UID processes."}
+  - {"control":"design 5.14 item 5 identity","disposition":"residual: Use full head/base and task-copy SHA-256 in evidence; no new lock or reservation is created."}
+  - {"control":"design 5.14 item 6 honest residuals","disposition":"residual: Pin assertions prove declarations only, not installed binary identity or successful hook execution."}
+  - {"control":"design 5.14 item 7 verification","disposition":"residual: Run the pin regression red then green and retain generator/merge consumers; general hostile-execution closure is not claimed."}
+  - {"control":"design 5.14 item 8 approval","disposition":"residual: Pins and local evidence are proposals until integration; neither grants permission or merge authority."}
+  - {"control":"design 5.14 item 9 isolation","disposition":"residual: This task supplies exact version input only; the accepted resolver and primary task implement isolated execution and private caches."}
+  - {"control":"design 5.14 item 10 sandbox","disposition":"residual: All commands stay in the sandbox; denied commands produce blocked evidence without escalation."}
+premises:
+  - {"command":"grep -nE '^(uv|python|node) = ' home/dot_mise/config.toml | paste -sd '|' -","output":"3:node = \"latest\"|5:python = \"latest\"|17:uv = \"latest\""}
+  - {"command":"git ls-tree -r --name-only origin/main -- home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | paste -sd '|' -","output":"home/dot_mise/config.toml|tests/unit/test_generate_agent_configs.py"}
+  - {"command":"wc -l .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py tests/unit/test_validate_agent_assets.py home/dot_mise/config.toml tests/unit/test_generate_agent_configs.py | xargs","output":"63 .claude/worktrees/worker-e/home/dot_claude-worker/modify_private_settings.json 95 .claude/worktrees/worker-e/tests/unit/test_claude_managed_settings.py 1781 tests/unit/test_validate_agent_assets.py 79 home/dot_mise/config.toml 2350 tests/unit/test_generate_agent_configs.py 4368 total"}
+  - {"command":"grep -nE '^    def test_managed_hooks_use_installed_permgate_paths' tests/unit/test_generate_agent_configs.py | paste -sd '|' -","output":"1417:    def test_managed_hooks_use_installed_permgate_paths(self) -> None:"}
+  - {"command":"sed -n '1417,1422p' tests/unit/test_generate_agent_configs.py | wc -l | xargs","output":"6"}
+---
+
+# AGMSG-TASK dotfiles-T133-trusted-entrypoint-pins-a01 — prerequisite split for exact tool pins
+
+Worker: a Codex seat (worktree named at dispatch)
+
+This is the second, separate task file, with exactly three allowed_files entries. Accept it before dispatching ci-efficiency-followup-a04 or the primary binding task. The primary task above contains the shared host probes and C-88 quotations; these bind the version choices here and do not authorize the primary implementation in this prerequisite.
+
+Pin uv=0.13.1, python=3.15.0 and node=26.12.0 in home/dot_mise/config.toml, replacing only those latest values. Add one English comment explaining the trusted-entrypoint pins; preserve every other tool and setting. Do not install or apply anything.
+
+In GenerateAgentConfigsTest add test_trusted_entrypoint_mise_versions_are_exact, red before the config change and green afterward. Refactor test_managed_hooks_use_installed_permgate_paths to compare the complete rendered PermissionRequest command with the real manifest declaration rendered through the existing template helper; retain exactly one managed entry, permgate executable-leaf/claude-argument checks and the Codex assertion. Keep synthetic legacy-command fixtures. The primary task adds strict bound-sequence and parent-selected-manifest validation.
+
+Measured declaration: 79 lines; touched existing test: 6 lines at 1417–1422 in a 2350-line module. Source allowance is 3 additions+3 deletions+1 reason comment+1 margin=8 lines; fixture/assertion work 60+margin 20=80 test lines. Enforce these separate caps with git diff --numstat origin/main...HEAD; evidence is excluded, executable source is not.
+
+Check: make unit-test, make format, make validate-agent-assets, make render-check, tests.unit.test_generate_agent_configs and the new pin regression. Do not run Bats locally. Use the primary task's accepted-checker and regime-copy checks for this task's own id/copy; report blocked or baseline-failing checks honestly.
+
+Completion: create tools/trusted-entrypoint-pins-a01 and one PR; write task.md, report.md, validation.md, sandbox.md, learning.md, autoskill.md and worker review evidence under .orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/. The primary task's quoted Completion round, sandbox, CI/Bot and integration rules apply with this task's own identifiers; no predecessor deletion is authorized. Advisory owner is dotfiles-T133-trusted-entrypoint-binding-followup-a01, created before disposition. Only the orchestrator integrates; no deployment is claimed.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+(pasted at dispatch)
+Not checked: implementation, runtime tests, CI or deployment.
+Risk: the primary binding work and same-UID/shared-credential residuals remain.
+```
+
+## Orchestrator note (2026-10-21T08:31Z): the pins test moves with the command form
+
+The pins PR (#449, head 28dde0f5) refactored `test_managed_hooks_use_installed_permgate_paths` to split the rendered PermissionRequest command with `rsplit(" ", 1)` and assert the permgate executable leaf and the `claude` argument; that assertion encodes the pre-binding shell form and raises ValueError on this task's `command: "/usr/bin/env"` plus `args` form (audit:28dde0f:1 of the pins lineage). `tests/unit/test_generate_agent_configs.py` is therefore in this task's allowed_files: the worker updates that test together with the command form, asserting the executable leaf and the `permission-request` operand from `args` instead of a split string, and keeps the exact-pins test green. Its former out_of_scope row read: "dotfiles-T133-trusted-entrypoint-pins-a01 removes the installed-template legacy literal pin without relaxing synthetic legacy migration cases"; that constraint still holds (the synthetic legacy migration cases stay unrelaxed), only the ownership of the file moved here.
+
+ succeeded in 324ms:
+.orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md
+.orchestration/decisions.tsv
+
+**Optimizing output size**
+codex
+文面は、同一 UID による差し替えを残余リスクとして明記し、trusted parent 未配備の間は認証付き実行を止めています。既知の残余そのものを再指摘せず、その停止条件やテストが実際の子プロセスまで及ぶかを、過去の拒否理由と照合しています。
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-3bf2a79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a01-text-security-6486b79.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:39` — Deferring parent/interpreter binding supplies no compensating control: retained mise/PATH-selected processes execute before the proposed `gh` checks and can replace their decisions or capture credentials; cleaning only the child environment cannot establish the claimed consumer binding, especially outside Linux’s sandbox.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — The environment allowlist omits a control and test for `gh`’s configuration-file inputs: default home configuration can select `http_unix_socket`, changing the actual transport despite a pinned executable and explicit hostname; require a protected, controlled configuration source. [GitHub CLI configuration](https://cli.github.com/manual/gh_config), [configuration discovery](https://cli.github.com/manual/gh_help_environment).
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:38` — The named child-environment test cannot close in-process effects: the reused chain/regime fixtures inherit `GIT_*` into Git writes, allowing `GIT_DIR`/`GIT_WORK_TREE` to redirect operations outside their temporary repositories and `GIT_CONFIG_*` to inject configuration. [Git environment](https://git-scm.com/docs/git), [configuration overrides](https://git-scm.com/docs/git-config).
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:80` — Allowing an identity refusal to satisfy each decoy test does not prove successful consumer binding; require a positive authenticated-operation fixture per route, alongside refusal cases, to prevent an always-refusing implementation from satisfying the binding evidence.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:105` — The stated baseline is inaccurate: `chain-finish.sh` is absent from this checkout and local `origin/main`, and neither Python checker contains the claimed `gh` lookup; with creation forbidden and `after: []`, the six-route implementation requires the reviewed amendment this line prescribes.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:110` — `Checks` is empty despite requiring populated measurements before C-80; these bytes provide no observed canonical-source, installation or interpreter-binding evidence, and approval cannot cover a later paste.
+
+📝 まとめ: Reviewed all 37 threat rows and cited acceptance/review history; findings remain input for the orchestrator. No files changed.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-user replacement and credential-sharing risks remain.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — Forbidding descendant edits and wrappers prevents the promised fixed-repository binding: `scripts/require-crit-review.py:519` removes `GH_REPO`, then discovers the repository from local Git context and passes that result to `gh pr view`; `scripts/pr-feedback.py:84` also omits `--hostname`. A pinned executable does not bind these decisions to `github.com/mryfmo/dotfiles`; authorize the descendant changes and test hostile repository configuration through the real gate. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:83` — Applying item 9 to every descendant conflicts with the excluded gate’s collector launch at `scripts/require-crit-review.py:615`, which starts `[sys.executable, collector, …]` without `-I`; the parent’s isolation flags do not propagate, and `PYTHONSAFEPATH` alone does not disable user-site startup code. Authorize this launch change and require a real-descendant startup-hook test before claiming the isolation contract is satisfied. [Python isolation options](https://docs.python.org/3/using/cmdline.html#cmdoption-I)
+
+📝 まとめ: Reviewed all 37 threat rows, existing consumer paths, and cited acceptance/review history. Two findings remain for orchestrator disposition; no files changed.
+
+Not checked: future implementation, CI, or live Linux/race behavior; same-user replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrectNo findings in the 41 threat rows. Items 6–7 address the previous descendant repository-binding and Python-isolation findings; the referenced contract covers resolved paths, replacement risks and Git environment controls.
+
+This assesses the design only. Dispatch remains blocked pending populated Checks, expanded residual ownership and measured host protections.
+
+📝 まとめ: Completed the read-only task and cited-history review; no files changed.
+
+Not checked: implementation, CI or live Linux execution; same-UID replacement and credential separation remain explicit residual risks.
+Verdict: correct
+exec
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md; cat .orchestration/acceptance/dotfiles-T133-regime-ci-followup-a02.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+---
+format: 2
+task_id: dotfiles-T133-gh-binding-followup-a01
+kind: code
+security: true
+dispatch_status: draft-owner-stub
+allowed_files:
+  - home/dot_agents/agent-config.yaml
+  - scripts/validate-agent-assets.py
+  - .orchestration/dotfiles-T133-gh-binding-followup-a01/**
+after: [dotfiles-T133-gh-binding-a02]
+---
+
+# AGMSG-TASK dotfiles-T133-gh-binding-followup-a01 — owner of the gh-binding-a01 residual rows (owner stub)
+
+Owner stub written 2026-10-21T22:59Z by the orchestrator seat (C-51); expanded 2026-10-22T01:10Z before the C-80/anchor of the reset text `dotfiles-T133-gh-binding-a02` (sha256 0ecdc07c05c377f9793965aa43a324e23b95808afcd53658c0d7b66790a516d8 after the Checks paste; the a01 text was withdrawn at its S-R5 stop, C-80 rounds 3bf2a79 and 6486b79). Never dispatched as a stub; its dispatch text is authored after a02 merges.
+
+## Owned rows (the residual rows of the a02 threat table that name this task)
+
+1. `tests/unit/test_*.py`: evidence-integrity automation for the four test modules a02 edits (independent inspection of assertions and red/green logs).
+2. `.orchestration/dotfiles-T133-gh-binding-a02/**` including task.md: evidence automation (anchored bytes, task-copy digest, literal full head compared against the independently authenticated PR head).
+3. task metadata: dispatch automation (reviewed inventory and populated Checks compared with the complete anchored task before dispatch).
+4. metadata separators: byte-integrity automation (front matter, separators and Checks compared, no paste after anchor).
+5. new or renamed scripts and the three future gh routes: adoption of the declared gh by the absent `scripts/orchestrator/chain-finish.sh` (PR #378 lineage) and by the two Python checkers `scripts/orchestrator/regime-ci.py` and `scripts/orchestrator/task-consistency-check.py` when they gain canonical gh reads; each route needs its own positive authenticated fixture with a synthetic credential, the fixed host and repository, and descendant coverage; a02 creates no consumer there.
+6. remaining git/date/mise executable provenance: permanent binding of the remaining tools (today their resolver algorithms run only inside the measured parent namespace, token-free).
+7. orchestrator effect merge: integration follow-through (only the orchestrator integrates the exact audited head through Playbook step 10).
+8. orchestrator effect update-branch: evidence refresh (CI, feedback, audit, acceptance and gate rerun for every changed head).
+9. orchestrator effect forced worker removal: teardown records (none planned; no dirty state discarded without separate authorization).
+10. orchestrator effect owner-stub amendment: every residual assigned here; the orchestrator expands this stub before anchor, outside worker scope (this expansion).
+11. orchestrator effect canonical measurements: measurement automation (gh-free private-clone evidence and trusted-parent observations before a fresh review of the complete populated text).
+12. orchestrator effect installation and deployment: deployment follow-through (the pinned install, the protected configuration and real authenticated consumer probes verified separately, under the measured parent, before authenticated acceptance reads are enabled).
+13. design 5.14 item 0: the unchanged same-UID and credential-separation residual.
+14. design 5.14 item 1: host protection evidence for the declaration, binary, configuration source and parent namespace before authenticated use.
+15. design 5.14 item 5, 16. item 6, 17. item 7, 18. item 8, 19. item 10: the items a02 applies by reference and does not close; each gets its own row and fixture when this task is authored, never a blanket claim.
+
+Dependency: this task starts after `dotfiles-T133-gh-binding-a02` merges (`after:` above). The parent binding of uv/Python/Node and the launcher stays with `dotfiles-T133-trusted-entrypoint-binding-a01` (design 5.14 items 2 and 9), not here.
+
+## Checks (pasted by the orchestrator before each send)
+
+```text
+(empty until the dispatch text is authored)
+```
+# Acceptance: dotfiles-T133-regime-ci-followup-a02
+
+Dispatch text of the owner stub (2026-10-19) authored by author-loop on 2026-10-21T22:54Z from `brief-regime-ci-followup-a02.md` (D-024-67: fix the regime verifier's three gaps and set UV_CACHE_DIR for its step; essential remedy for the regime refusals of 2026-10-21). Security: true.
+
+- Round 1 `…-text-security-a232baf.md`: Verdict incorrect, six findings. Round 2 `…-text-security-a18a67d.md`: Verdict incorrect, six findings; the loop stopped (exit 7). Round 2: P1 the bindings cover uv/Python/Git but not gh, whose responses authenticate the verifier's reads (the executable-provenance wall, as a07); P1 merge-driver configuration uncontrolled in the patch-id recomputation (fixable: isolated git config and a hostile-driver regression); P1 empty Checks (pasted before review, as every text); P2 the workflow row's closed claim too broad; P2 cache-refusal ownership circular between a07 and this task (fix: this task takes the checker file into allowed_files and owns the restoration); P2 the followup-a03 owner stub missing (created 2026-10-21T22:54Z).
+
+text-security:a232baf:1	executable-provenance
+text-security:a18a67d:1	executable-provenance
+text-security:a18a67d:2	merge-driver-isolation
+text-security:a18a67d:3	checks-omission
+text-security:a18a67d:4	closed-claim-scope
+text-security:a18a67d:5	ownership-circular
+text-security:a18a67d:6	owner-stub-missing
+
+Decision pending (2026-10-21T22:54Z): the gh-provenance P1 is the same wall that holds a07 (D-024-65); two lineages now wait on the gh binding, so the orchestrator escalates whether to pull `dotfiles-T133-gh-binding-a01` (and the trusted-entrypoint binding) ahead of slices 2-5.
+- 2026-10-21T22:58Z: D-024-69: the operator ruled for the essential remedy; gh-binding-a01 goes first; this text's C-80 resumes after that binding merges (its fixable findings 2-6 are folded into the amendment then).
+
+
+**Assessing Git command inconsistencies**
+exec
+/bin/zsh -lc "sed -n '114,118p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-a3125e1.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a18a67d.md.last.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-trusted-entrypoint-pins-a01.md .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-0ecdc07.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "rg -n 'resolve|mise|GH_|PATH=|env -i|require-crit|pr-feedback|python|git ' scripts/orchestrator/chain-integrate.sh scripts/orchestrator/orch-gate.sh scripts/orchestrator/local-review.sh" in ~/Workspace/dotfiles
+
+ succeeded in 228ms:
+---
+{
+  "format": 1,
+  "task": "dotfiles-T133-trusted-entrypoint-pins-a01",
+  "head": "28dde0f5933abee4355892401a13be9c05054326",
+  "pr": 449,
+  "ledger": [
+    {
+      "id": "audit:28dde0f:1",
+      "class": "successor-scope"
+    },
+    {
+      "id": "audit:28dde0f:2",
+      "class": "checks-omission"
+    }
+  ],
+  "searches": [],
+  "audit_findings": [
+    {
+      "n": "1",
+      "reason": "the pins assertion encodes the pre-binding shell form correctly; the successor binding task's allowed_files now include tests/unit/test_generate_agent_configs.py and its note moves the assertion with the command form",
+      "evidence": "awk '/^allowed_files:/' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | grep -c test_generate_agent_configs"
+    },
+    {
+      "n": "2",
+      "reason": "orchestration finding corrected in this record: the pre-dispatch checks the text requires were run post hoc with pasted output (pre-send OK, premise re-probe at e042663b, origin/main and 28dde0f5), the wrong \"no premises\" statement is withdrawn, and send-task.sh refuses an empty Checks block from now on",
+      "evidence": "bash .agents/worklog/orchestrator-glue/pre-send.sh .orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md"
+    }
+  ]
+}
+---
+
+# Acceptance record: dotfiles-T133-trusted-entrypoint-pins-a01
+
+The separate pins task extracted from `dotfiles-T133-trusted-entrypoint-binding-a01` lines 398-417 (re-plan v2 R2-15a, r2 finding 11): pin uv 0.13.1, python 3.15.0, node 26.12.0 in `home/dot_mise/config.toml`; pins -> resolver -> binding. Seat: codex-standard-dot-a012 (worker-g).
+
+- 2026-10-21T02:00Z: text authored by author-loop.sh from `brief-pins-a01.md` (99 lines, 3 allowed_files); C-80 round 1 (`…-text-security-0908b8f.md`) correct.
+- 2026-10-21T02:04Z: dispatched (TASK 2926, sha 0908b8f4); paste-checks.sh failed on this text (no premise block), so the Checks block stayed empty. Held at 02:09Z over the allowed-file overlap with PR #448 (M-20261021-03); worktree collision reconciled (02:40Z); resumed 03:59Z after #448 merged.
+- 2026-10-21T04:12Z: PONG 2953 status=blocked: the independent pre-push review found a P1: `tests/unit/test_supply_chain_policy.py:374-387` holds a map of pinnable tools and requires every other tool to be `latest` and a reason comment above each held line; node and uv are not in the map, so the pins fail that test, and the file is outside the text's three allowed_files. The text omitted the test (orchestrator brief defect). Amendment 1 (brief v2): allowed_files + that test, held entries for node and uv, reason comments, caps 16/48.
+
+text-security:0908b8f:0	correct
+worker:e042663:1	brief-omitted-consumer-test
+- 2026-10-21T04:27Z: amendment 1 authored by author-loop.sh from `brief-pins-a01-v2.md` (109 lines, 4 allowed_files incl. tests/unit/test_supply_chain_policy.py; held entries for node and uv; reason comments; caps 16/48); C-80 round 2 (`…-text-security-70feed4.md`) correct; sent to a012 as amendment 1 at 2026-10-21T04:28Z (TASK 2955; send-task.sh refused the first line for the missing previous_task_sha256 token, C-121, and accepted it with the token 0908b8f4).
+
+text-security:70feed4:0	correct
+- 2026-10-21T08:14Z: defect sweep S1: this text was dispatched (amendment 1, sha 70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc) with an empty `## Checks (pasted by the orchestrator before each send)` block; the text defines no premise block for the paste (paste-checks.sh found none), so the heading is a template remainder, not an omitted measurement. Recorded here before the audit so the row, if raised, is dispositioned as an orchestrator text-shape defect: the dispatch facts were origin/main e042663b at dispatch (TASK line), the held-map conflict on tests/unit/test_supply_chain_policy.py resolved by amendment 1, and the worker's RESULT 2962 head 1f17d05f (update-branched to 28dde0f5 on 2026-10-21 08:06Z). send-task.sh now refuses an empty Checks block without `checks=none`.
+
+## Final head 28dde0f5 (update-branch of 1f17d05f after boundary 27; PR patch unchanged): chain 2026-10-21T08:32Z
+
+Chain (operator-run): CI 7 required green, GitGuardian "No secrets detected", local review 0 findings, sweep 5/5 (gaps 0), record block written. Task-level audit `…-audit-28dde0f.md.last.md`: **Verdict: incorrect**, one specification P1 and one orchestration P2; both dispositioned below (neither changes the PR's bytes), the security review of 28dde0f5 follows, then gate and merge.
+
+audit:28dde0f:1	successor-scope
+audit:28dde0f:2	checks-omission
+
+Row 1 (P1, specification, task line 58): the refactored `test_managed_hooks_use_installed_permgate_paths` (tests/unit/test_generate_agent_configs.py:1476) splits the rendered PermissionRequest command with `rsplit(" ", 1)`, which encodes the pre-binding shell form; the binding task's `command: "/usr/bin/env"` plus `args` form (binding text line 181) would raise ValueError, and the binding text excluded this test file. The pins assertion is correct for the state the PR creates; the defect is the successor's scope. Fixed outside the PR: the undispatched binding text now lists `tests/unit/test_generate_agent_configs.py` in allowed_files, its exclusion row is amended, and an orchestrator note tells the worker to move the assertion to the `args` form together with the command (binding text sha ebc62361… before this note's final hash; re-hashed at dispatch).
+Row 2 (P2, orchestration, this record's S1 note): the orchestrator's earlier statement that the text "defines no premise block" was wrong; the text has a `premises` entry (line 33 area: `rg -n '^(uv|python|node) = ' home/dot_mise/config.toml`) and line 96 requires C1-C10, C7b, C11 and the regime-copy checks before dispatch and acceptance, re-probing premises manually. Those checks were not run before the amendment-1 send (the omission is the orchestrator's); run post hoc 2026-10-21T08:32Z: `pre-send.sh` on the dispatched bytes -> `OK`, `secret-pattern: 0 match(es)`, `lines: 109`, sha 70feed41…; premise re-probe at the dispatch base e042663b and at origin/main e00de4e0: `3:node = "latest"`, `6:python = "3.15.0"`, `18:uv = "latest"`; at the head 28dde0f5: `4:node = "26.12.0"`, `7:python = "3.15.0"`, `20:uv = "0.13.1"`. send-task.sh now refuses an empty Checks block (C-130/S1).
+
+audit-finding: 28dde0f:1 not-applicable:the pins assertion encodes the pre-binding shell form correctly; the successor binding task's allowed_files now include tests/unit/test_generate_agent_configs.py and its note moves the assertion with the command form; evidence=awk '/^allowed_files:/' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | grep -c test_generate_agent_configs
+audit-finding: 28dde0f:2 not-applicable:orchestration finding corrected in this record: the pre-dispatch checks the text requires were run post hoc with pasted output (pre-send OK, premise re-probe at e042663b, origin/main and 28dde0f5), the wrong "no premises" statement is withdrawn, and send-task.sh refuses an empty Checks block from now on; evidence=bash .agents/worklog/orchestrator-glue/pre-send.sh .orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md
+- 2026-10-21T08:34Z: binding text after the row-1 fix: allowed_files + threat row for tests/unit/test_generate_agent_configs.py, the out_of_scope row removed (its constraint kept in the note), task-consistency-check OK, sha d9b396b076fe4eed95d13ca02e05b6b1272ddfc9551b0df034467fccc0840bd4 (undispatched; re-hashed at dispatch). The binding file still carries an appended pins draft after its own text (a second `format: 2` block from the joint authoring); it is dropped when the binding text is authored for dispatch (sweep S6).
+- 2026-10-21T09:14Z: security review of 28dde0f5 `…-security-28dde0f.md.last.md` Verdict correct (25 threat rows checked, no findings). Counters before the gate (C-126, sqlite): TASKs|2 ACCEPT-amend|0 ACCEPT-revise|0 RESULTs|1 PONG-question|0 (amendment 1 = TASKs 2; S2 not reached). finish-pr.sh runs the sweep, the record block, the gate and the merge bound to 28dde0f5.
+- 2026-10-21T09:47Z: owner declaration for the records boundary: the residual rows of this lineage named above are owned by dotfiles-T133-trusted-entrypoint-descendants-followup-a01 (owner stub under .orchestration/tasks/).
+
+---
+{
+  "audit_findings": [],
+  "dispatch": [
+    "AGMSG-TASK v1 task_id=dotfiles-T133-task-generator-plan-check-a06-checker round=1 reset_of=dotfiles-T133-task-generator-plan-check-a05-checker repo=~/Workspace/dotfiles/.claude/worktrees/worker-g task_file=.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md task_sha256=90ca0ae9563df4b352dfb26c6b6aa60132386e15ce9ff50bcf998a43097a12e6 deadline=none done_signal=AGMSG-RESULT note=a012:reset-a06(D-024-39:measured-cap-440/700-for-the-canonical-path-pipeline-re-plan;your-uncommitted-draft-is-this-round's-content,plus-amendment-1's-identity-aware-matching-and-path-collision-refusal-with-the-two-file-regression;C-80-73ac933-correct;PR-440-continues-from-06ffefbc;add-the-a06-task-copy-and-records,keep-the-a05-copy;commit-locally-and-PONG-the-head-for-transport;pre-send:checker-OK,SECRET_PATTERN-0,home-paths-0)"
+  ],
+  "format": 1,
+  "head": "c439b63c65285ec8180dc3e21394c87ef21115b4",
+  "ledger": [
+    {
+      "class": "excluded-command-trusts-sandbox-context",
+      "id": "audit:1368f71:401"
+    },
+    {
+      "class": "excluded-command-trusts-sandbox-context",
+      "id": "audit:1368f71:402"
+    },
+    {
+      "class": "sources",
+      "id": "audit:1368f71:403"
+    },
+    {
+      "class": "hash-binding",
+      "id": "audit:1368f71:404"
+    },
+    {
+      "class": "glob-matches-its-negation",
+      "id": "audit:1368f71:405"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:d0ad49f:201"
+    },
+    {
+      "class": "unmasked-evidence",
+      "id": "audit:24d7f55:201"
+    },
+    {
+      "class": "evidence-integrity",
+      "id": "audit:9da0ed3:1"
+    },
+    {
+      "class": "threat-row-stale",
+      "id": "audit:9da0ed3:2"
+    },
+    {
+      "class": "replan-not-patch",
+      "id": "audit:9da0ed3:3"
+    },
+    {
+      "class": "dispatch-wiring",
+      "id": "audit:9da0ed3:4"
+    },
+    {
+      "class": "spec-gap",
+      "id": "audit:9da0ed3:5"
+    },
+    {
+      "class": "glob-classification",
+      "id": "audit:9da0ed3:6"
+    },
+    {
+      "class": "glob-intersection",
+      "id": "audit:9da0ed3:7"
+    },
+    {
+      "class": "substring-selection",
+      "id": "audit:9da0ed3:8"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:9da0ed3:9"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:9da0ed3:10"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:9da0ed3:11"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:9da0ed3:12"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:9da0ed3:13"
+    },
+    {
+      "class": "regex-gap",
+      "id": "audit:9da0ed3:14"
+    },
+    {
+      "class": "records-form",
+      "id": "audit:9da0ed3:15"
+    },
+    {
+      "class": "spec-gap",
+      "id": "audit:8a09b93:1"
+    },
+    {
+      "class": "glob-classification",
+      "id": "audit:8a09b93:2"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:8a09b93:3"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:8a09b93:4"
+    },
+    {
+      "class": "glob-classification",
+      "id": "audit:8a09b93:5"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:8a09b93:6"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:8a09b93:7"
+    },
+    {
+      "class": "parser-gap",
+      "id": "audit:8a09b93:8"
+    },
+    {
+      "class": "test-coverage",
+      "id": "audit:8a09b93:9"
+    },
+    {
+      "class": "selector-grammar",
+      "id": "audit:8a09b93:10"
+    },
+    {
+      "class": "evidence-integrity",
+      "id": "audit:8a09b93:11"
+    },
+    {
+      "class": "records-form",
+      "id": "audit:8a09b93:12"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "audit:7a201ea:1"
+    },
+    {
+      "class": "unlanded-mechanism-stated-as-present",
+      "id": "audit:7a201ea:2"
+    },
+    {
+      "class": "checker-exit-unchecked",
+      "id": "audit:7a201ea:3"
+    },
+    {
+      "class": "tool-environment",
+      "id": "audit:7a201ea:4"
+    },
+    {
+      "class": "happy-path-closing-test",
+      "id": "audit:7a201ea:5"
+    },
+    {
+      "class": "glob-classification",
+      "id": "audit:7a201ea:6"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:7a201ea:7"
+    },
+    {
+      "class": "spec-without-input-grammar",
+      "id": "audit:7a201ea:8"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:7a201ea:9"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:7a201ea:10"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:7a201ea:11"
+    },
+    {
+      "class": "happy-path-closing-test",
+      "id": "audit:7a201ea:12"
+    },
+    {
+      "class": "acceptance-dispositions",
+      "id": "audit:7a201ea:13"
+    },
+    {
+      "class": "replan-skipped",
+      "id": "audit:7a201ea:14"
+    },
+    {
+      "class": "evidence-dropped",
+      "id": "audit:7a201ea:15"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:cedc7f5:301"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:cedc7f5:302"
+    },
+    {
+      "class": "count-grammar",
+      "id": "audit:cedc7f5:303"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:06ffefb:301"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:06ffefb:302"
+    },
+    {
+      "class": "cap-without-room",
+      "id": "audit:06ffefb:201"
+    },
+    {
+      "class": "environment-contract",
+      "id": "audit:b8bf806:101"
+    },
+    {
+      "class": "platform-dependent-detection",
+      "id": "audit:b8bf806:102"
+    },
+    {
+      "class": "evidence-integrity",
+      "id": "audit:b8bf806:201"
+    },
+    {
+      "class": "approval-binding",
+      "id": "audit:b8bf806:301"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:4a49ed9:401"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:5c09a95:201"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:5c09a95:202"
+    },
+    {
+      "class": "cap-without-room",
+      "id": "audit:5c09a95:203"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:1779440:201"
+    },
+    {
+      "class": "caller-dependency",
+      "id": "audit:21f52c7:501"
+    }
+  ],
+  "pr": 440,
+  "replans": {
+    "evidence-integrity": {
+      "design": "the worker's validation.md carries a `Base:`/`Candidate:` line pair and a named extra set, and the orchestrator runs `result-evidence-check.sh <task> <head40> <pr>` on every RESULT before reading its report (C-113)",
+      "implementation": "`.agents/worklog/orchestrator-glue/result-evidence-check.sh` (written 09:56Z; promotion into scripts/orchestrator/ as a task after the pre-send-check pattern)",
+      "specification": "a RESULT's claims are checked mechanically before the orchestrator judges them: the validation's full-suite comparison names every candidate-minus-base failure, and the head's CI has concluded green as read by the orchestrator",
+      "verification": "the glue refuses b8bf8066 (`extra=6`, `0 test names`) and accepts the round-2 head only when its extra set is empty or named and its CI runs are all green."
+    },
+    "glob-classification": {
+      "design": "classification is a pure function of the key and the declared rows, so a glob, its negation and a directory scope resolve through the same key table",
+      "implementation": "the a06 round on PR #440 (task-consistency-check.py +443 lines at b8bf8066, round 2 pending)",
+      "specification": "every path the checker classifies (an `allowed_files` entry, a threat-table control, an applied directory, a walked file) goes through one canonical pipeline, `normalise_name` then `path_entry`, and is classified by its one NFC-folded key, never by a substring or by the glob library's own semantics (a06 text item 1, D-024 reset of a05)",
+      "verification": "`tests/unit/test_task_consistency_c11_c15.py` holds one red-then-green test per carried row class, read on the Linux CI jobs by the orchestrator, not on the worker's macOS alone."
+    },
+    "glob-filter": {
+      "design": "one path normaliser shared by every check, tested on the grammar's cases",
+      "implementation": "the a05-checker slice",
+      "specification": "the checker's path semantics (git pathspec vs glob, root files, directory + child, `./` spellings, escaping scopes) are stated as one grammar in the text",
+      "verification": "one fixture per grammar case, red at 7a201eab, plus the audit of the slice's head."
+    },
+    "input-validation": {
+      "design": "a single function returns (enumerated, resolved, normalised-for-matching) for every file and directory, and C12, C16, the fixture exemption and the symlink rules consume that triple instead of normalising or resolving in place",
+      "implementation": "worker fix round 2 on PR #440 (a012), source cap 400 unchanged",
+      "specification": "every path the checker judges goes through one pipeline: the enumerated path is kept for reporting, its real target is resolved for confinement and applicability, and Unicode normalisation applies only to the comparison of names, never to the path that is confined or resolved",
+      "verification": "one red-then-green test per finding plus one invariant test, the security-profile review of the new head, the task-level audit."
+    },
+    "parser-gap": {
+      "design": "a parser refuses what it cannot parse (exit 1 with the line) instead of skipping it, so a gap surfaces as a finding, never as a silent pass",
+      "implementation": "the a06 round on PR #440 (the same checker change)",
+      "specification": "the front matter, the Check sentence's caps (backticked paths, the numstat command in its own sentence, C-107) and the metadata grammar are parsed by one parser each, with the grammar written once in the checker and quoted in the task text",
+      "verification": "one fixture per former gap in `tests/unit/test_task_consistency_c11_c15.py`, red before the pipeline and green after, plus the regime-ci fixture grammar of #441 on main."
+    },
+    "text-defect": {
+      "design": "the task template states the cap that way and the checker (this slice, C16 sibling) counts lines up to the Checks heading",
+      "implementation": "this slice adds the rule to task-consistency-check.py (one more check, within the caps) or records it as the a06 owner row if the caps do not allow",
+      "specification": "a text's line cap is the authored text, and the orchestrator's pasted Checks section is outside it",
+      "verification": "a fixture with a long Checks section passes."
+    }
+  },
+  "searches": [
+    {
+      "class": "evidence-integrity",
+      "records": [
+        "M-20261020-04-result-claims-against-own-counts.md"
+      ]
+    },
+    {
+      "class": "glob-classification",
+      "records": []
+    },
+    {
+      "class": "glob-filter",
+      "records": []
+    },
+    {
+      "class": "input-validation",
+      "records": [
+        "M-20261012-32.md"
+      ]
+    },
+    {
+      "class": "parser-gap",
+      "records": [
+        "M-20261019-04-parser-gap.md"
+      ]
+    }
+  ],
+  "task": "dotfiles-T133-task-generator-plan-check-a06-checker"
+}
+---
+
+# Acceptance record: dotfiles-T133-task-generator-plan-check-a06-checker
+
+- 2026-10-20T07:55Z: reset of dotfiles-T133-task-generator-plan-check-a05-checker (D-024-39: the canonical path pipeline re-plan needs a measured cap of 440 source lines; the a05 text's amendments and worker rounds are spent), text written whole by the review profile (`a06-checker-prompt.md`), 237 lines (self cap 260), Checks normalised; pre-send.sh: checker OK, SECRET_PATTERN 0, home paths 0; sha256 4a49ed9263e025e84f3ec5a51df553cfc83ab71192a4de016770e42a1f80491b before the Checks paste. C-80 round 1 running. Continues PR #440 from 06ffefbc with a012's uncommitted pipeline draft as the round's content. The a05 findings history is in the a05 record; its rows and re-plan lines are carried below (M-20261019-06).
+
+## Lineage rows carried from dotfiles-T133-task-generator-plan-check-a05-checker
+
+text-security:1368f71:1	excluded-command-trusts-sandbox-context
+text-security:1368f71:2	excluded-command-trusts-sandbox-context
+text-security:1368f71:3	sources
+text-security:1368f71:4	hash-binding
+text-security:1368f71:5	glob-matches-its-negation
+text-security:cd37b74:0	correct
+worker:d0ad49f:1	glob-filter
+worker:24d7f55:1	unmasked-evidence
+audit:9da0ed3:1	evidence-integrity
+audit:9da0ed3:2	threat-row-stale
+audit:9da0ed3:3	replan-not-patch
+audit:9da0ed3:4	dispatch-wiring
+audit:9da0ed3:5	spec-gap
+audit:9da0ed3:6	glob-classification
+audit:9da0ed3:7	glob-intersection
+audit:9da0ed3:8	substring-selection
+audit:9da0ed3:9	glob-filter
+audit:9da0ed3:10	parser-gap
+audit:9da0ed3:11	parser-gap
+audit:9da0ed3:12	parser-gap
+audit:9da0ed3:13	parser-gap
+audit:9da0ed3:14	regex-gap
+audit:9da0ed3:15	records-form
+audit:8a09b93:1	spec-gap
+audit:8a09b93:2	glob-classification
+audit:8a09b93:3	glob-filter
+audit:8a09b93:4	glob-filter
+audit:8a09b93:5	glob-classification
+audit:8a09b93:6	glob-filter
+audit:8a09b93:7	parser-gap
+audit:8a09b93:8	parser-gap
+audit:8a09b93:9	test-coverage
+audit:8a09b93:10	selector-grammar
+audit:8a09b93:11	evidence-integrity
+audit:8a09b93:12	records-form
+audit:7a201ea:1	uv-caller-state-interpreter
+audit:7a201ea:2	unlanded-mechanism-stated-as-present
+audit:7a201ea:3	checker-exit-unchecked
+audit:7a201ea:4	tool-environment
+audit:7a201ea:5	happy-path-closing-test
+audit:7a201ea:6	glob-classification
+audit:7a201ea:7	glob-filter
+audit:7a201ea:8	spec-without-input-grammar
+audit:7a201ea:9	glob-filter
+audit:7a201ea:10	input-validation
+audit:7a201ea:11	input-validation
+audit:7a201ea:12	happy-path-closing-test
+audit:7a201ea:13	acceptance-dispositions
+audit:7a201ea:14	replan-skipped
+audit:7a201ea:15	evidence-dropped
+security:cedc7f5:1	input-validation
+security:cedc7f5:2	input-validation
+security:cedc7f5:3	count-grammar
+security:06ffefb:1	input-validation
+security:06ffefb:2	input-validation
+worker:06ffefb:1	cap-without-room
+re-plan: text-defect (amendments 1 and 2 of this text; the python-pin text had the same cap collision) — specification: a text's line cap is the authored text, and the orchestrator's pasted Checks section is outside it; design: the task template states the cap that way and the checker (this slice, C16 sibling) counts lines up to the Checks heading; implementation: this slice adds the rule to task-consistency-check.py (one more check, within the caps) or records it as the a06 owner row if the caps do not allow; verification: a fixture with a long Checks section passes.
+re-plan: glob-filter (rows audit:9da0ed3:9, audit:8a09b93:3-4, audit:8a09b93:6, audit:7a201ea:7, audit:7a201ea:9 of the a04 lineage; worker:d0ad49f:1) — specification: an allowed_files pathspec is validated for magic (`:(…)`, leading `:`, escapes) after normalisation, never before, and a path whose directory prefix is a symlink outside the worktree is refused before the full-match filter; symlinked directories are never followed; design: validation order fixed as normalise -> magic check -> symlink-prefix confinement -> full-match filter (a012's proposal, no scope or cap change); implementation: a012's repair in the a05 draft with one regression fixture per defect (magic after normalisation; escaping symlink prefix); verification: a012's independent review, the task-level audit of the final head and the security review (security: true).
+re-plan: glob-filter (rows across audit:fa71134, audit:7a201ea; classes glob-classification x3, glob-filter x4, parser-gap x6 in this lineage) — specification: the checker's path semantics (git pathspec vs glob, root files, directory + child, `./` spellings, escaping scopes) are stated as one grammar in the text; design: one path normaliser shared by every check, tested on the grammar's cases; implementation: the a05-checker slice; verification: one fixture per grammar case, red at 7a201eab, plus the audit of the slice's head.
+re-plan: input-validation (rows security:cedc7f5:1-2, security:06ffefb:1-2) — specification: every path the checker judges goes through one pipeline: the enumerated path is kept for reporting, its real target is resolved for confinement and applicability, and Unicode normalisation applies only to the comparison of names, never to the path that is confined or resolved; design: a single function returns (enumerated, resolved, normalised-for-matching) for every file and directory, and C12, C16, the fixture exemption and the symlink rules consume that triple instead of normalising or resolving in place; implementation: worker fix round 2 on PR #440 (a012), source cap 400 unchanged; verification: one red-then-green test per finding plus one invariant test, the security-profile review of the new head, the task-level audit.
+re-plan: glob-classification (rows audit:9da0ed3:6, audit:8a09b93 and audit:7a201ea of the a04/a05 lineage, carried; four rows) — specification: every path the checker classifies (an `allowed_files` entry, a threat-table control, an applied directory, a walked file) goes through one canonical pipeline, `normalise_name` then `path_entry`, and is classified by its one NFC-folded key, never by a substring or by the glob library's own semantics (a06 text item 1, D-024 reset of a05); design: classification is a pure function of the key and the declared rows, so a glob, its negation and a directory scope resolve through the same key table; implementation: the a06 round on PR #440 (task-consistency-check.py +443 lines at b8bf8066, round 2 pending); verification: `tests/unit/test_task_consistency_c11_c15.py` holds one red-then-green test per carried row class, read on the Linux CI jobs by the orchestrator, not on the worker's macOS alone.
+re-plan: parser-gap (rows audit:9da0ed3:10-13 and the a05 carried rows; six rows) — specification: the front matter, the Check sentence's caps (backticked paths, the numstat command in its own sentence, C-107) and the metadata grammar are parsed by one parser each, with the grammar written once in the checker and quoted in the task text; design: a parser refuses what it cannot parse (exit 1 with the line) instead of skipping it, so a gap surfaces as a finding, never as a silent pass; implementation: the a06 round on PR #440 (the same checker change); verification: one fixture per former gap in `tests/unit/test_task_consistency_c11_c15.py`, red before the pipeline and green after, plus the regime-ci fixture grammar of #441 on main.
+re-plan: evidence-integrity (rows audit:9da0ed3:1, audit:7a201ea:15 (`evidence-dropped`, same cause) and worker:b8bf806:1; three rows of the lineage) — specification: a RESULT's claims are checked mechanically before the orchestrator judges them: the validation's full-suite comparison names every candidate-minus-base failure, and the head's CI has concluded green as read by the orchestrator; design: the worker's validation.md carries a `Base:`/`Candidate:` line pair and a named extra set, and the orchestrator runs `result-evidence-check.sh <task> <head40> <pr>` on every RESULT before reading its report (C-113); implementation: `.agents/worklog/orchestrator-glue/result-evidence-check.sh` (written 09:56Z; promotion into scripts/orchestrator/ as a task after the pre-send-check pattern); verification: the glue refuses b8bf8066 (`extra=6`, `0 test names`) and accepts the round-2 head only when its extra set is empty or named and its CI runs are all green.
+
+## Rows of the a06 round (CI of b8bf8066 as read by the orchestrator; worker evidence)
+
+ci:b8bf806:1	environment-contract
+ci:b8bf806:2	platform-dependent-detection
+worker:b8bf806:1	evidence-integrity
+security:b8bf806:1	approval-binding
+- 2026-10-20T08:01Z: C-80 round 1 (`…-text-security-4a49ed9.md`) `Verdict: incorrect`, one P2 (line 133): NFC-based row matching can credit one threat row to two distinct Linux files (`scripts/café.py` and `scripts/cafe<U+0301>.py`) under `scripts/**`; preserving original paths for filesystem operations does not bind the coverage decision to each file; require identity-aware row matching or collision rejection with a two-file regression before closing the pipeline-identity row. Amendment 1 by the review profile; budget 2 of 3 next.
+text-security:4a49ed9:1	input-validation
+- 2026-10-20T08:05Z: amendment 1 written whole by the review profile (`a06-checker-r2-prompt.md`) and installed: identity-aware matching through the pipeline triple, a named `path collision` refusal when two distinct files normalise to one key, the two-file regression as the pipeline-identity row's selector; Checks normalised; sha256 4a49ed92… -> 73ac9333b6afcdd437ca1d6cc75ca252517c9a13c5c5bad5938b77eab1caf254. C-80 round 2 next (budget 2 of 3).
+- 2026-10-20T08:09Z: C-80 round 2 (`…-text-security-73ac933.md`) `Verdict: correct`; Checks pasted; final sha256 90ca0ae9563df4b352dfb26c6b6aa60132386e15ce9ff50bcf998a43097a12e6; AGMSG-TASK round 1 (reset_of a05-checker) dispatched to a012 (worker-g, wJ:p9) via dispatch.sh (`a06-checker-dispatch.txt`); read_at filled by fill-dispatch.py. The text (final bytes) joins the next records PR so regime-ci verifies the a06 copy.
+text-security:73ac933:0	correct
+- 2026-10-20T08:11Z: records PR #443 (`records/sync-dispatched-texts-27`, head 40b61c66) carries this text at its dispatched bytes (90ca0ae9…) and the pre-send-check text (ebe84d21…); merged by the orchestrator under D-024-40 once CI is green, so regime-ci verifies the a06 copy on #440.
+- 2026-10-20T08:21:55Z: records PR #443 merged by the orchestrator (D-024-40, `--match-head-commit 40b61c66`) -> main 1f97c525; the a06 text is on main.
+- 2026-10-20T08:12:36Z: a012 PONG `alive`: a06 TASK read and started; the a06 copy (90ca0ae9…) added; the a05 artifacts restored byte-identical to 06ffefbc; the held draft is this round's content.
+- 2026-10-20T08:28:13Z/08:30:55Z: a012 PONGs `blocked`: its independent review of the pipeline draft (source 438/440, tests 698/700; hashes 5c09a95a…/2979c99f…) found [P1] checker:440 a trailing-slash directory scope (`scripts/`) loses its directory intent in the comparison key, so descendants are excluded before confinement (a real escaping symlink passes under `scripts/` and fails under `scripts/**`); [P2] checker:387 the C10 extraction regex excludes combining marks, so a raw NFD path is not captured before the shared resolution (NFC passes, NFD escapes). Disposition (2026-10-20T08:32Z, PING `a06-checker-disposition-1.txt`): both are implementation defects of the prescribed pipeline, repaired within this round with one regression each (equivalent directory scopes on an escaping descendant; NFD/NFC C10 paths); caps retained; if the repair exceeds 440 source lines the orchestrator amends the cap with its attribution (text amendment, C-80, records PR under D-024-40) rather than resetting again.
+worker:5c09a95:1	input-validation
+worker:5c09a95:2	input-validation
+- 2026-10-20T08:37:40Z: a012 PONG `blocked` (cap stop as instructed): with both regressions red first (`test_path_grammar_rejects_escaping_scopes` comparing `scripts/*.py`, `scripts/` and `scripts/**` on the escaping descendant; new `test_c10_confines_original_unicode_script_paths` with raw NFD and NFC paths), the repaired source measures 442 changed lines against 440 and tests 700/700. Disposition (2026-10-20T08:39Z): cap amendment 1 of the a06 text by the orchestrator with the attribution (source 450 = 396 at 06ffefbc + 24 pipeline + 22 for the two review repairs, headroom to the next ten; tests 720), C-80 round, records PR (D-024-40), amendment dispatch; no reset.
+worker:5c09a95:3	cap-without-room
+- 2026-10-20T08:42Z: cap amendment 1 (orchestrator edit of three sentences: 450/720 with the attribution 396 + 24 + 22 = 442): C-80 round 3 (`…-text-security-b9e04cb.md`) `Verdict: correct`; dispatched to a012 as task_sha256 b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af (previous 90ca0ae9563df4b3…; `a06-checker-amend1.txt`); the text joins records PR sync-28.
+text-security:b9e04cb:0	correct
+- 2026-10-20T08:49:12Z: a012 PONG `blocked`: the two pipeline repairs are independently verified (source 98c0904f/1779440f; 27 new + 10 legacy methods green on 3.15 and 3.12), but its independent review found a P2 the R4 lint correction introduced (checker:476: the applied-directory classifier runs the metadata name normaliser on filesystem names, so an extensionless backslash filename under scripts/** loses its applied prefix and escapes C12); source 444/450, tests 700/720; the amended task copy (b9e04cb9…) in place. Disposition (2026-10-20T08:50Z, PING `a06-checker-disposition-2.txt`): repair within this round as proposed (applied-directory ancestry from the resolved comparison key's PurePosixPath parents, no metadata grammar), one real-CLI regression, lint again, then independent review, gate, commit, PONG the head.
+worker:1779440:1	input-validation
+- 2026-10-20T09:15:34Z/09:20:18Z: a012 PONGs `working`: full make measured (base 1267 tests 150 fail 128 err; candidate 1295 tests 156 fail 128 err, the only six added failures the RegimeCiTest subcases owned by #441, now merged); clean selected-tree `make validate-agent-assets` exit 0; frozen source 42183ecc / tests 55c31abd; a C3 observation shown pre-existing (byte-identical at 60a6fb2b); all local proofs and the worker gate complete; commit and PONG of the head expected next.
+- 2026-10-20T09:23:57Z: a012 PONG `working`: the a06 round committed locally as head b45caa2b (3 code files + 161 retained a05 + 192 a06 artifacts; the a05 copy byte-identical to 06ffefbc), post-commit verified, awaiting transport. Transport at 2026-10-20T09:34Z failed as a non-fast-forward: the remote head is 762a2541, the orchestrator's `gh pr update-branch` merge of 08:38Z (main b8213131 into 06ffefbc); PING `a06-checker-merge-remote.txt` asks a012 to merge it locally (the same step a013 took on #437) and PONG the new head. Correction C-111: no update-branch of a Codex-seat PR while its worker is mid-round; update-branch only when the chain starts.
+- 2026-10-20T09:36:35Z: a012 PONG `blocked`: the local merge of 762a2541 done (head b8bf8066, parents b45caa2b and 762a2541); it asks how the canonical copy and the base's 440 cap resolve. Transported by the orchestrator at 2026-10-20T09:38Z (fast-forward); disposition (PING `a06-checker-transport-done.txt`): the copy stays at the dispatched amended bytes b9e04cb9; regime stays red until records PR #444 (the amended text) merges first; RESULT after the orchestrator reads CI.
+- 2026-10-20T09:37Z: head b8bf8066 transported to PR #440 by the orchestrator over HTTPS (D-024-36, `${h}:refs/heads/<branch>`); PING to a012: the a06 copy stays at the dispatched amended bytes b9e04cb9, regime-ci stays red until records PR #444 merges, RESULT after CI as read by the orchestrator.
+- 2026-10-20T09:44:40Z: records PR #444 merged by the orchestrator (D-024-40: the copy on its head 661783cc hashes to b9e04cb9… = AGMSG-TASK 2805; sweep `records-sync-28-pr-feedback.json` 5 items, no threads, Codex code and security reviews finding-free; `--match-head-commit 661783cc`) -> main 230b3676. #440's regime run 39402133772 re-run: regime.yml checks out the base tip at run time, so no update-branch is needed for the regime; the ruleset's up-to-date rule still needs one, taken after a012's RESULT (C-111).
+- 2026-10-20T09:42:16Z: a012 RESULT round 1 `status=ready_for_review` for head b8bf8066 (task_copy b9e04cb9… = the dispatched amended bytes; branch tools/task-generator-plan-check-a05-checker), sent before the head's Unit-test run ended (09:45Z) although the transport PING asked for the RESULT after CI as read by the orchestrator.
+- 2026-10-20T09:45Z-09:50Z: CI of b8bf8066 as read by the orchestrator (Unit-test run 39402138504): `FAILED (failures=7)` of 1296 tests on all three Linux jobs (ubuntu-24.04 client and server, ubuntu-26.04 client); macos-14 client success is no evidence (unit tests are skipped for a Python-only diff). Six failures are `tests/unit/test_regime_ci.py` RegimeCiTest cases reading `checker: no verdict (exit 1): refused: UV_CACHE_DIR must be set to an absolute path`; the seventh is the new `test_canonical_path_pipeline_rejects_normalised_collisions` (`0 != 1 : t-a01.md: OK` inside `finding("C12", prefix=…)`). Snippet install, Agent assets and regime (re-run after #444) are green.
+- 2026-10-20T09:51Z: diagnosis from the diff (3 code files: task-consistency-check.py +443, test_task_checkers.py, test_task_consistency_c11_c15.py +655): (R1) `scripts/orchestrator/task-consistency-check.py:37-39` exits at import when `UV_CACHE_DIR` is unset or relative, so every caller that sets none (regime-ci.py's checker launch on main, the regime workflow after a merge, the pre-send glue) gets no verdict; the text's line 117 (`retain … the absolute-cache requirement`) was implemented as a caller obligation while line 47 authorizes no caller edit (C-112). (R2) `confined()` lines 73-79 and `path_entry()` lines 83-89 compute the C12 key only after an `exists()`/`samefile()` probe of the real filesystem, normalisation-insensitive on APFS only, so on Linux the non-existent spelling is dropped before the comparison at line 449. (R3) `validation.md:36` reports base 150 vs candidate 156 failures and calls every failure inherited; the six extra are R1.
+- 2026-10-20T09:53:51Z: ACCEPTANCE `status=revise round=1 previous_head=b8bf8066` (2827, `440-revise-1.txt`, read 09:53:57Z): R1 proper state = no import-time refusal, `launch()` uses a set absolute `UV_CACHE_DIR` or a private absolute temporary cache (design 5.14 item 9), one red-then-green test; R2 proper state = C12 compares NFC-folded keys of walked entries and declared rows without probing the alternate spelling; R3 = round 2 names the candidate-minus-base failure set; protocol while the Codex seat has no network: local commit, PONG `working head=<sha40>`, orchestrator transport and `ci=green|red:<names>` PING, RESULT only after `ci=green`; a security-review addendum PING for b8bf8066 follows (review started 09:54Z) and the RESULT waits for it; round 2 is the last worker round.
+- 2026-10-20T09:56Z: mechanism (M-20261020-04, C-113): `.agents/worklog/orchestrator-glue/result-evidence-check.sh <task> <head40> [<pr>]` refuses a RESULT whose validation.md shows more candidate failures+errors than the base without each extra test named, and a head whose CI runs are not all green; run on b8bf8066: `refuse: candidate adds 6 failure(s)/error(s) over the base; 0 test names appear` (rc 1).
+- 2026-10-20T09:54Z-10:00Z: security review of b8bf8066 (`security-review.sh`, base b8213131; `…-security-b8bf806.md` + `.last.md`): `Verdict: incorrect`, one P1 (high confidence) at `task-consistency-check.py:355`: C6/C15 fetch the normalised comparison key (`path_entry()` turns `cafe\u0301.md` into `caf\u00e9.md`; `main_entry()` normalises at line 176) instead of the original design pathname, so a different canonical file can supply the approval and invariants (reproduced read-only with a modeled API; an ASCII negative control produced C6/C15); the threat rows at text lines 32, 33, 39 and 61 stay unproven. Row `security:b8bf806:1 approval-binding`.
+- 2026-10-20T10:01Z: addendum PING (2829, `440-security-addendum-1.txt`) to a012: R4 = the P1 above, proper state original spelling for requests and reads, normalisation only for comparisons, one red-then-green test; round 2 is R1+R2+R3+R4; no further addendum; RESULT after the `ci=green` PING.
+- 2026-10-20T12:09:47Z: a012 RESULT round 2 `status=ready_for_review` for head 2cb58482 (task_copy b9e04cb9…; validation: exact 278-vs-278 full-suite comparison, candidate-minus-base []; 48/48 mutants killed on 3.15 and 3.12; evidence precheck ok; CI all green as read by the orchestrator). ACCEPTANCE `status=pending-integration round=2` (2835) at 12:10:58Z.
+- 2026-10-20T12:19Z-12:38Z: chain on 2cb58482 (CI green; sweep; sandbox-scan 0): local review (`…-local-review-21f52c7.md`) 1 P1 + 2 P2: [P1] task-consistency-check.py:182 the new `gh api` requests (canonical main, design bytes for C6/C15, C8/C9 lookups) run in regime CI through regime-ci.py's minimal environment without `GH_TOKEN`/`GITHUB_TOKEN`; a fresh runner has no gh login, so after this checker lands every task text that references a design gets `no verdict` in the regime check (main's checker makes no API call today; the regime run on 2cb58482 passed because it executed the base's checker); [P2] :476-480 Claude instruction shims are not classified as applied files; [P2] :348-350 overlapping directory scopes need a separate row. The two P2 are advisory rows under dotfiles-T133-task-generator-plan-check-followup-a01 (recorded by the chain). The P1 is a caller-side dependency, not a defect of the changeset: the fix is the regime workflow passing `GH_TOKEN: ${{ github.token }}` and regime-ci.py forwarding it into the checker's environment (the checker already forwards both tokens when present, line 149; `test_gh_child_preserves_parent_tokens`). Disposition as for PR #411's `--premises-sha` dependency: #440 waits for `dotfiles-T133-regime-ci-token-a01` (text authored now, Claude seat), then takes the new base, and its chain (audit, record, gate) runs on that head. Worker rounds stay spent; no third round.
+
+local:21f52c7:1	caller-dependency
+local-finding: 21f52c7:1 not-applicable:sequencing dependency on dotfiles-T133-regime-ci-token-a01 (the regime workflow and regime-ci.py supply the token to the checker; #440 merges after it lands and is update-branched); evidence=git show 2cb584823ccf5f22069ea925b252d8cefb020844:scripts/orchestrator/task-consistency-check.py | sed -n 149p
+
+
+## Owned by dotfiles-T133-task-generator-plan-check-followup-a01 (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)
+
+local:21f52c7:2	advisory-p2
+local-finding: 21f52c7:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Classify Claude instruction shims as applied files — scripts/orchestrator/task-consistency-check.py:476-480); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+local:21f52c7:3	advisory-p2
+local-finding: 21f52c7:3 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Require a separate row for overlapping directory scopes — scripts/orchestrator/task-consistency-check.py:348-350); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+local:21f52c7:4	advisory-p2
+local-finding: 21f52c7:4 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (R08-F1 of dotfiles-T133-inv6-reset-anchors-review-a01: the a06 text omits the a05 predecessor obligation 'text-defect checker / long-Checks prevention' or an explicit owner disposition; the a05->a06 reset anchor is re-reviewed as one item after this row)
+
+- 2026-10-20T15:00Z: reset-anchor review R08-F1 (a012, `dotfiles-T133-inv6-reset-anchors-review-a01`): the a06 text omits the a05 predecessor obligation 'text-defect checker / long-Checks prevention' or an explicit owner disposition. Disposition: owned by dotfiles-T133-task-generator-plan-check-followup-a01 (row `local:21f52c7:4 advisory-p2`); the a05->a06 reset anchor is re-reviewed as one item after this row.
+
+local:c439b63:2	advisory-p2
+local-finding: c439b63:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Preserve grep's failure status when no lines match — scripts/orchestrator/task-consistency-check.py:310-312); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+local:c439b63:3	advisory-p2
+local-finding: c439b63:3 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Relativize case-aliased targets using filesystem identity — scripts/orchestrator/task-consistency-check.py:83-83); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+
+- 2026-10-21T07:50Z: chain on c439b63c (update-branch of fefa1dcc after boundary 27; PR patch-id 3deeac540b9be86c unchanged since 2cb58482): CI 7 required green; local review `…-local-review-c439b63.md` 1 P1 + 2 P2 (the P2 rows above); the chain stopped at local-advisory (exit 11, plan 020 step 4.2: the PR's one round is over, the P1 goes to the operator). Manual continuation under the interim exemption: sweep 8/8 with `440-extra.tsv` (gaps 0), receipt and record block regenerated for c439b63. The P1 and the two P2 of the round-2 security review `…-security-2cb5848.md.last.md` (never dispositioned until now) are dispositioned below as advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01; D-024-57 records the judgement and its default; the audit and the security review of c439b63c follow through the operator's codex route.
+
+local:c439b63:1	advisory-p2
+local-finding: c439b63:1 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P1] Handle non-UTF-8 files in canonical baseline searches — scripts/orchestrator/task-consistency-check.py:225: `main_texts` decodes every canonical blob strictly, so a C8 traversal that reaches home/.key.txt.age aborts with UnicodeDecodeError; the abort is fail-closed (non-zero exit, no false acceptance), so the orchestrator grades it P2 robustness, not P1); evidence=sed -n 225p scripts/orchestrator/task-consistency-check.py at c439b63c prints `yield main_bytes(root, name).decode()` and the reviewer's read-only reproduction is in the local review file
+security:2cb5848:1	input-validation
+security-finding: 2cb5848:1 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (task-consistency-check.py:476 C12 classifies only the resolved target, so an unnamed applied symlink to a non-applied target passes a wildcard scope without a concrete threat row; the checker is a pre-dispatch consistency check, the runtime boundary is the worker sandbox, and the orchestrator reads every threat table by hand until the owner task lands); evidence=.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-security-2cb5848.md.last.md finding 1
+security:2cb5848:2	input-validation
+security-finding: 2cb5848:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (task-consistency-check.py:251 the missing-literal shortcut returns before examining directory symlinks, so a missing file beneath an internal directory alias bypasses the internal-alias rejection; same compensating controls as row 1); evidence=.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-security-2cb5848.md.last.md finding 2
+
+## Round 2 final head c439b63c: task-level audit 2026-10-21T08:07Z (operator-run `orch-audit.sh`, `…-audit-c439b63.md.last.md`)
+
+**Verdict: incorrect**: one implementation P1, three implementation P2, five orchestration P2. Per D-024-57 an audit P1 resets the lineage: D-024-58, reset to `dotfiles-T133-task-generator-plan-check-a07-checker` by another context, no third round; a012 holds (ACCEPTANCE 2983). The security review of c439b63c is not run (no merge of this head).
+
+audit:c439b63:1	invariants-validation
+audit:c439b63:2	probe-status
+audit:c439b63:3	scope-rows
+audit:c439b63:4	instruction-shim-classification
+audit:c439b63:5	sweep-disposition-wording
+audit:c439b63:6	counters-evidence
+audit:c439b63:7	cap-measurement
+audit:c439b63:8	design-conflict
+audit:c439b63:9	checks-omission
+
+Row 1 (P1): task-consistency-check.py:496, C15 accepts arbitrary `invariants` when `design_review.design` is omitted, bypassing canonical assignment and byte-equality validation (a07 item). Row 2: :312 the `grep -c` probe always returns status 0 (same defect as local:c439b63:2; a07). Row 3: :348 C4 accepts one `scripts/orchestrator/` row for both `scripts/` and `scripts/orchestrator/` scopes (same class as local:21f52c7:3; a07). Row 4: :476 C12 does not classify `CLAUDE.md` as applied instructions (same class as local:21f52c7:2; a07). Row 5 (orchestration): the GitGuardian issue comment of #440 was dispositioned by the generic issue-comment template; the next sweep carries a specific row (the fixture digest and a commit id are refutable), as 442-extra.tsv already does for #442. Row 6 (orchestration): the revise at line 416 lacked a counters snapshot; snapshot taken 2026-10-21T08:07Z (C-126): a05-checker TASKs=3 revises=2 questions=2 blocked-PONGs=10 (S2, silenced by the a05 design-reset record); a06-checker TASKs=2 (the cap amendment resend) revises=1 RESULTs=2 questions=0 blocked-PONGs=6. Row 7 (orchestration): the auditor's 517/1505 was measured from a base other than the merge-base; the C-123 measurement is `git diff --numstat e00de4e0 c439b63c` = 446 outside tests/ (task-consistency-check.py 419+27) and 709 under tests/ (35+22, 652+0), within 450/720; not-applicable, evidence pasted here. Row 8 (orchestration, real): the R1 revise directed an unset-cache fallback (checker line 138) while frozen design 5.14 item 9 requires refusal when UV_CACHE_DIR is absent; a07 restores the refusal and the record names this conflict as the orchestrator's error. Row 9 (orchestration, real): the dispatched Checks block omitted the prerequisite API observations the text's line 107 requires; a07's Checks are complete before its anchor review.
+
+audit-finding: c439b63:7 not-applicable:measured from the merge-base per C-123, 446/709 within 450/720; evidence=git diff --numstat e00de4e0e4158de19e2c8921e572461e7e9e4ca0 c439b63c65285ec8180dc3e21394c87ef21115b4
+
+## a07 authoring (author-loop, 2026-10-21T08:43Z)
+
+- Round 1 (`…-text-security-922292d.md`) and round 2 (`…-text-security-0edbd8c.md`): both `Verdict: incorrect`; the loop stopped at its two-round limit (exit 7, S-R5). Recurring P1: the checker's canonical-main reads trust a PATH-selected `gh`; withholding authenticity claims does not mitigate executable substitution; authoritative use needs the trusted-executable prerequisite (design 5.14 items 2-4, the binding task) or must stay non-authoritative until it lands. Round 2 P2: restoring the mandatory UV_CACHE_DIR refusal (fix 7) breaks callers that omit the variable, regime-ci among them, and the text named no caller prerequisite. Both rounds: the empty Checks block (pasted after the authoring, before the anchor review, as every text of this regime).
+
+text-security:922292d:1	executable-provenance
+text-security:0edbd8c:1	executable-provenance
+text-security:0edbd8c:2	cap-measurement-base
+text-security:922292d:2	design-conflict
+
+re-plan: executable-provenance (rows local:21f52c7:1 (the gh api token sequencing of the round-2 head), text-security:922292d:1, text-security:0edbd8c:1; three rounds in which the checker's canonical reads through a PATH-selected gh were taken as authoritative) — specification: the checker's canonical-main reads are pre-dispatch hygiene, not acceptance-time truth, until a trusted-executable binding resolves gh by absolute pinned path; the orchestrator's own sandboxed gh reads remain the acceptance evidence; design: the binding of gh (and uv, python) is owned by dotfiles-T133-trusted-entrypoint-binding-a01 (design 5.14 items 2-4, 9); the a07 threat row names that owner and the non-authoritative status instead of a withheld claim; implementation: the a07 text edit of 2026-10-21T08:43Z (orchestrator), no checker code change for this class in a07; verification: C-80 round 3 of the a07 bytes under this line (C-92: at most three reviews per re-plan line), then the anchor review.
+
+Decision 2026-10-21T08:43Z (recommended default under the 15:1x JST standing instruction): fix 7 (UV_CACHE_DIR refusal) leaves a07; the a06 fallback stays as a recorded design exception owned by dotfiles-T133-regime-ci-followup-a02, which restores the refusal together with the caller change (regime-ci passes UV_CACHE_DIR), so audit:c439b63:8 is owned there rather than fixed in a07; the a07 scope is the P1 and the implementation P2 rows only.
+- 2026-10-21T08:45Z: a07 text edited by the orchestrator after the two authoring rounds (gh-provenance rows re-owned by dotfiles-T133-trusted-entrypoint-binding-a01 with non-authoritative status; fix 7 removed, the UV_CACHE_DIR fallback owned by dotfiles-T133-regime-ci-followup-a02 as a recorded design exception; the measurement base bound to the canonical main SHA read by the orchestrator's own gh; Checks pasted with the observed #435 state, canonical main e00de4e0, decoded design digest a027b021…, stage exits). pre-send OK; final bytes fd8c00346567ba92d15cbb746e381753033cc2e13f99945016f0f0a0caf1cac0 (140 lines); C-80 round 3 under `re-plan: executable-provenance` is the next operator line, then the anchor review.
+- 2026-10-21T09:26Z: C-80 round 3 of the a07 bytes fd8c0034 (`…-text-security-fd8c003.md`): Verdict incorrect. P1 (row 36): moving authority to the orchestrator's bare gh does not authenticate the executable (PATH/mise substitution), and the named binding owner binds uv/Python/Node/permgate, not gh. P2 (line 117): the canonical-main command omits `--hostname github.com`, so an inherited GH_HOST can redirect it. P2 (line 117): authenticating the main SHA does not authenticate the shared local objects `git merge-base`/`git diff --numstat` consume; acceptance needs authenticated changeset bytes or a worker-inaccessible clone.
+
+text-security:fd8c003:1	executable-provenance
+text-security:fd8c003:2	canonical-host-binding
+text-security:fd8c003:3	measurement-object-trust
+- 2026-10-21T09:28Z: D-024-60: gh-binding owner stub created; a07 rows re-owned (gh provenance -> dotfiles-T133-gh-binding-a01), `--hostname github.com` added, measurement in a private HTTPS bare clone (owner a09); pre-send OK, 140 lines, bytes 45b58f323a0eaf62878c2009d6af78351f5c71476386e924082d396574ec4c0d; C-80 round 4 (second under the re-plan line) is the next operator line.
+
+
+ succeeded in 278ms:
+8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
+9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
+10. **worker は sandbox 外でコマンドを実行しない（D-024-17 の改訂）** 2026-10-19T03:45Z の実測で `gh api` は Claude sandbox の中から成功した（sandbox の proxy は CONNECT 型で TLS を終端しない；keychain のトークンも読めた）。worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。Codex 席は `sandbox_workspace_write.network_access = true` で同じ状態にし、permgate の codex ポリシーは sandbox 外への escape を承認しない（permgate の変更は操作者の手順）。wrapper 方式（絶対パス、env -i、固定 GH_CONFIG_DIR）は LD_PRELOAD と引数転送（`gh repo clone -- --config`）を閉じられないので採らない。
+7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
+
+ succeeded in 314ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` The replacement authority path invokes bare `git` without binding its executable; PATH/mise substitution can forge clone, prerequisite and measurement results, reproducing the rejected `gh` provenance defect.
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:135` The clone prefix does not remove inherited `GIT_*`, and subsequent commands omit even that prefix: a read-only probe confirmed `GIT_CONFIG_COUNT` can rewrite the fixed GitHub URL despite both stated options; `GIT_DIR` can likewise redirect subsequent repository reads.
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:35` Calling checker output “non-authoritative” does not mitigate executing substituted `gh` with forwarded credentials; no binding prerequisite or credential suppression prevents disclosure, and Linux execution outside the sandbox cannot rely on sandbox containment.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` A fresh “private” clone establishes initial separation from shared objects, but the specified `<dir>` has no demonstrated worker-write exclusion or consumption-time identity binding; same-UID replacement can still alter objects or refs subsequently treated as authoritative.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:137` Counting two “5.14” occurrences does not perform the inherited exact design-publication assertion; Checks also omits that assertion’s command and exit, so its claimed prerequisite success does not satisfy line 119.
+
+📝 まとめ: Reviewed the threat rows and cited acceptance/review context; five findings remain for orchestrator disposition. No files changed.
+
+Not checked: future implementation or live Linux/race behavior; executable, credential and object-store binding remain unresolved.
+Verdict: incorrect- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:84` — The explicit bindings cover uv/Python/Git but omit `gh`, whose responses authenticate Item 5; `gh-binding-a01.md:20–24` says canonical reads remain non-authoritative until that binding lands, so require a bound authentication transport and an actual-consumer substitution probe.
+
+- [P1] medium `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:66` — Merge recomputation leaves merge-driver configuration uncontrolled: local `merge.default`/`merge.*.driver` can select executable commands and manufacture a successful merge result despite the referenced hook/diff protections; require isolated merge configuration and a hostile-driver regression. [Git documentation](https://git-scm.com/docs/gitattributes#_defining_a_custom_merge_driver)
+
+- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:98` — The required pre-review measurements are absent: the file ends at an empty `Checks` heading, leaving launch bindings, descendant results and authenticated gate-source identity unestablished; this version cannot satisfy its own approval/dispatch conditions.
+
+- [P2] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:18` — The whole workflow is marked `closed` by a test specified only to inspect `UV_CACHE_DIR`; that assertion cannot establish protected-base execution, head-as-data handling or credential protections, so narrow the claim or name coverage for the workflow’s actual execution boundary.
+
+- [P2] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:74` — Cache-refusal ownership is circular: this task excludes the checker and assigns refusal to a07, while `a07-checker.md:56,77,90` explicitly preserves the fallback and assigns restoration here; neither task authorizes the promised control.
+
+- [P2] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:38` — The required `dotfiles-T133-regime-ci-followup-a03.md` owner stub does not exist, so the residual ownership asserted throughout the table has not met its stated pre-anchor prerequisite.
+
+📝 まとめ: Read-only design review completed; six findings are input for the orchestrator’s decision.
+
+Not checked: implementation, live Linux execution or CI; runtime enforcement remains unverified.
+Verdict: incorrect
+ succeeded in 338ms:
+scripts/orchestrator/chain-integrate.sh:6:#   arguments, the binaries resolved outside shims, the main checkout on main at origin/main, the canonical clean
+scripts/orchestrator/chain-integrate.sh:34:log='' lines=() && export NO_COLOR=1 && unset CLICOLOR_FORCE GH_FORCE_TTY # no ANSI from gh, as pr-feedback.py's gh_env
+scripts/orchestrator/chain-integrate.sh:64:# Resolved before any fetch or checkout and run by absolute path, as local-review.sh resolves codex: a mise shim
+scripts/orchestrator/chain-integrate.sh:66:pick() { env -i PATH="${PATH}" HOME="${HOME}" mise which "$1" 2> /dev/null || command -v "$1" || true; }
+scripts/orchestrator/chain-integrate.sh:75:for s in scripts/orchestrator/{sandbox-scan.sh,local-review.sh,local-advisory.sh,fill_sweep.py,acceptance-front-matter.py,orch-audit.sh} scripts/pr-feedback.py; do
+scripts/orchestrator/chain-integrate.sh:151:sweep=${v}/${task}-pr-feedback.json comments=${v}/${task}-pr-comments.json
+scripts/orchestrator/chain-integrate.sh:152:step pr-feedback 0 "${uv}" run --no-project python -I "${main}/scripts/pr-feedback.py" "${pr}" --json "${sweep}"
+scripts/orchestrator/chain-integrate.sh:158:step fill-sweep 0,1 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/fill_sweep.py" "${sweep}" "${comments}" ${extra:+"${extra}"} --orchestrator-login "${login}"
+scripts/orchestrator/chain-integrate.sh:165:printf '[{"id": "%s", "scope": "review", "resolved": true, "author": "claude-code", "head": "%s", "pr": "%s", "reviewed_at": "%s", "body": "%s"}]\n' \
+scripts/orchestrator/chain-integrate.sh:177:step record 0 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/acceptance-front-matter.py" "${task}" "${sweep}" "${review}" --ledger "${tsv}"
+scripts/orchestrator/local-review.sh:10:#   -s read-only review --base main`. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
+scripts/orchestrator/local-review.sh:11:#   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
+scripts/orchestrator/local-review.sh:12:#   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
+scripts/orchestrator/local-review.sh:29:#   scripts/orchestrator/local-review.sh dotfiles-T128-x-a01 "$(git rev-parse FETCH_HEAD)" 356
+scripts/orchestrator/local-review.sh:37:R="$(git rev-parse --show-toplevel)"
+scripts/orchestrator/local-review.sh:55:git -C "$R" cat-file -e "$head^{commit}" 2> /dev/null || {
+scripts/orchestrator/local-review.sh:59:# Without its own .git entry, git -C would act on an enclosing checkout and move that one to the head.
+scripts/orchestrator/local-review.sh:64:[ -z "$(git -C "$W" status --porcelain)" ] || {
+scripts/orchestrator/local-review.sh:69:# binary from the PR head. A mise shim would pick its binary from the PR worktree it runs in, so a name comes from
+scripts/orchestrator/local-review.sh:70:# mise which under env -i, as orch-gate.sh resolves gh, and a shims path is refused (the audit of b6ce4ff). Sets
+scripts/orchestrator/local-review.sh:72:resolve() { # <name> <what> [<found by command -v alone>]
+scripts/orchestrator/local-review.sh:76:        found=$(env -i PATH="$PATH" HOME="$HOME" mise which "$1" 2> /dev/null || command -v "$1") || found=
+scripts/orchestrator/local-review.sh:88:resolve "${CODEX_BIN:-codex}" "review binary" "${CODEX_BIN:-}"
+scripts/orchestrator/local-review.sh:105:    resolve "$interpreter" "review binary's interpreter"
+scripts/orchestrator/local-review.sh:108:git -C "$W" checkout -q --detach "$head"
+scripts/orchestrator/local-review.sh:109:base=$(git -C "$W" merge-base main HEAD)
+scripts/orchestrator/orch-gate.sh:5:#   Plan 007 T718, the parameterised form of the orchestrator's gate wrapper. The head is always `git -C
+scripts/orchestrator/orch-gate.sh:11:#   as its working tree, the gate `make require-crit-review` runs, but this checkout's copy: the head's Makefile
+scripts/orchestrator/orch-gate.sh:12:#   and gate are PR-controlled (PR #350 thread 4265190252), so `scripts/require-crit-review.py` and the validator
+scripts/orchestrator/orch-gate.sh:13:#   it loads must equal origin/main's here. The interpreter is `uv python find` in this checkout, resolved before
+scripts/orchestrator/orch-gate.sh:14:#   the review worktree is entered and run directly, so no uv reads the head's `.python-version` or `uv.toml`
+scripts/orchestrator/orch-gate.sh:15:#   (uv runs an executable a `.python-version` names; the audit of f48593d6). The gate runs under `env -i` with
+scripts/orchestrator/orch-gate.sh:16:#   HOME as this shell has it, a PATH of one private directory of links to `gh` and `git` as this checkout resolves
+scripts/orchestrator/orch-gate.sh:17:#   them (`mise which` under `env -i`, else `command -v`; a path under a `shims` directory or none is refused), its
+scripts/orchestrator/orch-gate.sh:19:#   PYTHONSAFEPATH=1, as `-I -P <gate> --base origin/main`: nothing else of this shell or of the head reaches the
+scripts/orchestrator/orch-gate.sh:45:head="$(git -C "$2" rev-parse HEAD)"
+scripts/orchestrator/orch-gate.sh:46:root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+scripts/orchestrator/orch-gate.sh:49:sweep="${v}/${task}-pr-feedback.json" audit="${v}/${task}-audit-${head:0:7}.md"
+scripts/orchestrator/orch-gate.sh:53:git diff --quiet origin/main -- scripts/require-crit-review.py scripts/validate-agent-assets.py ||
+scripts/orchestrator/orch-gate.sh:59:[[ -z $(git ls-tree -r "${head}" -- .orchestration | awk '$1 == "120000"') ]] ||
+scripts/orchestrator/orch-gate.sh:61:python="$(uv python find)" || refuse "uv found no interpreter in ${root}"
+scripts/orchestrator/orch-gate.sh:62:[[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
+scripts/orchestrator/orch-gate.sh:64:[[ -z ${moved:-} ]] || { git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main; }' EXIT
+scripts/orchestrator/orch-gate.sh:66:# The gate's PATH is these links alone: through the caller's PATH, gh resolved to a mise shim, which picks the binary
+scripts/orchestrator/orch-gate.sh:67:# from the review worktree's mise.toml (the audit of 6847aa9f). gh and git are what the gate and its collector run.
+scripts/orchestrator/orch-gate.sh:68:# mise resolves under env -i, so no MISE_CONFIG_FILE or MISE_TRUSTED_CONFIG_PATHS of this shell picks the binary
+scripts/orchestrator/orch-gate.sh:71:    found="$(env -i PATH="${PATH}" HOME="${HOME}" mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
+scripts/orchestrator/orch-gate.sh:76:git -C "${review}" checkout -q --detach "${head}"
+scripts/orchestrator/orch-gate.sh:87:    env -i PATH="${bin}" HOME="${HOME}" AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" \
+scripts/orchestrator/orch-gate.sh:88:        PR_FEEDBACK_EVIDENCE="${sweep}" REVIEW_EVIDENCE="${receipt}" AGENT_REVIEWED=1 PYTHONSAFEPATH=1 \
+scripts/orchestrator/orch-gate.sh:89:        "${python}" -I -P "${root}/scripts/require-crit-review.py" --base origin/main
+
+**Evaluating code resolver environment**
+**Checking environment clearance and root reading**
+exec
+/bin/zsh -lc "rg -n 'gh-binding|922292d|0edbd8c|fd8c003|c6cebe4|a3125e1' .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-trusted-entrypoint-pins-a01.md' in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "nl -ba scripts/orchestrator/orch-gate.sh | sed -n '30,100p'" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "nl -ba scripts/orchestrator/chain-integrate.sh | sed -n '33,110p'" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc "nl -ba scripts/require-crit-review.py | sed -n '480,645p'" in ~/Workspace/dotfiles
+ succeeded in 139ms:
+    30	# @example
+    31	#   scripts/orchestrator/orch-gate.sh dotfiles-T128-orchestrator-tools-a05 .claude/worktrees/worker-c 350
+    32	set -euo pipefail
+    33	
+    34	usage() {
+    35	    echo "usage: orch-gate.sh <task> <pr-worktree> <pr>" >&2
+    36	    exit 2
+    37	}
+    38	refuse() {
+    39	    echo "orch-gate: $1; refused" >&2
+    40	    exit 2
+    41	}
+    42	(($# == 3)) || usage
+    43	task=$1 pr=$3
+    44	[[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${pr} =~ ^[0-9]+$ ]] || usage
+    45	head="$(git -C "$2" rev-parse HEAD)"
+    46	root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+    47	review="${root}/.claude/worktrees/orchestrator-review"
+    48	v=.orchestration/validation
+    49	sweep="${v}/${task}-pr-feedback.json" audit="${v}/${task}-audit-${head:0:7}.md"
+    50	record=".orchestration/acceptance/${task}.md" receipt="${v}/${task}-review-receipt.md"
+    51	evidence=("${sweep}" "${audit}" "${audit}.last.md" "${receipt}" "${v}/${task}-crit.json" "${record}")
+    52	cd -- "${root}"
+    53	git diff --quiet origin/main -- scripts/require-crit-review.py scripts/validate-agent-assets.py ||
+    54	    refuse "the gate here differs from origin/main's"
+    55	for f in "${evidence[@]}"; do
+    56	    [[ -f ${f} ]] || refuse "${f} is missing"
+    57	done
+    58	[[ $(jq -r .pr "${sweep}") == "${pr}" ]] || refuse "${sweep} is not the sweep of PR ${pr}"
+    59	[[ -z $(git ls-tree -r "${head}" -- .orchestration | awk '$1 == "120000"') ]] ||
+    60	    refuse "${head:0:7} tracks a symlink under .orchestration (PR #350 thread 4265190259)"
+    61	python="$(uv python find)" || refuse "uv found no interpreter in ${root}"
+    62	[[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
+    63	trap '[[ -z ${bin:-} ]] || rm -rf -- "${bin}"
+    64	[[ -z ${moved:-} ]] || { git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main; }' EXIT
+    65	bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"
+    66	# The gate's PATH is these links alone: through the caller's PATH, gh resolved to a mise shim, which picks the binary
+    67	# from the review worktree's mise.toml (the audit of 6847aa9f). gh and git are what the gate and its collector run.
+    68	# mise resolves under env -i, so no MISE_CONFIG_FILE or MISE_TRUSTED_CONFIG_PATHS of this shell picks the binary
+    69	# (PR #355 thread 4267889542).
+    70	for name in gh git; do
+    71	    found="$(env -i PATH="${PATH}" HOME="${HOME}" mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
+    72	    [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"
+    73	    ln -s -- "${found}" "${bin}/${name}"
+    74	done
+    75	moved=1
+    76	git -C "${review}" checkout -q --detach "${head}"
+    77	for f in "${evidence[@]}"; do
+    78	    mkdir -p "${review}/$(dirname -- "${f}")"
+    79	    cp -- "${f}" "${review}/${f}"
+    80	done
+    81	rc=0
+    82	(
+    83	    # errexit is off left of ||, so a failed cd exits here instead of gating another tree.
+    84	    cd -- "${review}" || exit 2
+    85	    # Built, not filtered: CRIT_REVIEW=off, CRIT_REVIEWED=1 (thread 4265190267) or a PYTHONPATH that loads the head's
+    86	    # sitecustomize.py into the collector (the audit of a06c874e) cannot come along.
+    87	    env -i PATH="${bin}" HOME="${HOME}" AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" \
+    88	        PR_FEEDBACK_EVIDENCE="${sweep}" REVIEW_EVIDENCE="${receipt}" AGENT_REVIEWED=1 PYTHONSAFEPATH=1 \
+    89	        "${python}" -I -P "${root}/scripts/require-crit-review.py" --base origin/main
+    90	) || rc=$?
+    91	echo "orch-gate: ${task} at ${head:0:7} for PR ${pr}: gate rc=${rc}"
+    92	exit "${rc}"
+
+ succeeded in 252ms:
+   480	    spec.loader.exec_module(module)
+   481	    return module
+   482	
+   483	
+   484	def feedback_key(item: dict, masked: bool = False) -> tuple:
+   485	    """Identify a feedback item; `masked` takes its body and path as `--mask-secrets` saves them.
+   486	
+   487	    A saved body or path may be verbatim or exactly that masked form, because
+   488	    masking (`validate-agent-assets.py --mask-secrets`, which masks the string
+   489	    values of a JSON file) is the repository's documented way to keep evidence
+   490	    scannable, and the url still identifies the item. Source, url, level, line
+   491	    and author stay byte-exact; the author decides which items the acceptance
+   492	    record's ledger must cover, so it is matched against the live collection too.
+   493	    """
+   494	    key = {field: item.get(field) for field in ("source", "url", "level", "path", "line", "body", "author")}
+   495	    if masked:
+   496	        # Only the body and a key-shaped file path may be masked; the rest is exact.
+   497	        for field in ("path", "body"):
+   498	            if isinstance(key[field], str):
+   499	                key[field] = validator().mask_secret_matches(key[field])[0]
+   500	    return tuple(key.values())
+   501	
+   502	
+   503	def missing_feedback(collected: list, saved: list) -> Counter:
+   504	    """Count collected items with no saved item, verbatim or masked, left to match."""
+   505	    available = Counter(feedback_key(item) for item in saved if isinstance(item, dict))
+   506	    missing: Counter = Counter()
+   507	    for item in collected:
+   508	        for key in dict.fromkeys((feedback_key(item), feedback_key(item, masked=True))):
+   509	            if available[key]:
+   510	                available[key] -= 1
+   511	                break
+   512	        else:
+   513	            missing[feedback_key(item)] += 1
+   514	    return missing
+   515	
+   516	
+   517	def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
+   518	    """Bind the base before executing a collector, independently of PR-owned JSON/code."""
+   519	    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY", "GH_REPO"}}
+   520	    env["NO_COLOR"] = "1"
+   521	    failure = f"could not verify PR #{pr} base on GitHub; fetch the base and rerun scripts/pr-feedback.py"
+   522	    try:
+   523	        repository = subprocess.run(
+   524	            ["gh", "repo", "view", "--json", "nameWithOwner"],
+   525	            cwd=root,
+   526	            env=env,
+   527	            capture_output=True,
+   528	            text=True,
+   529	            check=False,
+   530	        )
+   531	        repo_data = json.loads(repository.stdout) if repository.returncode == 0 else None
+   532	        repo = repo_data.get("nameWithOwner") if isinstance(repo_data, dict) else None
+   533	        if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+   534	            return [failure]
+   535	        if evidence.get("repo") != repo:
+   536	            return [
+   537	                f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"
+   538	            ]
+   539	        result = subprocess.run(
+   540	            ["gh", "pr", "view", str(pr), "--repo", repo, "--json", "headRefOid,baseRefName,baseRefOid"],
+   541	            cwd=root,
+   542	            env=env,
+   543	            capture_output=True,
+   544	            text=True,
+   545	            check=False,
+   546	        )
+   547	        metadata = json.loads(result.stdout) if result.returncode == 0 else None
+   548	    except (OSError, json.JSONDecodeError):
+   549	        return [failure]
+   550	    if not isinstance(metadata, dict):
+   551	        return [failure]
+   552	    github_base = metadata.get("baseRefOid")
+   553	    github_ref = metadata.get("baseRefName")
+   554	    if (
+   555	        not isinstance(github_base, str)
+   556	        or not re.fullmatch(r"[0-9a-f]{40}", github_base)
+   557	        or not isinstance(github_ref, str)
+   558	        or not github_ref.strip()
+   559	        or run_git(["cat-file", "-e", f"{github_base}^{{commit}}"], root).returncode != 0
+   560	    ):
+   561	        return [failure]
+   562	    if metadata.get("headRefOid") != head:
+   563	        return [f"PR #{pr} head on GitHub is {metadata.get('headRefOid')}, not the local HEAD {head}; push first"]
+   564	    if evidence.get("base_sha") != github_base or evidence.get("base_ref") != github_ref:
+   565	        return [
+   566	            f"{PR_FEEDBACK_ENV} does not match the GitHub base {github_ref} ({github_base}); rerun scripts/pr-feedback.py"
+   567	        ]
+   568	
+   569	    resolved = run_git(["rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}"], root)
+   570	    base_sha = resolved.stdout.strip()
+   571	    if resolved.returncode == 0:
+   572	        if base_sha == github_base:
+   573	            return []
+   574	        if run_git(["merge-base", "--is-ancestor", base_sha, github_base], root).returncode == 0:
+   575	            first_parents = run_git(["rev-list", "--first-parent", head], root)
+   576	            if first_parents.returncode == 0 and base_sha not in first_parents.stdout.splitlines():
+   577	                return []
+   578	        # An advanced base must stay on the base side of the fork, not absorb PR commits.
+   579	        if run_git(["merge-base", "--is-ancestor", github_base, base_sha], root).returncode == 0:
+   580	            actual = run_git(["merge-base", base_sha, head], root)
+   581	            expected = run_git(["merge-base", github_base, head], root)
+   582	            if actual.returncode == expected.returncode == 0 and actual.stdout == expected.stdout:
+   583	                return []
+   584	    return [
+   585	        f"--base {base!r} is not bound to PR #{pr} base {github_ref} ({github_base}); use the PR base, not its branch or HEAD"
+   586	    ]
+   587	
+   588	
+   589	def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
+   590	    """Re-collect the PR's feedback and require every current item in the evidence.
+   591	
+   592	    A hand-written or stale document cannot pass: the guard runs the GitHub
+   593	    base SHA's scripts/pr-feedback.py (the PR under review cannot swap it) for the
+   594	    evidence's PR, requires the PR head on GitHub to be this HEAD, and requires
+   595	    each collected item (as a multiset) to be present. A bot review is not
+   596	    required; when one exists it is collected and must be dispositioned like any
+   597	    other item.
+   598	    """
+   599	    pr = evidence.get("pr")
+   600	    if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
+   601	        return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
+   602	    errors = pr_base_errors(root, evidence, pr, head, base)
+   603	    if errors:
+   604	        return errors
+   605	    with tempfile.TemporaryDirectory() as temporary:
+   606	        collected_path = Path(temporary) / "collected.json"
+   607	        # An advanced local base may contain untrusted code despite a safe merge-base.
+   608	        # Execute only the GitHub-authenticated base's collector, including bootstrap.
+   609	        collector = root / "scripts/pr-feedback.py"
+   610	        base_collector = run_git(["show", f"{evidence['base_sha']}:scripts/pr-feedback.py"], root)
+   611	        if base_collector.returncode == 0:
+   612	            collector = Path(temporary) / "pr-feedback.py"
+   613	            collector.write_text(base_collector.stdout)
+   614	        result = subprocess.run(
+   615	            [sys.executable, str(collector), str(pr), "--repo", evidence["repo"], "--json", str(collected_path)],
+   616	            cwd=root,
+   617	            check=False,
+   618	            text=True,
+   619	            stdout=subprocess.PIPE,
+   620	            stderr=subprocess.PIPE,
+   621	        )
+   622	        if result.returncode != 0 or not collected_path.is_file():
+   623	            detail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
+   624	            return [f"could not re-collect PR #{pr} feedback with scripts/pr-feedback.py: {detail[0]}"]
+   625	        collected = json.loads(collected_path.read_text())
+   626	    if collected.get("head_sha") != head:
+   627	        return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
+   628	    if collected.get("repo") != evidence["repo"]:
+   629	        return [f"collected feedback does not match the local GitHub repository {evidence['repo']}"]
+   630	    missing = missing_feedback(collected.get("items", []), evidence.get("items", []))
+   631	    if missing:
+   632	        sample = next(iter(missing))
+   633	        return [
+   634	            f"{PR_FEEDBACK_ENV} lacks {sum(missing.values())} current feedback item(s) for PR #{pr}, e.g. {sample[0]}:{sample[2]} {sample[1]}; rerun scripts/pr-feedback.py and disposition them"
+   635	        ]
+   636	    return []
+   637	
+   638	
+   639	def orchestration_path_error(root: Path, path: Path, env: str, directory: str) -> str | None:
+   640	    """Apply feedback_path_error's rule (repo-local, also after resolving links) to another .orchestration dir."""
+   641	    try:
+   642	        relatives = (feedback_relative_path(root, path), path.resolve().relative_to(root.resolve()))
+   643	    except ValueError:
+   644	        return f"{env} must point to a repo-local file under .orchestration/{directory}/"
+   645	    if any(relative.parts[:2] != (".orchestration", directory) for relative in relatives):
+
+ succeeded in 323ms:
+    33	set -euo pipefail
+    34	log='' lines=() && export NO_COLOR=1 && unset CLICOLOR_FORCE GH_FORCE_TTY # no ANSI from gh, as pr-feedback.py's gh_env
+    35	say() { lines+=("$1") && { [ -z "${log}" ] || printf '%s\n' "$1" >> "${log}"; }; }
+    36	refuse() { echo "chain-integrate: $2" >&2 && { [ -z "${log}" ] || say "chain-integrate: $2"; } && exit "$1"; } # <exit> <message>
+    37	# <command…>: a precondition read; sets out, and a failure is exit 1
+    38	pre() { out=$("$@") || { echo "step prepare failed rc=$?" >&2 && exit 1; }; }
+    39	step() { # <name> <accepted statuses, comma-separated, or any> <command…>: sets out and rc; any other status is exit 1
+    40	    local name=$1 ok=",$2," shown
+    41	    shift 2
+    42	    rc=0
+    43	    out=$("$@") || rc=$?
+    44	    shown="${1##*/} ${*:2}"
+    45	    shown=${shown//"${main}"\//}
+    46	    say "$("${date}" -u +%FT%TZ) ${name} rc=${rc}: ${shown//"${main}"/.}"
+    47	    echo "${name} rc=${rc}"
+    48	    [ -z "${out}" ] || printf '%s\n' "${out}"
+    49	    [[ ${ok} == ,any, || ${ok} == *",${rc},"* ]] || {
+    50	        echo "step ${name} failed rc=${rc}" >&2
+    51	        say "step ${name} failed rc=${rc}"
+    52	        exit 1
+    53	    }
+    54	}
+    55	(($# == 5 || $# == 6)) || refuse 10 "invalid argument: chain-integrate.sh <task> <pr> <main> <review> <owner> [<extra tsv>]"
+    56	task=$1 pr=$2 owner=$5 extra=${6:-}
+    57	# Both ids become path segments under .orchestration/ and record content; the leading class excludes . and ..
+    58	for v in "${task}" "${owner}"; do
+    59	    [[ ${v} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || refuse 10 "invalid argument: ${v}"
+    60	done
+    61	[[ ${pr} =~ ^[0-9]+$ ]] || refuse 10 "invalid argument: ${pr}"
+    62	main=$(cd -- "$3" 2> /dev/null && pwd -P) || refuse 10 "invalid argument: $3"
+    63	cd -- "${main}"
+    64	# Resolved before any fetch or checkout and run by absolute path, as local-review.sh resolves codex: a mise shim
+    65	# would pick its binary by the directory it runs in.
+    66	pick() { env -i PATH="${PATH}" HOME="${HOME}" mise which "$1" 2> /dev/null || command -v "$1" || true; }
+    67	gh=$(pick gh) git=$(pick git) uv=$(pick uv) shasum=$(pick shasum) date=$(pick date)
+    68	for found in "${gh}" "${git}" "${uv}" "${shasum}" "${date}"; do
+    69	    [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no binary outside a shims directory: ${found:-none}"
+    70	done
+    71	[ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || refuse 10 "main checkout is not on main"
+    72	fresh() { pre "${git}" -C "${main}" fetch -q origin main && pre "${git}" -C "${main}" rev-parse HEAD origin/main && { [ "${out%%$'\n'*}" = "${out##*$'\n'}" ] || refuse 10 "main checkout is not origin/main: run scripts/orchestrator/ff-main.sh"; }; }
+    73	fresh
+    74	# They run with the orchestrator's credentials, so each must be HEAD's own copy (PR #372 thread 4291474880).
+    75	for s in scripts/orchestrator/{sandbox-scan.sh,local-review.sh,local-advisory.sh,fill_sweep.py,acceptance-front-matter.py,orch-audit.sh} scripts/pr-feedback.py; do
+    76	    "${git}" -C "${main}" ls-files --error-unmatch -- "${s}" > /dev/null 2>&1 || refuse 10 "${s} is not tracked in the main checkout"
+    77	done
+    78	"${git}" -C "${main}" diff --quiet HEAD -- scripts || refuse 10 "scripts/ in the main checkout differs from HEAD"
+    79	pre "${git}" -C "${main}" rev-parse --show-toplevel
+    80	canonical=${out}/.claude/worktrees/orchestrator-review
+    81	review=$(cd -- "$4" 2> /dev/null && pwd -P) || review=$4
+    82	[ "${review}" = "${canonical}" ] || refuse 10 "review worktree is not the canonical one: ${canonical}"
+    83	[ -e "${review}/.git" ] || refuse 10 "review worktree is not a worktree root"
+    84	pre "${git}" -C "${review}" status --porcelain
+    85	[ -z "${out}" ] || refuse 10 "review worktree is not clean"
+    86	record=${main}/.orchestration/acceptance/${task}.md
+    87	[ -f "${record}" ] || refuse 10 "no acceptance record ${record#"${main}"/}"
+    88	pre "${gh}" pr view "${pr}" --json isDraft --jq .isDraft
+    89	[ "${out}" = false ] || refuse 10 "draft PR: the worker marks it ready"
+    90	pre "${git}" -C "${review}" fetch -q origin main
+    91	# The log names repository paths only, so an extra TSV must be in the main checkout (PR #372 thread 4291474891).
+    92	[ -z "${extra}" ] || extra=$(cd -- "$(dirname -- "${extra}")" 2> /dev/null && pwd -P)/${extra##*/}
+    93	[[ -z ${extra} || ${extra} == "${main}"/* ]] || refuse 10 "extra dispositions TSV is not in the main checkout: $6"
+    94	export ORCH_REVIEW_WORKTREE=${review}
+    95	v=${main}/.orchestration/validation
+    96	for attempt in 1 2 3; do
+    97	    step fetch 0 "${git}" -C "${main}" fetch -q origin "+pull/${pr}/head:refs/remotes/pr/${pr}"
+    98	    step fetch 0 "${git}" -C "${review}" fetch -q origin "+pull/${pr}/head"
+    99	    step fetch 0 "${git}" -C "${review}" checkout -q --detach FETCH_HEAD
+   100	    step fetch 0 "${git}" -C "${review}" rev-parse HEAD
+   101	    head=${out}
+   102	    step fetch 0 "${gh}" pr view "${pr}" --json headRefOid --jq .headRefOid
+   103	    [ "${out}" = "${head}" ] || refuse 10 "head mismatch: re-run"
+   104	    sha7=${head:0:7}
+   105	    # The log is named by the head, so the lines before it are written once it is known; a new head's log holds them all.
+   106	    [ "${log}" = "${v}/${task}-chain-${sha7}.log" ] || { log=${v}/${task}-chain-${sha7}.log && printf '%s\n' "${lines[@]}" >> "${log}"; }
+   107	    [ ! -e "${v}/${task}-audit-${sha7}.md.last.md" ] || refuse 10 "head already audited: one chain per head"
+   108	    step base 0,1 "${git}" -C "${review}" merge-base --is-ancestor origin/main HEAD
+   109	    if ((rc == 0)); then
+   110	        step checks any "${gh}" pr checks "${pr}" --required --watch
+
+ succeeded in 334ms:
+---
+{
+  "format": 1,
+  "task": "dotfiles-T133-trusted-entrypoint-pins-a01",
+  "head": "28dde0f5933abee4355892401a13be9c05054326",
+  "pr": 449,
+  "ledger": [
+    {
+      "id": "audit:28dde0f:1",
+      "class": "successor-scope"
+    },
+    {
+      "id": "audit:28dde0f:2",
+      "class": "checks-omission"
+    }
+  ],
+  "searches": [],
+  "audit_findings": [
+    {
+      "n": "1",
+      "reason": "the pins assertion encodes the pre-binding shell form correctly; the successor binding task's allowed_files now include tests/unit/test_generate_agent_configs.py and its note moves the assertion with the command form",
+      "evidence": "awk '/^allowed_files:/' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | grep -c test_generate_agent_configs"
+    },
+    {
+      "n": "2",
+      "reason": "orchestration finding corrected in this record: the pre-dispatch checks the text requires were run post hoc with pasted output (pre-send OK, premise re-probe at e042663b, origin/main and 28dde0f5), the wrong \"no premises\" statement is withdrawn, and send-task.sh refuses an empty Checks block from now on",
+      "evidence": "bash .agents/worklog/orchestrator-glue/pre-send.sh .orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md"
+    }
+  ]
+}
+---
+
+# Acceptance record: dotfiles-T133-trusted-entrypoint-pins-a01
+
+The separate pins task extracted from `dotfiles-T133-trusted-entrypoint-binding-a01` lines 398-417 (re-plan v2 R2-15a, r2 finding 11): pin uv 0.13.1, python 3.15.0, node 26.12.0 in `home/dot_mise/config.toml`; pins -> resolver -> binding. Seat: codex-standard-dot-a012 (worker-g).
+
+- 2026-10-21T02:00Z: text authored by author-loop.sh from `brief-pins-a01.md` (99 lines, 3 allowed_files); C-80 round 1 (`…-text-security-0908b8f.md`) correct.
+- 2026-10-21T02:04Z: dispatched (TASK 2926, sha 0908b8f4); paste-checks.sh failed on this text (no premise block), so the Checks block stayed empty. Held at 02:09Z over the allowed-file overlap with PR #448 (M-20261021-03); worktree collision reconciled (02:40Z); resumed 03:59Z after #448 merged.
+- 2026-10-21T04:12Z: PONG 2953 status=blocked: the independent pre-push review found a P1: `tests/unit/test_supply_chain_policy.py:374-387` holds a map of pinnable tools and requires every other tool to be `latest` and a reason comment above each held line; node and uv are not in the map, so the pins fail that test, and the file is outside the text's three allowed_files. The text omitted the test (orchestrator brief defect). Amendment 1 (brief v2): allowed_files + that test, held entries for node and uv, reason comments, caps 16/48.
+
+text-security:0908b8f:0	correct
+worker:e042663:1	brief-omitted-consumer-test
+- 2026-10-21T04:27Z: amendment 1 authored by author-loop.sh from `brief-pins-a01-v2.md` (109 lines, 4 allowed_files incl. tests/unit/test_supply_chain_policy.py; held entries for node and uv; reason comments; caps 16/48); C-80 round 2 (`…-text-security-70feed4.md`) correct; sent to a012 as amendment 1 at 2026-10-21T04:28Z (TASK 2955; send-task.sh refused the first line for the missing previous_task_sha256 token, C-121, and accepted it with the token 0908b8f4).
+
+text-security:70feed4:0	correct
+- 2026-10-21T08:14Z: defect sweep S1: this text was dispatched (amendment 1, sha 70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc) with an empty `## Checks (pasted by the orchestrator before each send)` block; the text defines no premise block for the paste (paste-checks.sh found none), so the heading is a template remainder, not an omitted measurement. Recorded here before the audit so the row, if raised, is dispositioned as an orchestrator text-shape defect: the dispatch facts were origin/main e042663b at dispatch (TASK line), the held-map conflict on tests/unit/test_supply_chain_policy.py resolved by amendment 1, and the worker's RESULT 2962 head 1f17d05f (update-branched to 28dde0f5 on 2026-10-21 08:06Z). send-task.sh now refuses an empty Checks block without `checks=none`.
+
+## Final head 28dde0f5 (update-branch of 1f17d05f after boundary 27; PR patch unchanged): chain 2026-10-21T08:32Z
+
+Chain (operator-run): CI 7 required green, GitGuardian "No secrets detected", local review 0 findings, sweep 5/5 (gaps 0), record block written. Task-level audit `…-audit-28dde0f.md.last.md`: **Verdict: incorrect**, one specification P1 and one orchestration P2; both dispositioned below (neither changes the PR's bytes), the security review of 28dde0f5 follows, then gate and merge.
+
+audit:28dde0f:1	successor-scope
+audit:28dde0f:2	checks-omission
+
+Row 1 (P1, specification, task line 58): the refactored `test_managed_hooks_use_installed_permgate_paths` (tests/unit/test_generate_agent_configs.py:1476) splits the rendered PermissionRequest command with `rsplit(" ", 1)`, which encodes the pre-binding shell form; the binding task's `command: "/usr/bin/env"` plus `args` form (binding text line 181) would raise ValueError, and the binding text excluded this test file. The pins assertion is correct for the state the PR creates; the defect is the successor's scope. Fixed outside the PR: the undispatched binding text now lists `tests/unit/test_generate_agent_configs.py` in allowed_files, its exclusion row is amended, and an orchestrator note tells the worker to move the assertion to the `args` form together with the command (binding text sha ebc62361… before this note's final hash; re-hashed at dispatch).
+Row 2 (P2, orchestration, this record's S1 note): the orchestrator's earlier statement that the text "defines no premise block" was wrong; the text has a `premises` entry (line 33 area: `rg -n '^(uv|python|node) = ' home/dot_mise/config.toml`) and line 96 requires C1-C10, C7b, C11 and the regime-copy checks before dispatch and acceptance, re-probing premises manually. Those checks were not run before the amendment-1 send (the omission is the orchestrator's); run post hoc 2026-10-21T08:32Z: `pre-send.sh` on the dispatched bytes -> `OK`, `secret-pattern: 0 match(es)`, `lines: 109`, sha 70feed41…; premise re-probe at the dispatch base e042663b and at origin/main e00de4e0: `3:node = "latest"`, `6:python = "3.15.0"`, `18:uv = "latest"`; at the head 28dde0f5: `4:node = "26.12.0"`, `7:python = "3.15.0"`, `20:uv = "0.13.1"`. send-task.sh now refuses an empty Checks block (C-130/S1).
+
+audit-finding: 28dde0f:1 not-applicable:the pins assertion encodes the pre-binding shell form correctly; the successor binding task's allowed_files now include tests/unit/test_generate_agent_configs.py and its note moves the assertion with the command form; evidence=awk '/^allowed_files:/' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | grep -c test_generate_agent_configs
+audit-finding: 28dde0f:2 not-applicable:orchestration finding corrected in this record: the pre-dispatch checks the text requires were run post hoc with pasted output (pre-send OK, premise re-probe at e042663b, origin/main and 28dde0f5), the wrong "no premises" statement is withdrawn, and send-task.sh refuses an empty Checks block from now on; evidence=bash .agents/worklog/orchestrator-glue/pre-send.sh .orchestration/tasks/dotfiles-T133-trusted-entrypoint-pins-a01.md
+- 2026-10-21T08:34Z: binding text after the row-1 fix: allowed_files + threat row for tests/unit/test_generate_agent_configs.py, the out_of_scope row removed (its constraint kept in the note), task-consistency-check OK, sha d9b396b076fe4eed95d13ca02e05b6b1272ddfc9551b0df034467fccc0840bd4 (undispatched; re-hashed at dispatch). The binding file still carries an appended pins draft after its own text (a second `format: 2` block from the joint authoring); it is dropped when the binding text is authored for dispatch (sweep S6).
+- 2026-10-21T09:14Z: security review of 28dde0f5 `…-security-28dde0f.md.last.md` Verdict correct (25 threat rows checked, no findings). Counters before the gate (C-126, sqlite): TASKs|2 ACCEPT-amend|0 ACCEPT-revise|0 RESULTs|1 PONG-question|0 (amendment 1 = TASKs 2; S2 not reached). finish-pr.sh runs the sweep, the record block, the gate and the merge bound to 28dde0f5.
+- 2026-10-21T09:47Z: owner declaration for the records boundary: the residual rows of this lineage named above are owned by dotfiles-T133-trusted-entrypoint-descendants-followup-a01 (owner stub under .orchestration/tasks/).
+
+
+ succeeded in 355ms:
+499:- Round 1 (`…-text-security-922292d.md`) and round 2 (`…-text-security-0edbd8c.md`): both `Verdict: incorrect`; the loop stopped at its two-round limit (exit 7, S-R5). Recurring P1: the checker's canonical-main reads trust a PATH-selected `gh`; withholding authenticity claims does not mitigate executable substitution; authoritative use needs the trusted-executable prerequisite (design 5.14 items 2-4, the binding task) or must stay non-authoritative until it lands. Round 2 P2: restoring the mandatory UV_CACHE_DIR refusal (fix 7) breaks callers that omit the variable, regime-ci among them, and the text named no caller prerequisite. Both rounds: the empty Checks block (pasted after the authoring, before the anchor review, as every text of this regime).
+501:text-security:922292d:1	executable-provenance
+502:text-security:0edbd8c:1	executable-provenance
+503:text-security:0edbd8c:2	cap-measurement-base
+504:text-security:922292d:2	design-conflict
+506:re-plan: executable-provenance (rows local:21f52c7:1 (the gh api token sequencing of the round-2 head), text-security:922292d:1, text-security:0edbd8c:1; three rounds in which the checker's canonical reads through a PATH-selected gh were taken as authoritative) — specification: the checker's canonical-main reads are pre-dispatch hygiene, not acceptance-time truth, until a trusted-executable binding resolves gh by absolute pinned path; the orchestrator's own sandboxed gh reads remain the acceptance evidence; design: the binding of gh (and uv, python) is owned by dotfiles-T133-trusted-entrypoint-binding-a01 (design 5.14 items 2-4, 9); the a07 threat row names that owner and the non-authoritative status instead of a withheld claim; implementation: the a07 text edit of 2026-10-21T08:43Z (orchestrator), no checker code change for this class in a07; verification: C-80 round 3 of the a07 bytes under this line (C-92: at most three reviews per re-plan line), then the anchor review.
+509:- 2026-10-21T08:45Z: a07 text edited by the orchestrator after the two authoring rounds (gh-provenance rows re-owned by dotfiles-T133-trusted-entrypoint-binding-a01 with non-authoritative status; fix 7 removed, the UV_CACHE_DIR fallback owned by dotfiles-T133-regime-ci-followup-a02 as a recorded design exception; the measurement base bound to the canonical main SHA read by the orchestrator's own gh; Checks pasted with the observed #435 state, canonical main e00de4e0, decoded design digest a027b021…, stage exits). pre-send OK; final bytes fd8c00346567ba92d15cbb746e381753033cc2e13f99945016f0f0a0caf1cac0 (140 lines); C-80 round 3 under `re-plan: executable-provenance` is the next operator line, then the anchor review.
+510:- 2026-10-21T09:26Z: C-80 round 3 of the a07 bytes fd8c0034 (`…-text-security-fd8c003.md`): Verdict incorrect. P1 (row 36): moving authority to the orchestrator's bare gh does not authenticate the executable (PATH/mise substitution), and the named binding owner binds uv/Python/Node/permgate, not gh. P2 (line 117): the canonical-main command omits `--hostname github.com`, so an inherited GH_HOST can redirect it. P2 (line 117): authenticating the main SHA does not authenticate the shared local objects `git merge-base`/`git diff --numstat` consume; acceptance needs authenticated changeset bytes or a worker-inaccessible clone.
+512:text-security:fd8c003:1	executable-provenance
+513:text-security:fd8c003:2	canonical-host-binding
+514:text-security:fd8c003:3	measurement-object-trust
+515:- 2026-10-21T09:28Z: D-024-60: gh-binding owner stub created; a07 rows re-owned (gh provenance -> dotfiles-T133-gh-binding-a01), `--hostname github.com` added, measurement in a private HTTPS bare clone (owner a09); pre-send OK, 140 lines, bytes 45b58f323a0eaf62878c2009d6af78351f5c71476386e924082d396574ec4c0d; C-80 round 4 (second under the re-plan line) is the next operator line.
+
+**Analyzing task design issues**
+exec
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-922292d.md.last.md .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-0edbd8c.md.last.md .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-fd8c003.md.last.md .orchestration/validation/dotfiles-T133-task-generator-plan-check-a07-checker-text-security-c6cebe4.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-followup-a02-text-security-a232baf.md.last.md' in ~/Workspace/dotfiles
+ succeeded in 0ms:
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:36` The canonical-main closure assumes a genuine `gh`: retained executable selection accepts a PATH-selected regular executable outside the checkout/shim exclusions, while the named tests deliberately supply fake API responses; fixed host/repository arguments cannot authenticate those responses or protect forwarded tokens without trusted executable provenance.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:103` Restoring mandatory `UV_CACHE_DIR` revives the documented failure for callers that omit it, including regime-ci invocations; caller/workflow changes are excluded and no repair prerequisite is named, so supplied-cache fixtures cannot establish deployable compatibility.
+
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:134` `Checks` is empty despite lines 120–121 requiring prerequisite API observations and completely populated bytes before the anchor review; approving this digest cannot approve the subsequently populated dispatch text.
+
+📝 まとめ: Reviewed all 51 threat rows and cited context; no files changed. Findings remain input for the orchestrator.
+
+Not checked: future implementation or live deployment; declared parent-execution, shared-cache and same-UID risks remain.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:36` Withholding authenticity claims does not mitigate executable substitution: retained PATH selection can execute an attacker-controlled `gh`, forward tokens, and accept forged canonical design/receipt responses; authoritative use needs a trusted-executable prerequisite or must remain non-authoritative until that prerequisite lands.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:120` The acceptance measurement uses mutable local `origin/main` and shared Git objects; a same-user writer can change the merge-base and measured diff despite sanitized `GIT_*`, so the budget decision needs an authenticated canonical base and verified changeset.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:135` `Checks` remains empty although lines 122–123 require observed prerequisites before either review; this digest lacks the prerequisite evidence, and approval cannot carry over to subsequently populated dispatch bytes.
+
+📝 まとめ: Reviewed the threat table and cited context; three findings remain for the orchestrator. No files changed.
+
+Not checked: future implementation, live deployment, or native race behavior; execution provenance remains unresolved.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:36` Moving authority to the orchestrator’s bare `gh` does not authenticate its executable: PATH/mise substitution can forge acceptance reads, while “non-authoritative” checker execution still exposes forwarded credentials; sandbox labels do not close either risk, and the named binding-owner text specifies uv/Python/Node/permgate binding, not `gh`.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` The authoritative API command omits `--hostname github.com`; inherited `GH_HOST` can redirect the fixed repository endpoint even with a genuine executable, so the stated command does not establish the canonical-main source required by design item 8.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` Authenticating the main SHA does not authenticate the shared local objects consumed by `git merge-base` and `git diff --numstat`; same-user object substitution can change ancestry and measured counts even after inherited `GIT_*` sanitization, so acceptance needs authenticated changeset bytes or a worker-inaccessible clone.
+
+📝 まとめ: Reviewed the task’s threat rows, inherited controls, and cited acceptance/review evidence; three findings remain for orchestrator disposition. No files changed.
+
+Not run: implementation tests or live host probes; executable and changeset binding remain unresolved.
+Verdict: incorrect- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` “Non-authoritative” `gh` output still selects the cap-measurement base and establishes dispatch prerequisites: a substituted executable can report the candidate head as canonical main, satisfying ancestry and producing a zero diff even in an authentic private clone; the residual also leaves forwarded credentials exposed, without requiring the binding prerequisite before use.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:135` The prerequisite command uses `--repo mryfmo/dotfiles` without fixing its host, so inherited `GH_HOST` can select another server even with genuine `gh`; use `--repo github.com/mryfmo/dotfiles` or a fixed-host API request. [GitHub CLI environment documentation](https://cli.github.com/manual/gh_help_environment).
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:137` Checks asserts successful design publication but omits the exact contents-API/assertion commands and individual stage exits required by line 119; line 138 supplies only a pre-paste pre-send exit, so these reviewed bytes do not contain the prerequisite evidence required before review and dispatch.
+
+📝 まとめ: Reviewed all 52 threat rows and cited context without changing files; findings remain input for the orchestrator.
+
+Not checked: future implementation, live sandbox enforcement, or race execution; declared same-user and startup risks remain.
+Verdict: incorrect- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:99` — Recording `mise which uv` does not bind subsequent bare `uv` execution, its Python, or checker descendants; this host resolves uv through mise shims, while `after: []` permits dispatch before the binding prerequisites land.
+
+- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:24` — Temporary repositories do not isolate inherited `GIT_DIR`, `GIT_WORK_TREE`, or `GIT_CONFIG_*`: the retained test harness forwards them into Git, including commits and resets, so commands can target another writable repository despite their temporary cwd; sandboxing does not close this redirection.
+
+- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:66` — Equal `patch-id --verbatim` values do not establish unchanged behavior: moving an identical hunk between repeated blocks preserves the ID, including when introduced through a merge resolution; the named test needs this negative case and a check that binds the resulting tree to the permitted merge. [Git documentation](https://git-scm.com/docs/git-patch-id)
+
+- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:85` — A matching acceptance JSON head plus “gate passed” evidence can be fabricated together in the records PR; recorded/unrecorded fixtures cannot close this authentication gap without an independently authenticated gate result bound to the repository, exact head, and trusted preceding boundary.
+
+- [P1] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:42` — Fixture byte equality provides no compensating control against replacement between validation and consumption: the bootstrap still names checkout files, while no required test binds the executed checker and consumed evidence to the validated snapshot under symlink, case-alias, or same-user replacement.
+
+- [P2] high `.orchestration/tasks/dotfiles-T133-regime-ci-followup-a02.md:60` — Blob equality omits Git entry modes: identical bytes can change from a regular evidence file into a symlink or executable while satisfying the stated comparison; the closed retained-directory row needs type/mode checks and corresponding negative fixtures.
+
+📝 まとめ: Read-only pre-dispatch review completed; these findings are input for the orchestrator’s decision.
+
+Not checked: implementation, live Linux gh execution, or CI; runtime enforcement remains unverified.
+Verdict: incorrect
+exec
+/bin/zsh -lc "rg -n 'D-024-69' .orchestration/decisions.tsv; sed -n '1,150p' tests/unit/trusted_exec_contract.py; sed -n '1,110p' scripts/pr-feedback.py" in ~/Workspace/dotfiles
+ succeeded in 0ms:
+117:D-024-69	2026-10-21T22:58Z	gh binding pulled forward (operator 07:5x JST: use the essential remedy, not an expedient): dotfiles-T133-gh-binding-a01 (pin github-cli in home/dot_mise/config.toml, declare the absolute gh path beside uv/Python/Node in agent-config.yaml, make the orchestrator scripts' resolver and the checker's executable() use the declared path with --hostname github.com, one refusal test per route) is authored now (author-loop, C-80), anchored and dispatched to the free Codex seat a012 ahead of slices 2-5 and of trusted-entrypoint-binding-a01; a07 (D-024-65) and regime-ci-followup-a02 resume their C-80 after it merges; options B (keep the order) and C (a CI-side waiver) were declined by the operator's instruction	seven C-80 rounds across a07 and regime-ci-followup-a02 refused the same executable-provenance class; only a host binding of gh closes it; the operator ruled for the essential means	text-security verdicts 922292d/0edbd8c/fd8c003/c6cebe4/a3125e1 (a07) and a232baf/a18a67d (regime-ci-followup-a02); gh is mise-managed at github-cli-cli/latest, unpinned	brief next; dispatch to a012 after the anchor review
+"""Shared probes of design-quality 5.14 item 7: one attack each in a temporary fixture, and the trusted parent."""
+
+import contextlib
+import functools
+import hashlib
+import json
+import os
+import pwd
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+SHIMS = ("uv", "python3", "gh", "git", "bash")
+ALLOWED = ("PATH", "HOME", "LANG")
+SAFE_PATH = "/usr/bin:/bin"
+LEGIT, ATTACKER = "legitimate\n", "attacker\n"
+BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
+QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
+HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
+SHIM = "#!{python} -I\nimport json, sys\nwith open({record!r}, 'a') as f:\n    f.write(json.dumps({{'name': {name!r}, 'argv': sys.argv}}) + '\\n')\nsys.exit(97)\n"
+
+
+class TrustedExecRefused(ValueError):
+    """run_under_trusted_parent refused the script before running anything."""
+
+
+class ShimProbe:
+    """Failing shims of SHIMS first on PATH, each recording its name and argv as JSON through an absolute python."""
+
+    def __init__(self, base, env=None):
+        if any(c.isspace() for c in sys.executable):
+            raise RuntimeError(f"{sys.executable}: a shim interpreter path must hold no whitespace")
+        self.base, self.bin, self.record = base, base / "bin", base / "shim-runs.jsonl"
+        self.bin.mkdir()
+        for name in SHIMS:
+            (self.bin / name).write_text(SHIM.format(python=sys.executable, record=str(self.record), name=name))
+            (self.bin / name).chmod(0o755)
+        self.env = dict(os.environ if env is None else env)
+        self.env["PATH"] = os.pathsep.join(filter(None, (str(self.bin), self.env.get("PATH", ""))))
+
+    def records(self):
+        return [json.loads(line) for line in (self.record.read_text() if self.record.exists() else "").splitlines()]
+
+    def assert_none_ran(self):
+        if runs := self.records():
+            raise AssertionError("shim ran: " + "; ".join(f"{r['name']} {r['argv']!r}" for r in runs))
+
+
+class HostileGit:
+    """A legitimate and an attacker repository; attack(kind) yields the environment to offer a consumer."""
+
+    def __init__(self, base):
+        self.base, self.legit, self.attacker = base, base / "legit", base / "attacker"
+        self.hook_marker, self._env = base / "attacker-hook-ran", {"PATH": SAFE_PATH, "HOME": str(base)}
+        for repo, text in ((self.legit, LEGIT), (self.attacker, ATTACKER)):
+            repo.mkdir()
+            self._git(repo, "init", "-q")
+            (repo / "probe.txt").write_text(text)
+            self._git(repo, "add", "probe.txt")  # an index, so status consults core.fsmonitor
+        hook = self.attacker / "hook"
+        hook.write_text(f'#!/bin/sh\necho ran >> "{self.hook_marker}"\nexit 1\n')
+        hook.chmod(0o755)
+        self.config = self.attacker / "attacker.gitconfig"  # included, it makes git run the attacker's program
+        self.config.write_text(f"[core]\n\tfsmonitor = {hook}\n")
+
+    def _git(self, repo, *args):
+        subprocess.run(["/usr/bin/git", "-C", str(repo), *args], env=self._env | QUIET, check=True, capture_output=True)
+
+    @contextlib.contextmanager
+    def attack(self, kind):
+        """Kind environment exports hostile GIT_*; the local-* kinds plant one key in the fixture's own config."""
+        self.hook_marker.unlink(missing_ok=True)
+        if kind == "environment":
+            git_dir = self.attacker / ".git"
+            values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects")
+            yield self._env | {name: str(value) for name, value in zip(HOSTILE_GIT_ENV, values, strict=True)}
+            return
+        pairs = {"local-worktree": ("core.worktree", self.attacker), "local-include": ("include.path", self.config)}
+        key, value = pairs[kind]
+        self._git(self.legit, "config", key, str(value))
+        try:
+            yield dict(self._env)
+        finally:
+            self._git(self.legit, "config", "--unset", key)
+
+    def assert_unaffected(self, root, content):
+        """The consumer's confirmed root and what it read there are legitimate, and no attacker program ran."""
+        real, found = os.path.realpath(root), []
+        if real != str(self.legit):
+            found.append(f"attacker root {root}" if real == str(self.attacker) else f"wrong root {root!r}")
+        if content != LEGIT:
+            found.append("attacker content" if content == ATTACKER else f"wrong content {content!r}")
+        found += ["attacker hook ran"] if self.hook_marker.exists() else []
+        if found:
+            raise AssertionError("hostile git: " + "; ".join(found))
+
+
+class WorkerRoot:
+    """An input, an output and a new output under a worker root. A read shows as the input's access time leaving 0; a
+    filesystem where a read leaves it at 0 (measured on a scratch file) refuses the probe instead of passing vacuously."""
+
+    def __init__(self, base):
+        self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
+        seat.mkdir(parents=True)
+        self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
+        check = base / "atime-check"
+        for path in (check, self.input, self.output):
+            path.write_text(LEGIT)
+            os.utime(path, ns=(0, BASELINE_NS))
+        if check.read_text() and os.stat(check).st_atime_ns == 0:
+            raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
+        self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
+
+    def assert_untouched(self):
+        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory. The
+        content is compared too, since a write in place can keep the inode, the size and a coarse clock's mtime."""
+        found = []
+        for path, identity in self._identity.items():
+            if not os.path.lexists(path):
+                found.append(f"removed {path}")
+                continue
+            st = os.lstat(path)
+            found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
+            content = path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""  # the same regular file only
+            os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)  # puts this read's access back
+            if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
+                found.append(f"wrote {path}")
+        found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
+        if found:
+            raise AssertionError("worker root: " + "; ".join(found))
+
+
+class SwappedFile:
+    """A checked file, swap() linking its name (or its stat-measured case alias) to attacker content mid-consumption."""
+
+    def __init__(self, base):
+        self.base, self.path, self.attacker = base, base / "Checked.tsv", base / "attacker.tsv"
+        self.path.write_text(LEGIT)
+        self.attacker.write_text(ATTACKER)
+        self.expected_sha = hashlib.sha256(LEGIT.encode()).hexdigest()
+        flipped = self.path.with_name(self.path.name.swapcase())
+        same = flipped.exists() and os.path.samefile(flipped, self.path)
+        self.alias = flipped if same else None
+        self.alias_reason = "" if same else f"case-sensitive filesystem under {base}: {flipped.name} does not resolve"
+
+    def swap(self, via_alias=False):
+        if (target := self.alias if via_alias else self.path) is None:
+#!/usr/bin/env python3
+"""Collect every piece of GitHub feedback on a pull request head into one JSON document.
+
+Usage: pr-feedback.py <pr-number> [--repo owner/name] [--json <out>]
+
+Items cover issue comments, reviews, inline review comments (with their
+thread's resolution state), non-passing check runs, every check-run
+annotation at any level, and every commit status on the PR head. Each item
+carries an empty `disposition` to fill with `fixed:<commit>` or
+`not-applicable:<reason>` before integration; scripts/require-crit-review.py
+checks the filled file through PR_FEEDBACK_EVIDENCE. Passing check runs are
+listed under `checks` only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+import sys
+from collections import Counter
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+PASSING_CONCLUSIONS = {"success", "neutral", "skipped"}
+THREADS_QUERY = """
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          isOutdated
+          comments(first: 100) {
+            pageInfo { hasNextPage endCursor }
+            nodes { databaseId }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+THREAD_COMMENTS_QUERY = """
+query($id: ID!, $cursor: String) {
+  node(id: $id) {
+    ... on PullRequestReviewThread {
+      comments(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { databaseId }
+      }
+    }
+  }
+}
+"""
+
+Fetch = Callable[[str, bool], Any]
+GraphQL = Callable[[str, dict[str, Any]], Any]
+
+
+def gh_env() -> dict[str, str]:
+    """Environment for gh that never colours output, even under CLICOLOR_FORCE panes."""
+    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY"}}
+    env["NO_COLOR"] = "1"
+    return env
+
+
+def gh(args: list[str]) -> str:
+    result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, env=gh_env())
+    if result.returncode != 0:
+        sys.exit(f"gh {' '.join(args[:2])} failed: {result.stderr.strip()}")
+    return result.stdout
+
+
+def gh_fetch(path: str, paginate: bool = False) -> Any:
+    """Return the JSON for a REST path; paginated responses become a list of pages."""
+    if paginate:
+        return json.loads(gh(["api", "--paginate", "--slurp", path]))
+    return json.loads(gh(["api", path]))
+
+
+def gh_graphql(query: str, variables: dict[str, Any]) -> Any:
+    args = ["api", "graphql", "-f", f"query={query}"]
+    for key, value in variables.items():
+        if value is not None:
+            args.extend(["-F" if type(value) is int else "-f", f"{key}={value}"])
+    return json.loads(gh(args))
+
+
+def require_auth() -> None:
+    result = subprocess.run(
+        ["gh", "auth", "status"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=gh_env(),
+    )
+    if result.returncode != 0:
+        print("pr-feedback: gh is not authenticated; run `gh auth login`", file=sys.stderr)
+        raise SystemExit(2)
+
+
+def flatten(pages: Any, key: str | None = None) -> list[Any]:
+    """Merge `gh api --paginate --slurp` pages into one list."""
+    merged: list[Any] = []
+
+**Analyzing authenticated-base collector constraints**
+**Examining test coverage and environment checks**
+codex
+Checks に貼られた canonical clone の取得手順には、過去の a07 レビューと同じ未束縛の `git` と継承環境の問題が残っています。また、gate が認証済み base SHA を得た後、collector の実行コードを共有 Git object store から取り出す経路も確認しており、今回の仕様がそこをどこまで保証するかを詰めています。
+web search: 
+exec
+/bin/zsh -lc "rg -n 'run_git|GIT_NO_REPLACE|GIT_CONFIG|replace' scripts/require-crit-review.py; rg -n 'trusted_tools|gh|yaml|parse' scripts/validate-agent-assets.py | head -40; command -v git; command -v mise; ls -ld /var/empty" in ~/Workspace/dotfiles
+exec
+/bin/zsh -lc '/usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=url.https://attacker.invalid/.insteadOf GIT_CONFIG_VALUE_0=https://github.com/ /usr/bin/git ls-remote --get-url https://github.com/mryfmo/dotfiles.git' in ~/Workspace/dotfiles
+ succeeded in 71ms:
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-zzwnLf9R' (errno=Operation not permitted)
+git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
+git: error: couldn't create cache file '/tmp/xcrun_db-55TO9LB9' (errno=Operation not permitted)
+https://attacker.invalid/mryfmo/dotfiles.git
+
+ succeeded in 99ms:
+138:def run_git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess[str]:
+150:    result = run_git(["rev-parse", "--show-toplevel"])
+214:        result = run_git(command, root)
+226:        result = run_git(command, root)
+236:    untracked = run_git(["ls-files", "--others", "--exclude-standard"], root)
+263:    token_source = " ".join(path_parts).lower().replace("_", "-")
+392:        run_git(["merge-base", "--is-ancestor", commit, head], root).returncode == 0
+393:        and run_git(["merge-base", "--is-ancestor", commit, base], root).returncode != 0
+454:        if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
+559:        or run_git(["cat-file", "-e", f"{github_base}^{{commit}}"], root).returncode != 0
+569:    resolved = run_git(["rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}"], root)
+574:        if run_git(["merge-base", "--is-ancestor", base_sha, github_base], root).returncode == 0:
+575:            first_parents = run_git(["rev-list", "--first-parent", head], root)
+579:        if run_git(["merge-base", "--is-ancestor", github_base, base_sha], root).returncode == 0:
+580:            actual = run_git(["merge-base", base_sha, head], root)
+581:            expected = run_git(["merge-base", github_base, head], root)
+610:        base_collector = run_git(["show", f"{evidence['base_sha']}:scripts/pr-feedback.py"], root)
+969:            lines = path.read_text(errors="replace").splitlines()
+995:    verify = run_git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{base}^{{commit}}"], root)
+1018:    head = run_git(["rev-parse", "HEAD"], root).stdout.strip() if args.base else None
+1039:    current_head = head or run_git(["rev-parse", "HEAD"], root).stdout.strip()
+6:import configparser
+22:    import yaml
+24:    yaml = None
+30:        # A key prefix starts after a non-word character or the start, or right
+35:        (?:ghp_[A-Za-z0-9_]{20,} | github_pat_[A-Za-z0-9_]{20,}
+37:           # its first 64 characters (an sk-proj- key right after proj-); a
+49:    "@modelcontextprotocol/server-github": "Use the official ghcr.io/github/github-mcp-server container instead.",
+79:def load_yaml(path: Path) -> dict[str, Any]:
+80:    if yaml is None:
+82:    data = yaml.safe_load(path.read_text()) or {}
+174:    if yaml is None:
+176:    data = yaml.safe_load(text[4:end]) or {}
+201:        openai_yaml = skill_dir / "agents/openai.yaml"
+202:        if openai_yaml.exists():
+203:            parsed = load_yaml(openai_yaml)
+204:            if not isinstance(parsed, dict):
+205:                fail(f"{openai_yaml} must be a mapping")
+227:    # Scanned as text rather than parsed YAML so the check still runs under
+229:    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+331:    forbidden = {"cafe.github.com", "datadoghq.com", "checkpoint-api.hashicorp.com", "api.anthropic.com"}
+332:    if any(domain in forbidden or domain.endswith(".datadoghq.com") for domain in domains):
+421:    """The parsed [[hooks.<Event>]] matcher group that generate-agent-configs.py renders for one hook."""
+574:    "gh-extension": {"none"},
+690:        fail("agent-config.yaml must declare third-party assets under assets:")
+720:            asset["attestation"] != "when-gh-authenticated" or asset["source"] != "github-release"
+722:            fail(f"assets.{name}.attestation must be 'when-gh-authenticated' on a github-release asset")
+723:        # Nothing runs before an independent check: a rolling asset whose attestation needs gh
+724:        # bootstraps a reviewed fallback release where gh cannot check it first.
+735:                    f"assets.{name} has release: latest and attestation: when-gh-authenticated, so it must record "
+736:                    "fallback.pin, fallback.sha256 (per platform) and fallback.reason for a host without gh"
+804:    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+805:    manifest = load_yaml(manifest_path)
+822:    # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
+825:    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high")):
+831:    # Operator pin (2026-10-09, T115): the auditor is codex gpt-6-astra xhigh, read-only.
+835:        ("model_reasoning_effort", "xhigh"),
+850:    readme_worker = f"`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `{worker_kind}`;"
+857:        f"`orchestrator_kind` in `home/dot_agents/agent-config.yaml` (currently `{orchestrator_kind}`;"
+1044:        fail("home/dot_agents/agent-config.yaml must enable the Ponytail Codex plugin")
+1192:    policy_path = ROOT / "home/dot_agents/permgate-policy.yaml"
+/opt/homebrew/bin/git
+~/.local/bin/mise
+drwxr-xr-x  2 root  sys  64 Sep 24 16:10 /var/empty
+
+web search: https://git-scm.com/docs/git
+**Evaluating graph parsing and issue reporting**
+**Analyzing sandbox and deployment constraints**
+web search: 
+web search: 'GIT_CONFIG_COUNT' in https://git-scm.com/docs/git-config
+exec
+/bin/zsh -lc "sed -n '132,150p' scripts/require-crit-review.py; sed -n '180,230p' tests/unit/trusted_exec_contract.py; shasum -a 256 .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; jq -r '.nodes[] | select((.filePath // \"\") | test(\"scripts/(orchestrator|require-crit-review|pr-feedback)\")) | [.filePath, .summary] | @tsv' .ua/knowledge-graph.json | head -8" in ~/Workspace/dotfiles
+ succeeded in 129ms:
+CRIT_DATA_REVIEW_SURFACE = "crit-data"
+CRIT_DATA_SOURCE_FIELD = "review_source"
+CRIT_DATA_REQUIRED_FIELDS = ("id", "body", "scope")
+AGENT_REVIEW_OUTCOMES = {"approved", "addressed"}
+
+
+def run_git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=root,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def git_root() -> Path:
+    result = run_git(["rev-parse", "--show-toplevel"])
+
+
+def assert_sanitized_env(observed, declared=()):
+    """The observed names are exactly PATH, HOME, LANG and the consumer's declared names, with PATH=/usr/bin:/bin."""
+    want, got, path = set(ALLOWED) | set(declared), set(observed), observed.get("PATH")
+    found = [f"missing: {sorted(want - got)}"] if want - got else []
+    found += [f"undeclared: {sorted(got - want)}"] if got - want else []
+    found += [f"PATH is {path!r}, not {SAFE_PATH!r}"] if path != SAFE_PATH else []
+    if found:
+        raise AssertionError("environment: " + "; ".join(found))
+
+
+def repository_root():
+    """The checkout this module lives in, from its own path; no Git command or GIT_* variable is consulted."""
+    return Path(__file__).resolve().parents[2]
+
+
+def _directory_service(argv):
+    return subprocess.run(argv, env={}, capture_output=True, text=True, check=True, stdin=subprocess.DEVNULL).stdout
+
+
+def passwd_home():
+    """The real UID's home from its passwd entry (pwd.getpwuid), never HOME or PATH. dscl (macOS) or getent (Linux)
+    cross-checks it when it can run (both seat sandboxes refuse dscl); a disagreeing or malformed answer is refused."""
+    entry, darwin = pwd.getpwuid(os.getuid()), sys.platform == "darwin"
+    argv = ["/usr/bin/getent", "passwd", str(os.getuid())] if sys.platform.startswith("linux") else None
+    argv = ["/usr/bin/dscl", ".", "-read", "/Users/" + entry.pw_name, "NFSHomeDirectory"] if darwin else argv
+    try:
+        out = _directory_service(argv) if argv else None
+    except (OSError, subprocess.CalledProcessError):
+        out = None  # the cross-check cannot run here; the passwd entry stands alone
+    if out is not None:
+        f, dscl = out.rstrip("\n").split(":"), (out.partition(NFS)[2] if out.startswith(NFS) else "").strip()
+        other = dscl if darwin else (f[5] if len(f) == 7 else "")
+        if other != entry.pw_dir:
+            raise RuntimeError(f"the directory service and the passwd entry disagree: {other!r}, {entry.pw_dir!r}")
+    if not entry.pw_dir.startswith("/") or "\n" in entry.pw_dir:
+        raise RuntimeError(f"no absolute passwd home: {entry.pw_dir!r}")
+    return entry.pw_dir
+
+
+def run_under_trusted_parent(script, *args):
+    """Run a regular file inside the repository root under env -i and bash -p, each argument one argument."""
+    if not Path(script).is_absolute():
+        raise TrustedExecRefused(f"{script}: not an absolute path")
+    root, real = repository_root().resolve(), Path(script).resolve()
+    if not real.is_relative_to(root):
+        raise TrustedExecRefused(f"{script}: resolves to {real}, outside {root}")
+    if not real.is_file():  # resolved, so a regular file and not a link to one
+        raise TrustedExecRefused(f"{script}: not a regular file")
+    argv = ["/usr/bin/env", "-i", f"PATH={SAFE_PATH}", f"HOME={passwd_home()}", "LANG=C.UTF-8"]
+0ecdc07c05c377f9793965aa43a324e23b95808afcd53658c0d7b66790a516d8  .orchestration/tasks/dotfiles-T133-gh-binding-a02.md
+scripts/pr-feedback.py	Collector that gathers every piece of GitHub feedback on a PR head (issue comments, reviews, inline comments with thread state, non-passing checks, annotations, commit statuses) into one JSON document with empty dispositions for the PR integration gate.
+scripts/pr-feedback.py	Exits with guidance when `gh auth status` reports the GitHub CLI is not authenticated.
+scripts/pr-feedback.py	Builds one normalized feedback item (source, actor, bot flag, level, body, url, path/line, thread state) with an empty disposition.
+scripts/pr-feedback.py	Queries review threads over GraphQL and maps each review comment id to its resolved and outdated state.
+scripts/pr-feedback.py	Fetches all PR feedback sources for the head commit via REST/GraphQL and assembles the item list with repo, PR, head and base metadata.
+scripts/pr-feedback.py	CLI entry that resolves the repo, requires gh auth, collects feedback, and writes JSON to stdout or a file.
+scripts/require-crit-review.py	Integration guard that requires native agent or Crit review evidence for meaningful diffs and, for PR integration, re-collects GitHub feedback from the authenticated base's pr-feedback.py and requires a root-cause disposition for every item.
+scripts/require-crit-review.py	Skips worklogs and the PR feedback evidence file itself when sizing a diff.
+
+**Reviewing threat coverage and test design**
+**Summarizing Git environment findings**
+
+I’m preparing a concise report with two high-priority findings about the Git environment’s clone and verification process, emphasizing exact line references and avoiding redundant issues. The report confirms no file changes were made and notes the read-only nature of operations alongside isolated environmental concerns.
+codex
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a02.md:126` — The canonical measurements execute bare `git` and `shasum` without a measured executable namespace; line 130 confirms the trusted parent is undeployed, so substituted executables can forge main and the design digest before anchoring. “gh-free” does not establish executable provenance.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a02.md:126` — The recorded clone/read commands lack constructed environments and explicit binding of subsequent reads to the private clone; inherited `GIT_CONFIG_*` can rewrite the fixed URL, while `GIT_DIR` or the current directory can select another repository. A network-free probe confirmed the URL rewrite; require sanitized, explicitly rooted commands throughout. [Git configuration](https://git-scm.com/docs/git-config#ENVIRONMENT)
+
+📝 まとめ: Reviewed all 41 threat rows and cited review/acceptance history; two findings remain for orchestrator disposition. No files edited.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-UID replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrect
+hook: Stop
+hook: Stop Completed
+tokens used
+98,296
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a02.md:126` — The canonical measurements execute bare `git` and `shasum` without a measured executable namespace; line 130 confirms the trusted parent is undeployed, so substituted executables can forge main and the design digest before anchoring. “gh-free” does not establish executable provenance.
+
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a02.md:126` — The recorded clone/read commands lack constructed environments and explicit binding of subsequent reads to the private clone; inherited `GIT_CONFIG_*` can rewrite the fixed URL, while `GIT_DIR` or the current directory can select another repository. A network-free probe confirmed the URL rewrite; require sanitized, explicitly rooted commands throughout. [Git configuration](https://git-scm.com/docs/git-config#ENVIRONMENT)
+
+📝 まとめ: Reviewed all 41 threat rows and cited review/acceptance history; two findings remain for orchestrator disposition. No files edited.
+
+Not checked: future implementation, CI or live Linux/race behavior; same-UID replacement and credential separation remain acknowledged residual risks.
+Verdict: incorrect

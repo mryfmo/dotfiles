@@ -1,0 +1,200 @@
+F	unit	P	area	cluster	source_ids	location	issue	fix
+F001	U70	P1	codex	B	C01, S08-07	dot_codex/modify_private_config.toml:347-397; update-agent-assets.sh:684	make update が ponytail を版固定なしで upgrade し、modify スクリプトが導入済みの hook 定義から trusted_hash を毎回計算する。このため第三者プラグインの新しい hook がレビューなしで信頼される。	manifest の固定ハッシュと計算値が一致する時だけ信頼を書き、不一致なら警告して /hooks のレビューに残す。
+F002	U76	P1	security	E	S02-01, S04-02, C04, S08-11	claude-settings-managed.json:35-67; dot_codex/rules/default.rules:104-112; omp/policies/worker.yml:44-129	gh の書き込み操作を止める規則が三つのエージェントで別々に書かれ、どれも抜けがある。Claude の ask はフラグが api 直後の形しか拾わず、graphql と gh repo delete や gh secret set を含まない。Codex は `-XPUT` と `--method=PUT` の merge を禁止していない。yolo の omp 席は gh run rerun や gh secret set などを自動で許可する。	gh の書き込みを argv 解析で判定するフックか lever に寄せ、Claude・Codex・omp の拒否集合を一つの定義から生成する。当面は Claude に `Bash(gh api * -X *)` と graphql を、Codex に `-XPUT` と `--method=PUT` を、omp 席に gh 書き込みの包括 deny を加える。
+F003	U65	P1	security	F	S10-01, S10-02, S10-03, S10-04	run_before_00-refuse-dirty-source.sh.tmpl:50; install/macos/common/{dependencies,misc,docker,brew}.sh; upgrade-tools.sh:537-540; .chezmoi.yaml.tmpl	omp の bash ツールが全シェルに CI=true を入れるため、omp から動かす chezmoi apply や make が CI 用の分岐に入る。dirty-source ガードが外れ、run_once スクリプトは未導入のまま実行済みになり、brew.sh は未信頼 tap を確認なしで信頼し、make update は更新を黙って飛ばし、make init は age 暗号化を落とした設定を書く。	実 CI の判定を GITHUB_ACTIONS などランナー固有の変数に限る共通関数に置き換える。omp の起動環境では PI_BASH_NO_CI=1 を設定する。
+F004	U85	P1	omp	G	S08-05, OOS-S01-6	omp/policies/{worker,orchestrator}.yml:7-10	書き込み系の omp 席(worker と orchestrator)は yolo で OS レベルの封じ込めもパス単位の deny も無い。PR やボットの文面を読みながら、ユーザーの全資格情報とネットワークを使える。	席を srt やコンテナで封じ込める計画(D-024-92)を実装するか、未実装のまま運用することを運用者の受容として記録する。
+F005	U66	P1	omp	G	S04-01	scripts/orchestrator/hcom-seat:213	席のomp起動は--no-extensionsを付けないため、作業ツリー内の.omp/extensionsのコードと.omp/config.ymlが方針の検査なしに読み込まれ、agent-config.yaml:338の「読み込む拡張はこの3つだけ」という主張が守られていない。	hcom-seatとomp-run.shのaudit以外の役割で--no-extensionsを付け、project設定やhooksはaudit経路と同じくscratch cwdかprovider無効化で閉じる。
+F006	U67	P1	security	G	S04-03	~/.local/lib/omp-extensions/pi-claude-bridge/src/config.ts:106-115 (installed); home/dot_agents/omp/policies/README.md:3	bridgeは<cwd>/.omp/claude-bridge.jsonをglobal設定に重ねて読む。このためprojectのファイルで任意の実行ファイル（pathToClaudeCodeExecutable）や、bypassPermissionsで動くAskClaudeを有効にでき、overlayを素通りする。	project側のclaude-bridge.jsonを無視するbridge patchを足し、席overlayにtools.approval.AskClaude: denyを入れ、README:3の説明を正す。
+F007	U68	P1	security	H	S08-01	home/.chezmoitemplates/claude-settings-managed.json:87-109,134-156	Claude サンドボックスは ~/.ssh しか読取禁止にしておらず、Ubuntu では平文の gh トークン（hosts.yml）を無確認のサンドボックス内コマンドが読んで github.com 宛てに送れる。	credentials.files に hosts.yml を mask（extract+injectHosts api.github.com+tlsTerminate）で、~/.claude/.credentials.json・~/.codex/auth.json・~/.omp/agent/agent.db を deny で追加する。
+F008	U68	P1	security	H	S08-02	home/.chezmoitemplates/claude-settings-managed.json:78-86,126-133	サンドボックスの書込許可に ~/.local/share/uv と ~/.local/state/mise があり、PATH 上の hcom 実体や mise の信頼設定をサンドボックス内から書き換えて、後でサンドボックス外で実行させられる。	allowWrite から ~/.local/share/uv と ~/.local/state/mise を外し（キャッシュ用の狭いパスに寄せ）、hcom 本体もハッシュ固定で検査する。
+F009	U69	P1	claude	H	S08-03	home/dot_claude/hooks/executable_format-edited-files.py:23-25,56-70	.md を Write/Edit すると PostToolUse フックがリポジトリ直下で prettier を設定ファイル込みで実行するため、サンドボックス内で書かれた prettier.config.js 等の JS がサンドボックス外で実行される。	prettier を --no-config と管理下の設定ファイル指定で呼ぶか、信頼済みルート以外ではフックを実行しない。
+F010	U71	P1	regime	I	S07-01, S09-08	AGENTS.md:43; omp/policies/orchestrator.yml:25; ruleset 24397953	AGENTS.md が求める verdict 行、ボット指摘の処理、--match-head-commit での merge を GitHub 側で何も強制していない。実際に #458 と #493 は ledger に行の無い head で merge された。auto-merge も有効になっている。	ledger.tsv に head と一致する correct 行が無ければ拒否する merge 用 lever を作り、ruleset で regime を必須 context にする。auto-merge は無効にする。
+F011	U64	P1	ci	I	S09-01	.github/workflows/test.yaml:34	macos-14ランナーは2026-11-02に廃止され、必須チェック「test (macos-14, client)」「public-bootstrap (macos-14, client)」が報告されなくなりマージが止まる。	全ワークフローをmacos-15かmacos-26へ移し、OS文字列の比較箇所とrulesetの必須contextを同時に差し替える。
+F012	U72	P2	instructions	A	S01-4, S07-06, OOS-S05-1	AGENTS.md:64,76-77	AGENTS.md の Audit 節と Code Review Rules が、廃止された task スキーマ(allowed_files、threat_table、design tier、task file)を前提にしている。この文は auditor のプロンプトにそのまま入る。	brief の SCOPE とユニットの threat table に基づく表現へ書き直す。
+F013	U72	P2	instructions	A	S01-5, S07-07	AGENTS.md:45-64; home/dot_agents/regime/AGENTS-audit-section.md:1-22	Audit 規則の写しが二つあり、他リポジトリに配るテンプレートの方が厳しく、文言もずれている。	Audit 節の正本を一つにし、AGENTS.md はテンプレートから作り直す。同じ内容であることをテストで確かめる。
+F014	U72	P2	codex	A	C16, OOS-S08-3, OOS-S03-4	spark ~/.codex/config.toml:129-133; ~/Workspace/dotfiles/.codex/hooks.json; macOS ~/.codex/config.toml:137	Codex の信頼設定に残骸と広すぎる範囲がある。Ubuntu には消えた /tmp の信頼エントリと、廃止済み agmsg の Stop hook(存在しないスクリプト)が信頼されたまま残る。macOS は ~/Workspace 全体を trusted にしている。	--retire-agmsg に .codex/hooks.json の掃除を加え、merge 時に存在しないパスの projects と hooks.state を刈る。trusted は chezmoi の作業ツリーなど必要なパスに絞る。
+F015	U72	P2	instructions	A	S01-2	home/dot_config/claude/rules/regime.md:5	Routing ルールは「Claude 境界は Codex seat、Codex 境界は Claude seat」と命じているが、そのような seat はもう無く、どの仕組みも強制していない。	omp の role に合わせて Routing を書き直し、方針の deny か CI のパスチェックで強制し、固定しているテストも更新する。
+F016	U72	P2	codex	A	S01-6	home/dot_config/codex/AGENTS.md:25,27,29	Codex のグローバル指示が、廃止された Crit JSON の受領フローを今もレビュー証跡として指示している。	ledger の verdict 行を使う証跡ルールに置き換え、bats の assert を更新し、RETIRED_TEXT の検査対象に codex/AGENTS.md も加える。
+F017	U72	P2	regime	A	S07-10	home/.chezmoiremove; ~/.local/bin/common (macOS, <ubuntu-host>)	U26 でソースから消した agmsg-dispatch と codex-orchestrate が .chezmoiremove になく、両ホストに残っている。	.chezmoiremove に .local/bin/common/agmsg-dispatch と .local/bin/common/codex-orchestrate を加える。
+F018	U72	P2	regime	A	S07-11	.orchestration/	.orchestration/ が追跡ファイル6,638件・351.2MB（全体の98%）を占め、その大半はどこからも参照されない旧体制の記録である。	旧体制の記録をアーカイブ用ブランチかリリース資産へ移し、参照される orchestrate/ と validation の該当ファイルだけ残す。
+F019	U73	P2	install	B	S02-05, S06-4, C02, OOS-S02-2	agent-config.yaml:743-766; codex-config-managed.toml; README.md:969-971	Claude と Codex のプラグイン pin は「インストール済みの版」と書かれているが実機と一致しない。pstack などの導入済みプラグインは記録されておらず、Codex の superpowers は unknown で、ponytail は存在しない revision を記録している。	make update が実機の版と revision を pin に書き戻すか、marketplace の ref 固定で pin を強制する。どちらもしないなら「installed versions」という記述を削る。
+F020	U73	P2	skills	B	S08-08, OOS-S06-2	agent-config.yaml:743-773; install/common/gh_*	Claude と Codex のプラグインと gh 拡張(gh-poi を含む)は verify: none で、固定も検証もされない。manifest に無いプラグインが両ホストで有効になっている。	プラグインと拡張をコミットとハッシュで固定して make update で検証するか、manifest 外の有効化を検出して警告する。
+F021	U73	P2	ci	B	S09-06	renovate.json:1	Renovateの設定はあるが動いておらず、SHA固定のActionsとmiseツールに更新もDependabot警告も来ない。	Renovateアプリをこのリポジトリに導入・有効化するか、github-actions向けDependabotのバージョン更新を戻す。
+F022	U73	P2	security	B	S09-09	.github/workflows/docs.yml:24	contents: write権限のdocsジョブが、書き込みトークンを.git/configに残したまま、バージョン未固定のmkdocs系PyPIパッケージを実行している。	docsの依存をロックファイルか--exclude-newerで固定し、書き込み権限はgh-deployの手順だけに渡す。
+F023	U73	P2	install	B	S10-06	home/dot_mise/config.toml:3-7	node/python/uv の固定理由「trusted entrypoint が要求」は、該当する trusted-launch/trusted-interpreter が main に一度も存在せず根拠がないため、根拠なくバージョンが据え置かれている。	実際の利用者が入るまで固定を解除するか、本当の利用者を理由に明記する。
+F024	U73	P2	install	B	S10-07	home/dot_mise/config.toml:75	72時間クールダウン設定にもかかわらず claude-code 2.1.309 は公開約2時間後、2.1.310 は約24時間後に両ホストへ入っており、ポリシーが守られていない。	クールダウンを迂回する経路を除去または限定し、どの経路で入ったかを記録する。
+F025	U73	P2	omp	B	S10-08	home/dot_agents/agent-config.yaml:619-626	omp の固定 18.11.3 は7リリース遅れで、理由欄の「署名もattestationもない」は誤りで実際には npm provenance と署名が付いている。	npm audit signatures で provenance を検証する形に理由を書き直し、固定を更新する。
+F026	U73	P2	omp	B	S10-09	scripts/update-agent-assets.sh:1041	omp のインストールはトップレベルの tarball だけ sha256 検証し、npm_config_min_release_age=0 で依存も含めて入れるため、キャレット範囲の依存がクールダウンもロックもなしに最新解決される。	クールダウン免除を固定 tarball だけに限定するか、shrinkwrap/lockfile 付きで入れる。
+F027	U79	P2	omp	C	S04-07	.orchestration/validation/025-pilot-s0-siwc-probe.py:287-292	SIWC probeが/v1/modelsの応答をdata[].idで読んだため件数が0になり、それを根拠に「model discoveryは使えない」と結論して静的modelの行を採用している。	.models[].slug/visibilityで再probeし、一覧が返るならfetchDynamicModelsを登録して静的行をやめる。
+F028	U79	P2	regime	C	S07-02	AGENTS.md:42,47; home/dot_agents/skills/hcom-orchestration/SKILL.md:8,20	規則は監査を omp-run.sh --role audit で行うとするが、実際の監査31件はすべて Claude Code の coordinator が codex exec で行っている。	omp-run.sh で監査するか、AGENTS.md・SKILL・preferences.md を codex exec の経路と統制に合わせて書き直す。
+F029	U79	P2	docs	C	S11-01	README.md:193-195,259-260,894	READMEは保留ツールを fd・npm:pnpm・bats・gcloud だけと書き「バージョンは一切コミットしない」とするが、実際は node・python・uv・ccstatusline・ccusage・blocc も固定されている。	保留リストを列挙せず config.toml の `# Held:` コメントを参照する書き方にするか、実際の固定一覧に合わせて書き直す。
+F030	U79	P2	docs	C	S11-02	README.md:505-507	README は extra_allow_write を「現在 ~/.cache/uv だけ」と書くが、実際は6項目あり、サンドボックスの書込可能範囲を過小に説明している。	実際の書込可能ディレクトリを列挙するか、agent-config.yaml を参照する記述に直す。
+F031	U79	P2	docs	C	S11-03	README.md:423-426	監査役を「Codex gpt-6-astra・xhigh・read-only サンドボックス」と説明しているが、実際の実行経路は omp-run.sh --role audit で、OS の read-only サンドボックスではなく omp の承認ポリシーで制御される。	監査は omp の openai-siwc 経路と audit.yml ポリシーで動くと書き、Codex のサンドボックスと推論強度の記述を削る。
+F032	U75	P2	codex	D	S01-8, C07	home/dot_config/codex/AGENTS.md:19-21,53	Codex の全セッションに「最終成果物でも例外処理は不要」「後方互換性は気にしない」という指示が入る。このリポジトリの fail-closed 方針と食い違い、どちらを優先するか曖昧になっている。	19-21 行目を使い捨ての研究コードに限ると明記するか削除する。
+F033	U75	P2	claude	D	S01-10, S02-07	~/.claude/rules/pstack-models.md; macOS ~/.claude/hooks/gh-merge-gate.sh	chezmoi 管理外の pstack-models.md が Claude のユーザールールとして毎回読まれ、model_profiles を正本とする model-selection と二重管理になっている。macOS には管理外の gh-merge-gate.sh も残っている。	.chezmoiremove に入れて消すか、model_profiles から生成する管理対象にする。gh-merge-gate.sh も manifest に入れるか消す。
+F034	U75	P2	omp	D	S01-1	home/dot_agents/omp/profiles/worker.yml.tmpl:1-12; ~/.omp/agent/ (macOS, <ubuntu-host>)	omp の orchestrator/worker seat は ~/.claude/rules/*.md も ~/.codex/AGENTS.md も読まないため、regime・model-selection などの常設ルールが seat に届いていない。	seat に効かせたい常設ルールは管理下の ~/.omp/agent/RULES.md（または AGENTS.md）に置くか、hcom スキルへ取り込む。
+F035	U75	P2	codex	D	S01-7	home/dot_config/codex/AGENTS.md:36-40	Codex には disposition を fixed か not-applicable の二択だと教えていて、AGENTS.md:78 が認める decisions.tsv での residual と食い違っている。	PR 統合の節を削り、AGENTS.md:78 のクローズ規則を参照させる。
+F036	U75	P2	skills	D	S05-05	home/dot_agents/skills/gh-first-workflow/SKILL.md:26,35	全リポジトリ共通のgh-first-workflowが、マージ前に必ずhcom-orchestrationの手順（判定行・プログラムストア）を要求している。	手順8をプログラムストアのあるリポジトリに限定する条件付きにする。
+F037	U75	P2	regime	D	S07-03	.orchestration/orchestrate/regime-cutover/verdicts/*; home/dot_config/codex/AGENTS.md:7-10	codex exec の監査がユーザー全体の ~/.codex/AGENTS.md を読み込んでおり、origin/main の AGENTS.md だけを規則とする定めに反している。	fallback 監査は origin/main の規則だけを置いた一時 CODEX_HOME で実行するか、omp-run.sh 経由にする。
+F038	U76	P2	claude	`	S08-10, S02-11	claude-settings-managed.json:24-25	deny の `Bash(curl * \	permissions 文書は `\
+F039	U66	P2	security	G	OOS-S04-3, S08-13	omp/policies/README.md:15; scripts/orchestrator/README.md:214	README は lever を「read-only」で配置すると書くが、実際は 0755 で所有者が書き換えられる。守りは sha256 の自己検査だけで、その pin も同じユーザーが書ける。	chezmoi で lever を 0555 で配置するか、README を「sha256 pin による改変検知」と書き直す。
+F040	U66	P2	omp	G	S04-04	home/dot_agents/omp/policies/worker.yml:9-18	yolo席でdebugツールが有効のままで、DAP launchによる任意programの起動はbash.patternsのdenyを通らずに自動承認される。	worker/orchestratorのoverlayにtools.approval.debug: deny（またはdebug.enabled: false）を足す。
+F041	U66	P2	security	G	S04-06	home/.chezmoitemplates/omp-config-managed.yml:9-11; macOS ~/.omp/agent/agent.db, ~/.omp/profiles/audit/agent/agent.db	意図的に残したAnthropic OAuth経路の残存リスクとして、omp本体のanthropic providerがOAuthトークンを保存して使っている。どのdisabledProvidersにもanthropicがなく、openai-siwcで動くaudit profileにもトークンが残っている。	運用判断は維持しつつ、席とaudit overlayのdisabledProvidersにanthropicを足し、audit profileではanthropicをlogoutする。
+F042	U66	P2	regime	G	S07-04	scripts/orchestrator/omp-run.sh; home/dot_agents/agent-config.yaml:320-337	監査を隔離する omp-run.sh が ~/.local/bin/common に入らず sha256 pin もないため、書き換え可能な checkout から実行され、他リポジトリでは存在しない。	omp-run.sh を self-check 付きの pin 済み lever として ~/.local/bin/common に入れ、AGENTS.md・SKILL・テンプレートをその path に揃える。
+F043	U66	P2	omp	G	S08-06	home/.chezmoitemplates/omp-config-managed.yml:1-11	対話用 omp の管理設定に tools.approvalMode と bash.patterns が無く、既定の yolo のまま Claude/Codex にある sudo・rm -rf・GitHub 書込みの拒否が一切効かない。	管理 omp 設定に tools.approvalMode（write か always-ask）と共通の拒否パターンを生成して入れる。
+F044	U68	P2	claude	H	S02-02, S08-09, OOS-S07-2	claude-settings-managed.json:34-75; agent-config.yaml:360	allowUnsandboxedCommands が true で auto モードなので、サンドボックス外の再実行は分類器だけが判断する。allow に合うコマンドは再実行も無確認で通り、~/.ssh の拒否や .env の denyRead が効かない。D-024-148 が約束した ask ルールも入っていない。	ask に `Bash(dangerouslyDisableSandbox:true)` を加える。lever がサンドボックス内で動くと確認できたら allowUnsandboxedCommands を false にする。
+F045	U68	P2	claude	H	S02-04	home/.chezmoitemplates/claude-settings-managed.json:101-109,148-156	GitHub リリースのダウンロード先 release-assets.githubusercontent.com が allowedDomains に無く、サンドボックス内の uv/mise/gh release download が auto モードでは拒否される。	allowedDomains（agent-config.yaml の生成元も）に release-assets.githubusercontent.com を追加する。
+F046	U68	P2	security	H	S08-04	home/.chezmoitemplates/claude-settings-managed.json:113-115,157-159	herdr ソケットを allowUnixSockets に入れているため macOS ではサンドボックス内コマンドが herdr 経由でホスト側実行に抜けられる。	herdr 操作は確認付きの除外コマンド経由にしてソケットを allowUnixSockets から外すか、脱出経路であることを運用者の言葉で受容記録する。
+F047	U68	P2	security	H	S08-12	home/dot_zshenv:15-25	Claude の setup-token を .zshenv で export するため、置いた時点でサンドボックス内コマンド・フック・yolo 席を含む全 zsh 子プロセスに渡り、文書の「ログインシェルだけが読む」は誤り。	トークンは claude 起動ラッパーだけで渡し、sandbox.credentials.envVars で mask/deny するか CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 を設定し、文書も直す。
+F048	U68	P2	security	H	S08-14	home/dot_config/git/config.tmpl:7-8	agent-config は「セッションからの push は HTTPS」と言うが git 設定の pushInsteadOf が push を SSH に変えるため、~/.ssh を拒否したサンドボックスでは push が必ず失敗しサンドボックス外再実行になる。	エージェント用ホストでは pushInsteadOf を外して gh の資格情報ヘルパーで HTTPS push するか、記述を直して push を ask に入れる。
+F049	U68	P2	docs	H	S11-08	README.md:573-575	Linux では Unix ソケットを使うコマンドがサンドボックス内で失敗すると断言しているが、seccomp フィルタ（sandbox-runtime）が入っていないホストではソケットは遮断されず、隔離が説明より弱い。	説明をフィルタの有無で条件付きにするか、make update で sandbox-runtime を入れて doctor で確認する。
+F050	U77	P2	ci	I	S09-02	.github/workflows/macos.yaml:37	macOS・Ubuntu・Private bootstrapの各ワークフローはシークレット未設定のため本体の手順が全てスキップされ、常に成功表示になっている。	シークレットを設定するか、3つのワークフローとREADME:34,46のバッジ、その文言を固定する単体テストを削除する。
+F051	U77	P2	ci	I	S09-03	.github/workflows/test.yaml:114	必須のtestジョブは.shellcheckrcやrenovate.jsonなどルート設定ファイルだけの変更ではテストを走らせずに成功になる。	テストが読むルート設定ファイルを判定パターンに加えるか、スキップしてよいパスの許可リスト方式に変える。
+F052	U77	P2	ci	I	S09-05	.github/workflows/remote.yaml:169	必須のpublic-bootstrapは描画専用のhome/変更をスキップし、その代わりとするchezmoi-applyは必須チェックでないため、適用に失敗する変更が全緑でマージできる。	chezmoi-applyの3ジョブをrulesetの必須contextに加えるか、bootstrapのスキップをやめる。
+F053	U77	P2	ci	I	S09-07	.github/workflows/regime.yml:10	公開リポジトリでpull_request_targetを使うregimeワークフローは、明示の許可ポリシーが無ければ2026-12-02以降に止まる。	管理者がポリシーインサイトで対象runを確認し、許可ポリシーを明示するかpull_request+workflow_runへ移す。
+F054	U74	P2	codex	J	S05-01, OOS-S03-1	generate-agent-configs.py:1509; home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json	生成器が Codex プラグインのマニフェストを `.codex-plugin/` に出力し、chezmoi がドット始まりのディレクトリを無視するため配備されない。marketplace.json は中身の無いプラグインを指している。	生成先を `dot_codex-plugin/plugin.json` に変え、配備されたことを検査に加える。
+F055	U74	P2	generator	J	S04-05, S06-3	agent-config.yaml:95-104; generate-agent-configs.py; omp/profiles/*.yml.tmpl	omp の profile は model しか描画せず thinking level を持たない。manifest が xhigh と定めた audit や deep の役割も omp 既定の high で動く。	model_profiles の omp ブロックに effort を足し、profile かロールオーバーレイに defaultThinkingLevel として描画する。
+F056	U74	P2	generator	J	S06-1	scripts/generate-agent-configs.py:1516-1531,1544-1549,1609-1614	generate-agent-configs.py の --check はマニフェスト外の孤立生成物（omp ロールオーバーレイ、modify_private_<name>.config.toml、ネストした symlink_*.tmpl）を検出せず、書き込みモードも削除しない。	--check で生成ディレクトリ内の expected_outputs 外ファイルを stale として列挙し、書き込みモードでは削除する。
+F057	U74	P2	generator	J	S06-2	scripts/validate-agent-assets.py:201-213,1016-1020	validate-agent-assets.py もマニフェスト外のプロファイル生成物とネストした Claude スキルの孤立 symlink を検出しない。	modify_private_*.config.toml・omp/profiles/*.yml.tmpl・全 symlink_*.tmpl をグロブし、マニフェスト外があれば失敗させる。
+F058	U74	P2	generator	J	S06-5	scripts/check-agent-runtime.py:96-110; home/dot_codex/modify_private_config.toml:37-41	make doctor の same_modified が CHEZMOI_WORKING_TREE を渡さないため、chezmoi ソース以外のチェックアウトから実行すると Codex 設定が偽陽性で ERROR になる。	doctor が chezmoi execute-template で得た workingTree/sourceDir を CHEZMOI_WORKING_TREE として modify スクリプトに渡す。
+F059	U70	P2	codex	K	C03, S10-05, OOS-S10-2	codex-config-managed.toml:31	Codex の PATH 先頭が mise の node/lts/bin で、Ubuntu では残骸の node 24 を指し、macOS では存在しない。同じ設定でホストごとに別の node が使われる。/opt/homebrew/bin も OS 分岐なしで Linux に入る。	node/lts/bin を PATH から外して mise shims に任せ、/opt/homebrew/bin は darwin のときだけ出す。spark の古い node を prune する。
+F060	U78	P2	install	K	OOS-S11-4	home/dot_config/git/config.tmpl:4,16,18; ~/.ssh (macOS)	git の署名鍵として ~/.ssh/id_ed25519.pub を指定し gpgsign=true だが、この Mac にその公開鍵がなく、コミットが失敗する。	provision-machine-key で鍵を用意するか、doctor で署名鍵の存在を検査する。
+F061	U69	P2	claude	K	S02-03	home/dot_local/bin/common/executable_agent-session-staleness:266	SessionStart の staleness フックは async なのに平文を print するだけなので、再起動推奨の通知が Claude にもユーザーにも届かない。	1 行の JSON `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":...}}` を出力するか、同期フックにする。
+F062	U80	P2	skills	K	S05-04	home/dot_agents/skills/python-uv-workflow/references/python-uv-rules.md:21-35	「必須」とされる`.pre-commit-config.yaml`テンプレートに`rev:`がなく、そのまま使うとpre-commitが設定を拒否する。	2つのリモートリポジトリに固定した`rev:`を追記する。
+F063	U71	P2	regime	K	S07-05	scripts/orchestrator/pr-body-edit.sh:87,153; scripts/orchestrator/regime-ci.py:20	pr-body-edit.sh と regime-ci.py が Program-Unit を regime-cutover に固定しており、regime-init で作る他のプログラムを拒否する。	プログラム名をストアか引数から取り、<program>/U<n> の文法で検証する。
+F064	U84	P2	docs	K	S08-16	.orchestration/acceptance/dot-restart-worker-name-wait-T27-a01.md:24	公開リポジトリに運用者の会社メール、ホーム配下パス、ホスト名、実名が大量に残っている。	.orchestration 記録とテストをプレースホルダに置換し、記録のメールは noreply にする。
+F065	U72	P3	codex	A	C12	home/dot_codex/rules/default.rules:16-17	ルール再読込の手順として、regime cutover で削除済みの herdr-agents --remove-worker/--add-worker を案内している。	
+F066	U72	P3	instructions	A	S01-3, S07-13	AGENTS.md:40,42,47	AGENTS.md に U57 で廃止された verifier seat を前提にした語が残っている。	
+F067	U72	P3	docs	A	S07-20, S11-18, S11-19	scripts/orchestrator/README.md:187-204	README の実行例と dry-run 出力が旧 seats root や bus 名のままで、脅威表に廃止済みのセッション env の行が残る。	
+F068	U72	P3	docs	A	S01-14, S11-21	plans/README.md:16-21	完了済み plan の README が存在しない make require-crit-review と Crit 受領フローを命令形で残している。	
+F069	U72	P3	regime	A	S07-18, OOS-S11-2, OOS-S01-4	scripts/orchestrator/hcom-dispatch:5,32	hcom-dispatch が agmsg-dispatch 互換の未使用の第 4 引数を残し、stop gate が廃止済みの AGMSG- 接頭辞を受け付ける。	
+F070	U72	P3	regime	A	S07-22, OOS-S11-3	~/.local/state/omp-seats/audit	廃止済み audit seat の worktree が登録されたまま残り、掃除する lever も無い。	
+F071	U72	P3	omp	A	S07-15, S04-09	agent-config.yaml:50-55	omp の review と security ロールは起動する launcher が無いのに描画、配備され、preflight だけが読む。	
+F072	U72	P3	regime	A	OOS-S01-2	.orchestration/orchestrate/regime-cutover/preferences.md:3,16	order 1（agmsg OFF・pstack orchestrate）が order 20 と比べて古く、order 14 は実際のモデルに関係なく Claude Fable 5.1 の Co-Authored-By を必須にしている。	
+F073	U72	P3	regime	A	OOS-S06-1	Makefile:90,161-171	agmsg-retire が U27 後も毎回の make update で走る。	
+F074	U72	P3	docs	A	OOS-S07-3	.ua/knowledge-graph.json	.ua/knowledge-graph.json が #226（2026-10-02）以来更新されず、削除済みの Crit 証跡 validator を記述している。	
+F075	U72	P3	docs	A	OOS-S11-1	.gitignore:15-16	廃止済みの agmsg を理由に .codex/ を無視するコメントが残っている（行番号は報告の 12-13 ではなく 15-16）。	
+F076	U72	P3	docs	A	S01-21	.gitignore:28-30	.gitignore のコメントは omp seat の worktree が .claude/worktrees/ にあると説明しているが、実際の場所は ~/.local/state/omp-seats/<slug> である。	
+F077	U72	P3	codex	A	S01-9	home/dot_config/codex/AGENTS.md:28,30	Crit web UI の扱いが 28 行目（明示されたら開いて URL を出す）と 30 行目（ブラウザ Crit や人間へのレビュー依頼は禁止）で矛盾している。	
+F078	U72	P3	claude	A	S02-09	home/.chezmoitemplates/claude-settings-managed.json:206	PostToolUse のマッチャーに廃止済みの MultiEdit ツール名が残っている。	
+F079	U72	P3	regime	A	S05-12	home/dot_agents/skills/hcom-worker/SKILL.md:16; home/dot_agents/skills/hcom-orchestration/SKILL.md:20	旧語検査がスキルを対象にしておらず、hcomスキルに旧agmsg接頭辞や監査席の経緯が残っている。	
+F080	U72	P3	regime	A	S06-8	scripts/check-agent-runtime.py:27,520-521	U27 完了後も doctor の許可リストに db・run・teams・agmsg が「U27 まで」の注記付きで残っている。	
+F081	U72	P3	instructions	A	S07-08	AGENTS.md:41	「resolved record を少なくとも1件含む」という規則は旧 Crit 証跡の概念で、満たす方法も検査する仕組みもない。	
+F082	U72	P3	ci	A	S07-17	.github/workflows/regime.yml:3-8,45-47,50	regime ワークフローのコメントが task copy と gh api 読み取りを説明するが、regime-ci.py はどちらもせず、不要な GH_TOKEN と pyyaml を渡している。	
+F083	U72	P3	docs	A	S11-04	README.md:617-618	`regime-stop --all` が廃止済みの監査席も止めると書かれている。	
+F084	U72	P3	docs	A	S11-05	README.md:517	レバーに `env` があるかのように書かれているが、U33 でセッション env は廃止されている。	
+F085	U73	P3	codex	B	C06	home/dot_agents/agent-config.yaml:174-197; scripts/update-agent-assets.sh:458	make update が導入する herdr の ~/.codex/hooks.json SessionStart hook が信頼リストに無く、Ubuntu では standard/security 以外のセッションでスキップされる。	
+F086	U73	P3	claude	B	S02-17, S10-22	home/dot_zshenv:12-13	自動更新の停止を .zshenv でしか設定せず settings.json の env に無いので、zsh 以外から起動した claude は自己更新を試みる。	
+F087	U73	P3	generator	B	OOS-S09-2	home/dot_agents/agent-config.yaml:519	git-commitとhttps-downloadのpinには上流の更新を知らせる仕組みが無い。	
+F088	U73	P3	install	B	S08-18	home/dot_mise/config.toml:26,29-30,38	claude-code・codex・ruff・prettier が latest でロックファイルもチェックサムも無く、フックの docstring は「mise で固定」と誤記している。	
+F089	U73	P3	skills	B	S08-22	home/dot_agents/agent-config.yaml:734-741	compactiondb は upstream: unknown で、MANIFEST.sha256 は自己整合性しか示さない。	
+F090	U73	P3	ci	B	S09-12	renovate.json:21	Renovateのcrates用正規表現は何にも一致せず、T119完了後も「T119がpinを廃止するまで」という古い説明が残り、多くのpinが追跡対象外である。	
+F091	U73	P3	security	B	S09-18	.github/workflows/test.yaml:57	GITHUB_TOKENをジョブ全体の環境変数に入れており、Codecovのアップロードでは未固定のcodecov-cliをCODECOV_TOKEN付きでPyPIから入れている。	
+F092	U73	P3	install	B	S10-11	home/dot_mise/config.toml:15-16	fd の固定理由「新しい版に macOS x64 アセットがない」は誤りで、最新 10.5.0 には x86_64-apple-darwin がある。	
+F093	U73	P3	install	B	S10-12	home/dot_mise/config.toml:53-62	手動更新の固定(bats 1.13.0、gcloud 575.0.1、starship v1.26.0、Homebrew installer 2026-07-10 のコミット)が上流より古い。	
+F094	U73	P3	instructions	B	S11-10	home/dot_config/codex/AGENTS.md:54	Codex 向け AGENTS.md は更新後に /hooks で Ponytail フックを手動で信頼するよう指示するが、README と manifest では make update が自動で信頼する。	
+F095	U79	P3	codex	C	C08	home/.chezmoitemplates/codex-config-managed.toml:36; home/dot_agents/agent-config.yaml:141	Codex 0.163.0 で削除済みの feature plugin_hooks を true に設定しており、効果のない設定になっている。	
+F096	U79	P3	codex	C	C09	home/.chezmoitemplates/codex-config-managed.toml:11; home/dot_agents/agent-config.yaml:111	personality = "pragmatic" は非推奨で、もうスタイルを選ばない無効な設定である。	
+F097	U79	P3	codex	C	C11	home/dot_agents/agent-config.yaml:64	express プロファイルが前世代の gpt-5.6-luna を使っており、推奨の gpt-6-luna になっていない。	
+F098	U79	P3	docs	C	S04-08, S11-11, OOS-S11-5	omp/extensions/openai-siwc/README.md:5,9; docs/openai-siwc.md:3,170; gates.md:6	SIWC の README、docs、gates 記録が G2 通過後も未実行や unverified のままで、存在しない audit-r2 profile を挙げている。	
+F099	U79	P3	docs	C	S07-19, S11-16	scripts/orchestrator/README.md:148	permissions.allow を 5 つと書くが、実際は regime-init を含む 6 つである。	
+F100	U79	P3	docs	C	OOS-S07-4, S11-13	docs/orchestrator-seat.md:119	hcom-orchestration の SKILL を 36 行と書くが実際は 37 行である。	
+F101	U79	P3	codex	C	C10, S06-14	agent-config.yaml:129-130; codex-config-managed.toml:22-23	Codex 所有の tui.model_availability_nux を、どの profile も使わない gpt-5.6-sol で manifest が管理している。	
+F102	U79	P3	docs	C	S06-15, S11-14	home/dot_agents/README.md:13-26,84	生成物一覧が実際の生成名と違い、ロールオーバーレイなどが抜け、「schema 妥当性」も実際は文字列比較とパースだけである。	
+F103	U79	P3	docs	C	OOS-S05-2	home/dot_agents/agent-config.yaml:8	マニフェストは全エージェントに同じスキル集合を~/.agents/skills経由で渡すと書くが、Claudeはpstack・crit・understandをプラグイン経由で受け取る。	
+F104	U79	P3	instructions	C	S01-11	home/dot_config/claude/rules/model-selection.md:4	model-selection.md に具体的なモデル ID を直書きしていて、3 行目の「model_profiles にだけ置く」と自己矛盾し、いずれずれる。	
+F105	U79	P3	claude	C	S02-10	home/.chezmoitemplates/claude-settings-managed.json:6; home/dot_agents/agent-config.yaml:206-208	alwaysThinkingEnabled: true はどのモデルでも効果が無いのに、Sonnet 以下では効くというコメントが付いている。	
+F106	U79	P3	skills	C	S05-16	home/dot_agents/skills/convert-to-transformers/SKILL.md:3,14,42-52	変換スキルのテンプレートが、v5では後方互換の別名にすぎない`PretrainedConfig`を使っている。	
+F107	U79	P3	skills	C	S07-12	home/dot_agents/skills/hcom-orchestration/SKILL.md:20	SKILL が監査コストを「50k〜162k tokens」と書くが、decisions.tsv:190 で約1.49M input tokens に訂正済みである。	
+F108	U79	P3	docs	C	S07-21	scripts/orchestrator/README.md:174	README の sandboxing 文書からの引用文が現行の公式文書に存在しない。	
+F109	U79	P3	regime	C	S07-23	.orchestration/orchestrate/regime-cutover/units.tsv:27	U19（後片付け表の実行）が gate のままだが、G8 は通過・実行済みと記録されている。	
+F110	U79	P3	ci	C	S09-11	.github/workflows/private-bootstrap.yaml:17	private-bootstrapはPRで起動しないのにPR用の判定分岐が残り、必須チェックでないのに「各必須contextが結果を報告する」というコメントがある。	
+F111	U79	P3	ci	C	S09-13	.coderabbit.yaml:8	reviews.request_changes_workflowは非推奨の旧名で、現在はreviews.auto_approvals.enabledに置き換わっている。	
+F112	U79	P3	docs	C	S11-06	README.md:716-717	README は CodeRabbit が `reviews/` を除外すると書くが、設定にその除外はない。	
+F113	U79	P3	docs	C	S11-07	README.md:724,821	ルールセットが main-integrity.json として保存されていると書くが、そのファイルはリポジトリに存在しない（本文は README 内の JSON ブロック）。	
+F114	U79	P3	docs	C	S11-09	README.md:212-213	self_update.minimum_release_age の既定値を 24h と書いているが、実際の既定値はグローバルの minimum_release_age（ここでは 72h）を引き継ぐ。	
+F115	U79	P3	docs	C	S11-12	docs/omp-skills.md:67	hcom-worker スキルを「予定」と書いているが既に存在しデプロイ済み。	
+F116	U79	P3	docs	C	S11-15	home/dot_agents/README.md:56	omp のマージ対象キーに disabledProviders が書かれていない。	
+F117	U79	P3	docs	C	S11-17	scripts/orchestrator/README.md:170	派生ストア ~/.local/state/hcom/ は書込不可と書くが、現在は allowWrite に含まれている。	
+F118	U79	P3	docs	C	S11-20	scripts/orchestrator/README.md:11,129	経路表に ACCEPTANCE と PING があるが、Line kinds 表には定義がない（VERDICT・MERGED・HOLD は逆に経路表にない）。	
+F119	U75	P3	instructions	D	C05	home/dot_config/codex/AGENTS.md:36; home/dot_codex/rules/default.rules:114-120	Codex 向け AGENTS.md は thread 解決状態の取得を gh で求めるが gh api graphql は全面禁止で、読み取り専用ラッパー pr-threads-check.sh の存在も案内されていない。	
+F120	U75	P3	codex	D	S01-15, C14	home/dot_config/codex/AGENTS.md:70; generate-agent-configs.py:294-296	CompactionDB の記録対象を standard と deep だけと書くが、実際は security と audit も記録し、素の codex にはターン完了の記録が無い。	
+F121	U75	P3	codex	D	OOS-S03-2, OOS-S07-1	home/dot_codex/symlink_AGENTS.md.tmpl	~/.codex/AGENTS.md が書き換え可能な chezmoi ソースへの symlink で、そのクローンの checkout だけで Codex の指示が変わる。	
+F122	U75	P3	instructions	D	S01-17, OOS-S04-1	AGENTS.md:18	「🤖 I read the AGENTS.md」などの応答規則を検証する仕組みが無く、席や audit の機械可読な出力にも混ざる。	
+F123	U75	P3	codex	D	S01-13	home/dot_config/codex/AGENTS.md:14-15	Codex には「plan はコミットしない」と指示しているが、このリポジトリは plans/*.md と .orchestration/plans を追跡している。	
+F124	U75	P3	claude	D	S01-16	home/dot_config/claude/rules/python.md:15-16	python.md が pyright-lsp のインストールを促せと指示しているが、manifest にも enabledPlugins にもそれが無い。	
+F125	U75	P3	claude	D	S01-18	.claude/settings.json:9-11; CLAUDE.md:13-17	CompactionDB の起動コマンドが、root の CLAUDE.md（uv run --no-project）と、hooks・vendor の CLAUDE.md（python3）で揃っていない。	
+F126	U75	P3	instructions	D	S01-19	vendor/compactiondb/AGENTS.md:3	vendor の AGENTS.md は CLAUDE.md を見よという一文しかなく、Codex や omp にはその中身が届かない。	
+F127	U75	P3	codex	D	S05-02	home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json:9; home/dot_agents/agent-config.yaml:459	プラグインの`skills: ../../skills`は~/.agents/skillsを指すため、配備・有効化されるとCodexが同じスキルを二重に一覧する。	
+F128	U75	P3	skills	D	S05-03	home/dot_agents/agent-config.yaml:683-684; docs/omp-skills.md:61	pstackのスキルはCursor/Claude Code専用の道具名を含むが、omp/Codex用の対応表がなく、setup-pstackはompで一覧に出て`~/.cursor/rules`へ書かせる。	
+F129	U75	P3	skills	D	S05-06	home/dot_agents/skills/project-map/SKILL.md:12-14,18,59	project-mapスキルはClaude専用のMEMORY.md・PostToolUseフック・同梱スキルに依存し、存在しないdashboard-builderを参照しているのに、Codex/ompにも配られている。	
+F130	U75	P3	skills	D	S05-07	home/dot_agents/skills/hcom-orchestration/SKILL.md:1-4; home/dot_agents/skills/hcom-worker/SKILL.md:1-4	席専用のhcomスキルに暗黙起動を止める設定がなく、Claude CodeとCodexの通常セッションでも読み込まれ得る。	
+F131	U75	P3	codex	D	S05-08	~/.agents/skills/* (pstack, 56 with disable-model-invocation: true)	pstackの手動専用スキル56件はCodexの暗黙起動制御（openai.yaml）を持たず、Codexの一覧予算を消費する。	
+F132	U75	P3	codex	D	S05-09	scripts/update-agent-assets.sh:713-723	crit系スキルがCodexプラグインと~/.agents/skillsの両方にあり、Codexでは同名スキルが重複表示される（crit-cliは内容も食い違う）。	
+F133	U75	P3	skills	D	S05-14	home/dot_agents/skills/gh-comment-attach-files/SKILL.md:14,44,52; home/dot_agents/skills/shdoc-shell-docs/SKILL.md:3	共有スキルがスクリプトを絶対パスで呼び、Codex専用の言い回しで書かれている。	
+F134	U76	P3	codex	E	C13	home/dot_codex/rules/default.rules:130-136	パッケージ公開禁止ルールが npm と uv だけで、管理ツールの pnpm の publish を止めていない。	
+F135	U76	P3	codex	E	OOS-S01-1	home/dot_codex/rules/default.rules:1-30	bash -lc にリダイレクトや置換が入ると Codex は分割せずに判定するため、forbidden の prefix ルールをすり抜ける。ヘッダーはこのケースに触れていない。	
+F136	U76	P3	claude	E	S02-12	home/.chezmoitemplates/claude-settings-managed.json:19	`Bash(rm -rf:*)` は rm -fr や rm -r -f、/bin/rm -rf など別表記の再帰削除を止めない。	
+F137	U76	P3	claude	E	S02-13	home/dot_claude/hooks/executable_enforce-uv.sh:230-253	enforce-uv フックは `python3 -c` の書き換え提案が壊れており、`cd x && python foo.py` のような複合コマンドは素通りする。	
+F138	U76	P3	claude	E	S02-18	home/.chezmoitemplates/claude-settings-managed.json:10-14	hcom-seat などの allow ルールがチルダ形式のパスだけなので、スキルが使う PATH 上の素の名前や絶対パスでの呼び出しが事前承認されない。	
+F139	U76	P3	security	E	S08-15	home/dot_agents/permgate-policy.yaml:62-68	permgate の process-inspection 正規表現が ps auxe や ps eww など環境変数を表示する形も自動許可する。	
+F140	U65	P3	omp	F	OOS-S10-1	omp ~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/dist/cli.js	omp の bash ツールは CI 以外にも npm_config_yes=true・GIT_EDITOR=true・GIT_TERMINAL_PROMPT=0 を注入し、リポジトリ側はこれを考慮していない。	
+F141	U65	P3	install	F	S10-10	home/.chezmoiscripts/common/run_once_before_01-decrypt-private-key.sh.tmpl:25-27	age 鍵の復号スクリプトは CI=true や非TTYで成功終了して run_once 済みになり、AppArmor スクリプトも sudo 未キャッシュ時に成功終了するため、スキップが自動で再試行されない。	
+F142	U65	P3	install	F	S10-13	setup.sh:260-262	setup.sh の is_ci は CI の値をコマンドとして実行するため、CI=1 はエラーで非CI扱い、CI=yes は yes が無限実行される。	
+F143	U66	P3	omp	G	S04-10	macOS ~/.omp/agent/agent.db, ~/.omp/profiles/audit/agent/agent.db, ~/.omp/profiles/pilot-bridge/	廃止したopenai-codex経路のOAuthトークンがmacOSの既定とaudit profileに残り、pilot-bridge profileも残骸として残っている。Ubuntuにはどちらもない。	
+F144	U66	P3	regime	G	S07-16	scripts/orchestrator/ci-rerun.sh	ci-rerun.sh は orchestrator README・SKILL・preferences・policy のどこにも載らず、インストールも pin もされていない。	
+F145	U66	P3	security	G	S08-21	home/private_dot_ssh/private_config.tmpl:15-17	RemoteForward 1456 により席ホスト上の任意プロセス（yolo 席を含む）がラップトップのブラウザで許可済み OAuth 同意 URL を開ける。	
+F146	U68	P3	security	H	OOS-S02-3	home/dot_agents/agent-config.yaml:394-395	denyRead がホーム基準なのに、エージェントの作業ツリーの一部は $HOME 外の /tmp に作られており、D-024-148 の『チェックアウトは $HOME 配下』制約が守られていない。	
+F147	U68	P3	claude	H	OOS-S08-4	home/.chezmoitemplates/claude-settings-managed.json:21,23	Linux では Read(.env.*) と Edit(.env*) のグロブ規則が無視される。	
+F148	U68	P3	claude	H	S02-08	home/.chezmoitemplates/claude-settings-managed.json:157-159	Linux では無視される allowUnixSockets が Linux 向けにも出力されており、Ubuntu では無効な設定になっている。	
+F149	U68	P3	security	H	S02-16	home/.chezmoitemplates/claude-settings-managed.json:70-75	サンドボックスが admin-required でないため、リポジトリの .claude/settings.json が allowedDomains や excludedCommands を広げられ、autoAllowBashIfSandboxed によりその範囲で Bash が自動実行される。	
+F150	U68	P3	claude	H	S08-19	home/.chezmoitemplates/claude-settings-managed.json:73,121	Ubuntu の前提（bwrap・socat・AppArmor プロファイル）が揃っているのに failIfUnavailable が false のままで、サンドボックスが起動できないと無言で非サンドボックス実行になる。	
+F151	U77	P3	ci	I	S09-10, S11-22	.github/workflows/docs.yml:7-17	docs/ の手書きページだけの変更では docs ワークフローが動かず、再デプロイも strict ビルドもされない。	
+F152	U71	P3	regime	I	OOS-S09-1	scripts/orchestrator/regime-ci.py:73	PR本文に「Program-Unit: regime-cutover/U<n>」の1行を書くだけで、誰でもregimeチェックを通せる。	
+F153	U71	P3	regime	I	S07-09	.orchestration/orchestrate/regime-cutover/ledger.tsv (U60-U63)	U60〜U63 は複数回の監査ラウンドを経たのに、ledger と verdicts には最終ラウンドの1行・1ファイルしかない。	
+F154	U77	P3	ci	I	S09-04	.github/workflows/test.yaml:117	Pythonや文書だけのPRではmacOSの単体テストを飛ばすので、macOS固有のPython不具合はmain push後まで検出されない。	
+F155	U71	P3	regime	I	S09-16	.github/workflows/regime.yml:11	regimeはPR本文で判定が変わるのにeditedで再実行されず、branches指定も無いため任意のベースブランチのregime-ci.pyが実行される。	
+F156	U74	P3	regime	J	OOS-S01-3	scripts/orchestrator/regime-init; home/dot_local/bin/common/executable_regime-init	regime-init が二か所にバイト単位で同じ内容で置かれていて、同期を担保するテストも無い。	
+F157	U74	P3	generator	J	OOS-S06-3	scripts/check-agent-runtime.py:294-300,516-524; README.md:352,402	doctor の未管理スキル WARN と孤立アセット許可リストが別々のリストで、許可済みの crit/understand 系も WARN になる。	
+F158	U74	P3	instructions	J	S01-20	AGENTS.md:6	CLAUDE.md は @AGENTS.md と CompactionDB ブロックだけとする規則を、どのテストも検査していない。	
+F159	U74	P3	generator	J	S05-10	scripts/generate-agent-configs.py:624-636; tests/unit/test_agmsg_removed.py:78-82	Claudeのスキルリンクはchezmoiソースを直接指し、テストのコメントと前提（~/.agents/skillsへのリンク）と食い違う。	
+F160	U74	P3	ci	J	S05-11	scripts/validate-agent-assets.py:180-198	スキル検証はname/descriptionの有無とディレクトリ名一致しか見ず、仕様の文字数・文字種・項目制限を検査しない。	
+F161	U74	P3	generator	J	S06-10	scripts/validate-agent-assets.py:248,491,493,670,1222,1229 vs home/dot_agents/agent-config.yaml:108,203-205,449	ジェネレータはマニフェストの出力パスと schema URL を読むが、validator は同じ値をハードコードしている。	
+F162	U74	P3	omp	J	S06-11	home/dot_agents/agent-config.yaml:33-34,341-344; scripts/validate-agent-assets.py:868-871	omp 拡張ディレクトリが omp.extensions・claude.levers.extensions・OMP_EXTENSION_PROVIDERS の三箇所で宣言され、包含関係の検査がない。	
+F163	U74	P3	generator	J	S06-12	home/dot_agents/agent-config.yaml:3,15-20; scripts/generate-agent-configs.py:111-112	target_agents と skills.canonical_dir は定数比較以外で誰も読まず、target_agents() 関数は未使用で、omp も含まれていない。	
+F164	U74	P3	generator	J	S06-13	home/dot_agents/agent-config.yaml:74-75	「INV-7: review の Claude プロファイルは deep と同じモデル・effort」という不変条件をどのコードも検査していない。	
+F165	U74	P3	generator	J	S06-16	scripts/validate-agent-assets.py:848-851 vs README.md:966-967	手書き *_VERSION リテラル禁止の走査が *.sh と setup.sh だけで、拡張子なしのスクリプトを対象外にしている。	
+F166	U74	P3	generator	J	S06-17	scripts/validate-agent-assets.py:615,620	ハードコード home の検査が ~/ 固定だが、実効的な抜け穴はほぼない。	
+F167	U74	P3	generator	J	S06-6	scripts/check-agent-runtime.py:375-377,412-417,811-817	~/.agents/.installed-manifest.json が無いホストでは doctor がアセット未導入を一切報告しない。	
+F168	U74	P3	generator	J	S06-7	scripts/check-agent-runtime.py:742-821	doctor の check() は project-map.md・~/.omp/agent/config.yml・omp ロールオーバーレイ・~/.agents/agent-config.yaml を比較しておらず、docstring の「生成ソース状態を使っていることを証明」に届かない。	
+F169	U74	P3	generator	J	S06-9	scripts/validate-agent-assets.py:864-865,942-945 vs scripts/generate-agent-configs.py:121-133	OMP_MODEL_RE・OMP_RETIRED_ROUTES・プロファイル必須キーが validator にコピーされ、一致を保証するテストがない。	
+F170	U74	P3	ci	J	S09-15	.github/workflows/agent-assets.yml:44	agent-assetsの検査はCodeRabbit設定のスキーマを見ず、リダイレクト先を追って古いURLを見逃し、取得したバージョンを固定値と比べないので乖離で失敗しない。	
+F171	U70	P3	codex	K	C15	home/dot_agents/agent-config.yaml:86-94	「pending changes の監査」用の security プロファイルに sandbox_mode が無く、base の workspace-write を継承している。	
+F172	U70	P3	codex	K	C17	macOS ~/.codex/rules/default.rules.pre-apply-20261015	旧ルールの未管理バックアップが本番の rules ディレクトリに残っている。	
+F173	U78	P3	install	K	OOS-S01-7, S10-21	~/Workspace/dotfiles; spark ~/.local/share/chezmoi	操作者のチェックアウトと両ホストの chezmoi ソースが origin/main より古く、spark には管理外の starship や古い node と claude-code が残る。	
+F174	U78	P3	install	K	S10-14, OOS-S08-1	home/.chezmoiscripts/ubuntu/run_after_0{4,5}-*.sh.tmpl	Ubuntu 専用の run_after スクリプトが macOS の chezmoi status に毎回出て、zed と ghostty は OS 分岐がシバンより後にある。	
+F175	U70	P3	security	K	OOS-S03-3	macOS ~/.codex/auth.json	Codex の認証情報が既定の file ストアに保存されており、keyring に移せる。	
+F176	U84	P3	security	K	OOS-S04-2	.gitignore	.gitignoreに.omp/がないので、.omp/の木を誤ってcommitしやすい。ただし`git add -f`で回避できるため、制御にはならない。	
+F177	U78	P3	install	K	OOS-S08-2	install/common/chezmoi_private.sh:23-28	chezmoi init に完全な https URL と --ssh を同時に渡しており、--ssh は効かない。	
+F178	U78	P3	security	K	OOS-S10-3	install/ubuntu/server/ssh_server.sh:54-56	サーバ用 sshd 設定が PermitRootLogin yes と ListenAddress 0.0.0.0 を有効化しているが、実行は /.dockerenv があるコンテナ内の server 構成に限られる。	
+F179	U69	P3	claude	K	S01-12	home/dot_config/claude/rules/{gpu,python,latex}.md:2	paths: **/*.py が引用符なしで YAML として不正なため、frontmatter が無視されて全セッションで常に読み込まれるおそれがある。	
+F180	U69	P3	claude	K	S02-06	home/dot_claude/modify_private_settings.json:166-170,184-186; macOS ~/.claude/settings.json	PreToolUse に管理述語が無いため、非管理フックと混在したエントリがあると enforce-uv.sh が重複して追記される。	
+F181	U69	P3	claude	K	S02-14	home/dot_claude/private_mcp.json.tmpl:1-4	~/.claude/mcp.json は Claude Code が読むファイルではなく、空の mcpServers を置くだけの死んだ設定になっている。	
+F182	U69	P3	claude	K	S02-15	home/dot_claude/commands/commit.md:1-17	/commit コマンドは frontmatter が無く、全変更をステージする手順が AGENTS.md の無関係な変更を混ぜない規則と矛盾し、誤字もある。	
+F183	U67	P3	omp	K	S04-11	~/.local/lib/omp-extensions/pi-claude-bridge/src/index.ts:111-118 (installed); macOS ~/.omp/profiles/worker/agent/claude-bridge-diag.log	bridgeのdiagログはappendFileSyncで追記するだけで上限もローテーションもなく、macOSのworkerで約1MBまで増えている。	
+F184	U80	P3	security	K	S05-13	home/dot_agents/skills/gh-comment-attach-files/SKILL.md:53	公開リポジトリのスキル例に社内GitHub Enterpriseのホスト名が書かれている。	
+F185	U80	P3	skills	K	S05-15	home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py	gitでは実行権限付きのスクリプトが`executable_`接頭辞を持たず、配備先では実行権限が落ちている。	
+F186	U70	P3	codex	K	S05-17	home/dot_agents/skills/python-uv-workflow/agents/openai.yaml:4	python-uv-workflowの`default_prompt`だけがスキル名`$python-uv-workflow`を含まず、他の5件と不揃い。	
+F187	U78	P3	install	K	S08-17	home/dot_local/bin/common/executable_setup-gh:20,78-79	setup-gh はキーリングにログインして全エージェントが使うトークンに admin:public_key と admin:ssh_signing_key を足し、平文ファイル保存を強制する gh-auth.sh とログイン手順が食い違う。	
+F188	U78	P3	install	K	S08-20	<ubuntu-host>:~/.config/gh	Ubuntu の資格情報ディレクトリ（~/.config/gh 771、~/.config/age・~/.aws・~/.local/share/chezmoi-private 775）がグループ書込み可になっている。	
+F189	U77	P3	ci	K	S09-14	.coderabbit.yaml:16	CodeRabbitは自動レビュー無効のまま一度もレビューしておらず、言語やpath_filtersの設定が効いていない。	
+F190	U77	P3	security	K	S09-17	.github/workflows/test.yaml:133	run:の中に${{ github.event_name }}・${{ github.ref }}・${{ steps.decide.outputs.diff_range }}を直接埋め込んでいる。	
+F191	U77	P3	ci	K	S09-19	.github/workflows/test.yaml:25	多くのジョブにtimeout-minutesが無く、ハング時は既定の360分まで走り続ける。	
+F192	U77	P3	ci	K	S09-20	.github/funding.yaml:1	funding.yamlのgithub: mryfmoはSponsors未登録のユーザーを指しており、表示されない。	
+F193	U78	P3	install	K	S10-15	home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl:2	macOS の AWS CLI スクリプトが install/ubuntu/ 配下のファイルを読み込み、更新検知は AWSCLIV2.pkg の ETag を見るが実際には v2/install.sh を入れている。	
+F194	U78	P3	install	K	S10-16	install/macos/common/dependencies.sh:17	cmake が mise と Homebrew(Ubuntu では apt)の両方から入っており二重管理になっている。	
+F195	U78	P3	install	K	S10-17	install/ubuntu/client/docker.sh:15-20	Ubuntu の Docker インストールが公式手順と違い、docker-buildx-plugin を入れず、古い docker/docker-engine を削除し、docker.gpg と一行形式の docker.list を使っている。	
+F196	U78	P3	install	K	S10-18	install/ubuntu/server/setup_timezone.sh:23	DEBIAN_FRONTEND=noninteractive を sudo の前に置いているため env_reset で消え、apt-get には渡らない。	
+F197	U78	P3	install	K	S10-19	Makefile:2-4	Makefile の DOCKER_ARCH・DOCKER_NUM_CPU・DOKCER_RAM_GB(綴り誤り)はどこからも参照されていない。	
+F198	U78	P3	install	K	S10-20	home/dot_mise/config.toml:47-48	blocc は linux/x64 限定だが、展開先ホスト(macOS arm64、spark aarch64)のどれにも入らず、利用者が不明の死んだ設定になっている。	
+F199	U79	P3	docs	K	S11-23	home/dot_config/alias/common.sh:1-4	generate-docs.sh が読む alias/common.sh に shdoc の @file/@brief ヘッダがない。	

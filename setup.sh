@@ -287,7 +287,9 @@ CHEZMOI_EXTERNAL_RETRY_DELAY=5
 #
 function chezmoi_external_sha256() {
     local digest
-    [ "$#" -eq 1 ] && [ -f "$1" ] || return 1
+    if ! { [ "$#" -eq 1 ] && [ -f "$1" ]; }; then
+        return 1
+    fi
     if command -v sha256sum > /dev/null 2>&1; then
         digest="$(sha256sum "$1")" || return 1
     else
@@ -314,7 +316,9 @@ function chezmoi_external_url_key() {
     printf '%s' "${url}" > "${scratch}" || status=1
     [ "${status}" -ne 0 ] || key="$(chezmoi_external_sha256 "${scratch}")" || status=1
     rm -f "${scratch}"
-    [ "${status}" -eq 0 ] && [ "${key}" != "${CHEZMOI_EXTERNAL_EMPTY_SHA256}" ] || return 1
+    if ! { [ "${status}" -eq 0 ] && [ "${key}" != "${CHEZMOI_EXTERNAL_EMPTY_SHA256}" ]; }; then
+        return 1
+    fi
     printf '%s\n' "${key}"
 }
 
@@ -327,10 +331,10 @@ function chezmoi_external_url_key() {
 #
 function chezmoi_external_seconds() {
     local rest="$1" total=0 amount unit
-    [ -n "${rest}" ] && [ "${rest}" != 0 ] || {
+    if ! { [ -n "${rest}" ] && [ "${rest}" != 0 ]; }; then
         printf '0\n'
         return 0
-    }
+    fi
     while [ -n "${rest}" ]; do
         [[ "${rest}" =~ ^([0-9]{1,9})([hms])(.*)$ ]] || return 1
         amount="${BASH_REMATCH[1]}" unit="${BASH_REMATCH[2]}" rest="${BASH_REMATCH[3]}"
@@ -383,10 +387,10 @@ function prefetch_chezmoi_external() {
         # An entry this step cannot read the age or the digest of is fetched again, never kept.
         modified="$(stat -c %Y "${entry}" 2> /dev/null || stat -f %m "${entry}")" || modified=0
         [[ "${modified}" =~ ^[0-9]+$ ]] || modified=0
-        now="$(date +%s)" && [[ "${now}" =~ ^[0-9]+$ ]] || {
+        if ! { now="$(date +%s)" && [[ "${now}" =~ ^[0-9]+$ ]]; }; then
             printf 'chezmoi external %s: date +%%s failed; cannot tell the cache entry'\''s age\n' "${name}" >&2
             return 1
-        }
+        fi
         actual="$(chezmoi_external_sha256 "${entry}")" || actual=""
         if [ "${actual}" = "${expected}" ] && { [ "${refresh}" -eq 0 ] || [ $((modified + refresh)) -gt "${now}" ]; }; then
             printf 'chezmoi external %s: cached, sha256 verified\n' "${name}"
@@ -536,10 +540,10 @@ function prefetch_chezmoi_externals() {
         printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
         return 0
     fi
-    source="$("${chezmoi}" source-path)" && [ -d "${source}" ] || {
+    if ! { source="$("${chezmoi}" source-path)" && [ -d "${source}" ]; }; then
         printf 'chezmoi externals: chezmoi source-path failed or named no directory\n' >&2
         return 1
-    }
+    fi
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || {
         printf 'chezmoi externals: cannot create a scratch directory\n' >&2
         return 1
@@ -552,10 +556,10 @@ function prefetch_chezmoi_externals() {
         name="${fields[0]}" type="${fields[1]:-}" sha256="${fields[2]:-}" refresh="${fields[3]:-}"
         fallbacks="${fields[4]:-}" url="${fields[5]:-}"
         # A line the decode did not produce whole is refused, never skipped: it decides what is fetched.
-        [ "${#fields[@]}" -eq 6 ] && [ -n "${name}" ] && [[ "${fallbacks}" =~ ^[0-9]+$ ]] || {
+        if ! { [ "${#fields[@]}" -eq 6 ] && [ -n "${name}" ] && [[ "${fallbacks}" =~ ^[0-9]+$ ]]; }; then
             printf 'chezmoi externals: an external decoded without its fields: %s\n' "${fields[*]}" >&2
             return 1
-        }
+        fi
         case "${type}" in
         file | archive | archive-file) ;;
         git-repo) continue ;;
@@ -587,10 +591,10 @@ function prefetch_chezmoi_externals() {
         }
         # Read once, at the first external to fetch: a source without one needs no cache.
         if [ -z "${cache}" ]; then
-            cache="$("${chezmoi}" execute-template '{{ .chezmoi.cacheDir }}')" && [[ "${cache}" == /* ]] || { # lint-comparisons: allow an absolute-path prefix test
+            if ! { cache="$("${chezmoi}" execute-template '{{ .chezmoi.cacheDir }}')" && [[ "${cache}" == /* ]]; }; then # lint-comparisons: allow an absolute-path prefix test
                 printf 'chezmoi externals: cannot read chezmoi'\''s cache directory\n' >&2
                 return 1
-            }
+            fi
         fi
         prefetch_chezmoi_external "${name}" "${url}" "${sha256}" "${seconds}" "${cache}" || return 1
     done <<< "${listing}"

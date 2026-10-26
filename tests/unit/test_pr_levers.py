@@ -1081,6 +1081,14 @@ if extra and "--others" in sys.argv:
     sys.stdout.buffer.write(extra.encode() + b"\\0")
 if os.environ.get("FAKE_GIT_FAIL_AFTER") in sys.argv[1:]:
     sys.exit(1)  # a failure after plausible output
+# FAKE_GIT_ADD_EXTRA=<path>: an `add` run with -C (the lever's staging in the sync worktree) stages one more file.
+extra_add = os.environ.get("FAKE_GIT_ADD_EXTRA")
+if extra_add and "add" in sys.argv[1:] and "-C" in sys.argv:
+    where = sys.argv[sys.argv.index("-C") + 1]
+    os.makedirs(os.path.dirname(os.path.join(where, extra_add)), exist_ok=True)
+    with open(os.path.join(where, extra_add), "w") as handle:
+        handle.write("staged behind the lever\\n")
+    subprocess.run([os.environ["REAL_GIT"], "-C", where, "add", "--", extra_add], check=True)
 sys.exit(run.returncode)
 """
 
@@ -1578,6 +1586,81 @@ class RecordsSyncTest(PrLeverTestCase):
                     self.assertNotIn(found, run.stdout + run.stderr)
                 self.assert_nothing_left()
                 path.unlink()
+
+    def test_a_hook_of_the_checkout_never_runs_in_the_sync_worktree(self):
+        """U101 round 6: `add -A -- .orchestration` staged whatever a post-checkout or pre-commit hook of the checkout's
+        repository dropped in the sync worktree, unmasked and unscanned. Every git command there runs with
+        `core.hooksPath=/dev/null`, and only the copy set is staged."""
+        self.github()
+        marker = self.root / "hook-ran"
+        hooks = self.repo / ".git/hooks"
+        hooks.mkdir(exist_ok=True)
+        for name in ("post-checkout", "pre-commit", "post-commit"):
+            hook = hooks / name
+            hook.write_text(
+                "#!/bin/sh\n"
+                "mkdir -p .orchestration/validation .orchestration/orchestrate/other\n"
+                "echo hooked > .orchestration/validation/hooked.md\n"
+                "echo hooked > .orchestration/orchestrate/other/hooked.md\n"
+                "git add .orchestration/validation/hooked.md .orchestration/orchestrate/other/hooked.md\n"
+                f"echo {name} >> {marker}\n"
+            )
+            hook.chmod(0o755)
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertFalse(marker.exists(), "no hook ran")
+
+    def test_a_staged_path_outside_the_copy_set_refuses(self):
+        """U101 round 6: the guard accepted any staged path under .orchestration/. The staged paths must now equal the
+        copy set exactly, so one more file staged in the sync worktree, inside or outside .orchestration/, refuses."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        for extra in (".orchestration/validation/extra.md", ".orchestration/orchestrate/other/extra.md", "scripts/x"):
+            with self.subTest(extra):
+                self.env["FAKE_GIT_ADD_EXTRA"] = extra
+                run = self.run_lever("records-sync.sh")
+                del self.env["FAKE_GIT_ADD_EXTRA"]
+                self.assert_refused(run, "the staged paths differ from the copy set")
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    @unittest.skipUnless(Path("/bin/bash").is_file(), "no /bin/bash")
+    def test_the_git_scrub_holds_under_bin_bash_with_an_unwritable_tmpdir(self):
+        """U101 round 6: on macOS /bin/bash is 3.2, whose here-strings need a temporary file; the scrub now reads
+        compgen through a command substitution. With TMPDIR unwritable and GIT_DIR and GIT_WORK_TREE exported, the
+        run gets past every git command that would fail under them and stops at the lever's own mktemp."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        locked = self.root / "locked"
+        locked.mkdir()
+        locked.chmod(0o555)
+        self.addCleanup(locked.chmod, 0o755)
+        env = self.env | {
+            "TMPDIR": str(locked),
+            "GIT_DIR": str(self.root / "nonexistent.git"),
+            "GIT_WORK_TREE": str(self.root / "nonexistent"),
+        }
+        run = subprocess.run(
+            ["/bin/bash", str(LEVERS / "records-sync.sh")],
+            cwd=self.repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("records-sync.sh: mktemp failed", run.stderr)
+        self.assertNotIn("not in a git checkout", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
 
     def test_the_identifier_scan_refuses_what_the_masking_left(self):
         """U101: the scan is a refusal of its own, not a re-run of the masker: with a validator on origin/main whose

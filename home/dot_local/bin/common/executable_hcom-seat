@@ -952,27 +952,33 @@ deepest_existing() {
     printf '%s\n' "${p}"
 }
 
-# @description Decide by (device, inode) identity alone whether `$2` is `$1` or lies under it (regime-cutover U85);
-#   no path text is compared, so a case alias on a case-insensitive volume is the path it aliases. When `$1` exists:
+# @description Decide whether `$2` is `$1` or lies under it (regime-cutover U85), by (device, inode) identity for
+#   everything that exists, so a case alias on a case-insensitive volume is the path it aliases. When `$1` exists:
 #   yes iff `$2`'s deepest existing ancestor (`$2` itself when it exists) or a directory above it has `$1`'s identity.
-#   When `$1` does not exist, an existing `$2` cannot lie under it (no); when neither exists, everything from `$1`
-#   down is absent, so `$2` can lie under `$1` only if both have the same deepest existing ancestor: a different
-#   one is a no, the same one cannot be decided by identity (exit 2).
-# @arg $1 string A physical path.
-# @arg $2 string A physical path.
+#   When `$1` does not exist, an existing `$2` cannot lie under it (no). When neither exists, everything from `$1`
+#   down is absent, so `$2` can lie under `$1` only if both have the same deepest existing ancestor (identity); below
+#   it nothing exists, so no link or alias can intervene, and the clean remaining components decide: yes iff `$1`'s
+#   remainder is `$2`'s or a prefix of it on a component boundary (`a/b` is no prefix of `a/bc`). The remainders are
+#   compared ASCII case-folded (clean paths are ASCII), since on a case-insensitive volume two spellings that differ
+#   by case become one directory once made; on a case-sensitive one that refuses names differing only by case.
+# @arg $1 string A physical, clean path.
+# @arg $2 string A physical, clean path.
 # @exitcode 0 `$2` is `$1` or lies under it.
 # @exitcode 1 It does not.
-# @exitcode 2 Neither exists and identity cannot decide.
 within() {
     # Every helper's status is checked where it is called: within runs inside `||` lists, where `set -e` does not apply.
-    local outer_id p ids probe=() a1 a2
+    local outer_id p ids probe=() a1 a2 rest
     if [[ ! -e $1 ]]; then
         [[ ! -e $2 ]] || return 1
         a1=$(deepest_existing "$1") || refuse "cannot find an existing directory above $1"
         a2=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
         ids=$(/usr/bin/stat "${stat_args[@]}" -- "${a1}" "${a2}") || refuse "cannot read the identity of ${a1} or ${a2}"
         [[ ${ids%%$'\n'*} == "${ids#*$'\n'}" ]] || return 1 # lint-comparisons: allow compares (device, inode) identities, not paths
-        return 2
+        # The absent remainders below the one ancestor, each starting with `/`, folded to lower case on one line each.
+        rest=$(printf '%s/\n%s/\n' "${1#"${a1%/}"}" "${2#"${a2%/}"}" | LC_ALL=C /usr/bin/tr '[:upper:]' '[:lower:]') ||
+            refuse "cannot compare the absent parts of $1 and $2"
+        [[ ${rest#*$'\n'} == "${rest%%$'\n'*}"* ]] # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
+        return
     fi
     outer_id=$(/usr/bin/stat "${stat_args[@]}" -- "$1") || refuse "cannot read the identity of $1"
     p=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
@@ -1105,7 +1111,7 @@ other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'c
 #   construction, not by comparing text: the seat's own slots under the seats root (the first two roots: a worker's
 #   `<seats-root>/<name>`, and `<seats-root>/.state/<name>`) against the seats root and its `.sandbox`, and the git
 #   common directory named `.git` whose parent is the main checkout (identity). Containment is decided by identity
-#   only (within); a pair identity cannot decide (neither exists, same deepest existing ancestor) is a refusal. Every
+#   for everything that exists, and below one shared deepest existing ancestor by the absent components (within). Every
 #   path must be clean (clean_path) before anything is created, so this runs in a dry run too.
 # @arg $1 string The role.
 # @arg $2 string The seat directory, physical.
@@ -1147,12 +1153,10 @@ seat_overlap_check() {
             if [[ (${k} == 2 || (${k} == 1 && ${own_role} != orchestrator)) && (${i} == 1 || ${i} == 2) ]]; then continue; fi
             status=0
             within "${r}" "${p}" || status=$?
-            ((status != 2)) || refuse "cannot decide by identity whether the ${own_role} seat's write root ${r} contains ${labels[i]} ${p}: neither exists yet"
             ((status != 0)) ||
                 refuse "the ${own_role} seat's write root ${r} contains ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
             status=0
             within "${p}" "${r}" || status=$?
-            ((status != 2)) || refuse "cannot decide by identity whether the ${own_role} seat's write root ${r} lies inside ${labels[i]} ${p}: neither exists yet"
             if ((status == 0)); then
                 # The main checkout's own `.git`, by identity of the common directory and its parent.
                 if ((i == 0)) && [[ -e ${r} && ${r} -ef ${common} && -d ${checkout}/.git && ! -L ${checkout}/.git && ${checkout}/.git -ef ${r} ]]; then continue; fi

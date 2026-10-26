@@ -1052,10 +1052,11 @@ class HcomSeatTest(unittest.TestCase):
             f"write root {inside.resolve()}/worker lies inside the main checkout {self.repo.resolve()}", run.stderr
         )
         self.assertFalse(inside.exists())
-        # Neither exists yet: identity cannot decide, so the launch is refused as well.
+        # Neither exists yet: the absent components decide (U85 round 30), so the nested store is refused as well.
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("cannot decide by identity", run.stderr)
+        self.assertIn(f"write root {self.seats}/hcom lies inside the seats root {self.seats}", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
         Path(self.seats, "hcom").mkdir(parents=True)
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
@@ -1083,13 +1084,13 @@ class HcomSeatTest(unittest.TestCase):
 
     def test_overlap_is_decided_by_identity_never_by_path_text(self):
         """U85 round 14: containment is by (device, inode) only. A seats root spelled through a case alias of a write
-        root (`~/.CLAUDE/seats` for `~/.claude`) is refused when the alias exists, and refused as undecidable when
-        neither the root nor the alias exists yet; a nonexistent child of an existing alias is caught too."""
+        root (`~/.CLAUDE/seats` for `~/.claude`) is refused when the alias exists, and, when neither exists yet, by the
+        case-folded absent components (U85 round 30); a nonexistent child of an existing alias is caught too."""
         claude = self.home / ".claude"
         alias = self.home / ".CLAUDE"
         run = self.seat("worker", "--seats-root", str(alias / "seats"), "--dry-run")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("cannot decide by identity", run.stderr)
+        self.assertIn(f"write root {self.home / '.claude'} contains the seats root {alias / 'seats'}", run.stderr)
         claude.mkdir(exist_ok=True)
         if not alias.exists():
             self.skipTest("the file system is case-sensitive, so no case alias exists")
@@ -1209,9 +1210,9 @@ class HcomSeatTest(unittest.TestCase):
         the worktree or any metadata, so a first launch works for both roles; a dry run leaves it absent and says so;
         a store whose deepest existing ancestor is a symbolic link is refused before anything is created."""
         root = Path(self.temp.name).resolve()
-        # The seats root exists (an earlier program's launch made it), so the identity check can decide the new
-        # store's place; two absent roots under one existing directory stay undecidable and refused.
-        Path(self.seats).mkdir()
+        # The seats root is absent too (U85 round 30): both new under one existing directory, decided by their
+        # absent components.
+        self.assertFalse(Path(self.seats).exists())
         for role in ("worker", "orchestrator"):
             with self.subTest(role=role):
                 store = root / f"fresh-{role}" / "hcom"
@@ -1234,6 +1235,56 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(list(target.iterdir()), [])
         self.assertFalse(Path(self.seats, "w-link").exists())
         self.assertNotIn("w-link", self.git("worktree", "list"))
+
+    def test_absent_paths_under_one_ancestor_are_decided_by_their_components(self):
+        """U85 round 30: below the deepest existing ancestor nothing exists, so `within` decides two absent paths by
+        that ancestor's identity and their clean components: nested refuses, disjoint passes, `a/b` is no prefix of
+        `a/bc`, and an existing outer path is still decided by identity."""
+        text = SEAT.read_text()
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "ancestors_of", "deepest_existing", "within")
+        )
+        stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
+        root = Path(self.temp.name).resolve() / "anc"
+        (root / "exists").mkdir(parents=True)
+        (root / "other").mkdir()
+        cases = (
+            ("new/a", "new/a/b", 0),
+            ("new/a", "new/a", 0),
+            ("new/a/b", "new/a", 1),
+            ("new/a/b", "new/a/bc", 1),
+            ("new/a", "new/ab/c", 1),
+            ("new/x", "new/y", 1),
+            ("new/A", "new/a/b", 0),
+            ("exists/new", "other/new", 1),
+            ("exists", "exists/new/deeper", 0),
+            ("exists", "other/new", 1),
+            ("new", "exists", 1),
+        )
+        for outer, inner, expected in cases:
+            with self.subTest(outer=outer, inner=inner):
+                script = f'set -euo pipefail\nstat_args={stat_args}\n{functions}\nstatus=0\nwithin "$1" "$2" || status=$?\necho $status\n'
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script, "_", str(root / outer), str(root / inner)],
+                    capture_output=True, text=True, check=False, timeout=20,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (0, f"{expected}\n"), run.stderr)
+
+    def test_a_fresh_spark_first_launch_with_the_default_paths(self):
+        """U85 round 30: the dotfiles program's first launch on a fresh host (hcom-orchestration SKILL step 0):
+        HCOM_DIR=~/.local/state/hcom-regime, HCOM_TEAM=regime, no --seats-root (the derived
+        ~/.local/state/omp-seats/<slug>), neither existing, both under ~/.local/state. It launches both roles and makes
+        both directories."""
+        state = self.home / ".local/state"
+        store, seats = state / "hcom-regime", state / "omp-seats/repo"
+        self.assertFalse(store.exists() or seats.exists())
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, HCOM_DIR=str(store), HCOM_TEAM="regime", REGIME_SEATS_ROOT=None)
+                self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(store.is_dir() and (seats / "worker").is_dir())
+        self.assertEqual(len(self.calls_of("hcom")), 2)
 
     def test_a_self_referencing_link_chain_refuses_promptly(self):
         """U85 round 23: physical_path is iterative with one 40-hop budget per call, so a dangling link naming a

@@ -20,37 +20,36 @@
 #   else the run is refused before anything is created. A deletion candidate (a path of `origin/main` the store no
 #   longer holds as a regular file) gets the name checks only: it is never read, only removed. A file that became a
 #   directory, or the reverse, is mirrored as the deletion plus the additions in the one commit.
-#   In a new detached worktree under `$TMPDIR` at `origin/main`, made and used with `core.hooksPath=/dev/null` so no
-#   hook of the checkout's repository runs there (U101), it deletes what the store lacks, then copies the set,
-#   masks the copies with the worktree's own `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files
-#   are never changed; a masking failure aborts), then refuses the run if that validator's `--scan-identifiers`
-#   still finds a secret pattern, a home directory path or a redact word (in a copy's text or path). Neither tool's
-#   output is shown (it may name a copy's path or an original key): both go to files in the scratch directory, and
-#   a failure prints a fixed message with the exit status only (U101). It stages exactly the copy set by explicit
-#   paths, and refuses unless the staged paths equal, as a sorted NUL list, every deletion and every copy whose mode
-#   and object id differ from origin/main's; an empty change is refused. `<n>` is then one more than the largest
-#   number among
-#   the remote heads, the local branches (U28b F6) and the heads of the newest 1000 pull requests named
-#   `records/sync-<n>`, `records/program-store-<n>` or `records/<program>-sync-<n>` (the earlier syncs), and the
-#   branch must match `records/sync-<n>`. It commits `chore(records): <program> sync <n>` with the footer, author and
-#   committer both the identity `git config user.name`/`user.email` read once at the start, set for the commit
-#   alone as GIT_AUTHOR_*/GIT_COMMITTER_*, which outrank every `user.*`, `author.*` and `committer.*` config key of
-#   the repository, an include or the worktree. Every `GIT_*` variable the caller exported (GIT_AUTHOR_*,
-#   GIT_COMMITTER_*, GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs (U101), by a loop over
-#   `compgen -e` with no here-string, and a second pass refuses if any is left. The push never runs in the
-#   checkout's repository, whose config and includes (an `includeIf "gitdir:…/worktrees/**"` switches on only in the
-#   sync worktree) could rewrite its URL: the one commit is fetched by object id into a new empty bare repository
-#   in the scratch directory (`git init --bare --template=`, so no hooks), and pushed from there to origin's https
-#   URL, read once from the checkout (any other scheme is refused), as `<oid>:refs/heads/records/sync-<n>`, with
-#   `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` and the credential helper `!gh auth git-credential` only, so
-#   no config at all can redirect it. It then opens the pull request with
+#   The whole commit is built in a new repository in a scratch directory under `$TMPDIR` (U101: rounds 2 to 7 each
+#   found another channel by which the checkout's git config acted on a sync worktree, so there is none): `git init
+#   --bare --template=` (no hooks, no attributes, no config beyond the init's), every command there under
+#   `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` with every inherited `GIT_*` variable removed. Origin's main
+#   is fetched into it from origin's https URL (read once from the checkout; any other scheme is refused) with the
+#   credential helper `!gh auth git-credential` only. The checkout is only read: its two listings, its store files
+#   and `git config user.name`/`user.email`. The copies are made in the scratch directory and masked there with
+#   main's `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files are never changed; a masking
+#   failure aborts); the run is refused if that validator's `--scan-identifiers` still finds a secret pattern, a
+#   home directory path or a redact word in a copy's text or store path. Neither tool's output is shown (it may name
+#   a copy's path or an original key): both go to files in the scratch directory, and a failure prints a fixed
+#   message with the exit status only. Under a private `GIT_INDEX_FILE` the lever reads main's tree, removes each
+#   deletion (`update-index -z --index-info`, mode 0, which needs no work tree), then writes each masked copy, the
+#   very file scanned, with `hash-object -w --no-filters` and enters it by mode and object id (`update-index --add
+#   --cacheinfo`), and writes the tree. Its
+#   `diff-tree -r --name-only -z` against main's tree must equal, as sorted NUL lists, every deletion and every copy
+#   whose mode and object id differ from main's; otherwise, or when it is empty, the run is refused. `<n>` is one
+#   more than the largest number among origin's heads, the checkout's local branches (U28b F6) and the heads of the
+#   newest 1000 pull requests named `records/sync-<n>`, `records/program-store-<n>` or `records/<program>-sync-<n>`
+#   (the earlier syncs), and the branch must match `records/sync-<n>`. `commit-tree` makes
+#   `chore(records): <program> sync <n>` with the footer on main, author and committer both the identity read at the
+#   start, set as GIT_AUTHOR_*/GIT_COMMITTER_* for that command alone, and the same repository pushes
+#   `<commit>:refs/heads/records/sync-<n>` to the https URL. It then opens the pull request with
 #   `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`, `gh` also reading no user or
-#   system git config. The body lists the `units.tsv` ids and the
-#   `decisions.tsv` timestamps the sync adds or changes and the line `Program-Unit: <program>/<unit>`, which the
-#   `regime` check requires (U28c F2). The worktree is removed on every exit (`git worktree remove --force`, only on
-#   the path this run created), and a run that exits before its push deletes the branch it created (only that one),
-#   so a retry takes the same number; a pushed branch stays. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT
-#   seconds.
+#   system git config. The body lists the `units.tsv` ids and the `decisions.tsv` timestamps the sync adds or changes
+#   and the line `Program-Unit: <program>/<unit>`, which the `regime` check requires (U28c F2). Every `GIT_*`
+#   variable the caller exported (GIT_AUTHOR_*, GIT_COMMITTER_*, GIT_CONFIG_*, GIT_DIR and the rest) is removed
+#   before anything else runs, by a loop over `compgen -e` with no here-string, and a second pass refuses if any is
+#   left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit.
+#   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds.
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
 # @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
@@ -172,20 +171,10 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Remove the worktree this run created, and its scratch directory.
+# @description Remove this run's scratch directory, with the repository the sync was built in.
 cleanup() {
     if [[ -n ${scratch:-} && -d ${scratch} ]]; then
-        if [[ -d ${scratch}/tree ]]; then
-            git -C "${toplevel}" worktree remove --force "${scratch}/tree" > /dev/null 2>&1 ||
-                echo "${lever}: could not remove the worktree ${scratch}/tree" >&2
-        fi
         rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
-    fi
-    # U28b F6: a run that created its branch and never pushed it deletes exactly that branch, so a retry is not
-    # blocked by it; a pushed branch stays (the remote holds it, and the next run numbers past it).
-    if [[ -n ${created_branch:-} && ${pushed:-0} == 0 ]]; then
-        git -C "${toplevel}" branch -D "${created_branch}" > /dev/null 2>&1 ||
-            echo "${lever}: could not delete the unpushed branch ${created_branch}" >&2
     fi
 }
 
@@ -202,17 +191,16 @@ gh_plain() {
     GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 gh_bounded "$@"
 }
 
-# @description Run git in the sync worktree with every hook off (U101): `core.hooksPath=/dev/null` names no hook
-#   (post-checkout, pre-commit, post-commit and the rest), so nothing but this lever writes into the tree or its
-#   index; `core.fileMode=true` makes the staged mode the file's, as the expected staged set below assumes.
+# @description Run git in the sync's own repository (U101): no user or system config, auto maintenance off (the
+#   directory is removed on exit), and the repository named by `--git-dir`, so no checkout is consulted.
 # @arg $@ string The `git` arguments.
-git_tree() {
-    git -c core.hooksPath=/dev/null -c core.fileMode=true -C "${tree}" "$@"
+git_scratch() {
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git --git-dir="${repo}" -c gc.auto=0 -c maintenance.auto=false "$@"
 }
 
 # @description Refuse a path by its name alone: a control character (a newline would end the component split of
 #   check_path early and leave the leaf unchecked), a place outside `.orchestration/`, or `..`. A deletion candidate
-#   gets only this check (U101): it is never read, only removed from the sync worktree.
+#   gets only this check (U101): it is never read, only removed from the new tree.
 # @arg $1 string The repository-relative path.
 check_name() {
     local path=$1
@@ -314,23 +302,32 @@ if [[ -e ${words} || -L ${words} ]]; then
 else
     words_real=''
 fi
-# The commit's identity is the operator's, read once here; the commit itself then runs with no user config.
+# The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.
 author_name=$(git config user.name) || refuse 'git config user.name is unset'
 author_email=$(git config user.email) || refuse 'git config user.email is unset'
-# U101: the push URL is origin's, read once here and pushed to from a fresh repository (below); https only.
+# U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.
 push_url=$(git_plain config --get remote.origin.url) || refuse 'no remote.origin.url'
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself
 https://?*) ;;
 *) refuse "the push needs an https origin URL, not ${push_url}" ;;
 esac
 
-git fetch --quiet origin main || fail 'git fetch origin main failed'
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
 trap cleanup EXIT
+# U101: the whole commit is built in a new repository in the scratch directory, which has no config, includes,
+# hooks or attributes of the checkout's: origin's main is fetched into it from the https URL, the copies are hashed
+# into it with --no-filters, and the tree, the commit and the push are made there. The checkout is only read: its
+# listings, its store files and its config's user.name/user.email (above).
+repo=${scratch}/repo.git
+git_plain init --quiet --bare --template= "${repo}" || fail 'git init --bare for the sync failed'
+git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+    fetch --quiet --no-tags "${push_url}" refs/heads/main || fail 'git fetch main from origin failed'
+main=$(git_scratch rev-parse --verify 'FETCH_HEAD^{commit}') || fail 'cannot read the fetched main'
+main_tree=$(git_scratch rev-parse --verify "${main}^{tree}") || fail 'cannot read the tree of main'
 # U101: the copy set is the store's files on disk (tracked or not, not ignored), compared with origin/main by
 # content; the checkout's HEAD, however stale, is never the base. Each listing goes to a file and is read
 # NUL-delimited: a git failure, even after output, and a listing whose last entry has no NUL end (cut short) refuse
-# here, before the worktree, the branch or any gh call.
+# here, before any copy, commit or gh call.
 listing=${scratch}/listing
 git ls-files -z --cached --others --exclude-standard -- "${records}/" > "${listing}" || fail 'git ls-files failed'
 files=()
@@ -345,9 +342,9 @@ while IFS= read -r -d '' path; do
     fi
 done < "${listing}"
 [[ -z ${path} ]] || refuse "the listing of ${records}/ ends mid-entry; nothing was created"
-# Full entries (`<mode> blob <oid>` TAB path): the deletions come from them, and the expected staged set below compares
-# each copy with its entry on origin/main.
-git ls-tree -r -z "${base}" -- "${records}/" > "${listing}" || fail "git ls-tree ${base} failed"
+# Full entries (`<mode> blob <oid>` TAB path): the deletions come from them, and the expected change set below
+# compares each copy with its entry on main.
+git_scratch ls-tree -r -z "${main}" -- "${records}/" > "${listing}" || fail "git ls-tree ${base} failed"
 gone=()
 base_entries=$'\n'
 entry=''
@@ -361,73 +358,90 @@ done < "${listing}"
 [[ -z ${entry} ]] || refuse "the listing of ${base}:${records}/ ends mid-entry; nothing was created"
 ((${#files[@]} + ${#gone[@]} > 0)) || refuse "nothing to sync under ${records}/"
 
-tree=${scratch}/tree
-git -c core.hooksPath=/dev/null worktree add --quiet --detach "${tree}" "${base}" || fail 'git worktree add failed'
+# The masker and the scanner are main's validator, alone in a tools tree whose `home/` holds main's top-level entry
+# names (empty), so its home-path pattern skips the repository's own `home/<entry>` paths as in a checkout; a main
+# without `home/` gives an empty one.
+tools=${scratch}/tools
+mkdir -p "${tools}/scripts" "${tools}/home" || fail 'cannot make the tools tree'
+git_scratch cat-file blob "${main}:scripts/validate-agent-assets.py" > "${tools}/scripts/validate-agent-assets.py" ||
+    fail "cannot read scripts/validate-agent-assets.py of ${base}"
+git_scratch ls-tree -z --name-only "${main}" -- home/ > "${scratch}/home-entries" || fail "cannot list home/ of ${base}"
+while IFS= read -r -d '' entry; do
+    entry=${entry#home/}
+    [[ -n ${entry} && ${entry} != *[/[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a tree entry name as git prints it
+        fail "home/ of ${base} holds an unusable entry name"
+    mkdir "${tools}/home/${entry}" || fail 'cannot make the tools tree'
+done < "${scratch}/home-entries"
+# U101: the copies are masked and scanned in the scratch directory, and these same files are what hash-object
+# writes, so the committed bytes are the scanned bytes.
+copies=${scratch}/copies
 masked=()
-# Deletions first: a file that became a directory (or the reverse) frees its name before the copy needs it, and the
-# one commit carries the deletion and the additions (U101).
-for path in ${gone[@]+"${gone[@]}"}; do
-    git_tree rm --quiet -- "${path}" || fail "git rm ${path} failed"
-done
 for path in ${files[@]+"${files[@]}"}; do
-    mkdir -p "${tree}/${path%/*}" || fail "mkdir for ${path} failed"
-    cp -p "${path}" "${tree}/${path}" || fail "cp ${path} failed"
-    masked+=("${tree}/${path}")
+    mkdir -p "${copies}/${path%/*}" || fail "mkdir for ${path} failed"
+    cp -p "${path}" "${copies}/${path}" || fail "cp ${path} failed"
+    masked+=("${copies}/${path}")
 done
 if ((${#masked[@]})); then
     # U101: neither tool's output is shown. The masker prints each copy's path and, on a key collision, the original
     # keys; either may hold a redact word or a secret. Both go to files in the scratch directory (removed on exit),
     # and a failure says only that it happened and the exit status.
     status=0
-    uv run --no-project python -I "${tree}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
+    uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
         > "${scratch}/mask.log" 2>&1 || status=$?
     ((status == 0)) || fail "masking the copies failed (exit ${status}); its output is withheld, nothing was published"
     # U101: after masking, no copy may still name a secret, a home path or a redact word, its path included.
     scan=(--scan-identifiers)
     [[ -z ${words_real} ]] || scan+=(--redact-words "${words_real}")
-    (cd "${tree}" && uv run --no-project python -I scripts/validate-agent-assets.py "${scan[@]}" -- "${files[@]}") \
+    (cd "${copies}" && uv run --no-project python -I "${tools}/scripts/validate-agent-assets.py" "${scan[@]}" -- "${files[@]}") \
         > "${scratch}/scan.log" 2>&1 || status=$?
     ((status != 1)) ||
         refuse 'the identifier scan found a secret, a home path or a redact word in the masked copies (exit 1); its output is withheld, nothing was published'
     ((status == 0)) || fail "the identifier scan failed (exit ${status}); its output is withheld, nothing was published"
 fi
-# U101: exactly the copy set is staged, by explicit paths (the deletions above, the copies here), never a directory
-# pathspec; then the staged paths must equal, as the same sorted NUL list, the set computed independently: every
-# deletion, and every copy whose `<mode> blob <oid>` (hash-object, no filters) differs from its origin/main entry.
+
+# U101: the new tree is main's tree in a private index, the deletions removed first (a file that became a directory,
+# or the reverse, frees its name), then each masked copy hashed with --no-filters and entered by mode and object id.
+# The expected change set is computed alongside: every deletion, and every copy whose `<mode> blob <oid>` differs
+# from its entry on main.
+export GIT_INDEX_FILE=${scratch}/index
+git_scratch read-tree "${main}" || fail 'git read-tree failed'
 expected=${scratch}/expected
-: > "${expected}" || fail 'cannot write the expected staged set'
+: > "${expected}" || fail 'cannot write the expected change set'
+# A bare repository has no work tree, which `update-index --force-remove` asks for; an `--index-info` line of mode 0
+# removes the path from the index without one. The zero object id has main's length (SHA-1 or SHA-256).
+zero=${main//?/0}
 for path in ${gone[@]+"${gone[@]}"}; do
-    printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected staged set'
+    printf '0 %s\t%s\0' "${zero}" "${path}" | git_scratch update-index -z --index-info ||
+        fail "git update-index removing ${path} failed"
+    printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected change set'
 done
-if ((${#files[@]})); then
-    git_tree add -- "${files[@]}" || fail 'git add failed'
-    oids=$(git_tree hash-object --no-filters -- "${files[@]}") || fail 'git hash-object failed'
-    # shellcheck disable=SC2206 # object ids split on the default IFS: hexadecimal, no blank or glob character
-    oid_list=(${oids})
-    ((${#oid_list[@]} == ${#files[@]})) || fail 'git hash-object printed a different number of object ids'
-    index=0
-    for path in "${files[@]}"; do
-        mode=100644
-        if [[ -x ${tree}/${path} ]]; then
-            mode=100755
-        fi
-        if [[ ${base_entries} != *$'\n'"${path}"$'\t'"${mode} blob ${oid_list[index]}"$'\n'* ]]; then # lint-comparisons: allow a repository-relative path and an object id as git prints them
-            printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected staged set'
-        fi
-        index=$((index + 1))
-    done
-fi
-staged=${scratch}/staged
-git_tree diff --cached --no-renames --name-only -z > "${staged}" || fail 'git diff --cached failed'
-LC_ALL=C sort -z "${expected}" > "${expected}.sorted" || fail 'cannot sort the expected staged set'
-LC_ALL=C sort -z "${staged}" > "${staged}.sorted" || fail 'cannot sort the staged set'
-cmp -s "${expected}.sorted" "${staged}.sorted" ||
-    refuse 'the staged paths differ from the copy set; nothing was committed or pushed'
-[[ -s ${staged} ]] || refuse 'the copies equal origin/main; nothing to sync'
-count=$(tr -cd '\000' < "${staged}" | wc -c) || fail 'cannot count the staged paths'
+for path in ${files[@]+"${files[@]}"}; do
+    blob=$(git_scratch hash-object -w --no-filters -- "${copies}/${path}") || fail "git hash-object ${path} failed"
+    mode=100644
+    if [[ -x ${copies}/${path} ]]; then
+        mode=100755
+    fi
+    git_scratch update-index --add --cacheinfo "${mode},${blob},${path}" || fail "git update-index ${path} failed"
+    if [[ ${base_entries} != *$'\n'"${path}"$'\t'"${mode} blob ${blob}"$'\n'* ]]; then # lint-comparisons: allow a repository-relative path and an object id as git prints them
+        printf '%s\0' "${path}" >> "${expected}" || fail 'cannot write the expected change set'
+    fi
+done
+new_tree=$(git_scratch write-tree) || fail 'git write-tree failed'
+unset GIT_INDEX_FILE
+# U101: the tree's change against main must be exactly the computed set, as sorted NUL lists.
+changed=${scratch}/changed
+git_scratch diff-tree -r --no-renames --name-only -z "${main_tree}" "${new_tree}" > "${changed}" ||
+    fail 'git diff-tree failed'
+LC_ALL=C sort -z "${expected}" > "${expected}.sorted" || fail 'cannot sort the expected change set'
+LC_ALL=C sort -z "${changed}" > "${changed}.sorted" || fail 'cannot sort the change set'
+cmp -s "${expected}.sorted" "${changed}.sorted" ||
+    refuse 'the new tree changes other paths than the copy set; nothing was committed or pushed'
+[[ -s ${changed} ]] || refuse 'the copies equal origin/main; nothing to sync'
+count=$(tr -cd '\000' < "${changed}" | wc -c) || fail 'cannot count the changed paths'
 count=${count//[[:space:]]/}
 
-remote_heads=$(git ls-remote --heads origin 'refs/heads/records/*') || fail 'git ls-remote origin failed'
+remote_heads=$(git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+    ls-remote --heads "${push_url}" 'refs/heads/records/*') || fail 'git ls-remote origin failed'
 # U28b F6: a local branch occupies its number too, whatever left it behind.
 local_heads=$(git for-each-ref --format='%(refname)' 'refs/heads/records/') || fail 'git for-each-ref failed'
 pr_heads=$(gh_plain pr list --state all --limit 1000 --json headRefName --jq '.[].headRefName') ||
@@ -439,34 +453,23 @@ last=$(printf '%s\n%s\n%s\n' "${remote_heads}" "${local_heads}" "${pr_heads}" |
 n=$((last + 1))
 branch=records/sync-${n}
 [[ ${branch} =~ ^records/sync-[1-9][0-9]*$ ]] || refuse "the branch is outside records/sync-<n>: ${branch}"
-git_tree switch --quiet -c "${branch}" || fail "git switch -c ${branch} failed"
-created_branch=${branch}
-pushed=0
 
-units=$(git_tree diff --cached -U0 -- "${records}/units.tsv" | sed -n -E 's/^\+(U[0-9]+[a-z]?)\t.*/\1/p' | sort -u | paste -sd ' ' -) ||
-    fail 'cannot list the units'
-decisions=$(git_tree diff --cached -U0 -- "${records}/decisions.tsv" | sed -n -E 's/^\+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)\t.*/\1/p' | sort -u | paste -sd ' ' -) ||
+units=$(git_scratch diff --no-ext-diff --no-textconv -U0 "${main_tree}" "${new_tree}" -- "${records}/units.tsv" |
+    sed -n -E 's/^\+(U[0-9]+[a-z]?)\t.*/\1/p' | sort -u | paste -sd ' ' -) || fail 'cannot list the units'
+decisions=$(git_scratch diff --no-ext-diff --no-textconv -U0 "${main_tree}" "${new_tree}" -- "${records}/decisions.tsv" |
+    sed -n -E 's/^\+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)\t.*/\1/p' | sort -u | paste -sd ' ' -) ||
     fail 'cannot list the decisions'
 title="chore(records): ${program} sync ${n}"
-# U101: author and committer come from the environment, which outranks every config key (user.*, author.*,
-# committer.*, in the repository, an include or the worktree's config); the GIT_* scrub above left none inherited.
-GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+message=$(printf '%s\n\n%s\n\n%s\n' "${title}" \
+    "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." \
+    "${footer}") || fail 'cannot write the commit message'
+# U101: author and committer come only from the environment set here, the identity read at the start.
+commit=$(printf '%s\n' "${message}" |
     GIT_AUTHOR_NAME=${author_name} GIT_AUTHOR_EMAIL=${author_email} \
-    GIT_COMMITTER_NAME=${author_name} GIT_COMMITTER_EMAIL=${author_email} \
-    git_tree commit --quiet -m "${title}" \
-    -m "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." -m "${footer}" ||
-    fail 'git commit failed'
-oid=$(git_tree rev-parse --verify 'HEAD^{commit}') || fail 'cannot read the sync commit'
-# U101: the push runs in a repository with no config, includes or hooks, so nothing the checkout or the sync worktree
-# reads can rewrite the URL; auto maintenance stays off in it, since the scratch directory is removed on exit.
-push_repo=${scratch}/push.git
-git_plain init --quiet --bare --template= "${push_repo}" || fail 'git init --bare for the push failed'
-git_plain -C "${push_repo}" -c gc.auto=0 -c maintenance.auto=false fetch --quiet --no-tags "${tree}" "${oid}" ||
-    fail 'fetching the sync commit into the push repository failed'
-git_plain -C "${push_repo}" -c gc.auto=0 -c maintenance.auto=false -c credential.helper= \
-    -c 'credential.helper=!gh auth git-credential' push --quiet "${push_url}" "${oid}:refs/heads/${branch}" ||
-    fail "git push ${branch} failed; nothing was opened"
-pushed=1
+        GIT_COMMITTER_NAME=${author_name} GIT_COMMITTER_EMAIL=${author_email} \
+        git_scratch commit-tree "${new_tree}" -p "${main}" -F -) || fail 'git commit-tree failed'
+git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
+    push --quiet "${push_url}" "${commit}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
 body=${scratch}/body.md
 {
     # shellcheck disable=SC2016 # the backticks are Markdown code spans

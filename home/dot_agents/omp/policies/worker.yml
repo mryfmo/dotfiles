@@ -1,10 +1,10 @@
 # omp seat policy for the worker seat; the seat launcher passes it as
 # `--config ~/.agents/omp/policies/worker.yml`. Schema: `tools.approvalMode`
-# (src/tools/settings.ts:311-318), `tools.approval` (src/tools/settings.ts:295-305)
-# and `bash.patterns` (src/exec/settings.ts:134-145) of @oh-my-pi/pi-coding-agent
-# 18.11.3. Rules are ordered and the first match wins; a `deny` matches the whole
+# (src/tools/settings.ts:313-320), `tools.approval` (src/tools/settings.ts:295-305)
+# and `bash.patterns` (src/exec/settings.ts:137-148) of @oh-my-pi/pi-coding-agent
+# 18.12.6. Rules are ordered and the first match wins; a `deny` matches the whole
 # command or any one segment, an `allow` must match the whole command and never a
-# compound line (src/tools/bash.ts:301-307). Approval is not containment: the seat's
+# compound line (src/tools/bash.ts:303-309). Approval is not containment: the seat's
 # operating-system account stays the filesystem and network boundary.
 tools:
   approvalMode: yolo
@@ -1057,10 +1057,10 @@ bash:
     # The worker pushes its own branch (hcom-worker SKILL step 3), so its pushes are an allowlist of three exact lines
     # with no wildcard: `git push -u origin HEAD` (the current branch to the same name on origin, and its upstream),
     # `git push origin HEAD` and bare `git push`. omp takes the first rule that matches; an allow vouches only for a
-    # whole simple command, a deny for the whole line or any segment of it (src/tools/bash.ts:301-307 of 18.11.3). Any
+    # whole simple command, a deny for the whole line or any segment of it (src/tools/bash.ts:303-309 of 18.12.6). Any
     # other line holding `git push` or `git -<option> … push` meets the deny after them. There is no branch word to
     # carve (regime-cutover U76, round-6 audit: a `*` branch let `git push origin {--tags,feat/x}` through by brace
-    # expansion): omp's patterns have `*` as their only wildcard and no character class (bash.ts:243-249 escapes
+    # expansion): omp's patterns have `*` as their only wildcard and no character class (bash.ts:245-251 escapes
     # `[ ] ? { }`), so no rule can limit a word to a safe character set or name a literal `*`. Over-match: a push by
     # branch name, to another remote, chained, and a line that merely says `git push` (a commit message) are refused.
     # Not caught: a push that git config or an alias shapes (`remote.origin.push`, `push.default`, `push.followTags`,

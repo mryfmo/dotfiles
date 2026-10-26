@@ -415,6 +415,27 @@ function claude_user_install() {
 }
 
 #
+# @description Print what the user-scope installation of a Claude Code plugin is compared with its pin by
+#   (pin_records.claude_observed): its version for a version pin; for a content pin, the content digest of its
+#   installPath together with its catalog entry in the installed marketplace clone (pin_records.content_digest),
+#   whatever commit its version names.
+# @arg $1 string The JSON list claude_plugin_installs prints, holding a user-scope installation.
+# @arg $2 string The pin.
+# @exitcode 1 When there is no user-scope installation, or it cannot be read or hashed (a symlink or special
+#   file in it included); nothing is printed, so an unknown state is never compared.
+#
+function claude_user_observed() {
+    local user_install install_path
+    user_install="$(claude_user_install "$1")" || return 1
+    case "${user_install}" in
+    "installed "?*) ;;
+    *) return 1 ;;
+    esac
+    install_path="$(jq -er 'first(.[] | select(.scope == "user") | .installPath)' <<< "$1")" || return 1
+    pin_record claude-observed "$2" "${user_install#installed }" "${install_path}"
+}
+
+#
 # @description Print the user-scope installed version of a Claude Code plugin for the asset manifest. A
 #   failure is never a version: nothing is printed for it, and `unknown` is never produced.
 # @arg $1 string Fully qualified Claude Code plugin ID.
@@ -562,7 +583,7 @@ function judge_installed_version() {
 #
 function move_claude_plugin_to_pin() {
     local plugin_id="$1"
-    local pin installs user_install marketplace enabled fresh=0
+    local pin installs user_install observed marketplace enabled fresh=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -600,8 +621,17 @@ function move_claude_plugin_to_pin() {
             return 1
         fi
         ;;
-    "installed ${pin}") ;;
-    "installed "?*) claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true ;;
+    "installed "?*)
+        # An installation whose pin state cannot be computed is a failure: nothing is updated from an unknown
+        # state, and converge_or_disable disables it.
+        if ! observed="$(claude_user_observed "${installs}" "${pin}")"; then
+            printf 'ERROR: cannot read the installed content of %s to compare it with its pin; nothing is updated.\n' "${plugin_id}" >&2
+            return 1
+        fi
+        if [ "${observed}" != "${pin}" ]; then
+            claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true
+        fi
+        ;;
     *)
         printf 'ERROR: unexpected installation state of %s: %s\n' "${plugin_id}" "${user_install}" >&2
         return 1
@@ -623,7 +653,11 @@ function move_claude_plugin_to_pin() {
         return 1
         ;;
     esac
-    judge_installed_version claude "${plugin_id}" "${user_install#installed }" "${pin}" "${fresh}"
+    if ! observed="$(claude_user_observed "${installs}" "${pin}")"; then
+        printf 'ERROR: cannot read the installed content of %s to compare it with its pin.\n' "${plugin_id}" >&2
+        return 1
+    fi
+    judge_installed_version claude "${plugin_id}" "${observed}" "${pin}" "${fresh}"
 }
 
 #
@@ -1962,6 +1996,152 @@ PY
 }
 
 #
+# @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
+# @description
+#   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
+#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. Every operation is
+#   fd-relative, with no path walked again: $HOME is opened, then `.agents` and `bin` below it with
+#   O_DIRECTORY|O_NOFOLLOW (a symlink at either refuses), and the shim is lstat'ed, opened, moved and deleted, and
+#   `bin` removed, only relative to those open directories. The shim goes only on positive proof: a regular file
+#   (fstatat) opened with O_NOFOLLOW|O_NONBLOCK whose fstat is the same device and inode, read completely, holding
+#   the exact line `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and
+#   an owner (looked up below the open `.agents`) whose lstat fails with ENOENT. Every other outcome keeps the file
+#   and fails the step with the reason. Removal is by the verified inode: the entry is renamed (renameat, atomic) into
+#   a private quarantine directory created in the open `bin`, and unlinked there only when its device and inode are
+#   the verified ones; anything else is linked back under its name (linkat, never over a newer entry) and the step
+#   fails. `bin` is then removed (unlinkat AT_REMOVEDIR relative to `.agents`) only when its lstat is still the
+#   directory opened above and it is empty; ENOTEMPTY or EEXIST keeps it. A missing `.agents`, `bin` or shim is
+#   nothing to do, so a second run changes nothing. Guaranteed: no path is followed through a symlink, and the inode
+#   deleted is the verified one. A same-user process racing the step inside the operator's own $HOME is the
+#   same-user class accepted under G17: a residual, not a guarantee.
+# @exitcode 1 No positive proof for an existing ~/.agents/bin/agy-tui, or a removal failed; the reason is printed.
+#
+function retire_agmsg_shim() {
+    python3 - "${HOME}" << 'PY'
+import errno
+import os
+import secrets
+import stat
+import sys
+
+home = sys.argv[1]
+agents = os.path.join(home, ".agents")
+bin_dir = os.path.join(agents, "bin")
+shim = os.path.join(bin_dir, "agy-tui")
+owner_rel = "skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"
+owner = os.path.join(agents, owner_rel)
+marker = f"# agmsg-shim-owner: {owner}"
+DIRECTORY = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+
+
+def refuse(reason):
+    sys.exit(f"agmsg: kept {shim}: {reason}.")
+
+
+def open_directory(name, parent_fd, label):
+    """The directory NAME below PARENT_FD, opened without following a symlink; None when it does not exist."""
+    try:
+        return os.open(name, DIRECTORY, dir_fd=parent_fd)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        if error.errno in (errno.ELOOP, errno.ENOTDIR):
+            refuse(f"{label} is not a real directory")
+        refuse(f"cannot open {label} ({error})")
+
+
+try:
+    home_fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY)
+except OSError as error:
+    refuse(f"cannot open {home} ({error})")
+agents_fd = open_directory(".agents", home_fd, agents)
+if agents_fd is None:
+    sys.exit(0)
+bin_fd = open_directory("bin", agents_fd, bin_dir)
+if bin_fd is None:
+    sys.exit(0)
+bin_status = os.fstat(bin_fd)
+try:
+    shim_status = os.stat("agy-tui", dir_fd=bin_fd, follow_symlinks=False)
+except FileNotFoundError:
+    sys.exit(0)
+except OSError as error:
+    refuse(f"cannot lstat it ({error})")
+# Only a regular file is opened (a FIFO would block the open), without following a symlink swapped in and without
+# blocking; fstat must then show the same regular file lstat saw.
+if not stat.S_ISREG(shim_status.st_mode):
+    refuse("it is not a regular file")
+verified = (shim_status.st_dev, shim_status.st_ino)
+try:
+    fd = os.open("agy-tui", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=bin_fd)
+except OSError as error:
+    refuse(f"cannot open it without following a symlink ({error})")
+with os.fdopen(fd, "rb") as handle:
+    try:
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != verified:
+            refuse("it changed while it was read")
+        data = handle.read()
+    except OSError as error:
+        refuse(f"cannot read it ({error})")
+if marker.encode() not in data.split(b"\n"):
+    refuse(f"it does not hold the line {marker!r}, so it is not the retired agmsg shim")
+try:
+    os.stat(owner_rel, dir_fd=agents_fd, follow_symlinks=False)
+except FileNotFoundError:
+    pass
+except OSError as error:
+    refuse(f"cannot prove its owner {owner} is gone ({error})")
+else:
+    refuse(f"its owner {owner} still exists")
+# Verified: from here on, nothing is removed by name.
+quarantine = f".agmsg-retire-{secrets.token_hex(8)}"
+try:
+    os.mkdir(quarantine, 0o700, dir_fd=bin_fd)
+    quarantine_fd = os.open(quarantine, DIRECTORY, dir_fd=bin_fd)
+    os.rename("agy-tui", "agy-tui", src_dir_fd=bin_fd, dst_dir_fd=quarantine_fd)
+    moved = os.stat("agy-tui", dir_fd=quarantine_fd, follow_symlinks=False)
+except OSError as error:
+    try:
+        os.rmdir(quarantine, dir_fd=bin_fd)  # only when the move did not happen: rmdir keeps a non-empty one
+    except OSError:
+        pass
+    sys.exit(f"agmsg: cannot move the retired shim {shim} aside to remove it ({error}).")
+if (moved.st_dev, moved.st_ino) != verified:
+    try:
+        # link never replaces an entry that appeared under the name meanwhile; rename would.
+        os.link("agy-tui", "agy-tui", src_dir_fd=quarantine_fd, dst_dir_fd=bin_fd, follow_symlinks=False)
+        os.unlink("agy-tui", dir_fd=quarantine_fd)
+        os.rmdir(quarantine, dir_fd=bin_fd)
+    except OSError as error:
+        sys.exit(f"agmsg: {shim} changed before its removal; the entry moved aside stays in {bin_dir}/{quarantine} ({error}).")
+    refuse("it changed before its removal (another file took its name); the replacement is back in place")
+try:
+    os.unlink("agy-tui", dir_fd=quarantine_fd)
+    os.rmdir(quarantine, dir_fd=bin_fd)
+except OSError as error:
+    sys.exit(f"agmsg: cannot remove the retired shim moved to {bin_dir}/{quarantine} ({error}).")
+print(f"agmsg: removed the retired shim {shim}.")
+# Removed: only the bin directory opened above may go.
+try:
+    current = os.stat("bin", dir_fd=agents_fd, follow_symlinks=False)
+except OSError as error:
+    sys.exit(f"agmsg: cannot lstat {bin_dir} again ({error}).")
+if (current.st_dev, current.st_ino) != (bin_status.st_dev, bin_status.st_ino):
+    print(f"agmsg: kept {bin_dir}: it is not the directory the shim was removed from.")
+    sys.exit(0)
+try:
+    os.rmdir("bin", dir_fd=agents_fd)
+except OSError as error:
+    if error.errno in (errno.ENOTEMPTY, errno.EEXIST):
+        print(f"agmsg: kept {bin_dir}: it holds other entries.")
+        sys.exit(0)
+    sys.exit(f"agmsg: cannot remove the empty {bin_dir} ({error}).")
+print(f"agmsg: removed the empty {bin_dir}.")
+PY
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1978,18 +2158,18 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -1997,6 +2177,7 @@ function main() {
     remove_node_global_agent_cli_shadows
     retire_shared_pstack_copies
     retire_marketplace_dev_workflows
+    retire_agmsg_shim
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     # Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned
     # plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).

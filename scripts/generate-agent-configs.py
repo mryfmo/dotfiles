@@ -150,7 +150,7 @@ PROFILE_AGENT_KEYS = {
     "omp": ("model", "effort"),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
-# The levels omp's `defaultThinkingLevel` setting accepts besides `auto` (omp 18.11.3 src/session/settings.ts:196-201,
+# The levels omp's `defaultThinkingLevel` setting accepts besides `auto` (omp 18.12.6 src/session/settings.ts:196-201,
 # values THINKING_EFFORTS from @oh-my-pi/pi-catalog src/effort.ts:11-18). A seat's level is stated, never `auto`.
 OMP_THINKING_LEVELS = ("minimal", "low", "medium", "high", "xhigh", "max")
 # omp roles on a Claude model route through the pi-claude-bridge provider, on an OpenAI model through openai-siwc
@@ -1920,8 +1920,8 @@ def omp_disabled_providers(manifest: dict[str, Any], key: str = "disabled_provid
     """omp providers listed under `omp.<key>`, switched off as `disabledProviders`; none when absent.
 
     `disabled_providers` goes to the seat overlays and the plain-launch config, `seat_disabled_providers` to the seat
-    overlays only. omp 18.11.3 reads one `disabledProviders` set for discovery providers
-    (src/capability/index.ts:306-308) and for model providers (src/main.ts:1627), so a model route here would turn a
+    overlays only. omp 18.12.6 reads one `disabledProviders` set for discovery providers
+    (src/capability/index.ts:306-308) and for model providers (src/main.ts:1651), so a model route here would turn a
     seat's model off.
     """
     providers = manifest.get("omp", {}).get(key, [])
@@ -2044,7 +2044,7 @@ def omp_skill_settings(manifest: dict[str, Any], consumer: str) -> dict[str, Any
     """One omp consumer's skills: off when no skill names it, else its roots and the declared names it is not given.
 
     omp matches `skills.ignoredSkills` against the raw name of every skill from every source, custom directories
-    included (omp 18.11.3 src/extensibility/skills.ts:354-375, :495-496), and `skills.enabled: false` returns no skill
+    included (omp 18.12.6 src/extensibility/skills.ts:354-375, :495-496), and `skills.enabled: false` returns no skill
     at all (:307-310).
     """
     declared, pstack_audience, exclude = skill_audiences(manifest)
@@ -2107,6 +2107,24 @@ def omp_interactive_policy(manifest: dict[str, Any]) -> str:
     return (f"tools:\n  approval:\n{approval}" if approval else "") + f"bash:\n  patterns:\n{rules}"
 
 
+def omp_check_update(manifest: dict[str, Any]) -> bool:
+    """`omp.check_update`: omp's `startup.checkUpdate` (src/modes/settings.ts:1110-1113 of omp 18.12.6, default true).
+
+    With it on, an interactive launch asks the registry for a newer omp and advises `omp update`
+    (src/main.ts:241-260, :2671), whose self-update refuses this repository's npm-tarball install; the update path
+    is the reviewed pin (assets.omp, scripts/update-agent-assets.sh update_omp).
+    """
+    value = manifest.get("omp", {}).get("check_update")
+    if not isinstance(value, bool):
+        fail("omp.check_update must be true or false")
+    return value
+
+
+def omp_startup_yaml(manifest: dict[str, Any], *extra: str) -> str:
+    lines = "".join(f"  {line}\n" for line in (*extra, f"checkUpdate: {str(omp_check_update(manifest)).lower()}"))
+    return f"startup:\n{lines}"
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
     skills = omp_skills_yaml(omp_skill_settings(manifest, "omp"), "~/")
     config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], skills)
@@ -2114,6 +2132,7 @@ def render_omp_config(manifest: dict[str, Any]) -> str:
         config
         + omp_list_yaml("extensions", omp_extensions(manifest))
         + omp_list_yaml("disabledProviders", omp_disabled_providers(manifest))
+        + omp_startup_yaml(manifest)
         + omp_interactive_policy(manifest)
     )
 
@@ -2126,23 +2145,23 @@ def omp_list_yaml(key: str, items: list[str]) -> str:
 
 
 def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
-    # A session expands ~ in skills.customDirectories (src/extensibility/skills.ts:471-473) but
-    # `omp skill list` resolves a non-absolute entry against cwd (src/cli/skill-list.ts:58-64),
-    # so the deployed overlay carries the absolute home through the chezmoi template.
+    # A session expands ~ in skills.customDirectories (src/extensibility/skills.ts:471-473); `omp skill list` resolved
+    # a non-absolute entry against cwd up to omp 18.11.3 (src/cli/skill-list.ts:58-64) and expands ~ since 18.12.3
+    # (18.12.6 :61-70), so the deployed overlay carries the absolute home, which both read alike.
     skills = omp_skills_yaml(omp_skill_settings(manifest, f"omp-{role}"), "{{ .chezmoi.homeDir }}/")
     omp = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]
     overlay = omp_config_yaml(omp["model"], skills)
-    # A `modelRoles.default` without a `:<level>` suffix starts at the `defaultThinkingLevel` setting (omp 18.11.3
+    # A `modelRoles.default` without a `:<level>` suffix starts at the `defaultThinkingLevel` setting (omp 18.12.6
     # src/config/model-presets.ts:232-244), whose default is high (src/session/settings.ts:196-201); a `--config`
-    # overlay is a settings layer above the profile's own config.yml (src/config/settings.ts:879).
+    # overlay is a settings layer above the profile's own config.yml (src/config/settings.ts:881).
     overlay += f"defaultThinkingLevel: {omp['effort']}\n"
     disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
     if disabled:
         overlay += f"disabledProviders:\n{disabled}"
-    # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:668-677) would open the
+    # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:671-680) would open the
     # first-run wizard over the pane: startup.setupWizard=false empties the scene list (pi-tui
     # src/setup/wizard.ts:52) and setupVersion=2 (CURRENT_SETUP_VERSION) skips the gate's wizard import.
-    return overlay + "setupVersion: 2\nstartup:\n  setupWizard: false\n"
+    return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:

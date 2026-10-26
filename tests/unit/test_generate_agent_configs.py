@@ -74,7 +74,7 @@ def sample_manifest() -> dict:
             },
         },
         "interactive_profile": "standard",
-        "omp": {"skills_directories": ["~/.agents/skills"], "roles": {"worker": "standard"}},
+        "omp": {"skills_directories": ["~/.agents/skills"], "roles": {"worker": "standard"}, "check_update": False},
         "skills": {
             "audience": {"example": ["claude", "codex", "omp", "omp-worker"]},
             "pstack": {"audience": ["omp", "omp-worker"], "exclude": []},
@@ -1993,7 +1993,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + "modelRoles:\n  default: anthropic/sonnet\n"
             + skills
             + pstack
-            + "extensions: []\ndisabledProviders: []\n",
+            + "extensions: []\ndisabledProviders: []\n"
+            + "startup:\n  checkUpdate: false\n",
         )
         manifest["interactive_profile"] = "express"
         manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
@@ -2008,10 +2009,40 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + "    - /srv/skills\n"
             + pstack
             + "extensions:\n  - ~/.agents/omp/extensions/openai-siwc\n  - /srv/omp-ext\n"
-            + "disabledProviders:\n  - agent-plugins\n  - openai-codex\n",
+            + "disabledProviders:\n  - agent-plugins\n  - openai-codex\n"
+            + "startup:\n  checkUpdate: false\n",
         )
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)
+
+    def test_omp_update_check_follows_the_manifest_in_the_plain_config_and_every_overlay(self) -> None:
+        """U94: omp's self-update refuses this install, so the startup nudge to run it is the manifest's to switch off."""
+        profiles = self.temp_dir / "home/dot_agents/omp/profiles"
+        plain = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
+        for value in (False, True):
+            with self.subTest(check_update=value):
+                manifest = sample_manifest()
+                manifest["omp"]["check_update"] = value
+                outputs = self.module.expected_outputs(manifest)
+                line = f"  checkUpdate: {str(value).lower()}\n"
+                self.assertIn(f"startup:\n{line}", outputs[plain])
+                self.assertIn(f"startup:\n  setupWizard: false\n{line}", outputs[profiles / "worker.yml.tmpl"])
+        for value in (None, "false", 0):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                if value is None:
+                    del manifest["omp"]["check_update"]
+                else:
+                    manifest["omp"]["check_update"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_omp_config(manifest)
+                self.assertIn("omp.check_update must be true or false", stderr.getvalue())
+
+    def test_the_repository_manifest_switches_omps_update_check_off(self) -> None:
+        # The committed manifest decides the deployed config: the pin is omp's only update path (U94).
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertIs(False, manifest["omp"]["check_update"])
 
     def test_omp_extensions_must_be_a_list_of_home_or_absolute_paths(self) -> None:
         for value, message in (
@@ -2141,7 +2172,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "skills:\n  enabled: true\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
             "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
         )
-        wizard = "setupVersion: 2\nstartup:\n  setupWizard: false\n"
+        wizard = "setupVersion: 2\nstartup:\n  setupWizard: false\n  checkUpdate: false\n"
 
         overlays = {
             path.name: text for path, text in self.module.expected_outputs(manifest).items() if path.parent == profiles
@@ -2183,7 +2214,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "    - {{ .chezmoi.homeDir }}/.agents/pstack/skills\n  ignoredSkills: []\n"
             "defaultThinkingLevel: high\n"
             "disabledProviders:\n  - agent-plugins\n"
-            "setupVersion: 2\nstartup:\n  setupWizard: false\n",
+            "setupVersion: 2\nstartup:\n  setupWizard: false\n  checkUpdate: false\n",
         )
 
     def test_only_the_seat_overlays_switch_off_the_seat_providers(self) -> None:

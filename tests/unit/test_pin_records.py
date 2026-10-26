@@ -19,6 +19,8 @@ sys.modules["pin_records"] = records
 spec.loader.exec_module(records)
 MODIFY = ROOT / "home/dot_codex/modify_private_config.toml"
 COMMIT = "a" * 40
+# A catalog entry for the content-pin tests (pin_records.content_digest covers it).
+ENTRY = {"name": "p", "source": "./p"}
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
@@ -64,6 +66,8 @@ class PinRecordsTest(unittest.TestCase):
             ("numeric pin", lambda d: d["claude"]["crit@crit"].update(pin=1.8), "claude.crit@crit.pin"),
             ("extra key", lambda d: d["claude"]["crit@crit"].update(sha="x"), "claude.crit@crit"),
             ("short ref", lambda d: d["codex"]["tail@tail"].update(ref="abc"), "codex.tail@tail.ref"),
+            ("short content pin", lambda d: d["claude"]["crit@crit"].update(pin="sha256:ab"), "claude.crit@crit.pin"),
+            ("codex content pin", lambda d: d["codex"]["tail@tail"].update(pin="sha256:" + "a" * 64), "tail@tail.pin"),
             ("bad repository", lambda d: d["gh_extensions"].update({"gh-poi": "v1"}), "gh_extensions.gh-poi"),
         ):
             with self.subTest(case=name):
@@ -641,6 +645,160 @@ class PinRecordsTest(unittest.TestCase):
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("enabledPlugins.crit@crit: must be a boolean", result.stderr)
+
+    def plugin_tree(self, name: str, files: dict) -> Path:
+        root = self.dir / name
+        for relative, data in files.items():
+            (root / relative).parent.mkdir(parents=True, exist_ok=True)
+            (root / relative).write_bytes(data)
+        return root
+
+    def test_content_sha256_covers_paths_and_bytes_only(self) -> None:
+        files = {"README.md": b"r\n", "skills/s/SKILL.md": b"skill\n", ".claude-plugin/plugin.json": b"{}\n"}
+        first = self.plugin_tree("a", files)
+        # The same files written in the other order, with other mtimes and modes and an empty directory.
+        second = self.plugin_tree("b", dict(reversed(list(files.items()))))
+        os.utime(second / "README.md", (1, 1))
+        (second / "README.md").chmod(0o600)
+        (second / "empty").mkdir()
+        pin = records.content_sha256(first, ENTRY)
+        self.assertRegex(pin, r"^sha256:[0-9a-f]{64}$")
+        self.assertEqual(pin, records.content_sha256(second, ENTRY))
+        # Claude Code's own markers at the top do not count; the same name deeper down does.
+        (second / ".orphaned_at").write_text("1")
+        (second / ".in_use").mkdir()
+        (second / ".in_use/123.tmp").write_text("x")
+        self.assertEqual(pin, records.content_sha256(second, ENTRY))
+        (second / "skills/.orphaned_at").write_text("1")
+        self.assertNotEqual(pin, records.content_sha256(second, ENTRY))
+        # One changed byte, or the same bytes under another path, is other content.
+        self.assertNotEqual(pin, records.content_sha256(self.plugin_tree("c", {**files, "README.md": b"R\n"}), ENTRY))
+        moved = {"README.txt" if key == "README.md" else key: value for key, value in files.items()}
+        self.assertNotEqual(pin, records.content_sha256(self.plugin_tree("d", moved), ENTRY))
+
+    def test_content_sha256_refuses_what_is_not_a_regular_file(self) -> None:
+        files = {"skills/s/SKILL.md": b"skill\n"}
+        link = self.plugin_tree("link", files)
+        (link / "skills/s/other").symlink_to(link / "skills/s/SKILL.md")
+        self.refused(lambda: records.content_sha256(link, ENTRY), "skills/s/other")
+        fifo = self.plugin_tree("fifo", files)
+        os.mkfifo(fifo / "pipe")
+        self.refused(lambda: records.content_sha256(fifo, ENTRY), "pipe")
+        # Promptly, through the command make update runs: the FIFO is refused, never opened and waited on.
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "content-sha256",
+                str(fifo),
+                str(self.catalog("cli")),
+                "p",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("pipe", result.stderr)
+        # A file swapped after lstat is not read: open_regular needs the same regular file (device and inode).
+        swapped = self.plugin_tree("swapped", files) / "skills/s/SKILL.md"
+        status = os.lstat(swapped)
+        with open(swapped, "rb"):  # held open, so the old inode cannot be reused by the replacement
+            other = swapped.with_name("other")
+            other.write_bytes(b"other\n")
+            os.replace(other, swapped)
+            self.assertIsNone(records.open_regular(swapped, status))
+        swapped.unlink()
+        os.mkfifo(swapped)
+        self.assertIsNone(records.open_regular(swapped, status))
+        linked_root = self.dir / "linked-root"
+        linked_root.symlink_to(self.plugin_tree("target", files))
+        self.refused(lambda: records.content_sha256(linked_root, ENTRY), "is not a real directory")
+        self.refused(lambda: records.content_sha256(self.dir / "absent", ENTRY), "cannot open")
+
+    def test_content_sha256_never_follows_a_directory_swapped_for_a_symlink(self) -> None:
+        # Round-6 audit: the walk re-walked a path, so a directory replaced by a symlink to identical content after
+        # its lstat was followed and hashed to the pin. The walk is fd-relative, so the swap refuses.
+        files = {"README.md": b"r\n", "skills/s/SKILL.md": b"skill\n"}
+        root = self.plugin_tree("race", files)
+        pin = records.content_sha256(root, ENTRY)
+        decoy = self.plugin_tree("decoy", files) / "skills"
+        real_stat = os.stat
+
+        def stat_then_swap(path, *args, **kwargs):
+            status = real_stat(path, *args, **kwargs)
+            if path == "skills" and kwargs.get("dir_fd") is not None and not (root / "skills").is_symlink():
+                os.rename(root / "skills", root / "skills.moved")
+                (root / "skills").symlink_to(decoy)
+            return status
+
+        with mock.patch.object(records.os, "stat", stat_then_swap):
+            self.refused(lambda: records.content_sha256(root, ENTRY), "skills: changed while it was read")
+        # The decoy holds the same bytes, so only the refusal keeps a followed symlink from passing as the pin.
+        self.assertEqual(pin, records.content_sha256(decoy.parent, ENTRY))
+
+    def test_claude_observed_uses_the_content_only_for_a_content_pin(self) -> None:
+        # The catalog entry is read from the marketplace clone beside the cache: <plugins>/marketplaces/<marketplace>.
+        root = self.plugin_tree("cache/m/p/d4226d062928", {"a": b"a"})
+        self.catalog("marketplaces/m")
+        pin = records.content_sha256(root, ENTRY)
+        self.assertEqual(pin, records.claude_observed(pin, "d4226d062928", str(root)))
+        self.assertEqual("d4226d062928", records.claude_observed("1.0.0", "d4226d062928", str(root)))
+
+    def test_the_catalog_entry_is_part_of_the_content_pin(self) -> None:
+        # Round-8 audit: strict: false lets the catalog entry alone define servers or hooks, so the pin covers it.
+        root = self.plugin_tree("cache/m/p/v", {"a": b"a"})
+        clone = self.catalog("marketplaces/m")
+        pin = records.claude_observed(records.content_sha256(root, ENTRY), "v", str(root))
+        for name, change in (
+            ("strict: false with an LSP server", {"strict": False, "lspServers": {"x": {"command": "x"}}}),
+            ("hooks", {"hooks": {"SessionStart": []}}),
+            ("another description", {"description": "other"}),
+        ):
+            with self.subTest(case=name):
+                self.catalog("marketplaces/m", {**ENTRY, **change})
+                self.assertNotEqual(pin, records.claude_observed(pin, "v", str(root)))
+        # Key order and whitespace do not count: the entry is canonical JSON.
+        reordered = '{"plugins": [ {"source": "./p",\n "name": "p"} ]}'
+        (clone / ".claude-plugin/marketplace.json").write_text(reordered)
+        self.assertEqual(pin, records.claude_observed(pin, "v", str(root)))
+        for name, text, field in (
+            ("duplicate key", '{"plugins": [{"name": "p", "name": "p"}]}', "not strict JSON"),
+            ("NaN", '{"plugins": [{"name": "p", "x": NaN}]}', "not strict JSON"),
+            ("listed twice", '{"plugins": [{"name": "p"}, {"name": "p"}]}', "listed 2 times"),
+            ("not listed", '{"plugins": []}', "listed 0 times"),
+        ):
+            with self.subTest(case=name):
+                (clone / ".claude-plugin/marketplace.json").write_text(text)
+                self.refused(lambda: records.claude_observed(pin, "v", str(root)), field)
+        (clone / ".claude-plugin/marketplace.json").unlink()
+        (clone / ".claude-plugin/marketplace.json").symlink_to(
+            self.catalog("elsewhere") / ".claude-plugin/marketplace.json"
+        )
+        self.refused(lambda: records.claude_observed(pin, "v", str(root)), "is not a regular file")
+
+    def test_each_recorded_content_pin_is_the_reviewed_copy_in_the_fixtures(self) -> None:
+        # tests/fixtures/claude-plugins/<plugin> and marketplaces/<marketplace> are the tree and the catalog entry
+        # reviewed for the pin (U91: frontend-design, measured equal at nine spark cache versions with spark's clone
+        # and upstream); the tests that need a plugin at its pin install both.
+        pins = records.load_plugin_pins(ROOT / "scripts/plugin-pins.json").claude
+        content = {plugin_id: pin.pin for plugin_id, pin in pins.items() if records.CONTENT_PIN.fullmatch(pin.pin)}
+        self.assertIn("frontend-design@claude-plugins-official", content)
+        for plugin_id, pin in content.items():
+            with self.subTest(plugin=plugin_id):
+                plugin, marketplace = plugin_id.split("@", 1)
+                fixtures = ROOT / "tests/fixtures/claude-plugins"
+                entry = records.read_catalog_entry(fixtures / "marketplaces" / marketplace, plugin)
+                self.assertEqual(pin, records.content_sha256(fixtures / plugin, entry))
+
+    def catalog(self, name: str, entry: dict | None = None) -> Path:
+        """A marketplace clone under self.dir/NAME listing ENTRY (default ENTRY)."""
+        clone = self.dir / name
+        (clone / ".claude-plugin").mkdir(parents=True, exist_ok=True)
+        (clone / ".claude-plugin/marketplace.json").write_text(json.dumps({"plugins": [entry or ENTRY]}))
+        return clone
 
 
 if __name__ == "__main__":

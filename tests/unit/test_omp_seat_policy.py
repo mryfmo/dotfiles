@@ -2,9 +2,10 @@
 """Decision tables for the omp seat policies under home/dot_agents/omp/policies.
 
 Each role's overlay is parsed with PyYAML under uv (the test interpreter ships none) and run
-through a mirror of omp 18.11.3's approval resolver against a fixed table of tool calls.
-shortcut: mirrors omp's matcher as documented at src/tools/bash.ts:239-314 and 504-588 and
-src/tools/approval.ts:207-323 of @oh-my-pi/pi-coding-agent 18.11.3; upgrade to omp's own
+through a mirror of omp 18.12.6's approval resolver against a fixed table of tool calls.
+shortcut: mirrors omp's matcher as documented at src/tools/bash.ts:241-316 and 512-596 and
+src/tools/approval.ts:331-452 of @oh-my-pi/pi-coding-agent 18.12.6 (U94: both unchanged from 18.11.3 but for
+the always-ask-cached branch, which no seat uses); upgrade to omp's own
 evaluator when it exposes one.
 """
 
@@ -27,25 +28,28 @@ FAKE_LLM = ROOT / "tests/fixtures/omp-seat-policy/fake-llm.py"
 OMP = shutil.which("omp")
 BLOCKED = 'Tool "task" is blocked by user policy'
 
-# Tier each tool declares for a plain target (file:line in pi-coding-agent 18.11.3 src/).
+# Tier each tool declares for a plain target (file:line in pi-coding-agent 18.12.6 src/).
 TOOL_TIER = {
-    "read": "read",  # tools/read.ts:978
-    "grep": "read",  # tools/grep.ts:414
-    "glob": "read",  # tools/glob.ts:119
-    "edit": "write",  # edit/index.ts:393
-    "write": "write",  # tools/write.ts:469
+    "read": "read",  # tools/read.ts:987
+    "grep": "read",  # tools/grep.ts:472, tools/path-utils.ts:1423-1434 (internal-urls/router.ts:414 default)
+    "glob": "read",  # tools/glob.ts:121, the same searchPathTier
+    "edit": "write",  # edit/index.ts:432
+    "write": "write",  # tools/write.ts:470
     "ast_edit": "write",  # tools/ast-edit.ts:162
     "manage_skill": "write",  # tools/manage-skill.ts:42
-    "eval": "exec",  # tools/eval.ts:347
-    "task": "exec",  # task/index.ts:583
+    "eval": "exec",  # tools/eval.ts:300
+    "task": "exec",  # task/index.ts:589
     "debug": "exec",  # tools/debug.ts:53-56: every action but the read-only ones (launch, evaluate) is exec
-    "AskClaude": "exec",  # the bridge's tool declares no approval, so approval.ts:199 defaults it to exec
+    "AskClaude": "exec",  # the bridge's tool declares no approval, so approval.ts:321 defaults it to exec
 }
-MODE_MAX_TIER = {"always-ask": "read", "write": "write", "yolo": "exec"}  # approval.ts:124-128
-TIER_RANK = {"read": 0, "write": 1, "exec": 2}  # approval.ts:103-107
-SHELL_CONTROL = set("\n\r;&|<>`$()")  # bash.ts:79-91
-APPROVAL_MODES = ("always-ask", "write", "yolo")  # tools/settings.ts:314
-POLICIES_VALUES = ("allow", "deny", "prompt")  # approval.ts:99
+MODE_MAX_TIER = {"always-ask": "read", "write": "write", "yolo": "exec"}  # approval.ts:150-155
+TIER_RANK = {"read": 0, "write": 1, "exec": 2}  # approval.ts:129-133
+SHELL_CONTROL = set("\n\r;&|<>`$()")  # bash.ts:81-93
+# The modes the mirror models. omp 18.12.6 also has always-ask-cached (tools/settings.ts:316, approval.ts:182-203), which
+# allows a call whose targets an earlier answer granted, for the session or across sessions (approval-cache.db): a
+# seat's decisions would then depend on that store, not on its policy file alone, so no seat may use it.
+APPROVAL_MODES = ("always-ask", "write", "yolo")
+POLICIES_VALUES = ("allow", "deny", "prompt")  # approval.ts:41
 
 # The plain launch's bash denies are the command_policy block every seat policy carries (U76); setUpClass reads them
 # from the rendered plain-launch config, and tests/unit/test_command_policy.py checks them against the manifest.
@@ -334,24 +338,24 @@ def load_policy(path):
 
 
 def normalize(text):
-    """bash.ts:239-241: every whitespace run is one space, ends trimmed."""
+    """bash.ts:241-243: every whitespace run is one space, ends trimmed."""
     return " ".join(text.split())
 
 
 def pattern_regex(pattern):
-    """bash.ts:243-249: literal text, `*` is `.*`, anchored at both ends."""
+    """bash.ts:245-251: literal text, `*` is `.*`, anchored at both ends."""
     return re.compile("^" + ".*".join(re.escape(part) for part in normalize(pattern).split("*")) + "$")
 
 
 def segments(command):
-    """bash.ts:281-285 over shell-tokenize.ts:14-28.
+    """bash.ts:283-287 over shell-tokenize.ts:14-28.
     shortcut: splits on the operator characters without honouring quotes; the one row that quotes `$(…)` is denied
     on the whole line too."""
     return [normalize(part) for part in re.split(r"[\n;&|()]+", command) if part.strip()]
 
 
 def has_shell_control(command):
-    """bash.ts:94-136: an unquoted operator, or an expansion inside double quotes.
+    """bash.ts:96-138: an unquoted operator, or an expansion inside double quotes.
     shortcut: a quoted operator counts in omp only beside a reinterpreting option; no table row carries one."""
     quote = None
     chars = iter(command)
@@ -371,7 +375,7 @@ def has_shell_control(command):
 
 
 def rule_matches(command, rule):
-    """bash.ts:301-307: an allow vouches for the whole command, a deny or prompt fires on any segment."""
+    """bash.ts:303-309: an allow vouches for the whole command, a deny or prompt fires on any segment."""
     regex = pattern_regex(rule["match"])
     whole = normalize(command)
     if rule["approval"] == "allow":
@@ -380,7 +384,7 @@ def rule_matches(command, rule):
 
 
 def bash_decision(policy, command):
-    """bash.ts:504-588 with bash.allowCompoundCommands off; the first matching rule wins."""
+    """bash.ts:512-596 with bash.allowCompoundCommands off; the first matching rule wins."""
     rule = next((rule for rule in policy.get("bash", {}).get("patterns", []) if rule_matches(command, rule)), None)
     if rule is None:
         return {"tier": "exec"}
@@ -392,7 +396,7 @@ def bash_decision(policy, command):
 
 
 def resolve(policy, tool, decision):
-    """approval.ts:207-323: tool deny, user deny, then the mode."""
+    """approval.ts:331-452: tool deny, user deny, then the mode."""
     mode = policy["tools"]["approvalMode"]
     user = policy["tools"].get("approval", {}).get(tool)
     if decision.get("policy") == "deny" or user == "deny":
@@ -424,6 +428,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
             with self.subTest(role=role):
                 self.assertEqual(sorted(policy), ["bash", "tools"])
                 self.assertIn(policy["tools"]["approvalMode"], APPROVAL_MODES)
+                self.assertNotEqual("always-ask-cached", policy["tools"]["approvalMode"])
                 for tool, value in policy["tools"].get("approval", {}).items():
                     self.assertRegex(tool, r"^[A-Za-z_]+$")
                     self.assertIn(value, POLICIES_VALUES)

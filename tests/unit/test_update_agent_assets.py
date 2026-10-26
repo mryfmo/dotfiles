@@ -13,6 +13,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
+# The rendered omp pin: update_omp builds its tarball URL from it when the script is sourced (OMP_TARBALL_URL is
+# readonly), so the fixtures install at that version rather than at a literal one.
+INSTALLER_PINS = (ROOT / "scripts/lib/installer-pins.sh").read_text()
+OMP_PIN = re.search(r'^OMP_PIN_VERSION="([^"]+)"$', INSTALLER_PINS, re.MULTILINE)[1]
 PLATFORMS = {
     "Darwin/arm64": "DARWIN_ARM64",
     "Darwin/x86_64": "DARWIN_AMD64",
@@ -55,6 +59,9 @@ with open(os.environ["CALLS"], "a") as log:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+from claude_plugin_fixture import CONTENT_VERSION, REVIEWED
+
+OFFICIAL_CLONE = REVIEWED / "marketplaces/claude-plugins-official"
 
 
 def setUpModule() -> None:
@@ -80,7 +87,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             payload.write_bytes(b"reproduced artifact bytes; no real package or binary\n")
             digest = hashlib.sha256(payload.read_bytes()).hexdigest()
             log = home / "calls.jsonl"
-            pin = "18.11.3" if tool == "omp" else "0.7.30"
+            pin = OMP_PIN if tool == "omp" else "0.7.30"
             search_path = str(binary) + os.pathsep + os.environ["PATH"]
             if shadow_version is not None:
                 shadows = home / "shadows"
@@ -90,7 +97,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                 shadow.write_text(f"#!/usr/bin/env bash\nprintf '{tool} {version}\\n'\n")
                 shadow.chmod(0o755)
                 search_path = str(shadows) + os.pathsep + search_path
-            constants = 'OMP_PIN_VERSION=18.11.3; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
+            constants = f'OMP_PIN_VERSION={OMP_PIN}; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
             for key in PLATFORMS.values():
                 constants += f'HCOM_{key}_SHA256="$2"; HCOM_{key}_URL="https://fixture.invalid/{key}/hcom-0.7.30-py3-none-any.whl"; '
 
@@ -216,7 +223,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         payload = home / "payload"
         payload.write_bytes(b"fixture omp tarball\n")
         return subprocess.run(
-            ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+            ["bash", "-c", f'source "$1"; OMP_PIN_VERSION={OMP_PIN}; OMP_TARBALL_SHA256="$2"; update_omp']
             + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
             env=os.environ
             | {
@@ -241,7 +248,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             home = Path(directory)
             sandbox_tmp = home / "sandbox-tmp"
             sandbox_tmp.mkdir()
-            result = self.update_omp_in(home, "18.11.3", tmpdir=sandbox_tmp)
+            result = self.update_omp_in(home, OMP_PIN, tmpdir=sandbox_tmp)
             log = home / "calls.jsonl"
             calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
             outputs = [Path(row["argv"][row["argv"].index("-o") + 1]) for row in calls if row["tool"] == "curl"]
@@ -259,7 +266,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             target = home / ".local/bin/omp"
             target.parent.mkdir(parents=True)
             target.symlink_to(escaping)
-            result = self.update_omp_in(home, "18.11.3")
+            result = self.update_omp_in(home, OMP_PIN)
             output = result.stdout + result.stderr
             self.assertEqual(0, result.returncode, output)
             self.assertIn(f"resolves to {home}/.local/lib/node_modules/outside", result.stdout)
@@ -272,7 +279,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         # stay for npm to judge.
         npm_link = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp")
         for entry in ("dangling", "external", "foreign", "file", "npm", "directory", None):
-            for version in ("18.11.3", "0.0.1"):
+            for version in (OMP_PIN, "0.0.1"):
                 with self.subTest(entry=entry, version=version), tempfile.TemporaryDirectory() as directory:
                     home = Path(directory)
                     binary = home / ".local/bin"
@@ -302,7 +309,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         self.assertIn(str(links[entry]), result.stdout)
                     if entry == "directory":
                         self.assertTrue(target.is_dir())
-                    elif version == "18.11.3" or not moved:
+                    elif version == OMP_PIN or not moved:
                         self.assertEqual(npm_link, target.readlink(), output)
                         self.assertEqual(moved, aside.is_symlink() or aside.is_file(), output)
                     elif entry == "file":  # the failed install puts the previous entry back as it was
@@ -317,7 +324,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             target = home / ".local/bin/omp"
             target.parent.mkdir(parents=True)
             target.symlink_to(link.format(home=home))
-            result = self.update_omp_in(home, "18.11.3", spelling="/")
+            result = self.update_omp_in(home, OMP_PIN, spelling="/")
             output = result.stdout + result.stderr
             self.assertEqual(0, result.returncode, output)
             self.assertNotIn("Moving", result.stdout)
@@ -347,11 +354,11 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (
-            ("omp/18.11.3", True),
-            ("18.11.3", True),
-            ("other/18.11.3", False),
-            ("omp/omp/18.11.3", False),
-            ("omp/18.11.3-extra", False),
+            (f"omp/{OMP_PIN}", True),
+            (OMP_PIN, True),
+            (f"other/{OMP_PIN}", False),
+            (f"omp/omp/{OMP_PIN}", False),
+            (f"omp/{OMP_PIN}-extra", False),
         ):
             with self.subTest(output=output), tempfile.TemporaryDirectory() as directory:
                 target = Path(directory) / ".local/bin/omp"
@@ -362,7 +369,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                     [
                         "bash",
                         "-c",
-                        'source "$1"; OMP_PIN_VERSION=18.11.3; has_command() { return 0; }; curl() { return 42; }; update_omp',
+                        f'source "$1"; OMP_PIN_VERSION={OMP_PIN}; has_command() {{ return 0; }}; curl() {{ return 42; }}; update_omp',
                         "bash",
                         str(UPDATER),
                     ],
@@ -566,8 +573,13 @@ claude() {
             '.plugins[$id] += [{scope: "user", version: $version, installPath: "\($home)/.claude/plugins/cache/\($id | split("@")[1])/\($id | split("@")[0])/\($version)"}]' \
             "${record}" > "${WORK}/next" && mv "${WORK}/next" "${record}"
         jq --arg id "$3" '.enabledPlugins[$id] = true' "${user}" > "${WORK}/next" && mv "${WORK}/next" "${user}"
+        if [ -n "${INSTALL_CONTENT}" ]; then
+            mkdir -p "${HOME}/.claude/plugins/cache/${3#*@}/${3%@*}"
+            cp -R "${INSTALL_CONTENT}" "${HOME}/.claude/plugins/cache/${3#*@}/${3%@*}/${INSTALL_VERSION}"
+        fi
         [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
-    "plugin update "*) [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
+    "plugin update "*) [ -z "${UPDATE_FIXES}" ] || chmod -R u+rwX "${HOME}/.claude/plugins/cache"
+        [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS}" ] || return 1; [ -z "${DISABLE_NOOP}" ] || return 0
         settings="${user}"; [ "$5" = user ] || settings="${PWD}/.claude/settings.json"
         jq --arg id "$3" '.enabledPlugins[$id] = false' "${settings}" > "${WORK}/next" && mv "${WORK}/next" "${settings}" ;;
@@ -575,13 +587,19 @@ claude() {
 }
 """
 
-    def converge_listed(self, step, installs, enabled, markets=None, project=None, cwd=None, **flags):
+    def converge_listed(self, step, installs, enabled, markets=None, project=None, cwd=None, catalog=None, **flags):
         """Run STEP against the fake: INSTALLS {id: [{scope, version, projectPath?}]}, user ENABLED {id: bool},
         PROJECT {id: bool} as the enabledPlugins of a project directory (work/project), CWD "project" to run there."""
         work = Path(tempfile.mkdtemp(prefix="converge-listed-"))
         self.addCleanup(shutil.rmtree, work)
         home = work / "home"
         (home / ".claude/plugins").mkdir(parents=True)
+        # The installed marketplace clones a content pin reads its catalog entry from: the reviewed ones, or the
+        # CATALOG entries {marketplace: [entry, ...]} a test serves instead.
+        shutil.copytree(REVIEWED / "marketplaces", home / ".claude/plugins/marketplaces")
+        for name, entries in (catalog or {}).items():
+            clone = home / ".claude/plugins/marketplaces" / name / ".claude-plugin/marketplace.json"
+            clone.write_text(json.dumps({"name": name, "plugins": entries}))
         project_dir = work / "project"
         (project_dir / ".claude").mkdir(parents=True)
         (project_dir / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": project or {}}))
@@ -594,6 +612,9 @@ claude() {
                 entry.setdefault(
                     "installPath", f"{home}/.claude/plugins/cache/{marketplace}/{plugin}/{entry['version']}"
                 )
+                # The reviewed copy (claude_plugin_fixture) for a plugin pinned by content.
+                if entry.pop("reviewed", False):
+                    shutil.copytree(REVIEWED / plugin, entry["installPath"])
                 if entry.get("projectPath") == "PROJECT":
                     entry["projectPath"] = str(project_dir)
         record = home / ".claude/plugins/installed_plugins.json"
@@ -614,6 +635,8 @@ claude() {
             "DISABLE_NOOP",
             "CORRUPT_AFTER",
             "LIST_FAILS",
+            "INSTALL_CONTENT",
+            "UPDATE_FIXES",
         )
         result = subprocess.run(
             [
@@ -975,6 +998,124 @@ claude() {
                 result, _, _ = self.converge_listed(step, installs, enabled, INSTALL_VERSION="99.0.0", **flags)
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("failures=1", result.stdout)
+
+    def content_fixture(self, text: str) -> Path:
+        """A plugin tree like frontend-design's (prompt-only skill) whose content is TEXT."""
+        root = Path(tempfile.mkdtemp(prefix="content-pin-")) / "plugin"
+        self.addCleanup(shutil.rmtree, root.parent)
+        (root / ".claude-plugin").mkdir(parents=True)
+        (root / ".claude-plugin/plugin.json").write_text('{"name": "frontend-design"}\n')
+        (root / "skills/frontend-design").mkdir(parents=True)
+        (root / "skills/frontend-design/SKILL.md").write_text(text)
+        return root
+
+    @staticmethod
+    def content_hash(root: Path) -> str:
+        return subprocess.run(
+            [
+                "python3",
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "content-sha256",
+                str(root),
+                str(OFFICIAL_CLONE),
+                "frontend-design",
+            ],
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+
+    def content_step(self, pin: str) -> str:
+        # The pin under test replaces the recorded one; every other field still comes from plugin-pins.json. make
+        # doctor's own pin check reads the recorded pins file, so here it repeats the comparison with this pin
+        # (the doctor's side has its own test in test_check_agent_runtime).
+        return (
+            f'plugin_pin() {{ if [ "$3" = pin ]; then printf "%s\\n" "{pin}"; '
+            'else pin_record plugin-pin "${AGENT_PLUGIN_PINS}" "$@"; fi; }; '
+            'doctor_pin_check() { local installs observed; installs="$(claude_plugin_installs "$2")" && '
+            f'observed="$(claude_user_observed "${{installs}}" "{pin}")" && [ "${{observed}}" = "{pin}" ]; }}; '
+            "converge_claude_step frontend-design@claude-plugins-official || true; "
+            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+        )
+
+    def test_a_content_pin_follows_the_files_not_the_commit_version(self):
+        # U91: frontend-design's version is the marketplace commit, which moves with unrelated commits.
+        plugin_id = "frontend-design@claude-plugins-official"
+        reviewed = self.content_fixture("# Frontend Design\nreviewed\n")
+        pin = self.content_hash(reviewed)
+        self.assertRegex(pin, r"^sha256:[0-9a-f]{64}$")
+        # Same content under a commit-version never seen before: installed fresh, left enabled.
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(reviewed)
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual([f"plugin install {plugin_id} --scope user @neutral"], calls)
+        self.assertIs(True, state["user"][plugin_id])
+        # One changed byte under that version: the existing off-pin path disables it and names both hashes.
+        changed = self.content_fixture("# Frontend Design\nreviewes\n")
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(changed)
+        )
+        self.assertEqual(0, result.returncode, result.stderr)  # a fresh install off its pin warns, as for versions
+        self.assertEqual(f"plugin disable {plugin_id} --scope user @neutral", calls[-1])
+        self.assertIs(False, state["user"][plugin_id])
+        self.assertIn(f"is at {self.content_hash(changed)}, not its pin {pin}", result.stderr)
+        # A symlink inside the installed copy cannot be hashed: the step fails and the plugin is disabled.
+        (changed / "skills/link").symlink_to("/etc/hosts")
+        result, calls, state = self.converge_listed(
+            self.content_step(pin), {}, {}, INSTALL_VERSION="bbbbbbbbbbbb", INSTALL_CONTENT=str(changed)
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("is a symlink or special file", result.stderr)
+        self.assertIs(False, state["user"][plugin_id])
+
+    def test_a_catalog_entry_that_adds_runtime_behaviour_moves_the_plugin_off_its_pin(self):
+        # Round-8 audit: with strict: false the catalog entry alone can define an LSP server, hooks or MCP servers,
+        # so the pin covers the entry the installed marketplace clone serves, not only the plugin directory.
+        plugin_id = "frontend-design@claude-plugins-official"
+        entry = json.loads((OFFICIAL_CLONE / ".claude-plugin/marketplace.json").read_text())["plugins"][0]
+        installs = {plugin_id: [{"scope": "user", "version": CONTENT_VERSION, "reviewed": True}]}
+        step = self.content_step(self.pin_of(plugin_id))
+        widened = {**entry, "strict": False, "lspServers": {"x": {"command": "x", "args": []}}}
+        result, calls, state = self.converge_listed(
+            step, installs, {plugin_id: True}, catalog={"claude-plugins-official": [widened]}
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertIn(f"not its pin {self.pin_of(plugin_id)}", result.stderr)
+        self.assertEqual(f"plugin disable {plugin_id} --scope user @neutral", calls[-1])
+        self.assertIs(False, state["user"][plugin_id])
+        # The reviewed entry with the same files is at its pin: nothing is called and it stays enabled.
+        result, calls, state = self.converge_listed(step, installs, {plugin_id: True})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertIs(True, state["user"][plugin_id])
+
+    def test_a_content_hash_that_cannot_be_read_fails_the_step_before_any_update(self):
+        # Round-3 audit: an unreadable installed copy used to trigger an update, and a later readable copy at the
+        # pin then passed. An unknown pin state is a failure: no update, the plugin disabled, the step failed.
+        if os.geteuid() == 0:
+            self.skipTest("root reads a mode-0 file, so the read failure cannot be injected")
+        plugin_id = "frontend-design@claude-plugins-official"
+        copy = "${HOME}/.claude/plugins/cache/claude-plugins-official/frontend-design/cccccccccccc"
+        step = f'chmod 0 "{copy}/README.md"; ' + self.content_step(self.pin_of(plugin_id))
+        installs = {plugin_id: [{"scope": "user", "version": "cccccccccccc", "reviewed": True}]}
+        # The fake's `plugin update` makes the copy readable again, so only an update could make it pass.
+        result, calls, state = self.converge_listed(step, installs, {plugin_id: True}, UPDATE_FIXES="1")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertIn("cannot read the installed content", result.stderr)
+        self.assertEqual([f"plugin disable {plugin_id} --scope user @neutral"], calls)
+        self.assertIs(False, state["user"][plugin_id])
+        # The same copy readable is at its pin: nothing is called and it stays enabled.
+        result, calls, state = self.converge_listed(
+            self.content_step(self.pin_of(plugin_id)), installs, {plugin_id: True}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertIs(True, state["user"][plugin_id])
 
     def test_a_fresh_codex_install_that_lands_off_its_pin_is_removed_and_warned_not_failed(self):
         # Audit round 28: the round-27 rule covered Claude only. A fresh Codex copy off its pin is removed
@@ -1382,7 +1523,11 @@ claude() {
     def test_every_pinned_claude_plugin_is_checked_from_the_manifest_list(self):
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
         installs = {
-            plugin_id: [{"scope": "user", "version": "999.0.0" if plugin_id.startswith("pstack@") else pin["pin"]}]
+            plugin_id: [
+                {"scope": "user", "version": CONTENT_VERSION, "reviewed": True}
+                if pin["pin"].startswith("sha256:")
+                else {"scope": "user", "version": "999.0.0" if plugin_id.startswith("pstack@") else pin["pin"]}
+            ]
             for plugin_id, pin in pins.items()
         }
         enabled = dict.fromkeys(pins, True)

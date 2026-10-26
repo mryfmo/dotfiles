@@ -1166,7 +1166,7 @@ def omp_extension_providers(manifest_path: Path, manifest: dict[str, Any]) -> di
 def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, Any]) -> None:
     """A plain omp launch reaches the interactive model's provider only through omp.extensions.
 
-    omp 18.11.3 findInitialModel (src/config/model-resolver.ts:2391-2407) skips a `modelRoles.default` whose
+    omp 18.12.6 findInitialModel (src/config/model-resolver.ts:2395-2411) skips a `modelRoles.default` whose
     provider no loaded extension registered and silently starts on another authenticated provider, or ends with
     `No default model selected.`.
     """

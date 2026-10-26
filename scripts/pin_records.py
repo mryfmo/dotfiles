@@ -17,7 +17,9 @@ tomllib (Python 3.11+).
 
 from __future__ import annotations
 
+import errno
 import functools
+import hashlib
 import io
 import json
 import os
@@ -27,7 +29,7 @@ import sys
 from contextlib import redirect_stderr
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 # One path component taken from record data (see confined): it starts with a letter or digit, so it is never
 # empty, `.`, `..` or absolute, and holds no separator.
@@ -35,6 +37,13 @@ COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
 PLUGIN_ID = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)@([A-Za-z0-9][A-Za-z0-9._-]*)$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
+# A Claude Code plugin whose listing and manifest give no version gets the marketplace commit as its version, which
+# moves with every commit to the marketplace; its pin is then the content it was reviewed at (content_sha256).
+CONTENT_PIN = re.compile(r"^sha256:[0-9a-f]{64}$")
+# Claude Code's own bookkeeping at the top of a cache version directory, not plugin content: the cleanup marker
+# written into a superseded version (plugins loading reference, "Cleanup of previous versions") and the lock
+# directory a running session keeps there.
+CLAUDE_CACHE_MARKERS = (".orphaned_at", ".in_use")
 CLAUDE_SCOPES = ("user", "project", "local", "managed")
 
 
@@ -250,7 +259,7 @@ def load_plugin_pins(path: Path) -> PluginPins:
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
             agents[agent][plugin_id] = Pin(
                 field(path, entry, "marketplace", str, where, ascii=True),
-                field(path, entry, "pin", str, where, ascii=True),
+                content_pin(path, entry, where, agent),
                 ref,
             )
     extensions = field(path, data, "gh_extensions", dict)
@@ -261,6 +270,205 @@ def load_plugin_pins(path: Path) -> PluginPins:
             raise RecordError(path, f"gh_extensions.{repository}", "must be one tag string")
         clean(path, f"gh_extensions.{repository}", tag, ascii=True)
     return PluginPins(agents["claude"], agents["codex"], dict(extensions))
+
+
+def content_pin(path: Path, entry: Any, where: str, agent: str) -> str:
+    """A plugin's recorded pin; one in the content form (CONTENT_PIN) is valid only for Claude Code."""
+    pin = field(path, entry, "pin", str, where, ascii=True)
+    if pin.startswith("sha256:") and (agent != "claude" or not CONTENT_PIN.fullmatch(pin)):
+        raise RecordError(path, f"{where}pin", "a content pin is sha256:<64 lowercase hex>, for Claude Code only")
+    return pin
+
+
+def canonical_entry(entry: Any) -> bytes:
+    """A marketplace catalog entry as canonical JSON: sorted keys, no whitespace, UTF-8, no NaN or Infinity."""
+    if not isinstance(entry, dict):
+        raise RecordError("marketplace.json", "(entry)", "a catalog entry must be a JSON object")
+    try:
+        return json.dumps(entry, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    except (ValueError, UnicodeEncodeError) as error:
+        raise RecordError("marketplace.json", "(entry)", f"has no canonical JSON form ({error})") from None
+
+
+def content_digest(files: Iterable[Tuple[bytes, bytes]], entry: Any) -> str:
+    """The content pin of a Claude Code plugin: what Claude Code loads for it, which is its catalog entry in the
+    marketplace's .claude-plugin/marketplace.json (with `strict: false` the entry alone may define hooks, commands,
+    MCP or LSP servers) and the regular files of its plugin directory, given as (relative POSIX path, bytes).
+
+    `sha256:` and the hex SHA-256 over, in this order: `catalog-entry NUL <size> NUL <canonical_entry(entry)>`, then
+    each file in the byte order of its path as `<relative path> NUL <size> NUL <bytes>`. The entry record always
+    comes first and every record carries its size, so the stream has one reading. The one definition: content_sha256
+    feeds it an installed copy and the entry from the installed marketplace clone, scripts/drift-watch.py the upstream
+    directory's blobs and the upstream catalog entry. A path whose first component is one of CLAUDE_CACHE_MARKERS is
+    left out."""
+    digest = hashlib.sha256()
+    canonical = canonical_entry(entry)
+    digest.update(b"catalog-entry\0" + str(len(canonical)).encode() + b"\0" + canonical)
+    for relative, data in sorted(files, key=lambda item: item[0]):
+        if relative.split(b"/", 1)[0].decode("utf-8", "surrogateescape") in CLAUDE_CACHE_MARKERS:
+            continue
+        digest.update(relative + b"\0" + str(len(data)).encode() + b"\0" + data)
+    return "sha256:" + digest.hexdigest()
+
+
+def unique_object(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"duplicate key in {keys}")
+    return dict(pairs)
+
+
+def refuse_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not JSON")
+
+
+def read_catalog_entry(marketplace_root: Path, plugin: str) -> Dict[str, Any]:
+    """PLUGIN's entry in the marketplace clone MARKETPLACE_ROOT (.claude-plugin/marketplace.json), read fd-relative:
+    the root is opened with O_DIRECTORY|O_NOFOLLOW, then .claude-plugin and marketplace.json below it without
+    following a symlink, the file regular and the same device and inode as its lstat. The JSON must have no duplicate
+    key and no NaN or Infinity, and the catalog must list PLUGIN exactly once."""
+    where = marketplace_root / ".claude-plugin/marketplace.json"
+    fds: List[int] = []
+    try:
+        try:
+            fds.append(os.open(marketplace_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+            fds.append(os.open(".claude-plugin", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fds[-1]))
+            status = os.stat("marketplace.json", dir_fd=fds[-1], follow_symlinks=False)
+            if not stat.S_ISREG(status.st_mode):
+                raise RecordError(where, "(file)", "is not a regular file")
+            fd = open_regular("marketplace.json", status, fds[-1])
+            if fd is None:
+                raise RecordError(where, "(file)", "changed while it was read")
+            with os.fdopen(fd, "rb") as handle:
+                raw = handle.read()
+        except OSError as error:
+            raise RecordError(where, "(file)", f"cannot read ({error})") from None
+    finally:
+        for opened in fds:
+            os.close(opened)
+    entry = parse_catalog_entry(raw, where, plugin)
+    if entry is None:
+        raise RecordError(where, f"plugins[{plugin}]", "is listed 0 times, not once")
+    return entry
+
+
+def parse_catalog_entry(raw: bytes, where: object, plugin: str) -> Optional[Dict[str, Any]]:
+    """PLUGIN's entry in a marketplace catalog (.claude-plugin/marketplace.json bytes), or None when the catalog does
+    not list it. The one parser for catalog entries: read_catalog_entry gives it the installed clone's file,
+    scripts/drift-watch.py the bytes api.github.com serves. Strict UTF-8 JSON with no duplicate key and no NaN or
+    Infinity; `plugins` is a list of objects, each with a string `name`; a plugin listed more than once refuses, so
+    no reader can pick one of two entries."""
+    try:
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object, parse_constant=refuse_constant)
+    except ValueError as error:
+        raise RecordError(where, "(file)", f"not strict JSON: {error}") from None
+    plugins = field(where, data, "plugins", list)
+    matches = [
+        item for index, item in enumerate(plugins) if field(where, item, "name", str, f"plugins[{index}].") == plugin
+    ]
+    if len(matches) > 1:
+        raise RecordError(where, f"plugins[{plugin}]", f"is listed {len(matches)} times, not once")
+    return matches[0] if matches else None
+
+
+def content_sha256(root: Path, entry: Any) -> str:
+    """The content pin (content_digest) of the plugin directory ROOT with its catalog entry ENTRY.
+
+    File order on disk, mtimes, modes and empty directories do not count, and CLAUDE_CACHE_MARKERS at the top level
+    are not read. The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry
+    below it is lstat'ed (fstatat) and opened (openat, O_NOFOLLOW) relative to its parent's open directory, never by
+    a path walked again. So no symlink is followed anywhere below the root (the root included), and each directory
+    and file read is the one its lstat showed (same device and inode). A symlink, or anything that is neither a
+    regular file nor a directory, refuses: it is not reviewable content.
+    """
+    try:
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError as error:
+        if error.errno in (errno.ELOOP, errno.ENOTDIR):
+            raise RecordError(root, "(directory)", "is not a real directory") from None
+        raise RecordError(root, "(directory)", f"cannot open ({error})") from None
+    contents: List[Tuple[bytes, bytes]] = []
+
+    def walk(dir_fd: int, prefix: str) -> None:
+        try:
+            names = [entry.name for entry in os.scandir(dir_fd)]
+        except OSError as error:
+            raise RecordError(root, prefix or ".", f"cannot list ({error})") from None
+        for name in names:
+            relative = f"{prefix}{name}"
+            if not prefix and name in CLAUDE_CACHE_MARKERS:
+                continue
+            try:
+                status = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+            except OSError as error:
+                raise RecordError(root, relative, f"cannot lstat ({error})") from None
+            if stat.S_ISDIR(status.st_mode):
+                try:
+                    child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dir_fd)
+                except OSError as error:
+                    if error.errno in (errno.ELOOP, errno.ENOTDIR):
+                        raise RecordError(root, relative, "changed while it was read") from None
+                    raise RecordError(root, relative, f"cannot open ({error})") from None
+                try:
+                    opened = os.fstat(child)
+                    if (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
+                        raise RecordError(root, relative, "changed while it was read")
+                    walk(child, relative + "/")
+                finally:
+                    os.close(child)
+            elif stat.S_ISREG(status.st_mode):
+                try:
+                    fd = open_regular(name, status, dir_fd)
+                    if fd is None:
+                        raise RecordError(root, relative, "changed while it was read")
+                    with os.fdopen(fd, "rb") as handle:
+                        contents.append((os.fsencode(relative), handle.read()))
+                except OSError as error:
+                    raise RecordError(root, relative, f"cannot read ({error})") from None
+            else:
+                raise RecordError(
+                    root, relative, "is a symlink or special file; a content pin covers regular files only"
+                )
+
+    try:
+        walk(root_fd, "")
+    finally:
+        os.close(root_fd)
+    return content_digest(contents, entry)
+
+
+def open_regular(name: Any, status: os.stat_result, dir_fd: Optional[int] = None) -> Optional[int]:
+    """Open NAME (relative to DIR_FD when given), which lstat showed as the regular file STATUS, for reading; None
+    when it is now something else.
+
+    O_NOFOLLOW refuses a symlink swapped in, O_NONBLOCK keeps a FIFO swapped in from blocking the open, and fstat
+    must show the same regular file (device and inode) lstat showed.
+    """
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            return None
+        raise
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
+        os.close(fd)
+        return None
+    return fd
+
+
+def claude_observed(pin: str, version: str, install_path: str) -> str:
+    """What a Claude Code installation is compared with its pin by: its content for a content pin, else its version.
+
+    installPath is <plugins>/cache/<marketplace>/<plugin>/<version> (load_claude_installs checks that shape), so the
+    catalog entry Claude Code loads beside the copy is read from the installed marketplace clone
+    <plugins>/marketplaces/<marketplace>."""
+    if not CONTENT_PIN.fullmatch(pin):
+        return version
+    copy = Path(install_path)
+    plugin, marketplace, plugins_dir = copy.parent.name, copy.parent.parent.name, copy.parents[3]
+    entry = read_catalog_entry(plugins_dir / "marketplaces" / marketplace, plugin)
+    return content_sha256(copy, entry)
 
 
 # --- ~/.claude/plugins/installed_plugins.json ----------------------------------------------------------------
@@ -651,6 +859,12 @@ def main(argv: List[str]) -> int:
         pinned = load_plugin_pins(Path(args[0])).gh_extensions
         name = repository.split("/", 1)[1]
         return 0 if any(entry.split("/", 1)[1] == name for entry in pinned) else 1
+    elif command == "content-sha256":
+        # PLUGIN_DIR MARKETPLACE_ROOT PLUGIN: the content pin of a plugin directory with its entry in that clone.
+        print(content_sha256(Path(args[0]), read_catalog_entry(Path(args[1]), args[2])))
+    elif command == "claude-observed":
+        # PIN VERSION INSTALL_PATH: the value make update compares with the pin (claude_observed).
+        print(claude_observed(args[0], args[1], args[2]))
     else:
         raise RecordError("pin_records.py", command, "is not a command")
     return 0

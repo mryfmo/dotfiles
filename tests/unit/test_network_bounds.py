@@ -1,15 +1,16 @@
 """Every CI Bats run names a stalled test, and every scripted download ends (regime-cutover U99).
 
 The download convention, for setup.sh, install/**, scripts/** (make update, the levers, the CI helpers) and the
-workflow steps: curl gets `--connect-timeout 30` and fails a transfer under 1 KB/s for 60 s (`--speed-limit 1024
---speed-time 60`); wget gets `--timeout=60 --tries=3`; `snap install` runs under `timeout`. apt-get needs nothing:
-its http and https methods give up a connection or a read that stays silent for Acquire::http::Timeout, 30 s unless
-configured (apt methods/basehttp.cc), and https inherits the http value.
+workflow steps: curl gets `--connect-timeout 30 --speed-limit 1024 --speed-time 60` (30 s to connect, and a transfer
+under 1 KB/s for 60 s fails); wget gets `--timeout=60 --tries=3`; `snap install` runs under `timeout`. apt-get needs
+nothing: its http and https methods give up a connection or a read that stays silent for Acquire::http::Timeout, 30 s
+unless configured (apt methods/basehttp.cc), and https inherits the http value.
 
-The download check tokenizes the shell text, so it finds curl and wget wherever they run as a command: a plain
-command, after a pipe or `&&`, inside `$(...)` or backticks (also inside double quotes, as in `printf "$(curl …)"`),
-after `sudo`, `env`, `timeout`, `if` or an assignment, and inside `bash -c '…'`. A word that only names the tool (a
-package list, `command -v curl`, a message, the source a manifest records) is not a command word and is not checked.
+The check is a closed-world text rule, not a parser (treadmill-u99-scanner): every line of a scanned file that holds
+the word curl or wget, in any context (strings and comments included), carries that tool's canonical options, with
+their exact values, once per occurrence of the word, and no other value of a time or retry option. Every other such
+line is listed in EXEMPT by its file and exact text, with its reason; an entry whose line is gone fails. A line whose
+options sit on a continuation line is either rewritten or exempted with the exact options that line must carry.
 """
 
 from __future__ import annotations
@@ -52,304 +53,305 @@ NETWORK_SOURCES = [
     *sorted(p for p in (ROOT / "scripts").rglob("*") if p.is_file() and "__pycache__" not in p.parts),
     *sorted(WORKFLOWS.glob("*.y*ml")),
 ]
-# Python and Ruby are not shell: none may start curl or wget, as an argv's first element or at the head of a command
-# string, since this check cannot see the bounds there. A mention in a comment or a message is not a start.
-NOT_SHELL = (".py", ".pyc", ".rb")
-FOREIGN_CALL = re.compile(r"""[\[(,]\s*[fr]?["'](?:[^"'\s]*/)?(?:curl|wget)(?:["']|\s)""")
-RUBY_CALL = re.compile(r"`(?:curl|wget)\s|%x\(\s*(?:curl|wget)")
-# Words that run the next word as the command (with their own options and operands skipped).
-PREFIXES = {"sudo", "env", "timeout", "exec", "command", "nohup", "time", "nice", "xargs", "!", "if", "then", "elif"}
-PREFIXES |= {"else", "do", "while", "until"}
-# Options of a prefix that take the following word as their operand.
-OPERAND_OPTIONS = {
-    "sudo": {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U"},
-    "env": {"-u", "-C", "-S"},
-    "timeout": {"-k", "-s"},
-    "nice": {"-n"},
-    "xargs": {"-I", "-L", "-n", "-P", "-d", "-E", "-s"},
+# One spelling per tool, values included.
+CANONICAL = {"curl": "--connect-timeout 30 --speed-limit 1024 --speed-time 60", "wget": "--timeout=60 --tries=3"}
+SNAP_CANONICAL = 'timeout --kill-after=30 "${limit}" snap install'
+TOOL = re.compile(r"\b(curl|wget)\b")
+SNAP = re.compile(r"\bsnap\s+(?:install|refresh)\b")
+# Any other time or retry option, long or short, with or without a value: a second, zero or larger value next to the
+# canonical options would override them.
+OTHER_BOUND = re.compile(
+    r"(?<!\S)(?:--(?:connect-timeout|max-time|speed-limit|speed-time|timeout|tries|read-timeout|dns-timeout|"
+    r"waitretry|retry[\w-]*)\b|-[mYyTt](?!\S))"
+)
+MENTION = "names the tool without running it"
+# (file, exact stripped line) -> (reason, None) or (reason, (offset, exact options that line offset lines below must
+# carry)). Every entry must still match a line.
+EXEMPT: dict[tuple[str, str], tuple[str, tuple[int, str] | None]] = {
+    (
+        "setup.sh",
+        "# Network bounds: curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s; wget waits",
+    ): (f"comment; {MENTION}", None),
+    ("setup.sh", "if command -v curl > /dev/null 2>&1; then"): (f"presence check; {MENTION}", None),
+    ("setup.sh", "# The credential goes through curl's config on stdin, never the command line."): (
+        f"comment; {MENTION}",
+        None,
+    ),
+    (
+        "setup.sh",
+        "# wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.",
+    ): (f"comment; {MENTION}", None),
+    ("setup.sh", "#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl."): (
+        f"comment; {MENTION}",
+        None,
+    ),
+    ("setup.sh", "# @description Download one URL to standard output, preferring curl over wget. curl gets 30 s to"): (
+        f"shdoc; {MENTION}",
+        None,
+    ),
+    (
+        "setup.sh",
+        "#   connect and fails a transfer under 1 KB/s for 60 s; wget waits at most 60 s for any one connect",
+    ): (f"shdoc; {MENTION}", None),
+    ("setup.sh", "elif command -v wget > /dev/null 2>&1; then"): (f"presence check; {MENTION}", None),
+    ("setup.sh", 'echo "Neither curl nor wget is available; cannot download ${url}." >&2'): (
+        f"message; {MENTION}",
+        None,
+    ),
+    ("setup.sh", "# @description Download one URL to a file, preferring curl over wget, with fetch_url's bounds."): (
+        f"shdoc; {MENTION}",
+        None,
+    ),
+    ("setup.sh", "printf 'Neither curl nor wget is available; cannot download %s.\\n' \"${url}\" >&2"): (
+        f"message; {MENTION}",
+        None,
+    ),
+    (
+        "install/common/aws_cli.sh",
+        "# curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
+    ): (f"comment; {MENTION}", None),
+    (
+        "install/common/mise.sh",
+        "# Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
+    ): (f"comment; {MENTION}", None),
+    (
+        "install/ubuntu/server/starship.sh",
+        "# Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
+    ): (f"comment; {MENTION}", None),
+    ("install/ubuntu/client/docker.sh", "curl \\"): ("an apt-get install package name", None),
+    ("install/ubuntu/common/dependencies.sh", "curl"): ("a PACKAGES entry", None),
+    ("install/ubuntu/common/dependencies.sh", "wget"): ("a PACKAGES entry", None),
+    (
+        "install/ubuntu/client/ghostty.sh",
+        "#   answer within the timeout (curl exit 5, 6, 7, 28, 35, 52 or 56), or answers HTTP 5xx;",
+    ): (f"shdoc; {MENTION}", None),
+    (
+        "install/ubuntu/client/ghostty.sh",
+        "#   other curl failure (a local error, not evidence of the network): curl's status, unchanged.",
+    ): (f"shdoc; {MENTION}", None),
+    (
+        "install/ubuntu/client/ghostty.sh",
+        "out=\"$(curl -q --silent --show-error --output /dev/null --write-out '%{http_connect} %{http_code}' \\",
+    ): (
+        "the PPA probe bounds itself tighter than the convention (5 s to connect, 15 s in all); options on line +1",
+        (1, "--connect-timeout 5 --max-time 15"),
+    ),
+    ("install/ubuntu/client/ghostty.sh", 'printf \'%s (curl exit %s)\\n\' "${url}" "${status}"'): (
+        f"message; {MENTION}",
+        None,
+    ),
+    (
+        "scripts/generate-agent-configs.py",
+        '"# shell after a pipe (`curl ... | sh`), which no prefix rule can name without matching Codex\'s own shell.",',
+    ): ("a rendered comment about command policy; names the tool without running it", None),
+    (
+        "scripts/validate-agent-assets.py",
+        "# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an",
+    ): (f"comment; {MENTION}", None),
+    ("scripts/lib/github-release.sh", "#   Only curl or wget and awk are needed, so a fresh machine can run it."): (
+        f"comment; {MENTION}",
+        None,
+    ),
+    (
+        "scripts/lib/github-release.sh",
+        "# Network bounds: curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s; wget waits",
+    ): (f"comment; {MENTION}", None),
+    ("scripts/lib/github-release.sh", "if command -v curl > /dev/null 2>&1; then"): (
+        f"presence check; {MENTION}",
+        None,
+    ),
+    (
+        "scripts/lib/github-release.sh",
+        "# The credential goes through curl's config on stdin, never the command line.",
+    ): (f"comment; {MENTION}", None),
+    (
+        "scripts/lib/github-release.sh",
+        "# wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.",
+    ): (f"comment; {MENTION}", None),
+    (
+        "scripts/lib/github-release.sh",
+        "#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl.",
+    ): (f"comment; {MENTION}", None),
+    ("scripts/lib/installer-pins.sh", "#   tode and terminal-browser install through a vendor `curl | bash` script"): (
+        f"comment; {MENTION}",
+        None,
+    ),
+    (
+        ".github/workflows/test.yaml",
+        "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck",
+    ): ("an apt-get install package name", None),
+    (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): ("an apt-get install package name", None),
 }
-ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-# The old line pattern: a tool followed by an option on an unquoted command line. The tokenizer must find a call on
-# every such line, or it has lost its place in the file (an unbalanced quote) and would miss calls.
-LINE_CALL = re.compile(r"^(?:[^\"'#]*[\s;&|(`])?(curl|wget)\s+-")
-# A bare Bats run in a workflow or the runner: `bats` as a command word, not run_bats, bats-core or a package list.
-BARE_BATS = re.compile(r"(?<![\w/.-])bats\s")
+# The manifest_record lines of update-agent-assets.sh store each asset's source ("curl -fsSL <url>", then its sha256
+# step) as data in ~/.agents/.installed-manifest.json; they run nothing. Matched by exact text like every entry.
+MANIFEST_RECORDS = (
+    "ensure_crit_cli",
+    "update_codex_understand_anything",
+    "update_terminal_code",
+    "update_terminal_browser",
+    "update_pi_claude_bridge",
+)
+SNAP_EXEMPT = {
+    (
+        "install/ubuntu/client/misc.sh",
+        "# @exitcode The last `snap install` exit status after the final failed attempt.",
+    ): "shdoc",
+    (
+        "install/ubuntu/client/misc.sh",
+        "printf 'install_chromium: snap install chromium timed out after %s s (SNAP_INSTALL_TIMEOUT); snapd may still finish it (snap changes)\\n' \\",
+    ): "message",
+    (
+        "install/ubuntu/client/misc.sh",
+        "printf 'install_chromium: snap install chromium failed (attempt %d/3, exit %d)\\n' \\",
+    ): "message",
+}
 
 
-class Lexer:
-    """A shell tokenizer good enough to find command words: quotes, escapes, comments, `${…}`, `$(…)`, backticks
-    (also inside double quotes) and the separators `; | & ( ) { }` and newline. A token is ("w", text, offset) or
-    ("s", "", offset)."""
-
-    def __init__(self, text: str) -> None:
-        self.s, self.i, self.tokens = text, 0, []
-        self.buf: list[str] | None = None
-        self.start = 0
-
-    def flush(self) -> None:
-        if self.buf is not None:
-            self.tokens.append(("w", "".join(self.buf), self.start))
-        self.buf = None
-
-    def add(self, text: str) -> None:
-        if self.buf is None:
-            self.buf, self.start = [], self.i
-        self.buf.append(text)
-
-    def sep(self) -> None:
-        self.tokens.append(("s", "", self.i))
-
-    def substitution(self, term: str) -> None:
-        self.flush()
-        self.sep()
-        self.command(term)
-        self.sep()
-
-    def command(self, term: str | None = None) -> None:
-        s, depth = self.s, 0
-        while self.i < len(s):
-            c = s[self.i]
-            if c == term and (term == "`" or depth == 0):
-                self.flush()
-                self.i += 1
-                return
-            if c in " \t":
-                self.flush()
-                self.i += 1
-            elif c == "\\":
-                if s.startswith("\\\n", self.i):
-                    self.flush()
-                else:
-                    self.add(s[self.i + 1 : self.i + 2])
-                self.i += 2
-            elif c == "#" and self.buf is None:
-                end = s.find("\n", self.i)
-                self.i = len(s) if end < 0 else end
-            elif c == "'":
-                end = s.find("'", self.i + 1)
-                end = len(s) if end < 0 else end
-                self.add(s[self.i + 1 : end])
-                self.i = end + 1
-            elif c == '"':
-                self.double()
-            elif s.startswith("${", self.i):
-                self.add(self.balanced(self.i + 2, "{", "}"))
-            elif c == "(" and self.buf and self.buf[-1].endswith("="):
-                # An array literal, `NAME=(a b c)`: its words are values, not commands.
-                self.add(self.balanced(self.i + 1, "(", ")"))
-            elif s.startswith("$(", self.i):
-                self.i += 2
-                self.substitution(")")
-            elif c == "`":
-                self.i += 1
-                self.substitution("`")
-            elif c in ";|&(){}\n":
-                self.flush()
-                self.sep()
-                if term == ")":
-                    depth += {"(": 1, ")": -1}.get(c, 0)
-                self.i += 1
-            else:
-                self.add(c)
-                self.i += 1
-        self.flush()
-
-    def double(self) -> None:
-        s = self.s
-        self.add("")
-        self.i += 1
-        while self.i < len(s):
-            c = s[self.i]
-            if c == '"':
-                self.i += 1
-                return
-            if c == "\\":
-                self.add(s[self.i + 1 : self.i + 2])
-                self.i += 2
-            elif s.startswith("${", self.i):
-                self.add(self.balanced(self.i + 2, "{", "}"))
-            elif s.startswith("$(", self.i):
-                self.i += 2
-                self.substitution(")")
-            elif c == "`":
-                self.i += 1
-                self.substitution("`")
-            else:
-                self.add(c)
-                self.i += 1
-
-    def balanced(self, j: int, opening: str, closing: str) -> str:
-        """The text from self.i to the closer matching an opener just before j, quotes and comments skipped; the
-        position moves past it."""
-        s, depth, start = self.s, 1, self.i
-        while j < len(s) and depth:
-            ch = s[j]
-            if ch == "\\":
-                j += 2
-                continue
-            if ch in "'\"":
-                end = s.find(ch, j + 1)
-                j = (len(s) if end < 0 else end) + 1
-                continue
-            if ch == "#" and opening == "(" and s[j - 1] in " \t\n":
-                end = s.find("\n", j)
-                j = len(s) if end < 0 else end
-                continue
-            depth += {opening: 1, closing: -1}.get(ch, 0)
-            j += 1
-        self.i = j
-        return s[start:j]
-
-
-def simple_commands(text: str) -> list[list[tuple[str, int]]]:
-    """The words of every simple command in the text, each with its offset."""
-    lexer = Lexer(text)
-    lexer.command()
-    commands: list[list[tuple[str, int]]] = [[]]
-    for kind, word, offset in lexer.tokens:
-        if kind == "s":
-            commands.append([])
-        else:
-            commands[-1].append((word, offset))
-    return [command for command in commands if command]
-
-
-def calls(text: str) -> list[tuple[int, str, list[str], set[str]]]:
-    """Every command whose command word is curl, wget or snap: (offset, tool, arguments, prefixes it ran under)."""
-    found = []
-    for command in simple_commands(text):
-        words = [word for word, _ in command]
-        index, prefixes = 0, set()
-        while index < len(words):
-            word = words[index]
-            if ASSIGNMENT.match(word):
-                index += 1
-                continue
-            name = os.path.basename(word)
-            if name not in PREFIXES:
-                break
-            if name == "command" and index + 1 < len(words) and words[index + 1] in ("-v", "-V"):
-                index = len(words)
-                break
-            prefixes.add(name)
-            index += 1
-            while index < len(words) and (words[index].startswith("-") or ASSIGNMENT.match(words[index])):
-                index += 2 if words[index] in OPERAND_OPTIONS.get(name, ()) else 1
-            if name == "timeout" and index < len(words):
-                index += 1  # the duration
-        if index >= len(words):
-            continue
-        name, args = os.path.basename(words[index]), words[index + 1 :]
-        if name in ("bash", "sh", "zsh") and "-c" in args[:-1]:
-            # The script of `bash -c '…'` is shell too.
-            script = args[args.index("-c") + 1]
-            found += [(command[index][1], tool, a, p) for _, tool, a, p in calls(script)]
-        elif name in ("curl", "wget", "snap"):
-            found.append((command[index][1], name, args, prefixes))
-    return found
-
-
-def unbounded(text: str) -> list[str]:
-    """The calls in the text that lack the bound, as `line: tool arguments`."""
-    bad = []
-    for offset, tool, args, prefixes in calls(text):
-        joined = " ".join(args)
-        if tool == "curl":
-            ok = "--connect-timeout" in args and (
-                "--max-time" in args or ("--speed-limit" in args and "--speed-time" in args)
-            )
-        elif tool == "wget":
-            ok = any(a.startswith("--timeout=") for a in args) and any(a.startswith("--tries=") for a in args)
-        else:
-            ok = not args or args[0] not in ("install", "refresh") or "timeout" in prefixes
-        if not ok:
-            bad.append(f"{text.count(chr(10), 0, offset) + 1}: {tool} {joined}")
-    return bad
-
-
-def is_shell(path: Path) -> bool:
-    return path.suffix not in NOT_SHELL and not path.read_bytes()[:64].startswith(
-        (b"#!/usr/bin/env python", b"#!/usr/bin/python")
+def manifest_record_exempt(relative: str, line: str) -> bool:
+    # The key is the repo-relative POSIX name tree() builds, the same form as every EXEMPT key.
+    return relative == "scripts/update-agent-assets.sh" and any(  # lint-comparisons: allow table-key
+        line.startswith(f'manifest_record "{name}" installer ') for name in MANIFEST_RECORDS
     )
 
 
+def carries(line: str, tool: str, count: int) -> bool:
+    """The line carries the tool's canonical options once per occurrence of the tool word, and no other time or
+    retry option."""
+    canonical = CANONICAL[tool]
+    return line.count(canonical) >= count and not OTHER_BOUND.search(line.replace(canonical, " "))
+
+
+def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[str]:
+    """The lines of one file that break the rule, as `file:line: text`."""
+    exempt = EXEMPT if exempt is None else exempt
+    snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
+    lines = text.splitlines()
+    bad = []
+    for number, raw in enumerate(lines, 1):
+        line = raw.strip()
+        where = f"{relative}:{number}: {line}"
+        tools = TOOL.findall(line)
+        if tools:
+            entry = exempt.get((relative, line))
+            if entry is not None:
+                options = entry[1]
+                if options is not None:
+                    offset, exact = options
+                    other = lines[number - 1 + offset].strip() if number - 1 + offset < len(lines) else ""
+                    if exact not in other or OTHER_BOUND.search(other.replace(exact, " ")):
+                        bad.append(f"{where} (line +{offset} must carry exactly {exact})")
+            elif not manifest_record_exempt(relative, line):
+                for tool in ("curl", "wget"):
+                    if tool in tools and not carries(line, tool, tools.count(tool)):
+                        bad.append(where)
+                        break
+        if SNAP.search(line) and SNAP_CANONICAL not in line and (relative, line) not in snap_exempt:
+            bad.append(where)
+    return bad
+
+
+def stale(files: dict[str, str], exempt=None, snap_exempt=None) -> list[str]:
+    """The exemptions whose file no longer holds their exact line."""
+    exempt = EXEMPT if exempt is None else exempt
+    snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
+    lines = {relative: {line.strip() for line in text.splitlines()} for relative, text in files.items()}
+    gone = [f"{r}: {t}" for r, t in [*exempt, *snap_exempt] if t not in lines.get(r, set())]
+    for name in MANIFEST_RECORDS:
+        if not any(
+            l.startswith(f'manifest_record "{name}" installer ')
+            for l in lines.get("scripts/update-agent-assets.sh", ())
+        ):
+            gone.append(f"scripts/update-agent-assets.sh: manifest_record {name}")
+    return gone
+
+
+def tree() -> dict[str, str]:
+    texts = {}
+    for path in NETWORK_SOURCES:
+        try:
+            texts[path.relative_to(ROOT).as_posix()] = path.read_text()
+        except UnicodeDecodeError:
+            continue
+    return texts
+
+
 class NetworkBoundTest(unittest.TestCase):
-    def test_every_curl_wget_and_snap_call_carries_its_bound(self) -> None:
-        bad = []
-        for path in NETWORK_SOURCES:
-            relative = path.relative_to(ROOT).as_posix()
-            if is_shell(path):
-                bad += [f"{relative}:{hit}" for hit in unbounded(path.read_text())]
-            elif hits := [
-                m.group(0)
-                for pattern in (FOREIGN_CALL, *((RUBY_CALL,) if path.suffix == ".rb" else ()))
-                for m in pattern.finditer(path.read_text(errors="replace"))
-            ]:
-                bad.append(f"{relative}: starts curl or wget outside the shell: {hits}")
+    def test_every_curl_and_wget_line_carries_the_canonical_bound_or_is_exempted(self) -> None:
+        bad = [hit for relative, text in tree().items() for hit in violations(relative, text)]
         self.assertEqual([], bad)
 
-    def test_the_tokenizer_keeps_its_place_in_every_file(self) -> None:
-        # Every line that plainly starts a download must hold a call the tokenizer found; one that does not means an
-        # unbalanced quote put the tokenizer out of step, and calls after it would go unchecked.
-        lost, total = [], 0
-        for path in NETWORK_SOURCES:
-            if not is_shell(path):
-                continue
-            text = path.read_text()
-            lines = {text.count("\n", 0, offset) + 1 for offset, tool, _, _ in calls(text) if tool != "snap"}
-            total += len(lines)
-            for number, line in enumerate(text.splitlines(), 1):
-                if LINE_CALL.search(line.strip()) and number not in lines:
-                    lost.append(f"{path.relative_to(ROOT)}:{number}: {line.strip()}")
-        self.assertEqual([], lost)
-        # The scan saw the calls it checks (a tokenizer that found nothing would pass every tree).
-        self.assertGreater(total, 40)
+    def test_no_exemption_is_stale(self) -> None:
+        self.assertEqual([], stale(tree()))
+        # The table is the only way out, so a scan that saw no download line would be a broken scan.
+        downloads = sum(
+            1
+            for relative, text in tree().items()
+            for line in text.splitlines()
+            if any(CANONICAL[t] in line for t in CANONICAL)
+        )
+        self.assertGreater(downloads, 40)
 
-    def test_the_audit_bypasses_are_caught(self) -> None:
-        # Audit of c7629e24: a call without options, and downloads inside printf substitutions.
+    def test_the_audit_bypasses_fail(self) -> None:
+        # Audits of c7629e24 and 86e1f99e: bare calls, substitutions, array values, defaults and zero values.
         for snippet in (
-            "curl https://x.invalid/a\n",
-            "wget https://x.invalid/a\n",
-            'printf "%s\\n" "$(curl -fsSL https://x.invalid/a)"\n',
-            "printf '%s\\n' `wget -qO - https://x.invalid/a`\n",
-            'sum="$(curl -fsSL "${url}" | shasum -a 256)"\n',
-            "sudo --preserve-env=http_proxy curl -fsSL https://x.invalid/a -o /tmp/a\n",
-            "env -u CI HOME=/tmp curl -fsSL https://x.invalid/a\n",
-            "if curl -fsSL https://x.invalid/a; then :; fi\n",
-            "true && wget --timeout=60 https://x.invalid/a\n",
-            "bash -c 'curl -fsSL https://x.invalid/a'\n",
-            "curl --connect-timeout 30 https://x.invalid/a\n",
-            "sudo snap install chromium\n",
-            "x=1 /usr/bin/curl -fsSL https://x.invalid/a\n",
+            "curl https://x.invalid/a",
+            "wget https://x.invalid/a",
+            'printf "%s\\n" "$(curl -fsSL https://x.invalid/a)"',
+            'artifacts=("$(curl https://x.invalid/a)")',
+            'y="${x:-$(curl -fsSL https://x.invalid/a)}"',
+            "curl --connect-timeout 0 --speed-limit 1024 --speed-time 60 https://x.invalid/a",
+            "curl --connect-timeout 30 --speed-limit 0 --speed-time 60 https://x.invalid/a",
+            "curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 --max-time 0 https://x.invalid/a",
+            "curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 -m 0 https://x.invalid/a",
+            "wget --timeout=0 --tries=0 https://x.invalid/a",
+            "wget --timeout=60 --tries=3 --tries=0 https://x.invalid/a",
+            "wget --timeout=60 --tries=3 -T 0 https://x.invalid/a",
+            "a=$(curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 u) b=$(curl u)",
+            "curl -fsSL \\",
+            "# curl https://x.invalid/a",
+            "sudo snap install chromium",
         ):
             with self.subTest(snippet=snippet):
-                self.assertEqual(1, len(unbounded(snippet)), snippet)
+                self.assertEqual(1, len(violations("install/x.sh", snippet + "\n", {}, {})), snippet)
 
-    def test_python_or_ruby_starting_a_download_is_caught(self) -> None:
-        for source in ('subprocess.run(["curl", "-fsSL", url])', "os.system('wget -q https://x.invalid/a')"):
-            with self.subTest(source=source):
-                self.assertTrue(FOREIGN_CALL.search(source))
-        self.assertTrue(RUBY_CALL.search("out = `curl -s https://x.invalid/a`"))
-        self.assertIsNone(FOREIGN_CALL.search('"# shell after a pipe (`curl ... | sh`), which no prefix rule"'))
-
-    def test_bounded_calls_and_mere_mentions_pass(self) -> None:
+    def test_canonical_calls_pass(self) -> None:
         for snippet in (
-            "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://x.invalid/a\n",
-            'printf "%s" "$(curl -q --connect-timeout 5 --max-time 15 https://x.invalid/a)"\n',
-            "readonly PACKAGES=(\n    cmake\n    curl # the bootstrap's fetcher\n    wget\n)\n",
-            'for x in ${a[@]+"${a[@]}"}; do :; done\ncurl --connect-timeout 30 --max-time 9 https://x.invalid/a\n',
-            "wget --timeout=60 --tries=3 -qO - https://x.invalid/a\n",
-            "sudo timeout --kill-after=30 600 snap install chromium\n",
-            "command -v curl > /dev/null 2>&1\n",
-            "sudo apt-get install -y bats curl iproute2\n",
-            'echo "Neither curl nor wget is available; cannot download ${url}." >&2\n',
-            "printf 'curl %s\\n' \"$*\" >> calls.log\n",
-            'manifest_record "x" installer v1 /t -- "curl -fsSL https://x.invalid/a" "shasum -a 256 <a>"\n',
-            "# curl https://x.invalid/a\n",
-            "snap list chromium\n",
+            "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://x.invalid/a -o a",
+            'v="$(curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://x.invalid/a)"',
+            "wget --timeout=60 --tries=3 -qO - https://x.invalid/a",
+            'sudo timeout --kill-after=30 "${limit}" snap install chromium && return 0',
+            "curlrc and wgetrc are other words",
         ):
             with self.subTest(snippet=snippet):
-                self.assertEqual([], unbounded(snippet), snippet)
+                self.assertEqual([], violations("install/x.sh", snippet + "\n", {}, {}), snippet)
+
+    def test_an_exemption_needs_its_exact_line_and_its_options(self) -> None:
+        exempt = {("install/x.sh", "curl \\"): ("options on line +1", (1, "--connect-timeout 5 --max-time 15"))}
+        self.assertEqual([], violations("install/x.sh", "curl \\\n  --connect-timeout 5 --max-time 15 u\n", exempt, {}))
+        for options in ("--connect-timeout 0 --max-time 15 u", "--connect-timeout 5 --max-time 15 --max-time 0 u", "u"):
+            with self.subTest(options=options):
+                self.assertEqual(1, len(violations("install/x.sh", f"curl \\\n  {options}\n", exempt, {})))
+        # A line that changed, even by one character, is no longer exempt, and its entry is stale.
+        self.assertEqual(
+            1, len(violations("install/x.sh", "curl  \\\n", {("install/x.sh", "curl \\"): ("x", None)}, {}))
+        )
+        self.assertEqual(
+            ["install/x.sh: curl \\"],
+            stale(
+                {
+                    "install/x.sh": "curl  \\\n",
+                    "scripts/update-agent-assets.sh": "\n".join(
+                        f'manifest_record "{n}" installer' + " x" for n in MANIFEST_RECORDS
+                    ),
+                },
+                {("install/x.sh", "curl \\"): ("x", None)},
+                {},
+            ),
+        )
+
+
+# A bare Bats run in a workflow or the runner: `bats` as a command word, not run_bats, bats-core or a package list.
+BARE_BATS = re.compile(r"(?<![\w/.-])bats\s")
 
 
 class RunBatsBoundTest(unittest.TestCase):

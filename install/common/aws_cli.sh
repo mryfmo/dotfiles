@@ -139,8 +139,8 @@ function install_aws_cli() (
         "${archive_url}.sig" --output "${signature_path}" || return 3
     if [ -n "${macos}" ]; then
         # install.sh installs the release version.txt names, so the postcondition expects that one.
-        staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 \
-            --speed-time 60 https://awscli.amazonaws.com/v2/version.txt)" || return 3
+        staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+            https://awscli.amazonaws.com/v2/version.txt)" || return 3
         staged_version="${staged_version//[[:space:]]/}"
     fi
 

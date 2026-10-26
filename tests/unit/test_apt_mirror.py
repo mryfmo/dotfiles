@@ -2,7 +2,7 @@
 (regime-cutover U102).
 
 actions/runner-images#14823: a slow azure.archive.ubuntu.com node keeps sending data, so apt's 15 s timeout never
-fires and apt never moves to the next mirror. scripts/ci/drop-azure-apt-mirror.sh removes that entry; every job that
+fires and apt never moves to the next mirror. scripts/ci/drop-azure-apt-mirror.py removes that entry; every job that
 runs apt on a Ubuntu runner calls it first. The measured budgets below come from passing `test (ubuntu-*, client)`
 jobs of October 2026.
 """
@@ -22,9 +22,11 @@ from test_workflow_orchestration_skip import jobs
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
-SCRIPT = ROOT / "scripts/ci/drop-azure-apt-mirror.sh"
+SCRIPT = ROOT / "scripts/ci/drop-azure-apt-mirror.py"
 WRAPPER = ROOT / "scripts/ci/run-bats.py"
-CALL = "scripts/ci/drop-azure-apt-mirror.sh"
+# The system python3, as the workflows run it; a host without one (none of CI's) runs the test interpreter instead.
+SYSTEM_PYTHON = "/usr/bin/python3" if Path("/usr/bin/python3").exists() else sys.executable
+CALL = "/usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py"
 # A step uses apt on the runner when it runs apt-get or apt, setup.sh (its Ubuntu installers), or the install tests
 # (scripts/run_unit_test.sh and run_bats, whose real-install cases run apt-get). `make apply-check` (apply-check.yml)
 # runs apt only inside its Docker build, against the image's own sources, never the runner's mirror list.
@@ -78,15 +80,37 @@ class MirrorScriptTest(unittest.TestCase):
         self.list = self.temp / "apt-mirrors.txt"
         (self.temp / "bin").mkdir()
         # A sudo that refuses, so no case can reach the host's own list.
-        (self.temp / "bin/sudo").write_text("#!/bin/sh\necho 'sudo refused by the test' >&2\nexit 1\n")
-        (self.temp / "bin/sudo").chmod(0o755)
+        self.fake("sudo", "echo 'sudo refused by the test' >&2\nexit 1")
+
+    def fake(self, name: str, body: str) -> None:
+        path = self.temp / "bin" / name
+        path.write_text(f"#!/bin/sh\n{body}\n")
+        path.chmod(0o755)
+
+    def read_only(self) -> None:
+        """Make the list root's to this user, so the script writes it through `sudo -n tee`."""
+        self.list.chmod(0o444)
+        self.addCleanup(self.list.chmod, 0o644)
+        if os.access(self.list, os.W_OK):
+            self.skipTest("running as a user who can write a read-only file")
+
+    def through_sudo(self, tee_body: str) -> None:
+        """A sudo that runs its command (after checking -n) and a fake tee."""
+        self.read_only()
+        self.fake("sudo", '[ "$1" = -n ] || exit 64\nshift\nexec "$@"')
+        self.fake("tee", tee_body)
 
     def run_script(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [str(SCRIPT), *args],
+            [SYSTEM_PYTHON, "-I", "-S", str(SCRIPT), *args],
             env={"PATH": f"{self.temp / 'bin'}:/usr/bin:/bin", "HOME": str(self.temp)},
             capture_output=True, text=True, timeout=30, check=False,
         )  # fmt: skip
+
+    def assert_refused(self, result: subprocess.CompletedProcess[str], reason: str) -> None:
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+        self.assertIn(reason, result.stderr)
 
     def test_the_azure_entry_is_removed_and_the_others_kept(self) -> None:
         self.list.write_text(MIRRORS)
@@ -110,63 +134,55 @@ class MirrorScriptTest(unittest.TestCase):
     def test_a_list_that_would_be_left_empty_is_refused_unchanged(self) -> None:
         only = MIRRORS.split("\n", 1)[0] + "\n"
         self.list.write_text(only)
-        result = self.run_script(str(self.list))
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn("no apt mirror would be left", result.stderr)
+        self.assert_refused(self.run_script(str(self.list)), "no apt mirror would be left")
         self.assertEqual(only, self.list.read_text())
 
-    def fake(self, name: str, body: str) -> None:
-        path = self.temp / "bin" / name
-        path.write_text(f"#!/bin/sh\n{body}\n")
-        path.chmod(0o755)
-
     def test_a_list_that_cannot_be_read_fails_named_and_is_not_written(self) -> None:
+        # Audit of 9a885470: bash's read took a read error for the end of the file. A mode-000 file and a directory.
+        self.fake("tee", f'echo tee ran >> "{self.temp}/tee.log"; cat > /dev/null')
+        directory = self.temp / "list.d"
+        directory.mkdir()
+        self.assert_refused(self.run_script(str(directory)), f"cannot read {directory}: Is a directory")
         self.list.write_text(MIRRORS)
         self.list.chmod(0o000)
         self.addCleanup(self.list.chmod, 0o644)
-        if os.access(self.list, os.R_OK):
-            self.skipTest("running as a user who can read a mode-000 file")
-        self.fake("tee", f'echo tee ran >> "{self.temp}/tee.log"; cat > /dev/null')
-        result = self.run_script(str(self.list))
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn(f"cannot read {self.list}", result.stderr)
+        if not os.access(self.list, os.R_OK):
+            self.assert_refused(self.run_script(str(self.list)), f"cannot read {self.list}: Permission denied")
         self.assertFalse((self.temp / "tee.log").exists())
 
     def test_a_failed_write_fails_named_and_leaves_the_list(self) -> None:
-        # Root's list: written through sudo, which refuses here.
         self.list.write_text(MIRRORS)
-        self.list.chmod(0o444)
-        if os.access(self.list, os.W_OK):
-            self.skipTest("running as a user who can write a read-only file")
-        result = self.run_script(str(self.list))
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn("could not write", result.stderr)
+        self.read_only()
+        self.assert_refused(self.run_script(str(self.list)), "sudo -n tee exited 1: sudo refused by the test")
         self.assertEqual(MIRRORS, self.list.read_text())
-        # A writable list whose tee fails.
-        self.list.chmod(0o644)
-        self.fake("tee", "cat > /dev/null; exit 5")
-        result = self.run_script(str(self.list))
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn(f"could not write {self.list}", result.stderr)
+        # sudo runs, and tee fails.
+        self.through_sudo("cat > /dev/null; echo 'tee: disk full' >&2; exit 5")
+        self.assert_refused(self.run_script(str(self.list)), "sudo -n tee exited 5: tee: disk full")
         self.assertEqual(MIRRORS, self.list.read_text())
+
+    def test_a_write_through_sudo_is_read_back_and_kept(self) -> None:
+        self.list.write_text(MIRRORS)
+        self.through_sudo('chmod 644 "$1" && cat > "$1"')
+        result = self.run_script(str(self.list))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(MIRRORS.split("\n", 1)[1], self.list.read_text())
 
     def test_a_write_that_reads_back_differently_fails_named(self) -> None:
         # tee reports success but leaves other bytes (a truncated or interleaved write).
         self.list.write_text(MIRRORS)
-        self.fake("tee", 'cat > /dev/null; printf "truncated" > "$2"; exit 0')
-        result = self.run_script(str(self.list))
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn(f"{self.list} read back differs from what was written", result.stderr)
+        self.through_sudo('cat > /dev/null; chmod 644 "$1" && printf truncated > "$1"')
+        self.assert_refused(self.run_script(str(self.list)), f"{self.list} read back differs from what was written")
 
-    def test_no_external_command_decides_the_edit(self) -> None:
-        # Audit of 52035104: grep's errors read as "no mirror left"; the read, filter and count are builtins now.
-        text = "\n".join(line for line in SCRIPT.read_text().splitlines() if not line.lstrip().startswith("#"))
-        for tool in ("grep", "awk", "sed", "cat"):
-            with self.subTest(tool=tool):
-                self.assertNotRegex(text, rf"(?<![\w-]){tool}(?![\w-])")
+    def test_the_only_external_command_is_the_checked_write(self) -> None:
+        # Audits of 52035104 and 9a885470: no producer but the write decides anything, and it is checked and bounded.
+        text = SCRIPT.read_text()
+        self.assertEqual(1, text.count("subprocess.run("))
+        self.assertIn('["sudo", "-n", "tee", path]', text)
+        self.assertIn("check=True, timeout=WRITE_TIMEOUT", text)
+        self.assertNotRegex(text, r"os\.system|os\.popen|shell=True|check=False")
 
     def test_the_default_list_is_the_runner_image_one(self) -> None:
-        self.assertIn("mirrors=${1:-/etc/apt/apt-mirrors.txt}", SCRIPT.read_text())
+        self.assertIn('DEFAULT = "/etc/apt/apt-mirrors.txt"', SCRIPT.read_text())
         self.assertIn("actions/runner-images#14823", SCRIPT.read_text())
 
 

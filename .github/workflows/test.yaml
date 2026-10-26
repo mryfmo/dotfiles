@@ -163,9 +163,9 @@ jobs:
 
       - name: Drop the Azure apt mirror from the runner image
         # Before the first apt use: the tool installs below and the install tests' real apt installs
-        # (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.sh).
+        # (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.py, run by the system python3).
         if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
-        run: scripts/ci/drop-azure-apt-mirror.sh
+        run: /usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}

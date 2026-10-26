@@ -572,7 +572,7 @@ class DecisionTest(unittest.TestCase):
             "gh-auth": ([("scripts/gh-auth.sh", "x\n")], "true"),
             "scripts-lib": ([("scripts/lib/x.sh", "x\n")], "true"),
             # The job runs it before setup.sh's apt installs (U102).
-            "apt-mirror-script": ([("scripts/ci/drop-azure-apt-mirror.sh", "x\n")], "true"),
+            "apt-mirror-script": ([("scripts/ci/drop-azure-apt-mirror.py", "x\n")], "true"),
             "setup": ([("setup.sh", "x\n")], "true"),
         }
         with tempfile.TemporaryDirectory() as temp:

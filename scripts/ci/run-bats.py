@@ -23,7 +23,7 @@ import time
 
 # Passing Ubuntu client runs spend 66-103 s on their slowest test (`[ubuntu-client] misc`); the 796-1077 s outliers
 # (ghostty, misc) fetched from a slow azure.archive.ubuntu.com node (actions/runner-images#14823), which CI now drops
-# (scripts/ci/drop-azure-apt-mirror.sh). Twice the bound (one earlier test as slow as it allows, then the stalled
+# (scripts/ci/drop-azure-apt-mirror.py). Twice the bound (one earlier test as slow as it allows, then the stalled
 # one) plus what the other tests take (at most 284 s measured) stays under the `Run unit test` step's timeout-minutes,
 # so a stalled test is named and diagnosed before the step is stopped (tests/unit/test_apt_mirror.py BoundOrderTest).
 DEFAULT_BOUND = 600

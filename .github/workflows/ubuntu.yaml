@@ -81,8 +81,8 @@ jobs:
           persist-credentials: false
 
       - name: Drop the Azure apt mirror from the runner image
-        # Before setup.sh's apt installs (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.sh).
-        run: scripts/ci/drop-azure-apt-mirror.sh
+        # Before setup.sh's apt installs (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.py, run by the system python3).
+        run: /usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py
 
       - name: Setup dotfiles and verify rerun
         env:

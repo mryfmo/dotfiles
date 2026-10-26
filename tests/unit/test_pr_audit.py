@@ -35,7 +35,6 @@ MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FAKE_CODEX = ROOT / "tests/fixtures/pr-audit/fake-codex.py"
 INJECT_PYTHON = ROOT / "tests/fixtures/pr-audit/inject-python.sh"
-PAUSE_AFTER_LAUNCH = ROOT / "tests/fixtures/pr-audit/pause-after-launch.bash"
 RULES = "## Audit\n\nThe standing audit rules.\n"
 BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
 
@@ -386,70 +385,28 @@ class PrAuditTest(unittest.TestCase):
         self.assert_stopped(run, 2, "no codex on PATH")
         self.assertFalse((self.rec / "gh-calls").exists())
 
-    def test_a_signal_between_the_launch_and_the_pid_stops_supervisor_and_codex(self):
-        """U71b audit round 11: TERM or HUP after the lever launched the supervisor but before `codex_pid=$!` found no
-        pid, so the lever exited and left the supervisor and codex running. The signal is now held until the pid is
-        known; the lever now finds the supervisor in its job table. A BASH_ENV fixture pauses the lever between the
-        `codex exec` supervisor's launch and its `wait`."""
-        for signum in (signal.SIGTERM, signal.SIGHUP):
-            with self.subTest(signal=signum.name):
-                for path in self.tmp.iterdir():
-                    shutil.rmtree(path)
-                (self.rec / "codex-calls").unlink(missing_ok=True)
-                marker = self.root / f"codex-still-ran-{signum.name}"
-                pidfile = self.root / f"lever-{signum.name}.pid"
-                lever = subprocess.Popen(
-                    [str(LEVER), "7"],
-                    cwd=self.repo,
-                    env={
-                        **self.env,
-                        "BASH_ENV": str(PAUSE_AFTER_LAUNCH),
-                        "PR_AUDIT_TEST_PAUSE_FILE": str(pidfile),
-                        "PR_AUDIT_TIMEOUT": "600",
-                        "FAKE_CODEX_HANG": str(marker),
-                    },
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                deadline = time.monotonic() + 60
-                while not pidfile.exists():
-                    self.assertIsNone(lever.poll(), "the lever ended before it launched codex exec")
-                    self.assertLess(time.monotonic(), deadline)
-                    time.sleep(0.02)
-                os.kill(int(pidfile.read_text()), signum)  # inside the 2 s window before `wait "$!"`
-                stdout, stderr = lever.communicate(timeout=60)
-                self.assertEqual(lever.returncode, 128 + signum, stderr)
-                self.assertEqual(stdout, "")
-                self.assertIn(f"stopped by SIG{signum.name[3:]}", stderr)
-                time.sleep(4)
-                self.assertFalse(marker.exists(), "codex outlived a signal sent before its supervisor's pid was known")
-
     def test_a_signal_before_the_cleanup_trap_still_removes_the_run_directory(self):
-        """The run directory's creation and the EXIT trap that removes it are one held window too."""
-        pidfile = self.root / "lever-mktemp.pid"
+        """The run directory's creation and the EXIT trap that removes it are one held window: a TERM that arrives while
+        `mktemp` runs (a wrapper that pauses 2 s) is acted on once the trap is set, so the directory is removed."""
+        ready = self.root / "mktemp-running"
+        path = self.failing_tool("mktemp", "*pr-audit-7*", f': > "{ready}"; sleep 2; exec "$REAL" "$@"')
         lever = subprocess.Popen(
             [str(LEVER), "7"],
             cwd=self.repo,
-            env={
-                **self.env,
-                "BASH_ENV": str(PAUSE_AFTER_LAUNCH),
-                "PR_AUDIT_TEST_PAUSE_FILE": str(pidfile),
-                "PR_AUDIT_TEST_PAUSE_COMMAND": "trap cleanup EXIT",
-                "PR_AUDIT_TEST_PAUSE_AT": "1",
-            },
+            env={**self.env, "PATH": path},
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
         deadline = time.monotonic() + 60
-        while not pidfile.exists():
+        while not ready.exists():
             self.assertIsNone(lever.poll(), "the lever ended before it made the run directory")
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.02)
-        os.kill(int(pidfile.read_text()), signal.SIGTERM)
+        os.kill(lever.pid, signal.SIGTERM)
         _, stderr = lever.communicate(timeout=60)
         self.assertEqual(lever.returncode, 143, stderr)
+        self.assertIn("stopped by SIGTERM; no codex was running", stderr)
         self.assertEqual(list(self.tmp.iterdir()), [], "the run directory made before the trap is removed")
         self.assertEqual(self.codex_calls(), [])
 
@@ -1005,20 +962,24 @@ class PrAuditTest(unittest.TestCase):
 
     def test_a_failed_subreaper_refuses(self):
         """The prctl that makes the supervisor the subreaper must succeed on Linux (shown here as Linux on any host)."""
-        code = (
-            "import ctypes, sys\n"
-            "sys.platform = 'linux'\n"
-            "class Libc:\n"
-            "    def prctl(self, *args):\n"
-            "        ctypes.set_errno(1)\n"
-            "        return -1\n"
-            "ctypes.CDLL = lambda *a, **k: Libc()\n"
-        )
-        run = self.run_lever("7", **self.injected(code))
-        self.assert_stopped(
-            run, 2, "codex's supervisor failed (subreaper: PermissionError: [Errno 1] Operation not permitted)"
-        )
-        self.assertEqual(self.codex_calls(), [], "codex never ran")
+        for option, reason in ((36, "subreaper"), (1, "parent death signal")):
+            with self.subTest(prctl=option):
+                code = (
+                    "import ctypes, sys\n"
+                    "sys.platform = 'linux'\n"
+                    "class Libc:\n"
+                    "    def prctl(self, option, *args):\n"
+                    f"        if option != {option}:\n"
+                    "            return 0\n"
+                    "        ctypes.set_errno(1)\n"
+                    "        return -1\n"
+                    "ctypes.CDLL = lambda *a, **k: Libc()\n"
+                )
+                run = self.run_lever("7", **self.injected(code))
+                self.assert_stopped(
+                    run, 2, f"codex's supervisor failed ({reason}: PermissionError: [Errno 1] Operation not permitted)"
+                )
+                self.assertEqual(self.codex_calls(), [], "codex never ran")
 
     def test_a_signal_during_a_wait_that_returns_wins_over_codex_status(self):
         """U71b audit round 14 (P3): a TERM recorded while the last wait() returned was ignored and the run exited 0."""
@@ -1185,6 +1146,116 @@ class PrAuditTest(unittest.TestCase):
         run = self.run_lever("7", PR_AUDIT_TIMEOUT="1", FAKE_CODEX_HANG=str(marker), **self.injected(code))
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("codex exec exited 124", run.stderr)
+
+    def test_a_kill_to_the_lever_still_stops_codex(self):
+        """U71b audit round 16: codex's safety must not rest on the lever. SIGKILL the lever during `codex exec`: the
+        supervisor sees its parent change (and on Linux gets its parent-death SIGTERM) and stops codex's group."""
+        marker = self.root / "orphaned-codex-ran"
+        lever = subprocess.Popen(
+            [str(LEVER), "7"],
+            cwd=self.repo,
+            env={
+                **self.env,
+                "PR_AUDIT_TIMEOUT": "600",
+                "FAKE_CODEX_HANG": str(marker),
+                "FAKE_CODEX_HANG_DELAY": "20",
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + 60
+        while not any(c["argv"][:1] == ["exec"] for c in self.codex_calls()):
+            self.assertIsNone(lever.poll(), "the lever ended before codex exec ran")
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.05)
+        record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
+        lever.kill()
+        lever.communicate(timeout=30)
+        killed = time.monotonic()
+        while time.monotonic() - killed < 5 + 1:
+            alive = []
+            for pid in (record["pid"], record["child_pid"]):
+                try:
+                    os.kill(pid, 0)
+                    alive.append(pid)
+                except ProcessLookupError:
+                    pass
+            if not alive:
+                break
+            time.sleep(0.1)
+        self.assert_gone(record["pid"], record["child_pid"])
+
+    def test_the_signal_handler_reports_a_failed_job_lookup_honestly(self):
+        """U71b audit round 16: a `jobs -p` that failed looked like an empty job list and the lever still claimed codex
+        was stopped. The handler, run on its own in a plain bash with `jobs` replaced, now says what it knows."""
+        source = LEVER.read_text()
+        functions = "".join(
+            source[source.index(f"{name}() {{") : source.index("\n}\n", source.index(f"{name}() {{")) + 3]
+            for name in ("report_survivors", "stop_on_signal")
+        )
+        work = self.root / "handler-work"
+        work.mkdir()
+        cases = (
+            ("jobs() { return 42; }", "could not find codex's supervisor; it stops itself when the lever exits"),
+            ("jobs() { return 0; }", "no codex was running"),
+            ("sleep 30 &", "codex was stopped"),
+        )
+        for setup, message in cases:
+            with self.subTest(setup=setup):
+                script = f"lever=pr-audit.sh\nwork={work}\n{functions}\n{setup}\nstop_on_signal TERM 15\n"
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script], capture_output=True, text=True, timeout=60, check=False
+                )
+                self.assertEqual(run.returncode, 143, run.stderr)
+                self.assertIn(f"stopped by SIGTERM; {message}", run.stderr)
+                if message != "codex was stopped":
+                    self.assertNotIn("codex was stopped", run.stderr)
+
+    def test_exported_shell_functions_reach_no_builtin_of_the_lever(self):
+        """U71b audit round 16: bash imports exported functions (BASH_FUNC_<name>%%) before the first line runs. The
+        lever's interpreter is `/bin/bash -p`, which imports none."""
+        hijack = {
+            "BASH_FUNC_jobs%%": "() { echo hijacked-jobs >&2; return 1; }",
+            "BASH_FUNC_command%%": "() { echo hijacked-command >&2; return 1; }",
+        }
+        run = self.run_lever("7", **hijack)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("hijacked", run.stderr)
+        for path in self.tmp.iterdir():
+            shutil.rmtree(path)
+        (self.rec / "codex-calls").unlink(missing_ok=True)
+        marker = self.root / "hijacked-jobs-codex-ran"
+        lever = subprocess.Popen(
+            [str(LEVER), "7"],
+            cwd=self.repo,
+            env={**self.env, **hijack, "PR_AUDIT_TIMEOUT": "600", "FAKE_CODEX_HANG": str(marker)},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + 60
+        while not any(c["argv"][:1] == ["exec"] for c in self.codex_calls()):
+            self.assertIsNone(lever.poll(), "the lever ended before codex exec ran")
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.05)
+        lever.send_signal(signal.SIGTERM)
+        _, stderr = lever.communicate(timeout=60)
+        self.assertEqual(lever.returncode, 143, stderr)
+        self.assertIn("stopped by SIGTERM; codex was stopped", stderr)
+
+    def test_a_run_through_another_shell_is_refused(self):
+        run = subprocess.run(
+            ["/bin/bash", str(LEVER), "7"],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assert_stopped(run, 2, "run it by its path")
+        self.assertFalse((self.rec / "gh-calls").exists())
 
     def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
         code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"

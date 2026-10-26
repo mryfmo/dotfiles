@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # @file pr-audit.sh
 # @brief Audit one pull request head with a fresh `codex exec` that keeps the ChatGPT login and cannot read credentials, the Codex audit route.
 # @description
@@ -87,6 +87,17 @@
 # @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.
 # @example
 #   ~/.local/bin/common/pr-audit.sh 547
+# The interpreter is /bin/bash in privileged mode (`-p`, U71b audit round 16): bash then imports no function from the
+# environment (a caller's exported `BASH_FUNC_jobs%%` or `BASH_FUNC_command%%` would otherwise replace a builtin
+# before the first line runs) and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE. Measured on macOS's
+# /bin/bash 3.2.57 and Ubuntu's /bin/bash 5.2.21: with `-p` an exported `jobs` stays the builtin, without it the
+# function wins. The decision has to be made by the shebang: any check or re-exec written in the script runs in a shell
+# that has already imported the functions, and the builtins it would use (exec, compgen, unset) can be among them.
+# A run without `-p` (`bash pr-audit.sh` by hand) is refused; its caller already chose the shell.
+if [[ $- != *p* ]]; then
+    echo "pr-audit.sh: refused: run it by its path (its interpreter is /bin/bash -p), not through another shell" >&2
+    exit 2
+fi
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -251,6 +262,10 @@ git_tree() {
 #   descendants just before it signals, and after the cleanup writes every one still alive (same pid, same command)
 #   to `<mark>.survivors`, which the lever prints as a warning; a process already reparented away (a double fork) is
 #   not in the snapshot. A `ps` that fails is a failed step like any other (exit 125).
+# - The supervisor stops codex by itself when the lever goes away (U71b audit round 16: the lever's own signal
+#   handling had failed silently when its job lookup failed). It records its parent at start; on Linux it also asks for
+#   SIGTERM when that parent dies (prctl PR_SET_PDEATHSIG; a failure refuses); on both OSes every wait slice compares
+#   getppid() with the recorded parent, and a change counts as a recorded SIGTERM, so the stop runs.
 # - Exit, decided once after the wait loop by one rule: a recorded signal gives 128 + its number, else a deadline that
 #   has passed gives 124 (also when the last wait returned after it), else codex's own status. A launch
 #   that fails (setsid or exec in the child raise in the parent), a stop step that raised (killpg with any error but
@@ -269,6 +284,7 @@ import time
 GRACE = 5
 SLICE = 0.2
 PR_SET_CHILD_SUBREAPER = 36
+PR_SET_PDEATHSIG = 1
 STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 pending = []
 
@@ -293,11 +309,15 @@ def killpg(pid, sig):
         pass
 
 
-def become_subreaper():
+def prctl(option, value):
     libc = ctypes.CDLL(None, use_errno=True)
-    if libc.prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) != 0:
+    if libc.prctl(option, value, 0, 0, 0) != 0:
         number = ctypes.get_errno()
         raise OSError(number, os.strerror(number))
+
+
+def become_subreaper():
+    prctl(PR_SET_CHILD_SUBREAPER, 1)
 
 
 def live_children():
@@ -419,16 +439,24 @@ def stop_group(proc, errors):
 
 
 def main():
+    parent = os.getppid()
     seconds = int(sys.argv[1])
     argv = sys.argv[3:]
     for sig in STOP_SIGNALS:
         signal.signal(sig, on_signal)
     if sys.platform.startswith("linux"):
         try:
+            prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+        except BaseException as error:
+            write_mark([f"parent death signal: {type(error).__name__}: {error}"])
+            return 125
+        try:
             become_subreaper()
         except BaseException as error:
             write_mark([f"subreaper: {type(error).__name__}: {error}"])
             return 125
+    if os.getppid() != parent:
+        on_signal(signal.SIGTERM, None)
     try:
         proc = subprocess.Popen(argv, start_new_session=True)
     except (OSError, subprocess.SubprocessError) as error:
@@ -440,6 +468,10 @@ def main():
         end = time.monotonic() + seconds
         status = None
         while not pending and time.monotonic() < end:
+            # The lever is gone (its parent changed: a KILL, a crash, a lost job lookup): stop as on its TERM.
+            if os.getppid() != parent:
+                on_signal(signal.SIGTERM, None)
+                break
             try:
                 status = proc.wait(timeout=max(0.0, min(SLICE, end - time.monotonic())))
             except subprocess.TimeoutExpired:
@@ -507,7 +539,8 @@ codex_scratch() {
 # creation until the EXIT trap that removes it is set; it is held: a signal inside it is only recorded, and
 # release_signals acts on it at once.
 signal_hold=0
-signal_pending=''
+signal_pending_name=''
+signal_pending_number=''
 
 # @description Print the processes the supervisor saw under it before its cleanup and found alive after it (detection
 #   only, best effort: a process that double-forked away before the snapshot is not listed). On Linux the subreaper
@@ -523,22 +556,29 @@ report_survivors() {
 }
 
 # @description Stop the running supervisor, if any (the lever's only background job; it stops codex's whole process
-#   group), wait for it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be
-#   caught: a KILL to the lever leaves the supervisor running, which still stops the group at its deadline; a KILL to
-#   the supervisor itself leaves the group unsupervised (residual).
+#   group), wait for it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. Codex's safety
+#   does not rest on this bookkeeping (U71b audit round 16): the supervisor stops codex by itself when the lever goes
+#   away, so a failed job lookup is reported as such and the lever exits; it claims codex was stopped only after it
+#   waited for the supervisor. A KILL to the lever is caught by the supervisor the same way; a KILL to the supervisor
+#   itself leaves the group unsupervised (residual).
 # @arg $1 string The signal's name.
 # @arg $2 int The signal's number.
 stop_on_signal() {
     local jobs_running
     trap '' INT TERM HUP
-    jobs_running=$(jobs -p) || jobs_running=''
-    if [[ -n ${jobs_running} ]]; then
-        # Word splitting is meant: one pid per word.
-        # shellcheck disable=SC2086
-        kill -TERM ${jobs_running} 2> /dev/null || true
-        wait 2> /dev/null || true
-        report_survivors
+    if ! jobs_running=$(jobs -p); then
+        echo "${lever}: stopped by SIG$1; could not find codex's supervisor; it stops itself when the lever exits" >&2
+        exit $((128 + $2))
     fi
+    if [[ -z ${jobs_running} ]]; then
+        echo "${lever}: stopped by SIG$1; no codex was running and no verdict was written" >&2
+        exit $((128 + $2))
+    fi
+    # Word splitting is meant: one pid per word.
+    # shellcheck disable=SC2086
+    kill -TERM ${jobs_running} 2> /dev/null || true
+    wait 2> /dev/null || true
+    report_survivors
     echo "${lever}: stopped by SIG$1; codex was stopped and no verdict was written" >&2
     exit $((128 + $2))
 }
@@ -548,7 +588,10 @@ stop_on_signal() {
 # @arg $2 int The signal's number.
 on_signal() {
     if ((signal_hold)); then
-        [[ -n ${signal_pending} ]] || signal_pending="$1 $2"
+        if [[ -z ${signal_pending_name} ]]; then
+            signal_pending_name=$1
+            signal_pending_number=$2
+        fi
         return 0
     fi
     stop_on_signal "$1" "$2"
@@ -561,16 +604,14 @@ hold_signals() {
 
 # @description Close the held window and act on a signal recorded inside it.
 release_signals() {
-    local name number
     signal_hold=0
-    if [[ -n ${signal_pending} ]]; then
-        read -r name number <<< "${signal_pending}"
-        stop_on_signal "${name}" "${number}"
+    if [[ -n ${signal_pending_name} ]]; then
+        stop_on_signal "${signal_pending_name}" "${signal_pending_number}"
     fi
 }
-trap 'on_signal INT 2' INT
-trap 'on_signal TERM 15' TERM
-trap 'on_signal HUP 1' HUP
+trap 'on_signal INT 2' INT || refuse 'cannot set the INT trap'
+trap 'on_signal TERM 15' TERM || refuse 'cannot set the TERM trap'
+trap 'on_signal HUP 1' HUP || refuse 'cannot set the HUP trap'
 
 # @description Print the physical path of the existing path $1 (perl `realpath`); exit 1 when it cannot be resolved.
 # @arg $1 path An existing path.
@@ -699,7 +740,7 @@ IFS=$'\t' read -r state base want pr_url <<< "${view}"
 codex_started=0
 hold_signals
 run=$(mktemp -d "${TMPDIR:-/tmp}/pr-audit-${pr}.XXXXXX") || fail 'mktemp failed'
-trap cleanup EXIT
+trap cleanup EXIT || fail 'cannot set the cleanup trap'
 release_signals
 run=$(cd "${run}" && pwd -P) || fail "cannot resolve the run directory"
 work=${run}/work

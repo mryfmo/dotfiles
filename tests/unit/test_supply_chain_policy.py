@@ -470,8 +470,11 @@ main
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
-        # The agmsg retire step left with herdr-agents (U72): the apply is the first step of the tree update.
-        self.assertTrue(tree.startswith("\tchezmoi apply --verbose\n"), tree[:200])
+        # The agmsg retire step left with herdr-agents (U72); since U96 the apply follows only the externals' verified
+        # fetch into chezmoi's cache, which changes no target.
+        prefetch = "\tbash -c 'source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi'\n"
+        steps = [line for line in tree.splitlines(keepends=True) if not line.startswith("\t@#")]
+        self.assertEqual([prefetch, "\tchezmoi apply --verbose\n"], steps[:2], tree[:300])
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:

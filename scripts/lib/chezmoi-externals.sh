@@ -128,7 +128,7 @@ function prefetch_chezmoi_external() {
         # A request curl could not make (bad option, URL or protocol) or a write error is not a network failure, and
         # an HTTP 4xx other than a timeout or a rate limit will answer the same way again.
         retry=1
-        case "${status}/${code}" in
+        case "${status}/${code}" in # lint-comparisons: allow curl's exit status and HTTP code, not a path
         1/* | 2/* | 3/* | 23/* | 27/* | 22/4[0-9][0-9]) [[ "${code}" =~ ^(408|429)$ ]] || retry=0 ;;
         esac
         if [ "${retry}" -eq 0 ] || [ "${attempt}" -ge "${CHEZMOI_EXTERNAL_ATTEMPTS}" ]; then
@@ -220,8 +220,8 @@ function prefetch_chezmoi_externals() {
         printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
         return 0
     fi
-    source="$("${chezmoi}" source-path)" || {
-        printf 'chezmoi externals: chezmoi source-path failed\n' >&2
+    source="$("${chezmoi}" source-path)" && [ -d "${source}" ] || {
+        printf 'chezmoi externals: chezmoi source-path failed or named no directory\n' >&2
         return 1
     }
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || return 1

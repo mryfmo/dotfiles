@@ -284,6 +284,15 @@ class PinnedLintToolsTest(unittest.TestCase):
                             pin_line(tool, version), f"{pin_line(tool, version)}\n{pin_line(tool, version)}"
                         ),
                     ),
+                    # Round-6 audit of 000e9faa: an indented duplicate was not read, so the first pin passed alone.
+                    (
+                        "twice, indented",
+                        text.replace(pin_line(tool, version), f'{pin_line(tool, version)}\n    version = "{version}"')
+                        if TOOLS[tool][0].startswith("http:")
+                        else text.replace(
+                            pin_line(tool, version), f"{pin_line(tool, version)}\n  {pin_line(tool, version)}"
+                        ),
+                    ),
                 ):
                     broken = self.scratch / "broken.toml"
                     broken.write_text(body)
@@ -424,9 +433,7 @@ SHELL_SET = [
     "home/dot_local/bin/executable_tool",
     # Round-4 audit of 3b293cd5: the interpreter is a token, so a comment naming zsh does not exclude the script.
     "home/env-comment",
-    "home/env-i",
     "home/env-split",
-    "home/env-u",
     "home/locked/inner.sh",
     "home/modify_config.yml",
     "home/outside.sh",
@@ -445,8 +452,9 @@ EXCLUDED = (
     "home/zsh-env",
     "tests/install/t.bats",
     "home/run_once.sh.tmpl",
-    "home/dash-only",
     "home/executable_py",
+    "home/uv-tool",
+    "home/ruby-tool",
     "home/link.sh",
     "home/image.png",
 )
@@ -576,8 +584,9 @@ class LintFileSetTest(unittest.TestCase):
             "home/caf\u00e9.sh": "#!/bin/sh\necho cafe\n",
             'home/quote"d.sh': "#!/bin/sh\necho quoted\n",
             "home/tab\tname.sh": "#!/bin/sh\necho tab\n",
-            "home/env-i": "#!/usr/bin/env -i PATH=/x bash\necho i\n",
-            "home/env-u": "#!/usr/bin/env -u FOO sh\necho u\n",
+            # Recognised non-shell forms the repository uses: no word names bash or sh.
+            "home/uv-tool": "#!/usr/bin/env -S uv run --no-cache --script\nprint( 'bad' )\n",
+            "home/ruby-tool": "#!/usr/bin/env ruby\nputs( 'bad' )\n",
             "home/locked/inner.sh": "#!/usr/bin/env bash\necho inner\n",
             "home/zsh-abs": bad.replace("/usr/bin/env bash", "/bin/zsh"),
             "home/zsh-env": bad.replace("bash", "zsh"),
@@ -587,7 +596,6 @@ class LintFileSetTest(unittest.TestCase):
             "home/zsh-script.sh": bad.replace("/usr/bin/env bash", "/bin/zsh"),
             "tests/install/t.bats": bad,
             "home/run_once.sh.tmpl": bad,
-            "home/dash-only": bad.replace("/usr/bin/env bash", "/bin/dash"),
             "home/executable_py": "#!/usr/bin/env python3\nprint( 'bad' )\n",
             "tool.py": "print(1)\n",
             "notes.md": "# notes\n",
@@ -766,12 +774,44 @@ class LintFileSetTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(dotted(SHELL_SET), sorted(result.stdout.splitlines()))
 
-    def test_an_env_option_it_does_not_know_stops_the_shell_set(self):
-        (self.repo / "home/env-unknown").write_text("#!/usr/bin/env --frobnicate bash\necho x\n")
-        self.git("add", "--", "home/env-unknown")
-        self.assert_stops(
-            "cannot tell the interpreter of home/env-unknown: its env shebang carries an option this script does not know"
+    def test_a_shebang_mentioning_a_shell_in_an_unrecognised_form_stops_the_shell_set(self):
+        # Round-6 audit of 000e9faa: emulating env's grammar missed `env -S -- NAME=value bash`. The forms are a closed
+        # set now, and any other shebang that names bash or sh fails closed instead of being parsed.
+        for first in (
+            "#!/usr/bin/env -S -- NAME=value bash",
+            "#!/usr/bin/env -i PATH=/x bash",
+            "#!/usr/bin/env -u FOO sh",
+            "#!/usr/bin/env --frobnicate bash",
+            "#!/usr/bin/env -Sbash",
+            "#!/usr/local/bin/bash",
+            "#!/opt/homebrew/bin/bash -e",
+            "#!/usr/bin/env --split-string=sh",
+            "#!/bin/dash",
+            "#!/usr/bin/env -S zsh -f",
+        ):
+            with self.subTest(first):
+                for extension in ("", ".sh"):
+                    name = f"home/unrecognised{extension}"
+                    (self.repo / name).write_text(f"{first}\necho x\n")
+                    self.git("add", "--", name)
+                    self.assert_stops(
+                        f"{name}: unrecognised shebang form; add it to the recognised forms in "
+                        "scripts/ci/run-on-lint-files.sh"
+                    )
+                    self.git("rm", "-q", "--cached", "--", name)
+                    (self.repo / name).unlink()
+
+    def test_every_shebang_the_repository_uses_is_a_recognised_form(self):
+        # The closed set covers the tree: the real shell set lists without a refusal.
+        result = subprocess.run(
+            [str(RUNNER), "shell", "true"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
         )
+        self.assertEqual(0, result.returncode, result.stderr)
 
     def test_an_unmerged_index_stops_every_set(self):
         blob = (

@@ -21,7 +21,8 @@
 # @arg $@ string The command and its arguments, after the set; the set's paths are appended.
 # @exitcode 0 The command passed on the set.
 # @exitcode 2 An unknown set, no command, a failed listing, an unmerged index, a shell-set entry that cannot be decided
-#   (an unknown mode, a file the index holds that cannot be read, an env option this script does not know), or an
+#   (an unknown mode, a file the index holds that cannot be read, a shebang mentioning a shell in an unrecognised
+#   form), or an
 #   empty set: nothing was checked.
 # @exitcode * The command's own status otherwise.
 # @example
@@ -45,21 +46,26 @@ markdown) pathspecs=('*.md') ;;
 esac
 
 #
-# @description Name the interpreter a first line's shebang runs, by tokens (round-4 audit of 3b293cd5: a substring
-#   match read `env -S bash # zsh …` as zsh). The line must start with `#!`; the rest is split on blanks, as env -S
-#   splits its string and as macOS passes the words. The first token is the interpreter. When its basename is `env`,
-#   env's own words are skipped: `-S`/`--split-string` (the words after it are the split string), `-i`, `-0`, `-v`,
-#   `--ignore-environment`, `--null`, `--debug`, `-u NAME`/`-uNAME`/`--unset[=]NAME`, `-C DIR`/`-CDIR`/`--chdir[=]DIR`,
-#   `--`, and `NAME=VALUE`; the next word is the interpreter.
+# @description Classify a first line's shebang against a closed set of recognised forms (round-6 audit of 000e9faa).
+#   env's argument grammar is not emulated: two rounds of emulation still missed forms (`env -S -- NAME=v bash`).
+#   Instead the forms below are recognised, and any other shebang that mentions a shell fails closed, so no shell
+#   script can be silently left out. The line is split on blanks with globbing off; a word mentions a shell when its
+#   basename contains `bash` or ends in `sh`, which takes in `-Sbash`, `--split-string=sh`, dash, ksh and zsh in any
+#   form outside the recognised ones, whatever env option is glued to it.
+#   - shell: `#!/bin/bash`, `#!/bin/sh`, `#!/usr/bin/bash`, `#!/usr/bin/sh`, `#!/usr/bin/env bash`, `#!/usr/bin/env sh`
+#     and `#!/usr/bin/env -S bash` or `-S sh`, each with any blank-separated words after it. The repository uses
+#     `#!/usr/bin/env bash`, `#!/bin/bash` and `#!/bin/sh`.
+#   - zsh: `#!/bin/zsh`, `#!/usr/bin/zsh` and `#!/usr/bin/env zsh`, each with any words after it.
+#   - other: a shebang none of whose words mentions a shell (python3, ruby, node, `env -S uv run …`), or no shebang.
 # @arg $1 string The first line.
-# @set interpreter string The interpreter's basename; empty when the line has no shebang or names none.
-# @exitcode 0 Decided.
-# @exitcode 1 env carries an option this function does not know, so the interpreter cannot be told.
+# @set kind string shell, zsh or other.
+# @exitcode 0 Classified.
+# @exitcode 1 The shebang mentions a shell in a form outside the recognised set.
 #
-function shebang_interpreter() {
-    local line=$1 index=1 word IFS=$' \t'
+function shebang_kind() {
+    local line=$1 word IFS=$' \t'
     local -a words=()
-    interpreter=
+    kind=other
     [[ ${line} == '#!'* ]] || return 0
     # Word splitting on blanks, with globbing off so a `*` in the line stays a word; the noglob state is restored.
     if [[ $- == *f* ]]; then
@@ -72,36 +78,41 @@ function shebang_interpreter() {
         set +f
     fi
     ((${#words[@]} > 0)) || return 0
-    word=${words[0]}
-    if [[ ${word##*/} != env ]]; then
-        interpreter=${word##*/}
+    case ${words[0]} in
+    /bin/bash | /bin/sh | /usr/bin/bash | /usr/bin/sh)
+        kind=shell
         return 0
-    fi
-    while ((index < ${#words[@]})); do
-        word=${words[index]}
-        case ${word} in
-        --)
-            index=$((index + 1))
-            break
-            ;;
-        -S | --split-string | -i | -0 | -v | --ignore-environment | --null | --debug) ;;
-        -u | -C | --unset | --chdir) index=$((index + 1)) ;;
-        -u?* | -C?* | --unset=* | --chdir=*) ;;
-        -S?*)
-            # -Sbash: the split string starts inside the option word.
-            word=${word#-S}
-            interpreter=${word##*/}
+        ;;
+    /bin/zsh | /usr/bin/zsh)
+        kind=zsh
+        return 0
+        ;;
+    /usr/bin/env)
+        case ${words[1]:-} in
+        bash | sh)
+            kind=shell
             return 0
             ;;
-        -*) return 1 ;;
-        *=*) [[ ${word%%=*} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || break ;;
-        *) break ;;
+        zsh)
+            kind=zsh
+            return 0
+            ;;
+        -S)
+            case ${words[2]:-} in
+            bash | sh)
+                kind=shell
+                return 0
+                ;;
+            esac
+            ;;
         esac
-        index=$((index + 1))
+        ;;
+    esac
+    for word in "${words[@]}"; do
+        case ${word##*/} in
+        *bash* | *sh) return 1 ;;
+        esac
     done
-    if ((index < ${#words[@]})); then
-        interpreter=${words[index]##*/}
-    fi
 }
 
 #
@@ -114,9 +125,10 @@ function shebang_interpreter() {
 #     actions of the rest, and the scripts most of them include are in the set).
 #   - Every other regular entry is read: its first line comes from head, whose status is checked. A missing file, an
 #     unreadable one, an unsearchable parent or a read error stops the run; it is never an exclusion.
-#   - Included: a `*.sh` or `*.bash` file unless its shebang names zsh (shfmt does not parse zsh), and any file whose
-#     shebang's interpreter is exactly `bash` or `sh`. The extension wins over any other interpreter: a `*.sh` file
-#     with another shebang is checked, and shfmt says so if it is not shell. Only zsh takes a file back out.
+#   - The shebang is classified by shebang_kind; one that mentions a shell in an unrecognised form stops the run.
+#   - Included: any file with a recognised shell shebang, and a `*.sh` or `*.bash` file unless its shebang is a
+#     recognised zsh form (shfmt does not parse zsh). The extension wins over every other shebang: a `*.sh` file with
+#     a python or other shebang is checked, and shfmt says so if it is not shell. Only zsh takes a file back out.
 # @arg $1 string The index mode.
 # @arg $2 path The tracked path, relative to the repository root.
 # @set reason string Why the entry cannot be decided, when the function returns 2.
@@ -150,15 +162,16 @@ function in_shell_set() {
         reason="cannot read ${path} to tell whether it is a shell script"
         return 2
     fi
-    if ! shebang_interpreter "${first}"; then
-        reason="cannot tell the interpreter of ${path}: its env shebang carries an option this script does not know"
+    if ! shebang_kind "${first}"; then
+        reason="${path}: unrecognised shebang form; add it to the recognised forms in scripts/ci/run-on-lint-files.sh"
         return 2
     fi
-    [[ ${interpreter} != zsh ]] || return 1
+    [[ ${kind} != zsh ]] || return 1
+    [[ ${kind} != shell ]] || return 0
     case ${path} in # lint-comparisons: allow git ls-files paths, repository-relative and never resolved
     *.sh | *.bash) return 0 ;;
     esac
-    [[ ${interpreter} == bash || ${interpreter} == sh ]]
+    return 1
 }
 
 #

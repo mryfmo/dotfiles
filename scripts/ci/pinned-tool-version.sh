@@ -34,7 +34,8 @@ fi
 
 #
 # @description Print the version a config pins for one mise tool: the `version` line of its `[tools."<key>"]` table,
-#   or its `"<key>" = "<version>"` line under `[tools]`. Every match is printed, so a doubled pin reads as no pin.
+#   or its `"<key>" = "<version>"` line under `[tools]`, indented or not. Every match is printed, so a doubled pin,
+#   an indented duplicate included, reads as no pin.
 # @arg $1 string The mise tool key, such as http:shfmt or npm:prettier.
 # @stdout The matching values, one per line.
 # @exitcode 1 When awk cannot read the config.
@@ -42,14 +43,17 @@ fi
 function pinned_version() {
     awk -v key="$1" '
         /^[[:space:]]*\[/ { table = $0; sub(/[[:space:]]*(#.*)?$/, "", table); next }
-        table == "[tools.\"" key "\"]" && /^version[[:space:]]*=/ {
+        table == "[tools.\"" key "\"]" && /^[[:space:]]*version[[:space:]]*=/ {
             value = $0
-            sub(/^version[[:space:]]*=[[:space:]]*"/, "", value)
+            sub(/^[[:space:]]*version[[:space:]]*=[[:space:]]*"/, "", value)
             sub(/".*$/, "", value)
             print value
         }
-        table == "[tools]" && index($0, "\"" key "\"") == 1 {
-            value = substr($0, length(key) + 3)
+        table == "[tools]" && /^[[:space:]]*"/ {
+            entry = $0
+            sub(/^[[:space:]]*/, "", entry)
+            if (index(entry, "\"" key "\"") != 1) { next }
+            value = substr(entry, length(key) + 3)
             if (sub(/^[[:space:]]*=[[:space:]]*"/, "", value)) { sub(/".*$/, "", value) } else { value = "" }
             print value
         }

@@ -361,7 +361,14 @@ AUDIT_REQUIRED = {
 
 
 def render_codex_audit_config(manifest: dict[str, Any]) -> str:
-    """pr-audit.sh's CODEX_HOME config: model pin, no skills or web search, the `audit` permission profile as default.
+    """pr-audit.sh's CODEX_HOME config: model pin, no skills, web search or project instructions, the `audit`
+    permission profile as default.
+
+    Project instructions are off (U71b audit round 21): the audit rules arrive in the prompt, so codex must load no
+    AGENTS.md from its cwd or an ancestor. Codex's config reference (developers.openai.com/codex/config-reference)
+    documents `project_doc_max_bytes`, `project_doc_fallback_filenames` and `project_root_markers`; in codex-rs
+    core/src/agents_md.rs a budget of 0 returns before any discovery, and an empty marker list disables the walk to
+    a project root.
 
     The path keys keep their manifest spelling (`~/<path>`, `/<path>`, `$AUDIT_TREE`, `$AUDIT_CWD`, `$CODEX_HOME`,
     `$CODEX_LOGIN_HOME`, or one of Codex's `:root`, `:minimal`, `:tmpdir`, `:slash_tmp`); the lever resolves them per
@@ -398,6 +405,9 @@ def render_codex_audit_config(manifest: dict[str, Any]) -> str:
         f"model = {quote_toml(profile['codex']['model'])}",
         f"model_reasoning_effort = {quote_toml(profile['codex']['model_reasoning_effort'])}",
         'web_search = "disabled"',
+        "project_doc_max_bytes = 0",
+        "project_doc_fallback_filenames = []",
+        "project_root_markers = []",
         "",
         "[skills]",
         "include_instructions = false",

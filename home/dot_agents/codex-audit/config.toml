@@ -6,6 +6,9 @@ default_permissions = "audit"
 model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 web_search = "disabled"
+project_doc_max_bytes = 0
+project_doc_fallback_filenames = []
+project_root_markers = []
 
 [skills]
 include_instructions = false

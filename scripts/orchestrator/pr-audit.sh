@@ -8,7 +8,8 @@
 #   lever runs, the fetch included. `<pr>` is decimal and checked before the first `gh` call. The
 #   lever reads `gh pr view <pr> --json state,baseRefName,headRefOid,url` (any state: a merged pull request can be
 #   re-read) and refuses unless the base is `main`. Everything the lever writes lives in one run directory
-#   `$TMPDIR/pr-audit-<pr>.XXXXXX`; nothing in the checkout, its git directory or the caller's HOME is written, with
+#   `<root>/pr-audit-<pr>.XXXXXX`, the root being TMPDIR (default /tmp) by its physical path and refused when it
+#   or an ancestor holds `.git`, `AGENTS.md` or `AGENTS.override.md`; nothing in the checkout, its git directory or the caller's HOME is written, with
 #   one exception that is Codex's, not the lever's: the Codex process (unsandboxed; the permission profile binds only
 #   the commands it runs) refreshes a stale ChatGPT session in place through the login link, so the caller's
 #   `${CODEX_HOME:-~/.codex}/auth.json` may be rewritten. That is the supported pattern
@@ -761,6 +762,17 @@ template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template
 # The allowlist (U71b audit round 4): nothing is readable unless an entry opens it.
 root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
 ((root_denies == 1)) || refuse "${template} does not deny :root once; the audit profile must be an allowlist"
+# No project instructions (U71b audit round 21): the rules arrive in the prompt, so codex loads no AGENTS.md from its
+# cwd or an ancestor. Each setting must stand once before the first table, where it is a top-level key.
+preamble=${template_text%%$'\n['*}
+for setting in 'project_doc_max_bytes = 0' 'project_doc_fallback_filenames = []' 'project_root_markers = []'; do
+    count=0
+    while IFS= read -r line; do
+        [[ ${line} != "${setting}" ]] || count=$((count + 1))
+    done <<< "${preamble}"
+    ((count == 1)) ||
+        refuse "${template} does not set ${setting} once before its first table; codex would load AGENTS.md instructions"
+done
 
 repo=$(git_safe rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout'
 common=$(git_safe -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
@@ -775,9 +787,24 @@ IFS=$'\t' read -r state base want pr_url <<< "${view}"
 [[ ${want} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${want}"
 [[ ${base} == main ]] || refuse "pull request ${pr} targets ${base:-nothing}, not main"
 
+# The scratch root (U71b audit round 21): TMPDIR (default /tmp) by its physical path. Codex walks up from its cwd to
+# the nearest `.git` and reads every AGENTS.md or AGENTS.override.md on the way, so a root inside a checkout would
+# hand it the caller's or the head's instructions. Builtins walk every ancestor of the root, the root and `/`
+# included, before anything is created there; the run directory below it holds only what the lever makes. Each
+# ancestor is searchable (the root was reached through it), so a test that finds nothing means nothing is there.
+scratch_root=$(cd -P -- "${TMPDIR:-/tmp}" && pwd -P) || refuse "cannot resolve the scratch root ${TMPDIR:-/tmp}"
+dir=${scratch_root}
+while :; do
+    for name in .git AGENTS.md AGENTS.override.md; do
+        [[ ! -e ${dir}/${name} && ! -L ${dir}/${name} ]] ||
+            refuse "the scratch root ${scratch_root} lies under ${dir:-/}, which holds ${name}; codex would read instructions from it (set TMPDIR outside every checkout)"
+    done
+    [[ -n ${dir} ]] || break
+    dir=${dir%/*}
+done
 codex_started=0
 hold_signals
-run=$(mktemp -d "${TMPDIR:-/tmp}/pr-audit-${pr}.XXXXXX") || fail 'mktemp failed'
+run=$(mktemp -d "${scratch_root}/pr-audit-${pr}.XXXXXX") || fail 'mktemp failed'
 trap cleanup EXIT || fail 'cannot set the cleanup trap'
 release_signals
 run=$(cd "${run}" && pwd -P) || fail "cannot resolve the run directory"

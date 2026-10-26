@@ -2398,5 +2398,60 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(evidence.read_text(), f'{FIELD}: "abc"\n')
 
 
+class ScanIdentifiersModeTest(unittest.TestCase):
+    """`--scan-identifiers` refuses a secret, a home path or a redact word, and never quotes what it found (U101)."""
+
+    def setUp(self) -> None:
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="scan-identifiers-test-"))
+        self.addCleanup(shutil.rmtree, self.temp_dir)
+        self.words = self.temp_dir / "redact-words.txt"
+        self.words.write_text("# host and user names\nmbp-kana\n\nOperator1\n")
+
+    def scan(self, *paths: Path, words: bool = True) -> "subprocess.CompletedProcess[str]":
+        args = ["--redact-words", str(self.words)] if words else []
+        return subprocess.run(
+            [sys.executable, str(VALIDATOR), "--scan-identifiers", *args, "--", *map(str, paths)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_each_kind_is_a_finding_and_a_clean_file_passes(self) -> None:
+        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        cases = {
+            "a secret pattern": f"token {token}\n",
+            "a home directory path": "ran in /Users/someone/x\n",
+            "redact word 1": "seen on MBP-KANA\n",
+            "redact word 2": '{"host": "operator1"}\n',
+        }
+        for finding, text in cases.items():
+            with self.subTest(finding):
+                path = self.temp_dir / "evidence.md"
+                path.write_text(text)
+                result = self.scan(path)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: {path}: {finding}\n")
+                self.assertNotIn(token, result.stderr)
+        clean = self.temp_dir / "clean.md"
+        clean.write_text("mbp-kanax and xoperator1 are other words; ~/x is masked\n")
+        result = self.scan(clean)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_redact_word_in_the_path_is_a_finding(self) -> None:
+        path = self.temp_dir / "notes-operator1.md"
+        path.write_text("clean\n")
+        self.assertEqual(self.scan(path).returncode, 1)
+        self.assertEqual(self.scan(path, words=False).returncode, 0)
+
+    def test_usage_and_unreadable_files_exit_2(self) -> None:
+        present = self.temp_dir / "present.md"
+        present.write_text("clean\n")
+        self.assertEqual(self.scan(self.temp_dir / "missing.md").returncode, 2)
+        self.assertEqual(self.scan().returncode, 2)
+        self.words.unlink()
+        self.assertEqual(self.scan(present).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

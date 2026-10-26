@@ -31,8 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def generator() -> Any:
     """scripts/generate-agent-configs.py, the one owner of the manifest's rendering rules and expected outputs.
 
-    Loaded on first use, never at import: `--mask-secrets` is a standalone mode that records-sync.sh runs from a tree
-    holding this script alone, and it needs nothing from the generator.
+    Loaded on first use, never at import: `--mask-secrets` and `--scan-identifiers` are standalone modes that
+    records-sync.sh runs from a tree holding this script alone, and they need nothing from the generator.
     """
     path = Path(__file__).resolve().parent / "generate-agent-configs.py"
     spec = importlib.util.spec_from_file_location("generate_agent_configs", path)
@@ -1986,6 +1986,74 @@ def mask_secrets(paths: list[str]) -> int:
     return status
 
 
+def redact_words(path: Path) -> list[str]:
+    """The literal words of a redact-words file: one per line, blank lines and `#` comments skipped."""
+    words = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        word = line.strip()
+        if word and not word.startswith("#"):
+            words.append(word)
+    return words
+
+
+def identifier_findings(path: Path, words: list[str]) -> list[str]:
+    """What --scan-identifiers refuses in one file, never quoting a redact word or a match.
+
+    The secret and home-path tests are validate_no_obvious_secrets()' (per key and string value of a JSON document,
+    the whole text otherwise). A redact word matches case-insensitively where no ASCII letter or digit adjoins it,
+    in the path as given and in the text; a finding names the word by its line number in the words file."""
+    data = path.read_bytes()
+    if b"\0" in data or data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return [f"{path}: not UTF-8 text"]
+    try:
+        text = data.decode()
+    except UnicodeDecodeError:
+        return [f"{path}: not UTF-8 text"]
+    strings = json_strings(text) or [text]
+    findings = []
+    if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
+        findings.append(f"{path}: a secret pattern")
+    if any(home_path_pattern().search(s) for s in (text, *strings)):
+        findings.append(f"{path}: a home directory path")
+    for number, word in enumerate(words, 1):
+        pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(word)}(?![A-Za-z0-9])", re.IGNORECASE)
+        if pattern.search(str(path)) or any(pattern.search(s) for s in (text, *strings)):
+            findings.append(f"{path}: redact word {number}")
+    return findings
+
+
+def scan_identifiers(args: list[str]) -> int:
+    """`--scan-identifiers [--redact-words <file>] [--] <files>`: 0 when no file names a secret, a home path or a
+    redact word; 1 listing each finding (records-sync.sh refuses its commit on it); 2 on usage or an unreadable file."""
+    words: list[str] = []
+    if args[:1] == ["--redact-words"]:
+        if len(args) < 2:
+            print("--scan-identifiers: --redact-words needs a file", file=sys.stderr)
+            return 2
+        try:
+            words = redact_words(Path(args[1]))
+        except (OSError, UnicodeDecodeError) as error:
+            print(f"--scan-identifiers: cannot read {args[1]}: {error}", file=sys.stderr)
+            return 2
+        args = args[2:]
+    if args[:1] == ["--"]:
+        args = args[1:]
+    if not args:
+        print("--scan-identifiers: no files", file=sys.stderr)
+        return 2
+    findings = []
+    for name in args:
+        try:
+            findings += identifier_findings(Path(name), words)
+        except OSError as error:
+            print(f"--scan-identifiers: cannot read {name}: {error}", file=sys.stderr)
+            return 2
+    for finding in findings:
+        print(f"--scan-identifiers: {finding}", file=sys.stderr)
+    print(f"scanned {len(args)} file(s): {len(findings)} finding(s), {len(words)} redact word(s)")
+    return 1 if findings else 0
+
+
 def validate_no_obvious_secrets() -> None:
     # CompactionDB uses intentional dummy credentials to exercise its redaction boundary.
     compactiondb_dummy_secret_fixtures = {
@@ -2089,4 +2157,6 @@ def main() -> None:
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--mask-secrets"]:
         raise SystemExit(mask_secrets(sys.argv[2:]))
+    if sys.argv[1:2] == ["--scan-identifiers"]:
+        raise SystemExit(scan_identifiers(sys.argv[2:]))
     main()

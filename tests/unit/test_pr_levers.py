@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import git_init, quiet_git_env  # noqa: E402
+from scratch_git import git_clone, git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVERS = ROOT / "scripts/orchestrator"
@@ -1282,6 +1282,156 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-8 "), run.stdout)
         self.assertEqual(self.git("rev-parse", "records/sync-7"), self.git("rev-parse", "main"), "left as it was")
+
+    def advance_main(self, *changes):
+        """Another clone moves origin/main past the checkout, which is never pulled (the operator's stale HEAD)."""
+        other = self.root / "other"
+        git_clone(self.origin, other, env=self.env)
+        for change in changes:
+            change(other)
+        self.git("add", "-A", cwd=other)
+        self.git("commit", "-q", "-m", "main moves on", cwd=other)
+        self.git("push", "-q", "origin", "HEAD:main", cwd=other)
+
+    def branch_changes(self, branch="records/sync-7"):
+        return self.git("diff", "--no-renames", "--name-status", "main", branch, cwd=self.origin).splitlines()
+
+    def test_a_stale_checkout_adds_nothing_main_lacks_and_a_store_deletion_is_synced(self):
+        """U101: sync 11 carried 99 untracked validation files of a checkout 60 commits behind origin/main. The copy
+        set is the store alone, compared with origin/main: the stale HEAD and the files outside the store do not
+        matter, and a file deleted from the store is deleted on the branch."""
+        self.github()
+        validation = self.repo / ".orchestration/validation"
+        validation.mkdir()
+        (validation / "old.md").write_text("old\n")
+        (self.records / "briefs").mkdir()
+        (self.records / "briefs/B1.md").write_text("brief\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "validation and a brief")
+        self.git("push", "-q", "origin", "main")
+
+        def drop_old_validation(other):
+            (other / ".orchestration/validation/old.md").unlink()
+            (other / "README").write_text("main's\n")
+
+        self.advance_main(drop_old_validation)
+        (validation / "old.md").write_text("old, edited in the checkout\n")  # tracked at the stale HEAD, gone on main
+        (validation / "new.md").write_text("an untracked validation file\n")
+        (self.repo / "README").write_text("the checkout's\n")
+        (self.records / "briefs/B1.md").unlink()  # deleted from the store, never with git rm
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            self.branch_changes(),
+            ["D\t.orchestration/orchestrate/prog/briefs/B1.md", "M\t.orchestration/orchestrate/prog/units.tsv"],
+        )
+        self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 files=2 "), run.stdout)
+
+    def test_a_validation_file_goes_in_only_when_named(self):
+        self.github()
+        validation = self.repo / ".orchestration/validation"
+        validation.mkdir()
+        (validation / "U101.md").write_text("named\n")
+        (validation / "other.md").write_text("not named\n")
+        for path, message in (
+            ("scripts/x.md", "outside .orchestration/validation/"),
+            (".orchestration/validation/absent.md", "names no regular file"),
+            (".orchestration/orchestrate/prog/units.tsv", "outside .orchestration/validation/"),
+        ):
+            with self.subTest(path):
+                self.assert_refused(self.run_lever("records-sync.sh", "--validation", path), message)
+        run = self.run_lever("records-sync.sh", "--validation", ".orchestration/validation/U101.md")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["A\t.orchestration/validation/U101.md"])
+
+    def test_a_push_instead_of_in_the_user_config_does_not_redirect_the_push(self):
+        """U101: the operator's global config rewrites https://github.com/ to an SSH URL for pushes, and the host has
+        no SSH key; the push, the commit and the gh steps read no user config, and the identity is read once."""
+        self.github()
+        gitconfig = Path(self.env["GIT_CONFIG_GLOBAL"])
+        with gitconfig.open("a") as config:
+            config.write(f'[url "/nonexistent-push-target/"]\n\tpushInsteadOf = {self.root}/\n')
+        refused = subprocess.run(
+            ["git", "push", "--dry-run", "origin", "main"],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(refused.returncode, 0, "the rewrite is live for a plain push")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        author = self.git("log", "-1", "--format=%an <%ae>", "records/sync-7", cwd=self.origin)
+        self.assertEqual(author, "t <t@example.invalid>")
+
+    def test_the_push_url_and_the_identity_are_checked_before_anything_is_created(self):
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.git("config", "url./elsewhere/.pushInsteadOf", f"{self.root}/")
+        self.assert_refused(self.run_lever("records-sync.sh"), "a url.* rewrite outside the user config")
+        self.git("config", "--unset", "url./elsewhere/.pushInsteadOf")
+        self.git("remote", "set-url", "origin", "git@github.com:acme/widgets.git")
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https (or local) origin URL")
+        self.git("remote", "set-url", "origin", str(self.origin))
+        anonymous = self.root / "anonymous.gitconfig"
+        anonymous.write_text("[init]\n\tdefaultBranch = main\n")
+        self.env["GIT_CONFIG_GLOBAL"] = str(anonymous)
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.name is unset")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+
+    def test_a_redact_word_in_a_store_file_refuses(self):
+        """U101: host and user names are refused even as bare words; the words file is never published."""
+        self.github()
+        (self.records / "redact-words.txt").write_text("# host and user names\nmbp-kana\n\noperator1\n")
+        cases = {
+            "in the text": ("notes.md", "the run went from MBP-Kana fine\n"),
+            "in a file name": ("notes-operator1.md", "clean\n"),
+        }
+        for case, (name, text) in cases.items():
+            with self.subTest(case):
+                (self.records / name).write_text(text)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn("redact word", run.stderr)
+                self.assertNotIn("mbp-kana", run.stderr.lower(), "the refusal never quotes a word")
+                self.assertNotIn("operator1", run.stderr.replace(name, ""))
+                self.assert_nothing_left()
+                (self.records / name).unlink()
+        (self.records / "notes.md").write_text("mbp-kanax is another word\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["A\t.orchestration/orchestrate/prog/notes.md"])
+
+    def test_the_identifier_scan_refuses_what_the_masking_left(self):
+        """U101: the scan is a refusal of its own, not a re-run of the masker: with a validator on origin/main whose
+        masking leaves the copies as they are, a home path and a secret pattern still stop the run."""
+        self.github()
+        validator = self.repo / "scripts/validate-agent-assets.py"
+        text = validator.read_text()
+        hook = '    if sys.argv[1:2] == ["--mask-secrets"]:\n'
+        self.assertIn(hook, text)
+        validator.write_text(
+            text.replace(hook, '    if sys.argv[1:2] == ["--mask-secrets"]:\n        raise SystemExit(0)\n', 1)
+        )
+        self.git("commit", "-q", "-am", "a masker that masks nothing")
+        self.git("push", "-q", "origin", "main")
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for kind, text in (("a home directory path", "from /Users/someone/x\n"), ("a secret pattern", f"{planted}\n")):
+            with self.subTest(kind):
+                (self.records / "notes.md").write_text(text)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn(f"notes.md: {kind}", run.stderr)
+                self.assertNotIn(planted, run.stderr)
+                self.assert_nothing_left()
 
 
 if __name__ == "__main__":

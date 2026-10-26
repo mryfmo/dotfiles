@@ -970,6 +970,71 @@ class PrAuditTest(unittest.TestCase):
         time.sleep(8)
         self.assertFalse(marker.exists(), "the group outlived a failed TERM")
 
+    def run_escape(self, mode):
+        pidfile = self.root / f"escaped-{mode}.pid"
+        run = self.run_lever("7", PR_AUDIT_TIMEOUT="2", FAKE_CODEX_ESCAPE=f"{mode}:{pidfile}")
+        pid = int(pidfile.read_text())
+        self.addCleanup(lambda: subprocess.run(["kill", "-9", str(pid)], capture_output=True, check=False))
+        return run, pid
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "the child subreaper exists on Linux only")
+    def test_on_linux_every_escaped_descendant_is_stopped(self):
+        """U71b audit round 14: a descendant in a session of its own outlived the group stop. The supervisor is the
+        child subreaper on Linux, so it inherits every orphan and KILLs them all."""
+        for mode in ("single", "double"):
+            with self.subTest(mode=mode):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run, pid = self.run_escape(mode)
+                self.assertEqual(run.returncode, 1, run.stderr)
+                self.assertIn("codex exec exited 124", run.stderr)
+                self.assert_gone(pid)
+                self.assertNotIn("still running", run.stderr)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS has no subreaper; the lever only reports")
+    def test_on_macos_an_escaped_descendant_is_reported(self):
+        """macOS residual, detection only: a descendant in a session of its own outlives the run and is named."""
+        run, pid = self.run_escape("single")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("codex exec exited 124", run.stderr)
+        self.assertIn("still running after it stopped", run.stderr)
+        self.assertIn(f"{pid} sleep 30", run.stderr)
+
+    def test_a_failed_subreaper_refuses(self):
+        """The prctl that makes the supervisor the subreaper must succeed on Linux (shown here as Linux on any host)."""
+        code = (
+            "import ctypes, sys\n"
+            "sys.platform = 'linux'\n"
+            "class Libc:\n"
+            "    def prctl(self, *args):\n"
+            "        ctypes.set_errno(1)\n"
+            "        return -1\n"
+            "ctypes.CDLL = lambda *a, **k: Libc()\n"
+        )
+        run = self.run_lever("7", **self.injected(code))
+        self.assert_stopped(
+            run, 2, "codex's supervisor failed (subreaper: PermissionError: [Errno 1] Operation not permitted)"
+        )
+        self.assertEqual(self.codex_calls(), [], "codex never ran")
+
+    def test_a_signal_during_a_wait_that_returns_wins_over_codex_status(self):
+        """U71b audit round 14 (P3): a TERM recorded while the last wait() returned was ignored and the run exited 0."""
+        code = (
+            "import os, signal, subprocess\n"
+            "_Popen = subprocess.Popen\n"
+            "class Popen(_Popen):\n"
+            "    def wait(self, timeout=None):\n"
+            "        status = super().wait(timeout)\n"
+            "        if 'exec' in self.args:\n"
+            "            os.kill(os.getpid(), signal.SIGTERM)\n"
+            "        return status\n"
+            "subprocess.Popen = Popen\n"
+        )
+        run = self.run_lever("7", **self.injected(code))
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("codex exec exited 143", run.stderr)
+        self.assertEqual(run.stdout, "")
+
     def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
         code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"
         env = self.injected(code)

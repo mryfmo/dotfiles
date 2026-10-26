@@ -65,7 +65,10 @@
 #   `codex exec --strict-config --skip-git-repo-check --ephemeral -C <empty cwd> -o <verdict> -` reads the prompt,
 #   bounded by PR_AUDIT_TIMEOUT seconds. Every codex call runs in a session and process group of its own under one
 #   Python supervisor (`python3 -I -S`, from PATH; none is a refusal) that stops the whole group on its deadline and
-#   on INT, TERM or HUP; the lever forwards those signals to it and exits 128 + the signal's number. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
+#   on INT, TERM or HUP; the lever forwards those signals to it and exits 128 + the signal's number. The deadline stops
+#   codex's process group on both OSes and every descendant on Linux (the supervisor is the child subreaper); on macOS
+#   a descendant that starts its own session can outlive the run, confined by the sandbox it inherited, and the lever
+#   warns with the pid and command of each one it saw (best effort). On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
 #   run directory keeps `prompt.md`, `codex.log` and `verdict.md`, or is removed whole when codex never started.
 # @arg $1 int The pull request number.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
@@ -236,13 +239,24 @@ git_tree() {
 # - Everything after the launch runs in try/finally, and the finally always stops the group: the further signals are
 #   ignored, the group gets TERM, the leader a grace of 5 seconds, then the group always gets KILL (also when the TERM
 #   or the grace failed) and the leader is reaped. So no exit path, an exception included, leaves the group running.
-# - Exit: codex's own status after a normal exit, 124 on the deadline, 128 + the signal's number on a signal. A launch
+# - Process groups are no containment boundary (U71b audit round 14: a descendant that starts its own session leaves
+#   the group). On Linux the supervisor makes itself the child subreaper (prctl PR_SET_CHILD_SUBREAPER before the
+#   launch; a failure refuses), so every orphaned descendant is reparented to it, and the stop then KILLs every child
+#   it has and reaps until none is left, bounded by the grace. macOS has no subreaper or kernel containment for the
+#   same user's processes: a descendant that starts its own session can outlive the run, confined by the Codex
+#   sandbox profile it inherited (residual). As detection only, best effort, the stop takes a `ps` snapshot of this
+#   supervisor's descendants just before it signals, and after the cleanup writes every one still alive (same pid,
+#   same command) to `<mark>.survivors`, which the lever prints as a warning; a process already reparented away
+#   (a double fork) is not in the snapshot.
+# - Exit: codex's own status after a normal exit, 124 on the deadline, 128 + the signal's number on a signal (a signal
+#   recorded during the last wait wins over codex's status). A launch
 #   that fails (setsid or exec in the child raise in the parent), a killpg that fails with any error but ESRCH (the
 #   group is gone), a failed reap and any other exception write the reasons to the mark file and exit 125, which the
 #   lever refuses. No path exits 0 unless codex itself did.
 # The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
 codex_supervisor='
+import ctypes
 import os
 import signal
 import subprocess
@@ -251,6 +265,7 @@ import time
 
 GRACE = 5
 SLICE = 0.2
+PR_SET_CHILD_SUBREAPER = 36
 STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 pending = []
 
@@ -278,10 +293,106 @@ def killpg(pid, sig, errors):
         errors.append(f"killpg {sig.name}: {text}")
 
 
+def become_subreaper():
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) != 0:
+        number = ctypes.get_errno()
+        raise OSError(number, os.strerror(number))
+
+
+def live_children():
+    """The pids whose parent is this process (Linux /proc): orphans reparented to the subreaper included."""
+    me = os.getpid()
+    found = []
+    for entry in os.listdir("/proc"):
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f"/proc/{entry}/stat") as handle:
+                fields = handle.read().rsplit(")", 1)[1].split()
+        except OSError:
+            continue
+        if int(fields[1]) == me:
+            found.append(int(entry))
+    return found
+
+
+def sweep_children(errors):
+    """Linux: KILL every child of the subreaper and reap until none is left, bounded by the grace."""
+    end = time.monotonic() + GRACE
+    while True:
+        children = live_children()
+        for pid in children:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        try:
+            while os.waitpid(-1, os.WNOHANG)[0] != 0:
+                pass
+        except ChildProcessError:
+            return
+        if time.monotonic() >= end:
+            errors.append(f"descendants left after the grace: {live_children()}")
+            return
+        time.sleep(0.05)
+
+
+def process_table():
+    out = subprocess.run(
+        ["/bin/ps", "-A", "-o", "pid=", "-o", "ppid=", "-o", "command="],
+        capture_output=True, text=True, timeout=GRACE, check=True,
+    ).stdout
+    rows = {}
+    for line in out.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+            rows[int(parts[0])] = (int(parts[1]), parts[2] if len(parts) > 2 else "")
+    return rows
+
+
+def descendants(rows, root):
+    found, frontier = {}, [root]
+    while frontier:
+        parent = frontier.pop()
+        for pid, (ppid, command) in rows.items():
+            if ppid == parent and pid not in found:
+                found[pid] = command
+                frontier.append(pid)
+    return found
+
+
+def report_survivors(snapshot):
+    """Detection only: every process the snapshot saw under this supervisor that is still alive after the cleanup."""
+    lines = []
+    try:
+        if isinstance(snapshot, str):
+            lines.append(snapshot)
+        else:
+            after = process_table()
+            for pid, command in sorted(snapshot.items()):
+                if pid in after and after[pid][1] == command:
+                    lines.append(f"{pid} {command}")
+    except BaseException as error:
+        lines.append(f"no process table after the cleanup ({type(error).__name__}: {error})")
+    if lines:
+        try:
+            with open(sys.argv[2] + ".survivors", "w") as out:
+                out.write("\n".join(lines) + "\n")
+        except OSError:
+            pass
+
+
 def stop_group(proc, errors):
     try:
         for sig in STOP_SIGNALS:
             signal.signal(sig, signal.SIG_IGN)
+    finally:
+        try:
+            snapshot = descendants(process_table(), os.getpid())
+        except BaseException as error:
+            snapshot = f"no process table before the cleanup ({type(error).__name__}: {error})"
+    try:
         killpg(proc.pid, signal.SIGTERM, errors)
         end = time.monotonic() + GRACE
         while proc.poll() is None and time.monotonic() < end:
@@ -294,6 +405,12 @@ def stop_group(proc, errors):
             proc.wait(timeout=GRACE)
         except BaseException as error:
             errors.append(f"reap: {type(error).__name__}: {error}")
+        if sys.platform.startswith("linux"):
+            try:
+                sweep_children(errors)
+            except BaseException as error:
+                errors.append(f"sweep: {type(error).__name__}: {error}")
+        report_survivors(snapshot)
 
 
 def main():
@@ -301,6 +418,12 @@ def main():
     argv = sys.argv[3:]
     for sig in STOP_SIGNALS:
         signal.signal(sig, on_signal)
+    if sys.platform.startswith("linux"):
+        try:
+            become_subreaper()
+        except BaseException as error:
+            write_mark([f"subreaper: {type(error).__name__}: {error}"])
+            return 125
     try:
         proc = subprocess.Popen(argv, start_new_session=True)
     except (OSError, subprocess.SubprocessError) as error:
@@ -324,6 +447,9 @@ def main():
                 continue
             code = 128 - status if status < 0 else status
             break
+        # A signal recorded while the last wait returned wins over the status of codex (U71b audit round 14).
+        if pending:
+            code = 128 + pending[0]
     except BaseException as error:
         errors.append(f"supervisor: {type(error).__name__}: {error}")
     finally:
@@ -354,7 +480,7 @@ os._exit(exit_code)
 codex_scratch() {
     local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark reason
     shift 3
-    rm -f -- "${mark}" || fail "cannot remove ${mark}"
+    rm -f -- "${mark}" "${mark}.survivors" || fail "cannot remove ${mark}"
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
@@ -363,6 +489,7 @@ codex_scratch() {
             < "${input}" > "${output}" 2>&1
     ) &
     wait "$!" || status=$?
+    report_survivors
     # A failed supervisor marks its reason; a status of 125 without the mark is codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
         reason=$(cat -- "${mark}") || fail "cannot read ${mark}"
@@ -379,6 +506,19 @@ codex_scratch() {
 signal_hold=0
 signal_pending=''
 
+# @description Print the processes the supervisor saw under it before its cleanup and found alive after it (detection
+#   only, best effort: a process that double-forked away before the snapshot is not listed). On Linux the subreaper
+#   sweep leaves none; on macOS a descendant that started its own session can outlive the run, confined by the
+#   inherited Codex sandbox profile.
+report_survivors() {
+    local file=${work}/group-mark.survivors survivors
+    [[ -s ${file} ]] || return 0
+    survivors=$(cat -- "${file}") || survivors="cannot read ${file}"
+    echo "${lever}: warning: processes started under codex's supervisor are still running after it stopped" \
+        "(best-effort detection; they keep the audit sandbox they inherited):" >&2
+    printf '%s\n' "${survivors}" >&2
+}
+
 # @description Stop the running supervisor, if any (the lever's only background job; it stops codex's whole process
 #   group), wait for it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be
 #   caught: a KILL to the lever leaves the supervisor running, which still stops the group at its deadline; a KILL to
@@ -394,6 +534,7 @@ stop_on_signal() {
         # shellcheck disable=SC2086
         kill -TERM ${jobs_running} 2> /dev/null || true
         wait 2> /dev/null || true
+        report_survivors
     fi
     echo "${lever}: stopped by SIG$1; codex was stopped and no verdict was written" >&2
     exit $((128 + $2))

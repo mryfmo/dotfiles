@@ -17,6 +17,9 @@ codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming 
 launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
 and sleeps 60 seconds. FAKE_CODEX_IGNORE_TERM makes that `exec` and its child ignore TERM (the child then touches the
 marker after 8 seconds), so only a KILL stops them. The record then holds `pid` and `child_pid`.
+FAKE_CODEX_ESCAPE=`single:<pidfile>` makes `exec` start a `sleep 30` in a session of its own (its own child), and
+`double:<pidfile>` the same through a double fork (orphaned at once); the escaped pid goes to the pidfile, and `exec`
+then sleeps 60 seconds.
 """
 
 import json
@@ -94,6 +97,29 @@ if argv[:1] == ["sandbox"]:
         status = 1
 elif argv[:1] == ["exec"]:
     record["prompt"] = sys.stdin.read()
+    escape = os.environ.get("FAKE_CODEX_ESCAPE")
+    if escape:
+        mode, pidfile = escape.split(":", 1)
+        if mode == "single":  # a child in a session of its own, still the child of this process
+            subprocess.Popen(
+                ["/bin/sh", "-c", 'echo $$ > "$1.tmp" && mv "$1.tmp" "$1" && exec sleep 30', "sh", pidfile],
+                start_new_session=True,
+            )
+        else:  # a double fork: the grandchild, in a session of its own, is orphaned at once
+            if os.fork() == 0:
+                os.setsid()
+                if os.fork() == 0:
+                    os.execv(
+                        "/bin/sh",
+                        ["/bin/sh", "-c", 'echo $$ > "$1.tmp" && mv "$1.tmp" "$1" && exec sleep 30', "sh", pidfile],
+                    )
+                os._exit(0)
+            os.wait()
+        while not os.path.exists(pidfile):
+            time.sleep(0.02)
+        with open(os.environ["FAKE_CODEX_CALLS"], "a", encoding="utf-8") as calls:
+            calls.write(json.dumps(record) + "\n")
+        time.sleep(60)
     marker = os.environ.get("FAKE_CODEX_HANG")
     if marker:
         delay = "3"

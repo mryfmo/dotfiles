@@ -77,6 +77,39 @@ class ScratchGitTest(unittest.TestCase):
             with self.subTest(key):
                 self.assertEqual(value, self.git("config", "--get", key, env=env))
 
+    def test_the_shard_runner_quiets_git_for_a_module_that_does_not(self):
+        # Process-wide layer: scripts/ci/unittest-shards.py (what `make unit-test` and CI run) passes the settings to
+        # every shard, so a module without its own quiet_git() call, started with none of them inherited, has them.
+        start = self.repo / "start"
+        start.mkdir()
+        (start / "test_bare.py").write_text(
+            "import os, subprocess, tempfile, unittest\n"
+            "class Bare(unittest.TestCase):\n"
+            "    def test_settings(self):\n"
+            "        repo = tempfile.mkdtemp()\n"
+            "        subprocess.run(['git', 'init', '-q', repo], check=True)\n"
+            "        for key, value in " + repr(list(SETTINGS)) + ":\n"
+            "            got = subprocess.run(['git', '-C', repo, 'config', '--get', key], capture_output=True, text=True)\n"
+            "            self.assertEqual(value, got.stdout.strip(), key)\n"
+        )
+        bare = {name: value for name, value in os.environ.items() if not name.startswith("GIT_CONFIG_")}
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(HERE.parents[1] / "scripts/ci/unittest-shards.py"),
+                "--start",
+                str(start),
+                "--jobs",
+                "1",
+            ],
+            env=bare,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_existing_entries_stay_first_and_the_merge_is_idempotent(self):
         base = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "commit.gpgsign", "GIT_CONFIG_VALUE_0": "false"}
         merged = quiet_git_env(base)

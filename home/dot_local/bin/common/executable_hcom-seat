@@ -486,7 +486,8 @@ pointer_value() {
 }
 
 # @description Set `size_list` to the byte size of each file `$@`, links followed, in order, from one
-#   `/usr/bin/stat` run (regime-cutover U95). A size that cannot be read refuses (exit 2).
+#   `/usr/bin/stat` run (regime-cutover U95). Fail-closed: the run's status (xargs passes a failed stat on), every
+#   line a bare number, and exactly one line per file; anything else refuses (exit 2) before a size is used.
 # @arg $@ string Files.
 # @set size_list The sizes.
 sizes_of() {
@@ -503,18 +504,22 @@ sizes_of() {
 
 # @description Set `pointer_list` to the value of each git pointer file `$@`, with the rule of pointer_value
 #   (regime-cutover U95): all are read in one pass (`cat | tr`, NUL bytes made \001 there) and cut at the sizes one
-#   `stat` gave, and the bytes read must number the sizes' sum, so what is checked is what git reads. A file that is
-#   empty, or not a single line free of control characters once one final newline is dropped, refuses (exit 2).
+#   `stat` gave (sizes_of). The pass counts only when its pipeline succeeded (the `.` sentinel follows its status)
+#   and the bytes read number the sizes' sum, checked before any value is cut, so a failed or short read is never
+#   used. A file that is empty, or not a single line free of control characters once one final newline is dropped,
+#   refuses (exit 2).
 # @arg $@ string Pointer files.
 # @set pointer_list The values.
 pointer_values() {
-    local LC_ALL=C all value off=0 i=0 files=("$@")
+    local LC_ALL=C all value off=0 total=0 i=0 files=("$@")
     pointer_list=()
     (($#)) || return 0
     sizes_of "$@"
     all=$({ printf '%s\0' "$@" | /usr/bin/xargs -0 /bin/cat -- | /usr/bin/tr '\000' '\001'; } && printf .) ||
         refuse 'cannot read the git pointer files'
     all=${all%.}
+    for ((i = 0; i < $#; i++)); do total=$((total + size_list[i])); done
+    ((total == ${#all})) || refuse "cannot read the git pointer files whole (${#all} of ${total} bytes)"
     for ((i = 0; i < $#; i++)); do
         value=${all:off:size_list[i]}
         off=$((off + size_list[i]))
@@ -523,7 +528,6 @@ pointer_values() {
             refuse "cannot read ${files[i]} as one line free of control characters"
         pointer_list+=("${value}")
     done
-    ((off == ${#all})) || refuse "the git pointer files changed while they were read (${off} of ${#all} bytes)"
 }
 
 # @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
@@ -1059,22 +1063,34 @@ within_ix() {
 }
 
 # @description Print the physical form of each absolute path `$@`, one per line, in order (regime-cutover U95): an
-#   existing directory by `cd` and `pwd -P` in one subshell for all of them, anything else by physical_path, so
-#   hundreds of worktrees cost one fork instead of one each.
+#   existing directory by `cd -P` in one subshell for all of them, anything else by physical_path, so hundreds of
+#   worktrees cost one fork instead of one each. Fail-closed per record: the subshell writes exactly one record per
+#   path, `ok<TAB><physical path>` after a `cd -P` whose status was 0, `other` for a path that is no directory, or
+#   `fail` after a failed `cd`; the result is used only when there are exactly N records, in order, each `other`
+#   (then resolved by physical_path, its status checked) or `ok` with an absolute path. Anything else fails, so no
+#   later success masks an earlier failure and no output of a failed resolution is used.
 # @arg $@ string Absolute paths free of control characters.
 # @stdout The physical paths.
-# @exitcode 1 A path cannot be resolved.
+# @exitcode 1 A path cannot be resolved, or the records are not exactly one good record per path.
 physical_paths() {
     local out line i=0 args=("$@")
     (($#)) || return 0
     out=$(for p in "$@"; do
-        if [[ -d ${p} ]] && cd -- "${p}/" 2> /dev/null; then pwd -P; else printf '%s\n' -; fi
+        if [[ ! -d ${p} ]]; then
+            printf 'other\n' || exit 1
+        elif cd -P -- "${p}/" 2> /dev/null; then
+            printf 'ok\t%s\n' "${PWD}" || exit 1
+        else
+            printf 'fail\n' || exit 1
+        fi
     done) || return 1
     while IFS= read -r line; do
         ((i < $#)) || return 1
-        if [[ ${line} != /* ]]; then # lint-comparisons: allow an absolute-path test
-            line=$(physical_path "${args[i]}") || return 1
-        fi
+        case ${line} in
+        other) line=$(physical_path "${args[i]}") || return 1 ;;
+        ok$'\t'/*) line=${line#ok$'\t'} ;;
+        *) return 1 ;;
+        esac
         printf '%s\n' "${line}"
         i=$((i + 1))
     done <<< "${out}"

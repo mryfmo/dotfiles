@@ -1158,6 +1158,108 @@ class HcomSeatTest(unittest.TestCase):
                     self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
                     self.assertIn(message, run.stderr)
 
+    def test_every_batched_producer_fails_closed(self):
+        """U95: each batch hcom-seat runs over many paths refuses when its producer fails after printing plausible
+        output, prints too few records, or prints a malformed one: physical_paths (cd, physical_path, printf; it
+        calls no pwd), sizes_of (stat), pointer_values (cat, and its sizes), and the identity table (stat, tr)."""
+        text = SEAT.read_text()
+        names = ("refuse", "physical_path", "physical_paths", "sizes_of", "pointer_values", "ancestors_of")
+        names += ("identity_table", "within_ix")
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
+        )
+        darwin = sys.platform == "darwin"
+        args = (
+            "stat_args=(-L -f '%d:%i') size_args=(-L -f '%z')"
+            if darwin
+            else "stat_args=(-L -c '%d:%i') size_args=(-L -c '%s')"
+        )
+        root = Path(self.temp.name).resolve() / "batch"
+        for name in ("a", "b", "real"):
+            (root / name).mkdir(parents=True)
+        (root / "c").symlink_to("real")
+        for name in ("a", "b"):
+            (root / name / "commondir").write_text("../..\n")
+        dirs = [str(root / n) for n in ("a", "b", "c", "absent")]
+        pointers = [str(root / n / "commondir") for n in ("a", "b")]
+        fakes = root / "fakes"
+        fakes.mkdir()
+
+        def fake(name, body):
+            path = fakes / name
+            path.write_text(f"#!/bin/sh\n{body}\n")
+            path.chmod(0o755)
+            return str(path)
+
+        def run(call, script_args, replace=None, prelude=""):
+            body = functions
+            for real, stand_in in (replace or {}).items():
+                body = body.replace(real, stand_in)
+            script = f"set -euo pipefail\n{args}\n{body}\n{prelude}\n{call}\n"
+            return subprocess.run(
+                ["/bin/bash", "-c", script, "_", *script_args], capture_output=True, text=True, check=False, timeout=30
+            )
+
+        paths_call = 'out=$(physical_paths "$@") || refuse physical_paths failed\nprintf "%s\\n" "$out"'
+        good = run(paths_call, dirs)
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertEqual(
+            good.stdout.split(), [str(root / "a"), str(root / "b"), str(root / "real"), str(root / "absent")]
+        )
+        paths_cases = {
+            "cd fails after a plausible PWD": 'cd() { if [[ $3 == */b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
+            "a record is dropped": 'printf() { [[ $# == 2 && $2 == */b ]] && return 0; builtin printf "$@"; }',
+            "a malformed record": 'cd() { builtin cd "$@" || return; [[ $PWD != */b ]] || PWD=relative; }',
+        }
+        for label, prelude in paths_cases.items():
+            with self.subTest(producer="physical_paths", case=label):
+                result = run(paths_call, dirs, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        sizes_call = 'sizes_of "$@"\nprintf "%s\\n" "${size_list[@]}"'
+        self.assertEqual(run(sizes_call, pointers).stdout.split(), ["6", "6"])
+        stat_cases = {
+            "fails after plausible output": fake("stat-fail", "for a; do echo 6; done\nexit 7"),
+            "too few lines": fake("stat-short", "echo 6"),
+            "a malformed line": fake("stat-bad", "for a; do echo six; done"),
+        }
+        for label, stand_in in stat_cases.items():
+            with self.subTest(producer="sizes_of (stat)", case=label):
+                result = run(sizes_call, pointers, {"/usr/bin/stat": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the size", result.stderr)
+        values_call = 'pointer_values "$@"\nprintf "%s\\n" "${pointer_list[@]}"'
+        self.assertEqual(run(values_call, pointers).stdout.split(), ["../..", "../.."])
+        cat_cases = {
+            "fails after plausible output": fake("cat-fail", "printf '../..\\n../..\\n'\nexit 7"),
+            "a short read": fake("cat-short", "printf '../..\\n'"),
+            "a long read": fake("cat-long", "printf '../..\\n../..\\nmore\\n'"),
+        }
+        for label, stand_in in cat_cases.items():
+            with self.subTest(producer="pointer_values (cat)", case=label):
+                result = run(values_call, pointers, {"/bin/cat": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the git pointer files", result.stderr)
+        with self.subTest(producer="pointer_values (its sizes)"):
+            result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
+            self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        table_call = 'identity_table "$@"\nwithin_ix 0 1 && echo inside || echo outside'
+        table_args = [str(root), str(root / "a/new")]
+        self.assertEqual(run(table_call, table_args).stdout, "inside\n")
+        table_cases = {
+            ("stat", "too few lines"): ("/usr/bin/stat", fake("id-short", "echo 1:2")),
+            ("stat", "a malformed line"): ("/usr/bin/stat", fake("id-bad", "for a; do echo id; done")),
+            ("stat", "fails after plausible output"): (
+                "/usr/bin/stat",
+                fake("id-fail", "for a; do echo 1:2; done\nexit 7"),
+            ),
+            ("tr", "too few lines"): ("/usr/bin/tr", fake("tr-short", "head -n 1")),
+            ("tr", "fails after plausible output"): ("/usr/bin/tr", fake("tr-fail", "cat\nexit 7")),
+        }
+        for (producer, label), (real, stand_in) in table_cases.items():
+            with self.subTest(producer=f"identity_table ({producer})", case=label):
+                result = run(table_call, table_args, {real: stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+
     def test_own_slots_that_are_links_are_refused(self):
         """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be
         what they claim. A `.state/<name> -> ..` (the whole seats root) or a `<seats-root>/<name> -> /` is refused

@@ -16,27 +16,51 @@
 #   setup.sh runs before the repository exists, so it carries a copy of the functions below;
 #   tests/unit/test_chezmoi_externals.py keeps the copies equal. It needs curl, awk and sha256sum or shasum.
 
+# The sha256 of no bytes: a cache key equal to it hashed nothing, whatever the URL was.
+CHEZMOI_EXTERNAL_EMPTY_SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 # Download attempts per URL, and the first wait between them in seconds (doubled after each failure): constants,
 # never read from the environment, so no caller can unbound the retries. Tests replace `sleep` instead.
 CHEZMOI_EXTERNAL_ATTEMPTS=4
 CHEZMOI_EXTERNAL_RETRY_DELAY=5
 
 #
-# @description Print the lowercase sha256 of a file, or of standard input with no argument.
-# @arg $1 path Optional file to hash.
+# @description Print the lowercase sha256 of one file. It never reads standard input, so no caller hashes through a
+#   pipeline whose first stage's status depends on the caller's `pipefail` (U96 round 5: `make update` runs without it).
+# @arg $1 path The file to hash.
 # @stdout The digest.
-# @exitcode 1 When the hash tool fails or prints no 64-digit lowercase hex digest.
+# @exitcode 1 When no file is named, or the hash tool fails or prints no 64-digit lowercase hex digest.
 #
 function chezmoi_external_sha256() {
     local digest
+    [ "$#" -eq 1 ] && [ -f "$1" ] || return 1
     if command -v sha256sum > /dev/null 2>&1; then
-        digest="$(sha256sum "$@")" || return 1
+        digest="$(sha256sum "$1")" || return 1
     else
-        digest="$(shasum -a 256 "$@")" || return 1
+        digest="$(shasum -a 256 "$1")" || return 1
     fi
     digest="${digest%% *}"
     [[ "${digest}" =~ ^[0-9a-f]{64}$ ]] || return 1
     printf '%s\n' "${digest}"
+}
+
+#
+# @description Print chezmoi's cache key for a URL: the sha256 of its bytes as written (chezmoi 2.73.3
+#   internal/chezmoi/sourcestate.go:1921-1922). The URL is written to a scratch file, each step's status checked, and
+#   that file is hashed: no pipeline, so the result does not depend on the caller's shell options.
+# @arg $1 url The URL; empty is refused.
+# @stdout The key.
+# @exitcode 1 When the URL is empty, the scratch file cannot be made or written, the hash fails, or the key is the
+#   sha256 of no bytes.
+#
+function chezmoi_external_url_key() {
+    local url="$1" scratch key status=0
+    [ -n "${url}" ] || return 1
+    scratch="$(mktemp "${TMPDIR:-/tmp}/chezmoi-external-url.XXXXXX")" || return 1
+    printf '%s' "${url}" > "${scratch}" || status=1
+    [ "${status}" -ne 0 ] || key="$(chezmoi_external_sha256 "${scratch}")" || status=1
+    rm -f "${scratch}"
+    [ "${status}" -eq 0 ] && [ "${key}" != "${CHEZMOI_EXTERNAL_EMPTY_SHA256}" ] || return 1
+    printf '%s\n' "${key}"
 }
 
 #
@@ -95,7 +119,7 @@ function chezmoi_external_download() {
 function prefetch_chezmoi_external() {
     local name="$1" url="$2" expected="$3" refresh="$4" cache="$5"
     local key entry modified now partial actual code status retry attempt=1 delay="${CHEZMOI_EXTERNAL_RETRY_DELAY}"
-    key="$(printf '%s' "${url}" | chezmoi_external_sha256)" || {
+    key="$(chezmoi_external_url_key "${url}")" || {
         printf 'chezmoi external %s: cannot hash the URL %s for its cache key\n' "${name}" "${url}" >&2
         return 1
     }

@@ -40,7 +40,35 @@ KEEP_HASH = 'eval "orig_$(declare -f chezmoi_external_sha256)"; '
 PRODUCER_CASES = (
     (
         "the URL hash fails",
-        KEEP_HASH + 'chezmoi_external_sha256() { [ "$#" -gt 0 ] || return 1; orig_chezmoi_external_sha256 "$@"; }; ',
+        KEEP_HASH + 'chezmoi_external_sha256() { case "${1:-}" in *chezmoi-external-url.*) return 1 ;; esac; '
+        'orig_chezmoi_external_sha256 "$@"; }; ',
+        1,
+        "cannot hash the URL",
+        0,
+    ),
+    # Audit of ef512c88: under make update (no pipefail) a failed write of the URL into the hash was masked, and the
+    # key became the sha256 of nothing. The write fails here: printf of exactly the URL, the bytes the key is made of.
+    (
+        "the URL cannot be written for its hash",
+        (
+            'printf() { if [ "$#" -eq 2 ] && [ "$1" = %s ] && [[ "$2" == http://127.0.0.1:* ]]; then return 1; fi; '
+            'builtin printf "$@"; }; '
+        ),
+        1,
+        "cannot hash the URL",
+        0,
+    ),
+    (
+        "the URL scratch file cannot be made",
+        'mktemp() { case "${1:-}" in *chezmoi-external-url.*) return 1 ;; esac; command mktemp "$@"; }; ',
+        1,
+        "cannot hash the URL",
+        0,
+    ),
+    (
+        "the URL hashes to the key of no bytes",
+        KEEP_HASH + 'chezmoi_external_sha256() { case "${1:-}" in *chezmoi-external-url.*) '
+        'builtin printf "%s\\n" "$CHEZMOI_EXTERNAL_EMPTY_SHA256"; return 0 ;; esac; orig_chezmoi_external_sha256 "$@"; }; ',
         1,
         "cannot hash the URL",
         0,
@@ -70,7 +98,7 @@ PRODUCER_CASES = (
     ),
     (
         "mktemp fails",
-        'mktemp() { [ "$1" != -d ] || { command mktemp "$@"; return; }; return 1; }; ',
+        'mktemp() { case "${1:-}" in *.prefetch.*) return 1 ;; esac; command mktemp "$@"; }; ',
         1,
         "cannot create a download file in",
         0,
@@ -86,6 +114,18 @@ PRODUCER_CASES = (
     ),
     ("mv fails", "mv() { return 1; }; ", 1, "mv of the download into", 1),
 )
+# The two ways the library runs: setup.sh's own options, and make update's `bash -c 'source …'` with bash's defaults
+# (no pipefail, no errexit). Every producer table runs both ways, so a check that leans on the caller's options fails.
+SHELL_MODES = (("setup.sh: set -Eeuo pipefail", "set -Eeuo pipefail; "), ("make update: bash defaults", ""))
+
+
+def both_ways(cases):
+    """Each case once per SHELL_MODES entry: its name gains the mode, its shell definitions the mode's options."""
+    for label, options in SHELL_MODES:
+        for case in cases:
+            yield (f"{case[0]} [{label}]", options + case[1], *case[2:])
+
+
 # Producers of a fresh existing entry's age and digest: (name, definitions, whether the entry is fetched again).
 # A failed or garbled date is fatal; a failed stat or entry hash makes the entry stale, so it is fetched again.
 AGE_CASES = (
@@ -220,11 +260,22 @@ class ChezmoiExternalsTest(ServerFixture):
                 self.assertEqual(4, self.requests())
                 self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
 
+    def test_the_url_key_is_the_sha256_of_its_bytes_and_never_of_nothing(self) -> None:
+        url = f"{self.base}/key.tar.gz"
+        for name, options, *_ in both_ways((("key", ""),)):
+            with self.subTest(name):
+                result = self.bash(options + 'chezmoi_external_url_key "$1"', url)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(hashlib.sha256(url.encode()).hexdigest() + "\n", result.stdout)
+                empty = self.bash(options + 'chezmoi_external_url_key ""')
+                self.assertEqual((1, ""), (empty.returncode, empty.stdout), empty.stderr)
+                self.assertEqual([], sorted(self.case.glob("chezmoi-external-url.*")))
+
     def test_every_hash_time_temp_and_install_producer_that_fails_stops_closed(self) -> None:
         # Audit of 0f69d7af: each producer the cache decision rests on, made to fail. Each case names its producer,
         # leaves no cache entry and no partial download, and makes no request when the failure comes before one.
         url = self.serve("producers.tar.gz", "ok")
-        for name, inject, code, message, requests in PRODUCER_CASES:
+        for name, inject, code, message, requests in both_ways(PRODUCER_CASES):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 shutil.rmtree(self.cache, ignore_errors=True)
@@ -241,7 +292,7 @@ class ChezmoiExternalsTest(ServerFixture):
         # makes the entry stale, so it is fetched again and replaced, never kept.
         url = self.serve("aged.tar.gz", "ok")
         entry = self.entry(url)
-        for name, inject, refetched in AGE_CASES:
+        for name, inject, refetched in both_ways(AGE_CASES):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 entry.parent.mkdir(parents=True, exist_ok=True)
@@ -531,7 +582,7 @@ class ChezmoiSourceExternalsTest(ServerFixture):
                 "cannot read chezmoi's cache directory",
             ),
         )
-        for name, prefix, env, message in cases:
+        for name, prefix, env, message in both_ways(cases):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 result = self.bash(f'{prefix}prefetch_chezmoi_externals "$1"', str(chezmoi), **env)
@@ -608,7 +659,7 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         # Every prefetch failure of a single-URL http(s) external is fatal; an unreadable entry age or digest refetches.
         url = self.serve("first.tar.gz", "ok")
         entry = self.entry(url)
-        for name, inject, _code, message, requests in PRODUCER_CASES:
+        for name, inject, _code, message, requests in both_ways(PRODUCER_CASES):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 shutil.rmtree(self.cache, ignore_errors=True)
@@ -621,7 +672,7 @@ class ChezmoiSourceExternalsTest(ServerFixture):
                 self.assertIn(message, result.stderr)
                 self.assertEqual(requests, self.requests())
                 self.assertEqual([], self.cached())
-        for name, inject, refetched in AGE_CASES:
+        for name, inject, refetched in both_ways(AGE_CASES):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 shutil.rmtree(self.case / "source", ignore_errors=True)
@@ -655,7 +706,7 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
     def test_setup_sh_carries_an_exact_copy_of_the_helper(self) -> None:
         # setup.sh runs before the repository exists, so it cannot source the helper.
         helper = LIB.read_text()
-        body = helper[helper.index("# Download attempts per URL") :]
+        body = helper[helper.index("# The sha256 of no bytes") :]
         setup = (ROOT / "setup.sh").read_text()
         begin = "# --- chezmoi-externals.sh begin ---\n"
         self.assertEqual(

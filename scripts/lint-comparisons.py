@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import tokenize
+import tomllib
 from collections import Counter
 from pathlib import Path
 
@@ -76,7 +77,9 @@ DATA = ("echo", "printf", "print", "type", "which", "hash", "whence")
 NORM = {"R1": SH_NORM, "R2": SH_NORM, "R6": "escape_regex"}  # the normaliser that accepts a rule's hit, if any
 LITS = ("Lit", "SglQuoted", "ExtGlob")  # the word parts that are literal text
 OUTER = re.compile(r"lintcmpX(\w*?)Xpmctnil")  # spelled()'s token: an outer expansion inside a nested string
-SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
+# The one shfmt version the lint parses with: [tools."http:shfmt"] in this mise config, which hosts get from mise and
+# CI installs (U97); PATH's shfmt must report it.
+SHFMT_PIN_CONFIG = ROOT / "home/dot_mise/config.toml"
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
@@ -87,15 +90,24 @@ OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
 @functools.cache
-def shfmt():  # the first shfmt invocation that runs
-    for cmd in SHFMT:
-        try:
-            run = subprocess.run([*cmd, "--version"], stdin=subprocess.DEVNULL, capture_output=True, check=False)
-        except OSError:
-            continue
-        if run.returncode == 0:
-            return cmd
-    sys.exit("lint-comparisons: shfmt missing")
+def shfmt():  # PATH's shfmt, refused unless it is the pinned version
+    try:
+        pin = tomllib.loads(SHFMT_PIN_CONFIG.read_text())["tools"]["http:shfmt"]["version"]
+    except (OSError, tomllib.TOMLDecodeError, KeyError, TypeError):
+        sys.exit(f"lint-comparisons: {SHFMT_PIN_CONFIG} pins no shfmt version")
+    try:
+        run = subprocess.run(["shfmt", "--version"], stdin=subprocess.DEVNULL, capture_output=True, check=False)
+    except OSError:
+        sys.exit("lint-comparisons: shfmt missing")
+    if run.returncode != 0:
+        sys.exit("lint-comparisons: shfmt missing")
+    found = run.stdout.decode(errors="replace").strip().removeprefix("v")
+    if found != pin:
+        sys.exit(
+            f"lint-comparisons: the shfmt on PATH is version {found or 'unknown'}, but {SHFMT_PIN_CONFIG} pins shfmt "
+            f'{pin}; run "mise install http:shfmt" and put it first on PATH'
+        )
+    return ["shfmt"]
 
 
 def blank(m):  # a chezmoi action is no shell: blanked to spaces, newlines and offsets kept; an include alone on its

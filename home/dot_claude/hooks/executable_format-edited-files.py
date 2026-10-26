@@ -4,8 +4,8 @@
 The hook reads the complete JSON event from stdin, extracts every edited file path
 from the Write and Edit payload shapes, filters by suffix, and runs the
 formatter for that suffix without going through a shell. ruff and prettier come
-from PATH: they track latest behind mise's 72h minimum_release_age, and ruff.toml and
-.prettierignore keep vendored and record paths untouched.
+from PATH: the versions home/dot_mise/config.toml pins for make format and CI (U97), and
+ruff.toml and .prettierignore keep vendored and record paths untouched.
 
 The hook runs outside the Claude sandbox, so it never loads configuration that a
 sandboxed command could have written as code: prettier runs with --no-config

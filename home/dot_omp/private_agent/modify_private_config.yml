@@ -20,11 +20,12 @@
 set -eu
 
 if ! command -v uv > /dev/null 2>&1; then
-  echo "omp config: uv is not installed; left ~/.omp/agent/config.yml unchanged" >&2
-  exec cat
+    echo "omp config: uv is not installed; left ~/.omp/agent/config.yml unchanged" >&2
+    exec cat
 fi
 
-merge=$(cat <<'PY'
+merge=$(
+    cat << 'PY'
 import os
 import sys
 from pathlib import Path

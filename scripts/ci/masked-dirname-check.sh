@@ -18,7 +18,8 @@
 #   includes a heredoc delimiter with ANSI-C escapes (`<<$'\x45OF'`), which shfmt 3.14.1 and
 #   ShellCheck 0.11.0 both fail to terminate.
 # @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).
-# @env SHFMT The shfmt to run (default `shfmt` on PATH; CI puts the mise-pinned 3.14.1 there).
+# @description The shfmt is PATH's, the one scripts/ci/pinned-tool-version.sh checks before `make shellcheck`
+#   runs this ([tools."http:shfmt"], U97); no variable selects another.
 # @exitcode 0 No command substitution nested inside another.
 # @exitcode 1 At least one finding, each printed as `file:line: …`.
 # @exitcode 2 No file given, a listed file cannot be read or parsed, or shfmt or python3 is missing:
@@ -27,14 +28,12 @@
 #   scripts/ci/masked-dirname-check.sh scripts/orchestrator/hcom-seat
 set -euo pipefail
 
-shfmt=${SHFMT:-shfmt}
-
 if (($# == 0)); then
     echo "masked-dirname-check: no file to check; an empty list is refused" >&2
     exit 2
 fi
 
-for tool in "${shfmt}" python3; do
+for tool in shfmt python3; do
     if ! command -v "${tool}" > /dev/null; then
         echo "masked-dirname-check: ${tool} not found; the list is refused" >&2
         exit 2
@@ -96,7 +95,7 @@ PY
 
 status=0
 for file in "$@"; do
-    if ! tree=$("${shfmt}" -ln bash --to-json < "${file}"); then
+    if ! tree=$(shfmt -ln bash --to-json < "${file}"); then
         echo "masked-dirname-check: shfmt cannot parse ${file}; the list is refused" >&2
         exit 2
     fi

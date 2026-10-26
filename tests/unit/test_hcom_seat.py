@@ -1180,12 +1180,15 @@ class HcomSeatTest(unittest.TestCase):
             else "stat_args=(-L -c '%d:%i') size_args=(-L -c '%s')"
         )
         root = Path(self.temp.name).resolve() / "batch"
-        for name in ("a", "b", "real"):
+        for name in ("a", "b", "real", "d"):
             (root / name).mkdir(parents=True)
         (root / "c").symlink_to("real")
+        (root / "file").write_text("")
         for name in ("a", "b"):
             (root / name / "commondir").write_text("../..\n")
-        dirs = [str(root / n) for n in ("a", "b", "c", "absent")]
+        # Present directories, a link, absent paths (one below the link, one below an ancestor of its own) resolved
+        # in the one subshell, and a regular file, the one input physical_path takes.
+        dirs = [str(root / n) for n in ("a", "b", "c", "absent", "c/gone/deeper", "d/gone", "file")]
         pointers = [str(root / n / "commondir") for n in ("a", "b")]
         fakes = root / "fakes"
         fakes.mkdir()
@@ -1209,13 +1212,16 @@ class HcomSeatTest(unittest.TestCase):
         good = run(paths_call, dirs)
         self.assertEqual(good.returncode, 0, good.stderr)
         self.assertEqual(
-            good.stdout.split(), [str(root / "a"), str(root / "b"), str(root / "real"), str(root / "absent")]
+            good.stdout.split(),
+            [str(root / n) for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone", "file")],
         )
         paths_cases = {
             "cd fails after a plausible PWD": 'cd() { if [[ $3 == */b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
-            "a record is dropped": 'printf() { [[ $# == 2 && $2 == */b ]] && return 0; builtin printf "$@"; }',
-            "a record's printf fails (the audit's case)": 'printf() { [[ $# == 2 && $2 == */b ]] && return 7; builtin printf "$@"; }',
-            "physical_path fails after plausible output": "physical_path() { echo /plausible/absent; return 7; }",
+            "a record is dropped": 'printf() { [[ $# == 3 && $2 == */b ]] && return 0; builtin printf "$@"; }',
+            "a record's printf fails (the audit's case)": 'printf() { [[ $# == 3 && $2 == */b ]] && return 7; builtin printf "$@"; }',
+            "physical_path fails after plausible output": "physical_path() { echo /plausible/file; return 7; }",
+            "cd fails for an absent path's ancestor": 'cd() { if [[ $3 == */d/ ]]; then PWD=/plausible/d; return 7; fi; builtin cd "$@"; }',
+            "an absent path's record is dropped": 'printf() { [[ $# == 3 && $3 == /gone ]] && return 0; builtin printf "$@"; }',
             "a malformed record": 'cd() { builtin cd "$@" || return; [[ $PWD != */b ]] || PWD=relative; }',
         }
         for label, prelude in paths_cases.items():
@@ -1557,22 +1563,87 @@ class HcomSeatTest(unittest.TestCase):
                 for name in ("gitdir", "commondir", "config.worktree", "info"):
                     self.assertIn(str(hidden / name), deny)
 
-    def add_worktrees(self, first, count, nested):
-        """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first
-        `nested` of them under `<checkout>/.claude/worktrees`, every other one with an empty `config.worktree`."""
+    def test_a_launch_from_a_worktree_with_a_fifo_commondir_refuses_before_git(self):
+        """U95 round 12: the launch checkout's own git files are type-checked before its common directory is derived
+        and before any git command: from a linked worktree whose admin directory's `commondir` is a FIFO (or a link,
+        or missing) the launch refuses at once instead of leaving the guess at the admin directory, missing the FIFO
+        in the scan and blocking in the first git command. No git process starts (a PATH git that logs every call),
+        and the run ends well inside the timeout. A `.git` that is a link refuses the same way."""
+        common = (self.repo / ".git").resolve()
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        admin = common / "worktrees" / "t"
+        log = Path(self.temp.name) / "git-calls"
+        wrapper = Path(self.temp.name) / "logging-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        (wrapper / "git").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real_git}" "$@"\n')
+        (wrapper / "git").chmod(0o755)
+        env = {**self.env, "PATH": f"{wrapper}:{self.env['PATH']}"}
+
+        def fifo():
+            (admin / "commondir").unlink()
+            os.mkfifo(admin / "commondir")
+
+        def link():
+            (admin / "commondir").unlink()
+            (admin / "commondir").symlink_to(common / "worktrees" / "elsewhere")
+
+        def git_link():
+            (tree / ".git").rename(tree / "dot-git")
+            (tree / ".git").symlink_to("dot-git")
+
+        cases = {
+            "commondir a FIFO": (fifo, "commondir is not a regular file"),
+            "commondir a link": (link, "commondir is not a regular file"),
+            "commondir missing": (lambda: (admin / "commondir").unlink(), "has no commondir"),
+            ".git a link": (git_link, "is not a regular file or a real directory"),
+        }
+        for label, (mutate, message) in cases.items():
+            with self.subTest(label):
+                mutate()
+                try:
+                    log.unlink(missing_ok=True)
+                    run = subprocess.run(
+                        [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+                        capture_output=True, text=True, check=False, timeout=60,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message, run.stderr)
+                    self.assertFalse(log.exists(), "a git command ran before the refusal")
+                finally:
+                    (admin / "commondir").unlink(missing_ok=True)
+                    (admin / "commondir").write_text("../..\n")
+                    if (tree / ".git").is_symlink():
+                        (tree / ".git").unlink()
+                        (tree / "dot-git").rename(tree / ".git")
+        log.unlink(missing_ok=True)
+        run = subprocess.run(
+            [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+            capture_output=True, text=True, check=False, timeout=120,
+        )  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(log.exists(), "the logging git is the one hcom-seat runs")
+
+    def add_worktrees(self, first, count, absent=False):
+        """Register worktrees w<first>..w<first+count-1> outside every seat write root the way `git worktree add
+        --no-checkout` does, every other one with an empty `config.worktree`; with `absent`, their directories are
+        never made (prunable records, as after a deleted worktree)."""
         common = (self.repo / ".git").resolve()
         outside = Path(self.temp.name).resolve() / "many"
+        outside.mkdir(exist_ok=True)
         for n in range(first, first + count):
-            tree = (self.repo / f".claude/worktrees/w{n}") if n < first + nested else outside / f"w{n}"
-            tree.mkdir(parents=True)
+            tree = outside / f"w{n}"
             admin = common / "worktrees" / f"w{n}"
             admin.mkdir(parents=True)
-            (admin / "gitdir").write_text(f"{tree.resolve()}/.git\n")
+            (admin / "gitdir").write_text(f"{tree}/.git\n")
             (admin / "commondir").write_text("../..\n")
             (admin / "HEAD").write_text(f"{self.head}\n")
             if n % 2:
                 (admin / "config.worktree").write_text("")
-            (tree / ".git").write_text(f"gitdir: {admin}\n")
+            if not absent:
+                tree.mkdir()
+                (tree / ".git").write_text(f"gitdir: {admin}\n")
 
     def spawn_counts(self):
         """Run a worker dry run and count what hcom-seat starts, recorded by bash itself: BASH_ENV installs a DEBUG
@@ -1613,8 +1684,16 @@ class HcomSeatTest(unittest.TestCase):
             word = command.split()[0] if command.split() else ""
             if word.startswith(("/", '"$', "$")) or (re.fullmatch(r"[A-Za-z][\w.+-]*", word) and word not in internal):
                 programs[word] += 1
-        said = [line for line in run.stderr.splitlines() if line.startswith("hcom-seat: the worktree ")]
-        return programs, subshells, len(said)
+        return programs, subshells
+
+    def assert_same_counts(self, few, many):
+        """The program counts, by name, and the subshell counts of two spawn_counts results are equal."""
+        self.assertIn("/usr/bin/stat", few[0], "the counter sees programs run by absolute path")
+        grown = many[0].copy()
+        grown.subtract(few[0])
+        self.assertEqual(+grown, collections.Counter(), "programs run more often with more worktrees")
+        self.assertEqual(-grown, collections.Counter(), "programs run less often with more worktrees")
+        self.assertEqual(many[1], few[1], "subshells forked with more worktrees and with fewer")
 
     def test_the_checks_start_no_more_processes_for_more_worktrees(self):
         """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
@@ -1623,17 +1702,24 @@ class HcomSeatTest(unittest.TestCase):
         wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
         stat runs and subshells per worktree and write root)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
-        self.add_worktrees(0, 10, nested=0)
-        programs_10, subshells_10, _ = self.spawn_counts()
-        self.add_worktrees(10, 290, nested=0)
+        self.add_worktrees(0, 10)
+        few = self.spawn_counts()
+        self.add_worktrees(10, 290)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
-        programs_300, subshells_300, _ = self.spawn_counts()
-        self.assertIn("/usr/bin/stat", programs_10, "the counter sees programs run by absolute path")
-        grown = programs_300.copy()
-        grown.subtract(programs_10)
-        self.assertEqual(+grown, collections.Counter(), "programs run more often with 300 worktrees than with 10")
-        self.assertEqual(-grown, collections.Counter(), "programs run less often with 300 worktrees than with 10")
-        self.assertEqual(subshells_300, subshells_10, "subshells forked with 300 worktrees and with 10")
+        self.assert_same_counts(few, self.spawn_counts())
+
+    def test_absent_worktrees_start_no_more_processes_either(self):
+        """U95 round 12: registered worktrees whose directories are gone (prunable records, outside every write root)
+        are resolved in the same one subshell as present ones (physical_paths: the deepest existing ancestor by
+        builtins, then `cd -P`), so 300 of them start exactly as many processes as 10. Before, each absent path cost
+        two subshells of physical_path (10 vs 300 absent: 21 vs 601 subshells)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10, absent=True)
+        self.assertEqual(self.git("worktree", "list").count("prunable"), 10)
+        few = self.spawn_counts()
+        self.add_worktrees(10, 290, absent=True)
+        self.assertEqual(self.git("worktree", "list").count("prunable"), 300)
+        self.assert_same_counts(few, self.spawn_counts())
 
     def test_a_fresh_spark_first_launch_with_the_default_paths(self):
         """U85 round 30: the dotfiles program's first launch on a fresh host (hcom-orchestration SKILL step 0):

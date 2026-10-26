@@ -268,6 +268,256 @@ function is_ci_runner() {
 }
 # --- ci-runner.sh end ---
 
+# Copied from scripts/lib/chezmoi-externals.sh, because setup.sh runs before the repository
+# exists; tests/unit/test_chezmoi_externals.py keeps the copy equal to the original.
+# --- chezmoi-externals.sh begin ---
+# Download attempts per URL, and the first wait between them in seconds (doubled after each failure).
+CHEZMOI_EXTERNAL_ATTEMPTS="${CHEZMOI_EXTERNAL_ATTEMPTS:-4}"
+CHEZMOI_EXTERNAL_RETRY_DELAY="${CHEZMOI_EXTERNAL_RETRY_DELAY:-5}"
+
+#
+# @description Print the lowercase sha256 of a file, or of standard input with no argument.
+# @arg $1 path Optional file to hash.
+# @stdout The digest.
+#
+function chezmoi_external_sha256() {
+    local digest
+    if command -v sha256sum > /dev/null 2>&1; then
+        digest="$(sha256sum "$@")" || return 1
+    else
+        digest="$(shasum -a 256 "$@")" || return 1
+    fi
+    printf '%s\n' "${digest%% *}"
+}
+
+#
+# @description Print a Go duration (chezmoi's refreshPeriod, time.ParseDuration) in whole seconds: an empty value
+#   or `0` is 0, which chezmoi reads as "never re-download"; a sum of integer h, m and s parts is accepted.
+# @arg $1 string The duration.
+# @stdout Seconds.
+# @exitcode 1 When the value has another form (a fraction, ms, us, ns): this step cannot tell chezmoi's freshness.
+#
+function chezmoi_external_seconds() {
+    local rest="$1" total=0 amount unit
+    [ -n "${rest}" ] && [ "${rest}" != 0 ] || {
+        printf '0\n'
+        return 0
+    }
+    while [ -n "${rest}" ]; do
+        [[ "${rest}" =~ ^([0-9]{1,9})([hms])(.*)$ ]] || return 1
+        amount="${BASH_REMATCH[1]}" unit="${BASH_REMATCH[2]}" rest="${BASH_REMATCH[3]}"
+        case "${unit}" in
+        h) total=$((total + 10#${amount} * 3600)) ;;
+        m) total=$((total + 10#${amount} * 60)) ;;
+        s) total=$((total + 10#${amount})) ;;
+        esac
+    done
+    printf '%s\n' "${total}"
+}
+
+#
+# @description Download one URL into a file once, bounded in time and speed.
+# @arg $1 url The URL.
+# @arg $2 path The output file.
+# @stdout The HTTP status curl saw.
+# @exitcode 0 A complete 2xx response was written.
+# @exitcode * curl's exit status (22 for an HTTP error, 18 for a truncated transfer).
+#
+function chezmoi_external_download() {
+    curl --proto '=http,https' --location --fail --silent --show-error \
+        --connect-timeout 30 --max-time 900 --speed-limit 1024 --speed-time 60 \
+        --output "$2" --write-out '%{http_code}' "$1"
+}
+
+#
+# @description Put one external's verified download into chezmoi's cache, retrying a failed transfer. A cache
+#   entry already younger than the refresh period and holding the right bytes is kept; one with other bytes (chezmoi
+#   caches a download before it checks the checksum) is replaced.
+# @arg $1 string The external's target path, for messages.
+# @arg $2 url The URL.
+# @arg $3 string The expected sha256.
+# @arg $4 number The refresh period in seconds (0: never re-download).
+# @arg $5 path chezmoi's cache directory.
+# @stderr What failed, naming the external and its URL.
+# @exitcode 1 A download kept failing, or the cache could not be written. Nothing is cached then.
+# @exitcode 2 The sha256 of a complete download differed: not retried, nothing cached.
+#
+function prefetch_chezmoi_external() {
+    local name="$1" url="$2" expected="$3" refresh="$4" cache="$5"
+    local key entry modified now partial actual code status retry attempt=1 delay="${CHEZMOI_EXTERNAL_RETRY_DELAY}"
+    key="$(printf '%s' "${url}" | chezmoi_external_sha256)" || return 1
+    entry="${cache}/external/${key}"
+    if [ -f "${entry}" ]; then
+        modified="$(stat -c %Y "${entry}" 2> /dev/null || stat -f %m "${entry}")" || modified=0
+        now="$(date +%s)" || return 1
+        actual="$(chezmoi_external_sha256 "${entry}")" || actual=""
+        if [ "${actual}" = "${expected}" ] && { [ "${refresh}" -eq 0 ] || [ $((modified + refresh)) -gt "${now}" ]; }; then
+            printf 'chezmoi external %s: cached, sha256 verified\n' "${name}"
+            return 0
+        fi
+    fi
+    if ! mkdir -p "${cache}/external" || ! chmod 700 "${cache}" "${cache}/external"; then
+        printf 'chezmoi external %s: cannot create the cache directory %s/external\n' "${name}" "${cache}" >&2
+        return 1
+    fi
+    partial="$(mktemp "${cache}/external/.prefetch.XXXXXX")" || return 1
+    while :; do
+        status=0
+        code="$(chezmoi_external_download "${url}" "${partial}")" || status=$?
+        if [ "${status}" -eq 0 ]; then
+            actual="$(chezmoi_external_sha256 "${partial}")" || actual="unreadable"
+            if [ "${actual}" != "${expected}" ]; then
+                rm -f "${partial}"
+                printf 'chezmoi external %s: %s: SHA256 mismatch after a complete download: expected %s, got %s; not retried, nothing cached\n' \
+                    "${name}" "${url}" "${expected}" "${actual}" >&2
+                return 2
+            fi
+            if ! chmod 600 "${partial}" || ! mv -f "${partial}" "${entry}"; then
+                rm -f "${partial}"
+                printf 'chezmoi external %s: cannot write the cache entry %s\n' "${name}" "${entry}" >&2
+                return 1
+            fi
+            printf 'chezmoi external %s: downloaded from %s, sha256 verified\n' "${name}" "${url}"
+            return 0
+        fi
+        # A request curl could not make (bad option, URL or protocol) or a write error is not a network failure, and
+        # an HTTP 4xx other than a timeout or a rate limit will answer the same way again.
+        retry=1
+        case "${status}/${code}" in
+        1/* | 2/* | 3/* | 23/* | 27/* | 22/4[0-9][0-9]) [[ "${code}" =~ ^(408|429)$ ]] || retry=0 ;;
+        esac
+        if [ "${retry}" -eq 0 ] || [ "${attempt}" -ge "${CHEZMOI_EXTERNAL_ATTEMPTS}" ]; then
+            rm -f "${partial}"
+            printf 'chezmoi external %s: %s: download failed after %s attempt(s) (last: curl exit %s, HTTP %s); nothing cached\n' \
+                "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" >&2
+            return 1
+        fi
+        printf 'chezmoi external %s: %s: attempt %s failed (curl exit %s, HTTP %s); retrying in %ss\n' \
+            "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" "${delay}" >&2
+        sleep "${delay}"
+        attempt=$((attempt + 1))
+        delay=$((delay * 2))
+    done
+}
+
+#
+# @description Print every external a chezmoi source declares, one per line: target path, type, sha256, refresh
+#   period and its URLs, tab-separated. A missing type or sha256 prints as `-` and a missing refresh period as `0`, so
+#   no field is empty (a tab is whitespace to `read`, which would merge two tabs into one separator). Every `.chezmoiexternal.<format>` file anywhere in the source and every file
+#   in a `.chezmoiexternals/` directory is rendered by chezmoi itself (`execute-template`, with the source's
+#   templates) and decoded by its own fromYaml, fromJson, fromJsonc or fromToml.
+# @arg $1 path The chezmoi command.
+# @arg $2 path The source directory (`chezmoi source-path`).
+# @arg $3 path A scratch directory for the rendered files.
+# @stdout The externals.
+# @exitcode 1 When a declaration file cannot be found, rendered or decoded, or has an unknown format.
+#
+function chezmoi_external_list() {
+    local chezmoi="$1" source="$2" scratch="$3" declarations declaration format decode relative prefix rendered count=0
+    local fields
+    # Go template text, not shell: every $ belongs to chezmoi. A missing type or sha256 is `-`, a missing period `0`.
+    # shellcheck disable=SC2016
+    fields='{{ $name }}{{ "\t" }}{{ dig "type" "-" $e }}{{ "\t" }}{{ dig "checksum" "sha256" "-" $e }}{{ "\t" }}{{ dig "refreshPeriod" "0" $e }}{{ with dig "url" "" $e }}{{ "\t" }}{{ . }}{{ end }}{{ range dig "urls" list $e }}{{ "\t" }}{{ . }}{{ end }}'
+    declarations="$(find "${source}" \( -type f -name '.chezmoiexternal.*' \) -o \( -type f -path '*/.chezmoiexternals/*' \))" || {
+        printf 'chezmoi externals: cannot list the declarations under %s\n' "${source}" >&2
+        return 1
+    }
+    while IFS= read -r declaration; do
+        [ -n "${declaration}" ] || continue
+        format="${declaration%.tmpl}"
+        format="${format##*.}"
+        case "${format}" in
+        yaml | yml) decode=fromYaml ;;
+        json) decode=fromJson ;;
+        jsonc) decode=fromJsonc ;;
+        toml) decode=fromToml ;;
+        *)
+            printf 'chezmoi externals: %s has a format this step does not read\n' "${declaration}" >&2
+            return 1
+            ;;
+        esac
+        relative="${declaration#"${source}"/}"
+        prefix="${relative%/*}"
+        [ "${prefix}" != "${relative}" ] || prefix=""
+        prefix="${prefix%/.chezmoiexternals}"
+        prefix="${prefix%.chezmoiexternals}"
+        count=$((count + 1))
+        rendered="${scratch}/${count}.${format}"
+        "${chezmoi}" execute-template < "${declaration}" > "${rendered}" || {
+            printf 'chezmoi externals: cannot render %s\n' "${declaration}" >&2
+            return 1
+        }
+        "${chezmoi}" execute-template "{{- range \$name, \$e := (include \"${rendered}\" | ${decode}) -}}
+${prefix:+${prefix}/}${fields}
+{{ end -}}" || {
+            printf 'chezmoi externals: cannot decode %s as %s\n' "${declaration}" "${format}" >&2
+            return 1
+        }
+    done <<< "${declarations}"
+}
+
+#
+# @description Fetch every http(s) `file`, `archive` and `archive-file` external of a chezmoi source into chezmoi's
+#   cache, verified, before any command reads the target state. `git-repo` externals and `file://` URLs are left to
+#   chezmoi. An external without a sha256 is refused: it could not be verified before it is cached. The URLs of one
+#   external are tried in chezmoi's order (url, then urls) until one is cached; a sha256 mismatch stops at once, as a
+#   wrong archive is no transfer failure another URL would cure. Without curl the step only says so,
+#   and chezmoi fetches the externals itself as before.
+# @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
+# @stdout One line per external.
+# @stderr What failed, naming the external and its URL.
+# @exitcode 1 When an external cannot be fetched and verified, or the externals cannot be listed.
+#
+function prefetch_chezmoi_externals() {
+    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds url fetched
+    local -a fields
+    if ! command -v curl > /dev/null 2>&1; then
+        printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
+        return 0
+    fi
+    source="$("${chezmoi}" source-path)" || {
+        printf 'chezmoi externals: chezmoi source-path failed\n' >&2
+        return 1
+    }
+    scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || return 1
+    listing="$(chezmoi_external_list "${chezmoi}" "${source}" "${scratch}")" || status=1
+    rm -rf "${scratch}"
+    [ "${status}" -eq 0 ] || return 1
+    while IFS=$'\t' read -r -a fields; do
+        [ "${#fields[@]}" -gt 0 ] || continue
+        name="${fields[0]}" type="${fields[1]:-}" sha256="${fields[2]:-}" refresh="${fields[3]:-}"
+        case "${type}" in
+        file | archive | archive-file) ;;
+        *) continue ;;
+        esac
+        [ "${#fields[@]}" -gt 4 ] && [[ "${fields[4]}" =~ ^https?:// ]] || continue
+        [[ "${sha256}" =~ ^[0-9a-f]{64}$ ]] || {
+            printf 'chezmoi external %s: %s has no sha256 checksum; it cannot be verified before it is cached\n' \
+                "${name}" "${fields[4]}" >&2
+            return 1
+        }
+        seconds="$(chezmoi_external_seconds "${refresh}")" || {
+            printf 'chezmoi external %s: refreshPeriod %s is not a sum of whole h, m and s\n' "${name}" "${refresh}" >&2
+            return 1
+        }
+        # Read once, at the first external to fetch: a source without one needs no cache.
+        if [ -z "${cache}" ]; then
+            cache="$("${chezmoi}" execute-template '{{ .chezmoi.cacheDir }}')" && [ -n "${cache}" ] || {
+                printf 'chezmoi externals: cannot read chezmoi'\''s cache directory\n' >&2
+                return 1
+            }
+        fi
+        fetched=1
+        for url in "${fields[@]:4}"; do
+            fetched=0
+            prefetch_chezmoi_external "${name}" "${url}" "${sha256}" "${seconds}" "${cache}" || fetched=$?
+            [ "${fetched}" -eq 1 ] || break
+        done
+        [ "${fetched}" -eq 0 ] || return 1
+    done <<< "${listing}"
+}
+# --- chezmoi-externals.sh end ---
+
 function is_tty() {
     [ -t 0 ]
 }
@@ -614,6 +864,14 @@ function run_chezmoi() {
 
     # Add to PATH for installing the necessary binary files under `$HOME/.local/bin`.
     export PATH="${PATH}:${HOME}/.local/bin"
+
+    # The first read of the target state below would download every archive external itself, and a dropped transfer
+    # there fails it with a bare "chezmoi: unexpected EOF" (U96); fetch them first, retried and verified, so the
+    # status, diff and apply below read only chezmoi's cache.
+    if ! prefetch_chezmoi_externals "${chezmoi_cmd}"; then
+        echo "chezmoi externals could not be fetched; no destination targets were changed." >&2
+        return 1
+    fi
 
     if ! status_output="$("${chezmoi_cmd}" status --path-style absolute --exclude=scripts)"; then
         echo "chezmoi status failed; no destination targets were changed." >&2

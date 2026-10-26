@@ -1193,9 +1193,9 @@ class HcomSeatTest(unittest.TestCase):
         (root / "file").write_text("")
         for name in ("a", "b"):
             (root / name / "commondir").write_text("../..\n")
-        # Present directories, a link, absent paths (one below the link, one below an ancestor of its own) resolved
-        # in the one subshell, and a regular file, the one input physical_path takes.
-        dirs = [str(root / n) for n in ("a", "b", "c", "absent", "c/gone/deeper", "d/gone", "file")]
+        # Present directories, a link, and absent paths (one below the link, one below an ancestor of its own), all
+        # resolved in the one subshell.
+        dirs = [str(root / n) for n in ("a", "b", "c", "absent", "c/gone/deeper", "d/gone")]
         pointers = [str(root / n / "commondir") for n in ("a", "b")]
         fakes = root / "fakes"
         fakes.mkdir()
@@ -1220,21 +1220,31 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(good.returncode, 0, good.stderr)
         self.assertEqual(
             good.stdout.split(),
-            [str(root / n) for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone", "file")],
+            [str(root / n) for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone")],
         )
         paths_cases = {
             "cd fails after a plausible PWD": 'cd() { if [[ $3 == */b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
             "a record is dropped": 'printf() { [[ $# == 3 && $2 == */b ]] && return 0; builtin printf "$@"; }',
             "a record's printf fails (the audit's case)": 'printf() { [[ $# == 3 && $2 == */b ]] && return 7; builtin printf "$@"; }',
-            "physical_path fails after plausible output": "physical_path() { echo /plausible/file; return 7; }",
+            "physical_path is never called": "physical_path() { echo /plausible/a; return 7; }",
             "cd fails for an absent path's ancestor": 'cd() { if [[ $3 == */d/ ]]; then PWD=/plausible/d; return 7; fi; builtin cd "$@"; }',
             "an absent path's record is dropped": 'printf() { [[ $# == 3 && $3 == /gone ]] && return 0; builtin printf "$@"; }',
             "a malformed record": 'cd() { builtin cd "$@" || return; [[ $PWD != */b ]] || PWD=relative; }',
         }
+        self.assertEqual(run(paths_call, dirs, prelude=paths_cases.pop("physical_path is never called")).returncode, 0)
         for label, prelude in paths_cases.items():
             with self.subTest(producer="physical_paths", case=label):
                 result = run(paths_call, dirs, prelude=prelude)
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        # A path that is, or lies below, a regular file or a dangling link is no directory-backed worktree: refused,
+        # with no fallback process.
+        (root / "dangling").symlink_to("nowhere")
+        for label, path in (("a regular file", "file"), ("below a file", "file/x/y"), ("a dangling link", "dangling")):
+            with self.subTest(producer="physical_paths", case=label):
+                result = run(paths_call, [*dirs, str(root / path)])
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn(f"the worktree record {root / path} is not backed by a directory", result.stderr)
+                self.assertIn("git worktree prune", result.stderr)
         sizes_call = 'sizes_of "$@"\nprintf "%s\\n" "${size_list[@]}"'
         self.assertEqual(run(sizes_call, pointers).stdout.split(), ["6", "6"])
         stat_cases = {
@@ -1820,6 +1830,35 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn("which another worktree git directory records too", run.stderr)
         shutil.rmtree(twin)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_worktree_record_not_backed_by_a_directory_refuses(self):
+        """U95 round 16: a registered worktree whose path is a regular file, or lies below one, is a corrupt record,
+        not a worktree: the launch refuses for both roles, dry runs included, naming the record and `git worktree
+        prune`/`git worktree repair`, instead of resolving it with a per-record fallback process. Without the record
+        the launch succeeds."""
+        scratch = Path(self.temp.name).resolve()
+        common = (self.repo / ".git").resolve()
+        (scratch / "stale-file").write_text("")
+        (scratch / "under").write_text("")
+        for label, path in (("the path a regular file", scratch / "stale-file"), ("below a file", scratch / "under/x")):
+            with self.subTest(label):
+                admin = common / "worktrees" / "stale"
+                admin.mkdir(parents=True)
+                try:
+                    (admin / "gitdir").write_text(f"{path}/.git\n")
+                    (admin / "commondir").write_text("../..\n")
+                    (admin / "HEAD").write_text(f"{self.head}\n")
+                    self.assertIn(f"worktree {path}\n", self.git("worktree", "list", "--porcelain") + "\n")
+                    for role in ("worker", "orchestrator"):
+                        run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
+                        self.assertIn(f"the worktree record {path} is not backed by a directory", run.stderr)
+                        self.assertIn("git worktree prune", run.stderr)
+                        self.assertIn("git worktree repair", run.stderr)
+                finally:
+                    shutil.rmtree(admin)
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
 

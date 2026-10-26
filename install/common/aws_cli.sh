@@ -132,11 +132,15 @@ function install_aws_cli() (
     inspection_home="${temporary_dir}/gnupg-inspection"
     keyring_path="${temporary_dir}/aws-cli-keyring.gpg"
 
-    curl --fail --location --silent --show-error "${archive_url}" --output "${archive_path}" || return 3
-    curl --fail --location --silent --show-error "${archive_url}.sig" --output "${signature_path}" || return 3
+    # curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.
+    curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        "${archive_url}" --output "${archive_path}" || return 3
+    curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        "${archive_url}.sig" --output "${signature_path}" || return 3
     if [ -n "${macos}" ]; then
         # install.sh installs the release version.txt names, so the postcondition expects that one.
-        staged_version="$(curl --fail --location --silent --show-error https://awscli.amazonaws.com/v2/version.txt)" || return 3
+        staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 \
+            --speed-time 60 https://awscli.amazonaws.com/v2/version.txt)" || return 3
         staged_version="${staged_version//[[:space:]]/}"
     fi
 
@@ -189,7 +193,8 @@ function install_aws_cli() (
 function aws_cli_archive_etag() {
     local url
     url="$(aws_cli_url)" || return
-    curl --fail --location --silent --show-error --head "${url}" |
+    curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        --head "${url}" |
         awk 'tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); if (etag == "") exit 1; print etag }'
 }
 

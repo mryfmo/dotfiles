@@ -138,7 +138,8 @@ jobs:
           export FILES_TEST_SOURCE="$(chezmoi source-path)"
           export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"
           cd "${FILES_TEST_SOURCE}/.."
-          bats tests/files/common.bats
-          bats --filter-tags common,ubuntu:${SYSTEM} \
+          # run_bats fails a test by name when it outlives BATS_PER_TEST_TIMEOUT (scripts/run_unit_test.sh).
+          bash -c 'source ./scripts/run_unit_test.sh && run_bats "$@"' _ tests/files/common.bats
+          bash -c 'source ./scripts/run_unit_test.sh && run_bats "$@"' _ --filter-tags "common,ubuntu:${SYSTEM}" \
             --print-output-on-failure \
             tests/files/ubuntu.bats

@@ -30,7 +30,9 @@ function setup_repository() {
     sudo mkdir -p /usr/share/keyrings
     # Tailscale publishes this key pre-dearmored (raw binary), unlike Docker's
     # ASCII-armored key, so no `gpg --dearmor` step is needed here.
-    curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" | sudo tee "${TAILSCALE_KEYRING}" > /dev/null
+    # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, so a stalled download ends.
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" | sudo tee "${TAILSCALE_KEYRING}" > /dev/null
 
     echo \
         "deb [arch=${arch} signed-by=${TAILSCALE_KEYRING}] https://pkgs.tailscale.com/stable/ubuntu ${codename} main" |

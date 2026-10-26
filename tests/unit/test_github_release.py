@@ -104,7 +104,8 @@ class GithubReleaseTest(unittest.TestCase):
         # v2.6.0 is published later than v2.5.0 although the page lists it after.
         self.assertEqual("v2.6.0\n", result.stdout)
         self.assertIn(
-            "curl -fsSL -H Accept: application/vnd.github+json https://api.github.com/repos/owner/repo/releases?per_page=30",
+            "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -H Accept: application/vnd.github+json"
+            " https://api.github.com/repos/owner/repo/releases?per_page=30",
             self.log.read_text(),
         )
 
@@ -124,7 +125,9 @@ class GithubReleaseTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("v1.0.0\n", result.stdout)
-        self.assertIn("wget -qO - --header=Accept: application/vnd.github+json", self.log.read_text())
+        self.assertIn(
+            "wget --timeout=60 --tries=3 -qO - --header=Accept: application/vnd.github+json", self.log.read_text()
+        )
 
     def test_token_reaches_curl_on_stdin_never_on_the_command_line(self) -> None:
         self.serve([release("v1.0.0", hours_ago(500))])

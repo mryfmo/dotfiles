@@ -64,17 +64,19 @@ class ServerFixture(unittest.TestCase):
         self.case = Path(tempfile.mkdtemp(prefix="case-", dir=self.temp))
         self.cache = self.case / "cache"
         self.sleeps = self.case / "sleeps"
+        self.routes: dict[str, dict] = {}
         self.log.unlink(missing_ok=True)
 
     def serve(self, name: str, *behaviours: str) -> str:
-        # Registers one URL path: the server answers it from this file and answers nothing else.
+        # Registers one URL path: the server answers the registered paths from their files and nothing else.
         (self.www / name).write_bytes(self.data)
-        route = {"file": str(self.www / name), "plan": list(behaviours)}
-        self.plan.write_text(json.dumps({"log": str(self.log), "paths": {f"/{name}": route}}))
+        self.routes[f"/{name}"] = {"file": str(self.www / name), "plan": list(behaviours)}
+        self.plan.write_text(json.dumps({"log": str(self.log), "paths": self.routes}))
         return f"{self.base}/{name}"
 
-    def requests(self) -> int:
-        return len(self.log.read_text().splitlines()) if self.log.exists() else 0
+    def requests(self, url: str | None = None) -> int:
+        lines = self.log.read_text().splitlines() if self.log.exists() else []
+        return len(lines) if url is None else lines.count(url.removeprefix(self.base))
 
     def entry(self, url: str) -> Path:
         # chezmoi's cache key: the sha256 of the URL as written (chezmoi 2.73.3 sourcestate.go:1921-1923).
@@ -93,8 +95,17 @@ class ServerFixture(unittest.TestCase):
             check=False,
         )
 
-    def prefetch_one(self, url: str, seconds: str = "0", sha256: str | None = None) -> subprocess.CompletedProcess[str]:
-        return self.bash('prefetch_chezmoi_external .ext "$@"', url, sha256 or self.sha256, seconds, str(self.cache))
+    def prefetch_one(
+        self, url: str, seconds: str = "0", sha256: str | None = None, *, inject: str = ""
+    ) -> subprocess.CompletedProcess[str]:
+        # inject: shell definitions run after the library is sourced, replacing a producer the step calls.
+        return self.bash(
+            f'{inject}prefetch_chezmoi_external .ext "$@"', url, sha256 or self.sha256, seconds, str(self.cache)
+        )
+
+    def cached(self) -> list[str]:
+        directory = self.cache / "external"
+        return sorted(path.name for path in directory.iterdir()) if directory.exists() else []
 
 
 class ChezmoiExternalsTest(ServerFixture):
@@ -138,6 +149,110 @@ class ChezmoiExternalsTest(ServerFixture):
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertEqual(4, self.requests())
                 self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
+
+    # The library's own sha256 helper, kept as orig_chezmoi_external_sha256 so an injected one can delegate to it.
+    KEEP_HASH = 'eval "orig_$(declare -f chezmoi_external_sha256)"; '
+
+    def test_every_hash_time_temp_and_install_producer_that_fails_stops_closed(self) -> None:
+        # Audit of 0f69d7af: each producer the cache decision rests on, made to fail. Each case names its producer,
+        # leaves no cache entry and no partial download, and makes no request when the failure comes before one.
+        url = self.serve("producers.tar.gz", "ok")
+        keep = self.KEEP_HASH
+        cases = (
+            (
+                "the URL hash fails",
+                keep + 'chezmoi_external_sha256() { [ "$#" -gt 0 ] || return 1; orig_chezmoi_external_sha256 "$@"; }; ',
+                1,
+                "cannot hash the URL",
+                0,
+            ),
+            (
+                "the hash tool prints a non-digest",
+                'sha256sum() { printf "zz  -\\n"; }; shasum() { printf "zz  -\\n"; }; ',
+                1,
+                "cannot hash the URL",
+                0,
+            ),
+            (
+                "the download hash fails",
+                keep + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) return 1 ;; esac; '
+                'orig_chezmoi_external_sha256 "$@"; }; ',
+                1,
+                "cannot hash the download; nothing cached",
+                1,
+            ),
+            (
+                "the download hash is no digest",
+                keep + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) printf "zz\\n"; return 0 ;; esac; '
+                'orig_chezmoi_external_sha256 "$@"; }; ',
+                2,
+                "SHA256 mismatch after a complete download: expected",
+                1,
+            ),
+            ("mktemp fails", "mktemp() { return 1; }; ", 1, "cannot create a download file in", 0),
+            ("mkdir fails", "mkdir() { return 1; }; ", 1, "mkdir -p", 0),
+            ("chmod 700 fails", 'chmod() { [ "$1" != 700 ] || return 1; command chmod "$@"; }; ', 1, "chmod 700 on", 0),
+            (
+                "chmod 600 fails",
+                'chmod() { [ "$1" != 600 ] || return 1; command chmod "$@"; }; ',
+                1,
+                "chmod 600 on the download failed; nothing cached",
+                1,
+            ),
+            ("mv fails", "mv() { return 1; }; ", 1, "mv of the download into", 1),
+        )
+        for name, inject, code, message, requests in cases:
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.cache, ignore_errors=True)
+
+                result = self.prefetch_one(url, inject=inject)
+
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertEqual(requests, self.requests())
+                self.assertEqual([], self.cached())
+
+    def test_an_existing_entry_whose_age_or_digest_cannot_be_read_is_never_kept(self) -> None:
+        # The time producers: a date that fails or prints garbage stops the step; a stat or an entry hash that fails
+        # makes the entry stale, so it is fetched again and replaced, never kept.
+        url = self.serve("aged.tar.gz", "ok")
+        entry = self.entry(url)
+        for name, inject, code, requests in (
+            ("date fails", "date() { return 1; }; ", 1, 0),
+            ("date prints garbage", "date() { printf 'soon\\n'; }; ", 1, 0),
+            ("stat fails", "stat() { return 1; }; ", 0, 1),
+            ("stat prints garbage", "stat() { printf 'yesterday\\n'; }; ", 0, 1),
+            (
+                "the entry hash fails",
+                self.KEEP_HASH + 'chezmoi_external_sha256() { [ "${1:-}" != "$ENTRY" ] || return 1; '
+                'orig_chezmoi_external_sha256 "$@"; }; ',
+                0,
+                1,
+            ),
+        ):
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                entry.parent.mkdir(parents=True, exist_ok=True)
+                entry.write_bytes(b"fresh but unread")
+
+                result = self.bash(
+                    inject + 'prefetch_chezmoi_external .ext "$@"',
+                    url,
+                    self.sha256,
+                    "2592000",
+                    str(self.cache),
+                    ENTRY=str(entry),
+                )
+
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(requests, self.requests())
+                if code:
+                    self.assertIn("date +%s failed; cannot tell the cache entry's age", result.stderr)
+                    self.assertEqual(b"fresh but unread", entry.read_bytes())
+                else:
+                    self.assertEqual(self.data, entry.read_bytes())
+                self.assertEqual([entry.name], self.cached())
 
     def test_a_server_error_is_retried_and_a_missing_file_is_not(self) -> None:
         url = self.serve("busy.tar.gz", "503", "ok")
@@ -233,12 +348,13 @@ class ChezmoiSourceExternalsTest(ServerFixture):
     """The whole step against a chezmoi source: chezmoi renders and lists the externals, and the status that follows
     reads only the cache."""
 
-    def source(self, url: str, sha256: str | None = None, *, extra: str = "") -> Path:
+    def source(self, url: str, sha256: str | None = None, *, extra: str = "", urls: tuple[str, ...] = ()) -> Path:
         source = self.case / "source"
         (source / ".chezmoitemplates").mkdir(parents=True)
         checksum = sha256 or self.sha256
+        fallbacks = f"  urls: {json.dumps(list(urls))}\n" if urls else ""
         (source / ".chezmoitemplates/ext.yaml.tmpl").write_text(
-            f'".ext":\n  type: archive\n  url: {json.dumps(url)}\n  checksum:\n    sha256: "{checksum}"\n'
+            f'".ext":\n  type: archive\n  url: {json.dumps(url)}\n{fallbacks}  checksum:\n    sha256: "{checksum}"\n'
             '  stripComponents: 1\n  refreshPeriod: "720h"\n'
         )
         # As the repository's own: the root file includes a named template.
@@ -356,11 +472,6 @@ class ChezmoiSourceExternalsTest(ServerFixture):
             ("an unknown type", '".ext":\n  type: tarball\n  url: "https://x.invalid/a"\n', "unknown type tarball"),
             ("a missing type", '".ext":\n  url: "https://x.invalid/a"\n', "unknown type -"),
             ("no url", '".ext":\n  type: archive\n', "chezmoi external .ext: no url"),
-            (
-                "another scheme",
-                '".ext":\n  type: archive\n  url: "ftp://x.invalid/a"\n',
-                "is neither http(s) nor file://",
-            ),
         )
         for name, text, message in cases:
             with self.subTest(name):
@@ -375,6 +486,75 @@ class ChezmoiSourceExternalsTest(ServerFixture):
             self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi)),
             f"{unknown} has a format this step does not read",
         )
+
+    def status(self, chezmoi: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([str(chezmoi), "status"], capture_output=True, text=True, timeout=120, check=False)
+
+    def test_an_external_with_any_url_that_is_not_http_is_left_whole_to_chezmoi(self) -> None:
+        # Audit of 0f69d7af: only the first URL's scheme was checked. Now any non-http(s) URL in url or urls leaves the
+        # whole external to chezmoi, untouched, with one line.
+        http = self.serve("mixed.tar.gz", "ok")
+        local = f"file://{self.case}/local.tar.gz"
+        for name, url, urls, other in (
+            ("http primary, file fallback", http, (local,), local),
+            ("file primary, http fallback", local, (http,), local),
+            ("ftp fallback", http, ("ftp://x.invalid/a.tar.gz",), "ftp://x.invalid/a.tar.gz"),
+        ):
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.case / "source", ignore_errors=True)
+                chezmoi = self.source(url, urls=urls)
+
+                result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(
+                    [f"chezmoi external .ext: left to chezmoi: {other} is not http(s)"], result.stdout.splitlines()
+                )
+                self.assertEqual(0, self.requests())
+                self.assertEqual([], self.cached())
+
+    def test_an_all_http_list_prefetches_the_first_url_and_leaves_a_failing_one_to_chezmoi(self) -> None:
+        # chezmoi tries url, then urls, and keys each by its own sha256 (sourcestate.go:1861-1886, :1921-1923), so only
+        # the first URL's entry spares chezmoi a request; the fallbacks stay chezmoi's.
+        primary = self.serve("primary.tar.gz", "truncate", "ok")
+        fallback = self.serve("fallback.tar.gz", "ok")
+        chezmoi = self.source(primary, urls=(fallback,))
+
+        result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
+        status = self.status(chezmoi)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"downloaded from {primary}, sha256 verified", result.stdout)
+        self.assertEqual([self.entry(primary).name], self.cached())
+        self.assertEqual(0, status.returncode, status.stderr)
+        # The truncated attempt and its retry; chezmoi's status read the first URL's entry and requested nothing.
+        self.assertEqual((2, 0), (self.requests(primary), self.requests(fallback)))
+
+        # A first URL that keeps failing: the step caches nothing and says chezmoi tries the fallback, which it does.
+        self.log.unlink()
+        shutil.rmtree(self.cache)
+        self.routes["/primary.tar.gz"]["plan"] = ["503"]
+        self.plan.write_text(json.dumps({"log": str(self.log), "paths": self.routes}))
+
+        result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f"chezmoi external .ext: left to chezmoi, which tries the fallbacks {fallback}", result.stdout)
+        self.assertIn(f"{primary}: download failed after 4 attempt(s)", result.stderr)
+        self.assertEqual([], self.cached())
+        self.assertEqual((4, 0), (self.requests(primary), self.requests(fallback)))
+        status = self.status(chezmoi)
+        self.assertEqual(0, status.returncode, status.stderr)
+        self.assertIn("A .ext/blob", status.stdout)
+        self.assertEqual((5, 1), (self.requests(primary), self.requests(fallback)))
+
+        # Without a fallback, a first URL that keeps failing stops the step, naming it.
+        shutil.rmtree(self.case / "source")
+        chezmoi = self.source(primary)
+        result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
+        self.assertEqual(1, result.returncode)
+        self.assertIn(f"chezmoi external .ext: {primary}: download failed after 4 attempt(s)", result.stderr)
 
     def test_externals_chezmoi_fetches_itself_are_left_to_it(self) -> None:
         # git-repo and file:// externals never reach chezmoi's download cache.

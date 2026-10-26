@@ -368,10 +368,14 @@ function prefetch_chezmoi_external() {
             return 0
         fi
     fi
-    if ! mkdir -p "${cache}/external" || ! chmod 700 "${cache}" "${cache}/external"; then
-        printf 'chezmoi external %s: cannot create the cache directory %s/external\n' "${name}" "${cache}" >&2
+    mkdir -p "${cache}/external" || {
+        printf 'chezmoi external %s: mkdir -p %s/external failed; nothing cached\n' "${name}" "${cache}" >&2
         return 1
-    fi
+    }
+    chmod 700 "${cache}" "${cache}/external" || {
+        printf 'chezmoi external %s: chmod 700 on %s and %s/external failed; nothing cached\n' "${name}" "${cache}" "${cache}" >&2
+        return 1
+    }
     partial="$(mktemp "${cache}/external/.prefetch.XXXXXX")" || {
         printf 'chezmoi external %s: cannot create a download file in %s/external\n' "${name}" "${cache}" >&2
         return 1
@@ -391,11 +395,16 @@ function prefetch_chezmoi_external() {
                     "${name}" "${url}" "${expected}" "${actual}" >&2
                 return 2
             fi
-            if ! chmod 600 "${partial}" || ! mv -f "${partial}" "${entry}"; then
+            chmod 600 "${partial}" || {
                 rm -f "${partial}"
-                printf 'chezmoi external %s: cannot write the cache entry %s\n' "${name}" "${entry}" >&2
+                printf 'chezmoi external %s: chmod 600 on the download failed; nothing cached\n' "${name}" >&2
                 return 1
-            fi
+            }
+            mv -f "${partial}" "${entry}" || {
+                rm -f "${partial}"
+                printf 'chezmoi external %s: mv of the download into %s failed; nothing cached\n' "${name}" "${entry}" >&2
+                return 1
+            }
             printf 'chezmoi external %s: downloaded from %s, sha256 verified\n' "${name}" "${url}"
             return 0
         fi
@@ -477,12 +486,17 @@ ${prefix:+${prefix}/}${fields}
 }
 
 #
-# @description Fetch every http(s) `file`, `archive` and `archive-file` external of a chezmoi source into chezmoi's
-#   cache, verified, before any command reads the target state. `git-repo` externals and `file://` URLs are left to
-#   chezmoi. An external without a sha256 is refused: it could not be verified before it is cached. The URLs of one
-#   external are tried in chezmoi's order (url, then urls) until one is cached; a sha256 mismatch stops at once, as a
-#   wrong archive is no transfer failure another URL would cure. Without curl the step only says so,
-#   and chezmoi fetches the externals itself as before.
+# @description Fetch the `file`, `archive` and `archive-file` externals of a chezmoi source into chezmoi's cache,
+#   verified, before any command reads the target state. Only an external whose every URL (url, then urls) is http(s)
+#   is prefetched; any other, and every `git-repo`, is left whole to chezmoi with one line saying so. Of an all-http(s)
+#   list only the first URL is prefetched, the one chezmoi reads first: chezmoi tries url, then urls, and keys its
+#   cache by each URL (chezmoi 2.73.3 internal/chezmoi/sourcestate.go:1861-1886, :1921-1923), so a fallback cached
+#   under its own key would still leave chezmoi requesting the uncached first URL, and a fallback's bytes under the
+#   first URL's key would change the URL chezmoi guesses the archive format from (:2696-2709). When the first URL
+#   keeps failing and fallbacks exist, the external is left to chezmoi, which tries them, with one line saying so.
+#   An external without a sha256 is refused: it could not be verified before it is cached. A sha256 mismatch stops
+#   at once, as chezmoi does (it checks the checksum of the first URL that answers, :1756-1831). Without curl the step
+#   only says so, and chezmoi fetches the externals itself as before.
 # @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
 # @stdout One line per external.
 # @stderr What failed, naming the external and its URL.
@@ -490,7 +504,7 @@ ${prefix:+${prefix}/}${fields}
 #   has no name, an unknown type or no URL this step or chezmoi can fetch.
 #
 function prefetch_chezmoi_externals() {
-    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds url fetched
+    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds url other fetched
     local -a fields
     if ! command -v curl > /dev/null 2>&1; then
         printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
@@ -527,11 +541,14 @@ function prefetch_chezmoi_externals() {
             printf 'chezmoi external %s: no url\n' "${name}" >&2
             return 1
         }
-        [[ "${fields[4]}" =~ ^file:// ]] && continue
-        [[ "${fields[4]}" =~ ^https?:// ]] || {
-            printf 'chezmoi external %s: %s is neither http(s) nor file://\n' "${name}" "${fields[4]}" >&2
-            return 1
-        }
+        other=""
+        for url in "${fields[@]:4}"; do
+            [[ "${url}" =~ ^https?:// ]] || other="${url}"
+        done
+        if [ -n "${other}" ]; then
+            printf 'chezmoi external %s: left to chezmoi: %s is not http(s)\n' "${name}" "${other}"
+            continue
+        fi
         [[ "${sha256}" =~ ^[0-9a-f]{64}$ ]] || {
             printf 'chezmoi external %s: %s has no sha256 checksum; it cannot be verified before it is cached\n' \
                 "${name}" "${fields[4]}" >&2
@@ -548,13 +565,13 @@ function prefetch_chezmoi_externals() {
                 return 1
             }
         fi
-        fetched=1
-        for url in "${fields[@]:4}"; do
-            fetched=0
-            prefetch_chezmoi_external "${name}" "${url}" "${sha256}" "${seconds}" "${cache}" || fetched=$?
-            [ "${fetched}" -eq 1 ] || break
-        done
-        [ "${fetched}" -eq 0 ] || return 1
+        fetched=0
+        prefetch_chezmoi_external "${name}" "${fields[4]}" "${sha256}" "${seconds}" "${cache}" || fetched=$?
+        if [ "${fetched}" -eq 1 ] && [ "${#fields[@]}" -gt 5 ]; then
+            printf 'chezmoi external %s: left to chezmoi, which tries the fallbacks %s\n' "${name}" "${fields[*]:5}"
+        elif [ "${fetched}" -ne 0 ]; then
+            return 1
+        fi
     done <<< "${listing}"
 }
 # --- chezmoi-externals.sh end ---

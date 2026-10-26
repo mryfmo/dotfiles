@@ -1098,7 +1098,10 @@ checked before the file is cached under
 verified cache and fetches nothing, so a dropped download names the external
 and its URL instead of failing `chezmoi status` with a bare
 `chezmoi: unexpected EOF`. A complete download whose sha256 differs fails at
-once and is not cached.
+once and is not cached. Only an external whose URLs are all http(s) is
+fetched, and only its first URL, the one chezmoi reads first; any other
+external, and a first URL that keeps failing while fallback `urls` exist, is
+left to chezmoi with one line saying so.
 
 Before applying files, `setup.sh` runs `chezmoi status` and `chezmoi diff`. A
 clean target proceeds to `chezmoi apply`; local changes since chezmoi's last

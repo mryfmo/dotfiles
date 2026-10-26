@@ -738,21 +738,63 @@ class PrAuditTest(unittest.TestCase):
             "    raise OSError(errno.{0}, os.strerror(errno.{0}))\n"
             "os.killpg = killpg\n"
         )
-        for name, text in (
-            ("EPERM", "PermissionError: [Errno 1] Operation not permitted"),
-            ("EINVAL", "OSError: [Errno 22] Invalid argument"),
-        ):
-            with self.subTest(errno=name):
-                for path in self.tmp.iterdir():
-                    shutil.rmtree(path)
-                run = self.run_lever("7", **self.injected(code.format(name)))
-                self.assert_stopped(
-                    run, 2, f"codex's supervisor failed (killpg SIGTERM: {text}; killpg SIGKILL: {text})"
-                )
+        for path in self.tmp.iterdir():
+            shutil.rmtree(path)
+        run = self.run_lever("7", **self.injected(code.format("EINVAL")))
+        self.assert_stopped(
+            run,
+            2,
+            "codex's supervisor failed (killpg SIGTERM: OSError: [Errno 22] Invalid argument; "
+            "killpg SIGKILL: OSError: [Errno 22] Invalid argument)",
+        )
         for path in self.tmp.iterdir():
             shutil.rmtree(path)
         run = self.run_lever("7", **self.injected(code.format("ESRCH")))  # the group is gone: nothing to stop
         self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_an_eperm_from_killpg_counts_only_when_ps_shows_no_live_member(self):
+        """macOS answers EPERM from killpg while the group vanishes (its last members zombies being reaped): CI of
+        fecbeab7 refused a normal run that way. EPERM is accepted only when a ps, status checked and parsed strictly,
+        shows no live member of the group (U92's rule). The KILL answers EPERM; ps answers each case below."""
+        code = (
+            "import errno, os, signal, subprocess, sys\n"
+            "if 'exec' in sys.argv:\n"
+            "    _killpg = os.killpg\n"
+            "    _run = subprocess.run\n"
+            "    _groups = []\n"
+            "    def _kill(pgid, sig):\n"
+            "        if sig == signal.SIGKILL:\n"
+            "            _groups.append(pgid)\n"
+            "            raise PermissionError(errno.EPERM, 'Operation not permitted')\n"
+            "        return _killpg(pgid, sig)\n"
+            "    def _ps(argv, **k):\n"
+            "        if 'pid=,pgid=,stat=' in argv:\n"
+            "            g = _groups[-1]\n"
+            "            {0}\n"
+            "        return _run(argv, **k)\n"
+            "    os.killpg = _kill\n"
+            "    subprocess.run = _ps\n"
+        )
+        echo = "return _run(['/bin/echo', {0}], **k)"
+        cases = (
+            ("ps fails", "return _run(['/bin/sh', '-c', 'exit 1'], **k)", "killpg SIGKILL: CalledProcessError"),
+            ("ps unparsable", echo.format("'not a listing'"), "killpg SIGKILL: ValueError: unparsable ps line"),
+            ("live member", echo.format("f'{g} {g} S'"), "killpg SIGKILL: PermissionError: Operation not permitted;"),
+            ("no member", echo.format("''"), None),
+            ("zombies only", echo.format("f'{g} {g} Z'"), None),
+        )
+        for name, answer, message in cases:
+            with self.subTest(ps=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", **self.injected(code.format(answer)))
+                if message is None:
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+                else:
+                    self.assertEqual(run.returncode, 2, run.stderr)
+                    self.assertIn("refused: codex's supervisor failed (", run.stderr)
+                    self.assertIn(message, run.stderr)
 
     def test_the_deadline_kills_a_group_that_ignores_term(self):
         marker = self.root / "term-ignorer-still-ran"

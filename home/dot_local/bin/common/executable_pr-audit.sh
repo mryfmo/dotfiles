@@ -275,7 +275,7 @@ git_tree() {
 # - Exit, decided once after the wait loop by one rule: a recorded signal gives 128 + its number, else a deadline that
 #   has passed gives 124 (also when the last wait returned after it), else codex's own status. A launch
 #   that fails (setsid or exec in the child raise in the parent), a stop step that raised (killpg with any error but
-#   ESRCH, the group being gone, included) and any other exception write the reasons to the mark file and exit 125,
+#   ESRCH, the group being gone, or EPERM while ps shows no live member of the group, included) and any other exception write the reasons to the mark file and exit 125,
 #   which the lever refuses. No path exits 0 unless codex itself did.
 # The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
@@ -308,11 +308,36 @@ def on_signal(signum, frame):
         pending.append(signum)
 
 
+def live_group_members(pgid):
+    """The pids in process group PGID that are not zombies, from a bounded ps whose status is checked and whose every
+    line must be `<pid> <pgid> <state>`; a failed or unparsable listing raises."""
+    listing = subprocess.run(
+        ["/bin/ps", "-axo", "pid=,pgid=,stat="], capture_output=True, text=True, timeout=GRACE, check=True
+    ).stdout
+    live = []
+    for line in listing.splitlines():
+        if not line.strip():
+            continue
+        fields = line.split()
+        if len(fields) != 3 or not fields[0].isdigit() or not fields[1].isdigit():
+            raise ValueError(f"unparsable ps line: {line!r}")
+        if int(fields[1]) == pgid and not fields[2].startswith("Z"):
+            live.append(int(fields[0]))
+    return live
+
+
 def killpg(pid, sig):
+    """Signal the group. ESRCH: the group is gone. EPERM: macOS answers it while the group is vanishing, its last
+    members zombies being reaped (U92 measured 42 of 200 parallel runs); accepted only when ps shows no live member
+    of the group (U71b, CI of fecbeab7). Any other error, or EPERM with a live member, raises."""
     try:
         os.killpg(pid, sig)
     except ProcessLookupError:
         pass
+    except PermissionError:
+        live = live_group_members(pid)
+        if live:
+            raise PermissionError(f"Operation not permitted; live members of group {pid}: {live}")
 
 
 def prctl(option, value):

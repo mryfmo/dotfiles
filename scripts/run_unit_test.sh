@@ -20,20 +20,22 @@ set -Eeo pipefail
 #   timed-out test's direct children, so a stalled grandchild such as `sudo snap` keeps Bats' output pipe
 #   open and the run still hangs (bats-core#1020). Bats 1.13.0 (ubuntu-26.04) and 1.14.0 (Homebrew) hold
 #   the run for the whole bound after any failing test (bats-core#1206).
-#   Instead scripts/ci/run-bats.py starts Bats in a session of its own and reads its extended stream
-#   (`--formatter cat`), whose `begin <n> <name>` line names each test as it starts. It prints the TAP
-#   lines; when a test has no result within the bound it prints `not ok <n> <name> # timeout after <s> s`,
-#   kills every process of that session and of Bats' process tree, and fails. Time spent outside a test,
-#   such as loading a file, gets the same bound. A run that plans no test fails. python3 runs it with
-#   `-I`, so no PYTHON* variable or user site directory changes it.
+#   Instead scripts/ci/run-bats.py reads Bats' extended stream (`--formatter cat`): it prints
+#   `running: <n> <name>` as each test starts, then the TAP lines; when a test has no result within the
+#   bound it prints `not ok <n> <name> # timeout after <s> s` and fails with 124. Time spent outside a
+#   test, such as loading a file, gets the same bound. A run that plans no test fails. It signals
+#   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.
+#   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.
 # @arg $@ string Arguments passed to bats.
-# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 900 (scripts/ci/run-bats.py).
+# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 1200 (scripts/ci/run-bats.py).
 # @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.
-# @exitcode 1 Bats planned no test.
+# @exitcode 1 Bats planned no test, or dirname failed.
 # @exitcode Bats' exit status otherwise.
 #
 function run_bats() {
-    python3 -I "$(dirname "${BASH_SOURCE[0]}")/ci/run-bats.py" "$@"
+    local here
+    here="$(dirname "${BASH_SOURCE[0]}")" || return 1
+    python3 -I -S "${here}/ci/run-bats.py" "$@"
 }
 
 #

@@ -23,11 +23,6 @@ import tomllib
 import unittest
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:  # make unit-test runs with PyYAML; a bare interpreter skips the workflow reads
-    yaml = None
-
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/test.yaml"
 MAKEFILE = ROOT / "Makefile"
@@ -67,6 +62,45 @@ def run_steps(workflow: str) -> list[tuple[str, str]]:
             name = match.group(1).strip()
         elif (match := re.match(r"^\s*run: (.*)$", line)) and name is not None:
             steps.append((name, match.group(1).strip()))
+    return steps
+
+
+def step_blocks(workflow: str) -> list[dict[str, str]]:
+    """Each step as {name, if, run}, `run: |` blocks whole and dedented; text only, so no PyYAML is needed (the unit
+    test run in CI has none)."""
+    steps: list[dict[str, str]] = []
+    lines = workflow.splitlines()
+    index = 0
+    while index < len(lines):
+        start = re.match(r"^(\s*)- name: (.*)$", lines[index])
+        index += 1
+        if not start:
+            continue
+        key_indent = len(start.group(1)) + 2
+        step = {"name": start.group(2).strip(), "if": "", "run": ""}
+        steps.append(step)
+        while index < len(lines) and not re.match(r"^\s*- name: ", lines[index]):
+            line = lines[index]
+            index += 1
+            if line.strip() and len(line) - len(line.lstrip()) < key_indent:
+                index -= 1
+                break
+            if match := re.match(rf"^ {{{key_indent}}}if: (.*)$", line):
+                step["if"] = match.group(1).strip()
+            elif match := re.match(rf"^ {{{key_indent}}}run: (.*)$", line):
+                if match.group(1).strip() != "|":
+                    step["run"] = match.group(1).strip() + "\n"
+                    continue
+                body = []
+                while index < len(lines) and (
+                    not lines[index].strip() or len(lines[index]) - len(lines[index].lstrip()) > key_indent
+                ):
+                    body.append(lines[index])
+                    index += 1
+                while body and not body[-1].strip():
+                    body.pop()
+                indent = min(len(line) - len(line.lstrip()) for line in body if line.strip())
+                step["run"] = "".join(f"{line[indent:]}\n" for line in body)
     return steps
 
 
@@ -311,11 +345,10 @@ class ShellCheckPinTest(unittest.TestCase):
         self.assertNotIn("==> ShellCheck with .shellcheckrc", result.stdout)
 
     def test_ci_installs_the_pin_from_the_copied_config_and_nothing_else(self):
-        if yaml is None:
-            self.skipTest("PyYAML is not installed")
-        job = yaml.safe_load(WORKFLOW.read_text())["jobs"]["test"]
-        steps = {step["name"]: step for step in job["steps"]}
-        names = [step["name"] for step in job["steps"]]
+        blocks = step_blocks(WORKFLOW.read_text())
+        steps = {step["name"]: step for step in blocks}
+        names = [step["name"] for step in blocks]
+        self.assertEqual(len(names), len(steps), "step names are unique")
         self.assertIn(
             'cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"',
             steps["Prepare statusline tool config"]["run"],
@@ -330,15 +363,17 @@ class ShellCheckPinTest(unittest.TestCase):
         # No other step's commands install or run a ShellCheck, apt and brew lines included (comments aside).
         mentions = [
             step["name"]
-            for step in job["steps"]
+            for step in blocks
             if any(
-                "shellcheck" in line.lower()
-                for line in step.get("run", "").splitlines()
-                if not line.lstrip().startswith("#")
+                "shellcheck" in line.lower() for line in step["run"].splitlines() if not line.lstrip().startswith("#")
             )
         ]
         self.assertEqual([INSTALL_STEP, "Run `ShellCheck`"], mentions)
         self.assertNotIn("shellcheck", steps["Install tools"]["run"].lower())
+        # The parser reads the other steps whole: the apt line it checked above is really in Install tools.
+        self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", steps["Install tools"]["run"])
+        self.assertIn("brew install bash bats-core gawk parallel\n", steps["Install tools"]["run"])
+        self.assertEqual("make shellcheck\n", steps["Run `ShellCheck`"]["run"])
 
 
 if __name__ == "__main__":

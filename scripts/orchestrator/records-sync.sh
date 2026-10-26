@@ -24,13 +24,18 @@
 #   staged path outside `.orchestration/` and an empty change. `<n>` is then one more than the largest number among
 #   the remote heads, the local branches (U28b F6) and the heads of the newest 1000 pull requests named
 #   `records/sync-<n>`, `records/program-store-<n>` or `records/<program>-sync-<n>` (the earlier syncs), and the
-#   branch must match `records/sync-<n>`. It commits `chore(records): <program> sync <n>` with the footer and the
-#   identity `git config user.name`/`user.email` read once at the start, pushes that branch only to origin's
-#   configured URL as written (https or a local path), and opens the pull request with
-#   `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`. The commit, the push and the
-#   `gh` calls run with `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` and the push with the credential helper
-#   `!gh auth git-credential` only (U101), so no `url.*.pushInsteadOf` of the user config redirects them; a `url.*`
-#   rewrite in the config left (the repository's own) is refused. The body lists the `units.tsv` ids and the
+#   branch must match `records/sync-<n>`. It commits `chore(records): <program> sync <n>` with the footer, author and
+#   committer both the identity `git config user.name`/`user.email` read once at the start, and passed only as
+#   `-c user.name`/`-c user.email`. Every `GIT_*` variable the caller exported (GIT_AUTHOR_*, GIT_COMMITTER_*,
+#   GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs (U101). The push never runs in the
+#   checkout's repository, whose config and includes (an `includeIf "gitdir:…/worktrees/**"` switches on only in the
+#   sync worktree) could rewrite its URL: the one commit is fetched by object id into a new empty bare repository
+#   in the scratch directory (`git init --bare --template=`, so no hooks), and pushed from there to origin's https
+#   URL, read once from the checkout (any other scheme is refused), as `<oid>:refs/heads/records/sync-<n>`, with
+#   `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` and the credential helper `!gh auth git-credential` only, so
+#   no config at all can redirect it. It then opens the pull request with
+#   `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`, `gh` also reading no user or
+#   system git config. The body lists the `units.tsv` ids and the
 #   `decisions.tsv` timestamps the sync adds or changes and the line `Program-Unit: <program>/<unit>`, which the
 #   `regime` check requires (U28c F2). The worktree is removed on every exit (`git worktree remove --force`, only on
 #   the path this run created), and a run that exits before its push deletes the branch it created (only that one),
@@ -43,11 +48,23 @@
 # @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
 # @exitcode 0 The pull request was opened.
 # @exitcode 1 A `git` or `gh` step, or the masking, failed; nothing was pushed unless the receipt says so.
-# @exitcode 2 Refused: usage, a linked worktree, the program, the copy set, the identifier scan, the identity, the
-#   push URL or a URL rewrite, or nothing to sync.
+# @exitcode 2 Refused: usage, a linked worktree, the program, the copy set, the identifier scan, the identity, a
+#   push URL that is not https, or nothing to sync.
 # @example
 #   ~/.local/bin/common/records-sync.sh --program regime-cutover --unit U20
 set -euo pipefail
+
+# Git is steered by no inherited environment (U101, as hcom-seat does since U85): an exported GIT_AUTHOR_NAME would
+# outrank `-c user.name`, and GIT_CONFIG_* would add config, includes and URL rewrites to every git command.
+inherited=$(compgen -e) || {
+    echo 'records-sync.sh: refused: cannot list the environment' >&2
+    exit 2
+}
+while IFS= read -r inherited_name; do
+    case ${inherited_name} in
+    GIT_*) unset "${inherited_name}" ;;
+    esac
+done <<< "${inherited}"
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
@@ -249,17 +266,12 @@ fi
 # The commit's identity is the operator's, read once here; the commit itself then runs with no user config.
 author_name=$(git config user.name) || refuse 'git config user.name is unset'
 author_email=$(git config user.email) || refuse 'git config user.email is unset'
-# U101: the push goes to origin's configured URL as written, with no URL rewrite anywhere in the config git reads.
+# U101: the push URL is origin's, read once here and pushed to from a fresh repository (below); https only.
 push_url=$(git_plain config --get remote.origin.url) || refuse 'no remote.origin.url'
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself
-https://* | /* | file:///*) ;;
-*) refuse "the push needs an https (or local) origin URL, not ${push_url}" ;;
+https://?*) ;;
+*) refuse "the push needs an https origin URL, not ${push_url}" ;;
 esac
-if rewrites=$(git_plain config --name-only --get-regexp '^url\.'); then
-    refuse "a url.* rewrite outside the user config would redirect the push: ${rewrites//$'\n'/ }"
-elif (($? != 1)); then
-    fail 'git config --get-regexp url.* failed'
-fi
 
 git fetch --quiet origin main || fail 'git fetch origin main failed'
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
@@ -347,8 +359,16 @@ title="chore(records): ${program} sync ${n}"
 git_plain -C "${tree}" -c "user.name=${author_name}" -c "user.email=${author_email}" commit --quiet -m "${title}" \
     -m "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." -m "${footer}" ||
     fail 'git commit failed'
-git_plain -C "${tree}" -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
-    push --quiet "${push_url}" "refs/heads/${branch}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
+oid=$(git -C "${tree}" rev-parse --verify 'HEAD^{commit}') || fail 'cannot read the sync commit'
+# U101: the push runs in a repository with no config, includes or hooks, so nothing the checkout or the sync worktree
+# reads can rewrite the URL; auto maintenance stays off in it, since the scratch directory is removed on exit.
+push_repo=${scratch}/push.git
+git_plain init --quiet --bare --template= "${push_repo}" || fail 'git init --bare for the push failed'
+git_plain -C "${push_repo}" -c gc.auto=0 -c maintenance.auto=false fetch --quiet --no-tags "${tree}" "${oid}" ||
+    fail 'fetching the sync commit into the push repository failed'
+git_plain -C "${push_repo}" -c gc.auto=0 -c maintenance.auto=false -c credential.helper= \
+    -c 'credential.helper=!gh auth git-credential' push --quiet "${push_url}" "${oid}:refs/heads/${branch}" ||
+    fail "git push ${branch} failed; nothing was opened"
 pushed=1
 body=${scratch}/body.md
 {

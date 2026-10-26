@@ -1067,7 +1067,11 @@ GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     sys.exit("fake-git: failing as asked")
-run = subprocess.run([os.environ["REAL_GIT"], *sys.argv[1:]], stdout=subprocess.PIPE)
+# The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
+# repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push.
+https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
+mapping = ["-c", "url.{1}.insteadOf={0}".format(*https_origin.split("=", 1))] if https_origin else []
+run = subprocess.run([os.environ["REAL_GIT"], *mapping, *sys.argv[1:]], stdout=subprocess.PIPE)
 out = run.stdout
 if os.environ.get("FAKE_GIT_TRUNCATE") in sys.argv[1:]:
     out = out[:-3]  # the last entry cut short, its NUL end gone
@@ -1099,7 +1103,13 @@ class RecordsSyncTest(PrLeverTestCase):
         (self.repo / "README").write_text("scratch\n")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "base")
-        self.git("remote", "add", "origin", str(self.origin))
+        # The lever removes every inherited GIT_* variable, so the user config it reads is HOME's own .gitconfig.
+        user_config = self.root / "home/.gitconfig"
+        shutil.copy2(self.env["GIT_CONFIG_GLOBAL"], user_config)
+        self.env["GIT_CONFIG_GLOBAL"] = str(user_config)
+        self.url = "https://github.com/acme/widgets.git"
+        self.env["FAKE_GIT_HTTPS_ORIGIN"] = f"{self.url}={self.origin}"
+        self.git("remote", "add", "origin", self.url)
         self.git("push", "-q", "origin", "main")
         self.git("fetch", "-q", "origin")
 
@@ -1340,7 +1350,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.github()
         gitconfig = Path(self.env["GIT_CONFIG_GLOBAL"])
         with gitconfig.open("a") as config:
-            config.write(f'[url "/nonexistent-push-target/"]\n\tpushInsteadOf = {self.root}/\n')
+            config.write('[url "/nonexistent-push-target/"]\n\tpushInsteadOf = https://github.com/\n')
         refused = subprocess.run(
             ["git", "push", "--dry-run", "origin", "main"],
             cwd=self.repo,
@@ -1362,18 +1372,77 @@ class RecordsSyncTest(PrLeverTestCase):
         self.github()
         with (self.records / "units.tsv").open("a") as units:
             units.write("U2\tseats\n")
-        self.git("config", "url./elsewhere/.pushInsteadOf", f"{self.root}/")
-        self.assert_refused(self.run_lever("records-sync.sh"), "a url.* rewrite outside the user config")
-        self.git("config", "--unset", "url./elsewhere/.pushInsteadOf")
         self.git("remote", "set-url", "origin", "git@github.com:acme/widgets.git")
-        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https (or local) origin URL")
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https origin URL")
         self.git("remote", "set-url", "origin", str(self.origin))
-        anonymous = self.root / "anonymous.gitconfig"
-        anonymous.write_text("[init]\n\tdefaultBranch = main\n")
-        self.env["GIT_CONFIG_GLOBAL"] = str(anonymous)
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https origin URL")
+        self.git("remote", "set-url", "origin", self.url)
+        Path(self.env["GIT_CONFIG_GLOBAL"]).write_text("[init]\n\tdefaultBranch = main\n")
         self.assert_refused(self.run_lever("records-sync.sh"), "git config user.name is unset")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+
+    def assert_a_worktree_push_is_redirected(self, evil, env):
+        """The rewrite is live: a push from a linked worktree of the checkout lands in EVIL, not in origin."""
+        probe = self.root / "probe-tree"
+        self.git("worktree", "add", "-q", "--detach", str(probe))
+        self.git("push", "-q", "origin", "HEAD:refs/heads/probe", cwd=probe, env=env)
+        self.git("worktree", "remove", "--force", str(probe))
+        self.assertIn("refs/heads/probe", self.git("for-each-ref", cwd=evil))
+        self.git("update-ref", "-d", "refs/heads/probe", cwd=evil)
+
+    def assert_the_sync_reached_origin_only(self, evil, env=None):
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env.update(env or {})
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertEqual(self.git("for-each-ref", cwd=evil), "", "nothing reached the rewrite's target")
+
+    def hostile_include(self):
+        """An include file whose pushInsteadOf sends the https origin to a bare repository of its own."""
+        evil = git_init(self.root / "evil.git", "--bare", env=self.env)
+        include = self.root / "worktrees.gitconfig"
+        include.write_text(f'[url "{evil}"]\n\tpushInsteadOf = {self.url}\n')
+        return evil, include
+
+    def test_an_include_if_worktree_rule_in_the_repository_config_does_not_redirect_the_push(self):
+        """U101 round 2: the rewrite check read the checkout's config, where `includeIf "gitdir:**/worktrees/**"` is
+        off; the push ran in the sync worktree, where it is on. The push now runs in a fresh repository."""
+        self.github()
+        evil, include = self.hostile_include()
+        self.git("config", "includeIf.gitdir:**/worktrees/**.path", str(include))
+        self.assert_a_worktree_push_is_redirected(evil, None)
+        self.assert_the_sync_reached_origin_only(evil)
+
+    def test_an_include_if_worktree_rule_through_git_config_variables_does_not_redirect_the_push(self):
+        self.github()
+        evil, include = self.hostile_include()
+        count = int(self.env["GIT_CONFIG_COUNT"])
+        hostile = {
+            "GIT_CONFIG_COUNT": str(count + 1),
+            f"GIT_CONFIG_KEY_{count}": "includeIf.gitdir:**/worktrees/**.path",
+            f"GIT_CONFIG_VALUE_{count}": str(include),
+        }
+        self.assert_a_worktree_push_is_redirected(evil, hostile)
+        self.assert_the_sync_reached_origin_only(evil, hostile)
+
+    def test_inherited_author_and_committer_variables_are_ignored(self):
+        """U101 round 2: an exported GIT_AUTHOR_* or GIT_COMMITTER_* outranked `-c user.name`/`-c user.email`."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env |= {
+            "GIT_AUTHOR_NAME": "intruder",
+            "GIT_AUTHOR_EMAIL": "intruder@example.invalid",
+            "GIT_COMMITTER_NAME": "intruder",
+            "GIT_COMMITTER_EMAIL": "intruder@example.invalid",
+        }
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", "records/sync-7", cwd=self.origin)
+        self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
 
     def test_a_redact_word_in_a_store_file_refuses(self):
         """U101: host and user names are refused even as bare words; the words file is never published."""

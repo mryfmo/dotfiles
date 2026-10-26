@@ -52,7 +52,8 @@ function teardown() {
     run bash -c 'source "'"${SCRIPT_PATH}"'"; sudo() { echo "$*" >> "'"${BATS_TEST_TMPDIR}"'/sudo.log"; }; install_misc'
     [ "${status}" -eq 0 ]
     [ "$(sed -n 1p "${BATS_TEST_TMPDIR}/sudo.log")" = "apt-get update" ]
-    [[ "$(sed -n 2p "${BATS_TEST_TMPDIR}/sudo.log")" == "apt-get install -y "* ]]
+    # The frontend must be an argument to sudo: env_reset drops it from the caller's environment.
+    [[ "$(sed -n 2p "${BATS_TEST_TMPDIR}/sudo.log")" == "DEBIAN_FRONTEND=noninteractive apt-get install -y "* ]]
 }
 
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
@@ -86,38 +87,51 @@ function teardown() {
     fi
 }
 
-@test "[ubuntu-client] install_chromium retries a failed snap install and succeeds on the third attempt" {
-    local calls="${BATS_TEST_TMPDIR}/snap_calls"
-    run env SNAP_RETRY_DELAY=0 /bin/bash -c '
+# A fake snap first on PATH, since install_chromium runs it through `timeout`, which cannot call a shell
+# function. It logs each call to SNAP_CALLS and then runs $1.
+function fake_snap() {
+    mkdir -p "${BATS_TEST_TMPDIR}/bin"
+    {
+        printf '#!/bin/bash\n'
+        printf 'printf "snap %%s\\n" "$*" >> "${SNAP_CALLS}"\n'
+        printf '%s\n' "$1"
+    } > "${BATS_TEST_TMPDIR}/bin/snap"
+    chmod +x "${BATS_TEST_TMPDIR}/bin/snap"
+}
+
+# Run install_chromium with sudo as a pass-through, the fake snap first on PATH and the given environment.
+function run_install_chromium() {
+    run env SNAP_CALLS="${BATS_TEST_TMPDIR}/snap_calls" PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" "$@" /bin/bash -c '
         source "$1"
-        calls_file=$2
         sudo() {
             "$@"
         }
-        snap() {
-            echo "snap $*" >> "${calls_file}"
-            [ "$(wc -l < "${calls_file}")" -ge 3 ]
-        }
         install_chromium
-    ' _ "${SCRIPT_PATH}" "${calls}"
+    ' _ "${SCRIPT_PATH}"
+}
+
+@test "[ubuntu-client] install_chromium retries a failed snap install and succeeds on the third attempt" {
+    fake_snap '[ "$(wc -l < "${SNAP_CALLS}")" -ge 3 ]'
+    run_install_chromium SNAP_RETRY_DELAY=0
     [ "${status}" -eq 0 ]
-    [ "$(grep -c '^snap install chromium$' "${calls}")" -eq 3 ]
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 3 ]
 }
 
 @test "[ubuntu-client] install_chromium fails after three failed snap installs" {
-    local calls="${BATS_TEST_TMPDIR}/snap_calls"
-    run env SNAP_RETRY_DELAY=0 /bin/bash -c '
-        source "$1"
-        calls_file=$2
-        sudo() {
-            "$@"
-        }
-        snap() {
-            echo "snap $*" >> "${calls_file}"
-            return 1
-        }
-        install_chromium
-    ' _ "${SCRIPT_PATH}" "${calls}"
+    fake_snap 'exit 1'
+    run_install_chromium SNAP_RETRY_DELAY=0
     [ "${status}" -ne 0 ]
-    [ "$(grep -c '^snap install chromium$' "${calls}")" -eq 3 ]
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 3 ]
+}
+
+@test "[ubuntu-client] install_chromium stops a stalled snap install at SNAP_INSTALL_TIMEOUT and names the step" {
+    # The fake snap hangs like a snap client waiting on a stalled store download.
+    fake_snap 'exec sleep 60'
+    SECONDS=0
+    run_install_chromium SNAP_RETRY_DELAY=0 SNAP_INSTALL_TIMEOUT=1
+    [ "${status}" -eq 124 ]
+    [ "${SECONDS}" -lt 30 ]
+    [[ "${output}" == *"install_chromium: snap install chromium timed out after 1 s (SNAP_INSTALL_TIMEOUT)"* ]]
+    # Not retried: snapd keeps the change running after its client stops.
+    [ "$(grep -c '^snap install chromium$' "${BATS_TEST_TMPDIR}/snap_calls")" -eq 1 ]
 }

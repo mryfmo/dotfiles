@@ -101,9 +101,8 @@ function chezmoi_external_seconds() {
 # @exitcode * curl's exit status (22 for an HTTP error, 18 for a truncated transfer).
 #
 function chezmoi_external_download() {
-    curl --proto '=http,https' --location --fail --silent --show-error \
-        --connect-timeout 30 --max-time 900 --speed-limit 1024 --speed-time 60 \
-        --output "$2" --write-out '%{http_code}' "$1"
+    curl --proto '=http,https' --location --fail --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        --max-time 900 --output "$2" --write-out '%{http_code}' "$1"
 }
 
 #

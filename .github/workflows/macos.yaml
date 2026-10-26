@@ -166,6 +166,10 @@ jobs:
           cache: true
 
       - name: Test file existence
+        # The hard stop: one BATS_PER_TEST_TIMEOUT (1200 s) plus the brew install. No passing log of this step
+        # exists (the build job is skipped without the bootstrap secrets); the files suite took under 1 s in
+        # test.yaml's passing runs. scripts/ci/run-bats.py names a stalled test and signals nothing.
+        timeout-minutes: 25
         run: |
           brew install bats-core
 
@@ -173,6 +177,7 @@ jobs:
           export FILES_TEST_SOURCE="$(chezmoi source-path)"
           export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"
           cd "${FILES_TEST_SOURCE}/.."
-          bats --print-output-on-failure \
+          # run_bats fails a test by name when it outlives BATS_PER_TEST_TIMEOUT (scripts/run_unit_test.sh).
+          bash -c 'source ./scripts/run_unit_test.sh && run_bats "$@"' _ --print-output-on-failure \
             tests/files/common.bats \
             tests/files/macos.bats

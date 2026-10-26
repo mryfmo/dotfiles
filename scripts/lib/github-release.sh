@@ -71,13 +71,17 @@ function github_release_fetch() {
         # github.com only: GH_HOST or an Enterprise default host must not send its credential here.
         bearer="$(github_dotcom_gh auth token --hostname github.com 2> /dev/null)" || bearer=""
     fi
+    # Network bounds: curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s; wget waits
+    # at most 60 s for any one connect or read and tries 3 times, not its default 20 with 900 s reads.
     if command -v curl > /dev/null 2>&1; then
         if [ -n "${bearer}" ]; then
             # The credential goes through curl's config on stdin, never the command line.
             printf 'header = "Authorization: Bearer %s"\n' "${bearer}" |
-                curl -fsSL -K - -H 'Accept: application/vnd.github+json' "${url}"
+                curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -K - \
+                    -H 'Accept: application/vnd.github+json' "${url}"
         else
-            curl -fsSL -H 'Accept: application/vnd.github+json' "${url}"
+            curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+                -H 'Accept: application/vnd.github+json' "${url}"
         fi
     elif [ -n "${bearer}" ]; then
         # wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.
@@ -88,10 +92,11 @@ function github_release_fetch() {
             trap 'rm -f "${wgetrc}"' EXIT
             trap 'exit 1' HUP INT TERM
             printf 'header = Authorization: Bearer %s\n' "${bearer}" > "${wgetrc}" || exit 1
-            wget --config="${wgetrc}" -qO - --header='Accept: application/vnd.github+json' "${url}"
+            wget --config="${wgetrc}" --timeout=60 --tries=3 -qO - \
+                --header='Accept: application/vnd.github+json' "${url}"
         )
     else
-        wget -qO - --header='Accept: application/vnd.github+json' "${url}"
+        wget --timeout=60 --tries=3 -qO - --header='Accept: application/vnd.github+json' "${url}"
     fi
 }
 
@@ -198,8 +203,8 @@ function github_release_verified_sha256() (
     github_attestation_ready || return 2
     dir="$(mktemp -d "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
     trap 'rm -rf "${dir}"' EXIT
-    curl -fsSL "${base}/$3" -o "${dir}/$3" || return 1
-    curl -fsSL "${base}/$4" -o "${dir}/$4" || return 1
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base}/$3" -o "${dir}/$3" || return 1
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base}/$4" -o "${dir}/$4" || return 1
     expected="$(awk -v name="$3" '$2 == name { print $1; exit }' "${dir}/$4")"
     if command -v sha256sum > /dev/null 2>&1; then
         sum="$(sha256sum "${dir}/$3")" || {

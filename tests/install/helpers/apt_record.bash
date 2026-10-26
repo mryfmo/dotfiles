@@ -64,7 +64,12 @@ function record_apt_calls() {
     bash -c '
         source "$1"
         sudo() {
+            # Its options, then the VAR=value arguments sudo sets in the environment of the command.
             while [ "$#" -gt 0 ] && [[ $1 == -* ]]; do
+                shift
+            done
+            while [ "$#" -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+                export "$1"
                 shift
             done
             "$@"

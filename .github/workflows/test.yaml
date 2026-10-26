@@ -44,8 +44,9 @@ jobs:
             system: client
 
     runs-on: ${{ matrix.os }}
-    # Five times the slowest cell's measured six minutes (ubuntu-24.04 client, October 2026).
-    timeout-minutes: 30
+    # The slowest passing job measured on main took 1360 s (ubuntu-26.04 client, run 40225977873, October 2026):
+    # 203 s before `Run unit test`, 1155 s in it. Its 35-minute step bound plus the 5 minutes before it, and margin.
+    timeout-minutes: 45
     continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
       # Export matrix values to shell scripts so existing test helpers can use
@@ -206,8 +207,9 @@ jobs:
           # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
           sha256_check=(shasum -a 256 --check --strict)
           [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
-          curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
-          curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
+          # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, as the installers' downloads (U99).
+          curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
+          curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \
             | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
           # The checksum file comes from the same release; the attestation is the publisher's
@@ -493,6 +495,11 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Run unit test
+        # The hard stop. Passing runs on main took up to 50 s (macOS), 60 s (server) and 325 s (ubuntu-24.04
+        # client) here, and once 1155 s (ubuntu-26.04 client, a 796 s ghostty install). A stalled test is named
+        # after BATS_PER_TEST_TIMEOUT (1200 s) by scripts/ci/run-bats.py, which signals nothing; this ends the
+        # step when what the test left running keeps it alive (bashcov waits for its trace pipe).
+        timeout-minutes: 35
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
           if [[ "${OS}" == macos-* ]]; then

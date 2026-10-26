@@ -64,8 +64,11 @@ function install_starship() (
     trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
     mkdir -p "${BIN_DIR}" || return
     stage="$(mktemp "${BIN_DIR}/starship.tmp.XXXXXX")" || return
-    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return 3
-    expected="$(curl -fsSL "${base_url}/${artifact}.sha256")" || return 3
+    # Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" \
+        -o "${tmpdir}/${artifact}" || return 3
+    expected="$(curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        "${base_url}/${artifact}.sha256")" || return 3
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${artifact}" >&2
         return 1

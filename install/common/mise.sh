@@ -93,7 +93,7 @@ function verify_mise_archive() {
 #
 function verify_mise_shasums_signature() {
     local key="$2/mise-release-key.asc" key_data key_fields fingerprint validity expiration now
-    curl -fsSL "${MISE_GPG_KEY_URL}" -o "${key}" || return 3
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${MISE_GPG_KEY_URL}" -o "${key}" || return 3
     mkdir -m 700 "$2/gnupg" || return
     key_data="$(gpg --homedir "$2/gnupg" --batch --with-colons --import-options show-only --import "${key}")" || return
     # Exactly one primary key, and the fingerprint line right after it is the primary's own.
@@ -198,10 +198,13 @@ function _install_mise_binary() (
     mkdir -p "$(dirname "${MISE_INSTALL_PATH}")" || return
     stage="$(mktemp "${MISE_INSTALL_PATH}.tmp.XXXXXX")" || return
 
-    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
+    # Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" \
+        -o "${tmpdir}/${artifact}" || return
     if [ -n "${gpg_ready}" ]; then
         # The checksums come from the signed text itself, never from an unsigned SHASUMS256.txt.
-        if curl -fsSL "${base_url}/SHASUMS256.asc" -o "${tmpdir}/SHASUMS256.asc"; then
+        if curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/SHASUMS256.asc" \
+            -o "${tmpdir}/SHASUMS256.asc"; then
             verify_mise_shasums_signature "${tmpdir}/SHASUMS256.asc" "${tmpdir}" > "${tmpdir}/SHASUMS256.txt" || signature=$?
         else
             signature=3
@@ -219,7 +222,8 @@ function _install_mise_binary() (
         fi
     fi
     if [ -z "${gpg_ready}" ]; then
-        curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt" || return
+        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/SHASUMS256.txt" \
+            -o "${tmpdir}/SHASUMS256.txt" || return
     fi
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
     if [ -n "${fallback}" ]; then

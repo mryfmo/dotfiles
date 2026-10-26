@@ -38,7 +38,9 @@ function install_homebrew() {
             local actual installer
             installer="$(mktemp)"
             trap 'rm -f "${installer}"' EXIT
-            curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh" -o "${installer}"
+            # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, so a stalled download ends.
+            curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+                "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh" -o "${installer}"
             actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
             [ "${actual}" = "${HOMEBREW_INSTALL_SHA256}" ] || {
                 printf 'Homebrew installer checksum mismatch\n' >&2

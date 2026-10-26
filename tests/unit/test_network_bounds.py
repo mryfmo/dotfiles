@@ -629,6 +629,54 @@ class RunBatsBoundTest(unittest.TestCase):
                 self.assertEqual(1, status, out + err)
                 self.assertIn(f"expected at least one test; Bats planned {shown}", err)
 
+    def trace_run(self, value: str | None, open_fd: bool = True) -> tuple[subprocess.CompletedProcess[str], bytes]:
+        """run_bats with a fake bats that writes to the descriptor BASH_XTRACEFD names, as bashcov's traced shells do;
+        the caller holds a pipe on that descriptor and reads what reaches it."""
+        self.fake_bats(
+            """\
+            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a\\n'
+            if [ -n "${BASH_XTRACEFD:-}" ]; then printf 'trace-line\\n' >&"${BASH_XTRACEFD}" || exit 9; fi
+            exit 0
+            """
+        )
+        read_end, write_end = os.pipe()
+        self.addCleanup(os.close, read_end)
+        env = {"PATH": f"{self.temp / 'bin'}:/usr/bin:/bin", "HOME": str(self.temp), "BATS_PER_TEST_TIMEOUT": "30"}
+        if value is not None:
+            env["BASH_XTRACEFD"] = value.format(fd=write_end)
+        result = subprocess.run(
+            [BASH, "-c", 'source "$1" && shift && run_bats "$@"', "_", str(RUNNER), "tests/x.bats"],
+            env=env, capture_output=True, text=True, timeout=60, check=False,
+            pass_fds=(write_end,) if open_fd else (),
+        )  # fmt: skip
+        os.close(write_end)
+        os.set_blocking(read_end, False)
+        try:
+            received = os.read(read_end, 4096)
+        except BlockingIOError:
+            received = b""
+        return result, received
+
+    def test_the_trace_descriptor_reaches_bats(self) -> None:
+        # Audit of 374e62e3: Popen's close_fds dropped bashcov's trace pipe, so coverage was lost and the run passed.
+        result, received = self.trace_run("{fd}")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(b"trace-line\n", received)
+
+    def test_no_trace_descriptor_works_as_before(self) -> None:
+        result, received = self.trace_run(None)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(b"", received)
+
+    def test_a_trace_descriptor_that_is_not_open_fails_loudly(self) -> None:
+        # 200 is not open in the wrapper (nothing passes it); a non-number is no descriptor at all.
+        for value, message in (("200", "is not an open descriptor"), ("x", "is not a descriptor number")):
+            with self.subTest(value=value):
+                result, _ = self.trace_run(value, open_fd=False)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertFalse((self.temp / "args").exists(), "Bats ran")
+
     def test_the_wrapper_signals_nothing(self) -> None:
         # Stopping processes is the step's timeout-minutes and the runner's job, not this wrapper's.
         text = WRAPPER.read_text()

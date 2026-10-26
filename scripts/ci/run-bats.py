@@ -27,9 +27,30 @@ DEFAULT_BOUND = 1200
 AFTER_EXIT = 2
 
 
+def trace_fds():
+    """The descriptor bashcov traces through (BASH_XTRACEFD), to pass to Bats; Popen closes every other one.
+
+    Unset or empty: none. 0-2 need no passing. Anything else must name an open descriptor, or the run fails here
+    instead of losing the coverage trace silently.
+    """
+    value = os.environ.get("BASH_XTRACEFD", "")
+    if not value:
+        return ()
+    if not value.isdigit():
+        sys.exit(f"run-bats: BASH_XTRACEFD={value!r} is not a descriptor number")
+    fd = int(value)
+    try:
+        os.fstat(fd)
+    except OSError as error:
+        sys.exit(f"run-bats: BASH_XTRACEFD={fd} is not an open descriptor ({error.strerror})")
+    return () if fd <= 2 else (fd,)
+
+
 def main(argv):
     bound = int(os.environ.get("BATS_PER_TEST_TIMEOUT", DEFAULT_BOUND))
-    bats = subprocess.Popen(["bats", "--formatter", "cat", *argv], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+    bats = subprocess.Popen(
+        ["bats", "--formatter", "cat", *argv], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, pass_fds=trace_fds()
+    )
     stream = bats.stdout.fileno()
     selector = selectors.DefaultSelector()
     selector.register(stream, selectors.EVENT_READ)

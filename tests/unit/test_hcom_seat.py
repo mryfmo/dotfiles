@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -1122,31 +1123,40 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(role, "--seats-root", self.seats, "--name", f"{role}-main")
                 self.assertEqual(run.returncode, 0, run.stderr)
 
-    def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
-        """U85 round 15: `within` runs inside `||` lists, where `set -e` does not apply, so each helper's status is
-        checked explicitly: a helper that prints a path and fails refuses instead of deciding."""
+    def identity_functions(self):
+        """The identity code of hcom-seat, extracted: the table builder and the pairwise decision (U95)."""
         text = SEAT.read_text()
-        functions = "\n".join(
+        return "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "deepest_existing", "within")
+            for name in ("refuse", "ancestors_of", "identity_table", "within_ix")
         )
+
+    def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
+        """U85 round 15, U95: the identity table's producers (stat, tr) are checked: one that prints a plausible answer
+        and fails refuses instead of deciding."""
         stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
         outer = Path(self.temp.name).resolve() / "outer"
         outer.mkdir()
-        cases = {
-            "exists": f"within {shlex.quote(str(outer))} {shlex.quote(str(outer / 'a/b'))} || status=$?",
-            "neither exists": f"within {shlex.quote(str(outer / 'x'))} {shlex.quote(str(outer / 'x/y'))} || status=$?",
-        }
-        for label, call in cases.items():
-            with self.subTest(label):
-                script = (
-                    f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
-                    "deepest_existing() { printf '/\\n'; return 7; }\n"
-                    f"status=0\n{call}\necho decided=$status\n"
-                )
-                run = subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False)
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
-                self.assertIn("cannot find an existing directory above", run.stderr)
+        fakes = Path(self.temp.name).resolve() / "failing"
+        fakes.mkdir()
+        (fakes / "stat").write_text("#!/bin/sh\nfor a; do echo 1:2; done\nexit 7\n")
+        (fakes / "tr").write_text("#!/bin/sh\ncat\nexit 7\n")
+        for fake in ("stat", "tr"):
+            (fakes / fake).chmod(0o755)
+        for producer, message in (("stat", "cannot read the identity"), ("tr", "cannot compare the absent parts")):
+            for label, inner in (("exists", outer / "a/b"), ("neither exists", outer / "x/y")):
+                with self.subTest(producer=producer, case=label):
+                    functions = self.identity_functions().replace(f"/usr/bin/{producer}", str(fakes / producer))
+                    script = (
+                        f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
+                        f'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho decided=$status\n'
+                    )
+                    run = subprocess.run(
+                        ["/bin/bash", "-c", script, "_", str(outer), str(inner)],
+                        capture_output=True, text=True, check=False,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
+                    self.assertIn(message, run.stderr)
 
     def test_own_slots_that_are_links_are_refused(self):
         """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be
@@ -1237,14 +1247,10 @@ class HcomSeatTest(unittest.TestCase):
         self.assertNotIn("w-link", self.git("worktree", "list"))
 
     def test_absent_paths_under_one_ancestor_are_decided_by_their_components(self):
-        """U85 round 30: below the deepest existing ancestor nothing exists, so `within` decides two absent paths by
+        """U85 round 30: below the deepest existing ancestor nothing exists, so within_ix decides two absent paths by
         that ancestor's identity and their clean components: nested refuses, disjoint passes, `a/b` is no prefix of
         `a/bc`, and an existing outer path is still decided by identity."""
-        text = SEAT.read_text()
-        functions = "\n".join(
-            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "ancestors_of", "deepest_existing", "within")
-        )
+        functions = self.identity_functions()
         stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
         root = Path(self.temp.name).resolve() / "anc"
         (root / "exists").mkdir(parents=True)
@@ -1264,12 +1270,85 @@ class HcomSeatTest(unittest.TestCase):
         )
         for outer, inner, expected in cases:
             with self.subTest(outer=outer, inner=inner):
-                script = f'set -euo pipefail\nstat_args={stat_args}\n{functions}\nstatus=0\nwithin "$1" "$2" || status=$?\necho $status\n'
+                script = (
+                    f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
+                    'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho $status\n'
+                )
                 run = subprocess.run(
                     ["/bin/bash", "-c", script, "_", str(root / outer), str(root / inner)],
                     capture_output=True, text=True, check=False, timeout=20,
                 )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (0, f"{expected}\n"), run.stderr)
+
+    def test_a_nested_claude_worktree_is_write_denied_not_refused(self):
+        """U95: Claude Code keeps its worktrees under `<checkout>/.claude/worktrees`, inside the orchestrator's write
+        root. Such a worktree is no seat, so both roles launch; the orchestrator's settings write-deny its directory
+        (its `.git` file and tracked files) beside its git state, and each launch names it. With a real srt on this
+        host, a write into it from inside the seat is denied while the checkout around it stays writable."""
+        nested = self.repo / ".claude/worktrees/x"
+        self.git("worktree", "add", "-q", "--detach", str(nested), "HEAD")
+        self.git("worktree", "lock", str(nested))
+        nested = nested.resolve()
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                dry = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(dry.returncode, 0, dry.stderr)
+                self.assertIn(f"the worktree {nested} lies inside a write root of the orchestrator seat", dry.stderr)
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+        settings = self.settings_of("orchestrator")["filesystem"]
+        common = (self.repo / ".git").resolve()
+        self.assertIn(str(self.repo.resolve()), settings["allowWrite"])
+        for denied in (nested, common / "worktrees/x/gitdir", common / "worktrees/x/config.worktree"):
+            self.assertIn(str(denied), settings["denyWrite"])
+        self.assertNotIn(str(nested), self.settings_of("worker")["filesystem"]["denyWrite"])
+        srt = shutil.which("srt")
+        if srt is None:
+            self.skipTest("no srt on this host's PATH for the live write probe")
+        settings_file = Path(self.seats, ".sandbox/orchestrator/srt-settings.json")
+        probe = (
+            'if (printf x >> "$1/.git") 2>/dev/null; then echo wrote-git; else echo git-denied; fi; '
+            'if (: > "$1/new") 2>/dev/null; then echo wrote-new; else echo new-denied; fi; '
+            'if (: > "$2/probe") 2>/dev/null; then echo root-written; fi'
+        )
+        live = subprocess.run(
+            [srt, "--settings", str(settings_file), "--", "/bin/sh", "-c", probe, "_", str(nested), str(self.repo)],
+            cwd=self.repo, capture_output=True, text=True, check=False, timeout=120,
+        )  # fmt: skip
+        self.assertEqual(live.stdout.split(), ["git-denied", "new-denied", "root-written"], live.stderr)
+        self.assertEqual((nested / ".git").read_text().split()[0], "gitdir:")
+        self.assertFalse((nested / "new").exists())
+
+    def test_300_worktrees_add_under_ten_seconds_to_a_dry_run(self):
+        """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
+        table, one pointer read), not several per worktree and write root; 300 registered worktrees, 10 of them under
+        `.claude/worktrees`, add less than 10 s to the dry run (they added about 5 minutes before). The cost of the
+        worktrees is measured against the same dry run without them, so a loaded machine (the parallel unit run) slows
+        both alike; alone on macOS the whole dry run takes about 6.5 s."""
+        started = time.monotonic()
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        baseline = time.monotonic() - started
+        self.assertEqual(run.returncode, 0, run.stderr)
+        common = (self.repo / ".git").resolve()
+        outside = Path(self.temp.name).resolve() / "many"
+        for n in range(300):
+            tree = (self.repo / f".claude/worktrees/w{n}") if n < 10 else outside / f"w{n}"
+            tree.mkdir(parents=True)
+            admin = common / "worktrees" / f"w{n}"
+            admin.mkdir(parents=True)
+            (admin / "gitdir").write_text(f"{tree.resolve()}/.git\n")
+            (admin / "commondir").write_text("../..\n")
+            (admin / "HEAD").write_text(f"{self.head}\n")
+            (tree / ".git").write_text(f"gitdir: {admin}\n")
+        self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
+        started = time.monotonic()
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        elapsed = time.monotonic() - started
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stderr.count("lies inside a write root of the orchestrator seat"), 10)
+        self.assertLess(
+            elapsed - baseline, 10, f"300 worktrees took the dry run from {baseline:.1f} s to {elapsed:.1f} s"
+        )
 
     def test_a_fresh_spark_first_launch_with_the_default_paths(self):
         """U85 round 30: the dotfiles program's first launch on a fresh host (hcom-orchestration SKILL step 0):

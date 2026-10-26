@@ -201,8 +201,15 @@ reset:
 reset-config:
 	chezmoi init --data=false
 
+# The lint tools' versions (U97): each is one value in this mise config, the `version` of [tools."http:shellcheck"],
+# [tools."http:shfmt"] and [tools."http:ruff"] and the exact "npm:prettier", which hosts get from mise and CI installs
+# from a copy of the same file. scripts/ci/pinned-tool-version.sh runs first in each lint target and refuses a tool on
+# PATH of any other version, naming both.
+LINT_PIN_CONFIG := home/dot_mise/config.toml
+
 .PHONY: format
 format:
+	@scripts/ci/pinned-tool-version.sh $(LINT_PIN_CONFIG) shfmt ruff prettier
 	shfmt --indent 4 --space-redirects --diff .
 	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
 	git ls-files -z '*.md' | xargs -0 prettier --check
@@ -263,9 +270,6 @@ drift:
 # command substitution nested inside another, the dirname/basename shape SC2312 exempts included. A group whose pathspecs list no file, or no bash script, is refused. The installer group (mode
 # `every`) also refuses a listed file that is not a bash script; the masked group (mode `bash`) skips the Python and
 # other scripts among its files.
-# The target first runs scripts/ci/shellcheck-version.sh, which refuses a shellcheck whose version is not the
-# `version` of [tools."http:shellcheck"] in this config (U97): the one pin hosts get from mise and CI installs.
-SHELLCHECK_PIN_CONFIG := home/dot_mise/config.toml
 SHELLCHECK_INSTALLER_GROUP := setup.sh install/*.sh install/**/*.sh scripts/*.sh scripts/lib/*
 SHELLCHECK_MASKED_GROUP := scripts/orchestrator/* home/dot_local/bin/common/executable_*
 SHELLCHECK_PATHSPECS = $(foreach group,$(1),'$(group)')
@@ -281,7 +285,7 @@ SHELLCHECK_GROUP = bash -euo pipefail -c 'mode=$$1; shift; listed=$$(git ls-file
 
 .PHONY: shellcheck
 shellcheck:
-	@scripts/ci/shellcheck-version.sh $(SHELLCHECK_PIN_CONFIG)
+	@scripts/ci/pinned-tool-version.sh $(LINT_PIN_CONFIG) shellcheck shfmt
 	@printf '==> ShellCheck with .shellcheckrc and masked-dirname-check, every file of: %s\n' "$(SHELLCHECK_INSTALLER_GROUP)"
 	$(call SHELLCHECK_GROUP,every,$(SHELLCHECK_INSTALLER_GROUP))
 	@printf '==> ShellCheck with .shellcheckrc and masked-dirname-check, bash scripts of: %s\n' "$(SHELLCHECK_MASKED_GROUP)"

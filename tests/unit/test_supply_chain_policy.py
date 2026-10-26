@@ -423,8 +423,11 @@ main
         lines = text.splitlines()
         held = {"npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
         held["http:gcloud"] = '[tools."http:gcloud"]'
-        # U97: make shellcheck and CI's test jobs lint with exactly this ShellCheck.
+        # U97: the lint gates (make shellcheck, make format, CI) run exactly these versions.
         held["http:shellcheck"] = '[tools."http:shellcheck"]'
+        held["http:shfmt"] = '[tools."http:shfmt"]'
+        held["http:ruff"] = '[tools."http:ruff"]'
+        held["npm:prettier"] = '"npm:prettier" = '
         # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
         held["npm:ccusage"] = '"npm:ccusage" = '
         held["npm:ccstatusline"] = '"npm:ccstatusline" = '
@@ -554,21 +557,43 @@ main
                 entry["url"],
             )
             self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
-        shellcheck = config["tools"]["http:shellcheck"]
-        self.assertEqual(1, shellcheck["strip_components"])
-        self.assertNotIn("bin_path", shellcheck)
-        assets = {
-            "linux-x64": "linux.x86_64",
-            "linux-arm64": "linux.aarch64",
-            "macos-x64": "darwin.x86_64",
-            "macos-arm64": "darwin.aarch64",
-        }
-        self.assertEqual(set(assets), set(shellcheck["platforms"]))
-        release = f"https://github.com/koalaman/shellcheck/releases/download/v{shellcheck['version']}"
-        for platform, asset in assets.items():
-            entry = shellcheck["platforms"][platform]
-            self.assertEqual(f"{release}/shellcheck-v{shellcheck['version']}.{asset}.tar.xz", entry["url"])
-            self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
+        # The pinned lint tools (U97): each platform's release asset, built from the version, with its sha256.
+        for name, options, url, assets in (
+            (
+                "http:shellcheck",
+                {"strip_components": 1},
+                "https://github.com/koalaman/shellcheck/releases/download/v{v}/shellcheck-v{v}.{a}.tar.xz",
+                ("linux.x86_64", "linux.aarch64", "darwin.x86_64", "darwin.aarch64"),
+            ),
+            (
+                "http:shfmt",
+                {"bin": "shfmt"},
+                "https://github.com/mvdan/sh/releases/download/v{v}/shfmt_v{v}_{a}",
+                ("linux_amd64", "linux_arm64", "darwin_amd64", "darwin_arm64"),
+            ),
+            (
+                "http:ruff",
+                {"strip_components": 1},
+                "https://github.com/astral-sh/ruff/releases/download/{v}/ruff-{a}.tar.gz",
+                (
+                    "x86_64-unknown-linux-gnu",
+                    "aarch64-unknown-linux-gnu",
+                    "x86_64-apple-darwin",
+                    "aarch64-apple-darwin",
+                ),
+            ),
+        ):
+            with self.subTest(name):
+                tool = config["tools"][name]
+                self.assertEqual({"version", "platforms", *options}, set(tool))
+                for key, value in options.items():
+                    self.assertEqual(value, tool[key])
+                platforms = dict(zip(("linux-x64", "linux-arm64", "macos-x64", "macos-arm64"), assets))
+                self.assertEqual(set(platforms), set(tool["platforms"]))
+                for platform, asset in platforms.items():
+                    entry = tool["platforms"][platform]
+                    self.assertEqual(url.format(v=tool["version"], a=asset), entry["url"])
+                    self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         # The bootstrap takes the newest cooled-down mise release instead of a pin;
         # test_rolling_installers_resolve_through_the_release_helper covers it.

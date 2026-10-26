@@ -20,8 +20,8 @@ writing it the plain way, never by teaching the guard a new spelling.
   the constant outside that call's arguments (an explicit `dir="/tmp"` bypasses TMPDIR). Aliased reads (`from os import
   getenv`) are refused: fail closed, fixed by the canonical spelling.
 
-Shell is read only from shfmt's JSON syntax tree (PATH's shfmt, which CI pins, else the pinned mise form); a missing
-shfmt or a parse failure fails the test, and no text scan stands in for the parser. A comment ending in a backslash is
+Shell is read only from shfmt's JSON syntax tree (PATH's shfmt, which must be the pinned version); a missing or
+other shfmt or a parse failure fails the test, and no text scan stands in for the parser. A comment ending in a backslash is
 reported, since shfmt joins the next line to the command there and bash does not. Python is read with ast.
 """
 
@@ -50,20 +50,22 @@ ALLOWED_TMP = {
     for word in ("/tmp/claude", "/private/tmp/claude")
 }
 
-SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 ENV_READS = ("os.environ.get", "os.getenv")
 
 
 @functools.cache
 def shfmt():
-    for cmd in SHFMT:
-        try:
-            run = subprocess.run([*cmd, "--version"], stdin=subprocess.DEVNULL, capture_output=True, check=False)
-        except OSError:
-            continue
-        if run.returncode == 0:
-            return cmd
-    raise RuntimeError("shfmt missing: the shell guards have no parser")
+    """PATH's shfmt, the version home/dot_mise/config.toml pins ([tools."http:shfmt"], U97), or an error."""
+    run = subprocess.run(
+        [str(ROOT / "scripts/ci/pinned-tool-version.sh"), str(ROOT / "home/dot_mise/config.toml"), "shfmt"],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if run.returncode != 0:
+        raise RuntimeError(f"shfmt is not the pinned parser: {run.stderr.strip()}")
+    return ["shfmt"]
 
 
 def blank(m):
@@ -230,7 +232,7 @@ def python_tmp_lines(text):
 
 
 def misread_lines(tree):
-    """Lines of each comment ending in a backslash: shfmt 3.14.1 joins the next line to the command, bash does not, so
+    """Lines of each comment ending in a backslash: the pinned shfmt joins the next line to the command, bash does not, so
     the tree cannot vouch for that line."""
     for n in nodes(tree):
         if "Hash" in n and n.get("Text", "").rstrip("\n").endswith("\\"):

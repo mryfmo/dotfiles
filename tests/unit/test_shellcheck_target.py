@@ -7,9 +7,8 @@ group, each linted with the root .shellcheckrc (no --norc) and scripts/ci/masked
 in a scratch repository, fails on an SC2312 finding or a masked dirname in either group, and refuses a group that lists
 no file, no bash script, or (the installer group) a file that is not a bash script.
 
-The ShellCheck version has one source (U97): the `version` of [tools."http:shellcheck"] in home/dot_mise/config.toml.
-Hosts install it through mise, CI's test jobs install it from a copy of that file, and the target refuses to lint
-under any other version (scripts/ci/shellcheck-version.sh), so each consumer is checked against that one value here.
+The target first refuses a shellcheck or shfmt that is not the version home/dot_mise/config.toml pins (U97);
+tests/unit/test_pinned_lint_tools.py checks that guard and every consumer of the pins.
 """
 
 from __future__ import annotations
@@ -19,7 +18,6 @@ import re
 import shutil
 import subprocess
 import tempfile
-import tomllib
 import unittest
 from pathlib import Path
 
@@ -27,13 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/test.yaml"
 MAKEFILE = ROOT / "Makefile"
 MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
-GUARD = ROOT / "scripts/ci/shellcheck-version.sh"
-# The CI step that installs the pin, exactly: the version and checksums come only from the copied mise config.
-INSTALL_STEP = "Put the pinned `ShellCheck` on PATH"
-INSTALL_RUN = (
-    'mise -C "${RUNNER_TEMP}/statusline-mise" install http:shellcheck\n'
-    'dirname "$(mise -C "${RUNNER_TEMP}/statusline-mise" which --tool http:shellcheck shellcheck)" >> "${GITHUB_PATH}"\n'
-)
+GUARD = ROOT / "scripts/ci/pinned-tool-version.sh"
 
 
 def on_ci_runner() -> bool:
@@ -65,45 +57,6 @@ def run_steps(workflow: str) -> list[tuple[str, str]]:
     return steps
 
 
-def step_blocks(workflow: str) -> list[dict[str, str]]:
-    """Each step as {name, if, run}, `run: |` blocks whole and dedented; text only, so no PyYAML is needed (the unit
-    test run in CI has none)."""
-    steps: list[dict[str, str]] = []
-    lines = workflow.splitlines()
-    index = 0
-    while index < len(lines):
-        start = re.match(r"^(\s*)- name: (.*)$", lines[index])
-        index += 1
-        if not start:
-            continue
-        key_indent = len(start.group(1)) + 2
-        step = {"name": start.group(2).strip(), "if": "", "run": ""}
-        steps.append(step)
-        while index < len(lines) and not re.match(r"^\s*- name: ", lines[index]):
-            line = lines[index]
-            index += 1
-            if line.strip() and len(line) - len(line.lstrip()) < key_indent:
-                index -= 1
-                break
-            if match := re.match(rf"^ {{{key_indent}}}if: (.*)$", line):
-                step["if"] = match.group(1).strip()
-            elif match := re.match(rf"^ {{{key_indent}}}run: (.*)$", line):
-                if match.group(1).strip() != "|":
-                    step["run"] = match.group(1).strip() + "\n"
-                    continue
-                body = []
-                while index < len(lines) and (
-                    not lines[index].strip() or len(lines[index]) - len(lines[index].lstrip()) > key_indent
-                ):
-                    body.append(lines[index])
-                    index += 1
-                while body and not body[-1].strip():
-                    body.pop()
-                indent = min(len(line) - len(line.lstrip()) for line in body if line.strip())
-                step["run"] = "".join(f"{line[indent:]}\n" for line in body)
-    return steps
-
-
 class ShellCheckStepTest(unittest.TestCase):
     def test_the_required_step_runs_exactly_make_shellcheck(self):
         steps = run_steps(WORKFLOW.read_text())
@@ -119,7 +72,9 @@ class ShellCheckStepTest(unittest.TestCase):
         )
         lines = result.stdout.splitlines()
         # The version guard runs first, on the one pin file, before either group is linted.
-        self.assertEqual("scripts/ci/shellcheck-version.sh home/dot_mise/config.toml", lines[0], result.stdout)
+        self.assertEqual(
+            "scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shellcheck shfmt", lines[0], result.stdout
+        )
         commands = [line for line in lines if line.startswith("bash ")]
         self.assertEqual(2, len(commands), result.stdout)
         for command, mode, group in zip(commands, ("every", "bash"), (INSTALLER_GROUP, MASKED_GROUP)):
@@ -148,7 +103,7 @@ class ShellCheckTargetBehaviourTest(unittest.TestCase):
         self.repo = Path(tempfile.mkdtemp(prefix="shellcheck-target-test-"))
         (self.repo / "scripts/ci").mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/ci/masked-dirname-check.sh", self.repo / "scripts/ci/masked-dirname-check.sh")
-        shutil.copy2(GUARD, self.repo / "scripts/ci/shellcheck-version.sh")
+        shutil.copy2(GUARD, self.repo / "scripts/ci/pinned-tool-version.sh")
         (self.repo / "home/dot_mise").mkdir(parents=True)
         shutil.copy2(MISE_CONFIG, self.repo / "home/dot_mise/config.toml")
         shutil.copy2(ROOT / ".shellcheckrc", self.repo / ".shellcheckrc")
@@ -241,139 +196,6 @@ class ShellCheckTargetBehaviourTest(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("shellcheck: not a bash script, in clean.sh tool.py:\ntool.py\n", result.stderr)
-
-
-def pinned_version(config: Path = MISE_CONFIG) -> str:
-    return tomllib.loads(config.read_text())["tools"]["http:shellcheck"]["version"]
-
-
-class ShellCheckPinTest(unittest.TestCase):
-    """One pin, read by mise, CI and the Makefile guard; a fake shellcheck on PATH stands in for each version."""
-
-    def setUp(self):
-        self.scratch = Path(tempfile.mkdtemp(prefix="shellcheck-pin-test-"))
-        (self.scratch / "bin").mkdir()
-
-    def tearDown(self):
-        shutil.rmtree(self.scratch)
-
-    def fake(self, body: str) -> dict:
-        tool = self.scratch / "bin/shellcheck"
-        tool.write_text(f"#!/bin/sh\n{body}\n")
-        tool.chmod(0o755)
-        return os.environ | {"PATH": f"{self.scratch / 'bin'}:{os.environ['PATH']}"}
-
-    @staticmethod
-    def banner(version: str) -> str:
-        return f"printf 'ShellCheck - shell script analysis tool\\nversion: {version}\\nlicense: GNU GPLv3\\n'"
-
-    def guard(self, config: Path, env: dict) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [str(GUARD), str(config)], cwd=ROOT, env=env, capture_output=True, text=True, timeout=30, check=False
-        )
-
-    def test_the_config_holds_one_shellcheck_and_it_is_an_exact_version(self):
-        tools = tomllib.loads(MISE_CONFIG.read_text())["tools"]
-        self.assertEqual(["http:shellcheck"], [name for name in tools if "shellcheck" in name])
-        self.assertRegex(pinned_version(), r"^\d+(\.\d+)+$")
-
-    def test_the_guard_accepts_the_pin_and_refuses_any_other_version_naming_both(self):
-        pin = pinned_version()
-        accepted = self.guard(MISE_CONFIG, self.fake(self.banner(pin)))
-        self.assertEqual(0, accepted.returncode, accepted.stderr)
-        self.assertEqual(f"==> ShellCheck {pin}, the version {MISE_CONFIG} pins\n", accepted.stdout)
-        for name, body, installed in (
-            ("an older release", self.banner("0.9.0"), "0.9.0"),
-            ("a newer release", self.banner("99.0.0"), "99.0.0"),
-            ("the pin as a prefix", self.banner(f"{pin}.1"), f"{pin}.1"),
-            ("no version line", "printf 'ShellCheck\\n'", "of no version"),
-        ):
-            with self.subTest(name):
-                refused = self.guard(MISE_CONFIG, self.fake(body))
-                self.assertEqual(1, refused.returncode, refused.stdout)
-                self.assertIn(f"ShellCheck {installed}, but {MISE_CONFIG} pins ShellCheck {pin};", refused.stderr)
-                self.assertEqual("", refused.stdout)
-        failed = self.guard(MISE_CONFIG, self.fake("exit 3"))
-        self.assertEqual(1, failed.returncode)
-        self.assertIn(f'"shellcheck --version" failed; {MISE_CONFIG} pins ShellCheck {pin}', failed.stderr)
-
-    def test_the_guard_reads_the_version_from_the_config_it_is_given(self):
-        # A copy of the real config with the http:shellcheck version changed: the guard follows the file, so its
-        # value and tomllib's are one value, and no version is written into the guard or the Makefile.
-        text = MISE_CONFIG.read_text()
-        pin = pinned_version()
-        moved = self.scratch / "moved.toml"
-        moved.write_text(
-            text.replace(
-                f'[tools."http:shellcheck"]\nversion = "{pin}"', '[tools."http:shellcheck"]\nversion = "7.7.7"'
-            )
-        )
-        self.assertEqual("7.7.7", pinned_version(moved))
-        self.assertEqual(0, self.guard(moved, self.fake(self.banner("7.7.7"))).returncode)
-        self.assertEqual(1, self.guard(moved, self.fake(self.banner(pin))).returncode)
-        for name, body in (
-            ("no table", text.replace('[tools."http:shellcheck"]', '[tools."http:other"]', 1)),
-            ("latest", text.replace(f'version = "{pin}"', 'version = "latest"', 1)),
-            ("two versions", text.replace(f'version = "{pin}"', f'version = "{pin}"\nversion = "{pin}"', 1)),
-        ):
-            with self.subTest(name):
-                broken = self.scratch / "broken.toml"
-                broken.write_text(body)
-                refused = self.guard(broken, self.fake(self.banner(pin)))
-                self.assertEqual(1, refused.returncode, refused.stdout)
-                self.assertIn(f"{broken} pins no ShellCheck version", refused.stderr)
-        missing = self.guard(self.scratch / "absent.toml", self.fake(self.banner(pin)))
-        self.assertEqual(1, missing.returncode)
-        self.assertIn("cannot read the mise config", missing.stderr)
-        for path in (GUARD, MAKEFILE):
-            self.assertNotIn(pin, path.read_text(), path)
-
-    def test_make_shellcheck_stops_at_the_guard_before_linting(self):
-        result = subprocess.run(
-            ["make", "-s", "shellcheck"],
-            cwd=ROOT,
-            env=self.fake(self.banner("0.9.0")),
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
-        )
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn(
-            f"ShellCheck 0.9.0, but home/dot_mise/config.toml pins ShellCheck {pinned_version()};", result.stderr
-        )
-        self.assertNotIn("==> ShellCheck with .shellcheckrc", result.stdout)
-
-    def test_ci_installs_the_pin_from_the_copied_config_and_nothing_else(self):
-        blocks = step_blocks(WORKFLOW.read_text())
-        steps = {step["name"]: step for step in blocks}
-        names = [step["name"] for step in blocks]
-        self.assertEqual(len(names), len(steps), "step names are unique")
-        self.assertIn(
-            'cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"',
-            steps["Prepare statusline tool config"]["run"],
-        )
-        install = steps[INSTALL_STEP]
-        self.assertEqual(INSTALL_RUN, install["run"])
-        # Every row of the matrix runs it: the condition is the one every test step has.
-        self.assertEqual("${{ steps.decide.outputs.should_test == 'true' }}", install["if"])
-        self.assertLess(names.index("Prepare statusline tool config"), names.index(INSTALL_STEP))
-        self.assertLess(names.index("Setup mise for statusline smoke"), names.index(INSTALL_STEP))
-        self.assertEqual(names.index(INSTALL_STEP) + 1, names.index("Run `ShellCheck`"))
-        # No other step's commands install or run a ShellCheck, apt and brew lines included (comments aside).
-        mentions = [
-            step["name"]
-            for step in blocks
-            if any(
-                "shellcheck" in line.lower() for line in step["run"].splitlines() if not line.lstrip().startswith("#")
-            )
-        ]
-        self.assertEqual([INSTALL_STEP, "Run `ShellCheck`"], mentions)
-        self.assertNotIn("shellcheck", steps["Install tools"]["run"].lower())
-        # The parser reads the other steps whole: the apt line it checked above is really in Install tools.
-        self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", steps["Install tools"]["run"])
-        self.assertIn("brew install bash bats-core gawk parallel\n", steps["Install tools"]["run"])
-        self.assertEqual("make shellcheck\n", steps["Run `ShellCheck`"]["run"])
 
 
 if __name__ == "__main__":

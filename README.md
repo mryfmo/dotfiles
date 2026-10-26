@@ -274,17 +274,22 @@ a supported command here; it prints `Updates are disabled by your
 administrator`. To hold Claude Code at one release, pin an exact version in the
 mise entry instead of `latest` (see Holding a tool back below).
 
-**ShellCheck version.** ShellCheck is one `http:` table in
-`home/dot_mise/config.toml`, `[tools."http:shellcheck"]`: an exact release with
-the sha256 of each platform's asset, and the only version the repository lints
-with. Hosts get it from mise. CI's test jobs install it on every runner from a
-copy of the same file (apt and Homebrew no longer install ShellCheck there), and
-`make shellcheck` first runs `scripts/ci/shellcheck-version.sh`, which refuses a
-`shellcheck` on PATH of any other version and names both. Releases disagree on
-findings (CI's apt 0.9.0 reported SC2015 where a local 0.11.0 did not), so a run
-under another version stops instead of passing locally and failing in CI. To
-move it, change the version and the four URLs and checksums together;
-`make drift` reports a newer release.
+**Lint tool versions.** ShellCheck, shfmt, ruff and prettier each have one
+exact version in `home/dot_mise/config.toml`: the `[tools."http:shellcheck"]`,
+`[tools."http:shfmt"]` and `[tools."http:ruff"]` tables (each with the sha256 of
+every platform's release asset) and the held `"npm:prettier"`. Those are the
+only versions the repository lints and formats with. Hosts get them from mise.
+CI's test jobs install them on every runner from a copy of the same file (apt
+and Homebrew no longer install ShellCheck, and no workflow step names a
+version). `scripts/ci/pinned-tool-version.sh` runs first in `make shellcheck`
+(ShellCheck and shfmt), `make format` (shfmt, ruff and prettier) and CI's shfmt
+and formatting steps; it refuses a tool on PATH of any other version and names
+both. `scripts/lint-comparisons.py` refuses a shfmt that is not the pin. Releases
+disagree on findings and formatting (CI's apt ShellCheck 0.9.0 reported SC2015
+where a local 0.11.0 did not), so a run under another version stops instead of
+passing locally and failing in CI. To move an `http:` tool, change its version
+and its four URLs and checksums together; `make drift` reports a newer GitHub
+release. `make update` leaves all four where they are.
 
 **Holding a tool back** uses the manager's own feature:
 

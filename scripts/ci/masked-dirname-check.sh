@@ -18,7 +18,7 @@
 #   includes a heredoc delimiter with ANSI-C escapes (`<<$'\x45OF'`), which shfmt 3.14.1 and
 #   ShellCheck 0.11.0 both fail to terminate.
 # @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).
-# @env SHFMT The shfmt to run (default `shfmt` on PATH; CI puts the mise-pinned 3.14.1 there).
+# @env SHFMT The shfmt to run (default `shfmt` on PATH; CI puts the [tools."http:shfmt"] pin there).
 # @exitcode 0 No command substitution nested inside another.
 # @exitcode 1 At least one finding, each printed as `file:line: …`.
 # @exitcode 2 No file given, a listed file cannot be read or parsed, or shfmt or python3 is missing:

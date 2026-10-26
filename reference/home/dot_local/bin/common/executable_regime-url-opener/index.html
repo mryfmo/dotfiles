@@ -5014,6 +5014,7 @@ import<span class="w"> </span>datetime
 import<span class="w"> </span>http.server
 import<span class="w"> </span>os
 import<span class="w"> </span>shutil
+import<span class="w"> </span>socketserver
 import<span class="w"> </span>subprocess
 import<span class="w"> </span>sys
 import<span class="w"> </span>urllib.parse
@@ -5129,6 +5130,20 @@ class<span class="w"> </span>Handler<span class="o">(</span>http.server.BaseHTTP
 <span class="w">        </span>self.reply<span class="o">(</span><span class="m">200</span>,<span class="w"> </span><span class="s2">"opened"</span><span class="o">)</span>
 
 
+class<span class="w"> </span>LoopbackHTTPServer<span class="o">(</span>http.server.HTTPServer<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""An HTTPServer that binds without `socket.getfqdn`.</span>
+
+<span class="s2">    `HTTPServer.server_bind` resolves the bound host with `socket.getfqdn`, a reverse DNS lookup that takes</span>
+<span class="s2">    about 35 s on some macOS hosts; nothing here reads `server_name`, so the literal host is kept instead.</span>
+<span class="s2">    """</span>
+
+<span class="w">    </span>def<span class="w"> </span>server_bind<span class="o">(</span>self<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
+<span class="w">        </span>socketserver.TCPServer.server_bind<span class="o">(</span>self<span class="o">)</span>
+<span class="w">        </span>host,<span class="w"> </span><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.server_address<span class="o">[</span>:2<span class="o">]</span>
+<span class="w">        </span>self.server_name<span class="w"> </span><span class="o">=</span><span class="w"> </span>host
+<span class="w">        </span>self.server_port<span class="w"> </span><span class="o">=</span><span class="w"> </span>port
+
+
 def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
 <span class="w">    </span><span class="nv">parser</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>argparse.ArgumentParser<span class="o">(</span><span class="nv">prog</span><span class="o">=</span><span class="s2">"regime-url-opener"</span><span class="o">)</span>
 <span class="w">    </span>parser.add_argument<span class="o">(</span><span class="s2">"--port"</span>,<span class="w"> </span><span class="nv">type</span><span class="o">=</span>int,<span class="w"> </span><span class="nv">default</span><span class="o">=</span>int<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"REGIME_URL_OPENER_PORT"</span>,<span class="w"> </span><span class="s2">"1456"</span><span class="o">)))</span>
@@ -5141,7 +5156,7 @@ def<span class="w"> </span>main<span class="o">(</span>argv:<span class="w"> </s
 <span class="w">        </span>print<span class="o">(</span>f<span class="s2">"regime-url-opener: cannot create the log directory {args.log.parent}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>try:
-<span class="w">        </span><span class="nv">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>http.server.HTTPServer<span class="o">((</span><span class="s2">"127.0.0.1"</span>,<span class="w"> </span>args.port<span class="o">)</span>,<span class="w"> </span>Handler<span class="o">)</span>
+<span class="w">        </span><span class="nv">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LoopbackHTTPServer<span class="o">((</span><span class="s2">"127.0.0.1"</span>,<span class="w"> </span>args.port<span class="o">)</span>,<span class="w"> </span>Handler<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span>append_log<span class="o">(</span>args.log,<span class="w"> </span>f<span class="s2">"failed to bind 127.0.0.1:{args.port}: {error.strerror or error}"</span><span class="o">)</span>
 <span class="w">        </span>print<span class="o">(</span>f<span class="s2">"regime-url-opener: cannot bind 127.0.0.1:{args.port}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>

@@ -46,7 +46,8 @@ esac
 # @exitcode 0 It belongs to the set.
 # @exitcode 1 It does not: excluded by name, not a regular file (a symlink, a directory, a file deleted from the work
 #   tree), or not a bash or sh script.
-# @exitcode 2 Its first line cannot be read: the caller stops, never drops the file.
+# @exitcode 2 It is a regular file this run cannot read, or reading its first line failed: the caller stops, never
+#   drops the file.
 #
 function in_shell_set() {
     local path=$1 first=
@@ -60,8 +61,16 @@ function in_shell_set() {
     *.tmpl) return 1 ;;
     esac
     [[ -f ${path} && ! -L ${path} ]] || return 1
-    # The redirection's failure (an unreadable file) fails the group; a short or empty file only ends the read.
-    { IFS= read -r first || :; } < "${path}" || return 2
+    [[ -r ${path} ]] || return 2
+    # bash's `read` returns 1 at end of file and on a read error alike, so the first line comes from head, whose exit
+    # status is non-zero on an open or read error and 0 at a short or empty file (POSIX head, EXIT STATUS). tr drops
+    # NUL bytes, which a binary file's first line may hold and a command substitution would warn about; the pipeline
+    # sets its own pipefail, so head's status is never masked by tr's, whatever the caller's options. LC_ALL=C keeps
+    # both byte-wise on any file.
+    first=$(
+        set -o pipefail
+        LC_ALL=C head -n 1 -- "./${path}" | LC_ALL=C tr -d '\000'
+    ) || return 2
     # zsh: shfmt does not parse zsh (its zsh dialect is incomplete), so a zsh script is never formatted, even one named
     # *.sh. A *.zsh file, or a zsh file without one, has no bash or sh shebang and never enters the set below.
     if [[ ${first} == '#!'*zsh* ]]; then

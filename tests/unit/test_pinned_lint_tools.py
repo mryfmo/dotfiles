@@ -437,6 +437,7 @@ EXCLUDED = (
     "home/dash-only",
     "home/executable_py",
     "home/link.sh",
+    "home/image.png",
 )
 
 
@@ -575,6 +576,8 @@ class LintFileSetTest(unittest.TestCase):
             (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
             (self.repo / name).write_text(body)
         (self.repo / "home/link.sh").symlink_to("outside.sh")  # a symlink is no script of its own
+        # A binary whose first line holds NUL bytes: read without a warning and left out (no shell shebang).
+        (self.repo / "home/image.png").write_bytes(b"\x89PNG\x00\x00\x00\rIHDR\x00\n\x1a\n")
         self.git("init", "-q")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "fixture")
@@ -588,10 +591,11 @@ class LintFileSetTest(unittest.TestCase):
         env |= {"GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
         subprocess.run(["git", "-C", str(self.repo), "-c", "commit.gpgsign=false", *args], check=True, env=env)
 
-    def run_set(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_set(self, *args: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [str(self.repo / "scripts/ci/run-on-lint-files.sh"), *args],
             cwd=self.repo,
+            env=env,
             capture_output=True,
             text=True,
             timeout=30,
@@ -647,6 +651,40 @@ class LintFileSetTest(unittest.TestCase):
 
     def git_output(self, *args: str) -> str:
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True).stdout
+
+    def test_a_first_line_read_that_fails_stops_the_shell_set_whatever_it_printed(self):
+        # Round-3 audit of fa319844: bash's `read` returns 1 at end of file and on a read error alike, so a failed read
+        # of a shebang-only script read as "not a script" and dropped it. The first line now comes from head, whose
+        # status is checked: a head that fails stops the run with 2 naming the file, whether it printed a valid bash
+        # shebang first or nothing.
+        fake = self.repo.parent / f"{self.repo.name}-head"
+        fake.mkdir()
+        self.addCleanup(shutil.rmtree, fake)
+        for name, body in (
+            ("a bash shebang, then exit 1", "printf '#!/usr/bin/env bash\\n'\nexit 1\n"),
+            ("no output, exit 1", "exit 1\n"),
+        ):
+            with self.subTest(name):
+                (fake / "head").write_text(
+                    "#!/bin/sh\n"
+                    # Only the shebang-only script's read fails; every other file is read by the real head.
+                    f'case "$*" in *home/dot_local/bin/executable_tool*) {body.replace(chr(10), "; ")} ;; esac\n'
+                    f'exec {shutil.which("head")} "$@"\n'
+                )
+                (fake / "head").chmod(0o755)
+                env = os.environ | {"PATH": f"{fake}:{os.environ['PATH']}"}
+                result = self.run_set("shell", "true", env=env)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    "cannot read home/dot_local/bin/executable_tool to tell whether it is a shell script; "
+                    "nothing was checked",
+                    result.stderr,
+                )
+        # The same runs without the fault list the script and print nothing on stderr, the binary file included.
+        clean = self.run_set("shell", "printf", "%s\\n")
+        self.assertEqual(0, clean.returncode, clean.stderr)
+        self.assertIn("./home/dot_local/bin/executable_tool", clean.stdout.splitlines())
+        self.assertEqual("", clean.stderr)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads any file")
     def test_a_tracked_file_that_cannot_be_read_stops_the_shell_set(self):

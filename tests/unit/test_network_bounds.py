@@ -26,6 +26,7 @@ import textwrap
 import time
 import unittest
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes
@@ -58,139 +59,274 @@ CANONICAL = {"curl": "--connect-timeout 30 --speed-limit 1024 --speed-time 60", 
 SNAP_CANONICAL = 'timeout --kill-after=30 "${limit}" snap install'
 TOOL = re.compile(r"\b(curl|wget)\b")
 SNAP = re.compile(r"\bsnap\s+(?:install|refresh)\b")
-# Any other time or retry option, long or short, with or without a value: a second, zero or larger value next to the
-# canonical options would override them.
-OTHER_BOUND = re.compile(
-    r"(?<!\S)(?:--(?:connect-timeout|max-time|speed-limit|speed-time|timeout|tries|read-timeout|dns-timeout|"
-    r"waitretry|retry[\w-]*)\b|-[mYyTt](?!\S))"
-)
-MENTION = "names the tool without running it"
-# (file, exact stripped line) -> (reason, None) or (reason, (offset, exact options that line offset lines below must
-# carry)). Every entry must still match a line.
-EXEMPT: dict[tuple[str, str], tuple[str, tuple[int, str] | None]] = {
+# The long options that bound or retry a transfer, curl's and wget's. wget accepts any unambiguous prefix of a long
+# option, so a prefix of one of these (`--time=0`, `--tri=0`) counts too, as does every `--retry…` option.
+BOUND_LONG = (
+    "connect-timeout", "max-time", "speed-limit", "speed-time", "timeout", "tries", "read-timeout", "dns-timeout",
+    "waitretry", "keepalive-time", "expect100-timeout", "happy-eyeballs-timeout-ms", "limit-rate",
+)  # fmt: skip
+LONG_OPTION = re.compile(r"(?<![\w-])--([A-Za-z][\w-]*)")
+# A short-option cluster holding curl's -m (max time), -y (speed time) or -Y (speed limit), or wget's -T (timeout) or
+# -t (tries), separate or attached to a value or other options: `-m 0`, `-m0`, `-y0`, `-Y0`, `-T0`, `-t0`, `-sSm0`.
+SHORT_BOUND = re.compile(r"(?<![\w-])-[A-Za-z0-9]*[mYyTt]")
+
+
+def bound_options(text: str) -> list[str]:
+    """Every time or retry option in the text, in any spelling: long, `=`-joined, abbreviated (wget), short, attached."""
+    found = [m.group(0) for m in SHORT_BOUND.finditer(text)]
+    for match in LONG_OPTION.finditer(text):
+        name = match.group(1)
+        if name.startswith("retry") or any(full.startswith(name) for full in BOUND_LONG):
+            found.append(match.group(0))
+    return found
+
+
+class Exempt(NamedTuple):
+    """Why a line that holds curl or wget is exempt from carrying the canonical options on its own text.
+
+    `continued` is the number of continuation lines after a line ending in `\\`; they are checked: together they hold
+    `options` exactly (when given) and, apart from it, no time or retry option in any spelling, and the last one ends
+    the command. A `call` carries the canonical options on its own line unless `options` names its own bound.
+    """
+
+    reason: str
+    continued: int = 0
+    options: str = ""
+    call: bool = False
+
+
+# (file, the whole stripped line, exactly) -> Exempt. Every entry must still match a line (test_no_exemption_is_stale).
+EXEMPT: dict[tuple[str, str], Exempt] = {
     (
         "setup.sh",
         "# Network bounds: curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s; wget waits",
-    ): (f"comment; {MENTION}", None),
-    ("setup.sh", "if command -v curl > /dev/null 2>&1; then"): (f"presence check; {MENTION}", None),
-    ("setup.sh", "# The credential goes through curl's config on stdin, never the command line."): (
-        f"comment; {MENTION}",
-        None,
+    ): Exempt("comment; names the tool without running it"),
+    ("setup.sh", "if command -v curl > /dev/null 2>&1; then"): Exempt(
+        "presence check; names the tool without running it"
+    ),
+    ("setup.sh", "# The credential goes through curl's config on stdin, never the command line."): Exempt(
+        "comment; names the tool without running it"
     ),
     (
         "setup.sh",
         "# wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.",
-    ): (f"comment; {MENTION}", None),
-    ("setup.sh", "#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl."): (
-        f"comment; {MENTION}",
-        None,
-    ),
-    ("setup.sh", "# @description Download one URL to standard output, preferring curl over wget. curl gets 30 s to"): (
-        f"shdoc; {MENTION}",
-        None,
-    ),
+    ): Exempt("comment; names the tool without running it"),
+    (
+        "setup.sh",
+        "#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl.",
+    ): Exempt("comment; names the tool without running it"),
+    (
+        "setup.sh",
+        "# @description Download one URL to standard output, preferring curl over wget. curl gets 30 s to",
+    ): Exempt("shdoc; names the tool without running it"),
     (
         "setup.sh",
         "#   connect and fails a transfer under 1 KB/s for 60 s; wget waits at most 60 s for any one connect",
-    ): (f"shdoc; {MENTION}", None),
-    ("setup.sh", "elif command -v wget > /dev/null 2>&1; then"): (f"presence check; {MENTION}", None),
-    ("setup.sh", 'echo "Neither curl nor wget is available; cannot download ${url}." >&2'): (
-        f"message; {MENTION}",
-        None,
+    ): Exempt("shdoc; names the tool without running it"),
+    ("setup.sh", "elif command -v wget > /dev/null 2>&1; then"): Exempt(
+        "presence check; names the tool without running it"
     ),
-    ("setup.sh", "# @description Download one URL to a file, preferring curl over wget, with fetch_url's bounds."): (
-        f"shdoc; {MENTION}",
-        None,
+    ("setup.sh", 'echo "Neither curl nor wget is available; cannot download ${url}." >&2'): Exempt(
+        "message; names the tool without running it"
     ),
-    ("setup.sh", "printf 'Neither curl nor wget is available; cannot download %s.\\n' \"${url}\" >&2"): (
-        f"message; {MENTION}",
-        None,
+    (
+        "setup.sh",
+        "# @description Download one URL to a file, preferring curl over wget, with fetch_url's bounds.",
+    ): Exempt("shdoc; names the tool without running it"),
+    ("setup.sh", "printf 'Neither curl nor wget is available; cannot download %s.\\n' \"${url}\" >&2"): Exempt(
+        "message; names the tool without running it"
     ),
     (
         "install/common/aws_cli.sh",
         "# curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
-    ): (f"comment; {MENTION}", None),
+    ): Exempt("comment; names the tool without running it"),
     (
         "install/common/mise.sh",
         "# Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
-    ): (f"comment; {MENTION}", None),
+    ): Exempt("comment; names the tool without running it"),
     (
         "install/ubuntu/server/starship.sh",
         "# Each curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled download ends.",
-    ): (f"comment; {MENTION}", None),
-    ("install/ubuntu/client/docker.sh", "curl \\"): ("an apt-get install package name", None),
-    ("install/ubuntu/common/dependencies.sh", "curl"): ("a PACKAGES entry", None),
-    ("install/ubuntu/common/dependencies.sh", "wget"): ("a PACKAGES entry", None),
+    ): Exempt("comment; names the tool without running it"),
+    ("install/ubuntu/client/docker.sh", "curl \\"): Exempt("an apt-get install package name", continued=1),
+    ("install/ubuntu/common/dependencies.sh", "curl"): Exempt("a PACKAGES entry"),
+    ("install/ubuntu/common/dependencies.sh", "wget"): Exempt("a PACKAGES entry"),
     (
         "install/ubuntu/client/ghostty.sh",
         "#   answer within the timeout (curl exit 5, 6, 7, 28, 35, 52 or 56), or answers HTTP 5xx;",
-    ): (f"shdoc; {MENTION}", None),
+    ): Exempt("shdoc; names the tool without running it"),
     (
         "install/ubuntu/client/ghostty.sh",
         "#   other curl failure (a local error, not evidence of the network): curl's status, unchanged.",
-    ): (f"shdoc; {MENTION}", None),
+    ): Exempt("shdoc; names the tool without running it"),
     (
         "install/ubuntu/client/ghostty.sh",
         "out=\"$(curl -q --silent --show-error --output /dev/null --write-out '%{http_connect} %{http_code}' \\",
-    ): (
-        "the PPA probe bounds itself tighter than the convention (5 s to connect, 15 s in all); options on line +1",
-        (1, "--connect-timeout 5 --max-time 15"),
+    ): Exempt(
+        "the PPA probe bounds itself tighter than the convention: 5 s to connect, 15 s in all",
+        continued=1,
+        options="--connect-timeout 5 --max-time 15",
+        call=True,
     ),
-    ("install/ubuntu/client/ghostty.sh", 'printf \'%s (curl exit %s)\\n\' "${url}" "${status}"'): (
-        f"message; {MENTION}",
-        None,
+    ("install/ubuntu/client/ghostty.sh", 'printf \'%s (curl exit %s)\\n\' "${url}" "${status}"'): Exempt(
+        "message; names the tool without running it"
     ),
     (
         "scripts/generate-agent-configs.py",
         '"# shell after a pipe (`curl ... | sh`), which no prefix rule can name without matching Codex\'s own shell.",',
-    ): ("a rendered comment about command policy; names the tool without running it", None),
+    ): Exempt("a rendered comment about command policy; names the tool without running it"),
     (
         "scripts/validate-agent-assets.py",
         "# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an",
-    ): (f"comment; {MENTION}", None),
-    ("scripts/lib/github-release.sh", "#   Only curl or wget and awk are needed, so a fresh machine can run it."): (
-        f"comment; {MENTION}",
-        None,
-    ),
+    ): Exempt("comment; names the tool without running it"),
+    (
+        "scripts/lib/github-release.sh",
+        "#   Only curl or wget and awk are needed, so a fresh machine can run it.",
+    ): Exempt("comment; names the tool without running it"),
     (
         "scripts/lib/github-release.sh",
         "# Network bounds: curl gets 30 s to connect and fails a transfer under 1 KB/s for 60 s; wget waits",
-    ): (f"comment; {MENTION}", None),
-    ("scripts/lib/github-release.sh", "if command -v curl > /dev/null 2>&1; then"): (
-        f"presence check; {MENTION}",
-        None,
+    ): Exempt("comment; names the tool without running it"),
+    ("scripts/lib/github-release.sh", "if command -v curl > /dev/null 2>&1; then"): Exempt(
+        "presence check; names the tool without running it"
     ),
     (
         "scripts/lib/github-release.sh",
         "# The credential goes through curl's config on stdin, never the command line.",
-    ): (f"comment; {MENTION}", None),
+    ): Exempt("comment; names the tool without running it"),
     (
         "scripts/lib/github-release.sh",
         "# wget reads the credential from a private wgetrc (mktemp creates it 0600), never the command line.",
-    ): (f"comment; {MENTION}", None),
+    ): Exempt("comment; names the tool without running it"),
     (
         "scripts/lib/github-release.sh",
         "#   gh can check the asset against it (`make docker` passes it to the Dockerfile). Needs curl.",
-    ): (f"comment; {MENTION}", None),
-    ("scripts/lib/installer-pins.sh", "#   tode and terminal-browser install through a vendor `curl | bash` script"): (
-        f"comment; {MENTION}",
-        None,
-    ),
+    ): Exempt("comment; names the tool without running it"),
+    (
+        "scripts/lib/installer-pins.sh",
+        "#   tode and terminal-browser install through a vendor `curl | bash` script",
+    ): Exempt("comment; names the tool without running it"),
     (
         ".github/workflows/test.yaml",
         "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck",
-    ): ("an apt-get install package name", None),
-    (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): ("an apt-get install package name", None),
+    ): Exempt("an apt-get install package name"),
+    (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): Exempt("an apt-get install package name"),
+    ("setup.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -K - \\"): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    ("setup.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\"): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    ("setup.sh", 'wget --config="${wgetrc}" --timeout=60 --tries=3 -qO - \\'): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    (
+        "install/common/aws_cli.sh",
+        "curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\",
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/common/aws_cli.sh",
+        'staged_version="$(curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/common/mise.sh",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/common/mise.sh",
+        'if curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/SHASUMS256.asc" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/common/mise.sh",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/SHASUMS256.txt" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    ("install/macos/common/brew.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\"): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    (
+        "install/ubuntu/client/docker.sh",
+        "sudo curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://download.docker.com/linux/ubuntu/gpg \\",
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/ubuntu/client/tailscale.sh",
+        "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\",
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    ("install/ubuntu/client/zed.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\"): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    (
+        "install/ubuntu/server/starship.sh",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "install/ubuntu/server/starship.sh",
+        'expected="$(curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "scripts/lib/github-release.sh",
+        "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -K - \\",
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    ("scripts/lib/github-release.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\"): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    ("scripts/lib/github-release.sh", 'wget --config="${wgetrc}" --timeout=60 --tries=3 -qO - \\'): Exempt(
+        "a bounded call whose remaining arguments continue", continued=1, call=True
+    ),
+    (
+        "scripts/update-agent-assets.sh",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        "scripts/update-agent-assets.sh",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${PI_CLAUDE_BRIDGE_TARBALL_URL}" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        ".github/workflows/agent-assets.yml",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=2, call=True),
+    (
+        ".github/workflows/agent-assets.yml",
+        "curl --fail --location --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\",
+    ): Exempt("a bounded call whose remaining arguments continue", continued=1, call=True),
+    (
+        ".github/workflows/remote.yaml",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=2, call=True),
+    (
+        ".github/workflows/test.yaml",
+        'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \\',
+    ): Exempt("a bounded call whose remaining arguments continue", continued=2, call=True),
+    (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "ensure_crit_cli" installer "${tag}" "${target}" -- "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/${artifact}" "curl -fsSL https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}/checksums.txt" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}" ||',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex" ||',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>" ||',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>" ||',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_pi_claude_bridge" installer "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}" "${install_dir}/RECEIPT" "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" -- "curl -fsSL ${PI_CLAUDE_BRIDGE_TARBALL_URL}" "shasum -a 256 <tarball>" "patch -p1 -F0 -d <staging> -i <each home/dot_agents/assets/pi-claude-bridge/patches/*.patch in order>" "bun install --production --omit=peer --frozen-lockfile" "bun run gap-check.ts <staging>/src ${omp_dir}"',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
 }
-# The manifest_record lines of update-agent-assets.sh store each asset's source ("curl -fsSL <url>", then its sha256
-# step) as data in ~/.agents/.installed-manifest.json; they run nothing. Matched by exact text like every entry.
-MANIFEST_RECORDS = (
-    "ensure_crit_cli",
-    "update_codex_understand_anything",
-    "update_terminal_code",
-    "update_terminal_browser",
-    "update_pi_claude_bridge",
-)
 SNAP_EXEMPT = {
     (
         "install/ubuntu/client/misc.sh",
@@ -207,18 +343,30 @@ SNAP_EXEMPT = {
 }
 
 
-def manifest_record_exempt(relative: str, line: str) -> bool:
-    # The key is the repo-relative POSIX name tree() builds, the same form as every EXEMPT key.
-    return relative == "scripts/update-agent-assets.sh" and any(  # lint-comparisons: allow table-key
-        line.startswith(f'manifest_record "{name}" installer ') for name in MANIFEST_RECORDS
-    )
-
-
 def carries(line: str, tool: str, count: int) -> bool:
     """The line carries the tool's canonical options once per occurrence of the tool word, and no other time or
-    retry option."""
+    retry option in any spelling."""
     canonical = CANONICAL[tool]
-    return line.count(canonical) >= count and not OTHER_BOUND.search(line.replace(canonical, " "))
+    return line.count(canonical) >= count and not bound_options(line.replace(canonical, " "))
+
+
+def continuation_errors(lines: list[str], index: int, entry: Exempt) -> list[str]:
+    """What is wrong with the continuation lines of the exempted line at index (0-based)."""
+    line = lines[index].strip()
+    if not entry.continued:
+        return ["continues onto the next line without a checked continuation"] if line.endswith("\\") else []
+    if not line.endswith("\\"):
+        return [f"the entry names {entry.continued} continuation line(s) but the line does not continue"]
+    rest = [raw.strip() for raw in lines[index + 1 : index + 1 + entry.continued]]
+    if len(rest) < entry.continued or any(not r.endswith("\\") for r in rest[:-1]) or rest[-1].endswith("\\"):
+        return [f"the command does not end after exactly {entry.continued} continuation line(s)"]
+    joined = " ".join(rest)
+    if entry.options:
+        if joined.count(entry.options) != 1:
+            return [f"the continuation must carry exactly {entry.options}"]
+        joined = joined.replace(entry.options, " ")
+    hits = bound_options(joined)
+    return [f"the continuation carries {hits}"] if hits else []
 
 
 def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[str]:
@@ -227,42 +375,32 @@ def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[
     snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
     lines = text.splitlines()
     bad = []
-    for number, raw in enumerate(lines, 1):
+    for index, raw in enumerate(lines):
         line = raw.strip()
-        where = f"{relative}:{number}: {line}"
+        where = f"{relative}:{index + 1}: {line}"
         tools = TOOL.findall(line)
         if tools:
             entry = exempt.get((relative, line))
-            if entry is not None:
-                options = entry[1]
-                if options is not None:
-                    offset, exact = options
-                    other = lines[number - 1 + offset].strip() if number - 1 + offset < len(lines) else ""
-                    if exact not in other or OTHER_BOUND.search(other.replace(exact, " ")):
-                        bad.append(f"{where} (line +{offset} must carry exactly {exact})")
-            elif not manifest_record_exempt(relative, line):
-                for tool in ("curl", "wget"):
-                    if tool in tools and not carries(line, tool, tools.count(tool)):
-                        bad.append(where)
-                        break
+            if entry is None:
+                if line.endswith("\\"):
+                    bad.append(f"{where} (continues onto the next line; put its options on this line or exempt it)")
+                elif not all(carries(line, tool, tools.count(tool)) for tool in set(tools)):
+                    bad.append(where)
+            else:
+                bad += [f"{where} ({error})" for error in continuation_errors(lines, index, entry)]
+                if entry.call and not entry.options and not all(carries(line, t, tools.count(t)) for t in set(tools)):
+                    bad.append(f"{where} (an exempted call must still carry the canonical options)")
         if SNAP.search(line) and SNAP_CANONICAL not in line and (relative, line) not in snap_exempt:
             bad.append(where)
     return bad
 
 
 def stale(files: dict[str, str], exempt=None, snap_exempt=None) -> list[str]:
-    """The exemptions whose file no longer holds their exact line."""
+    """The exemptions whose file no longer holds their whole line, exactly."""
     exempt = EXEMPT if exempt is None else exempt
     snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
     lines = {relative: {line.strip() for line in text.splitlines()} for relative, text in files.items()}
-    gone = [f"{r}: {t}" for r, t in [*exempt, *snap_exempt] if t not in lines.get(r, set())]
-    for name in MANIFEST_RECORDS:
-        if not any(
-            l.startswith(f'manifest_record "{name}" installer ')
-            for l in lines.get("scripts/update-agent-assets.sh", ())
-        ):
-            gone.append(f"scripts/update-agent-assets.sh: manifest_record {name}")
-    return gone
+    return [f"{r}: {t}" for r, t in [*exempt, *snap_exempt] if t not in lines.get(r, set())]
 
 
 def tree() -> dict[str, str]:
@@ -292,7 +430,9 @@ class NetworkBoundTest(unittest.TestCase):
         self.assertGreater(downloads, 40)
 
     def test_the_audit_bypasses_fail(self) -> None:
-        # Audits of c7629e24 and 86e1f99e: bare calls, substitutions, array values, defaults and zero values.
+        # Audits of c7629e24, 86e1f99e and 7b00c8c2: bare calls, substitutions, array values, defaults, zero values in
+        # every spelling, and a call that continues onto a line without the tool word.
+        canonical = "curl --connect-timeout 30 --speed-limit 1024 --speed-time 60"
         for snippet in (
             "curl https://x.invalid/a",
             "wget https://x.invalid/a",
@@ -301,13 +441,22 @@ class NetworkBoundTest(unittest.TestCase):
             'y="${x:-$(curl -fsSL https://x.invalid/a)}"',
             "curl --connect-timeout 0 --speed-limit 1024 --speed-time 60 https://x.invalid/a",
             "curl --connect-timeout 30 --speed-limit 0 --speed-time 60 https://x.invalid/a",
-            "curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 --max-time 0 https://x.invalid/a",
-            "curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 -m 0 https://x.invalid/a",
+            f"{canonical} --max-time 0 https://x.invalid/a",
+            f"{canonical} --max-time=0 https://x.invalid/a",
+            f"{canonical} -m 0 https://x.invalid/a",
+            f"{canonical} -m0 https://x.invalid/a",
+            f"{canonical} -y0 -Y0 https://x.invalid/a",
+            f"{canonical} -sSy0 https://x.invalid/a",
+            f"{canonical} --retry 0 https://x.invalid/a",
             "wget --timeout=0 --tries=0 https://x.invalid/a",
             "wget --timeout=60 --tries=3 --tries=0 https://x.invalid/a",
             "wget --timeout=60 --tries=3 -T 0 https://x.invalid/a",
+            "wget --timeout=60 --tries=3 -T0 -t0 https://x.invalid/a",
+            "wget --timeout=60 --tries=3 --read-timeout=0 https://x.invalid/a",
+            "wget --timeout=60 --tries=3 --time=0 --tri=0 https://x.invalid/a",
             "a=$(curl --connect-timeout 30 --speed-limit 1024 --speed-time 60 u) b=$(curl u)",
-            "curl -fsSL \\",
+            f"{canonical} \\\n  -m0 https://x.invalid/a",
+            f"{canonical} \\\n  https://x.invalid/a",
             "# curl https://x.invalid/a",
             "sudo snap install chromium",
         ):
@@ -325,28 +474,40 @@ class NetworkBoundTest(unittest.TestCase):
             with self.subTest(snippet=snippet):
                 self.assertEqual([], violations("install/x.sh", snippet + "\n", {}, {}), snippet)
 
-    def test_an_exemption_needs_its_exact_line_and_its_options(self) -> None:
-        exempt = {("install/x.sh", "curl \\"): ("options on line +1", (1, "--connect-timeout 5 --max-time 15"))}
-        self.assertEqual([], violations("install/x.sh", "curl \\\n  --connect-timeout 5 --max-time 15 u\n", exempt, {}))
-        for options in ("--connect-timeout 0 --max-time 15 u", "--connect-timeout 5 --max-time 15 --max-time 0 u", "u"):
-            with self.subTest(options=options):
-                self.assertEqual(1, len(violations("install/x.sh", f"curl \\\n  {options}\n", exempt, {})))
+    def test_an_exemption_needs_its_exact_line_and_a_checked_continuation(self) -> None:
+        probe = {
+            ("install/x.sh", "curl \\"): Exempt(
+                "x", continued=1, options="--connect-timeout 5 --max-time 15", call=True
+            )
+        }
+        self.assertEqual([], violations("install/x.sh", "curl \\\n  --connect-timeout 5 --max-time 15 u\n", probe, {}))
+        for rest in (
+            "--connect-timeout 0 --max-time 15 u",
+            "--connect-timeout 5 --max-time 15 -m0 u",
+            "--connect-timeout 5 --max-time 15 u \\\n  -m0",
+            "u",
+        ):
+            with self.subTest(rest=rest):
+                self.assertEqual(1, len(violations("install/x.sh", f"curl \\\n  {rest}\n", probe, {})))
+        call = "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\"
+        continued = {("install/x.sh", call): Exempt("x", continued=1, call=True)}
+        self.assertEqual([], violations("install/x.sh", f"{call}\n  -o a u\n", continued, {}))
+        self.assertEqual(1, len(violations("install/x.sh", f"{call}\n  -y0 u\n", continued, {})))
+        # A mention that continues needs its continuation named, and is checked like a call's.
+        mention = {("install/x.sh", "curl \\"): Exempt("a package name")}
+        self.assertEqual(1, len(violations("install/x.sh", "curl \\\n  lsb-release\n", mention, {})))
+        # The whole line must match: a manifest_record line that gained "$(curl …)" is no longer exempt.
+        record = 'manifest_record "x" installer v1 /t -- "curl -fsSL https://x.invalid/a" "shasum -a 256 <a>"'
+        table = {("scripts/x.sh", record): Exempt("manifest data")}
+        self.assertEqual([], violations("scripts/x.sh", record + "\n", table, {}))
+        self.assertEqual(1, len(violations("scripts/x.sh", record + ' "$(curl https://x.invalid/b)"\n', table, {})))
         # A line that changed, even by one character, is no longer exempt, and its entry is stale.
         self.assertEqual(
-            1, len(violations("install/x.sh", "curl  \\\n", {("install/x.sh", "curl \\"): ("x", None)}, {}))
+            1, len(violations("install/x.sh", "curl  lsb\n", {("install/x.sh", "curl lsb"): Exempt("x")}, {}))
         )
         self.assertEqual(
-            ["install/x.sh: curl \\"],
-            stale(
-                {
-                    "install/x.sh": "curl  \\\n",
-                    "scripts/update-agent-assets.sh": "\n".join(
-                        f'manifest_record "{n}" installer' + " x" for n in MANIFEST_RECORDS
-                    ),
-                },
-                {("install/x.sh", "curl \\"): ("x", None)},
-                {},
-            ),
+            ["install/x.sh: curl lsb"],
+            stale({"install/x.sh": "curl  lsb\n"}, {("install/x.sh", "curl lsb"): Exempt("x")}, {}),
         )
 
 
@@ -499,6 +660,24 @@ def workflow_steps(text: str) -> list[str]:
 
 class CiBatsRunTest(unittest.TestCase):
     """Every Bats run CI starts goes through run_bats, in a step with its own timeout-minutes."""
+
+    def test_a_failed_dirname_stops_run_bats_before_python_runs(self) -> None:
+        # Audit of 7b00c8c2: the guard on `here="$(dirname …)"`; without it python3 would run "/ci/run-bats.py".
+        temp = Path(tempfile.mkdtemp(prefix="run-bats-dirname-"))
+        self.addCleanup(shutil.rmtree, temp, True)
+        (temp / "bin").mkdir()
+        marker = temp / "python-ran"
+        (temp / "bin/python3").write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 0\n')
+        (temp / "bin/python3").chmod(0o755)
+        # The runner sets -e when sourced, so the status is caught with `||`.
+        script = 'source "$1" && dirname() { return 23; } && { run_bats x || echo "status=$?"; }'
+        result = subprocess.run(
+            [BASH, "-c", script, "_", str(RUNNER)],
+            env={"PATH": f"{temp / 'bin'}:/usr/bin:/bin", "HOME": str(temp)},
+            capture_output=True, text=True, timeout=30, check=False,
+        )  # fmt: skip
+        self.assertEqual("status=1\n", result.stdout, result.stderr)
+        self.assertFalse(marker.exists())
 
     def test_the_runner_calls_bats_only_through_run_bats(self) -> None:
         calls_ = [line.strip() for line in RUNNER.read_text().splitlines() if BARE_BATS.search(line.split("#")[0])]

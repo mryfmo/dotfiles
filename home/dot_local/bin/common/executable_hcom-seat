@@ -319,6 +319,41 @@ ancestors_of() {
     done
 }
 
+# @description Set `dir_list` to every entry of directory `$1`, dot names included, `.` and `..` excluded, in glob
+#   order (regime-cutover U95): `dotglob` and `nullglob` for this one glob, then restored, builtins only. Every
+#   directory whose entries matter (the worktree git directories, a seats root, a `.sandbox`) is listed this way, so
+#   no consumer sees a dot-named entry that another misses. An absent or empty directory lists nothing.
+# @arg $1 string A directory.
+# @set dir_list The entries, as `$1/<name>`.
+dir_entries() {
+    local de_dot=0 de_null=0 de_p
+    dir_list=()
+    if shopt -q dotglob; then de_dot=1; fi
+    if shopt -q nullglob; then de_null=1; fi
+    shopt -s dotglob nullglob
+    for de_p in "$1"/*; do
+        case ${de_p##*/} in
+        . | ..) ;;
+        *) dir_list+=("${de_p}") ;;
+        esac
+    done
+    if ((! de_dot)); then shopt -u dotglob; fi
+    if ((! de_null)); then shopt -u nullglob; fi
+}
+
+# @description Set `settings_files` to the srt settings file of every seat under each seats root `$@`, dot-named
+#   sandbox entries included (dir_entries), whether or not the file exists (the caller skips absent ones).
+# @arg $@ string Seats roots.
+# @set settings_files The paths.
+seat_settings_files() {
+    local root seat
+    settings_files=()
+    for root in "$@"; do
+        dir_entries "${root}/.sandbox"
+        for seat in ${dir_list[@]+"${dir_list[@]}"}; do settings_files+=("${seat}/srt-settings.json"); done
+    done
+}
+
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all,
 #   one budget for the whole resolution) and the directory in its `pwd -P` form. A path that does not exist yet is
 #   its nearest existing ancestor's physical form with the rest appended, so a write root a launch has not created
@@ -704,9 +739,9 @@ if [[ -n ${top} || -e /.git ]]; then
 fi
 # Every existing seat settings file, read by the system's reader (allow_write_list); an entry that cannot be read, or
 # that is not a clean path, is a refusal.
-for settings_file in ${seats_root:+"${seats_root}"/.sandbox/*/srt-settings.json} \
-    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"/.sandbox/*/srt-settings.json} \
-    "${HOME}"/.local/state/omp-seats/*/.sandbox/*/srt-settings.json; do
+dir_entries "${HOME}/.local/state/omp-seats"
+seat_settings_files ${seats_root:+"${seats_root}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${dir_list[@]+"${dir_list[@]}"}
+for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     [[ -e ${settings_file} ]] || continue
     listed=$(allow_write_list "${os}" "${settings_file}") ||
         refuse "cannot read a clean allowWrite list from ${settings_file}"
@@ -782,6 +817,8 @@ trusted_ids=$(/usr/bin/stat "${stat_args[@]}" -- "${trusted_dirs[@]}") ||
 trusted_ids=$'\n'${trusted_ids}$'\n'
 # Every linked tool's interpreter chain (`#!/abs/interp`, or `#!/usr/bin/env X` with X looked up on this PATH, as it
 # will be when the tool runs) passes the same identity check before anything runs it; git runs next (regime-env).
+# Plain `*` here: the private tool directory is hcom-seat's own (0700, outside every write root), and its only dot
+# entries are its own `.<tool>.<pid>` link temporaries, which no lookup by name finds.
 for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
@@ -829,11 +866,13 @@ git_state_check() {
     # common directory (git never writes them into an admin directory; `refs`, `logs` and `info` it does).
     [[ ! -L ${common_real}/worktrees ]] ||
         refuse "the worktree git directories ${common_real}/worktrees are a symbolic link, which host git would follow${git_fix_hint}"
-    for wt in "${common_real}"/worktrees/*/; do
-        [[ -d ${wt} ]] || continue
-        wt=${wt%/}
-        [[ ! -L ${wt} ]] ||
-            refuse "the worktree git directory ${wt} is a symbolic link, which host git would follow${git_fix_hint}"
+    # One enumeration, dot names included, as git's own readdir_skip_dot_and_dotdot (worktree.c:203): every entry
+    # must be a real directory (admin_dirs_match later holds it to the worktrees git lists, one to one).
+    dir_entries "${common_real}/worktrees"
+    admin_dirs=(${dir_list[@]+"${dir_list[@]}"})
+    for wt in ${admin_dirs[@]+"${admin_dirs[@]}"}; do
+        [[ -d ${wt} && ! -L ${wt} ]] ||
+            refuse "the worktree git directory ${wt} is not a real directory (a symbolic link, file or other entry), which host git would follow or no worktree owns${git_fix_hint}"
         [[ -e ${wt}/commondir || -L ${wt}/commondir ]] ||
             refuse "the worktree git directory ${wt} has no commondir, so git would take it for its own common directory and read its config and hooks${git_fix_hint}"
         for f in branches common hooks lost-found objects remotes worktrees rr-cache svn config gc.pid packed-refs shallow; do
@@ -1278,6 +1317,47 @@ if ((${#worktree_paths[@]} > 1)); then
     worktree_phys=("${phys_list[@]}")
 fi
 
+# @description Refuse (exit 2) unless the admin directories in `<common>/worktrees` (dir_entries, dot names included)
+#   are, one to one, the git directories of the linked worktrees git lists (regime-cutover U95): each admin directory's
+#   `gitdir` names, the way git reads it (worktree.c get_linked_worktree: trailing `/.git` stripped, a relative path
+#   resolved against the admin directory), a worktree git lists, no two name the same one, and their number is the
+#   number git lists. So every consumer (the git-state denies, the shape check, the overlap check) sees the same set:
+#   an admin directory no listed worktree owns, or one the scan missed, refuses. One read and one resolving batch.
+# @arg $1 string The physical git common directory.
+admin_dirs_match() {
+    local a v listed='' seen='' i derived=() gitdirs=() pointer_hint=${git_fix_hint}
+    dir_entries "$1/worktrees"
+    ((${#dir_list[@]} == ${#admin_dirs[@]})) ||
+        refuse "the worktree git directories of $1 changed while hcom-seat ran (${#dir_list[@]} now, ${#admin_dirs[@]} checked)"
+    ((${#admin_dirs[@]} == ${#worktree_phys[@]})) ||
+        refuse "$1/worktrees holds ${#admin_dirs[@]} worktree git directories but git lists ${#worktree_phys[@]} linked worktrees; an entry no listed worktree owns cannot be checked${git_fix_hint}"
+    for a in ${admin_dirs[@]+"${admin_dirs[@]}"}; do
+        [[ -f ${a}/gitdir && ! -L ${a}/gitdir ]] ||
+            refuse "the worktree git directory ${a} has no regular gitdir file, so git lists no worktree for it${git_fix_hint}"
+        gitdirs+=("${a}/gitdir")
+    done
+    pointer_values ${gitdirs[@]+"${gitdirs[@]}"}
+    for ((i = 0; i < ${#admin_dirs[@]}; i++)); do
+        v=${pointer_list[i]%/.git}
+        case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) derived+=("${v}") ;;
+        *) derived+=("${admin_dirs[i]}/${v}") ;;
+        esac
+    done
+    physical_paths ${derived[@]+"${derived[@]}"}
+    for v in ${worktree_phys[@]+"${worktree_phys[@]}"}; do listed+=$'\n'${v}; done
+    listed+=$'\n'
+    for ((i = 0; i < ${#admin_dirs[@]}; i++)); do
+        v=${phys_list[i]}
+        [[ ${listed} == *$'\n'"${v}"$'\n'* ]] || # lint-comparisons: allow physical paths, both from physical_paths
+            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which git does not list as a worktree${git_fix_hint}"
+        [[ ${seen} != *$'\n'"${v}"$'\n'* ]] || # lint-comparisons: allow physical paths, both from physical_paths
+            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which another worktree git directory records too${git_fix_hint}"
+        seen+=$'\n'${v}$'\n'
+    done
+}
+if ((${#worktree_paths[@]} > 1 || ${#admin_dirs[@]} > 0)); then admin_dirs_match "${early_common}"; fi
+
 # @description Refuse (exit 2) unless the path `$2`, as it is written, is identical to its physical path `$3`
 #   (regime-cutover U95): absolute, no symbolic link in any component, no `.` or `..`. A link on the way sits in a
 #   seat's writable root, so the seat could retarget or replace it, while the deny covers only the physical path; the
@@ -1319,9 +1399,10 @@ spelled_physically() {
 # @arg $1 string The seat whose write root holds the worktrees.
 # @arg $@ string The worktrees after it, physical.
 nested_shape_check() {
-    local seat=$1 w i v target wt_phys common_phys dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
+    local seat=$1 w i v target wt_phys common_phys known=$'\n' dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
     shift
     (($#)) || return 0
+    for w in ${admin_dirs[@]+"${admin_dirs[@]}"}; do known+=${w}$'\n'; done
     wt_phys=$(physical_path "${common}/worktrees") || refuse "cannot resolve ${common}/worktrees"
     # `worktrees` itself is no link: the physical common directory's `worktrees` must be its own physical path.
     common_phys=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
@@ -1354,6 +1435,8 @@ nested_shape_check() {
         [[ -d ${target%/*} && ${target%/*} -ef ${wt_phys} ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${target}, outside this repository's ${wt_phys}${git_fix_hint}"
         spelled_physically "the git directory the .git of the worktree ${trees[i]} names," "${target}" "${wt_phys}/${target##*/}"
+        [[ ${known} == *$'\n'"${target}"$'\n'* ]] || # lint-comparisons: allow both are the enumerated spelling of one directory
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, which is not among the worktree git directories checked${git_fix_hint}"
         [[ -f ${target}/gitdir && ! -L ${target}/gitdir ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${target}, whose gitdir file is not a regular file${git_fix_hint}"
         admins+=("${target}")
@@ -1455,9 +1538,13 @@ seat_overlap_check() {
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
     protected+=("${checkout}" "${seats_phys}" "${seats_phys}/.sandbox")
-    for p in "${seats_phys}"/*/; do
+    # Every directory in the seats root, dot names included (dir_entries); `.state` and `.sandbox` are protected or
+    # exempt by their own rules above.
+    dir_entries "${seats_phys}"
+    for p in ${dir_list[@]+"${dir_list[@]}"}; do
         [[ -d ${p} ]] || continue
-        p=$(physical_path "${p%/}") || refuse "cannot resolve the seat directory ${p%/}"
+        case ${p##*/} in .state | .sandbox) continue ;; esac
+        p=$(physical_path "${p}") || refuse "cannot resolve the seat directory ${p}"
         labels+=("the seat directory")
         protected+=("${p}")
     done
@@ -1622,7 +1709,8 @@ if [[ ${role} != orchestrator ]]; then
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
-for settings_file in "${seats_root}"/.sandbox/*/srt-settings.json; do
+seat_settings_files "${seats_root}"
+for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     [[ -e ${settings_file} ]] || continue
     listed=$(allow_write_list "${os}" "${settings_file}") ||
         refuse "cannot read a clean allowWrite list from ${settings_file}"
@@ -1763,6 +1851,7 @@ seat_sandbox_write() {
     if [[ ${os} == Darwin ]]; then
         require_clean_path 'the git common directory' "${common_real}"
         for path in config.worktree info commondir gitdir; do
+            # srt reads `*` as `[^/]*` (glob-pattern.js:179-180, globToRegex :208-209), so dot-named ids match too.
             deny_write_patterns+=",\"${common_real}/worktrees/*/${path}\""
         done
     fi

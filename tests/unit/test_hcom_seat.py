@@ -1169,7 +1169,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit", "tracked_top_entries")
+        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit", "tracked_top_entries", "dir_entries")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1749,7 +1749,7 @@ class HcomSeatTest(unittest.TestCase):
             ".git a directory": (dir_dotgit, "has a .git that is not a regular file"),
             ".git with two lines": (two_lines, "as one line free of control characters"),
             "gitdir naming another repository": (foreign_gitdir, f"outside this repository's {common}/worktrees"),
-            "gitdir directory a link": (linked_admin, "is a symbolic link, which host git would follow"),
+            "gitdir directory a link": (linked_admin, "is not a real directory (a symbolic link"),
             "config.worktree a FIFO": (fifo("config.worktree"), "config.worktree is not a regular file"),
             "commondir a FIFO": (fifo("commondir"), "commondir is not a regular file"),
             "gitdir a FIFO": (fifo("gitdir"), "gitdir is not a regular file"),
@@ -1772,22 +1772,25 @@ class HcomSeatTest(unittest.TestCase):
                 tree = worktrees / f"d{n}"
                 self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
                 tree, admin = tree.resolve(), common / "worktrees" / f"d{n}"
-                mutate(tree, admin)
-                for role in ("orchestrator", "worker"):
-                    run = subprocess.run(
-                        [str(SEAT), role, "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
-                        capture_output=True, text=True, check=False, timeout=120,
-                    )  # fmt: skip
-                    self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
-                    self.assertIn(message, run.stderr, role)
-                    self.assertIn("git worktree", run.stderr, role)
-                shutil.rmtree(tree, ignore_errors=True)
-                if admin.is_symlink():
-                    admin.unlink()
-                    admin = admin.with_name(admin.name + "-real")
-                shutil.rmtree(admin)
-                (self.repo / "pointer").unlink(missing_ok=True)
-                (self.repo / "alias").unlink(missing_ok=True)
+                try:
+                    mutate(tree, admin)
+                    for role in ("orchestrator", "worker"):
+                        run = subprocess.run(
+                            [str(SEAT), role, "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
+                            capture_output=True, text=True, check=False, timeout=120,
+                        )  # fmt: skip
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
+                        self.assertIn(message, run.stderr, role)
+                        self.assertIn("git worktree", run.stderr, role)
+                finally:
+                    # Always undone, a FIFO above all: a later `git worktree add` would block reading it.
+                    shutil.rmtree(tree, ignore_errors=True)
+                    if admin.is_symlink():
+                        admin.unlink()
+                        admin = admin.with_name(admin.name + "-real")
+                    shutil.rmtree(admin, ignore_errors=True)
+                    (self.repo / "pointer").unlink(missing_ok=True)
+                    (self.repo / "alias").unlink(missing_ok=True)
         plain = worktrees / "plain"
         self.git("worktree", "add", "-q", "--detach", str(plain), "HEAD")
         for role in ("orchestrator", "worker"):
@@ -1795,6 +1798,56 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertIn(f"the worktree {plain.resolve()} lies inside a write root", run.stderr)
+
+    def test_admin_directories_are_one_list_dot_names_included(self):
+        """U95 (audit of b58abbaa): `<common>/worktrees` is enumerated once, dot names included as git's own readdir
+        does, and held one to one to the worktrees git lists. A dot-named admin directory (`.hidden`) of a nested
+        worktree gets its git-state denies (the literal denies, the only ones on Linux) and its shape checked on both
+        systems; an admin directory no listed worktree owns, or two recording one worktree, refuse."""
+        text = SEAT.read_text()
+        function = text[text.index("dir_entries() {") : text.index("\n}\n", text.index("dir_entries() {")) + 3]
+        common = (self.repo / ".git").resolve()
+        tree = self.repo / ".claude/worktrees/h"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        tree = tree.resolve()
+        hidden = common / "worktrees/.hidden"
+        (common / "worktrees/h").rename(hidden)
+        (tree / ".git").write_text(f"gitdir: {hidden}\n")
+        self.assertIn(f"worktree {tree}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        run = subprocess.run(
+            ["/bin/bash", "-c", f'set -euo pipefail\n{function}\ndir_entries "$1"\nprintf "%s\\n" "${{dir_list[@]}}"',
+             "_", str(common / "worktrees")], capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        self.assertEqual((run.returncode, run.stdout), (0, f"{hidden}\n"), run.stderr)
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                deny = self.settings_of(role)["filesystem"]["denyWrite"]
+                for name in ("gitdir", "commondir", "config.worktree", "info"):
+                    self.assertIn(str(hidden / name), deny)
+        # Its shape is checked like any other: a dot-named admin directory without commondir refuses.
+        (hidden / "commondir").rename(hidden / "commondir.saved")
+        run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{hidden} has no commondir", run.stderr)
+        (hidden / "commondir.saved").rename(hidden / "commondir")
+        # An admin directory no listed worktree owns (no gitdir file: git skips it).
+        orphan = common / "worktrees/orphan"
+        orphan.mkdir()
+        (orphan / "commondir").write_text("../..\n")
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("worktree git directories but git lists", run.stderr)
+        # Two admin directories recording one worktree.
+        (orphan / "gitdir").write_text(f"{tree}/.git\n")
+        (orphan / "HEAD").write_text(f"{self.head}\n")
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("which another worktree git directory records too", run.stderr)
+        shutil.rmtree(orphan)
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
 
     def add_worktrees(self, first, count, nested):
         """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first

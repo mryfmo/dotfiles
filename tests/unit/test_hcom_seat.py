@@ -1172,11 +1172,12 @@ class HcomSeatTest(unittest.TestCase):
         Round 3: every result is assigned to its input's index, and the overlap check refuses when a worktree has no
         resolved path, so it cannot miss one. dir_entries (the one enumeration) refuses a failed or short read, and
         admin_dirs_match refuses an orphan, an unlisted or a duplicated record, and its producers (stat, cat, cd)
-        failing after plausible output."""
+        failing after plausible output; git_state_check's one mkdir for every missing info/ and hooks/ refuses when
+        it fails, fails after a partial creation, or leaves a link."""
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("dir_entries", "admin_dirs_match")
+        names += ("dir_entries", "admin_dirs_match", "git_state_check")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1397,6 +1398,40 @@ class HcomSeatTest(unittest.TestCase):
                 finally:
                     gitdir_b.write_text(f"{root}/trees/b/.git\n")
                     shutil.rmtree(admin_root / "worktrees/c", ignore_errors=True)
+        # git_state_check's mkdir batch (a real launch): every missing info/ and hooks/ in one /bin/mkdir run. A mkdir
+        # that fails outright, one that creates some directories and then fails, and one after which a directory
+        # is a link each refuse; the real mkdir makes all three.
+        state = root / "state"
+
+        def fresh_state():
+            shutil.rmtree(state, ignore_errors=True)
+            (state / "worktrees/a").mkdir(parents=True)
+            (state / "worktrees/a/commondir").write_text("../..\n")
+            (state / "worktrees/a/gitdir").write_text(f"{root}/trees/a/.git\n")
+
+        state_call = f"dry_run=0 git_fix_hint=''\ngit_state_check {state} ''\necho checked"
+        missing = [state / "info", state / "hooks", state / "worktrees/a/info"]
+        fresh_state()
+        good = run(state_call, [])
+        self.assertEqual((good.returncode, good.stdout), (0, "checked\n"), good.stderr)
+        self.assertTrue(all(d.is_dir() and not d.is_symlink() for d in missing))
+        mkdir_cases = {
+            "fails outright": (fake("mkdir-fail", "exit 1"), "cannot create the git state directories"),
+            "creates some, then fails": (
+                fake("mkdir-partial", 'shift\n/bin/mkdir -- "$1"\nexit 1'), "cannot create the git state directories"
+            ),
+            "leaves a link": (
+                fake("mkdir-link", 'shift\nfor d; do last=$d; /bin/mkdir -- "$d"; done\n/bin/rmdir -- "$last"\n'
+                     f'/bin/ln -s {root} "$last"'),
+                "is not a real directory after it was created",
+            ),
+        }  # fmt: skip
+        for label, (stand_in, message) in mkdir_cases.items():
+            with self.subTest(producer="git_state_check (mkdir)", case=label):
+                fresh_state()
+                result = run(state_call, [], {"/bin/mkdir": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
         # The overlap consumer: worktrees outside every write root pass; one without its resolved path refuses.
         checkout, seats, away = root / "checkout", root / "seats", root / "away"
         checkout.mkdir()

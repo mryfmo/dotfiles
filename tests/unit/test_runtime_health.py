@@ -786,6 +786,10 @@ EOF
             repo / "scripts/update-agent-assets.sh",
             "printf 'assets\\n' >> \"$TEST_LOG\"\n",
         )
+        (repo / "scripts/lib").mkdir()
+        (repo / "scripts/lib/chezmoi-externals.sh").write_text(
+            'prefetch_chezmoi_externals() { printf \'prefetch %s\\n\' "$*" >> "$TEST_LOG"; }\n'
+        )
         self.link_real_jq(bin_dir)
         log = repo / "calls"
         result = self.run_test_command(
@@ -804,7 +808,10 @@ EOF
         result, log = self.update_fixture()
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+        calls = log.read_text().splitlines()
+        self.assertEqual("git pull --ff-only", calls[0])
+        # U96: the externals are fetched, retried and verified, before chezmoi apply reads them.
+        self.assertEqual(["prefetch chezmoi", "chezmoi apply --verbose"], calls[1:3])
 
     def test_make_update_skips_dirty_main_with_manual_pull_notice(self) -> None:
         result, log = self.update_fixture(dirty=True)

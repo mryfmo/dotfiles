@@ -118,6 +118,8 @@ update:
 # just fetched, so a recipe change lands in the same run. SYSTEM reaches it
 # through MAKEFLAGS.
 update-tree:
+	@# The archive externals, fetched retried and verified into chezmoi's cache before apply reads them (U96).
+	bash -c 'source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi'
 	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \

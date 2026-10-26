@@ -1089,6 +1089,21 @@ managed source subtree such as `~/.local/share/chezmoi/home`, not at the
 directory that contains `Makefile`. Use the Git repository root from that path
 before running `make` commands.
 
+Before it reads the target state, `setup.sh` (and `make update`, before
+`chezmoi apply`) fetches every archive external into chezmoi's cache itself
+(`scripts/lib/chezmoi-externals.sh`): one bounded download per external, its
+sha256 checked before the file is cached under
+`~/.cache/chezmoi/external/<sha256 of the URL>`. Only a transient remote or
+network fault is retried, up to four times (curl exit 6, 7, 18, 28, 35, 52, 55,
+56 or 92, or HTTP 408, 429 or 5xx); any other failure stops the run at once,
+naming the external, its URL and the code. chezmoi then finds a fresh,
+verified cache and fetches nothing, so a dropped download names the external
+and its URL instead of failing `chezmoi status` with a bare
+`chezmoi: unexpected EOF`. A complete download whose sha256 differs fails at
+once and is not cached. Only an external with a single http(s) `url` is
+fetched this way; one that lists fallback `urls` or another scheme is left
+whole to chezmoi, with one line saying so.
+
 Before applying files, `setup.sh` runs `chezmoi status` and `chezmoi diff`. A
 clean target proceeds to `chezmoi apply`; local changes since chezmoi's last
 write stop the bootstrap without changing destination targets. Initialization

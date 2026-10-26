@@ -71,7 +71,9 @@ function install_zed_release() (
     trap 'rm -rf "${tmpdir}" "${staging}"' EXIT
     download="${tmpdir}/${artifact}"
 
-    curl -fsSL "https://github.com/${ZED_RELEASE_REPO}/releases/download/${tag}/${artifact}" -o "${download}" || return 3
+    # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, so a stalled download ends.
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 \
+        "https://github.com/${ZED_RELEASE_REPO}/releases/download/${tag}/${artifact}" -o "${download}" || return 3
     github_release_attestation "${ZED_RELEASE_REPO}" "${tag}" "${download}" || status=$?
     case "${status}" in
     0) ;;

@@ -240,8 +240,9 @@ function install_crit_release() (
     download="$(mktemp)" || return
     checksums="$(mktemp)" || return
     trap 'rm -f "${download}" "${checksums}" ${staging:+"${staging}"}' EXIT
-    curl -fsSL "${base_url}/${artifact}" -o "${download}" || return
-    curl -fsSL "${base_url}/checksums.txt" -o "${checksums}" || return
+    # Every download here gets 30 s to connect and fails a transfer under 1 KB/s for 60 s, so a stalled one ends.
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" -o "${download}" || return
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/checksums.txt" -o "${checksums}" || return
     expected="$(awk -v name="${artifact}" '$2 == name { print $1; exit }' "${checksums}")"
     actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
     # The release is mutable, so the reviewed sha256 is the check; checksums.txt only re-checks the download.
@@ -1378,7 +1379,8 @@ function update_codex_understand_anything() {
         local actual installer
         installer="$(mktemp)"
         trap 'rm -f "${installer}"' EXIT
-        curl -fsSL "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" -o "${installer}" || {
+        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" \
+            -o "${installer}" || {
             printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
             return 0
         }
@@ -1431,7 +1433,7 @@ function run_pinned_installer() {
     installer="$(mktemp)"
     # shellcheck disable=SC2064 # Expand the temp path now; it never changes.
     trap "rm -f '${installer}'" RETURN
-    curl -fsSL "${url}" -o "${installer}" || {
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${url}" -o "${installer}" || {
         printf 'Installer download failed: %s\n' "${url}" >&2
         return 1
     }
@@ -1552,7 +1554,7 @@ function update_omp() (
     download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
-    curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${OMP_TARBALL_URL}" -o "${tarball}" || return
     actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
     if [ "${actual}" != "${OMP_TARBALL_SHA256}" ]; then
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
@@ -1620,7 +1622,7 @@ function update_hcom() (
     download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     wheel="${download_dir}/${url##*/}"
-    curl -fsSL "${url}" -o "${wheel}" || return
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${url}" -o "${wheel}" || return
     actual="$(shasum -a 256 "${wheel}" | awk '{ print $1 }')" || return
     if [ "${actual}" != "${expected}" ]; then
         printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
@@ -1698,7 +1700,8 @@ function update_pi_claude_bridge() (
         download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
         trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
         tarball="${download_dir}/pi-claude-bridge-${PI_CLAUDE_BRIDGE_PIN_VERSION}.tgz"
-        curl -fsSL "${PI_CLAUDE_BRIDGE_TARBALL_URL}" -o "${tarball}" || return
+        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${PI_CLAUDE_BRIDGE_TARBALL_URL}" \
+            -o "${tarball}" || return
         actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
         if [ "${actual}" != "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}" ]; then
             printf 'pi-claude-bridge checksum mismatch: expected %s, got %s.\n' "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}" "${actual}" >&2

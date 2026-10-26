@@ -265,7 +265,7 @@ unset install" ]
 }
 
 @test "[common] mise release key check refuses when the clock cannot be read" {
-    function curl() { : > "${4}"; }
+    function curl() { : > "${@: -1}"; }
     function gpg() {
         printf 'pub:-:255:22:ABCDEF:1:4102444800::::\n'
         printf 'fpr:::::::::%s:\n' "${MISE_GPG_FINGERPRINT}"
@@ -284,7 +284,7 @@ unset install" ]
     function mise_gpg_ready() { return 1; }
     function github_attestation_ready() { return 1; }
     function mise_installed_version() { :; }
-    function curl() { : > "${4}"; }
+    function curl() { : > "${@: -1}"; }
     function verify_mise_archive() { return 0; }
     function mise_fallback_sha256() { return 1; }
     function uname() { [ "$1" = -s ] && printf 'Linux\n' || printf 'x86_64\n'; }

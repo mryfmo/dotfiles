@@ -70,7 +70,9 @@ function setup_repository() {
     # Signed-By keys make apt refuse to update.
     sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
     sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, so a stalled download ends.
+    sudo curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://download.docker.com/linux/ubuntu/gpg \
+        -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     printf '%s\n' \

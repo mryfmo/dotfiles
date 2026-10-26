@@ -57,7 +57,7 @@ function teardown() {
 
     [ "${status}" -eq 0 ]
     grep -qxF 'rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg' "${calls_path}"
-    grep -qxF 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc' "${calls_path}"
+    grep -qxF 'curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc' "${calls_path}"
     grep -qxF 'tee /etc/apt/sources.list.d/docker.sources' "${calls_path}"
     grep -qxF 'Types: deb' "${sources_path}"
     grep -qxF 'URIs: https://download.docker.com/linux/ubuntu' "${sources_path}"

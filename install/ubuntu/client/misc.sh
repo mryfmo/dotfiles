@@ -28,10 +28,14 @@ readonly PACKAGES=(
 
 #
 # @description Install the optional Ubuntu client packages.
+# @description
+#   The install runs with the noninteractive debconf frontend, as setup_timezone.sh's does: a package that asks a
+#   question (keyboard, locale, fonts) then takes its default instead of waiting on a terminal it does not have. The
+#   frontend is an argument to sudo, because sudo's env_reset drops it from the caller's environment.
 #
 function install_misc() {
     sudo apt-get update
-    sudo apt-get install -y "${PACKAGES[@]}"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${PACKAGES[@]}"
 }
 
 #
@@ -41,17 +45,30 @@ function install_misc() {
 #   transitional snap wrapper). Google Chrome is not used instead because
 #   Google does not publish a linux-arm64 build. Skips gracefully when snap
 #   is unavailable (e.g. minimal or container images). The Snap Store
-#   intermittently answers HTTP 408 while fetching assertions, so the install
-#   is tried up to 3 times before its failure is returned.
+#   intermittently answers HTTP 408 while fetching assertions, so a failed
+#   install is tried up to 3 times before its failure is returned. `snap
+#   install` itself waits on snapd without any time limit, so each attempt
+#   runs under `timeout`; an attempt that outlives it is not retried, because
+#   snapd keeps running the change after its client stops, and a second
+#   install would only report that change as in progress.
 # @env SNAP_RETRY_DELAY Seconds between attempts; tests set 0. Default: 10, then 30.
+# @env SNAP_INSTALL_TIMEOUT Seconds one attempt may take; default 600 (a passing CI run spends
+#   under 90 s on the whole misc install, apt packages included).
+# @exitcode 124 An attempt outlived SNAP_INSTALL_TIMEOUT.
 # @exitcode The last `snap install` exit status after the final failed attempt.
 #
 function install_chromium() {
     command -v snap > /dev/null 2>&1 || return 0
     local -a delays=("${SNAP_RETRY_DELAY:-10}" "${SNAP_RETRY_DELAY:-30}")
-    local attempt=1 status=0
+    local limit="${SNAP_INSTALL_TIMEOUT:-600}" attempt=1 status=0
     while true; do
-        sudo snap install chromium && return 0 || status=$?
+        # timeout runs as root, so it can stop the snap client it starts.
+        sudo timeout --kill-after=30 "${limit}" snap install chromium && return 0 || status=$?
+        if [ "${status}" -eq 124 ] || [ "${status}" -eq 137 ]; then
+            printf 'install_chromium: snap install chromium timed out after %s s (SNAP_INSTALL_TIMEOUT); snapd may still finish it (snap changes)\n' \
+                "${limit}" >&2
+            return 124
+        fi
         printf 'install_chromium: snap install chromium failed (attempt %d/3, exit %d)\n' \
             "${attempt}" "${status}" >&2
         [ "${attempt}" -lt 3 ] || return "${status}"

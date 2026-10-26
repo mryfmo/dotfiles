@@ -783,7 +783,9 @@ class PrAuditTest(unittest.TestCase):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
                 run = self.run_lever("7", **self.injected(code.format(name)))
-                self.assert_stopped(run, 2, f"codex's supervisor failed (killpg SIGKILL: {text})")
+                self.assert_stopped(
+                    run, 2, f"codex's supervisor failed (killpg SIGTERM: {text}; killpg SIGKILL: {text})"
+                )
         for path in self.tmp.iterdir():
             shutil.rmtree(path)
         run = self.run_lever("7", **self.injected(code.format("ESRCH")))  # the group is gone: nothing to stop
@@ -848,6 +850,125 @@ class PrAuditTest(unittest.TestCase):
                 self.assertIn("codex exec exited 143", stderr)
                 time.sleep(4)
                 self.assertFalse(marker.exists(), "codex outlived the signal to its supervisor")
+
+    def run_exec_injection(self, code, timeout="600"):
+        """Start the lever with CODE injected into its supervisors and a hanging, TERM-ignoring fake `codex exec`;
+        return the running lever and the marker its child would touch."""
+        marker = self.root / "exec-child-still-ran"
+        lever = subprocess.Popen(
+            [str(LEVER), "7"],
+            cwd=self.repo,
+            env={
+                **self.env,
+                **self.injected(code),
+                "PR_AUDIT_TIMEOUT": timeout,
+                "FAKE_CODEX_HANG": str(marker),
+                "FAKE_CODEX_IGNORE_TERM": "1",
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return lever, marker
+
+    def assert_gone(self, *pids):
+        for pid in pids:
+            with self.assertRaises(ProcessLookupError, msg=f"process {pid} is still alive"):
+                os.kill(pid, 0)
+
+    def test_a_signal_while_the_supervisor_waits_stops_within_the_grace(self):
+        """U71b audit round 13: the handler re-entered Popen.wait while its lock was held and deadlocked. The injection
+        holds that lock for 0.5 s in every poll (kqueue and pidfd off, `_try_wait` slowed), so the TERM lands inside
+        it; the handler now only records the signal and the main flow stops the group."""
+        pidfile = self.root / "supervisor.pid"
+        code = (
+            "import os, subprocess, time\n"
+            "_Popen = subprocess.Popen\n"
+            "_try_wait = _Popen._try_wait\n"
+            "class Popen(_Popen):\n"
+            "    def __init__(self, argv, **k):\n"
+            "        super().__init__(argv, **k)\n"
+            "        if 'exec' in argv:\n"
+            "            self._u71b_slow = True\n"
+            f"            open({str(pidfile)!r} + '.tmp', 'w').write(str(os.getpid()))\n"
+            f"            os.rename({str(pidfile)!r} + '.tmp', {str(pidfile)!r})\n"
+            "    def _wait_kqueue(self, timeout):\n"
+            "        return False\n"
+            "    def _wait_pidfd(self, timeout):\n"
+            "        return False\n"
+            "    def _try_wait(self, flags):\n"
+            "        if getattr(self, '_u71b_slow', False):\n"
+            "            time.sleep(0.5)\n"
+            "        return _try_wait(self, flags)\n"
+            "subprocess.Popen = Popen\n"
+        )
+        lever, marker = self.run_exec_injection(code)
+        deadline = time.monotonic() + 60
+        while not (pidfile.exists() and any(c["argv"][:1] == ["exec"] for c in self.codex_calls())):
+            self.assertIsNone(lever.poll(), "the lever ended before codex exec ran")
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.02)
+        record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
+        sent = time.monotonic()
+        os.kill(int(pidfile.read_text()), signal.SIGTERM)
+        _, stderr = lever.communicate(timeout=30)
+        self.assertLess(time.monotonic() - sent, 5 + 3, "the stop took longer than the grace")
+        self.assertEqual(lever.returncode, 1, stderr)
+        self.assertIn("codex exec exited 143", stderr)
+        time.sleep(1)
+        self.assert_gone(record["pid"], record["child_pid"])
+        self.assertFalse(marker.exists())
+
+    def test_an_exception_after_the_launch_still_stops_the_group(self):
+        """U71b audit round 13: a wait() that raised exited through the mark and left the group running."""
+        code = (
+            "import subprocess, time\n"
+            "_Popen = subprocess.Popen\n"
+            "class Popen(_Popen):\n"
+            "    def wait(self, timeout=None):\n"
+            "        if 'exec' in self.args and not getattr(self, '_u71b_raised', False):\n"
+            "            self._u71b_raised = True\n"
+            "            time.sleep(1.5)\n"
+            "            raise RuntimeError('injected wait')\n"
+            "        return super().wait(timeout)\n"
+            "subprocess.Popen = Popen\n"
+        )
+        lever, marker = self.run_exec_injection(code)
+        _, stderr = lever.communicate(timeout=60)
+        self.assertEqual(lever.returncode, 2, stderr)
+        self.assertIn("codex's supervisor failed (supervisor: RuntimeError: injected wait)", stderr)
+        record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
+        time.sleep(1)
+        self.assert_gone(record["pid"], record["child_pid"])
+        time.sleep(8)
+        self.assertFalse(marker.exists(), "a group member outlived the supervisor's exception")
+
+    def test_an_exception_in_the_stops_term_still_kills_the_group(self):
+        code = (
+            "import os, signal, subprocess\n"
+            "_Popen = subprocess.Popen\n"
+            "_killpg = os.killpg\n"
+            "_exec = []\n"
+            "def Popen(argv, **k):\n"
+            "    if 'exec' in argv:\n"
+            "        _exec.append(True)\n"
+            "    return _Popen(argv, **k)\n"
+            "def killpg(pgid, sig):\n"
+            "    if _exec and sig == signal.SIGTERM:\n"
+            "        raise RuntimeError('injected term')\n"
+            "    return _killpg(pgid, sig)\n"
+            "subprocess.Popen = Popen\n"
+            "os.killpg = killpg\n"
+        )
+        lever, marker = self.run_exec_injection(code, timeout="2")
+        _, stderr = lever.communicate(timeout=60)
+        self.assertEqual(lever.returncode, 2, stderr)
+        self.assertIn("codex's supervisor failed (killpg SIGTERM: injected term)", stderr)
+        record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
+        time.sleep(1)
+        self.assert_gone(record["pid"], record["child_pid"])
+        time.sleep(8)
+        self.assertFalse(marker.exists(), "the group outlived a failed TERM")
 
     def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
         code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"

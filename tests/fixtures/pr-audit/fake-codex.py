@@ -16,7 +16,7 @@ reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VE
 codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming a marker path, `exec` plays the
 launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
 and sleeps 60 seconds. FAKE_CODEX_IGNORE_TERM makes that `exec` and its child ignore TERM (the child then touches the
-marker after 8 seconds), so only a KILL stops them.
+marker after 8 seconds), so only a KILL stops them. The record then holds `pid` and `child_pid`.
 """
 
 import json
@@ -100,7 +100,9 @@ elif argv[:1] == ["exec"]:
         if os.environ.get("FAKE_CODEX_IGNORE_TERM"):
             signal.signal(signal.SIGTERM, signal.SIG_IGN)  # inherited by the child through exec
             delay = "8"
-        subprocess.Popen(["/bin/sh", "-c", f'sleep {delay}; touch "$1"', "sh", marker])
+        child = subprocess.Popen(["/bin/sh", "-c", f'sleep {delay}; touch "$1"', "sh", marker])
+        record["pid"] = os.getpid()
+        record["child_pid"] = child.pid
         with open(os.environ["FAKE_CODEX_CALLS"], "a", encoding="utf-8") as calls:
             calls.write(json.dumps(record) + "\n")
         time.sleep(60)

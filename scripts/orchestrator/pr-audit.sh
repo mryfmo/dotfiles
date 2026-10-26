@@ -223,19 +223,23 @@ git_tree() {
 }
 
 # The supervisor of every codex run (U71b audit round 12, treadmill rule: three rounds of a hand-built perl supervisor
-# kept failing in new windows, so it was replaced by this one Python program on the standard library's primitives). It
-# runs as `python3 -I -S` (isolated: no PYTHON* variable, no user or site packages) with the deadline in seconds, the
-# mark file and the command. The `codex` on PATH is a launcher that starts the native binary as a child, so codex
-# runs in a session and process group of its own (`start_new_session`) and is always stopped as a group.
-# - INT, TERM and HUP handlers are installed before the launch. While the child does not exist yet they only record
-#   the first signal; right after the launch returns a recorded signal stops the group. Once the child exists a signal
-#   stops the group at once. Stopping: the further signals are ignored, the group gets TERM, the leader gets a grace
-#   of 5 seconds, then the group always gets KILL, the leader is reaped, and the exit is 128 + the signal's number.
-# - The deadline is the timeout of the wait for the leader: when it expires the group is stopped the same way and the
-#   exit is 124. After a normal exit any process left in the group gets KILL.
-# - A launch that fails (setsid or exec in the child raise in the parent), a killpg that fails with any error but
-#   ESRCH (the group is gone), and any other exception write the reason to the mark file and exit 125: the lever then
-#   refuses. No path exits 0 unless codex itself did.
+# kept failing in new windows, so it was replaced by this one Python program on the standard library's primitives;
+# round 13 moved all process work into the main flow). It runs as `python3 -I -S` (isolated: no PYTHON* variable, no
+# user or site packages) with the deadline in seconds, the mark file and the command. The `codex` on PATH is a
+# launcher that starts the native binary as a child, so codex runs in a session and process group of its own
+# (`start_new_session`) and is always stopped as a group.
+# - The INT, TERM and HUP handlers, installed before the launch, only record the first signal: no wait, no kill, no
+#   exit in a handler (U71b audit round 13: a handler that waited re-entered Popen.wait while its lock was held and
+#   deadlocked).
+# - The main flow alone does process work: it waits for the leader in slices of at most 0.2 seconds and after every
+#   slice checks the recorded signal and the deadline.
+# - Everything after the launch runs in try/finally, and the finally always stops the group: the further signals are
+#   ignored, the group gets TERM, the leader a grace of 5 seconds, then the group always gets KILL (also when the TERM
+#   or the grace failed) and the leader is reaped. So no exit path, an exception included, leaves the group running.
+# - Exit: codex's own status after a normal exit, 124 on the deadline, 128 + the signal's number on a signal. A launch
+#   that fails (setsid or exec in the child raise in the parent), a killpg that fails with any error but ESRCH (the
+#   group is gone), a failed reap and any other exception write the reasons to the mark file and exit 125, which the
+#   lever refuses. No path exits 0 unless codex itself did.
 # The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
 codex_supervisor='
@@ -243,74 +247,99 @@ import os
 import signal
 import subprocess
 import sys
+import time
 
 GRACE = 5
-state = {"proc": None, "pending": None}
+SLICE = 0.2
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+pending = []
 
 
-def mark(reason):
+def write_mark(reasons):
     try:
         with open(sys.argv[2], "w") as out:
-            out.write(reason + "\n")
-    finally:
-        os._exit(125)
-
-
-def kill_group(sig):
-    try:
-        os.killpg(state["proc"].pid, sig)
-    except ProcessLookupError:
+            out.write("; ".join(reasons) + "\n")
+    except OSError:
         pass
-    except OSError as error:
-        mark(f"killpg {sig.name}: {error.strerror or error}")
-
-
-def stop(code):
-    for name in ("SIGINT", "SIGTERM", "SIGHUP"):
-        signal.signal(getattr(signal, name), signal.SIG_IGN)
-    proc = state["proc"]
-    kill_group(signal.SIGTERM)
-    try:
-        proc.wait(timeout=GRACE)
-    except subprocess.TimeoutExpired:
-        pass
-    kill_group(signal.SIGKILL)
-    proc.wait()
-    os._exit(code)
 
 
 def on_signal(signum, frame):
-    if state["proc"] is None:
-        if state["pending"] is None:
-            state["pending"] = signum
-        return
-    stop(128 + signum)
+    if not pending:
+        pending.append(signum)
+
+
+def killpg(pid, sig, errors):
+    try:
+        os.killpg(pid, sig)
+    except ProcessLookupError:
+        pass
+    except BaseException as error:
+        text = error.strerror if isinstance(error, OSError) and error.strerror else error
+        errors.append(f"killpg {sig.name}: {text}")
+
+
+def stop_group(proc, errors):
+    try:
+        for sig in STOP_SIGNALS:
+            signal.signal(sig, signal.SIG_IGN)
+        killpg(proc.pid, signal.SIGTERM, errors)
+        end = time.monotonic() + GRACE
+        while proc.poll() is None and time.monotonic() < end:
+            time.sleep(0.05)
+    except BaseException as error:
+        errors.append(f"stop: {type(error).__name__}: {error}")
+    finally:
+        killpg(proc.pid, signal.SIGKILL, errors)
+        try:
+            proc.wait(timeout=GRACE)
+        except BaseException as error:
+            errors.append(f"reap: {type(error).__name__}: {error}")
 
 
 def main():
     seconds = int(sys.argv[1])
     argv = sys.argv[3:]
-    for name in ("SIGINT", "SIGTERM", "SIGHUP"):
-        signal.signal(getattr(signal, name), on_signal)
+    for sig in STOP_SIGNALS:
+        signal.signal(sig, on_signal)
     try:
         proc = subprocess.Popen(argv, start_new_session=True)
     except (OSError, subprocess.SubprocessError) as error:
-        mark(f"launch: {error}")
-    state["proc"] = proc
-    if state["pending"] is not None:
-        stop(128 + state["pending"])
+        write_mark([f"launch: {error}"])
+        return 125
+    errors = []
+    code = 125
     try:
-        status = proc.wait(timeout=seconds)
-    except subprocess.TimeoutExpired:
-        stop(124)
-    kill_group(signal.SIGKILL)
-    os._exit(128 - status if status < 0 else status)
+        end = time.monotonic() + seconds
+        while True:
+            if pending:
+                code = 128 + pending[0]
+                break
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                code = 124
+                break
+            try:
+                status = proc.wait(timeout=min(SLICE, remaining))
+            except subprocess.TimeoutExpired:
+                continue
+            code = 128 - status if status < 0 else status
+            break
+    except BaseException as error:
+        errors.append(f"supervisor: {type(error).__name__}: {error}")
+    finally:
+        stop_group(proc, errors)
+    if errors:
+        write_mark(errors)
+        return 125
+    return code
 
 
 try:
-    main()
+    exit_code = main()
 except BaseException as error:
-    mark(f"supervisor: {type(error).__name__}: {error}")
+    write_mark([f"supervisor: {type(error).__name__}: {error}"])
+    exit_code = 125
+os._exit(exit_code)
 '
 
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,

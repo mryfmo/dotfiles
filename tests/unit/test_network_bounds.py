@@ -845,11 +845,22 @@ class CiBatsRunTest(unittest.TestCase):
                     continue
                 found += 1
                 match = re.search(r"^\s+timeout-minutes: ([0-9]+)$", step, re.MULTILINE)
-                # Above one per-test bound (1200 s, scripts/ci/run-bats.py), so the stalled test is named first.
-                if not match or int(match.group(1)) * 60 <= 1200:
+                # Above one per-test bound (scripts/ci/run-bats.py's DEFAULT_BOUND), so the stalled test is named first.
+                bound = int(re.search(r"^DEFAULT_BOUND = ([0-9]+)$", WRAPPER.read_text(), re.MULTILINE).group(1))
+                if not match or int(match.group(1)) * 60 <= bound:
                     missing.append(f"{workflow.name}: {step.splitlines()[0].strip()}")
         self.assertEqual([], missing)
         self.assertEqual(3, found)
+
+    def test_only_the_wrapper_states_the_per_test_default(self) -> None:
+        # Audit of db045676: the runner's docs and the workflow comments stated the default as a number that could
+        # drift from DEFAULT_BOUND. They now name "the wrapper's default"; no number stands next to the bound there.
+        stated = re.compile(r"BATS_PER_TEST_TIMEOUT[^\n]*?(?:Default: [0-9]+|\([0-9]+ s\))|per-test bound \([0-9]+ s\)")
+        for path in (RUNNER, *sorted(WORKFLOWS.glob("*.y*ml"))):
+            with self.subTest(path=path.name):
+                self.assertIsNone(stated.search(path.read_text()), path)
+        self.assertIn("Default: the wrapper's DEFAULT_BOUND (scripts/ci/run-bats.py)", RUNNER.read_text())
+        self.assertRegex(WRAPPER.read_text(), r"(?m)^DEFAULT_BOUND = [0-9]+$")
 
 
 if __name__ == "__main__":

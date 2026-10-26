@@ -5038,7 +5038,7 @@
 <span class="c1">#   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.</span>
 <span class="c1">#   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.</span>
 <span class="c1"># @arg $@ string Arguments passed to bats.</span>
-<span class="c1"># @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 1200 (scripts/ci/run-bats.py).</span>
+<span class="c1"># @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: the wrapper's DEFAULT_BOUND (scripts/ci/run-bats.py).</span>
 <span class="c1"># @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.</span>
 <span class="c1"># @exitcode 1 Bats planned no test, or dirname failed.</span>
 <span class="c1"># @exitcode Bats' exit status otherwise.</span>

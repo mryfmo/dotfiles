@@ -822,11 +822,24 @@ git_fix_hint='; repair or drop the worktree first (`git worktree move`, `git wor
 git_state_check() {
     local common_real=$1 dir_real=$2 wt f names name line target i pointers=() configs=()
     git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
+    # Git's own shape for every linked worktree (regime-cutover U95, from git 2.56's source, PR body "Admin directory
+    # files"): `worktrees` is a real directory; each admin directory is a real directory holding `commondir`, or git
+    # would take the admin directory for its own common directory (setup.c get_common_dir_noenv) and read its
+    # `config` and `hooks`, which a seat can write; and it holds none of the names path.c's common_list sends to the
+    # common directory (git never writes them into an admin directory; `refs`, `logs` and `info` it does).
+    [[ ! -L ${common_real}/worktrees ]] ||
+        refuse "the worktree git directories ${common_real}/worktrees are a symbolic link, which host git would follow${git_fix_hint}"
     for wt in "${common_real}"/worktrees/*/; do
         [[ -d ${wt} ]] || continue
         wt=${wt%/}
         [[ ! -L ${wt} ]] ||
             refuse "the worktree git directory ${wt} is a symbolic link, which host git would follow${git_fix_hint}"
+        [[ -e ${wt}/commondir || -L ${wt}/commondir ]] ||
+            refuse "the worktree git directory ${wt} has no commondir, so git would take it for its own common directory and read its config and hooks${git_fix_hint}"
+        for f in branches common hooks lost-found objects remotes worktrees rr-cache svn config gc.pid packed-refs shallow; do
+            [[ ! -e ${wt}/${f} && ! -L ${wt}/${f} ]] ||
+                refuse "the worktree git directory ${wt} holds ${f}, which git keeps in the common directory and never writes there${git_fix_hint}"
+        done
         git_state+=("${wt}/config.worktree" "${wt}/info")
         for f in commondir gitdir; do
             if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
@@ -1300,14 +1313,19 @@ spelled_physically() {
 #     directory directly in this repository's physical `<common>/worktrees`;
 #   - its `gitdir` file is a regular file, no link, whose one line is exactly this worktree's physical `.git` path
 #     (a second read for all), so the `.git` names this worktree's own git directory and no other's.
-#   The reads are two batches whatever the number of worktrees, so the process count stays flat.
+#   - that directory's `commondir` is a regular file holding exactly `../..`, what `git worktree add` writes;
+#   - `<common>/worktrees` is itself written as its physical path, no link.
+#   The reads are three batches whatever the number of worktrees, so the process count stays flat.
 # @arg $1 string The seat whose write root holds the worktrees.
 # @arg $@ string The worktrees after it, physical.
 nested_shape_check() {
-    local seat=$1 w i v target wt_phys dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
+    local seat=$1 w i v target wt_phys common_phys dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
     shift
     (($#)) || return 0
     wt_phys=$(physical_path "${common}/worktrees") || refuse "cannot resolve ${common}/worktrees"
+    # `worktrees` itself is no link: the physical common directory's `worktrees` must be its own physical path.
+    common_phys=$(physical_path "${common}") || refuse "cannot resolve the git common directory ${common}"
+    spelled_physically "the worktree git directories" "${common_phys}/worktrees" "${wt_phys}"
     for w in "$@"; do
         if [[ ! -e ${w} && ! -L ${w} ]]; then continue; fi
         [[ -d ${w} && ! -L ${w} ]] ||
@@ -1339,6 +1357,17 @@ nested_shape_check() {
         [[ -f ${target}/gitdir && ! -L ${target}/gitdir ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${target}, whose gitdir file is not a regular file${git_fix_hint}"
         admins+=("${target}")
+    done
+    # `commondir` exactly as `git worktree add` writes it (builtin/worktree.c add_worktree: `write_file(sb.buf,
+    # "../..")`), a regular file (git_state_check has checked its type and that it leads to this common directory).
+    for ((i = 0; i < ${#admins[@]}; i++)); do
+        [[ -f ${admins[i]}/commondir && ! -L ${admins[i]}/commondir ]] ||
+            refuse "the worktree ${trees[i]} has a git directory ${admins[i]} without a regular commondir file${git_fix_hint}"
+    done
+    pointer_values ${admins[@]+"${admins[@]/%//commondir}"}
+    for ((i = 0; i < ${#trees[@]}; i++)); do
+        [[ ${pointer_list[i]} == ../.. ]] || # lint-comparisons: allow the literal git writes, no path compare
+            refuse "the worktree ${trees[i]} has a git directory ${admins[i]} whose commondir holds '${pointer_list[i]}', not '../..' as git writes it${git_fix_hint}"
     done
     pointer_values ${admins[@]+"${admins[@]/%//gitdir}"}
     for ((i = 0; i < ${#trees[@]}; i++)); do
@@ -1501,20 +1530,29 @@ seat_overlap_check() {
     nested_shape_check "${own_role}" ${seat_nested[@]+"${seat_nested[@]}"}
 }
 
-# The top-level entries of this repository's tracked tree, which a worker edits (nested_deny_unit, Linux only): one
-# git run, NUL-separated, every name one plain component.
-tracked_entries=''
-if [[ ${os} == Linux && ${role} != orchestrator ]]; then
-    listing=$({ git -C "${repo}" ls-tree -z --name-only HEAD | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
-        refuse "git cannot list the tracked tree of ${repo}"
+# @description Set `tracked_entries` to the top-level entries of the tracked tree of checkout `$1`, one per line, which
+#   a worker edits (nested_deny_unit, Linux only), or refuse (exit 2) (regime-cutover U95, the batch rules): one git
+#   run, NUL-terminated records made lines; the pipeline's status counts, every record must be terminated (a short
+#   read leaves the last one without its NUL), and every name must be one plain component, non-empty, no `/`, no
+#   control character, no `.` or `..`.
+# @arg $1 string The checkout.
+# @set tracked_entries The names, each followed by a newline.
+tracked_top_entries() {
+    local listing entry
+    tracked_entries=''
+    listing=$({ git -C "$1" ls-tree -z --name-only HEAD | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
+        refuse "git cannot list the tracked tree of $1"
     listing=${listing%.}
+    [[ -n ${listing} ]] || return 0
+    [[ ${listing} == *$'\n' ]] || refuse "git listed the tracked tree of $1 with an unterminated record"
     while IFS= read -r entry; do
-        [[ -z ${entry} ]] && continue
-        [[ ${entry} != */* && ${entry} != *[[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a component test on one name
-            refuse "git lists '${entry}' as a top-level entry of ${repo}, not one plain name"
+        [[ -n ${entry} && ${entry} != */* && ${entry} != *[[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a component test on one name
+            refuse "git lists '${entry}' as a top-level entry of $1, not one plain name"
         tracked_entries+=${entry}$'\n'
-    done <<< "${listing}"
-fi
+    done <<< "${listing%$'\n'}"
+}
+tracked_entries=''
+if [[ ${os} == Linux && ${role} != orchestrator ]]; then tracked_top_entries "${repo}"; fi
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
 seat_overlap_check "${role}" "${dir_phys}" "${seat_write[@]}"
 launch_nested=(${seat_nested[@]+"${seat_nested[@]}"})

@@ -1169,7 +1169,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit")
+        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit", "tracked_top_entries")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1255,6 +1255,26 @@ class HcomSeatTest(unittest.TestCase):
                 result = run(values_call, pointers, {"/usr/bin/tr": stand_in})
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn("cannot read the git pointer files", result.stderr)
+        # tracked_top_entries (ls-tree | tr): its git and tr, failing after plausible output, short, malformed.
+        top_call = 'tracked_top_entries "$1"\nprintf "%s" "$tracked_entries"'
+        listing = "printf 'docs\\0home\\0'"
+        git_cases = {
+            "git fails after plausible output": f"git() {{ {listing}; return 7; }}",
+            "a short read (last record unterminated)": "git() { printf 'docs\\0ho'; }",
+            "a malformed name": "git() { printf 'docs\\0a/b\\0'; }",
+            "an empty name": "git() { printf 'docs\\0\\0'; }",
+        }
+        good = run(top_call, [str(root)], prelude=f"git() {{ {listing}; }}")
+        self.assertEqual((good.returncode, good.stdout), (0, "docs\nhome\n"), good.stderr)
+        for label, prelude in git_cases.items():
+            with self.subTest(producer="tracked_top_entries", case=label):
+                result = run(top_call, [str(root)], prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        with self.subTest(producer="tracked_top_entries (tr)", case="fails after plausible output"):
+            result = run(
+                top_call, [str(root)], {"/usr/bin/tr": fake("tr-top", "cat\nexit 7")}, f"git() {{ {listing}; }}"
+            )
+            self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
         with self.subTest(producer="pointer_values (its sizes)"):
             result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
             self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
@@ -1457,9 +1477,11 @@ class HcomSeatTest(unittest.TestCase):
         settings = self.settings_of("orchestrator")["filesystem"]
         common = (self.repo / ".git").resolve()
         self.assertIn(str(self.repo.resolve()), settings["allowWrite"])
-        for denied in (nested, common / "worktrees/x/gitdir", common / "worktrees/x/config.worktree"):
+        # The deny unit: the worktree on macOS, the checkout's top-level entry holding it on Linux (nested_deny_unit).
+        unit = nested if sys.platform == "darwin" else self.repo.resolve() / ".claude"
+        for denied in (unit, common / "worktrees/x/gitdir", common / "worktrees/x/config.worktree"):
             self.assertIn(str(denied), settings["denyWrite"])
-        self.assertNotIn(str(nested), self.settings_of("worker")["filesystem"]["denyWrite"])
+        self.assertNotIn(str(unit), self.settings_of("worker")["filesystem"]["denyWrite"])
         srt = shutil.which("srt")
         if srt is None:
             self.skipTest("no srt on this host's PATH for the live write probe")
@@ -1731,6 +1753,19 @@ class HcomSeatTest(unittest.TestCase):
             "config.worktree a FIFO": (fifo("config.worktree"), "config.worktree is not a regular file"),
             "commondir a FIFO": (fifo("commondir"), "commondir is not a regular file"),
             "gitdir a FIFO": (fifo("gitdir"), "gitdir is not a regular file"),
+            # U95 round 9: the admin directory in git's own shape (PR body, "Admin directory files").
+            "commondir missing": (lambda tree, admin: (admin / "commondir").unlink(), "has no commondir"),
+            "commondir an absolute path to the common directory": (
+                lambda tree, admin: (admin / "commondir").write_text(f"{common}\n"),
+                "not '../..' as git writes it",
+            ),
+            "config in the admin directory": (lambda tree, admin: (admin / "config").write_text(""), "holds config"),
+            "hooks in the admin directory": (lambda tree, admin: (admin / "hooks").mkdir(), "holds hooks"),
+            "objects in the admin directory": (lambda tree, admin: (admin / "objects").mkdir(), "holds objects"),
+            "packed-refs in the admin directory": (
+                lambda tree, admin: (admin / "packed-refs").write_text(""),
+                "holds packed-refs",
+            ),
         }
         for n, (label, (mutate, message)) in enumerate(cases.items()):
             with self.subTest(deviation=label):

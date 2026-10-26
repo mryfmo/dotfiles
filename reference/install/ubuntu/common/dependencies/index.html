@@ -4885,7 +4885,7 @@
 
 
 <h1 id="installubuntucommondependenciessh">install/ubuntu/common/dependencies.sh<a class="headerlink" href="#installubuntucommondependenciessh" title="Permanent link">&para;</a></h1>
-<p>Ensures the base command-line toolchain required by the repository is present, including <code>sudo</code> when starting from a minimal container. <code>bubblewrap</code> and <code>socat</code> are the Linux prerequisites of the Claude Code Bash sandbox.</p>
+<p>Ensures the base command-line toolchain required by the repository is present, including <code>sudo</code> when starting from a minimal container. <code>bubblewrap</code> and <code>socat</code> are the Linux prerequisites of the Claude Code Bash sandbox; with <code>ripgrep</code> they are those of the sandbox-runtime <code>srt</code> that contains the omp seats (scripts/orchestrator/hcom-seat), which reads and writes the seat sandbox settings with the system <code>/usr/bin/jq</code>.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/common/dependencies.sh</code></li>
@@ -4908,7 +4908,9 @@
 <span class="c1">#   Ensures the base command-line toolchain required by the repository is</span>
 <span class="c1">#   present, including `sudo` when starting from a minimal container.</span>
 <span class="c1">#   `bubblewrap` and `socat` are the Linux prerequisites of the Claude Code</span>
-<span class="c1">#   Bash sandbox.</span>
+<span class="c1">#   Bash sandbox; with `ripgrep` they are those of the sandbox-runtime `srt`</span>
+<span class="c1">#   that contains the omp seats (scripts/orchestrator/hcom-seat), which reads</span>
+<span class="c1">#   and writes the seat sandbox settings with the system `/usr/bin/jq`.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4926,9 +4928,11 @@
 <span class="w">    </span>htop
 <span class="w">    </span>iproute2
 <span class="w">    </span>iputils-ping
+<span class="w">    </span>jq
 <span class="w">    </span>mosh
 <span class="w">    </span>perl
 <span class="w">    </span>pinentry-curses
+<span class="w">    </span>ripgrep
 <span class="w">    </span>socat
 <span class="w">    </span>sudo
 <span class="w">    </span>unzip

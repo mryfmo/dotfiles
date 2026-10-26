@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../../usage-snapshot/">
+        <link rel="prev" href="../install-pinned-lint-tools/">
       
       
-        <link rel="next" href="../../lib/asset-manifest/">
+        <link rel="next" href="../pinned-tool-version/">
       
       
         
@@ -3984,6 +3984,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -4072,6 +4100,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4917,7 +5001,8 @@
 <span class="c1">#   includes a heredoc delimiter with ANSI-C escapes (`&lt;&lt;$'\x45OF'`), which shfmt 3.14.1 and</span>
 <span class="c1">#   ShellCheck 0.11.0 both fail to terminate.</span>
 <span class="c1"># @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).</span>
-<span class="c1"># @env SHFMT The shfmt to run (default `shfmt` on PATH; CI puts the mise-pinned 3.14.1 there).</span>
+<span class="c1"># @description The shfmt is PATH's, the one scripts/ci/pinned-tool-version.sh checks before `make shellcheck`</span>
+<span class="c1">#   runs this ([tools."http:shfmt"], U97); no variable selects another.</span>
 <span class="c1"># @exitcode 0 No command substitution nested inside another.</span>
 <span class="c1"># @exitcode 1 At least one finding, each printed as `file:line: …`.</span>
 <span class="c1"># @exitcode 2 No file given, a listed file cannot be read or parsed, or shfmt or python3 is missing:</span>
@@ -4926,14 +5011,12 @@
 <span class="c1">#   scripts/ci/masked-dirname-check.sh scripts/orchestrator/hcom-seat</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
-<span class="nv">shfmt</span><span class="o">=</span><span class="si">${</span><span class="nv">SHFMT</span><span class="k">:-</span><span class="nv">shfmt</span><span class="si">}</span>
-
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: no file to check; an empty list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="k">fi</span>
 
-<span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shfmt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span>shfmt<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: </span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2"> not found; the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
@@ -4995,7 +5078,7 @@
 
 <span class="nv">status</span><span class="o">=</span><span class="m">0</span>
 <span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">shfmt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span>shfmt<span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: shfmt cannot parse </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">; the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>

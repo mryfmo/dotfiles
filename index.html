@@ -4048,6 +4048,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/ci/masked-dirname-check/" class="md-nav__link">
         
   
@@ -4056,6 +4084,62 @@
     
   
     scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/scripts/ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/scripts/ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
   
 
     
@@ -4891,7 +4975,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">99</span>
+  <span class="landing-stat__value">102</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -4901,7 +4985,7 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">28</span>
+  <span class="landing-stat__value">31</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
@@ -4966,7 +5050,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **99** source reference pages are generated from tracked shell assets
+- **102** source reference pages are generated from tracked shell assets
 - **29** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -5024,16 +5108,16 @@ _29 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_28 documented entries_
+_31 documented entries_
 
 - [`scripts/apply-check.sh`](reference/scripts/apply-check.md): The disposable check `make apply-check` runs inside a container, for client and server. It copies the parts of the wo...
 - [`scripts/check-sleep.sh`](reference/scripts/check-sleep.md): An orchestrator Mac that sleeps overnight stalls every seat, so `make doctor` runs this check after the tools check. ...
 - [`scripts/check-tools.sh`](reference/scripts/check-tools.md): Reports the availability and versions of the commands that participate in the dotfiles lifecycle. This script does no...
+- [`scripts/ci/install-pinned-lint-tools.sh`](reference/scripts/ci/install-pinned-lint-tools.md): CI's "Put the pinned `ShellCheck` and `shfmt` on PATH" step (regime-cutover U97). `mise install` installs each tool's...
 - [`scripts/ci/masked-dirname-check.sh`](reference/scripts/ci/masked-dirname-check.md): ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape `dir=$(cd "$(dirname ...
-- [`scripts/generate-docs.sh`](reference/scripts/generate-docs.md): Collects tracked shell sources, renders Markdown reference pages, creates a curated landing page, and writes a chezmo...
-- [`scripts/gh-auth.sh`](reference/scripts/gh-auth.md): Every seat on a machine acts as that machine's one GitHub account, stored in gh's default configuration directory. Wh...
+- [`scripts/ci/pinned-tool-version.sh`](reference/scripts/ci/pinned-tool-version.md): The lint gates run this before they lint (regime-cutover U97): `make shellcheck` for shellcheck and shfmt (scripts/ci...
 
-[22 more entries in the full catalog](catalog/)
+[25 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

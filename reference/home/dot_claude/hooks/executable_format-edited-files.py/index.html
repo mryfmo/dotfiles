@@ -4058,6 +4058,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
         
   
@@ -4066,6 +4094,62 @@
     
   
     scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../scripts/ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
   
 
     
@@ -4904,8 +4988,8 @@
 <span class="s2">The hook reads the complete JSON event from stdin, extracts every edited file path</span>
 <span class="s2">from the Write and Edit payload shapes, filters by suffix, and runs the</span>
 <span class="s2">formatter for that suffix without going through a shell. ruff and prettier come</span>
-<span class="s2">from PATH: they track latest behind mise's 72h minimum_release_age, and ruff.toml and</span>
-<span class="s2">.prettierignore keep vendored and record paths untouched.</span>
+<span class="s2">from PATH: the versions home/dot_mise/config.toml pins for make format and CI (U97), and</span>
+<span class="s2">ruff.toml and .prettierignore keep vendored and record paths untouched.</span>
 
 <span class="s2">The hook runs outside the Claude sandbox, so it never loads configuration that a</span>
 <span class="s2">sandboxed command could have written as code: prettier runs with --no-config</span>

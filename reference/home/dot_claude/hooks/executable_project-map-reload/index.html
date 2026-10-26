@@ -4069,6 +4069,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
         
   
@@ -4077,6 +4105,62 @@
     
   
     scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../scripts/ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
   
 
     
@@ -4958,15 +5042,15 @@ canonical_path<span class="o">()</span><span class="w"> </span><span class="o">{
 <span class="s1">if path == "~" or path.startswith("~/"):</span>
 <span class="s1">    path = os.path.expanduser("~") + path[1:]</span>
 <span class="s1">print(os.path.realpath(path))</span>
-<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null
+<span class="s1">'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
-<span class="nv">file_path</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.file_path // empty'</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">file_path</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.file_path // empty'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="nv">event_path</span><span class="o">=</span><span class="k">$(</span>canonical_path<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$event_path</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/.project-map/index.html<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 
-<span class="nv">listing</span><span class="o">=</span><span class="k">$(</span>terminal-browser<span class="w"> </span>ls<span class="w"> </span>--all<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">listing</span><span class="o">=</span><span class="k">$(</span>terminal-browser<span class="w"> </span>ls<span class="w"> </span>--all<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="nv">candidates</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'</span>
 <span class="s1">    [.browsers[]? | .cdpPort as $port</span>
 <span class="s1">     | select($port | type == "number")</span>
@@ -4975,7 +5059,7 @@ canonical_path<span class="o">()</span><span class="w"> </span><span class="o">{
 <span class="s1">     | select(.url | strings | startswith("file://"))</span>
 <span class="s1">     | select(.targetId | strings | test("^[A-Fa-f0-9]{32}\\z"))</span>
 <span class="s1">     | [$port, .targetId, .url]][]</span>
-<span class="s1">'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$listing</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="s1">'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$listing</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="nv">selection</span><span class="o">=</span><span class="s2">""</span>
 <span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>candidate<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$candidate</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
@@ -4986,14 +5070,14 @@ canonical_path<span class="o">()</span><span class="w"> </span><span class="o">{
 <span class="w">    </span><span class="k">break</span>
 <span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$candidates</span><span class="s2">"</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>terminal-browser<span class="w"> </span>open<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--size<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--no-merge<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="w">    </span>terminal-browser<span class="w"> </span>open<span class="w"> </span><span class="s2">"</span><span class="nv">$file_path</span><span class="s2">"</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--size<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--no-merge<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 <span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>port<span class="w"> </span>target_id<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$selection</span><span class="s2">"</span>
 
 <span class="nv">agent</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_AGENT</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.local/share/terminal-browser/app/agent-browser/bin/agent-browser</span><span class="si">}</span><span class="s2">"</span>
-<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span>tab<span class="w"> </span><span class="s2">"</span><span class="nv">$target_id</span><span class="s2">"</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
-<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"if (location.href === new URL(</span><span class="nv">$selected_url</span><span class="s2">).href) location.reload()"</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span>tab<span class="w"> </span><span class="s2">"</span><span class="nv">$target_id</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="s2">"</span><span class="nv">$agent</span><span class="s2">"</span><span class="w"> </span>--cdp<span class="w"> </span><span class="s2">"</span><span class="nv">$port</span><span class="s2">"</span><span class="w"> </span>--session<span class="w"> </span>project-map-reload<span class="w"> </span>--pin-tab<span class="w"> </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"if (location.href === new URL(</span><span class="nv">$selected_url</span><span class="s2">).href) location.reload()"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
 <span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 </code></pre></div>
 

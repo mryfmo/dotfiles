@@ -351,6 +351,30 @@ class PinnedLintToolsTest(unittest.TestCase):
         self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", install)
 
 
+BAD_SHELL = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
+# The shell set of LintFileSetTest's repository: its .sh files, its scripts by bash or sh shebang, nothing excluded.
+SHELL_SET = [
+    "home/dot_local/bin/executable_tool",
+    "home/env-split",
+    "home/modify_config.yml",
+    "home/outside.sh",
+    "install/common/tracked.sh",
+    "scripts/ci/pinned-tool-version.sh",
+    "scripts/ci/run-on-lint-files.sh",
+    "scripts/lib/deep.sh",
+]
+EXCLUDED = (
+    ".orchestration/tasks/copy.sh",
+    "home/prompt.zsh",
+    "home/zsh-script.sh",
+    "tests/install/t.bats",
+    "home/run_once.sh.tmpl",
+    "home/dash-only",
+    "home/executable_py",
+    "home/link.sh",
+)
+
+
 class LintFileSetTest(unittest.TestCase):
     """make format and CI check the same tracked files, from scripts/ci/run-on-lint-files.sh (U97)."""
 
@@ -365,22 +389,35 @@ class LintFileSetTest(unittest.TestCase):
             shutil.copy2(ROOT / relative, self.repo / relative)
         (self.repo / "home/dot_mise").mkdir(parents=True)
         shutil.copy2(MISE_CONFIG, self.repo / "home/dot_mise/config.toml")
+        bad = BAD_SHELL
         files = {
             ".gitignore": "ignored/\nscripts/ignored.sh\n",
             "install/common/tracked.sh": "#!/usr/bin/env bash\necho tracked\n",
             "scripts/lib/deep.sh": "#!/usr/bin/env bash\necho deep\n",
             "home/outside.sh": "#!/usr/bin/env bash\necho outside\n",
+            # In the set by shebang alone, with no shell extension.
+            "home/dot_local/bin/executable_tool": "#!/usr/bin/env bash\necho tool\n",
+            "home/modify_config.yml": "#!/bin/sh\nexec cat\n",
+            "home/env-split": "#!/usr/bin/env -S bash -e\necho split\n",
+            # Tracked but excluded, each badly formatted so that reading it would fail the check.
+            ".orchestration/tasks/copy.sh": bad,
+            "home/prompt.zsh": bad.replace("bash", "zsh"),
+            "home/zsh-script.sh": bad.replace("/usr/bin/env bash", "/bin/zsh"),
+            "tests/install/t.bats": bad,
+            "home/run_once.sh.tmpl": bad,
+            "home/dash-only": bad.replace("/usr/bin/env bash", "/bin/dash"),
+            "home/executable_py": "#!/usr/bin/env python3\nprint( 'bad' )\n",
             "tool.py": "print(1)\n",
             "notes.md": "# notes\n",
         }
         for name, body in files.items():
             (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
             (self.repo / name).write_text(body)
+        (self.repo / "home/link.sh").symlink_to("outside.sh")  # a symlink is no script of its own
         self.git("init", "-q")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "fixture")
         # Not tracked: a new file, an ignored file, and an ignored directory's copies, each badly formatted.
-        bad = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
         for name in ("scripts/untracked.sh", "scripts/ignored.sh", "ignored/scripts/copy.sh", "untracked.py", "x.md"):
             (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
             (self.repo / name).write_text(bad)
@@ -427,15 +464,7 @@ class LintFileSetTest(unittest.TestCase):
 
     def test_each_set_is_the_tracked_files_of_its_patterns_only(self):
         for name, expected in (
-            (
-                "shell",
-                [
-                    "install/common/tracked.sh",
-                    "scripts/ci/pinned-tool-version.sh",
-                    "scripts/ci/run-on-lint-files.sh",
-                    "scripts/lib/deep.sh",
-                ],
-            ),
+            ("shell", SHELL_SET),
             ("python", ["tool.py"]),
             ("markdown", ["notes.md"]),
         ):
@@ -443,6 +472,19 @@ class LintFileSetTest(unittest.TestCase):
                 result = self.run_set(name, "printf", "%s\\n")
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(expected, sorted(result.stdout.splitlines()))
+
+    def test_the_shell_set_excludes_records_zsh_bats_templates_other_shells_and_symlinks(self):
+        listed = self.run_set("shell", "printf", "%s\\n").stdout.splitlines()
+        self.assertEqual(
+            "", self.git_output("ls-files", "--others", "--exclude-standard", "home", ".orchestration", "tests")
+        )
+        for name in EXCLUDED:
+            with self.subTest(name):
+                self.assertIn(name, self.git_output("ls-files", name))  # tracked, and still not in the set
+                self.assertNotIn(name, listed)
+
+    def git_output(self, *args: str) -> str:
+        return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True).stdout
 
     def test_a_set_that_cannot_be_listed_is_refused_never_empty(self):
         for args, message in (
@@ -481,19 +523,11 @@ class LintFileSetTest(unittest.TestCase):
         # The untracked and ignored files are badly formatted; none is read, so make format passes.
         clean = make_format()
         self.assertEqual(0, clean.returncode, clean.stdout + clean.stderr)
-        self.assertEqual(
-            [
-                "install/common/tracked.sh",
-                "scripts/ci/pinned-tool-version.sh",
-                "scripts/ci/run-on-lint-files.sh",
-                "scripts/lib/deep.sh",
-            ],
-            self.logged("shfmt"),
-        )
+        self.assertEqual(SHELL_SET, self.logged("shfmt"))
         self.assertEqual(["tool.py"], self.logged("ruff"))
         self.assertEqual(["notes.md"], self.logged("prettier"))
         # The same bad text in a tracked file of the set fails it.
-        (self.repo / "scripts/lib/deep.sh").write_text("#!/usr/bin/env bash\nif true;then echo  bad;fi\n")
+        (self.repo / "home/dot_local/bin/executable_tool").write_text(BAD_SHELL)
         dirty = make_format()
         self.assertNotEqual(0, dirty.returncode)
 
@@ -501,12 +535,12 @@ class LintFileSetTest(unittest.TestCase):
     def test_the_real_shfmt_check_ignores_untracked_and_ignored_files_and_fails_a_tracked_one(self):
         check = ("shell", "shfmt", "-i", "4", "-sr", "-d")
         self.assertEqual(0, self.run_set(*check).returncode)
-        (self.repo / "install/common/tracked.sh").write_text("#!/usr/bin/env bash\nif true;then echo  bad;fi\n")
+        (self.repo / "home/dot_local/bin/executable_tool").write_text(BAD_SHELL)
         failed = self.run_set(*check)
         self.assertNotEqual(0, failed.returncode)
-        self.assertIn("install/common/tracked.sh", failed.stdout)
-        self.assertNotIn("untracked.sh", failed.stdout + failed.stderr)
-        self.assertNotIn("ignored", failed.stdout + failed.stderr)
+        self.assertIn("home/dot_local/bin/executable_tool", failed.stdout)
+        for name in ("untracked.sh", "ignored", *EXCLUDED):
+            self.assertNotIn(name, failed.stdout + failed.stderr)
 
     def test_make_format_and_ci_run_the_same_check_on_the_same_set(self):
         result = subprocess.run(

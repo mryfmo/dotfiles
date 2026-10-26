@@ -207,6 +207,26 @@ function prefetch_chezmoi_external() {
 }
 
 #
+# @description Whether a source root holds a `.chezmoiexternal.*` file or a `.chezmoiexternals` directory, read with
+#   builtins only: the check that an empty discovery is a finding, never a find that saw nothing (U96 round 9).
+# @arg $1 path The physical source directory.
+# @exitcode 0 It holds one (a symlink, even a dangling one, counts).
+# @exitcode 1 It holds none.
+#
+function chezmoi_external_root_declares() {
+    local candidate
+    if [ -d "$1/.chezmoiexternals" ] || [ -L "$1/.chezmoiexternals" ]; then
+        return 0
+    fi
+    for candidate in "$1"/.chezmoiexternal.*; do
+        if [ -e "${candidate}" ] || [ -L "${candidate}" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+#
 # @description Print every external a chezmoi source declares, one per line, tab-separated: target path, type,
 #   sha256, refresh period, the number of fallback `urls`, and `url`. A missing type, sha256 or url prints as `-` and
 #   a missing refresh period as `0`, so no field is empty (a tab is whitespace to `read`, which would merge two tabs
@@ -215,10 +235,12 @@ function prefetch_chezmoi_external() {
 #   templates) and decoded by its own fromYaml, fromJson, fromJsonc or fromToml. Every producer's status is
 #   checked: a failed find, render or decode is an error that names the file, never an empty list.
 # @arg $1 path The chezmoi command.
-# @arg $2 path The source directory (`chezmoi source-path`).
+# @arg $2 path The source directory (`chezmoi source-path`), resolved to its physical path: find does not descend into
+#   a symlinked start directory, and chezmoi keeps a symlinked source path as given.
 # @arg $3 path A scratch directory for the rendered files.
 # @stdout The externals.
-# @exitcode 1 When a declaration file cannot be found, rendered or decoded, or has an unknown format.
+# @exitcode 1 When a declaration file cannot be found, rendered or decoded, or has an unknown format, or when find
+#   lists none while the root holds one.
 #
 function chezmoi_external_list() {
     local chezmoi="$1" source="$2" scratch="$3" declarations declaration format decode relative prefix rendered count=0
@@ -230,6 +252,12 @@ function chezmoi_external_list() {
         printf 'chezmoi externals: cannot list the declarations under %s\n' "${source}" >&2
         return 1
     }
+    # No declaration is a decision, not a default: a root that holds one while find listed none (a symlinked
+    # declaration file, a find that saw nothing) stops the step instead of skipping every external.
+    if [ -z "${declarations}" ] && chezmoi_external_root_declares "${source}"; then
+        printf 'chezmoi externals: %s holds a .chezmoiexternal file or a .chezmoiexternals directory, but find listed no declaration\n' "${source}" >&2
+        return 1
+    fi
     while IFS= read -r declaration; do
         [ -n "${declaration}" ] || continue
         format="${declaration%.tmpl}"
@@ -279,7 +307,7 @@ ${prefix:+${prefix}/}${fields}
 #   has no name, an unknown type or no url.
 #
 function prefetch_chezmoi_externals() {
-    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds fallbacks url
+    local chezmoi="$1" source physical cache="" scratch listing status=0 name type sha256 refresh seconds fallbacks url
     local -a fields
     if ! command -v curl > /dev/null 2>&1; then
         printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
@@ -289,11 +317,17 @@ function prefetch_chezmoi_externals() {
         printf 'chezmoi externals: chezmoi source-path failed or named no directory\n' >&2
         return 1
     fi
+    # chezmoi keeps a symlinked source path as given, and find does not descend into a symlinked start directory, so
+    # discovery reads the physical path and every path it prints is physical (U96 round 9).
+    if ! { physical="$(cd -P -- "${source}" && pwd -P)" && [[ "${physical}" == /* ]]; }; then # lint-comparisons: allow an absolute-path prefix test
+        printf 'chezmoi externals: cannot resolve the source directory %s to its physical path\n' "${source}" >&2
+        return 1
+    fi
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || {
         printf 'chezmoi externals: cannot create a scratch directory\n' >&2
         return 1
     }
-    listing="$(chezmoi_external_list "${chezmoi}" "${source}" "${scratch}")" || status=1
+    listing="$(chezmoi_external_list "${chezmoi}" "${physical}" "${scratch}")" || status=1
     rm -rf "${scratch}"
     [ "${status}" -eq 0 ] || return 1
     while IFS=$'\t' read -r -a fields; do

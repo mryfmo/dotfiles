@@ -164,7 +164,8 @@ class ServerFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.temp = Path(tempfile.mkdtemp(prefix="chezmoi-externals-test-"))
+        # Physical, as the step reports paths (macOS's TMPDIR sits behind the /var symlink).
+        cls.temp = Path(tempfile.mkdtemp(prefix="chezmoi-externals-test-")).resolve()
         cls.addClassCleanup(shutil.rmtree, cls.temp, True)
         cls.www = cls.temp / "www"
         cls.www.mkdir()
@@ -507,7 +508,10 @@ class ChezmoiSourceExternalsTest(ServerFixture):
     """The whole step against a chezmoi source: chezmoi renders and lists the externals, and the status that follows
     reads only the cache."""
 
-    def source(self, url: str, sha256: str | None = None, *, extra: str = "", urls: tuple[str, ...] = ()) -> Path:
+    def source(
+        self, url: str, sha256: str | None = None, *, extra: str = "", urls: tuple[str, ...] = (), link: bool = False
+    ) -> Path:
+        # link: chezmoi is given a symlink to the source, which it keeps as its source path.
         source = self.case / "source"
         (source / ".chezmoitemplates").mkdir(parents=True)
         checksum = sha256 or self.sha256
@@ -524,6 +528,10 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         # The real chezmoi, but each producer the step reads can be made to fail: FAIL_SOURCE_PATH, EMPTY_SOURCE_PATH,
         # FAIL_RENDER (the declaration on stdin), FAIL_DECODE and SHORT_DECODE (the listing template: fails, or exits
         # 0 with a line missing its fields) and FAIL_CACHE_DIR.
+        given = source
+        if link:
+            given = self.case / "linked-source"
+            given.symlink_to(source, target_is_directory=True)
         wrapper.write_text(
             "#!/bin/sh\n"
             'case "$1:$#:$2" in\n'
@@ -533,7 +541,7 @@ class ChezmoiSourceExternalsTest(ServerFixture):
             '    [ -z "$SHORT_DECODE" ] || { printf "only-a-name\\n"; exit 0; } ;;\n'
             '  execute-template:2:*cacheDir*) [ -z "$FAIL_CACHE_DIR" ] || exit 7 ;;\n'
             "esac\n"
-            f'exec "{CHEZMOI}" --source "{source}" --destination "{self.case}/home" '
+            f'exec "{CHEZMOI}" --source "{given}" --destination "{self.case}/home" '
             f'--cache "{self.cache}" --config "{self.case}/chezmoi.yaml" "$@"\n'
         )
         wrapper.chmod(0o755)
@@ -576,6 +584,44 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         self.assertIn("has no sha256 checksum", result.stderr)
         self.assertEqual(0, self.requests())
 
+    def test_a_symlinked_source_root_is_discovered_and_prefetched(self) -> None:
+        # U96 round 9: chezmoi keeps a symlinked source path, and find does not descend into a symlinked start, so
+        # discovery listed nothing and the prefetch was skipped. The step reads the physical path.
+        url = self.serve("linked.tar.gz", "ok")
+        chezmoi = self.source(url, link=True)
+        source_path = subprocess.run(
+            [str(chezmoi), "source-path"], capture_output=True, text=True, timeout=COMMAND_SECONDS, check=True
+        ).stdout.strip()
+        self.assertEqual(str(self.case / "linked-source"), source_path)  # chezmoi keeps the symlink
+        for name, options, *_ in both_ways((("symlinked root", ""),)):
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.cache, ignore_errors=True)
+                result = self.bash(options + 'prefetch_chezmoi_externals "$1"', str(chezmoi))
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn(f"chezmoi external .ext: downloaded from {url}, sha256 verified", result.stdout)
+                self.assertEqual(1, self.requests(url))
+                self.assertEqual(self.data, self.entry(url).read_bytes())
+
+    def test_a_root_declaration_that_find_does_not_list_is_refused(self) -> None:
+        # The root's declaration is a symlink to a file elsewhere: find's -type f does not list it, chezmoi would read
+        # it. Discovery is empty while the root declares one, so the step stops instead of skipping the externals.
+        url = self.serve("hidden.tar.gz", "ok")
+        chezmoi = self.source(url)
+        declaration = self.case / "source/.chezmoiexternal.yaml.tmpl"
+        moved = self.case / "elsewhere.yaml.tmpl"
+        declaration.rename(moved)
+        declaration.symlink_to(moved)
+        for name, options, *_ in both_ways((("symlinked declaration", ""),)):
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                result = self.bash(options + 'prefetch_chezmoi_externals "$1"', str(chezmoi))
+                self.assert_refused(
+                    result,
+                    f"{self.case / 'source'} holds a .chezmoiexternal file or a .chezmoiexternals directory, "
+                    "but find listed no declaration",
+                )
+
     def assert_refused(self, result: subprocess.CompletedProcess[str], message: str) -> None:
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn(message, result.stderr)
@@ -593,6 +639,19 @@ class ChezmoiSourceExternalsTest(ServerFixture):
             ("chezmoi source-path fails", "", {"FAIL_SOURCE_PATH": "1"}, "chezmoi source-path failed"),
             ("chezmoi source-path prints nothing", "", {"EMPTY_SOURCE_PATH": "1"}, "named no directory"),
             ("find fails", "find() { return 1; }; ", {}, "cannot list the declarations under"),
+            # U96 round 9: an empty listing is checked against the root with builtins, never taken as none.
+            (
+                "find lists nothing while the root declares externals",
+                "find() { :; }; ",
+                {},
+                "holds a .chezmoiexternal file or a .chezmoiexternals directory, but find listed no declaration",
+            ),
+            (
+                "the source cannot be resolved to its physical path",
+                "cd() { return 1; }; ",
+                {},
+                "cannot resolve the source directory",
+            ),
             # A find that lists some files and then fails (an unreadable directory) is a failure too.
             (
                 "find fails after listing",
@@ -623,7 +682,9 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         )
         for name, prefix, env, message in both_ways(cases):
             with self.subTest(name):
+                # Each case starts clean, so one case that fetched cannot fail the cases after it.
                 self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.cache, ignore_errors=True)
                 result = self.bash(f'{prefix}prefetch_chezmoi_externals "$1"', str(chezmoi), **env)
                 self.assert_refused(result, message)
 

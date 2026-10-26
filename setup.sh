@@ -343,8 +343,10 @@ function chezmoi_external_download() {
 # @arg $4 number The refresh period in seconds (0: never re-download).
 # @arg $5 path chezmoi's cache directory.
 # @stderr What failed, naming the external and its URL.
-# @exitcode 1 A download kept failing, or the cache could not be written. Nothing is cached then.
+# @exitcode 1 A local producer failed (hash, date, temporary file, cache directory or install): nothing cached.
 # @exitcode 2 The sha256 of a complete download differed: not retried, nothing cached.
+# @exitcode 3 The download failed (network, truncation, a retryable HTTP error after the bound, or another 4xx):
+#   nothing cached. Only this code may hand an external to chezmoi's fallback URLs.
 #
 function prefetch_chezmoi_external() {
     local name="$1" url="$2" expected="$3" refresh="$4" cache="$5"
@@ -418,7 +420,7 @@ function prefetch_chezmoi_external() {
             rm -f "${partial}"
             printf 'chezmoi external %s: %s: download failed after %s attempt(s) (last: curl exit %s, HTTP %s); nothing cached\n' \
                 "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" >&2
-            return 1
+            return 3
         fi
         printf 'chezmoi external %s: %s: attempt %s failed (curl exit %s, HTTP %s); retrying in %ss\n' \
             "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" "${delay}" >&2
@@ -567,11 +569,16 @@ function prefetch_chezmoi_externals() {
         fi
         fetched=0
         prefetch_chezmoi_external "${name}" "${fields[4]}" "${sha256}" "${seconds}" "${cache}" || fetched=$?
-        if [ "${fetched}" -eq 1 ] && [ "${#fields[@]}" -gt 5 ]; then
+        # Only a failed download may go to chezmoi's fallbacks; a local producer failure (1), a checksum mismatch (2)
+        # and any other code stay fatal whatever the URL list.
+        case "${fetched}" in
+        0) ;;
+        3)
+            [ "${#fields[@]}" -gt 5 ] || return 1
             printf 'chezmoi external %s: left to chezmoi, which tries the fallbacks %s\n' "${name}" "${fields[*]:5}"
-        elif [ "${fetched}" -ne 0 ]; then
-            return 1
-        fi
+            ;;
+        *) return 1 ;;
+        esac
     done <<< "${listing}"
 }
 # --- chezmoi-externals.sh end ---

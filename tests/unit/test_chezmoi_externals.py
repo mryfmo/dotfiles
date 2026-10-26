@@ -32,6 +32,76 @@ def archive() -> bytes:
     return buffer.getvalue()
 
 
+# The library's own sha256 helper, kept as orig_chezmoi_external_sha256 so an injected one can delegate to it.
+KEEP_HASH = 'eval "orig_$(declare -f chezmoi_external_sha256)"; '
+# Local producers of prefetch_chezmoi_external made to fail, as shell definitions run after the library is sourced:
+# (name, definitions, exit code of the function, its message, requests made before the failure). mktemp fails only for
+# the download file, so a whole-step run still gets its scratch directory (mktemp -d).
+PRODUCER_CASES = (
+    (
+        "the URL hash fails",
+        KEEP_HASH + 'chezmoi_external_sha256() { [ "$#" -gt 0 ] || return 1; orig_chezmoi_external_sha256 "$@"; }; ',
+        1,
+        "cannot hash the URL",
+        0,
+    ),
+    (
+        "the hash tool prints a non-digest",
+        'sha256sum() { printf "zz  -\\n"; }; shasum() { printf "zz  -\\n"; }; ',
+        1,
+        "cannot hash the URL",
+        0,
+    ),
+    (
+        "the download hash fails",
+        KEEP_HASH + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) return 1 ;; esac; '
+        'orig_chezmoi_external_sha256 "$@"; }; ',
+        1,
+        "cannot hash the download; nothing cached",
+        1,
+    ),
+    (
+        "the download hash is no digest",
+        KEEP_HASH + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) printf "zz\\n"; return 0 ;; esac; '
+        'orig_chezmoi_external_sha256 "$@"; }; ',
+        2,
+        "SHA256 mismatch after a complete download: expected",
+        1,
+    ),
+    (
+        "mktemp fails",
+        'mktemp() { [ "$1" != -d ] || { command mktemp "$@"; return; }; return 1; }; ',
+        1,
+        "cannot create a download file in",
+        0,
+    ),
+    ("mkdir fails", "mkdir() { return 1; }; ", 1, "mkdir -p", 0),
+    ("chmod 700 fails", 'chmod() { [ "$1" != 700 ] || return 1; command chmod "$@"; }; ', 1, "chmod 700 on", 0),
+    (
+        "chmod 600 fails",
+        'chmod() { [ "$1" != 600 ] || return 1; command chmod "$@"; }; ',
+        1,
+        "chmod 600 on the download failed; nothing cached",
+        1,
+    ),
+    ("mv fails", "mv() { return 1; }; ", 1, "mv of the download into", 1),
+)
+# Producers of a fresh existing entry's age and digest: (name, definitions, whether the entry is fetched again).
+# A failed or garbled date is fatal; a failed stat or entry hash makes the entry stale, so it is fetched again.
+AGE_CASES = (
+    ("date fails", "date() { return 1; }; ", False),
+    ("date prints garbage", "date() { printf 'soon\\n'; }; ", False),
+    ("stat fails", "stat() { return 1; }; ", True),
+    ("stat prints garbage", "stat() { printf 'yesterday\\n'; }; ", True),
+    (
+        "the entry hash fails",
+        KEEP_HASH + 'chezmoi_external_sha256() { [ "${1:-}" != "$ENTRY" ] || return 1; '
+        'orig_chezmoi_external_sha256 "$@"; }; ',
+        True,
+    ),
+)
+
+
 class ServerFixture(unittest.TestCase):
     """One local server per class; each test starts with an empty request log and its own cache."""
 
@@ -125,7 +195,7 @@ class ChezmoiExternalsTest(ServerFixture):
 
         result = self.prefetch_one(url)
 
-        self.assertEqual(1, result.returncode)
+        self.assertEqual(3, result.returncode)  # a failed download: the only code that may reach a fallback
         self.assertEqual(4, self.requests())  # CHEZMOI_EXTERNAL_ATTEMPTS
         self.assertIn(f"chezmoi external .ext: {url}: download failed after 4 attempt(s)", result.stderr)
         self.assertEqual([], list((self.cache / "external").iterdir()))
@@ -146,62 +216,15 @@ class ChezmoiExternalsTest(ServerFixture):
                     CHEZMOI_EXTERNAL_ATTEMPTS=value,
                     CHEZMOI_EXTERNAL_RETRY_DELAY=value,
                 )
-                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(3, result.returncode, result.stderr)
                 self.assertEqual(4, self.requests())
                 self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
-
-    # The library's own sha256 helper, kept as orig_chezmoi_external_sha256 so an injected one can delegate to it.
-    KEEP_HASH = 'eval "orig_$(declare -f chezmoi_external_sha256)"; '
 
     def test_every_hash_time_temp_and_install_producer_that_fails_stops_closed(self) -> None:
         # Audit of 0f69d7af: each producer the cache decision rests on, made to fail. Each case names its producer,
         # leaves no cache entry and no partial download, and makes no request when the failure comes before one.
         url = self.serve("producers.tar.gz", "ok")
-        keep = self.KEEP_HASH
-        cases = (
-            (
-                "the URL hash fails",
-                keep + 'chezmoi_external_sha256() { [ "$#" -gt 0 ] || return 1; orig_chezmoi_external_sha256 "$@"; }; ',
-                1,
-                "cannot hash the URL",
-                0,
-            ),
-            (
-                "the hash tool prints a non-digest",
-                'sha256sum() { printf "zz  -\\n"; }; shasum() { printf "zz  -\\n"; }; ',
-                1,
-                "cannot hash the URL",
-                0,
-            ),
-            (
-                "the download hash fails",
-                keep + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) return 1 ;; esac; '
-                'orig_chezmoi_external_sha256 "$@"; }; ',
-                1,
-                "cannot hash the download; nothing cached",
-                1,
-            ),
-            (
-                "the download hash is no digest",
-                keep + 'chezmoi_external_sha256() { case "${1:-}" in *.prefetch.*) printf "zz\\n"; return 0 ;; esac; '
-                'orig_chezmoi_external_sha256 "$@"; }; ',
-                2,
-                "SHA256 mismatch after a complete download: expected",
-                1,
-            ),
-            ("mktemp fails", "mktemp() { return 1; }; ", 1, "cannot create a download file in", 0),
-            ("mkdir fails", "mkdir() { return 1; }; ", 1, "mkdir -p", 0),
-            ("chmod 700 fails", 'chmod() { [ "$1" != 700 ] || return 1; command chmod "$@"; }; ', 1, "chmod 700 on", 0),
-            (
-                "chmod 600 fails",
-                'chmod() { [ "$1" != 600 ] || return 1; command chmod "$@"; }; ',
-                1,
-                "chmod 600 on the download failed; nothing cached",
-                1,
-            ),
-            ("mv fails", "mv() { return 1; }; ", 1, "mv of the download into", 1),
-        )
-        for name, inject, code, message, requests in cases:
+        for name, inject, code, message, requests in PRODUCER_CASES:
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 shutil.rmtree(self.cache, ignore_errors=True)
@@ -218,19 +241,7 @@ class ChezmoiExternalsTest(ServerFixture):
         # makes the entry stale, so it is fetched again and replaced, never kept.
         url = self.serve("aged.tar.gz", "ok")
         entry = self.entry(url)
-        for name, inject, code, requests in (
-            ("date fails", "date() { return 1; }; ", 1, 0),
-            ("date prints garbage", "date() { printf 'soon\\n'; }; ", 1, 0),
-            ("stat fails", "stat() { return 1; }; ", 0, 1),
-            ("stat prints garbage", "stat() { printf 'yesterday\\n'; }; ", 0, 1),
-            (
-                "the entry hash fails",
-                self.KEEP_HASH + 'chezmoi_external_sha256() { [ "${1:-}" != "$ENTRY" ] || return 1; '
-                'orig_chezmoi_external_sha256 "$@"; }; ',
-                0,
-                1,
-            ),
-        ):
+        for name, inject, refetched in AGE_CASES:
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 entry.parent.mkdir(parents=True, exist_ok=True)
@@ -245,13 +256,13 @@ class ChezmoiExternalsTest(ServerFixture):
                     ENTRY=str(entry),
                 )
 
-                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
-                self.assertEqual(requests, self.requests())
-                if code:
+                self.assertEqual(0 if refetched else 1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(int(refetched), self.requests())
+                if refetched:
+                    self.assertEqual(self.data, entry.read_bytes())
+                else:
                     self.assertIn("date +%s failed; cannot tell the cache entry's age", result.stderr)
                     self.assertEqual(b"fresh but unread", entry.read_bytes())
-                else:
-                    self.assertEqual(self.data, entry.read_bytes())
                 self.assertEqual([entry.name], self.cached())
 
     def test_a_server_error_is_retried_and_a_missing_file_is_not(self) -> None:
@@ -262,7 +273,7 @@ class ChezmoiExternalsTest(ServerFixture):
         self.log.unlink()
         missing = f"{self.base}/absent.tar.gz"
         result = self.prefetch_one(missing)
-        self.assertEqual(1, result.returncode)
+        self.assertEqual(3, result.returncode)
         self.assertEqual(1, self.requests())
         self.assertIn(f"{missing}: download failed after 1 attempt(s) (last: curl exit 22, HTTP 404)", result.stderr)
 
@@ -555,6 +566,45 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
         self.assertEqual(1, result.returncode)
         self.assertIn(f"chezmoi external .ext: {primary}: download failed after 4 attempt(s)", result.stderr)
+
+    def test_a_producer_failure_is_fatal_with_or_without_a_fallback(self) -> None:
+        # Audit of 943c429e: with fallbacks, any failure of the first URL was handed to chezmoi, so a hash, temp-file
+        # or install failure read as success. Only a failed download may be handed over; every case here is fatal (or,
+        # for an unreadable entry age or digest, refetched from the first URL), with or without a fallback.
+        primary = self.serve("first.tar.gz", "ok")
+        fallback = self.serve("second.tar.gz", "ok")
+        entry = self.entry(primary)
+        for with_fallback in (False, True):
+            urls = (fallback,) if with_fallback else ()
+            for name, inject, _code, message, requests in PRODUCER_CASES:
+                with self.subTest(case=name, fallback=with_fallback):
+                    self.log.unlink(missing_ok=True)
+                    shutil.rmtree(self.cache, ignore_errors=True)
+                    shutil.rmtree(self.case / "source", ignore_errors=True)
+                    chezmoi = self.source(primary, urls=urls)
+
+                    result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi))
+
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(message, result.stderr)
+                    self.assertNotIn("left to chezmoi", result.stdout)
+                    self.assertEqual((requests, 0), (self.requests(primary), self.requests(fallback)))
+                    self.assertEqual([], self.cached())
+            for name, inject, refetched in AGE_CASES:
+                with self.subTest(case=name, fallback=with_fallback):
+                    self.log.unlink(missing_ok=True)
+                    shutil.rmtree(self.case / "source", ignore_errors=True)
+                    chezmoi = self.source(primary, urls=urls)
+                    entry.parent.mkdir(parents=True, exist_ok=True)
+                    entry.write_bytes(b"fresh but unread")
+
+                    result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi), ENTRY=str(entry))
+
+                    self.assertEqual(0 if refetched else 1, result.returncode, result.stdout + result.stderr)
+                    self.assertNotIn("left to chezmoi", result.stdout)
+                    self.assertEqual((int(refetched), 0), (self.requests(primary), self.requests(fallback)))
+                    self.assertEqual(self.data if refetched else b"fresh but unread", entry.read_bytes())
+                    self.assertEqual([entry.name], self.cached())
 
     def test_externals_chezmoi_fetches_itself_are_left_to_it(self) -> None:
         # git-repo and file:// externals never reach chezmoi's download cache.

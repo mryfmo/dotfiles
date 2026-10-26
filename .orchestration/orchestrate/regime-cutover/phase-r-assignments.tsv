@@ -164,7 +164,7 @@ F162	U74	P3	omp	J	S06-11	home/dot_agents/agent-config.yaml:33-34,341-344; script
 F163	U74	P3	generator	J	S06-12	home/dot_agents/agent-config.yaml:3,15-20; scripts/generate-agent-configs.py:111-112	target_agents と skills.canonical_dir は定数比較以外で誰も読まず、target_agents() 関数は未使用で、omp も含まれていない。	
 F164	U74	P3	generator	J	S06-13	home/dot_agents/agent-config.yaml:74-75	「INV-7: review の Claude プロファイルは deep と同じモデル・effort」という不変条件をどのコードも検査していない。	
 F165	U74	P3	generator	J	S06-16	scripts/validate-agent-assets.py:848-851 vs README.md:966-967	手書き *_VERSION リテラル禁止の走査が *.sh と setup.sh だけで、拡張子なしのスクリプトを対象外にしている。	
-F166	U74	P3	generator	J	S06-17	scripts/validate-agent-assets.py:615,620	ハードコード home の検査が /Users/mryfmo/ 固定だが、実効的な抜け穴はほぼない。	
+F166	U74	P3	generator	J	S06-17	scripts/validate-agent-assets.py:615,620	ハードコード home の検査が ~/ 固定だが、実効的な抜け穴はほぼない。	
 F167	U74	P3	generator	J	S06-6	scripts/check-agent-runtime.py:375-377,412-417,811-817	~/.agents/.installed-manifest.json が無いホストでは doctor がアセット未導入を一切報告しない。	
 F168	U74	P3	generator	J	S06-7	scripts/check-agent-runtime.py:742-821	doctor の check() は project-map.md・~/.omp/agent/config.yml・omp ロールオーバーレイ・~/.agents/agent-config.yaml を比較しておらず、docstring の「生成ソース状態を使っていることを証明」に届かない。	
 F169	U74	P3	generator	J	S06-9	scripts/validate-agent-assets.py:864-865,942-945 vs scripts/generate-agent-configs.py:121-133	OMP_MODEL_RE・OMP_RETIRED_ROUTES・プロファイル必須キーが validator にコピーされ、一致を保証するテストがない。	

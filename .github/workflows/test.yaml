@@ -44,8 +44,8 @@ jobs:
             system: client
 
     runs-on: ${{ matrix.os }}
-    # The slowest passing job measured on main took 1360 s (ubuntu-26.04 client, run 40225977873, October 2026):
-    # 203 s before `Run unit test`, 1155 s in it. Its 35-minute step bound plus the 5 minutes before it, and margin.
+    # Up to 409 s before `Run unit test` and 10 s after it in passing Ubuntu client jobs (October 2026), around the
+    # step's 35 minutes (tests/unit/test_apt_mirror.py BoundOrderTest checks the sum).
     timeout-minutes: 45
     continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
@@ -160,6 +160,12 @@ jobs:
           echo "Skipped the unit tests: ${SKIP_REASON}."
           echo "Compared diff range: ${DIFF_RANGE}"
           printf '### Unit tests skipped\n\n%s (diff range %s).\n' "${SKIP_REASON}" "${DIFF_RANGE}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Drop the Azure apt mirror from the runner image
+        # Before the first apt use: the tool installs below and the install tests' real apt installs
+        # (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.sh).
+        if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
+        run: scripts/ci/drop-azure-apt-mirror.sh
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
@@ -495,10 +501,10 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Run unit test
-        # The hard stop. Passing runs on main took up to 50 s (macOS), 60 s (server) and 325 s (ubuntu-24.04
-        # client) here, and once 1155 s (ubuntu-26.04 client, a 796 s ghostty install). A stalled test is named
-        # after BATS_PER_TEST_TIMEOUT (1200 s) by scripts/ci/run-bats.py, which signals nothing; this ends the
-        # step when what the test left running keeps it alive (bashcov waits for its trace pipe).
+        # The hard stop. Passing Ubuntu client runs took 184-210 s here, and 1143-1361 s when a slow Azure apt mirror
+        # served misc (1055-1077 s); the Azure mirror is now dropped first. scripts/ci/run-bats.py names a stalled test
+        # after BATS_PER_TEST_TIMEOUT (600 s) and prints its diagnosis; one earlier test as slow as that bound, the stalled
+        # test's bound and the other tests (at most 284 s measured) fit under this, so the name prints first (BoundOrderTest).
         timeout-minutes: 35
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |

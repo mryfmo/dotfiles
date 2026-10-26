@@ -27,7 +27,7 @@ set -Eeo pipefail
 #   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.
 #   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.
 # @arg $@ string Arguments passed to bats.
-# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 1200 (scripts/ci/run-bats.py).
+# @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: 600 (scripts/ci/run-bats.py).
 # @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.
 # @exitcode 1 Bats planned no test, or dirname failed.
 # @exitcode Bats' exit status otherwise.

@@ -135,7 +135,7 @@ jobs:
             case "${path}" in *[[:cntrl:]]*) control=true ;; esac
           done < "${changed}"
           if [ ! -s "${changed}" ] || [ "${control}" = true ] ||
-            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
+            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|scripts/ci/drop-azure-apt-mirror\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
             paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           elif [ -s "${home_paths}" ]; then
@@ -154,6 +154,11 @@ jobs:
         uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
+
+      - name: Drop the Azure apt mirror from the runner image
+        # Before setup.sh's apt installs (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.sh).
+        if: ${{ steps.decide.outputs.should_run == 'true' && runner.os == 'Linux' }}
+        run: scripts/ci/drop-azure-apt-mirror.sh
 
       - name: Bootstrap with private restoration
         if: ${{ steps.decide.outputs.should_run == 'true' }}

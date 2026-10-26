@@ -845,8 +845,9 @@ class CiBatsRunTest(unittest.TestCase):
                     continue
                 found += 1
                 match = re.search(r"^\s+timeout-minutes: ([0-9]+)$", step, re.MULTILINE)
-                # Above one per-test bound (1200 s, scripts/ci/run-bats.py), so the stalled test is named first.
-                if not match or int(match.group(1)) * 60 <= 1200:
+                # Above one per-test bound (scripts/ci/run-bats.py's DEFAULT_BOUND), so the stalled test is named first.
+                bound = int(re.search(r"^DEFAULT_BOUND = ([0-9]+)$", WRAPPER.read_text(), re.MULTILINE).group(1))
+                if not match or int(match.group(1)) * 60 <= bound:
                     missing.append(f"{workflow.name}: {step.splitlines()[0].strip()}")
         self.assertEqual([], missing)
         self.assertEqual(3, found)

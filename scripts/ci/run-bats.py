@@ -3,7 +3,7 @@
 
 `run-bats.py <bats arguments>` runs `bats --formatter cat <arguments>`, Bats' extended stream, and prints its TAP
 lines. Each `begin <n> <name>` line becomes `running: <n> <name>`, so a log that stops shows the test it stopped in.
-When a test has no result within BATS_PER_TEST_TIMEOUT seconds (default 1200), or the stream is silent that long
+When a test has no result within BATS_PER_TEST_TIMEOUT seconds (default 600), or the stream is silent that long
 outside a test (Bats sources every file before its plan line), it prints `not ok <n> <name> # timeout after <s> s`,
 then a read-only diagnosis as TAP comments: every process under Bats as a tree, with its elapsed time, state, Linux
 wchan and full command (or `diagnosis unavailable: <reason>` when `ps` fails or hangs), and exits 124.
@@ -21,9 +21,12 @@ import subprocess
 import sys
 import time
 
-# 1.5 times the slowest passing test measured on main (`[ubuntu-client] ghostty`, 796 s on ubuntu-26.04 in run
-# 40225977873, October 2026); a typical run's slowest test is `[ubuntu-client] misc` at 66-103 s.
-DEFAULT_BOUND = 1200
+# Passing Ubuntu client runs spend 66-103 s on their slowest test (`[ubuntu-client] misc`); the 796-1077 s outliers
+# (ghostty, misc) fetched from a slow azure.archive.ubuntu.com node (actions/runner-images#14823), which CI now drops
+# (scripts/ci/drop-azure-apt-mirror.sh). Twice the bound (one earlier test as slow as it allows, then the stalled
+# one) plus what the other tests take (at most 284 s measured) stays under the `Run unit test` step's timeout-minutes,
+# so a stalled test is named and diagnosed before the step is stopped (tests/unit/test_apt_mirror.py BoundOrderTest).
+DEFAULT_BOUND = 600
 # Once Bats has exited, a process it left behind may still hold the stream open; reading stops this much later.
 AFTER_EXIT = 2
 # The diagnosis' one `ps` call gets this long; a hung `ps` leaves the timeout's exit unchanged.

@@ -80,6 +80,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Drop the Azure apt mirror from the runner image
+        # Before setup.sh's apt installs (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.sh).
+        run: scripts/ci/drop-azure-apt-mirror.sh
+
       - name: Setup dotfiles and verify rerun
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
@@ -131,7 +135,7 @@ jobs:
       #     rm -rf "${tmp_dir}"
 
       - name: Test file existence
-        # The hard stop: one BATS_PER_TEST_TIMEOUT (1200 s) and margin. No passing log of this step exists (the
+        # The hard stop: one BATS_PER_TEST_TIMEOUT (600 s) and margin. No passing log of this step exists (the
         # build job is skipped without the bootstrap secrets); the files suite took under 1 s in test.yaml's
         # passing runs. scripts/ci/run-bats.py names a stalled test and signals nothing.
         timeout-minutes: 25

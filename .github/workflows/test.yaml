@@ -177,11 +177,11 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            brew install bash bats-core gawk parallel shellcheck
+            brew install bash bats-core gawk parallel
 
           elif [[ "${OS}" == ubuntu-* ]]; then
             # Ruby is required for bashcov/simplecov formatters.
-            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
+            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby
 
           else
             echo "${OS} and ${SYSTEM} are not supported" >&2
@@ -416,6 +416,16 @@ jobs:
         run: |
           mise install shfmt@3.14.1
           dirname "$(mise which --tool shfmt@3.14.1 shfmt)" >> "${GITHUB_PATH}"
+
+      - name: Put the pinned `ShellCheck` on PATH
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # The version and each platform's sha256 come from home/dot_mise/config.toml ([tools."http:shellcheck"],
+        # copied by "Prepare statusline tool config"); mise checks the download against that sha256. Neither apt nor
+        # brew installs ShellCheck, and make shellcheck refuses any other version (U97). The unit tests that run
+        # shellcheck get the same one from PATH.
+        run: |
+          mise -C "${RUNNER_TEMP}/statusline-mise" install http:shellcheck
+          dirname "$(mise -C "${RUNNER_TEMP}/statusline-mise" which --tool http:shellcheck shellcheck)" >> "${GITHUB_PATH}"
 
       - name: Run `ShellCheck`
         if: ${{ steps.decide.outputs.should_test == 'true' }}

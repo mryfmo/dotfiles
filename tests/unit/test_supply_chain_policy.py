@@ -423,6 +423,8 @@ main
         lines = text.splitlines()
         held = {"npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
         held["http:gcloud"] = '[tools."http:gcloud"]'
+        # U97: make shellcheck and CI's test jobs lint with exactly this ShellCheck.
+        held["http:shellcheck"] = '[tools."http:shellcheck"]'
         # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
         held["npm:ccusage"] = '"npm:ccusage" = '
         held["npm:ccstatusline"] = '"npm:ccstatusline" = '
@@ -551,6 +553,21 @@ main
                 f"https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-{gcloud['version']}-{asset}.tar.gz",
                 entry["url"],
             )
+            self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
+        shellcheck = config["tools"]["http:shellcheck"]
+        self.assertEqual(1, shellcheck["strip_components"])
+        self.assertNotIn("bin_path", shellcheck)
+        assets = {
+            "linux-x64": "linux.x86_64",
+            "linux-arm64": "linux.aarch64",
+            "macos-x64": "darwin.x86_64",
+            "macos-arm64": "darwin.aarch64",
+        }
+        self.assertEqual(set(assets), set(shellcheck["platforms"]))
+        release = f"https://github.com/koalaman/shellcheck/releases/download/v{shellcheck['version']}"
+        for platform, asset in assets.items():
+            entry = shellcheck["platforms"][platform]
+            self.assertEqual(f"{release}/shellcheck-v{shellcheck['version']}.{asset}.tar.xz", entry["url"])
             self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         # The bootstrap takes the newest cooled-down mise release instead of a pin;

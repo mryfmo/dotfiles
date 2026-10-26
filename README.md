@@ -274,6 +274,18 @@ a supported command here; it prints `Updates are disabled by your
 administrator`. To hold Claude Code at one release, pin an exact version in the
 mise entry instead of `latest` (see Holding a tool back below).
 
+**ShellCheck version.** ShellCheck is one `http:` table in
+`home/dot_mise/config.toml`, `[tools."http:shellcheck"]`: an exact release with
+the sha256 of each platform's asset, and the only version the repository lints
+with. Hosts get it from mise. CI's test jobs install it on every runner from a
+copy of the same file (apt and Homebrew no longer install ShellCheck there), and
+`make shellcheck` first runs `scripts/ci/shellcheck-version.sh`, which refuses a
+`shellcheck` on PATH of any other version and names both. Releases disagree on
+findings (CI's apt 0.9.0 reported SC2015 where a local 0.11.0 did not), so a run
+under another version stops instead of passing locally and failing in CI. To
+move it, change the version and the four URLs and checksums together;
+`make drift` reports a newer release.
+
 **Holding a tool back** uses the manager's own feature:
 
 - mise: an exact version in `home/dot_mise/config.toml` with a `# Held:` comment

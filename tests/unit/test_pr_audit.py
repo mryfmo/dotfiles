@@ -778,7 +778,10 @@ class PrAuditTest(unittest.TestCase):
             "    raise OSError(errno.{0}, os.strerror(errno.{0}))\n"
             "os.killpg = killpg\n"
         )
-        for name, text in (("EPERM", "Operation not permitted"), ("EINVAL", "Invalid argument")):
+        for name, text in (
+            ("EPERM", "PermissionError: [Errno 1] Operation not permitted"),
+            ("EINVAL", "OSError: [Errno 22] Invalid argument"),
+        ):
             with self.subTest(errno=name):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
@@ -963,7 +966,7 @@ class PrAuditTest(unittest.TestCase):
         lever, marker = self.run_exec_injection(code, timeout="2")
         _, stderr = lever.communicate(timeout=60)
         self.assertEqual(lever.returncode, 2, stderr)
-        self.assertIn("codex's supervisor failed (killpg SIGTERM: injected term)", stderr)
+        self.assertIn("codex's supervisor failed (killpg SIGTERM: RuntimeError: injected term)", stderr)
         record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
         time.sleep(1)
         self.assert_gone(record["pid"], record["child_pid"])
@@ -1034,6 +1037,154 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("codex exec exited 143", run.stderr)
         self.assertEqual(run.stdout, "")
+
+    # Each step of the supervisor's stop made to raise in the `codex exec` run (U71b audit round 15): the step's name in
+    # the mark, and the injected Python that makes it raise.
+    STOP_STEP_INJECTIONS = (
+        (
+            "ignore signals",
+            (
+                "_signal = signal.signal\n"
+                "def _ignore(sig, handler):\n"
+                "    if handler is signal.SIG_IGN:\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _signal(sig, handler)\n"
+                "signal.signal = _ignore\n"
+            ),
+        ),
+        (
+            "snapshot",
+            (
+                "_run = subprocess.run\n"
+                "_ps = []\n"
+                "def _first_ps(argv, **k):\n"
+                "    if argv[0] == '/bin/ps':\n"
+                "        _ps.append(1)\n"
+                "        if len(_ps) == 1:\n"
+                "            raise RuntimeError('injected step')\n"
+                "    return _run(argv, **k)\n"
+                "subprocess.run = _first_ps\n"
+            ),
+        ),
+        (
+            "killpg SIGTERM",
+            (
+                "_killpg = os.killpg\n"
+                "def _term(pgid, sig):\n"
+                "    if sig == signal.SIGTERM:\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _killpg(pgid, sig)\n"
+                "os.killpg = _term\n"
+            ),
+        ),
+        (
+            "grace",
+            (
+                "_poll = subprocess.Popen.poll\n"
+                "def _grace_poll(self):\n"
+                "    if 'exec' in self.args:\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _poll(self)\n"
+                "subprocess.Popen.poll = _grace_poll\n"
+            ),
+        ),
+        (
+            "killpg SIGKILL",
+            (
+                "_killpg = os.killpg\n"
+                "def _kill(pgid, sig):\n"
+                "    if sig == signal.SIGKILL:\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _killpg(pgid, sig)\n"
+                "os.killpg = _kill\n"
+            ),
+        ),
+        (
+            "reap",
+            (
+                "_wait = subprocess.Popen.wait\n"
+                "def _reap(self, timeout=None):\n"
+                "    if timeout == 5:\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _wait(self, timeout)\n"
+                "subprocess.Popen.wait = _reap\n"
+            ),
+        ),
+        (
+            "sweep",
+            (
+                "_listdir = os.listdir\n"
+                "def _proc(path='.'):\n"
+                "    if path == '/proc':\n"
+                "        raise RuntimeError('injected step')\n"
+                "    return _listdir(path)\n"
+                "os.listdir = _proc\n"
+            ),
+        ),
+        (
+            "survivors",
+            (
+                "_run = subprocess.run\n"
+                "_ps = []\n"
+                "def _second_ps(argv, **k):\n"
+                "    if argv[0] == '/bin/ps':\n"
+                "        _ps.append(1)\n"
+                "        if len(_ps) == 2:\n"
+                "            raise RuntimeError('injected step')\n"
+                "    return _run(argv, **k)\n"
+                "subprocess.run = _second_ps\n"
+            ),
+        ),
+    )
+
+    def test_each_stop_step_that_raises_still_stops_the_group(self):
+        """U71b audit round 15: a statement of the stop that raised skipped the steps after it (rounds 13 to 15). Each
+        step now runs on its own; whichever raises, the group is gone and the run fails closed (exit 125, refusal)."""
+        for name, body in self.STOP_STEP_INJECTIONS:
+            with self.subTest(step=name):
+                if name == "sweep" and not sys.platform.startswith("linux"):
+                    self.skipTest("the subreaper sweep runs on Linux only")
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                marker = self.root / f"step-{name.replace(' ', '-')}"
+                code = "import os, signal, subprocess, sys\nif 'exec' in sys.argv:\n" + "".join(
+                    f"    {line}\n" for line in body.splitlines()
+                )
+                started = time.monotonic()
+                run = self.run_lever(
+                    "7",
+                    PR_AUDIT_TIMEOUT="2",
+                    FAKE_CODEX_HANG=str(marker),
+                    FAKE_CODEX_HANG_DELAY="10",  # past the deadline and the 5 s grace a raising TERM leaves
+                    **self.injected(code),
+                )
+                self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn("refused: codex's supervisor failed (", run.stderr)
+                self.assertIn(f"{name}: RuntimeError: injected step", run.stderr)
+                record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
+                time.sleep(1)
+                self.assert_gone(record["pid"], record["child_pid"])
+                time.sleep(max(0.0, 11 - (time.monotonic() - started)))
+                self.assertFalse(marker.exists(), f"a group member outlived a raising {name} step")
+
+    def test_a_wait_that_returns_after_the_deadline_is_the_deadline(self):
+        """U71b audit round 15 (P3): a wait() returning after the deadline gave codex's status instead of 124."""
+        code = (
+            "import subprocess, sys, time\n"
+            "_wait = subprocess.Popen.wait\n"
+            "def wait(self, timeout=None):\n"
+            "    if 'exec' in self.args and timeout is not None and timeout < 1:\n"
+            "        time.sleep(3)\n"
+            "        return 0\n"
+            "    return _wait(self, timeout)\n"
+            "subprocess.Popen.wait = wait\n"
+        )
+        marker = self.root / "late-return"
+        run = self.run_lever("7", PR_AUDIT_TIMEOUT="1", FAKE_CODEX_HANG=str(marker), **self.injected(code))
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("codex exec exited 124", run.stderr)
 
     def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
         code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"

@@ -15,7 +15,7 @@ reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VE
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
 codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming a marker path, `exec` plays the
 launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
-and sleeps 60 seconds. FAKE_CODEX_IGNORE_TERM makes that `exec` and its child ignore TERM (the child then touches the
+and sleeps 60 seconds (FAKE_CODEX_HANG_DELAY replaces the 3). FAKE_CODEX_IGNORE_TERM makes that `exec` and its child ignore TERM (the child then touches the
 marker after 8 seconds), so only a KILL stops them. The record then holds `pid` and `child_pid`.
 FAKE_CODEX_ESCAPE=`single:<pidfile>` makes `exec` start a `sleep 30` in a session of its own (its own child), and
 `double:<pidfile>` the same through a double fork (orphaned at once); the escaped pid goes to the pidfile, and `exec`
@@ -122,7 +122,7 @@ elif argv[:1] == ["exec"]:
         time.sleep(60)
     marker = os.environ.get("FAKE_CODEX_HANG")
     if marker:
-        delay = "3"
+        delay = os.environ.get("FAKE_CODEX_HANG_DELAY", "3")
         if os.environ.get("FAKE_CODEX_IGNORE_TERM"):
             signal.signal(signal.SIGTERM, signal.SIG_IGN)  # inherited by the child through exec
             delay = "8"

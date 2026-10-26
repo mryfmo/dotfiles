@@ -236,23 +236,26 @@ git_tree() {
 #   deadlocked).
 # - The main flow alone does process work: it waits for the leader in slices of at most 0.2 seconds and after every
 #   slice checks the recorded signal and the deadline.
-# - Everything after the launch runs in try/finally, and the finally always stops the group: the further signals are
-#   ignored, the group gets TERM, the leader a grace of 5 seconds, then the group always gets KILL (also when the TERM
-#   or the grace failed) and the leader is reaped. So no exit path, an exception included, leaves the group running.
+# - Everything after the launch runs in try/finally, and the finally always runs the stop: a fixed list of steps (ignore
+#   the further signals, the `ps` snapshot, killpg TERM, a grace of 5 seconds for the leader, killpg KILL, reap the
+#   leader, the Linux subreaper sweep, the survivor report) run by one runner in which each step has its own
+#   try/except and the next step always runs (U71b audit round 15: rounds 13 to 15 each found one statement of the
+#   stop that raised and skipped the steps after it). So KILL and the reap run even when every earlier step raised,
+#   and no exit path, an exception included, leaves the group running; a step that raised makes the exit 125.
 # - Process groups are no containment boundary (U71b audit round 14: a descendant that starts its own session leaves
 #   the group). On Linux the supervisor makes itself the child subreaper (prctl PR_SET_CHILD_SUBREAPER before the
 #   launch; a failure refuses), so every orphaned descendant is reparented to it, and the stop then KILLs every child
 #   it has and reaps until none is left, bounded by the grace. macOS has no subreaper or kernel containment for the
 #   same user's processes: a descendant that starts its own session can outlive the run, confined by the Codex
-#   sandbox profile it inherited (residual). As detection only, best effort, the stop takes a `ps` snapshot of this
-#   supervisor's descendants just before it signals, and after the cleanup writes every one still alive (same pid,
-#   same command) to `<mark>.survivors`, which the lever prints as a warning; a process already reparented away
-#   (a double fork) is not in the snapshot.
-# - Exit: codex's own status after a normal exit, 124 on the deadline, 128 + the signal's number on a signal (a signal
-#   recorded during the last wait wins over codex's status). A launch
-#   that fails (setsid or exec in the child raise in the parent), a killpg that fails with any error but ESRCH (the
-#   group is gone), a failed reap and any other exception write the reasons to the mark file and exit 125, which the
-#   lever refuses. No path exits 0 unless codex itself did.
+#   sandbox profile it inherited (residual). As detection only, the stop takes a `ps` snapshot of this supervisor's
+#   descendants just before it signals, and after the cleanup writes every one still alive (same pid, same command)
+#   to `<mark>.survivors`, which the lever prints as a warning; a process already reparented away (a double fork) is
+#   not in the snapshot. A `ps` that fails is a failed step like any other (exit 125).
+# - Exit, decided once after the wait loop by one rule: a recorded signal gives 128 + its number, else a deadline that
+#   has passed gives 124 (also when the last wait returned after it), else codex's own status. A launch
+#   that fails (setsid or exec in the child raise in the parent), a stop step that raised (killpg with any error but
+#   ESRCH, the group being gone, included) and any other exception write the reasons to the mark file and exit 125,
+#   which the lever refuses. No path exits 0 unless codex itself did.
 # The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
 codex_supervisor='
@@ -283,14 +286,11 @@ def on_signal(signum, frame):
         pending.append(signum)
 
 
-def killpg(pid, sig, errors):
+def killpg(pid, sig):
     try:
         os.killpg(pid, sig)
     except ProcessLookupError:
         pass
-    except BaseException as error:
-        text = error.strerror if isinstance(error, OSError) and error.strerror else error
-        errors.append(f"killpg {sig.name}: {text}")
 
 
 def become_subreaper():
@@ -317,8 +317,10 @@ def live_children():
     return found
 
 
-def sweep_children(errors):
+def sweep_children():
     """Linux: KILL every child of the subreaper and reap until none is left, bounded by the grace."""
+    if not sys.platform.startswith("linux"):
+        return
     end = time.monotonic() + GRACE
     while True:
         children = live_children()
@@ -333,8 +335,7 @@ def sweep_children(errors):
         except ChildProcessError:
             return
         if time.monotonic() >= end:
-            errors.append(f"descendants left after the grace: {live_children()}")
-            return
+            raise RuntimeError(f"descendants left after the grace: {live_children()}")
         time.sleep(0.05)
 
 
@@ -362,55 +363,59 @@ def descendants(rows, root):
     return found
 
 
-def report_survivors(snapshot):
-    """Detection only: every process the snapshot saw under this supervisor that is still alive after the cleanup."""
-    lines = []
-    try:
-        if isinstance(snapshot, str):
-            lines.append(snapshot)
-        else:
-            after = process_table()
-            for pid, command in sorted(snapshot.items()):
-                if pid in after and after[pid][1] == command:
-                    lines.append(f"{pid} {command}")
-    except BaseException as error:
-        lines.append(f"no process table after the cleanup ({type(error).__name__}: {error})")
+def take_snapshot(state):
+    """Every process under this supervisor just before the stop signals (for the survivor report)."""
+    state["snapshot"] = descendants(process_table(), os.getpid())
+
+
+def report_survivors(state):
+    """Detection only: each process the snapshot saw that is still alive (same pid, same command) after the cleanup is
+    written to <mark>.survivors for the lever to print."""
+    after = process_table()
+    lines = [
+        f"{pid} {command}"
+        for pid, command in sorted(state["snapshot"].items())
+        if pid in after and after[pid][1] == command
+    ]
     if lines:
-        try:
-            with open(sys.argv[2] + ".survivors", "w") as out:
-                out.write("\n".join(lines) + "\n")
-        except OSError:
-            pass
+        with open(sys.argv[2] + ".survivors", "w") as out:
+            out.write("\n".join(lines) + "\n")
+
+
+def ignore_signals():
+    for sig in STOP_SIGNALS:
+        signal.signal(sig, signal.SIG_IGN)
+
+
+def grace(proc):
+    end = time.monotonic() + GRACE
+    while proc.poll() is None and time.monotonic() < end:
+        time.sleep(0.05)
 
 
 def stop_group(proc, errors):
-    try:
-        for sig in STOP_SIGNALS:
-            signal.signal(sig, signal.SIG_IGN)
-    finally:
+    """The stop as a fixed list of steps run by one runner (U71b audit round 15): each step runs in its own try, a step
+    that raises is recorded and the next step runs, so KILL and the reap run even when every earlier step raised."""
+    state = {"snapshot": {}}
+    steps = (
+        ("ignore signals", lambda: ignore_signals()),
+        ("snapshot", lambda: take_snapshot(state)),
+        ("killpg SIGTERM", lambda: killpg(proc.pid, signal.SIGTERM)),
+        ("grace", lambda: grace(proc)),
+        ("killpg SIGKILL", lambda: killpg(proc.pid, signal.SIGKILL)),
+        ("reap", lambda: proc.wait(timeout=GRACE)),
+        ("sweep", lambda: sweep_children()),
+        ("survivors", lambda: report_survivors(state)),
+    )
+    for name, step in steps:
         try:
-            snapshot = descendants(process_table(), os.getpid())
+            step()
         except BaseException as error:
-            snapshot = f"no process table before the cleanup ({type(error).__name__}: {error})"
-    try:
-        killpg(proc.pid, signal.SIGTERM, errors)
-        end = time.monotonic() + GRACE
-        while proc.poll() is None and time.monotonic() < end:
-            time.sleep(0.05)
-    except BaseException as error:
-        errors.append(f"stop: {type(error).__name__}: {error}")
-    finally:
-        killpg(proc.pid, signal.SIGKILL, errors)
-        try:
-            proc.wait(timeout=GRACE)
-        except BaseException as error:
-            errors.append(f"reap: {type(error).__name__}: {error}")
-        if sys.platform.startswith("linux"):
+            errors.append(name)
             try:
-                sweep_children(errors)
-            except BaseException as error:
-                errors.append(f"sweep: {type(error).__name__}: {error}")
-        report_survivors(snapshot)
+                errors[-1] = f"{name}: {type(error).__name__}: {error}"
+            except BaseException:
+                pass
 
 
 def main():
@@ -433,23 +438,21 @@ def main():
     code = 125
     try:
         end = time.monotonic() + seconds
-        while True:
-            if pending:
-                code = 128 + pending[0]
-                break
-            remaining = end - time.monotonic()
-            if remaining <= 0:
-                code = 124
-                break
+        status = None
+        while not pending and time.monotonic() < end:
             try:
-                status = proc.wait(timeout=min(SLICE, remaining))
+                status = proc.wait(timeout=max(0.0, min(SLICE, end - time.monotonic())))
             except subprocess.TimeoutExpired:
                 continue
-            code = 128 - status if status < 0 else status
             break
-        # A signal recorded while the last wait returned wins over the status of codex (U71b audit round 14).
+        # The outcome, decided once by one rule (U71b audit rounds 14 and 15): a recorded signal, else the deadline
+        # (a wait that returned after it counts as the deadline), else the status of codex.
         if pending:
             code = 128 + pending[0]
+        elif status is None or time.monotonic() >= end:
+            code = 124
+        else:
+            code = 128 - status if status < 0 else status
     except BaseException as error:
         errors.append(f"supervisor: {type(error).__name__}: {error}")
     finally:

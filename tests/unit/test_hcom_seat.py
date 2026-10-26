@@ -6,6 +6,7 @@ the three extension directories (the two routes and the stop gate's); the cwd is
 `$TMPDIR/u7-hcom`. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
 """
 
+import collections
 import json
 import os
 import re
@@ -14,7 +15,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -1465,36 +1465,84 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((nested / ".git").read_text().split()[0], "gitdir:")
         self.assertFalse((nested / "new").exists())
 
-    def test_300_worktrees_add_under_ten_seconds_to_a_dry_run(self):
-        """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
-        table, one pointer read), not several per worktree and write root; 300 registered worktrees, 10 of them under
-        `.claude/worktrees`, add less than 10 s to the dry run (they added about 5 minutes before). The cost of the
-        worktrees is measured against the same dry run without them, so a loaded machine (the parallel unit run) slows
-        both alike; alone on macOS the whole dry run takes about 6.5 s."""
-        started = time.monotonic()
-        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
-        baseline = time.monotonic() - started
-        self.assertEqual(run.returncode, 0, run.stderr)
+    def add_worktrees(self, first, count, nested):
+        """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first
+        `nested` of them under `<checkout>/.claude/worktrees`, every other one with an empty `config.worktree`."""
         common = (self.repo / ".git").resolve()
         outside = Path(self.temp.name).resolve() / "many"
-        for n in range(300):
-            tree = (self.repo / f".claude/worktrees/w{n}") if n < 10 else outside / f"w{n}"
+        for n in range(first, first + count):
+            tree = (self.repo / f".claude/worktrees/w{n}") if n < first + nested else outside / f"w{n}"
             tree.mkdir(parents=True)
             admin = common / "worktrees" / f"w{n}"
             admin.mkdir(parents=True)
             (admin / "gitdir").write_text(f"{tree.resolve()}/.git\n")
             (admin / "commondir").write_text("../..\n")
             (admin / "HEAD").write_text(f"{self.head}\n")
+            if n % 2:
+                (admin / "config.worktree").write_text("")
             (tree / ".git").write_text(f"gitdir: {admin}\n")
-        self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
-        started = time.monotonic()
-        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
-        elapsed = time.monotonic() - started
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stderr.count("lies inside a write root of the orchestrator seat"), 10)
-        self.assertLess(
-            elapsed - baseline, 10, f"300 worktrees took the dry run from {baseline:.1f} s to {elapsed:.1f} s"
+
+    def spawn_counts(self):
+        """Run a worker dry run and count what hcom-seat starts, recorded by bash itself: BASH_ENV installs a DEBUG
+        trap, inherited by every function and subshell (`set -T`), that appends `$BASH_SUBSHELL`, the subshell level
+        of the last record in this shell, and `$BASH_COMMAND` before each simple command, in one O_APPEND write. Two
+        counts come out: the commands whose command word runs a program (an absolute path such as /usr/bin/stat or
+        /bin/mkdir, a program found by name, or a variable command word such as `"${git_cmd[@]}"`; no builtin,
+        keyword or function of hcom-seat or regime-env), and the forked subshells (a record whose level exceeds the
+        last level its own shell recorded: each command substitution, pipeline element or `( … )` that runs a
+        command). Every process hcom-seat itself starts is one of the two; what those processes start in turn
+        (xargs's stat runs, git's helpers) is theirs. Deterministic: no clock, no host load, no trace interleaving."""
+        names = subprocess.run(
+            ["/bin/bash", "-c", "compgen -b; compgen -k"], capture_output=True, text=True, check=True
         )
+        internal = set(names.stdout.split())
+        for source in (SEAT, SEAT.parent / "regime-env"):
+            internal |= set(re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\(\) \{", source.read_text(), re.MULTILINE))
+        hook = Path(self.temp.name) / "count-hook.bash"
+        hook.write_text(
+            "set -T\n"
+            """trap 'builtin printf "%s\\t%s\\t%s\\0" "$BASH_SUBSHELL" "${u95_level:-0}" "$BASH_COMMAND" """
+            """>> "$U95_TRACE"; u95_level=$BASH_SUBSHELL' DEBUG\n"""
+        )
+        trace = Path(self.temp.name) / "count-trace"
+        trace.write_text("")
+        env = {**self.env, "BASH_ENV": str(hook), "U95_TRACE": str(trace)}
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run", **env)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        assignment = re.compile(r"""^[A-Za-z_]\w*(\[[^]]*\])?\+?=("[^"]*"|'[^']*'|\$\([^)]*\)|[^\s"'])*(\s+|$)""")
+        programs, subshells = collections.Counter(), 0
+        for record in trace.read_text().split("\0")[:-1]:
+            level, last, command = record.split("\t", 2)
+            subshells += int(level) > int(last)
+            if re.match(r"[A-Za-z_]\w*(\[[^]]*\])?\+?=\(", command):
+                continue  # an array assignment runs nothing
+            while (prefix := assignment.match(command)) and prefix.end():
+                command = command[prefix.end() :]
+            word = command.split()[0] if command.split() else ""
+            if word.startswith(("/", '"$', "$")) or (re.fullmatch(r"[A-Za-z][\w.+-]*", word) and word not in internal):
+                programs[word] += 1
+        said = [line for line in run.stderr.splitlines() if line.startswith("hcom-seat: the worktree ")]
+        return programs, subshells, len(said)
+
+    def test_the_checks_start_no_more_processes_for_more_worktrees(self):
+        """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
+        table, one size read, one pointer read, one resolving subshell), so a dry run with 300 registered worktrees
+        starts exactly as many processes as one with 10. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
+        wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
+        stat runs and subshells per worktree and write root)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10, nested=3)
+        programs_10, subshells_10, nested_10 = self.spawn_counts()
+        self.add_worktrees(10, 290, nested=7)
+        self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
+        programs_300, subshells_300, nested_300 = self.spawn_counts()
+        self.assertEqual((nested_10, nested_300), (3, 10))
+        self.assertIn("/usr/bin/stat", programs_10, "the counter sees programs run by absolute path")
+        grown = programs_300.copy()
+        grown.subtract(programs_10)
+        self.assertEqual(+grown, collections.Counter(), "programs run more often with 300 worktrees than with 10")
+        self.assertEqual(-grown, collections.Counter(), "programs run less often with 300 worktrees than with 10")
+        self.assertEqual(subshells_300, subshells_10, "subshells forked with 300 worktrees and with 10")
 
     def test_a_fresh_spark_first_launch_with_the_default_paths(self):
         """U85 round 30: the dotfiles program's first launch on a fresh host (hcom-orchestration SKILL step 0):

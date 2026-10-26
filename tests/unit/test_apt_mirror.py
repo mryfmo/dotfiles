@@ -115,8 +115,25 @@ class MirrorScriptTest(unittest.TestCase):
         self.assertIn("no apt mirror would be left", result.stderr)
         self.assertEqual(only, self.list.read_text())
 
-    def test_a_failed_write_fails_and_leaves_the_list(self) -> None:
-        # Not writable by this user, so the script writes through sudo, which refuses here.
+    def fake(self, name: str, body: str) -> None:
+        path = self.temp / "bin" / name
+        path.write_text(f"#!/bin/sh\n{body}\n")
+        path.chmod(0o755)
+
+    def test_a_list_that_cannot_be_read_fails_named_and_is_not_written(self) -> None:
+        self.list.write_text(MIRRORS)
+        self.list.chmod(0o000)
+        self.addCleanup(self.list.chmod, 0o644)
+        if os.access(self.list, os.R_OK):
+            self.skipTest("running as a user who can read a mode-000 file")
+        self.fake("tee", f'echo tee ran >> "{self.temp}/tee.log"; cat > /dev/null')
+        result = self.run_script(str(self.list))
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"cannot read {self.list}", result.stderr)
+        self.assertFalse((self.temp / "tee.log").exists())
+
+    def test_a_failed_write_fails_named_and_leaves_the_list(self) -> None:
+        # Root's list: written through sudo, which refuses here.
         self.list.write_text(MIRRORS)
         self.list.chmod(0o444)
         if os.access(self.list, os.W_OK):
@@ -125,6 +142,28 @@ class MirrorScriptTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("could not write", result.stderr)
         self.assertEqual(MIRRORS, self.list.read_text())
+        # A writable list whose tee fails.
+        self.list.chmod(0o644)
+        self.fake("tee", "cat > /dev/null; exit 5")
+        result = self.run_script(str(self.list))
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"could not write {self.list}", result.stderr)
+        self.assertEqual(MIRRORS, self.list.read_text())
+
+    def test_a_write_that_reads_back_differently_fails_named(self) -> None:
+        # tee reports success but leaves other bytes (a truncated or interleaved write).
+        self.list.write_text(MIRRORS)
+        self.fake("tee", 'cat > /dev/null; printf "truncated" > "$2"; exit 0')
+        result = self.run_script(str(self.list))
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"{self.list} read back differs from what was written", result.stderr)
+
+    def test_no_external_command_decides_the_edit(self) -> None:
+        # Audit of 52035104: grep's errors read as "no mirror left"; the read, filter and count are builtins now.
+        text = "\n".join(line for line in SCRIPT.read_text().splitlines() if not line.lstrip().startswith("#"))
+        for tool in ("grep", "awk", "sed", "cat"):
+            with self.subTest(tool=tool):
+                self.assertNotRegex(text, rf"(?<![\w-]){tool}(?![\w-])")
 
     def test_the_default_list_is_the_runner_image_one(self) -> None:
         self.assertIn("mirrors=${1:-/etc/apt/apt-mirrors.txt}", SCRIPT.read_text())

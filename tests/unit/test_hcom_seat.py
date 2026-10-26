@@ -2,10 +2,12 @@
 
 The fakes (tests/fixtures/hcom-seat/fake-tool.py under the three names) record argv; the fake hcom plays the herdr
 terminal preset so the test sees what omp receives. HOME is a scratch directory holding the three policy overlays and
-the three extension directories (the two routes and the stop gate's); the cwd is a scratch git repository with an `origin/main` ref; `HCOM_DIR` is
-`$TMPDIR/u7-hcom`. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
+the three extension directories (the two routes and the stop gate's); the cwd is a scratch git repository with an
+`origin/main` ref; `HCOM_DIR` is `hcom` in a directory of each test's own (`tempfile.mkdtemp` under TMPDIR), so
+concurrent suites never share it. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
 """
 
+import collections
 import json
 import os
 import re
@@ -81,8 +83,12 @@ class HcomSeatTest(unittest.TestCase):
         self.calls = root / "calls"
         self.calls.mkdir()
         self.seats = str(root / "seats")
-        self.store = Path(os.environ.get("TMPDIR", self.temp.name)) / "u7-hcom"
-        self.store.mkdir(exist_ok=True)
+        # The hcom store lies outside the scratch tree (a seat write root of its own, beside the seats root) in a
+        # directory of this test's own under TMPDIR, so two suites running at once never share it.
+        store_parent = Path(tempfile.mkdtemp(prefix="hcom-seat-store-"))
+        self.addCleanup(shutil.rmtree, store_parent, True)
+        self.store = store_parent / "hcom"
+        self.store.mkdir()
         self.repo = root / "repo"
         self.repo.mkdir()
         # The environment is built, never inherited: the fake bin and the system directories only, under the scratch
@@ -1131,31 +1137,336 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(role, "--seats-root", self.seats, "--name", f"{role}-main")
                 self.assertEqual(run.returncode, 0, run.stderr)
 
-    def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
-        """U85 round 15: `within` runs inside `||` lists, where `set -e` does not apply, so each helper's status is
-        checked explicitly: a helper that prints a path and fails refuses instead of deciding."""
+    def identity_functions(self):
+        """The identity code of hcom-seat, extracted: the table builder and the pairwise decision (U95)."""
         text = SEAT.read_text()
-        functions = "\n".join(
+        return "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "deepest_existing", "within")
-        )
+            for name in (
+                "refuse", "clean_path", "require_clean_path", "ancestors_of", "identity_table", "ascii_lower",
+                "within_ix",
+            )
+        )  # fmt: skip
+
+    def test_a_failing_helper_in_the_identity_check_refuses_the_launch(self):
+        """U85 round 15, U95: the identity table's one producer (stat) is checked: one that prints a plausible answer
+        and fails refuses instead of deciding. The case fold is builtin (ascii_lower), no `tr` runs."""
+        self.assertNotIn("/usr/bin/tr", self.identity_functions())
         stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
         outer = Path(self.temp.name).resolve() / "outer"
         outer.mkdir()
-        cases = {
-            "exists": f"within {shlex.quote(str(outer))} {shlex.quote(str(outer / 'a/b'))} || status=$?",
-            "neither exists": f"within {shlex.quote(str(outer / 'x'))} {shlex.quote(str(outer / 'x/y'))} || status=$?",
-        }
-        for label, call in cases.items():
-            with self.subTest(label):
+        fakes = Path(self.temp.name).resolve() / "failing"
+        fakes.mkdir()
+        (fakes / "stat").write_text("#!/bin/sh\nfor a; do echo 1:2; done\nexit 7\n")
+        (fakes / "stat").chmod(0o755)
+        for label, inner in (("exists", outer / "a/b"), ("neither exists", outer / "x/y")):
+            with self.subTest(case=label):
+                functions = self.identity_functions().replace("/usr/bin/stat", str(fakes / "stat"))
                 script = (
                     f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
-                    "deepest_existing() { printf '/\\n'; return 7; }\n"
-                    f"status=0\n{call}\necho decided=$status\n"
+                    'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho decided=$status\n'
                 )
-                run = subprocess.run(["/bin/bash", "-c", script], capture_output=True, text=True, check=False)
+                run = subprocess.run(
+                    ["/bin/bash", "-c", script, "_", str(outer), str(inner)],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stdout + run.stderr)
-                self.assertIn("cannot find an existing directory above", run.stderr)
+                self.assertIn("cannot read the identity", run.stderr)
+
+    def test_every_batched_producer_fails_closed(self):
+        """U95: each batch hcom-seat runs over many paths refuses when its producer fails after printing plausible
+        output, prints too few records, or prints a malformed one: physical_paths (cd, physical_path, a record's
+        printf; it calls no pwd and prints nothing back), sizes_of (stat), pointer_values (cat, and its sizes), and
+        the identity table (stat; its fold is builtin, so a fold that keeps case, changes length or fails refuses).
+        Round 3: every result is assigned to its input's index, and the overlap check refuses when a worktree has no
+        resolved path, so it cannot miss one. dir_entries (the one enumeration) refuses a failed or short read, and
+        admin_dirs_match refuses an orphan, an unlisted or a duplicated record, and its producers (stat, cat, cd)
+        failing after plausible output; git_state_check's one mkdir for every missing info/ and hooks/ refuses when
+        it fails, fails after a partial creation, or leaves a link."""
+        text = SEAT.read_text()
+        names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
+        names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
+        names += ("dir_entries", "admin_dirs_match", "git_state_check", "git_form_path")
+        functions = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
+        )
+        darwin = sys.platform == "darwin"
+        args = (
+            "stat_args=(-L -f '%d:%i') size_args=(-L -f '%z')"
+            if darwin
+            else "stat_args=(-L -c '%d:%i') size_args=(-L -c '%s')"
+        )
+        root = Path(self.temp.name).resolve() / "batch"
+        for name in ("a", "b", "real", "d"):
+            (root / name).mkdir(parents=True)
+        (root / "c").symlink_to("real")
+        (root / "file").write_text("")
+        for name in ("a", "b"):
+            (root / name / "commondir").write_text("../..\n")
+        # Present directories, a link, and absent paths (one below the link, one below an ancestor of its own), all
+        # resolved in the one subshell.
+        dirs = [str(root / n) for n in ("a", "b", "c", "absent", "c/gone/deeper", "d/gone")]
+        pointers = [str(root / n / "commondir") for n in ("a", "b")]
+        fakes = root / "fakes"
+        fakes.mkdir()
+
+        def fake(name, body):
+            path = fakes / name
+            path.write_text(f"#!/bin/sh\n{body}\n")
+            path.chmod(0o755)
+            return str(path)
+
+        def run(call, script_args, replace=None, prelude=""):
+            body = functions
+            for real, stand_in in (replace or {}).items():
+                body = body.replace(real, stand_in)
+            script = f"set -euo pipefail\n{args}\n{body}\n{prelude}\n{call}\n"
+            return subprocess.run(
+                ["/bin/bash", "-c", script, "_", *script_args], capture_output=True, text=True, check=False, timeout=30
+            )
+
+        paths_call = 'physical_paths "$@"\nprintf "%s\\n" "${phys_list[@]}"'
+        good = run(paths_call, dirs)
+        self.assertEqual(good.returncode, 0, good.stderr)
+        self.assertEqual(
+            good.stdout.split(),
+            [str(root / n) for n in ("a", "b", "real", "absent", "real/gone/deeper", "d/gone")],
+        )
+        paths_cases = {
+            "cd fails after a plausible PWD": 'cd() { if [[ $3 == */b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
+            "a record is dropped": 'printf() { [[ $# == 3 && $2 == */b ]] && return 0; builtin printf "$@"; }',
+            "a record's printf fails (the audit's case)": 'printf() { [[ $# == 3 && $2 == */b ]] && return 7; builtin printf "$@"; }',
+            "physical_path is never called": "physical_path() { echo /plausible/a; return 7; }",
+            "cd fails for an absent path's ancestor": 'cd() { if [[ $3 == */d/ ]]; then PWD=/plausible/d; return 7; fi; builtin cd "$@"; }',
+            "an absent path's record is dropped": 'printf() { [[ $# == 3 && $3 == /gone ]] && return 0; builtin printf "$@"; }',
+            "a malformed record": 'cd() { builtin cd "$@" || return; [[ $PWD != */b ]] || PWD=relative; }',
+        }
+        self.assertEqual(run(paths_call, dirs, prelude=paths_cases.pop("physical_path is never called")).returncode, 0)
+        for label, prelude in paths_cases.items():
+            with self.subTest(producer="physical_paths", case=label):
+                result = run(paths_call, dirs, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        # A path that is, or lies below, a regular file or a dangling link is no directory-backed worktree: refused,
+        # with no fallback process.
+        (root / "dangling").symlink_to("nowhere")
+        for label, path in (("a regular file", "file"), ("below a file", "file/x/y"), ("a dangling link", "dangling")):
+            with self.subTest(producer="physical_paths", case=label):
+                result = run(paths_call, [*dirs, str(root / path)])
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn(f"the worktree record {root / path} is not backed by a directory", result.stderr)
+                self.assertIn("git worktree prune", result.stderr)
+        sizes_call = 'sizes_of "$@"\nprintf "%s\\n" "${size_list[@]}"'
+        self.assertEqual(run(sizes_call, pointers).stdout.split(), ["6", "6"])
+        stat_cases = {
+            "fails after plausible output": fake("stat-fail", "for a; do echo 6; done\nexit 7"),
+            "too few lines": fake("stat-short", "echo 6"),
+            "a malformed line": fake("stat-bad", "for a; do echo six; done"),
+        }
+        for label, stand_in in stat_cases.items():
+            with self.subTest(producer="sizes_of (stat)", case=label):
+                result = run(sizes_call, pointers, {"/usr/bin/stat": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the size", result.stderr)
+        values_call = 'pointer_values "$@"\nprintf "%s\\n" "${pointer_list[@]}"'
+        self.assertEqual(run(values_call, pointers).stdout.split(), ["../..", "../.."])
+        cat_cases = {
+            "fails after plausible output": fake("cat-fail", "printf '../..\\n../..\\n'\nexit 7"),
+            "a short read": fake("cat-short", "printf '../..\\n'"),
+            "a long read": fake("cat-long", "printf '../..\\n../..\\nmore\\n'"),
+        }
+        for label, stand_in in cat_cases.items():
+            with self.subTest(producer="pointer_values (cat)", case=label):
+                result = run(values_call, pointers, {"/bin/cat": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the git pointer files", result.stderr)
+        tr_cases = {
+            "fails after plausible output": fake("tr-fail", "cat\nexit 7"),
+            "a short output": fake("tr-short", "head -c 3"),
+        }
+        for label, stand_in in tr_cases.items():
+            with self.subTest(producer="pointer_values (tr)", case=label):
+                result = run(values_call, pointers, {"/usr/bin/tr": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the git pointer files", result.stderr)
+        with self.subTest(producer="pointer_values (its sizes)"):
+            result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
+            self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        table_call = 'identity_table "$@"\nwithin_ix 0 1 && echo inside || echo outside'
+        table_args = [str(root), str(root / "a/NEW")]
+        self.assertEqual(run(table_call, table_args).stdout, "inside\n")
+        fold = run('ascii_lower "$1" out\nprintf "%s\\n" "$out"', ["/New/ABC.x-Y_z@1+Q/"])
+        self.assertEqual(fold.stdout, "/new/abc.x-y_z@1+q/\n", fold.stderr)
+        table_cases = {
+            ("stat", "too few lines"): ("/usr/bin/stat", fake("id-short", "echo 1:2")),
+            ("stat", "a malformed line"): ("/usr/bin/stat", fake("id-bad", "for a; do echo id; done")),
+            ("stat", "fails after plausible output"): (
+                "/usr/bin/stat",
+                fake("id-fail", "for a; do echo 1:2; done\nexit 7"),
+            ),
+        }
+        for (producer, label), (real, stand_in) in table_cases.items():
+            with self.subTest(producer=f"identity_table ({producer})", case=label):
+                result = run(table_call, table_args, {real: stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        fold_cases = {
+            "keeps upper case": 'ascii_lower() { printf -v "$2" \'%s\' "$1"; }',
+            "changes the length": "ascii_lower() { printf -v \"$2\" '%s' /new/; }",
+            "fails": "ascii_lower() { return 1; }",
+        }
+        for label, prelude in fold_cases.items():
+            with self.subTest(producer="identity_table (fold)", case=label):
+                result = run(table_call, table_args, prelude=prelude)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot fold the absent part", result.stderr)
+        # The overlap consumer: two worktrees under the checkout both reach the deny list; one without its resolved
+        # path, or a protected path without its result, refuses.
+        # dir_entries: an empty directory lists nothing; a listing that fails after plausible output, or counts
+        # other entries than the glob saw, refuses; an unreadable or linked directory refuses before any glob.
+        listed = root / "listed"
+        (listed / ".dot").mkdir(parents=True)
+        (listed / "plain").mkdir()
+        (root / "empty").mkdir()
+        entries_call = 'dir_entries "$1"\nprintf "%s\\n" ${dir_list[@]+"${dir_list[@]}"}'
+        good = run(entries_call, [str(listed)])
+        self.assertEqual(
+            (good.returncode, sorted(good.stdout.split())), (0, [str(listed / ".dot"), str(listed / "plain")])
+        )
+        empty = run(entries_call, [str(root / "empty")])
+        self.assertEqual((empty.returncode, empty.stdout), (0, "\n"), empty.stderr)
+        absent = run(entries_call, [str(root / "absent-dir")])
+        self.assertEqual((absent.returncode, absent.stdout), (0, "\n"), absent.stderr)
+        (root / "linked-dir").symlink_to(listed)
+        ls_cases = {
+            "fails after plausible output": ({"/bin/ls": fake("ls-fail", "printf '.dot\\nplain\\n'\nexit 7")}, listed),
+            "counts fewer entries": ({"/bin/ls": fake("ls-short", "printf 'plain\\n'")}, listed),
+            "counts an entry the glob missed": ({"/bin/ls": fake("ls-more", "printf 'x\\n'")}, root / "empty"),
+            "a linked directory": (None, root / "linked-dir"),
+        }
+        for label, (replace, target) in ls_cases.items():
+            with self.subTest(producer="dir_entries", case=label):
+                result = run(entries_call, [str(target)], replace)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot list", result.stderr)
+        # admin_dirs_match: the admin directories, one to one with the worktrees git lists. Two admin directories
+        # recording one worktree, one recording an unlisted path, and an orphan refuse; so do its producers failing
+        # after plausible output (the gitdir sizes, the gitdir read, the resolving cd).
+        admin_root = root / "common"
+        for t in ("a", "b"):
+            (admin_root / "worktrees" / t).mkdir(parents=True)
+            (root / "trees" / t).mkdir(parents=True)
+            (admin_root / "worktrees" / t / "gitdir").write_text(f"{root}/trees/{t}/.git\n")
+        listed = f"{root}/trees/a {root}/trees/b"
+        match_call = (
+            f"git_fix_hint='' worktree_phys=(${{listed_override:-{listed}}})\n"
+            'dir_entries "$1/worktrees"\nadmin_dirs=("${dir_list[@]}")\nadmin_dirs_match "$1"\necho matched'
+        )
+        good = run(match_call, [str(admin_root)])
+        self.assertEqual((good.returncode, good.stdout), (0, "matched\n"), good.stderr)
+        gitdir_b = admin_root / "worktrees/b/gitdir"
+
+        def recorded(text):
+            return lambda: gitdir_b.write_text(text)
+
+        def orphan():
+            (admin_root / "worktrees/c").mkdir()
+            (admin_root / "worktrees/c/gitdir").write_text(f"{root}/trees/a/.git\n")
+
+        match_cases = {
+            "two admin directories recording one worktree": (recorded(f"{root}/trees/a/.git\n"), None, "", "records too"),
+            "a record git does not list": (recorded(f"{root}/elsewhere/.git\n"), None, "", "does not list"),
+            "an orphan admin directory": (orphan, None, "", "holds 3 worktree git directories but git lists 2"),
+            "stat fails after plausible output": (
+                None, {"/usr/bin/stat": fake("stat-pass-fail", '/usr/bin/stat "$@"\nexit 7')}, "", "cannot read the size",
+            ),
+            "cat fails after plausible output": (
+                None, {"/bin/cat": fake("cat-pass-fail", '/bin/cat "$@"\nexit 7')}, "", "cannot read the git pointer files",
+            ),
+            "cd fails after a plausible PWD": (
+                None, None, 'cd() { if [[ $3 == */trees/b/ ]]; then PWD=/plausible/b; return 7; fi; builtin cd "$@"; }',
+                "cannot resolve the path",
+            ),
+        }  # fmt: skip
+        # A case alias on a case-insensitive volume: git lists `trees/a` and `TREES/A` (two admin directories), which
+        # `cd -P` leaves as two texts for one directory; identity sees one.
+        alias = root / "TREES/A"
+        if alias.exists() and alias.samefile(root / "trees/a"):
+            match_cases["two admin directories recording one worktree by case alias"] = (
+                recorded(f"{alias}/.git\n"),
+                None,
+                f"listed_override='{root}/trees/a {alias}'",
+                "records too",
+            )
+        for label, (mutate, replace, prelude, message) in match_cases.items():
+            with self.subTest(producer="admin_dirs_match", case=label):
+                if mutate:
+                    mutate()
+                try:
+                    result = run(match_call, [str(admin_root)], replace, prelude)
+                    self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                    self.assertIn(message, result.stderr)
+                finally:
+                    gitdir_b.write_text(f"{root}/trees/b/.git\n")
+                    shutil.rmtree(admin_root / "worktrees/c", ignore_errors=True)
+        # git_form_path: git's own pointer form only.
+        form_call = 'for v in "$@"; do if git_form_path "$v"; then echo "ok $v"; else echo "no $v"; fi; done'
+        forms = {
+            "/abs/.git/worktrees/t": "ok", "../..": "ok", "../../.git/worktrees/t": "ok", "t/.git": "ok",
+            "/abs/link/": "no", "/abs/link/.": "no", "/abs/./x": "no", "a/../b": "no", "/abs/..": "no", "": "no",
+            "/abs//x": "no", "../": "no", ".": "no", "/": "no",
+        }  # fmt: skip
+        result = run(form_call, list(forms))
+        self.assertEqual(result.stdout.splitlines(), [f"{v} {k}" for k, v in forms.items()], result.stderr)
+        # git_state_check's mkdir batch (a real launch): every missing info/ and hooks/ in one /bin/mkdir run. A mkdir
+        # that fails outright, one that creates some directories and then fails, and one after which a directory
+        # is a link each refuse; the real mkdir makes all three.
+        state = root / "state"
+
+        def fresh_state():
+            shutil.rmtree(state, ignore_errors=True)
+            (state / "worktrees/a").mkdir(parents=True)
+            (state / "worktrees/a/commondir").write_text("../..\n")
+            (state / "worktrees/a/gitdir").write_text(f"{root}/trees/a/.git\n")
+
+        state_call = f"dry_run=0 git_fix_hint=''\ngit_state_check {state} ''\necho checked"
+        missing = [state / "info", state / "hooks", state / "worktrees/a/info"]
+        fresh_state()
+        good = run(state_call, [])
+        self.assertEqual((good.returncode, good.stdout), (0, "checked\n"), good.stderr)
+        self.assertTrue(all(d.is_dir() and not d.is_symlink() for d in missing))
+        mkdir_cases = {
+            "fails outright": (fake("mkdir-fail", "exit 1"), "cannot create the git state directories"),
+            "creates some, then fails": (
+                fake("mkdir-partial", 'shift\n/bin/mkdir -- "$1"\nexit 1'), "cannot create the git state directories"
+            ),
+            "leaves a link": (
+                fake("mkdir-link", 'shift\nfor d; do last=$d; /bin/mkdir -- "$d"; done\n/bin/rmdir -- "$last"\n'
+                     f'/bin/ln -s {root} "$last"'),
+                "is not a real directory after it was created",
+            ),
+        }  # fmt: skip
+        for label, (stand_in, message) in mkdir_cases.items():
+            with self.subTest(producer="git_state_check (mkdir)", case=label):
+                fresh_state()
+                result = run(state_call, [], {"/bin/mkdir": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+        # The overlap consumer: worktrees outside every write root pass; one without its resolved path refuses.
+        checkout, seats, away = root / "checkout", root / "seats", root / "away"
+        checkout.mkdir()
+        seats.mkdir()
+        for tree in ("w1", "w2"):
+            (away / tree).mkdir(parents=True)
+        trees = [str(away / t) for t in ("w1", "w2")]
+        overlap = (
+            f"seats_root={seats} checkout={checkout} common={root}/no-git repo={checkout} root_ids=$'\\n'\n"
+            f'worktree_paths=({checkout} "$@")\nworktree_phys=("$@")\n'
+        )
+        overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\necho checked'
+        whole = run(overlap_call, trees, prelude=overlap)
+        self.assertEqual((whole.returncode, whole.stdout), (0, "checked\n"), whole.stderr)
+        result = run(overlap_call, trees, prelude=overlap + 'worktree_phys=("$1")')
+        self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        self.assertIn("were not all resolved", result.stderr)
 
     def test_own_slots_that_are_links_are_refused(self):
         """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be
@@ -1246,14 +1557,10 @@ class HcomSeatTest(unittest.TestCase):
         self.assertNotIn("w-link", self.git("worktree", "list"))
 
     def test_absent_paths_under_one_ancestor_are_decided_by_their_components(self):
-        """U85 round 30: below the deepest existing ancestor nothing exists, so `within` decides two absent paths by
+        """U85 round 30: below the deepest existing ancestor nothing exists, so within_ix decides two absent paths by
         that ancestor's identity and their clean components: nested refuses, disjoint passes, `a/b` is no prefix of
         `a/bc`, and an existing outer path is still decided by identity."""
-        text = SEAT.read_text()
-        functions = "\n".join(
-            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "ancestors_of", "deepest_existing", "within")
-        )
+        functions = self.identity_functions()
         stat_args = "(-L -f '%d:%i')" if sys.platform == "darwin" else "(-L -c '%d:%i')"
         root = Path(self.temp.name).resolve() / "anc"
         (root / "exists").mkdir(parents=True)
@@ -1273,12 +1580,426 @@ class HcomSeatTest(unittest.TestCase):
         )
         for outer, inner, expected in cases:
             with self.subTest(outer=outer, inner=inner):
-                script = f'set -euo pipefail\nstat_args={stat_args}\n{functions}\nstatus=0\nwithin "$1" "$2" || status=$?\necho $status\n'
+                script = (
+                    f"set -euo pipefail\nstat_args={stat_args}\n{functions}\n"
+                    'status=0\nidentity_table "$1" "$2"\nwithin_ix 0 1 || status=$?\necho $status\n'
+                )
                 run = subprocess.run(
                     ["/bin/bash", "-c", script, "_", str(root / outer), str(root / inner)],
                     capture_output=True, text=True, check=False, timeout=20,
                 )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (0, f"{expected}\n"), run.stderr)
+
+    def test_a_worktree_inside_a_seat_write_root_refuses(self):
+        """U95 (operator decision U95-nested-refuse-decided): a linked worktree inside any seat's write root refuses the
+        launch, as in U85, dry runs included: Claude Code's `<checkout>/.claude/worktrees/x` inside the orchestrator's
+        checkout, present or absent, for both roles (every launch checks the orchestrator's roots). The message names
+        the worktree and `git worktree move`, `remove` and `prune`. Once it is moved out, both launch."""
+        nested = self.repo / ".claude/worktrees/x"
+        self.git("worktree", "add", "-q", "--detach", str(nested), "HEAD")
+        nested = nested.resolve()
+        for state in ("present", "absent"):
+            if state == "absent":
+                shutil.rmtree(nested)
+            for role in ("orchestrator", "worker"):
+                for dry in (["--dry-run"], []):
+                    with self.subTest(state=state, role=role, dry=bool(dry)):
+                        run = self.seat(role, "--seats-root", self.seats, *dry)
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                        self.assertIn(
+                            f"the worktree {nested} lies inside the orchestrator seat's write root", run.stderr
+                        )
+                        for advice in ("git worktree move", "git worktree remove", "git worktree prune"):
+                            self.assertIn(advice, run.stderr)
+                        self.assertEqual(self.calls_of("hcom"), [])
+        self.git("worktree", "prune")
+        away = Path(self.temp.name).resolve() / "away"
+        self.git("worktree", "add", "-q", "--detach", str(away), "HEAD")
+        for role in ("orchestrator", "worker"):
+            with self.subTest(moved=role):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_worktree_git_directories_are_checked_in_git_s_shape(self):
+        """U95: every worktree's admin directory `<common>/worktrees/<id>` is enumerated once, dot names included as
+        git's own readdir does, held one to one to the worktrees git lists, and checked in git's shape: a real
+        directory with `commondir` (without it git takes the directory for its own common directory and reads a config
+        and hooks a seat can write), none of the names git keeps in the common directory, and each git file absent or
+        a regular file, its type read before its size or content (a FIFO no longer reads as empty or blocks). One
+        fresh worktree outside every write root per deviation; the plain shape launches. A dot-named admin
+        directory's git files are write-denied to every seat."""
+        common = (self.repo / ".git").resolve()
+        away = Path(self.temp.name).resolve() / "away"
+
+        def fifo(name):
+            def make(admin):
+                (admin / name).unlink(missing_ok=True)
+                os.mkfifo(admin / name)
+
+            return make
+
+        def linked_admin(admin):
+            admin.rename(admin.with_name(admin.name + "-real"))
+            admin.symlink_to(admin.name + "-real")
+
+        cases = {
+            "git directory a link": (linked_admin, "is not a real directory (a symbolic link"),
+            "config.worktree a FIFO": (fifo("config.worktree"), "config.worktree is not a regular file"),
+            "commondir a FIFO": (fifo("commondir"), "commondir is not a regular file"),
+            "gitdir a FIFO": (fifo("gitdir"), "gitdir is not a regular file"),
+            "commondir missing": (lambda admin: (admin / "commondir").unlink(), "has no commondir"),
+            "config in it": (lambda admin: (admin / "config").write_text(""), "holds config"),
+            "hooks in it": (lambda admin: (admin / "hooks").mkdir(), "holds hooks"),
+            "objects in it": (lambda admin: (admin / "objects").mkdir(), "holds objects"),
+            "packed-refs in it": (lambda admin: (admin / "packed-refs").write_text(""), "holds packed-refs"),
+            "an orphan beside it": (
+                lambda admin: ((common / "worktrees/orphan").mkdir(), (common / "worktrees/orphan/commondir").write_text("../..\n")),
+                "worktree git directories but git lists",
+            ),
+        }  # fmt: skip
+        for n, (label, (mutate, message)) in enumerate(cases.items()):
+            with self.subTest(deviation=label):
+                tree = away / f"d{n}"
+                self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+                admin = common / "worktrees" / f"d{n}"
+                try:
+                    mutate(admin)
+                    run = subprocess.run(
+                        [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
+                        capture_output=True, text=True, check=False, timeout=120,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message, run.stderr)
+                    self.assertIn("git worktree", run.stderr)
+                finally:
+                    # Always undone, a FIFO above all: a later `git worktree add` would block reading it.
+                    shutil.rmtree(tree, ignore_errors=True)
+                    if admin.is_symlink():
+                        admin.unlink()
+                        admin = admin.with_name(admin.name + "-real")
+                    shutil.rmtree(admin, ignore_errors=True)
+                    shutil.rmtree(common / "worktrees/orphan", ignore_errors=True)
+        plain = away / "plain"
+        self.git("worktree", "add", "-q", "--detach", str(plain), "HEAD")
+        hidden = common / "worktrees/.hidden"
+        (common / "worktrees/plain").rename(hidden)
+        (plain / ".git").write_text(f"gitdir: {hidden}\n")
+        self.assertIn(f"worktree {plain}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(shape="plain, dot-named", role=role):
+                run = self.seat(role, "--seats-root", self.seats)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                deny = self.settings_of(role)["filesystem"]["denyWrite"]
+                for name in ("gitdir", "commondir", "config.worktree", "info"):
+                    self.assertIn(str(hidden / name), deny)
+
+    def test_a_launch_from_a_worktree_with_a_fifo_commondir_refuses_before_git(self):
+        """U95 round 12: the launch checkout's own git files are type-checked before its common directory is derived
+        and before any git command: from a linked worktree whose admin directory's `commondir` is a FIFO (or a link,
+        or missing) the launch refuses at once instead of leaving the guess at the admin directory, missing the FIFO
+        in the scan and blocking in the first git command. No git process starts (a PATH git that logs every call),
+        and the run ends well inside the timeout. A `.git` that is a link refuses the same way."""
+        common = (self.repo / ".git").resolve()
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        admin = common / "worktrees" / "t"
+        log = Path(self.temp.name) / "git-calls"
+        wrapper = Path(self.temp.name) / "logging-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        (wrapper / "git").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real_git}" "$@"\n')
+        (wrapper / "git").chmod(0o755)
+        env = {**self.env, "PATH": f"{wrapper}:{self.env['PATH']}"}
+
+        def fifo():
+            (admin / "commondir").unlink()
+            os.mkfifo(admin / "commondir")
+
+        def link():
+            (admin / "commondir").unlink()
+            (admin / "commondir").symlink_to(common / "worktrees" / "elsewhere")
+
+        def git_link():
+            (tree / ".git").rename(tree / "dot-git")
+            (tree / ".git").symlink_to("dot-git")
+
+        cases = {
+            "commondir a FIFO": (fifo, "commondir is not a regular file"),
+            "commondir a link": (link, "commondir is not a regular file"),
+            "commondir missing": (lambda: (admin / "commondir").unlink(), "has no commondir"),
+            ".git a link": (git_link, "is not a regular file or a real directory"),
+        }
+        for label, (mutate, message) in cases.items():
+            with self.subTest(label):
+                mutate()
+                try:
+                    log.unlink(missing_ok=True)
+                    run = subprocess.run(
+                        [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+                        capture_output=True, text=True, check=False, timeout=60,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message, run.stderr)
+                    self.assertFalse(log.exists(), "a git command ran before the refusal")
+                finally:
+                    (admin / "commondir").unlink(missing_ok=True)
+                    (admin / "commondir").write_text("../..\n")
+                    if (tree / ".git").is_symlink():
+                        (tree / ".git").unlink()
+                        (tree / "dot-git").rename(tree / ".git")
+        log.unlink(missing_ok=True)
+        run = subprocess.run(
+            [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+            capture_output=True, text=True, check=False, timeout=120,
+        )  # fmt: skip
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(log.exists(), "the logging git is the one hcom-seat runs")
+
+    def test_git_pointers_must_be_in_git_s_form(self):
+        """U95 round 19: a path read from a git pointer file must be in git's own form before any type test: a trailing
+        `/` or `/.` makes `[[ -L … ]]` follow a link, so a `.git` naming `<link>/` passed as a real directory. The
+        launch checkout's `.git` (`<link>/`, `<link>/.`, `a/../b`, empty) refuses before any git command; another
+        worktree's `commondir` (`../../`, `../../.`, `../x/../..`) and `gitdir` back-pointer (`<tree>/./.git`,
+        `<tree>/.git/`) refuse in the checks."""
+        common = (self.repo / ".git").resolve()
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        admin = common / "worktrees/t"
+        alias = Path(self.temp.name).resolve() / "alias"
+        alias.symlink_to(admin)
+        log = Path(self.temp.name) / "git-calls"
+        wrapper = Path(self.temp.name) / "logging-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        (wrapper / "git").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real_git}" "$@"\n')
+        (wrapper / "git").chmod(0o755)
+        env = {**self.env, "PATH": f"{wrapper}:{self.env['PATH']}"}
+        dot_git = (tree / ".git").read_text()
+        for label, value in (
+            ("a link with a trailing slash", f"{alias}/"),
+            ("a link with a trailing dot", f"{alias}/."),
+            ("a .. after a name", f"{common}/worktrees/x/../t"),
+            ("empty", ""),
+        ):
+            with self.subTest(pointer=".git", form=label):
+                (tree / ".git").write_text(f"gitdir: {value}\n")
+                log.unlink(missing_ok=True)
+                run = subprocess.run(
+                    [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=tree, env=env,
+                    capture_output=True, text=True, check=False, timeout=60,
+                )  # fmt: skip
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("not a path in git's own form", run.stderr)
+                self.assertFalse(log.exists(), "a git command ran before the refusal")
+        (tree / ".git").write_text(dot_git)
+        for name, values, original in (
+            ("commondir", ("../../", "../../.", "../x/../.."), "../..\n"),
+            ("gitdir", (f"{tree}/./.git", f"{tree}/.git/"), f"{tree}/.git\n"),
+        ):
+            for value in values:
+                with self.subTest(pointer=name, form=value):
+                    (admin / name).write_text(f"{value}\n")
+                    run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    # git lists `<tree>/.git/` itself as the worktree (it strips only a final `/.git`), so that record
+                    # refuses one step earlier, as not backed by a directory.
+                    self.assertTrue(
+                        f"{admin / name} holds '{value}', not a path in git's own form" in run.stderr
+                        or f"the worktree record {value} is not backed by a directory" in run.stderr,
+                        run.stderr,
+                    )
+            (admin / name).write_text(original)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def add_worktrees(self, first, count, absent=False):
+        """Register worktrees w<first>..w<first+count-1> outside every seat write root the way `git worktree add
+        --no-checkout` does, every other one with an empty `config.worktree`; with `absent`, their directories are
+        never made (prunable records, as after a deleted worktree)."""
+        common = (self.repo / ".git").resolve()
+        outside = Path(self.temp.name).resolve() / "many"
+        outside.mkdir(exist_ok=True)
+        for n in range(first, first + count):
+            tree = outside / f"w{n}"
+            admin = common / "worktrees" / f"w{n}"
+            admin.mkdir(parents=True)
+            (admin / "gitdir").write_text(f"{tree}/.git\n")
+            (admin / "commondir").write_text("../..\n")
+            (admin / "HEAD").write_text(f"{self.head}\n")
+            if n % 2:
+                (admin / "config.worktree").write_text("")
+            if not absent:
+                tree.mkdir()
+                (tree / ".git").write_text(f"gitdir: {admin}\n")
+
+    def spawn_counts(self):
+        """Run a worker dry run and count what hcom-seat starts, recorded by bash itself: BASH_ENV installs a DEBUG
+        trap, inherited by every function and subshell (`set -T`), that appends `$BASH_SUBSHELL`, the subshell level
+        of the last record in this shell, and `$BASH_COMMAND` before each simple command, in one O_APPEND write. Two
+        counts come out: the commands whose command word runs a program (an absolute path such as /usr/bin/stat or
+        /bin/mkdir, a program found by name, or a variable command word such as `"${git_cmd[@]}"`; no builtin,
+        keyword or function of hcom-seat or regime-env), and the forked subshells (a record whose level exceeds the
+        last level its own shell recorded: each command substitution, pipeline element or `( … )` that runs a
+        command). Every process hcom-seat itself starts is one of the two; what those processes start in turn
+        (xargs's stat runs, git's helpers) is theirs. Deterministic: no clock, no host load, no trace interleaving."""
+        names = subprocess.run(
+            ["/bin/bash", "-c", "compgen -b; compgen -k"], capture_output=True, text=True, check=True
+        )
+        internal = set(names.stdout.split())
+        for source in (SEAT, SEAT.parent / "regime-env"):
+            internal |= set(re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\(\) \{", source.read_text(), re.MULTILINE))
+        hook = Path(self.temp.name) / "count-hook.bash"
+        hook.write_text(
+            "set -T\n"
+            """trap 'builtin printf "%s\\t%s\\t%s\\0" "$BASH_SUBSHELL" "${u95_level:-0}" "$BASH_COMMAND" """
+            """>> "$U95_TRACE"; u95_level=$BASH_SUBSHELL' DEBUG\n"""
+        )
+        trace = Path(self.temp.name) / "count-trace"
+        trace.write_text("")
+        env = {**self.env, "BASH_ENV": str(hook), "U95_TRACE": str(trace)}
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run", **env)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        assignment = re.compile(r"""^[A-Za-z_]\w*(\[[^]]*\])?\+?=("[^"]*"|'[^']*'|\$\([^)]*\)|[^\s"'])*(\s+|$)""")
+        programs, subshells = collections.Counter(), 0
+        for record in trace.read_text().split("\0")[:-1]:
+            level, last, command = record.split("\t", 2)
+            subshells += int(level) > int(last)
+            if re.match(r"[A-Za-z_]\w*(\[[^]]*\])?\+?=\(", command):
+                continue  # an array assignment runs nothing
+            while (prefix := assignment.match(command)) and prefix.end():
+                command = command[prefix.end() :]
+            word = command.split()[0] if command.split() else ""
+            if word.startswith(("/", '"$', "$")) or (re.fullmatch(r"[A-Za-z][\w.+-]*", word) and word not in internal):
+                programs[word] += 1
+        return programs, subshells
+
+    def assert_same_counts(self, few, many):
+        """The program counts, by name, and the subshell counts of two spawn_counts results are equal."""
+        self.assertIn("/usr/bin/stat", few[0], "the counter sees programs run by absolute path")
+        grown = many[0].copy()
+        grown.subtract(few[0])
+        self.assertEqual(+grown, collections.Counter(), "programs run more often with more worktrees")
+        self.assertEqual(-grown, collections.Counter(), "programs run less often with more worktrees")
+        self.assertEqual(many[1], few[1], "subshells forked with more worktrees and with fewer")
+
+    def test_the_checks_start_no_more_processes_for_more_worktrees(self):
+        """U95, a regression test for the measured shape "present worktrees": the overlap and git-state checks
+        resolve worktree records in batches (one identity table, one size read, one pointer read, one resolving
+        subshell), and a dry run with 300 registered worktrees started the same programs and subshells as one with 10.
+        Not a general guarantee; the user-visible requirement is the launch latency (PR body). The configs here are
+        absent or empty; non-empty ones have their own test. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
+        wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
+        stat runs and subshells per worktree and write root)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10)
+        few = self.spawn_counts()
+        self.add_worktrees(10, 290)
+        self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
+        self.assert_same_counts(few, self.spawn_counts())
+
+    def test_each_non_empty_config_worktree_costs_one_git_config_and_an_empty_one_nothing(self):
+        """U95 round 14: the one per-worktree cost the checks keep. git config validates one --file per run (a
+        concatenation would let one file's section run into the next), so each non-empty `config.worktree` (a sparse
+        checkout's `core.sparseCheckout`) costs exactly one git process in one subshell; an empty one (what a launch
+        creates) is skipped by its size, and an absent one is not read. 10 worktrees with 5 empty configs, then 3 made
+        sparse (+3), then 300 worktrees with 150 empty configs and the same 3 sparse (no more)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10)
+        empty = self.spawn_counts()
+        common = (self.repo / ".git").resolve()
+        for n in (1, 3, 5):
+            (common / f"worktrees/w{n}/config.worktree").write_text("[core]\n\tsparseCheckout = true\n")
+        sparse = self.spawn_counts()
+        grown = sparse[0].copy()
+        grown.subtract(empty[0])
+        self.assertEqual(+grown, collections.Counter({'"${git_cmd[@]}"': 3}), "one git per non-empty config.worktree")
+        self.assertEqual(-grown, collections.Counter(), "nothing runs less often")
+        self.assertEqual(sparse[1], empty[1] + 3, "one subshell per non-empty config.worktree")
+        self.add_worktrees(10, 290)
+        self.assert_same_counts(sparse, self.spawn_counts())
+
+    def test_two_git_directories_recording_one_worktree_by_case_alias_refuse(self):
+        """U95 round 15: on a case-insensitive volume (APFS by default; skipped on a case-sensitive one, detected at
+        runtime) a second admin directory whose `gitdir` spells an existing worktree in other case makes git list two
+        worktrees for one directory. `cd -P` keeps the spelling, so the texts differ; admin_dirs_match compares
+        identities and refuses the duplicate."""
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        alias = tree.parent.parent / "AWAY" / "T"
+        if not (alias.exists() and alias.samefile(tree)):
+            self.skipTest("a case-sensitive volume: no case alias")
+        common = (self.repo / ".git").resolve()
+        twin = common / "worktrees" / "twin"
+        twin.mkdir()
+        for name in ("commondir", "HEAD"):
+            shutil.copy(common / "worktrees/t" / name, twin / name)
+        (twin / "gitdir").write_text(f"{alias}/.git\n")
+        self.assertIn(f"worktree {alias}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("which another worktree git directory records too", run.stderr)
+        shutil.rmtree(twin)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_worktree_record_not_backed_by_a_directory_refuses(self):
+        """U95 round 16: a registered worktree whose path is a regular file, or lies below one, is a corrupt record,
+        not a worktree: the launch refuses for both roles, dry runs included, naming the record and `git worktree
+        prune`/`git worktree repair`, instead of resolving it with a per-record fallback process. Without the record
+        the launch succeeds."""
+        scratch = Path(self.temp.name).resolve()
+        common = (self.repo / ".git").resolve()
+        (scratch / "stale-file").write_text("")
+        (scratch / "under").write_text("")
+        for label, path in (("the path a regular file", scratch / "stale-file"), ("below a file", scratch / "under/x")):
+            with self.subTest(label):
+                admin = common / "worktrees" / "stale"
+                admin.mkdir(parents=True)
+                try:
+                    (admin / "gitdir").write_text(f"{path}/.git\n")
+                    (admin / "commondir").write_text("../..\n")
+                    (admin / "HEAD").write_text(f"{self.head}\n")
+                    self.assertIn(f"worktree {path}\n", self.git("worktree", "list", "--porcelain") + "\n")
+                    for role in ("worker", "orchestrator"):
+                        run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
+                        self.assertIn(f"the worktree record {path} is not backed by a directory", run.stderr)
+                        self.assertIn("git worktree prune", run.stderr)
+                        self.assertIn("git worktree repair", run.stderr)
+                finally:
+                    shutil.rmtree(admin)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_more_seat_directories_start_no_more_processes(self):
+        """U95 round 13: the seat directories under the seats root are resolved in one batch (physical_paths) in both
+        overlap checks; a regression test for the measured shape "seats": a dry run with 10 of them started the same
+        processes as one with 1. Before, each cost
+        one physical_path subshell per check (1 vs 10 seats: 2 vs 11 substitutions per check)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        seats = Path(self.seats)
+        (seats / "s0").mkdir(parents=True)
+        few = self.spawn_counts()
+        for n in range(1, 10):
+            (seats / f"s{n}").mkdir()
+        self.assertEqual(len([p for p in seats.iterdir() if p.name.startswith("s")]), 10)
+        self.assert_same_counts(few, self.spawn_counts())
+
+    def test_absent_worktrees_start_no_more_processes_either(self):
+        """U95 round 12: registered worktrees whose directories are gone (prunable records, outside every write root)
+        are resolved in the same one subshell as present ones (physical_paths: the deepest existing ancestor by
+        builtins, then `cd -P`); a regression test for the measured shape "absent": 300 of them started the same
+        processes as 10. Before, each absent path cost
+        two subshells of physical_path (10 vs 300 absent: 21 vs 601 subshells)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10, absent=True)
+        self.assertEqual(self.git("worktree", "list").count("prunable"), 10)
+        few = self.spawn_counts()
+        self.add_worktrees(10, 290, absent=True)
+        self.assertEqual(self.git("worktree", "list").count("prunable"), 300)
+        self.assert_same_counts(few, self.spawn_counts())
 
     def test_a_fresh_spark_first_launch_with_the_default_paths(self):
         """U85 round 30: the dotfiles program's first launch on a fresh host (hcom-orchestration SKILL step 0):

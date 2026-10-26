@@ -319,6 +319,95 @@ ancestors_of() {
     done
 }
 
+# @description Set `dir_list` to every entry of directory `$1`, dot names included, `.` and `..` excluded, in glob
+#   order (regime-cutover U95): `dotglob` and `nullglob` for this one glob, then restored. Every directory whose
+#   entries matter (the worktree git directories, a seats root, a `.sandbox`) is listed this way, so no consumer sees
+#   a dot-named entry that another misses. Fail-closed, so `nullglob` cannot pass a failed read off as an empty
+#   directory: an absent `$1` lists nothing; one that exists must be a real directory, no link, readable and
+#   searchable, and `/bin/ls -A` (its status checked) must count exactly the entries the glob saw. Anything else, an
+#   unreadable directory or one whose read fails, refuses (exit 2).
+# @arg $1 string A directory.
+# @set dir_list The entries, as `$1/<name>`.
+dir_entries() {
+    local de_dot=0 de_null=0 de_p de_listing de_line de_n=0
+    dir_list=()
+    if [[ ! -e $1 && ! -L $1 ]]; then return 0; fi
+    [[ -d $1 && ! -L $1 ]] || refuse "cannot list $1: it is not a real directory (a symbolic link or another file)"
+    [[ -r $1 && -x $1 ]] || refuse "cannot list $1: it is not readable"
+    if shopt -q dotglob; then de_dot=1; fi
+    if shopt -q nullglob; then de_null=1; fi
+    shopt -s dotglob nullglob
+    for de_p in "$1"/*; do
+        case ${de_p##*/} in
+        . | ..) ;;
+        *) dir_list+=("${de_p}") ;;
+        esac
+    done
+    if ((! de_dot)); then shopt -u dotglob; fi
+    if ((! de_null)); then shopt -u nullglob; fi
+    de_listing=$(/bin/ls -A -- "$1" && printf .) || refuse "cannot list $1: reading it failed"
+    de_listing=${de_listing%.}
+    if [[ -n ${de_listing} ]]; then
+        while IFS= read -r de_line; do
+            [[ -n ${de_line} ]] || refuse "cannot list $1: reading it gave an empty name"
+            de_n=$((de_n + 1))
+        done <<< "${de_listing%$'\n'}"
+    fi
+    ((de_n == ${#dir_list[@]})) ||
+        refuse "cannot list $1: reading it gave ${de_n} entries, the glob ${#dir_list[@]} (a failed or changing read)"
+}
+
+# @description Refuse (exit 2) when `$1`, a seats root's `.sandbox`, exists and cannot be listed (regime-cutover
+#   U85): every seat's sandbox denies reads of it, so this process runs inside a seat that unset the environment
+#   markers. Checked before the directory is enumerated (dir_entries), which would refuse with a generic message.
+# @arg $1 string A `.sandbox` directory.
+refuse_inside_a_seat() {
+    if [[ -e $1 ]] && ! /bin/ls "$1" > /dev/null 2>&1; then
+        refuse "refused inside a seat sandbox ($1 is unreadable): launch seats from a terminal outside every seat"
+    fi
+}
+
+# @description Set `settings_files` to the srt settings file of every seat under each seats root `$@`, dot-named
+#   sandbox entries included (dir_entries), whether or not the file exists (the caller skips absent ones).
+# @arg $@ string Seats roots.
+# @set settings_files The paths.
+seat_settings_files() {
+    local root seat
+    settings_files=()
+    for root in "$@"; do
+        refuse_inside_a_seat "${root%/}/.sandbox"
+        dir_entries "${root%/}/.sandbox"
+        for seat in ${dir_list[@]+"${dir_list[@]}"}; do settings_files+=("${seat}/srt-settings.json"); done
+    done
+}
+
+# @description Succeed when `$1`, a path read from a git pointer file (a `.git` file's `gitdir:`, a `commondir`, a
+#   `gitdir` back-pointer), is in git's own form (regime-cutover U95): non-empty, no control character, no empty
+#   component (`//`), no trailing `/`, no `.` component, and `..` only as the leading components of a relative path
+#   (git's relative form, `../..` or `../../.git/worktrees/x`). git writes its pointers so. Anything else refuses at
+#   the caller before any type test, since a trailing `/` or `/.` makes `[[ -L … ]]` follow a link and a `..` after
+#   a link resolves differently from the text. Builtins only.
+# @arg $1 string The path as read.
+# @exitcode 1 It is not in git's form.
+git_form_path() {
+    local rest c lead=1
+    [[ -n $1 && $1 != */ && $1 != *//* && $1 != *[[:cntrl:]]* ]] || return 1 # lint-comparisons: allow a form test on one path, no compare
+    rest=$1
+    if [[ ${rest} == /* ]]; then # lint-comparisons: allow an absolute-path test
+        rest=${rest#/}
+        lead=0
+    fi
+    while [[ -n ${rest} ]]; do
+        c=${rest%%/*}
+        if [[ ${rest} == */* ]]; then rest=${rest#*/}; else rest=''; fi # lint-comparisons: allow splitting one path into components
+        case ${c} in
+        .) return 1 ;;
+        ..) ((lead)) || return 1 ;;
+        *) lead=0 ;;
+        esac
+    done
+}
+
 # @description Print the physical form of the absolute path `$1`: every symlink followed (at most 40 hops in all,
 #   one budget for the whole resolution) and the directory in its `pwd -P` form. A path that does not exist yet is
 #   its nearest existing ancestor's physical form with the rest appended, so a write root a launch has not created
@@ -485,6 +574,51 @@ pointer_value() {
     printf '%s\n' "${content}"
 }
 
+# @description Set `size_list` to the byte size of each file `$@`, links followed, in order, from one
+#   `/usr/bin/stat` run (regime-cutover U95). Fail-closed: the run's status (xargs passes a failed stat on), every
+#   line a bare number, and exactly one line per file; anything else refuses (exit 2) before a size is used.
+# @arg $@ string Files.
+# @set size_list The sizes.
+sizes_of() {
+    local out line
+    size_list=()
+    (($#)) || return 0
+    out=$(printf '%s\0' "$@" | /usr/bin/xargs -0 /usr/bin/stat "${size_args[@]}" --) || refuse 'cannot read the size of the git state files'
+    while IFS= read -r line; do
+        [[ ${line} =~ ^[0-9]+$ ]] || refuse "cannot read the size of a git state file ('${line}')"
+        size_list+=("${line}")
+    done <<< "${out}"
+    ((${#size_list[@]} == $#)) || refuse "cannot read the size of every git state file (${#size_list[@]} of $#)"
+}
+
+# @description Set `pointer_list` to the value of each git pointer file `$@`, with the rule of pointer_value
+#   (regime-cutover U95): all are read in one pass (`cat | tr`, NUL bytes made \001 there) and cut at the sizes one
+#   `stat` gave (sizes_of). The pass counts only when its pipeline succeeded (the `.` sentinel follows its status)
+#   and the bytes read number the sizes' sum, checked before any value is cut, so a failed or short read is never
+#   used. A file that is empty, or not a single line free of control characters once one final newline is dropped,
+#   refuses (exit 2).
+# @arg $@ string Pointer files.
+# @set pointer_list The values.
+pointer_values() {
+    local LC_ALL=C all value off=0 total=0 i=0 files=("$@")
+    pointer_list=()
+    (($#)) || return 0
+    sizes_of "$@"
+    all=$({ printf '%s\0' "$@" | /usr/bin/xargs -0 /bin/cat -- | /usr/bin/tr '\000' '\001'; } && printf .) ||
+        refuse 'cannot read the git pointer files'
+    all=${all%.}
+    for ((i = 0; i < $#; i++)); do total=$((total + size_list[i])); done
+    ((total == ${#all})) || refuse "cannot read the git pointer files whole (${#all} of ${total} bytes)"
+    for ((i = 0; i < $#; i++)); do
+        value=${all:off:size_list[i]}
+        off=$((off + size_list[i]))
+        value=${value%$'\n'}
+        [[ -n ${value} && ${value} != *[[:cntrl:]]* ]] ||
+            refuse "cannot read ${files[i]} as one line free of control characters${pointer_hint:-}"
+        pointer_list+=("${value}")
+    done
+}
+
 # @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
 #   interpreter when it is a `#!` script (`#!/abs/interp` or `#!/usr/bin/env <name>`, no arguments; an interpreter
 #   that is itself a script is refused). No part may be, or lie under, a write root of any seat (`root_ids`), since
@@ -597,8 +731,8 @@ if [[ ${os} == Linux && ! -x /usr/bin/jq ]]; then
     refuse 'the system jq /usr/bin/jq is absent; it reads the seat sandbox settings on Linux (apt install jq)'
 fi
 case ${os} in
-Darwin) stat_args=(-L -f '%d:%i') ;;
-Linux) stat_args=(-L -c '%d:%i') ;;
+Darwin) stat_args=(-L -f '%d:%i') size_args=(-L -f '%z') ;;
+Linux) stat_args=(-L -c '%d:%i') size_args=(-L -c '%s') ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 # srt 0.0.81 keeps its own TMPDIR writable whatever the policy says (SANDBOX_OWN_WRITE_PATHS in
@@ -621,30 +755,47 @@ for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT
     roots+=("${root}")
 done
 # The checkout this runs in, found with builtins: the nearest ancestor with a `.git`, and for a worktree the git
-# directory its `.git` file names and that directory's common directory and main checkout.
+# directory its `.git` file names and that directory's common directory and main checkout. Type before content, as in
+# git_state_check (regime-cutover U95): `.git` is a regular file or a real directory, never a link; the git directory
+# a `.git` file names is a real directory; its `commondir` is absent or a regular file, no link. A FIFO there would
+# leave the guess at the admin directory, so the scan below would miss it and the first git command would block on
+# it. A linked worktree's admin directory (git writes a `gitdir` file only there) must hold its `commondir`: without
+# it git takes the admin directory for the common directory. All before any git command runs.
 cwd_real=$(pwd -P) || refuse 'cannot resolve the working directory'
 top=${cwd_real}
 while [[ ! -e ${top}/.git && -n ${top} ]]; do top=${top%/*}; done
 if [[ -n ${top} || -e /.git ]]; then
     top=${top:-/}
     gitdir=${top}/.git
+    [[ ! -L ${gitdir} && (-f ${gitdir} || -d ${gitdir}) ]] ||
+        refuse "${gitdir} is not a regular file or a real directory (a symbolic link, FIFO, device or socket), which git would follow or block on; launch from a checkout git made"
     if [[ -f ${gitdir} ]]; then
         line=$(pointer_value "${gitdir}") || refuse "cannot read ${gitdir} as one line free of control characters"
         [[ ${line} == 'gitdir: '* ]] || refuse "${gitdir} holds no 'gitdir: ' line" # lint-comparisons: allow the literal prefix git writes, no path compare
         gitdir=${line#gitdir: }
+        git_form_path "${gitdir}" ||
+            refuse "${top}/.git names '${gitdir}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path); repair the worktree (\`git worktree repair\`)"
         case ${gitdir} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) ;;
         *) gitdir=${top}/${gitdir} ;;
         esac
+        [[ -d ${gitdir} && ! -L ${gitdir} ]] ||
+            refuse "the git directory ${gitdir} that ${top}/.git names is not a real directory (absent, a symbolic link or another file); repair the worktree (\`git worktree repair\`) or launch elsewhere"
     fi
     common_guess=${gitdir}
-    if [[ -f ${gitdir}/commondir ]]; then
+    if [[ -e ${gitdir}/commondir || -L ${gitdir}/commondir ]]; then
+        [[ -f ${gitdir}/commondir && ! -L ${gitdir}/commondir ]] ||
+            refuse "the git state ${gitdir}/commondir is not a regular file (a symbolic link, FIFO, device, socket or directory), which git would follow or block on; replace it with a regular file holding ../.., or delete the worktree and run \`git worktree prune\` from the main checkout"
         line=$(pointer_value "${gitdir}/commondir") ||
             refuse "cannot read ${gitdir}/commondir as one line free of control characters"
+        git_form_path "${line}" ||
+            refuse "${gitdir}/commondir holds '${line}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path); replace it with ../.."
         case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) common_guess=${line} ;;
         *) common_guess=${gitdir}/${line} ;;
         esac
+    elif [[ -e ${gitdir}/gitdir || -L ${gitdir}/gitdir ]]; then
+        refuse "the worktree git directory ${gitdir} has no commondir, so git would take it for its own common directory; delete the worktree and run \`git worktree prune\` from the main checkout"
     fi
     roots+=("${top}" "${gitdir}" "${common_guess}")
     # The main checkout is the common directory's parent only when that parent's `.git` is the common directory, by
@@ -659,9 +810,9 @@ if [[ -n ${top} || -e /.git ]]; then
 fi
 # Every existing seat settings file, read by the system's reader (allow_write_list); an entry that cannot be read, or
 # that is not a clean path, is a refusal.
-for settings_file in ${seats_root:+"${seats_root}"/.sandbox/*/srt-settings.json} \
-    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"/.sandbox/*/srt-settings.json} \
-    "${HOME}"/.local/state/omp-seats/*/.sandbox/*/srt-settings.json; do
+dir_entries "${HOME}/.local/state/omp-seats"
+seat_settings_files ${seats_root:+"${seats_root}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${dir_list[@]+"${dir_list[@]}"}
+for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     [[ -e ${settings_file} ]] || continue
     listed=$(allow_write_list "${os}" "${settings_file}") ||
         refuse "cannot read a clean allowWrite list from ${settings_file}"
@@ -737,6 +888,8 @@ trusted_ids=$(/usr/bin/stat "${stat_args[@]}" -- "${trusted_dirs[@]}") ||
 trusted_ids=$'\n'${trusted_ids}$'\n'
 # Every linked tool's interpreter chain (`#!/abs/interp`, or `#!/usr/bin/env X` with X looked up on this PATH, as it
 # will be when the tool runs) passes the same identity check before anything runs it; git runs next (regime-env).
+# Plain `*` here: the private tool directory is hcom-seat's own (0700, outside every write root), and its only dot
+# entries are its own `.<tool>.<pid>` link temporaries, which no lookup by name finds.
 for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
@@ -771,40 +924,92 @@ done
 # @arg $1 string The physical git common directory.
 # @arg $2 string The physical seat directory, or empty.
 # @set git_state The paths, for the seat's write denies.
+# The repair a refusal over a worktree's git files names (regime-cutover U95).
+# shellcheck disable=SC2016 # literal backquotes in a message
+git_fix_hint='; repair or drop the worktree first (`git worktree move`, `git worktree remove` or `git worktree prune`)'
 git_state_check() {
-    local common_real=$1 dir_real=$2 wt f names name line target
+    local common_real=$1 dir_real=$2 wt f names name line target i pointers=() configs=() missing=()
     git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
-    for wt in "${common_real}"/worktrees/*/; do
-        [[ -d ${wt} ]] || continue
-        wt=${wt%/}
+    # Git's own shape for every linked worktree (regime-cutover U95, from git 2.56's source, PR body "Admin directory
+    # files"): `worktrees` is a real directory; each admin directory is a real directory holding `commondir`, or git
+    # would take the admin directory for its own common directory (setup.c get_common_dir_noenv) and read its
+    # `config` and `hooks`, which a seat can write; and it holds none of the names path.c's common_list sends to the
+    # common directory (git never writes them into an admin directory; `refs`, `logs` and `info` it does).
+    [[ ! -L ${common_real}/worktrees ]] ||
+        refuse "the worktree git directories ${common_real}/worktrees are a symbolic link, which host git would follow${git_fix_hint}"
+    # One enumeration, dot names included, as git's own readdir_skip_dot_and_dotdot (worktree.c:203): every entry
+    # must be a real directory (admin_dirs_match later holds it to the worktrees git lists, one to one).
+    dir_entries "${common_real}/worktrees"
+    admin_dirs=(${dir_list[@]+"${dir_list[@]}"})
+    for wt in ${admin_dirs[@]+"${admin_dirs[@]}"}; do
+        [[ -d ${wt} && ! -L ${wt} ]] ||
+            refuse "the worktree git directory ${wt} is not a real directory (a symbolic link, file or other entry), which host git would follow or no worktree owns${git_fix_hint}"
+        [[ -e ${wt}/commondir || -L ${wt}/commondir ]] ||
+            refuse "the worktree git directory ${wt} has no commondir, so git would take it for its own common directory and read its config and hooks${git_fix_hint}"
+        for f in branches common hooks lost-found objects remotes worktrees rr-cache svn config gc.pid packed-refs shallow; do
+            [[ ! -e ${wt}/${f} && ! -L ${wt}/${f} ]] ||
+                refuse "the worktree git directory ${wt} holds ${f}, which git keeps in the common directory and never writes there${git_fix_hint}"
+        done
         git_state+=("${wt}/config.worktree" "${wt}/info")
         for f in commondir gitdir; do
             if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
         done
-        if [[ -e ${wt}/commondir ]]; then
-            # Read here before any git may run (the first call precedes the first git command); git has no query for
-            # another worktree's commondir. One line or a refusal: git would consume every line.
-            line=$(pointer_value "${wt}/commondir") ||
-                refuse "cannot read ${wt}/commondir as one line free of control characters"
-            case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-            /*) target=${line} ;;
-            *) target=${wt}/${line} ;;
-            esac
-            [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
-        fi
     done
     if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then git_state+=("${dir_real}/.git"); fi
+    # The file type comes first, before any size or content is read (U95): a FIFO reads as size 0 and would block
+    # a read or a write, and a device or socket is no file git means. Each entry is absent, or a real directory
+    # (`info`, `hooks`), or a regular file, never a symbolic link.
     for f in "${git_state[@]}"; do
-        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
-        # A dry run validates and creates nothing: an absent file holds no setting, and the real launch creates it.
-        ((! dry_run)) || continue
+        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link${git_fix_hint}"
+        [[ -e ${f} ]] || continue
         case ${f##*/} in
-        info | hooks) [[ -d ${f} ]] || /bin/mkdir -p "${f}" || refuse "cannot create ${f}" ;;
-        config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
+        info | hooks) [[ -d ${f} ]] || refuse "the git state ${f} is not a directory${git_fix_hint}" ;;
+        *) [[ -f ${f} ]] || refuse "the git state ${f} is not a regular file (a FIFO, device, socket or directory)${git_fix_hint}" ;;
         esac
+        if [[ ${f##*/} == commondir && ${f} == "${common_real}"/worktrees/* ]]; then pointers+=("${f}"); fi # lint-comparisons: allow a fixed file name below the common directory
     done
+    # Read here before any git may run (the first call precedes the first git command); git has no query for
+    # another worktree's commondir. One line or a refusal: git would consume every line. All in one read (U95).
+    pointer_values ${pointers[@]+"${pointers[@]}"}
+    for ((i = 0; i < ${#pointers[@]}; i++)); do
+        wt=${pointers[i]%/commondir}
+        line=${pointer_list[i]}
+        git_form_path "${line}" ||
+            refuse "${pointers[i]} holds '${line}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path)${git_fix_hint}"
+        case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) target=${line} ;;
+        *) target=${wt}/${line} ;;
+        esac
+        [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
+    done
+    # A dry run validates and creates nothing: an absent file holds no setting, and the real launch creates it. The
+    # absent `info/` and `hooks/` directories are made in one `mkdir` (U95), without -p: each parent is a real
+    # directory checked above, so an entry that appeared since the check fails the run, which refuses. Each is then
+    # checked to be a real directory, no link. An empty `config.worktree` is made by a builtin.
+    if ((! dry_run)); then
+        for f in "${git_state[@]}"; do
+            case ${f##*/} in
+            info | hooks) [[ -d ${f} ]] || missing+=("${f}") ;;
+            config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
+            esac
+        done
+        if ((${#missing[@]})); then
+            /bin/mkdir -- "${missing[@]}" || refuse "cannot create the git state directories (${missing[*]})"
+            for f in "${missing[@]}"; do
+                [[ -d ${f} && ! -L ${f} ]] || refuse "the git state ${f} is not a real directory after it was created"
+            done
+        fi
+    fi
     for f in "${git_state[@]}"; do
-        [[ ${f##*/} == config.worktree && -e ${f} ]] || continue
+        if [[ ${f##*/} == config.worktree && -e ${f} ]]; then configs+=("${f}"); fi
+    done
+    # An empty config.worktree (what a launch creates) holds no key, so git reads only the others (U95): one size read.
+    # The rest cost one git each: git config validates one --file per run, and joining files would let one file's
+    # section run into the next. A sparse checkout's file is the only non-empty one git writes (none on this host).
+    sizes_of ${configs[@]+"${configs[@]}"}
+    for ((i = 0; i < ${#configs[@]}; i++)); do
+        ((size_list[i] > 0)) || continue
+        f=${configs[i]}
         # From /, so no repository around the cwd is discovered or read; git() adds the overrides.
         names=$(cd / && git config --file "${f}" --no-includes --name-only --list) ||
             refuse "cannot read the git config ${f}"
@@ -917,7 +1122,7 @@ for ext in "${exts[@]}"; do
         # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
         [[ -d ${entry} ]] || continue
         entry_real=$(cd "${entry}" && pwd -P) || continue
-        if [[ ${entry_real} == "${real}" ]]; then listed=${entry_real}; fi # lint-comparisons: allow both sides are pwd -P forms
+        if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
     done <<< "${allowed}"
     [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
     checked+=("${listed}")
@@ -939,53 +1144,149 @@ orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
-# @description Print the deepest existing path at or above the physical path `$1` (`$1` itself when it exists).
-# @arg $1 string A physical path.
-deepest_existing() {
-    local p=$1
-    # Absolute, so each step shortens it and the walk ends at `/`, which exists.
-    [[ ${p} == /* ]] || return 1 # lint-comparisons: allow an absolute-path test
-    while [[ ! -e ${p} && ! -L ${p} ]]; do
-        p=${p%/*}
-        [[ -n ${p} ]] || p=/
+# @description Fill the identity table for the physical paths `$@` (regime-cutover U95), which every containment
+#   decision of the overlap check reads: per path, whether it exists, the (device, inode) identities of its deepest
+#   existing ancestor (the path itself when it exists) and of every directory above it, and the absent remainder below
+#   that ancestor, ASCII case-folded by ascii_lower (builtins only). One `/usr/bin/stat` (through xargs, order kept)
+#   serves every path, instead of several processes per pair. Fail-closed per record: every input must be a clean path; every identity line must be `<dev>:<ino>`, and
+#   their number exactly what the ancestor walks asked for; every folded remainder must have its input's length and
+#   the grammar `(/<lower-case component>)*/`; each table must hold one entry per input.
+# @set tbl_exists 1 or 0 per path.
+# @set tbl_first The identity of the deepest existing ancestor per path.
+# @set tbl_chain `\n<id>\n<id>…\n` per path: that ancestor's identity first, then each directory above it.
+# @set tbl_rest The absent remainder per path, case-folded, ending in `/` (`/` when the path exists).
+identity_table() {
+    local p d rest ids line folded chain='' i=0 k=0 all=() counts=()
+    tbl_exists=() tbl_first=() tbl_chain=() tbl_rest=()
+    for p in "$@"; do
+        require_clean_path 'a seat path' "${p}"
+        # Absolute, so each step shortens it and the walk ends at `/`, which exists.
+        d=${p} rest=''
+        while [[ ! -e ${d} && ! -L ${d} ]]; do
+            rest=/${d##*/}${rest}
+            d=${d%/*}
+            [[ -n ${d} ]] || d=/
+        done
+        if [[ -e ${p} ]]; then tbl_exists+=(1); else tbl_exists+=(0); fi
+        ancestors_of "${d}"
+        all+=("${ancestors[@]}")
+        counts+=("${#ancestors[@]}")
+        rest=${rest}/
+        ascii_lower "${rest}" folded || refuse "cannot fold the absent part of ${p}"
+        [[ ${#folded} == "${#rest}" && ${folded} =~ ^(/[a-z0-9._@+-]+)*/$ ]] ||
+            refuse "cannot fold the absent part of ${p} ('${folded}')"
+        tbl_rest+=("${folded}")
     done
-    printf '%s\n' "${p}"
+    (($#)) || return 0
+    ids=$(printf '%s\0' "${all[@]}" | /usr/bin/xargs -0 /usr/bin/stat "${stat_args[@]}" --) ||
+        refuse "cannot read the identity of a seat path or a directory above it"
+    while IFS= read -r line; do
+        [[ ${line} =~ ^[0-9]+:[0-9]+$ ]] || refuse "cannot read the identity of a seat path ('${line}')"
+        ((i < ${#counts[@]})) || refuse 'more identities than seat paths were read'
+        if ((k == 0)); then tbl_first+=("${line}"); fi
+        chain+=${line}$'\n'
+        k=$((k + 1))
+        if ((k == counts[i])); then
+            tbl_chain+=($'\n'"${chain}")
+            chain='' k=0 i=$((i + 1))
+        fi
+    done <<< "${ids}"
+    ((i == $# && k == 0)) || refuse "cannot read the identity of every seat path (${i} of $#)"
+    ((${#tbl_exists[@]} == $# && ${#tbl_first[@]} == $# && ${#tbl_chain[@]} == $# && ${#tbl_rest[@]} == $#)) ||
+        refuse 'the identity table does not hold one entry per seat path'
 }
 
-# @description Decide whether `$2` is `$1` or lies under it (regime-cutover U85), by (device, inode) identity for
-#   everything that exists, so a case alias on a case-insensitive volume is the path it aliases. When `$1` exists:
-#   yes iff `$2`'s deepest existing ancestor (`$2` itself when it exists) or a directory above it has `$1`'s identity.
-#   When `$1` does not exist, an existing `$2` cannot lie under it (no). When neither exists, everything from `$1`
-#   down is absent, so `$2` can lie under `$1` only if both have the same deepest existing ancestor (identity); below
-#   it nothing exists, so no link or alias can intervene, and the clean remaining components decide: yes iff `$1`'s
-#   remainder is `$2`'s or a prefix of it on a component boundary (`a/b` is no prefix of `a/bc`). The remainders are
-#   compared ASCII case-folded (clean paths are ASCII), since on a case-insensitive volume two spellings that differ
-#   by case become one directory once made; on a case-sensitive one that refuses names differing only by case.
-# @arg $1 string A physical, clean path.
-# @arg $2 string A physical, clean path.
+# @description Set the variable named `$2` to `$1` with A-Z made a-z (regime-cutover U95), by builtins only (a case
+#   table, no `tr` and no locale; bash 3.2 has no `${x,,}`), so no producer's output is read back.
+# @arg $1 string ASCII text.
+# @arg $2 string The name of the variable to set.
+# @exitcode 1 The variable cannot be set.
+ascii_lower() {
+    # The locals carry a prefix, so the caller's variable `$2` is never one of them (printf -v sets the nearest).
+    local LC_ALL=C al_text=$1 al_out='' al_c al_before al_upper=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+    local al_lower=abcdefghijklmnopqrstuvwxyz
+    [[ $2 != al_* && $2 != LC_ALL ]] || return 1
+    while [[ -n ${al_text} ]]; do
+        al_c=${al_text:0:1}
+        al_text=${al_text:1}
+        case ${al_c} in
+        [ABCDEFGHIJKLMNOPQRSTUVWXYZ])
+            al_before=${al_upper%%"${al_c}"*}
+            al_c=${al_lower:${#al_before}:1}
+            ;;
+        esac
+        al_out+=${al_c}
+    done
+    printf -v "$2" '%s' "${al_out}"
+}
+
+# @description Decide from the identity table whether path `$2` is path `$1` or lies under it (regime-cutover U85,
+#   U95), by identity for everything that exists, so a case alias on a case-insensitive volume is the path it aliases.
+#   When `$1` exists: yes iff `$1`'s identity is in `$2`'s chain (`$2`'s deepest existing ancestor or a directory
+#   above it). When `$1` does not exist, an existing `$2` cannot lie under it (no). When neither exists, `$2` can lie
+#   under `$1` only if both have the same deepest existing ancestor; below it nothing exists, so no link or alias can
+#   intervene, and the absent remainders decide: yes iff `$1`'s is `$2`'s or a prefix of it on a component boundary
+#   (`a/b` is no prefix of `a/bc`), compared ASCII case-folded, since on a case-insensitive volume two spellings that
+#   differ by case become one directory once made. No process runs.
+# @arg $1 int The table index of the outer path.
+# @arg $2 int The table index of the inner path.
 # @exitcode 0 `$2` is `$1` or lies under it.
 # @exitcode 1 It does not.
-within() {
-    # Every helper's status is checked where it is called: within runs inside `||` lists, where `set -e` does not apply.
-    local outer_id p ids probe=() a1 a2 rest
-    if [[ ! -e $1 ]]; then
-        [[ ! -e $2 ]] || return 1
-        a1=$(deepest_existing "$1") || refuse "cannot find an existing directory above $1"
-        a2=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
-        ids=$(/usr/bin/stat "${stat_args[@]}" -- "${a1}" "${a2}") || refuse "cannot read the identity of ${a1} or ${a2}"
-        [[ ${ids%%$'\n'*} == "${ids#*$'\n'}" ]] || return 1 # lint-comparisons: allow compares (device, inode) identities, not paths
-        # The absent remainders below the one ancestor, each starting with `/`, folded to lower case on one line each.
-        rest=$(printf '%s/\n%s/\n' "${1#"${a1%/}"}" "${2#"${a2%/}"}" | LC_ALL=C /usr/bin/tr '[:upper:]' '[:lower:]') ||
-            refuse "cannot compare the absent parts of $1 and $2"
-        [[ ${rest#*$'\n'} == "${rest%%$'\n'*}"* ]] # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
+within_ix() {
+    if ((tbl_exists[$1])); then
+        [[ ${tbl_chain[$2]} == *$'\n'"${tbl_first[$1]}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
         return
     fi
-    outer_id=$(/usr/bin/stat "${stat_args[@]}" -- "$1") || refuse "cannot read the identity of $1"
-    p=$(deepest_existing "$2") || refuse "cannot find an existing directory above $2"
-    ancestors_of "${p}"
-    probe=("${ancestors[@]}")
-    ids=$(/usr/bin/stat "${stat_args[@]}" -- "${probe[@]}") || refuse "cannot read the identity of $2 or a directory above it"
-    [[ $'\n'${ids}$'\n' == *$'\n'"${outer_id}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
+    ((! tbl_exists[$2])) || return 1
+    [[ ${tbl_first[$1]} == "${tbl_first[$2]}" ]] || return 1 # lint-comparisons: allow compares (device, inode) identities, not paths
+    [[ ${tbl_rest[$2]} == "${tbl_rest[$1]}"* ]]              # lint-comparisons: allow absent components below one ancestor of the same identity, compared on component boundaries
+}
+
+# @description Set `phys_list` to the physical form of each absolute path `$@`, in order (regime-cutover U95), or
+#   refuse (exit 2), in one subshell for all of them, present or absent. In that subshell a path's deepest existing entry is found with builtins (physical_path's
+#   walk); it must be a directory, which `cd -P` resolves, and the absent rest is appended, as physical_path does.
+#   The inputs are worktree records (git's list and the admin directories' `gitdir`) and seat directories: a path
+#   that is, or lies below, a regular file or a dangling link is no directory-backed worktree but a corrupt record,
+#   and refuses, naming `git worktree prune` and `git worktree repair` (no per-record fallback). Fail-closed per record: the subshell writes exactly one record per path,
+#   `ok<TAB><physical path>` after a `cd -P` whose status was 0, `notdir` for a path not backed by a directory, or
+#   `fail` after a failed `cd`, and fails when a record cannot be written. Each record is checked against its
+#   grammar and its result assigned to its own index (nothing is printed and read back): only `ok` with a clean
+#   path passes. Anything else, a record too many or too few, or an index left without its result refuses.
+# @arg $@ string Absolute paths free of control characters.
+# @set phys_list The physical paths, one per input.
+physical_paths() {
+    local out line resolved i=0 args=("$@")
+    phys_list=()
+    (($#)) || return 0
+    out=$(for p in "$@"; do
+        rest=''
+        while [[ ! -e ${p} && ! -L ${p} ]]; do
+            rest=/${p##*/}${rest}
+            p=${p%/*}
+            [[ -n ${p} ]] || p=/
+        done
+        if [[ ! -d ${p} ]]; then
+            printf 'notdir\n' || exit 1
+        elif [[ ${p} == / ]]; then # lint-comparisons: allow the root itself, whose `cd //` form pwd prints as `//`
+            printf 'ok\t%s\n' "${rest:-/}" || exit 1
+        elif cd -P -- "${p}/" 2> /dev/null; then
+            printf 'ok\t%s%s\n' "${PWD%/}" "${rest}" || exit 1
+        else
+            printf 'fail\n' || exit 1
+        fi
+    done) || refuse 'cannot resolve the paths (the resolving subshell failed)'
+    while IFS= read -r line; do
+        ((i < $#)) || refuse 'cannot resolve the paths (more records than paths)'
+        case ${line} in
+        notdir) refuse "the worktree record ${args[i]} is not backed by a directory: it, or its deepest existing ancestor, is a regular file or a dangling symbolic link, so the record is corrupt; run \`git worktree prune\` if the worktree is gone, or \`git worktree repair\` if it moved" ;;
+        ok$'\t'*) resolved=${line#ok$'\t'} ;;
+        *) refuse "cannot resolve the path ${args[i]} ('${line}')" ;;
+        esac
+        clean_path "${resolved}" || refuse "the path ${args[i]} resolves to '${resolved}', not a clean absolute path"
+        phys_list[i]=${resolved}
+        i=$((i + 1))
+    done <<< "${out}"
+    ((i == $# && ${#phys_list[@]} == $#)) || refuse "cannot resolve every path (${#phys_list[@]} of $#)"
 }
 
 # @description Set `worktree_paths` to the worktrees git records for this repository, main worktree first, and
@@ -1042,11 +1343,8 @@ fi
 # --hcom-tool-path, so a per-seat shim placed first on PATH is what the pane runs; the shim never falls back to an
 # uncontained omp. Every prerequisite is checked here, before anything is created or started.
 sandbox=${seats_root%/}/.sandbox/${name}
-# Every seat's sandbox denies reads of <seats-root>/.sandbox, so a listing that fails means this process runs inside a
-# seat that unset the environment markers above.
-if [[ -e ${seats_root%/}/.sandbox ]] && ! ls "${seats_root%/}/.sandbox" > /dev/null 2>&1; then
-    refuse "refused inside a seat sandbox (${seats_root%/}/.sandbox is unreadable): launch seats from a terminal outside every seat"
-fi
+# Every seat's sandbox denies reads of <seats-root>/.sandbox (refuse_inside_a_seat).
+refuse_inside_a_seat "${seats_root%/}/.sandbox"
 
 # @description Print the srt write roots of one seat, one per line in physical form: the list the seat's settings
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
@@ -1103,6 +1401,65 @@ seat_roots_out=$(seat_write_roots "${role}" "${name}" "${dir}") || refuse "canno
 while IFS= read -r root; do seat_write+=("${root}"); done <<< "${seat_roots_out}"
 other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'cannot resolve the orchestrator write roots'
 
+# Every linked worktree git records, resolved once for both overlap checks (the first record is the main worktree).
+worktree_phys=()
+if ((${#worktree_paths[@]} > 1)); then
+    physical_paths "${worktree_paths[@]:1}"
+    worktree_phys=("${phys_list[@]}")
+fi
+
+# @description Refuse (exit 2) unless the admin directories in `<common>/worktrees` (dir_entries, dot names included)
+#   are, one to one, the git directories of the linked worktrees git lists (regime-cutover U95): each admin directory's
+#   `gitdir` names, the way git reads it (worktree.c get_linked_worktree: trailing `/.git` stripped, a relative path
+#   resolved against the admin directory), a worktree git lists, no two name the same one, and their number is the
+#   number git lists. So every consumer (the git-state denies, the shape check, the overlap check) sees the same set:
+#   an admin directory no listed worktree owns, or one the scan missed, refuses. Sameness is identity, never text:
+#   `cd -P` keeps a spelling's case, so on a case-insensitive volume `trees/a` and `TREES/A` are one directory under
+#   two texts. Each path's key is its identity_table entry, the (device, inode) of its deepest existing ancestor
+#   followed by the case-folded absent rest (`/` for an existing path), the same rule within_ix decides by. One read,
+#   one resolving batch and one identity table.
+# @arg $1 string The physical git common directory.
+admin_dirs_match() {
+    local a v key listed=$'\n' seen=$'\n' i n derived=() gitdirs=()
+    dir_entries "$1/worktrees"
+    ((${#dir_list[@]} == ${#admin_dirs[@]})) ||
+        refuse "the worktree git directories of $1 changed while hcom-seat ran (${#dir_list[@]} now, ${#admin_dirs[@]} checked)"
+    ((${#admin_dirs[@]} == ${#worktree_phys[@]})) ||
+        refuse "$1/worktrees holds ${#admin_dirs[@]} worktree git directories but git lists ${#worktree_phys[@]} linked worktrees; an entry no listed worktree owns cannot be checked${git_fix_hint}"
+    n=${#worktree_phys[@]}
+    ((n)) || return 0
+    for a in "${admin_dirs[@]}"; do
+        [[ -f ${a}/gitdir && ! -L ${a}/gitdir ]] ||
+            refuse "the worktree git directory ${a} has no regular gitdir file, so git lists no worktree for it${git_fix_hint}"
+        gitdirs+=("${a}/gitdir")
+    done
+    pointer_values "${gitdirs[@]}"
+    for ((i = 0; i < n; i++)); do
+        git_form_path "${pointer_list[i]}" ||
+            refuse "${gitdirs[i]} holds '${pointer_list[i]}', not a path in git's own form (no trailing /, no . component, .. only leading a relative path)${git_fix_hint}"
+        v=${pointer_list[i]%/.git}
+        case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) derived+=("${v}") ;;
+        *) derived+=("${admin_dirs[i]}/${v}") ;;
+        esac
+    done
+    physical_paths "${derived[@]}"
+    ((${#phys_list[@]} == n)) || refuse "the worktrees the git directories of $1 record were not all resolved"
+    # Listed worktrees at indices 0..n-1, recorded ones at n..2n-1.
+    identity_table "${worktree_phys[@]}" "${phys_list[@]}"
+    for ((i = 0; i < n; i++)); do listed+=${tbl_first[i]}${tbl_rest[i]}$'\n'; done
+    for ((i = 0; i < n; i++)); do
+        v=${phys_list[i]}
+        key=${tbl_first[n + i]}${tbl_rest[n + i]}
+        [[ ${listed} == *$'\n'"${key}"$'\n'* ]] || # lint-comparisons: allow compares (device, inode) identities with case-folded absent rests, not paths
+            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which git does not list as a worktree${git_fix_hint}"
+        [[ ${seen} != *$'\n'"${key}"$'\n'* ]] || # lint-comparisons: allow compares (device, inode) identities with case-folded absent rests, not paths
+            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which another worktree git directory records too (the same directory by identity)${git_fix_hint}"
+        seen+=${key}$'\n'
+    done
+}
+if ((${#worktree_paths[@]} > 1 || ${#admin_dirs[@]} > 0)); then admin_dirs_match "${early_common}"; fi
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
@@ -1110,54 +1467,74 @@ other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'c
 #   worktree of this repository; the seat's own directory (same identity) is not protected for it. Exempt by
 #   construction, not by comparing text: the seat's own slots under the seats root (the first two roots: a worker's
 #   `<seats-root>/<name>`, and `<seats-root>/.state/<name>`) against the seats root and its `.sandbox`, and the git
-#   common directory named `.git` whose parent is the main checkout (identity). Containment is decided by identity
-#   for everything that exists, and below one shared deepest existing ancestor by the absent components (within). Every
-#   path must be clean (clean_path) before anything is created, so this runs in a dry run too.
+#   common directory named `.git` whose parent is the main checkout (identity). A linked worktree inside R (Claude
+#   Code keeps its worktrees under `<checkout>/.claude/worktrees`) refuses, present or absent, naming the worktree
+#   and `git worktree move`, `remove` or `prune` (regime-cutover U95, operator decision U95-nested-refuse-decided:
+#   a seat could rewrite its `.git` file and tracked files, which host git and host tools read). Containment is
+#   decided by identity for everything that exists, and below one shared deepest existing ancestor by the absent
+#   components (identity_table, within_ix), one table for every pair. Every path must be clean (clean_path) before
+#   anything is created, so this runs in a dry run too.
 # @arg $1 string The role.
 # @arg $2 string The seat directory, physical.
 # @arg $@ string The seat's allowWrite roots after them, physical, its own slots first (seat_write_roots).
 seat_overlap_check() {
-    local own_role=$1 own_dir=$2 r p i k status line target seats_phys labels=() protected=()
+    local own_role=$1 own_dir=$2 r p i j k nroots seats_phys labels=() protected=() own=() roots=() seat_dirs=()
     shift 2
+    roots=("$@")
+    nroots=$#
     seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
     labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
     protected+=("${checkout}" "${seats_phys}" "${seats_phys}/.sandbox")
-    for p in "${seats_phys}"/*/; do
+    # Every directory in the seats root, dot names included (dir_entries); `.state` and `.sandbox` are protected or
+    # exempt by their own rules above. All resolved in one batch (physical_paths), so more seats start no process.
+    dir_entries "${seats_phys}"
+    seat_dirs=()
+    for p in ${dir_list[@]+"${dir_list[@]}"}; do
         [[ -d ${p} ]] || continue
-        target=$(physical_path "${p%/}") || refuse "cannot resolve the seat directory ${p%/}"
-        labels+=("the seat directory")
-        protected+=("${target}")
+        case ${p##*/} in .state | .sandbox) continue ;; esac
+        seat_dirs+=("${p}")
     done
-    # Every linked worktree, as git names it (relative `gitdir` files included); the first record is the main
-    # worktree, protected above as the main checkout.
-    worktree_records
-    for line in "${worktree_paths[@]:1}"; do
-        target=$(physical_path "${line}") || refuse "cannot resolve the worktree ${line}"
+    physical_paths ${seat_dirs[@]+"${seat_dirs[@]}"}
+    ((${#phys_list[@]} == ${#seat_dirs[@]})) ||
+        refuse "the seat directories in ${seats_phys} were not all resolved (${#phys_list[@]} of ${#seat_dirs[@]})"
+    for p in ${phys_list[@]+"${phys_list[@]}"}; do
+        labels+=("the seat directory")
+        protected+=("${p}")
+    done
+    # One resolved path per linked worktree git records (physical_paths), or the check below could miss one.
+    ((${#worktree_phys[@]} == ${#worktree_paths[@]} - 1)) ||
+        refuse "the worktrees of ${repo} were not all resolved (${#worktree_phys[@]} of $((${#worktree_paths[@]} - 1)))"
+    for p in ${worktree_phys[@]+"${worktree_phys[@]}"}; do
         labels+=("the worktree")
-        protected+=("${target}")
+        protected+=("${p}")
     done
     for p in "${protected[@]}"; do
         require_clean_path 'a protected seat path' "${p}"
+        # The seat's own directory is its to write.
+        if [[ -e ${p} && ${p} -ef ${own_dir} ]]; then own+=(1); else own+=(0); fi
     done
-    k=0
-    for r in "$@"; do
-        k=$((k + 1))
+    ((${#own[@]} == ${#protected[@]})) || refuse "the overlap table of the ${own_role} seat does not hold one entry per protected path"
+    for r in "${roots[@]}"; do
         require_clean_path "a write root of the ${own_role} seat" "${r}"
+    done
+    identity_table "${roots[@]}" "${protected[@]}"
+    for ((k = 0; k < nroots; k++)); do
+        r=${roots[k]}
         for ((i = 0; i < ${#protected[@]}; i++)); do
-            p=${protected[i]}
-            # The seat's own directory is its to write.
-            if [[ -e ${p} && ${p} -ef ${own_dir} ]]; then continue; fi
+            ((! own[i])) || continue
             # Its own slots under the seats root sit there by construction, as siblings of `.sandbox`: the state
             # directory of every seat, and a worker's directory (the orchestrator's is the launch checkout, checked).
             # own_slots_check has proved, before this runs, that they are what they claim (no link, right parent).
-            if [[ (${k} == 2 || (${k} == 1 && ${own_role} != orchestrator)) && (${i} == 1 || ${i} == 2) ]]; then continue; fi
-            status=0
-            within "${r}" "${p}" || status=$?
-            ((status != 0)) ||
+            if [[ (${k} == 1 || (${k} == 0 && ${own_role} != orchestrator)) && (${i} == 1 || ${i} == 2) ]]; then continue; fi
+            p=${protected[i]}
+            j=$((nroots + i))
+            if within_ix "${k}" "${j}"; then
+                if [[ ${labels[i]} == 'the worktree' ]]; then # lint-comparisons: allow a fixed label, no path compare
+                    refuse "the worktree ${p} lies inside the ${own_role} seat's write root ${r}, where the seat could rewrite its .git file and tracked files; move it out (\`git worktree move ${p} <a path outside>\`), remove it (\`git worktree remove ${p}\`), or prune it if its directory is gone (\`git worktree prune\`)"
+                fi
                 refuse "the ${own_role} seat's write root ${r} contains ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
-            status=0
-            within "${p}" "${r}" || status=$?
-            if ((status == 0)); then
+            fi
+            if within_ix "${j}" "${k}"; then
                 # The main checkout's own `.git`, by identity of the common directory and its parent.
                 if ((i == 0)) && [[ -e ${r} && ${r} -ef ${common} && -d ${checkout}/.git && ! -L ${checkout}/.git && ${checkout}/.git -ef ${r} ]]; then continue; fi
                 refuse "the ${own_role} seat's write root ${r} lies inside ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
@@ -1176,7 +1553,8 @@ repo_phys=$(physical_path "${repo}") || refuse "cannot resolve the launch checko
 seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
-for settings_file in "${seats_root}"/.sandbox/*/srt-settings.json; do
+seat_settings_files "${seats_root}"
+for settings_file in ${settings_files[@]+"${settings_files[@]}"}; do
     [[ -e ${settings_file} ]] || continue
     listed=$(allow_write_list "${os}" "${settings_file}") ||
         refuse "cannot read a clean allowWrite list from ${settings_file}"
@@ -1300,6 +1678,7 @@ seat_sandbox_write() {
     if [[ ${os} == Darwin ]]; then
         require_clean_path 'the git common directory' "${common_real}"
         for path in config.worktree info commondir gitdir; do
+            # srt reads `*` as `[^/]*` (glob-pattern.js:179-180, globToRegex :208-209), so dot-named ids match too.
             deny_write_patterns+=",\"${common_real}/worktrees/*/${path}\""
         done
     fi

@@ -583,6 +583,33 @@ class OmpInstalledMatcherTest(unittest.TestCase):
                         self.assertEqual(bash_decision(policy, command).get("policy"), approval)
 
 
+class FakeLlmBindTest(unittest.TestCase):
+    """The fake endpoint starts without HTTPServer.server_bind's socket.getfqdn (about 35 s per start on macos-15)."""
+
+    def test_the_fake_llm_starts_without_a_reverse_dns_lookup(self):
+        probe = (
+            "import runpy, socket, sys\n"
+            "def refuse(*args):\n"
+            "    print('getfqdn called', file=sys.stderr, flush=True)\n"
+            "    raise SystemExit(3)\n"
+            "socket.getfqdn = refuse\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            server = subprocess.Popen(
+                [sys.executable, "-I", "-c", probe, str(FAKE_LLM), "0", temp],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )  # fmt: skip
+            try:
+                line = server.stdout.readline()
+            finally:
+                server.terminate()
+                _, stderr = server.communicate(timeout=10)
+            self.assertRegex(line, r"^listening \d+\n$", stderr)
+            self.assertNotIn("getfqdn called", stderr)
+
+
 @unittest.skipUnless(OMP, "omp is not installed")
 class OmpTaskDenyLiveTest(unittest.TestCase):
     """The installed omp itself, under a scratch HOME: the overlay reads back `task: deny`, and a model turn that

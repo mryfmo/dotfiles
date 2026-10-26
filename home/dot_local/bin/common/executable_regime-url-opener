@@ -28,6 +28,7 @@ import datetime
 import http.server
 import os
 import shutil
+import socketserver
 import subprocess
 import sys
 import urllib.parse
@@ -143,6 +144,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.reply(200, "opened")
 
 
+class LoopbackHTTPServer(http.server.HTTPServer):
+    """An HTTPServer that binds without `socket.getfqdn`.
+
+    `HTTPServer.server_bind` resolves the bound host with `socket.getfqdn`, a reverse DNS lookup that takes
+    about 35 s on some macOS hosts; nothing here reads `server_name`, so the literal host is kept instead.
+    """
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="regime-url-opener")
     parser.add_argument("--port", type=int, default=int(os.environ.get("REGIME_URL_OPENER_PORT", "1456")))
@@ -155,7 +170,7 @@ def main(argv: list[str]) -> int:
         print(f"regime-url-opener: cannot create the log directory {args.log.parent}: {error}", file=sys.stderr)
         return 1
     try:
-        server = http.server.HTTPServer(("127.0.0.1", args.port), Handler)
+        server = LoopbackHTTPServer(("127.0.0.1", args.port), Handler)
     except OSError as error:
         append_log(args.log, f"failed to bind 127.0.0.1:{args.port}: {error.strerror or error}")
         print(f"regime-url-opener: cannot bind 127.0.0.1:{args.port}: {error}", file=sys.stderr)

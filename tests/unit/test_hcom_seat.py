@@ -1169,7 +1169,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("nested_path_check", "nested_shape_check")
+        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1246,6 +1246,15 @@ class HcomSeatTest(unittest.TestCase):
                 result = run(values_call, pointers, {"/bin/cat": stand_in})
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn("cannot read the git pointer files", result.stderr)
+        tr_cases = {
+            "fails after plausible output": fake("tr-fail", "cat\nexit 7"),
+            "a short output": fake("tr-short", "head -c 3"),
+        }
+        for label, stand_in in tr_cases.items():
+            with self.subTest(producer="pointer_values (tr)", case=label):
+                result = run(values_call, pointers, {"/usr/bin/tr": stand_in})
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot read the git pointer files", result.stderr)
         with self.subTest(producer="pointer_values (its sizes)"):
             result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
             self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
@@ -1287,7 +1296,7 @@ class HcomSeatTest(unittest.TestCase):
             f"seats_root={seats} checkout={checkout} common={root}/no-git repo={checkout} root_ids=$'\\n'\n"
             f'worktree_paths=({checkout} "$@")\nworktree_phys=("$@")\n'
             # The trees here are bare directories: the shape check has its own test.
-            "nested_shape_check() { :; }\n"
+            "nested_shape_check() { :; }\nos=Darwin tracked_entries=''\n"
         )
         overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\nprintf "%s\\n" "${seat_nested[@]}"'
         whole = run(overlap_call, trees, prelude=overlap)
@@ -1458,13 +1467,21 @@ class HcomSeatTest(unittest.TestCase):
         probe = (
             'if (printf x >> "$1/.git") 2>/dev/null; then echo wrote-git; else echo git-denied; fi; '
             'if (: > "$1/new") 2>/dev/null; then echo wrote-new; else echo new-denied; fi; '
-            'if (: > "$2/probe") 2>/dev/null; then echo root-written; fi'
+            'if (: > "$2/probe") 2>/dev/null; then echo root-written; fi; '
+            # U95 round 8: no ancestor of the denied worktree can be renamed away; a sibling can.
+            'for a in "$2/.claude" "$2/.claude/worktrees"; do '
+            'if mv "$a" "$a.moved" 2>/dev/null; then echo "moved-${a##*/}"; mv "$a.moved" "$a"; else echo rename-denied; fi; '
+            'done; mkdir "$2/sib" && mv "$2/sib" "$2/sib2" && echo sibling-renamed'
         )
         live = subprocess.run(
             [srt, "--settings", str(settings_file), "--", "/bin/sh", "-c", probe, "_", str(nested), str(self.repo)],
             cwd=self.repo, capture_output=True, text=True, check=False, timeout=120,
         )  # fmt: skip
-        self.assertEqual(live.stdout.split(), ["git-denied", "new-denied", "root-written"], live.stderr)
+        self.assertEqual(
+            live.stdout.split(),
+            ["git-denied", "new-denied", "root-written", "rename-denied", "rename-denied", "sibling-renamed"],
+            live.stderr,
+        )
         self.assertEqual((nested / ".git").read_text().split()[0], "gitdir:")
         self.assertFalse((nested / "new").exists())
 
@@ -1492,19 +1509,23 @@ class HcomSeatTest(unittest.TestCase):
             ),
             ("Linux", "orchestrator", "0"): (
                 0,
-                "the orchestrator's launch is refused until `git worktree prune` removes it",
+                "the orchestrator's launch is refused: its directory is absent; srt on Linux cannot deny",
             ),
-            ("Darwin", "orchestrator", "1"): (0, "the path is write-denied to the seat, creating it included"),
+            ("Darwin", "orchestrator", "1"): (
+                0,
+                "the seat's settings write-deny its absent path, creating it included",
+            ),
             ("Darwin", "orchestrator", "0"): (
                 0,
-                "the orchestrator's launch write-denies the path, creating it included",
+                "the orchestrator's launch write-denies its absent path, creating it included",
             ),
         }
         for (system, seat, mine), (status, message) in cases.items():
             with self.subTest(system=system, own=mine):
                 run = subprocess.run(
                     ["/bin/bash", "-c", f'set -euo pipefail\n{functions}\nnested_worktree_plan "$@"', "_", system, seat,
-                     mine, str(present), str(gone)], capture_output=True, text=True, check=False,
+                     mine, str(present), str(present), "", str(gone), str(gone), ""],
+                    capture_output=True, text=True, check=False,
                 )  # fmt: skip
                 self.assertEqual(run.returncode, status, run.stderr)
                 self.assertIn(f"the worktree {gone} lies inside a write root of the orchestrator seat", run.stderr)
@@ -1519,9 +1540,7 @@ class HcomSeatTest(unittest.TestCase):
             with self.subTest(role=role):
                 dry = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual(dry.returncode, 0, dry.stderr)
-                self.assertIn(
-                    f"the worktree {gone} lies inside a write root of the orchestrator seat and its", dry.stderr
-                )
+                self.assertIn(f"the worktree {gone} lies inside a write root of the orchestrator seat; the", dry.stderr)
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(str(gone), self.settings_of("orchestrator")["filesystem"]["denyWrite"])
@@ -1561,7 +1580,7 @@ class HcomSeatTest(unittest.TestCase):
             with self.subTest(role=role, case="registered through a link"):
                 run = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-                self.assertIn(f"the worktree {recorded} lies inside a write root of the orchestrator seat", run.stderr)
+                self.assertIn(f"inside a write root of the orchestrator seat as {recorded} runs through", run.stderr)
                 self.assertIn(f"through the symbolic link {recorded}", run.stderr)
                 self.assertIn("git worktree move", run.stderr)
         # An absent registered path below a linked directory.
@@ -1577,6 +1596,74 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertIn(f"the worktree {real.resolve()} lies inside a write root", run.stderr)
+
+    def test_the_deny_unit_is_the_worktree_on_macos_and_its_top_level_entry_on_linux(self):
+        """U95 (audit of 24694b96): on Linux a read-only bind on the nested worktree alone lets the seat rename a
+        writable ancestor and recreate the registered path, so the deny unit is the top-level entry of the seat's own
+        directory that holds it (renaming that mountpoint fails with EBUSY). A worktree under an entry the seat must
+        write (the orchestrator's `.orchestration`, a worker's tracked tree) or in another write root is refused,
+        naming it. On macOS srt also blocks renaming every ancestor of a denied path, so the worktree itself is the
+        unit (the live probe is in test_a_nested_claude_worktree_is_write_denied_not_refused)."""
+        text = SEAT.read_text()
+        function = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("nested_deny_unit",)
+        )
+        d = "/w/checkout"
+        cases = (
+            (("Linux", "orchestrator", d, "0", f"{d}/.claude/worktrees/x"), (f"{d}/.claude", "")),
+            (("Linux", "orchestrator", d, "0", f"{d}/scratch/x"), (f"{d}/scratch", "")),
+            (("Linux", "orchestrator", d, "0", f"{d}/.orchestration/orchestrate/x"), ("", f"{d}/.orchestration, which the orchestrator seat must write")),
+            (("Linux", "worker", d, "0", f"{d}/docs/x"), ("", f"{d}/docs, which the worker seat must write")),
+            (("Linux", "worker", d, "0", f"{d}/.claude/worktrees/x"), (f"{d}/.claude", "")),
+            (("Linux", "orchestrator", d, "3", "/w/store/x"), ("", "not the seat's own directory")),
+            (("Linux", "orchestrator", d, "0", f"{d}/x"), ("", "cannot be named below")),
+            (("Darwin", "orchestrator", d, "0", f"{d}/.orchestration/orchestrate/x"), (f"{d}/.orchestration/orchestrate/x", "")),
+            (("Darwin", "worker", d, "3", "/w/store/x"), ("/w/store/x", "")),
+        )  # fmt: skip
+        for args, (unit, problem) in cases:
+            with self.subTest(args=args):
+                run = subprocess.run(
+                    ["/bin/bash", "-c", (f'set -euo pipefail\n{function}\ntracked_entries=$\'docs\\nhome\\n\'\n'
+                     'nested_deny_unit "$@"\nprintf "%s\\n%s\\n" "$deny_unit" "$deny_problem"'), "_", *args],
+                    capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, 0, run.stderr)
+                got_unit, got_problem = run.stdout.split("\n")[:2]
+                self.assertEqual(got_unit, unit)
+                if problem:
+                    self.assertIn(problem, got_problem)
+                    self.assertIn("git worktree", got_problem)
+                else:
+                    self.assertEqual(got_problem, "")
+        plan = "\n".join(
+            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
+            for name in ("refuse", "nested_worktree_plan")
+        )
+        present = Path(self.temp.name).resolve() / "c/.claude/worktrees/x"
+        present.mkdir(parents=True)
+        unit = str(present.parents[1])
+        for mine, status, message in (
+            (
+                "1",
+                0,
+                f"the seat's settings write-deny the top-level entry {unit} that holds it (a rename of that mountpoint fails with EBUSY)",
+            ),
+            ("1", 2, "which the orchestrator seat must write"),
+            ("0", 0, "the orchestrator's launch is refused: on Linux its deny"),
+        ):
+            with self.subTest(plan=message[:40]):
+                problem = (
+                    ""
+                    if status == 0 and mine == "1"
+                    else "on Linux its deny is the whole top-level entry .orchestration, which the orchestrator seat must write"
+                )
+                run = subprocess.run(
+                    ["/bin/bash", "-c", f'set -euo pipefail\n{plan}\nnested_worktree_plan "$@"', "_", "Linux", "orchestrator",
+                     mine, str(present), unit if not problem else "", problem], capture_output=True, text=True, check=False,
+                )  # fmt: skip
+                self.assertEqual(run.returncode, status, run.stderr)
+                self.assertIn(message, run.stderr)
 
     def test_a_nested_worktree_is_admitted_only_in_its_plain_shape(self):
         """U95 (treadmill rule, decisions.tsv treadmill-u95-nested-shape): a nested worktree is admitted only in the
@@ -1618,8 +1705,25 @@ class HcomSeatTest(unittest.TestCase):
 
             return make
 
+        def aliased_target(tree, admin):
+            (self.repo / "alias").symlink_to(common / "worktrees")
+            (tree / ".git").write_text(f"gitdir: {self.repo / 'alias' / admin.name}\n")
+
+        def aliased_back_pointer(tree, admin):
+            (self.repo / "alias").symlink_to(tree.parent)
+            (admin / "gitdir").write_text(f"{self.repo / 'alias' / tree.name}/.git\n")
+
+        def relative_target(tree, admin):
+            (tree / ".git").write_text(f"gitdir: ../../../.git/worktrees/{admin.name}\n")
+
         cases = {
             ".git a symbolic link": (symlink_dotgit, "has a .git that is a symbolic link"),
+            ".git naming its git directory through a linked alias": (aliased_target, "runs through the symbolic link"),
+            "gitdir recording the worktree through a linked alias": (
+                aliased_back_pointer,
+                "runs through the symbolic link",
+            ),
+            ".git naming its git directory by a relative path": (relative_target, "not as its physical path"),
             ".git a directory": (dir_dotgit, "has a .git that is not a regular file"),
             ".git with two lines": (two_lines, "as one line free of control characters"),
             "gitdir naming another repository": (foreign_gitdir, f"outside this repository's {common}/worktrees"),
@@ -1648,6 +1752,7 @@ class HcomSeatTest(unittest.TestCase):
                     admin = admin.with_name(admin.name + "-real")
                 shutil.rmtree(admin)
                 (self.repo / "pointer").unlink(missing_ok=True)
+                (self.repo / "alias").unlink(missing_ok=True)
         plain = worktrees / "plain"
         self.git("worktree", "add", "-q", "--detach", str(plain), "HEAD")
         for role in ("orchestrator", "worker"):

@@ -1265,48 +1265,49 @@ if ((${#worktree_paths[@]} > 1)); then
     worktree_phys=("${phys_list[@]}")
 fi
 
-# @description Refuse (exit 2) a worktree inside a seat's write root whose path as git records it is not its physical
-#   path (regime-cutover U95): a symbolic link on the way (`repo/x -> repo/y`, registered as `repo/x`) sits in the
-#   writable root, so the seat could replace the link with a directory of its own holding a `.git` file and a tree,
-#   which host git then takes for the registered worktree, while the deny covers only `repo/y`. The link itself is
-#   not denied instead: a sandbox rule matches the resolved path, not the link's name. The refusal names the first
-#   link on the recorded path (found with builtins) and says to move the worktree to a real path. An absent
-#   registered path under a linked parent is caught the same way (its physical form resolves the parent).
-# @arg $1 string The seat whose write root holds the worktree.
-# @arg $2 string The worktree as git records it.
-# @arg $3 string Its physical path.
-nested_path_check() {
-    local link='' c
-    [[ $2 != "$3" ]] || return 0 # lint-comparisons: allow the recorded spelling against the physical one, which must be identical
-    c=$2
-    while [[ -n ${c} && ${c} != / ]]; do # lint-comparisons: allow the walk ends at the root, no path compare
-        # The deepest link, the one nearest the worktree.
+# @description Refuse (exit 2) unless the path `$2`, as it is written, is identical to its physical path `$3`
+#   (regime-cutover U95): absolute, no symbolic link in any component, no `.` or `..`. A link on the way sits in a
+#   seat's writable root, so the seat could retarget or replace it, while the deny covers only the physical path; the
+#   link itself is not denied instead, since a sandbox rule matches the resolved path, not the link's name. Every
+#   path of a nested worktree's shape goes through this: the worktree as git records it, the git directory its `.git`
+#   names, and the path that git directory's `gitdir` file records. The refusal names the deepest link on the written
+#   path (builtins only) and the repair.
+# @arg $1 string What the path is, for the refusal.
+# @arg $2 string The path as written.
+# @arg $3 string The physical path it must be.
+spelled_physically() {
+    local link='' c=$2
+    [[ $2 != "$3" ]] || return 0 # lint-comparisons: allow the spelling must be the physical path itself
+    while [[ ${c} == /?* ]]; do  # lint-comparisons: allow an absolute-path test, the walk ends at the root
+        # The deepest link, the one nearest the end of the path.
         if [[ -z ${link} && -L ${c} ]]; then link=${c}; fi
         c=${c%/*}
     done
     if [[ -n ${link} ]]; then
-        refuse "the worktree $2 lies inside a write root of the $1 seat through the symbolic link ${link}, which the seat could replace with a tree of its own; move the worktree to a real path first (\`git worktree move $2 <a path without links>\`)"
+        refuse "$1 $2 runs through the symbolic link ${link}, which a seat could replace or retarget${git_fix_hint}"
     fi
-    refuse "the worktree $2 lies inside a write root of the $1 seat but git records it as $2, not its physical path $3; move it to its physical path first (\`git worktree move $2 $3\`)"
+    refuse "$1 is written $2, not as its physical path $3 (no relative part, link, \`.\` or \`..\` allowed)${git_fix_hint}"
 }
 
 # @description Admit the worktrees `$2...` inside a write root of seat `$1` only in the plain shape `git worktree add`
 #   makes, else refuse (exit 2) naming the deviation and the repair (regime-cutover U95: an allowlist, after an
 #   audit found one more indirection in each of three rounds). Their recorded paths are already their physical
-#   paths (nested_path_check), and every git file of every worktree has passed git_state_check's type checks. An
+#   paths (spelled_physically), and every git file of every worktree has passed git_state_check's type checks. An
 #   absent worktree has no `.git` to check (nested_worktree_plan denies or refuses it). For one that exists:
 #   - the worktree is a real directory, and its `.git` a regular file, no symbolic link, holding exactly one line
 #     `gitdir: <path>` (pointer_values, one read for all);
-#   - that path, made absolute against the worktree, is a real directory, no link, directly in this repository's
-#     `<common>/worktrees`;
-#   - its `gitdir` file is a regular file, no link, whose one line leads back to this worktree's `.git` (a second
-#     read for all), so the `.git` names this worktree's own git directory and no other's.
+#   - that path is written as its physical path (spelled_physically: absolute, no link in any component), a real
+#     directory directly in this repository's physical `<common>/worktrees`;
+#   - its `gitdir` file is a regular file, no link, whose one line is exactly this worktree's physical `.git` path
+#     (a second read for all), so the `.git` names this worktree's own git directory and no other's.
 #   The reads are two batches whatever the number of worktrees, so the process count stays flat.
 # @arg $1 string The seat whose write root holds the worktrees.
 # @arg $@ string The worktrees after it, physical.
 nested_shape_check() {
-    local seat=$1 w i v target dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
+    local seat=$1 w i v target wt_phys dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
     shift
+    (($#)) || return 0
+    wt_phys=$(physical_path "${common}/worktrees") || refuse "cannot resolve ${common}/worktrees"
     for w in "$@"; do
         if [[ ! -e ${w} && ! -L ${w} ]]; then continue; fi
         [[ -d ${w} && ! -L ${w} ]] ||
@@ -1326,14 +1327,15 @@ nested_shape_check() {
         [[ ${v} == 'gitdir: '* ]] || # lint-comparisons: allow the literal prefix git writes, no path compare
             refuse "the worktree ${trees[i]} has a .git holding '${v}', not one 'gitdir: <path>' line${git_fix_hint}"
         target=${v#gitdir: }
-        case ${target} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-        /*) ;;
-        *) target=${trees[i]}/${target} ;;
-        esac
+        [[ ${target} == /* ]] || # lint-comparisons: allow an absolute-path test
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, a relative path, not as its physical path${git_fix_hint}"
         [[ -d ${target} && ! -L ${target} ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${target}, which is not a real directory${git_fix_hint}"
-        [[ ${target%/*} -ef ${common}/worktrees ]] ||
-            refuse "the worktree ${trees[i]} has a .git naming ${target}, outside this repository's ${common}/worktrees${git_fix_hint}"
+        [[ -n ${target##*/} && ${target##*/} != . && ${target##*/} != .. ]] || # lint-comparisons: allow a name test on the last component
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, no directory of ${wt_phys}${git_fix_hint}"
+        [[ -d ${target%/*} && ${target%/*} -ef ${wt_phys} ]] ||
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, outside this repository's ${wt_phys}${git_fix_hint}"
+        spelled_physically "the git directory the .git of the worktree ${trees[i]} names," "${target}" "${wt_phys}/${target##*/}"
         [[ -f ${target}/gitdir && ! -L ${target}/gitdir ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${target}, whose gitdir file is not a regular file${git_fix_hint}"
         admins+=("${target}")
@@ -1341,13 +1343,59 @@ nested_shape_check() {
     pointer_values ${admins[@]+"${admins[@]/%//gitdir}"}
     for ((i = 0; i < ${#trees[@]}; i++)); do
         v=${pointer_list[i]}
-        case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
-        /*) target=${v} ;;
-        *) target=${admins[i]}/${v} ;;
-        esac
-        [[ ${target} -ef ${trees[i]}/.git ]] ||
+        [[ ${v} -ef ${trees[i]}/.git ]] ||
             refuse "the worktree ${trees[i]} has a .git naming ${admins[i]}, which records ${v}, another worktree${git_fix_hint}"
+        spelled_physically "the path ${admins[i]}/gitdir records," "${v}" "${trees[i]}/.git"
     done
+}
+
+# @description Set `deny_unit` to what a seat's settings write-deny for the worktree `$5` inside its write root
+#   number `$4`, or `deny_problem` to why no deny holds it (regime-cutover U95).
+#   - macOS: the worktree itself. srt 0.0.81 also denies `file-write-unlink` and `file-write-create` on every
+#     ancestor of a denied path (`moveBlockingFilters`, macos-sandbox-utils.js:589-608, emitted with the write rules
+#     at :738-747), so no ancestor can be renamed away (measured live: renaming `.claude`, `.claude/worktrees` and
+#     the worktree was denied, a sibling directory was renamed).
+#   - Linux: a read-only bind on the worktree would make only the worktree a mountpoint, and the seat could rename a
+#     writable ancestor (`.claude`): the mount moves with it, and the seat recreates the registered path with a tree
+#     of its own. So the unit is the top-level entry of the seat's own directory (write root 0) that holds the
+#     worktree: `<dir>/.claude` for `<dir>/.claude/worktrees/x`. bwrap's `--ro-bind <p> <p>` makes that entry a
+#     mountpoint in the seat's mount namespace, and rename(2) of a mountpoint fails with EBUSY (rename(2), "EBUSY …
+#     in use by the system (for example as a mount point)"; fs/namei.c vfs_rename: `if (is_local_mountpoint(
+#     old_dentry) || is_local_mountpoint(new_dentry)) goto out` with `error = -EBUSY`); renaming `<dir>` itself
+#     needs its parent, outside every write root. A worktree in another write root, or under an entry the seat must
+#     write, cannot be denied this way: `deny_problem` names it. What a seat must write, from its role's contract:
+#     the orchestrator writes its program store, `.orchestration/` (hcom-orchestration SKILL), and edits no other
+#     tracked file (workers edit code in their own worktrees); a worker edits its whole tracked tree, so also every
+#     top-level entry of this repository's HEAD (`tracked_entries`).
+# @arg $1 string The operating system (`uname -s`).
+# @arg $2 string The role.
+# @arg $3 string The seat's own directory, physical (write root 0).
+# @arg $4 int The index of the write root that holds the worktree.
+# @arg $5 string The worktree, physical.
+# @set deny_unit The path to write-deny, or empty.
+# @set deny_problem Why the worktree cannot be denied, or empty.
+nested_deny_unit() {
+    local rest entry
+    deny_unit='' deny_problem=''
+    if [[ $1 == Darwin ]]; then
+        deny_unit=$5
+        return 0
+    fi
+    if (($4 != 0)); then
+        deny_problem="it lies in the write root that is not the seat's own directory $3, so no top-level entry of the seat's tree can hold its deny on Linux; move it out (\`git worktree move\`)"
+        return 0
+    fi
+    rest=${5#"$3"/}
+    entry=${rest%%/*}
+    if [[ ${rest} == "$5" || -z ${entry} || ${entry} == "${rest}" ]]; then # lint-comparisons: allow a prefix strip of one physical path from another, checked by its result
+        deny_problem="it cannot be named below the seat's own directory $3; move it out (\`git worktree move\`)"
+        return 0
+    fi
+    if [[ ${entry} == .orchestration || ($2 != orchestrator && $'\n'${tracked_entries}$'\n' == *$'\n'"${entry}"$'\n'*) ]]; then # lint-comparisons: allow top-level entry names, no path compare
+        deny_problem="on Linux its deny is the whole top-level entry $3/${entry}, which the $2 seat must write; move the worktree out of it (\`git worktree move\`) or remove it (\`git worktree remove\`)"
+        return 0
+    fi
+    deny_unit=$3/${entry}
 }
 
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
@@ -1371,7 +1419,7 @@ nested_shape_check() {
 # @set seat_nested The worktrees inside the seat's write roots, write-denied to it.
 seat_overlap_check() {
     local own_role=$1 own_dir=$2 r p i j k w nroots seats_phys labels=() protected=() own=() nested=() roots=()
-    local registered=()
+    local registered=() nested_root=()
     shift 2
     roots=("$@")
     nroots=$#
@@ -1417,8 +1465,10 @@ seat_overlap_check() {
                 # A worktree strictly inside the root that is no seat's write root is protected by a write deny.
                 if [[ ${labels[i]} == 'the worktree' ]] && ! within_ix "${j}" "${k}" &&
                     [[ ${tbl_exists[j]} == 0 || ${root_ids} != *$'\n'"${tbl_first[j]}"$'\n'* ]]; then # lint-comparisons: allow a fixed label and (device, inode) identities, not paths
-                    nested_path_check "${own_role}" "${registered[i]}" "${p}"
+                    spelled_physically "the worktree recorded inside a write root of the ${own_role} seat as" \
+                        "${registered[i]}" "${p}"
                     nested[i]=1
+                    nested_root[i]=${k}
                     continue
                 fi
                 refuse "the ${own_role} seat's write root ${r} contains ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
@@ -1433,19 +1483,43 @@ seat_overlap_check() {
     # The deny list is derived from the full table: every protected index holds exactly one result, 0 or 1.
     ((${#nested[@]} == ${#protected[@]} && ${#own[@]} == ${#protected[@]})) ||
         refuse "the overlap table of the ${own_role} seat does not hold one result per protected path"
+    seat_nested_unit=() seat_nested_problem=()
     for ((i = 0; i < ${#protected[@]}; i++)); do
         case ${nested[i]-} in
         0) ;;
-        1) seat_nested+=("${protected[i]}") ;;
+        1)
+            seat_nested+=("${protected[i]}")
+            nested_deny_unit "${os}" "${own_role}" "${roots[0]}" "${nested_root[i]}" "${protected[i]}"
+            seat_nested_unit+=("${deny_unit}")
+            seat_nested_problem+=("${deny_problem}")
+            ;;
         *) refuse "the overlap table of the ${own_role} seat has no result for ${protected[i]}" ;;
         esac
     done
+    ((${#seat_nested_unit[@]} == ${#seat_nested[@]} && ${#seat_nested_problem[@]} == ${#seat_nested[@]})) ||
+        refuse "the deny plan of the ${own_role} seat does not hold one entry per nested worktree"
     nested_shape_check "${own_role}" ${seat_nested[@]+"${seat_nested[@]}"}
 }
 
+# The top-level entries of this repository's tracked tree, which a worker edits (nested_deny_unit, Linux only): one
+# git run, NUL-separated, every name one plain component.
+tracked_entries=''
+if [[ ${os} == Linux && ${role} != orchestrator ]]; then
+    listing=$({ git -C "${repo}" ls-tree -z --name-only HEAD | /usr/bin/tr '\0\n' '\n\001'; } && printf .) ||
+        refuse "git cannot list the tracked tree of ${repo}"
+    listing=${listing%.}
+    while IFS= read -r entry; do
+        [[ -z ${entry} ]] && continue
+        [[ ${entry} != */* && ${entry} != *[[:cntrl:]]* && ${entry} != . && ${entry} != .. ]] || # lint-comparisons: allow a component test on one name
+            refuse "git lists '${entry}' as a top-level entry of ${repo}, not one plain name"
+        tracked_entries+=${entry}$'\n'
+    done <<< "${listing}"
+fi
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
 seat_overlap_check "${role}" "${dir_phys}" "${seat_write[@]}"
 launch_nested=(${seat_nested[@]+"${seat_nested[@]}"})
+launch_nested_unit=(${seat_nested_unit[@]+"${seat_nested_unit[@]}"})
+launch_nested_problem=(${seat_nested_problem[@]+"${seat_nested_problem[@]}"})
 orchestrator_write=()
 while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_roots}"
 # The orchestrator's own directory is the launch checkout (`${repo}`, a linked worktree or the main checkout), the
@@ -1467,31 +1541,46 @@ seat_overlap_check orchestrator "${repo_phys}" "${orchestrator_write[@]}"
 # @arg $3 int 1 when the worktrees are the launching seat's own, 0 when they are the orchestrator's, reported.
 # @arg $@ string The worktrees after them.
 nested_worktree_plan() {
-    local system=$1 seat=$2 mine=$3 p
+    local system=$1 seat=$2 mine=$3 p unit problem said
     shift 3
-    for p in "$@"; do
-        if [[ -e ${p} ]]; then
-            if ((mine)); then
-                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; its directory is write-denied to the seat" >&2
-            else
-                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; the ${seat}'s launch write-denies its directory" >&2
-            fi
-        elif [[ ${system} == Darwin ]]; then
-            if ((mine)); then
-                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the path is write-denied to the seat, creating it included" >&2
-            else
-                echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the ${seat}'s launch write-denies the path, creating it included" >&2
-            fi
-        elif ((mine)); then
-            refuse "the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; srt on Linux cannot deny a path that does not exist, so the seat could recreate it: run \`git worktree prune\` (or restore the directory) first"
+    (($# % 3 == 0)) || refuse "the nested worktree plan of the ${seat} seat is not one (worktree, deny, problem) per worktree"
+    while (($#)); do
+        p=$1 unit=$2 problem=$3
+        shift 3
+        if [[ ! -e ${p} && ${system} != Darwin ]]; then
+            problem="its directory is absent; srt on Linux cannot deny a path that does not exist, so the seat could recreate it: run \`git worktree prune\` (or restore the directory) first"
+        fi
+        if [[ -n ${problem} ]]; then
+            ((! mine)) || refuse "the worktree ${p} lies inside a write root of the ${seat} seat; ${problem}"
+            echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; the ${seat}'s launch is refused: ${problem}" >&2
+            continue
+        fi
+        [[ -n ${unit} ]] || refuse "the worktree ${p} has no deny in the plan of the ${seat} seat"
+        if [[ ! -e ${p} ]]; then
+            said="its absent path, creating it included"
+        elif [[ ${unit} == "${p}" ]]; then # lint-comparisons: allow the plan's own entry, set from the same string
+            said="its directory"
         else
-            echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat and its directory is absent; the ${seat}'s launch is refused until \`git worktree prune\` removes it (or the directory is restored)" >&2
+            said="the top-level entry ${unit} that holds it (a rename of that mountpoint fails with EBUSY)"
+        fi
+        if ((mine)); then
+            echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; the seat's settings write-deny ${said}" >&2
+        else
+            echo "hcom-seat: the worktree ${p} lies inside a write root of the ${seat} seat; the ${seat}'s launch write-denies ${said}" >&2
         fi
     done
 }
-nested_worktree_plan "${os}" "${role}" 1 ${launch_nested[@]+"${launch_nested[@]}"}
+plan=()
+for ((i = 0; i < ${#launch_nested[@]}; i++)); do
+    plan+=("${launch_nested[i]}" "${launch_nested_unit[i]}" "${launch_nested_problem[i]}")
+done
+nested_worktree_plan "${os}" "${role}" 1 ${plan[@]+"${plan[@]}"}
 if [[ ${role} != orchestrator ]]; then
-    nested_worktree_plan "${os}" orchestrator 0 ${seat_nested[@]+"${seat_nested[@]}"}
+    plan=()
+    for ((i = 0; i < ${#seat_nested[@]}; i++)); do
+        plan+=("${seat_nested[i]}" "${seat_nested_unit[i]}" "${seat_nested_problem[i]}")
+    done
+    nested_worktree_plan "${os}" orchestrator 0 ${plan[@]+"${plan[@]}"}
 fi
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
@@ -1578,7 +1667,7 @@ seat_sandbox_write() {
     local h claude dir_real common_real hcom_real seats_real sandbox_real
     local root path settings shim json base sandbox_state origin_url push_url srt_q omp_q
     local write_json deny_write_json deny_read_json allow_read_json
-    local write=() deny_write=() deny_read=() allow_read=()
+    local write=() deny_write=() deny_read=() allow_read=() units_seen=''
     # srt on Linux grants writes only to paths that exist, so omp's own state directories are made first. The seat's
     # slots under the seats root were proved free of links (own_slots_check); they are made one component at a time,
     # and each is checked again to be a real directory.
@@ -1618,8 +1707,16 @@ seat_sandbox_write() {
     # follows the allow (`(deny file-write* (subpath …))`, macos-sandbox-utils.js:713-733), on Linux the deny's
     # `--ro-bind` is emitted after every write bind (linux-sandbox-utils.js:2434-2455). An absent worktree is denied
     # on macOS, which also refuses creating it (nested_worktree_plan, measured); on Linux the launch was refused there.
-    for path in ${launch_nested[@]+"${launch_nested[@]}"}; do
-        deny_write+=("${path}")
+    # The units come from nested_deny_unit: the worktree on macOS, its top-level entry on Linux (once each).
+    for path in ${launch_nested_unit[@]+"${launch_nested_unit[@]}"}; do
+        [[ -n ${path} ]] || refuse 'a nested worktree has no deny unit'
+        case $'\n'${units_seen}$'\n' in
+        *$'\n'"${path}"$'\n'*) ;;
+        *)
+            deny_write+=("${path}")
+            units_seen+=${path}$'\n'
+            ;;
+        esac
     done
     # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
     # write denies only, and the next launch's git_state_check covers it.

@@ -15,12 +15,14 @@ reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VE
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
 codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming a marker path, `exec` plays the
 launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
-and sleeps 60 seconds.
+and sleeps 60 seconds. FAKE_CODEX_IGNORE_TERM makes that `exec` and its child ignore TERM (the child then touches the
+marker after 8 seconds), so only a KILL stops them.
 """
 
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -94,7 +96,11 @@ elif argv[:1] == ["exec"]:
     record["prompt"] = sys.stdin.read()
     marker = os.environ.get("FAKE_CODEX_HANG")
     if marker:
-        subprocess.Popen(["/bin/sh", "-c", 'sleep 3; touch "$1"', "sh", marker])
+        delay = "3"
+        if os.environ.get("FAKE_CODEX_IGNORE_TERM"):
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)  # inherited by the child through exec
+            delay = "8"
+        subprocess.Popen(["/bin/sh", "-c", f'sleep {delay}; touch "$1"', "sh", marker])
         with open(os.environ["FAKE_CODEX_CALLS"], "a", encoding="utf-8") as calls:
             calls.write(json.dumps(record) + "\n")
         time.sleep(60)

@@ -34,7 +34,7 @@ TEMPLATE = ROOT / "home/dot_agents/codex-audit/config.toml"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FAKE_CODEX = ROOT / "tests/fixtures/pr-audit/fake-codex.py"
-PERL_FIXTURES = ROOT / "tests/fixtures/pr-audit/perl"
+INJECT_PYTHON = ROOT / "tests/fixtures/pr-audit/inject-python.sh"
 PAUSE_AFTER_LAUNCH = ROOT / "tests/fixtures/pr-audit/pause-after-launch.bash"
 RULES = "## Audit\n\nThe standing audit rules.\n"
 BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
@@ -381,59 +381,16 @@ class PrAuditTest(unittest.TestCase):
         self.assert_stopped(run, 2, "cannot resolve the current directory")
         self.assertFalse((self.rec / "gh-calls").exists())
 
-    def test_codex_never_runs_without_a_process_group_of_its_own(self):
-        """U71b audit round 9: setpgrp's result was ignored, so a failed group creation left codex outside the group
-        the deadline signals. A failing setpgrp, or a group that is not the child's own, now refuses before codex."""
-        for module in ("NoPgrp", "WrongPgrp"):
-            with self.subTest(module=module):
-                for path in self.tmp.iterdir():
-                    shutil.rmtree(path)
-                (self.rec / "codex-calls").unlink(missing_ok=True)
-                action = f'exec "$REAL" -I{PERL_FIXTURES} -M{module} "$@"'
-                path = self.failing_tool("perl", "*setpgrp*", action)
-                run = self.run_lever("7", PATH=path)
-                self.assert_stopped(run, 2, "cannot run codex under its supervisor (no process group)")
-                self.assertEqual(self.codex_calls(), [], "codex never started")
-
     def test_no_codex_on_path_refuses_before_any_call(self):
         run = self.run_lever("7", PATH="/usr/bin:/bin")
         self.assert_stopped(run, 2, "no codex on PATH")
         self.assertFalse((self.rec / "gh-calls").exists())
 
-    def test_a_signal_between_fork_and_the_pid_stops_the_child(self):
-        """U71b audit round 10: TERM to the supervisor after fork returned but before it stored the child's pid exited
-        the supervisor and left the child running. The signals are now blocked across the fork, so the TERM waits until
-        the pid is known and stops the child's whole group."""
-        marker = self.root / "child-still-ran"
-        pidfile = self.root / "supervisor.pid"
-        action = f'exec "$REAL" -I{PERL_FIXTURES} -MPauseFork={pidfile} "$@"'
-        path = self.failing_tool("perl", "*setpgrp*", action)
-        lever = subprocess.Popen(
-            [str(LEVER), "7"],
-            cwd=self.repo,
-            env={**self.env, "PATH": path, "PR_AUDIT_TIMEOUT": "600", "FAKE_CODEX_HANG": str(marker)},
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        deadline = time.monotonic() + 60
-        # Wait until the supervisor is paused in the window and the child has already started codex (its call is
-        # recorded): a child still writing its `ok` would die of SIGPIPE with the supervisor and hide the defect.
-        while not (pidfile.exists() and any(c["argv"][:1] == ["exec"] for c in self.codex_calls())):
-            self.assertIsNone(lever.poll(), "the lever ended before the supervisor forked codex exec")
-            self.assertLess(time.monotonic(), deadline)
-            time.sleep(0.02)
-        os.kill(int(pidfile.read_text()), signal.SIGTERM)  # inside the 2 s window between fork and the pid
-        _, stderr = lever.communicate(timeout=60)
-        self.assertEqual(lever.returncode, 1, stderr)
-        self.assertIn("codex exec exited 143", stderr)
-        time.sleep(4)
-        self.assertFalse(marker.exists(), "the child outlived a signal sent before its pid was stored")
-
     def test_a_signal_between_the_launch_and_the_pid_stops_supervisor_and_codex(self):
         """U71b audit round 11: TERM or HUP after the lever launched the supervisor but before `codex_pid=$!` found no
         pid, so the lever exited and left the supervisor and codex running. The signal is now held until the pid is
-        known. A BASH_ENV fixture pauses the lever in that window for the `codex exec` launch."""
+        known; the lever now finds the supervisor in its job table. A BASH_ENV fixture pauses the lever between the
+        `codex exec` supervisor's launch and its `wait`."""
         for signum in (signal.SIGTERM, signal.SIGHUP):
             with self.subTest(signal=signum.name):
                 for path in self.tmp.iterdir():
@@ -460,7 +417,7 @@ class PrAuditTest(unittest.TestCase):
                     self.assertIsNone(lever.poll(), "the lever ended before it launched codex exec")
                     self.assertLess(time.monotonic(), deadline)
                     time.sleep(0.02)
-                os.kill(int(pidfile.read_text()), signum)  # inside the 2 s window before `codex_pid=$!`
+                os.kill(int(pidfile.read_text()), signum)  # inside the 2 s window before `wait "$!"`
                 stdout, stderr = lever.communicate(timeout=60)
                 self.assertEqual(lever.returncode, 128 + signum, stderr)
                 self.assertEqual(stdout, "")
@@ -495,25 +452,6 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(lever.returncode, 143, stderr)
         self.assertEqual(list(self.tmp.iterdir()), [], "the run directory made before the trap is removed")
         self.assertEqual(self.codex_calls(), [])
-
-    def test_a_supervisor_that_cannot_unblock_its_signals_runs_nothing(self):
-        action = f'exec "$REAL" -I{PERL_FIXTURES} -MFailUnblock "$@"'
-        path = self.failing_tool("perl", "*setpgrp*", action)
-        run = self.run_lever("7", PATH=path)
-        self.assert_stopped(run, 2, "cannot run codex under its supervisor (signal mask)")
-        self.assertEqual(self.codex_calls(), [], "codex never ran")
-
-    def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
-        path = self.failing_tool("perl", "*setpgrp*", f'exec "$REAL" -I{PERL_FIXTURES} -MNoPgrp "$@"')
-        cat = self.failing_tool("cat", "*group-mark*", "exit 1")
-        run = self.run_lever("7", PATH=f"{cat.split(':', 1)[0]}:{path}")
-        self.assert_stopped(run, 1, "cannot read")
-        self.assertEqual(self.codex_calls(), [], "codex never ran")
-
-    def test_the_callers_perl_variables_are_removed(self):
-        """PERL5OPT and PERL5LIB would load code into the supervisor; the lever removes every PERL* first."""
-        run = self.run_lever("7", PERL5LIB=str(PERL_FIXTURES), PERL5OPT="-MNoPgrp")
-        self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_a_config_that_does_not_select_the_audit_profile_is_refused(self):
         cases = (
@@ -789,6 +727,166 @@ class PrAuditTest(unittest.TestCase):
                 self.assertFalse(marker.exists(), "a process codex started outlived the signal")
                 (rundir,) = self.tmp.iterdir()
                 self.assertFalse((rundir / "work").exists(), "the scratch tree is removed")
+
+    def injected(self, code):
+        """PATH and environment for a run whose codex supervisor runs CODE first (tests/fixtures/pr-audit/inject-python.sh)."""
+        bindir = Path(tempfile.mkdtemp(dir=self.root, prefix="inject-"))
+        (bindir / "python3").symlink_to(INJECT_PYTHON)
+        (bindir / "inject.py").write_text(code)
+        return {
+            "PATH": f"{bindir}:{self.env['PATH']}",
+            "PR_AUDIT_TEST_REAL_PYTHON": shutil.which("python3", path=self.env["PATH"]),
+            "PR_AUDIT_TEST_INJECT": str(bindir / "inject.py"),
+        }
+
+    def test_a_supervisor_that_cannot_launch_codex_refuses(self):
+        """A failed setsid or exec in the child raises in the supervisor: mark, exit 125, refusal, no codex call."""
+        setsid = (
+            "import errno, subprocess\n"
+            "class Popen(subprocess.Popen):\n"
+            "    def __init__(self, *a, **k):\n"
+            "        if k.get('start_new_session'):\n"
+            "            raise OSError(errno.EPERM, 'setsid failed')\n"
+            "        super().__init__(*a, **k)\n"
+            "subprocess.Popen = Popen\n"
+        )
+        execfail = (
+            "import subprocess\n"
+            "_Popen = subprocess.Popen\n"
+            "def Popen(argv, **k):\n"
+            "    return _Popen(['/nonexistent/codex', *argv[1:]], **k)\n"
+            "subprocess.Popen = Popen\n"
+        )
+        crash = "import signal\ndef boom(*a):\n    raise RuntimeError('injected')\nsignal.signal = boom\n"
+        for name, code, reason in (
+            ("setsid", setsid, "launch: [Errno 1] setsid failed"),
+            ("exec", execfail, "launch: [Errno 2] No such file or directory"),
+            ("any other exception", crash, "supervisor: RuntimeError: injected"),
+        ):
+            with self.subTest(failure=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                run = self.run_lever("7", **self.injected(code))
+                self.assert_stopped(run, 2, f"codex's supervisor failed ({reason}")
+                self.assertEqual(self.codex_calls(), [], "codex never ran")
+
+    def test_a_killpg_error_other_than_esrch_refuses_and_esrch_does_not(self):
+        code = (
+            "import errno, os\n"
+            "def killpg(pgid, sig):\n"
+            "    raise OSError(errno.{0}, os.strerror(errno.{0}))\n"
+            "os.killpg = killpg\n"
+        )
+        for name, text in (("EPERM", "Operation not permitted"), ("EINVAL", "Invalid argument")):
+            with self.subTest(errno=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", **self.injected(code.format(name)))
+                self.assert_stopped(run, 2, f"codex's supervisor failed (killpg SIGKILL: {text})")
+        for path in self.tmp.iterdir():
+            shutil.rmtree(path)
+        run = self.run_lever("7", **self.injected(code.format("ESRCH")))  # the group is gone: nothing to stop
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_the_deadline_kills_a_group_that_ignores_term(self):
+        marker = self.root / "term-ignorer-still-ran"
+        started = time.monotonic()
+        run = self.run_lever("7", PR_AUDIT_TIMEOUT="1", FAKE_CODEX_HANG=str(marker), FAKE_CODEX_IGNORE_TERM="1")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("codex exec exited 124", run.stderr)
+        self.assertLess(time.monotonic() - started, 40)
+        time.sleep(9)
+        self.assertFalse(marker.exists(), "a TERM-ignoring process outlived the deadline's KILL")
+
+    def test_a_signal_to_the_supervisor_before_or_after_the_launch_stops_codex(self):
+        """Before Popen returns the signal is pending and acted on right after; after, it stops the group at once."""
+        before = (
+            "import os, signal, subprocess, sys\n"
+            "_Popen = subprocess.Popen\n"
+            "def Popen(argv, **k):\n"
+            "    if 'exec' in argv:\n"
+            "        os.kill(os.getpid(), signal.SIGTERM)\n"
+            "    return _Popen(argv, **k)\n"
+            "subprocess.Popen = Popen\n"
+        )
+        pidfile = self.root / "supervisor.pid"
+        after = (
+            "import os, subprocess\n"
+            "_Popen = subprocess.Popen\n"
+            "def Popen(argv, **k):\n"
+            "    proc = _Popen(argv, **k)\n"
+            "    if 'exec' in argv:\n"
+            f"        open({str(pidfile)!r} + '.tmp', 'w').write(str(os.getpid()))\n"
+            f"        os.rename({str(pidfile)!r} + '.tmp', {str(pidfile)!r})\n"
+            "    return proc\n"
+            "subprocess.Popen = Popen\n"
+        )
+        for name, code in (("before", before), ("after", after)):
+            with self.subTest(moment=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                marker = self.root / f"codex-still-ran-{name}"
+                lever = subprocess.Popen(
+                    [str(LEVER), "7"],
+                    cwd=self.repo,
+                    env={**self.env, **self.injected(code), "PR_AUDIT_TIMEOUT": "600", "FAKE_CODEX_HANG": str(marker)},
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                if name == "after":
+                    deadline = time.monotonic() + 60
+                    while not (pidfile.exists() and any(c["argv"][:1] == ["exec"] for c in self.codex_calls())):
+                        self.assertIsNone(lever.poll(), "the lever ended before codex exec ran")
+                        self.assertLess(time.monotonic(), deadline)
+                        time.sleep(0.02)
+                    os.kill(int(pidfile.read_text()), signal.SIGTERM)
+                _, stderr = lever.communicate(timeout=60)
+                self.assertEqual(lever.returncode, 1, stderr)
+                self.assertIn("codex exec exited 143", stderr)
+                time.sleep(4)
+                self.assertFalse(marker.exists(), "codex outlived the signal to its supervisor")
+
+    def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
+        code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"
+        env = self.injected(code)
+        cat = self.failing_tool("cat", "*group-mark*", "exit 1")
+        env["PATH"] = f"{cat.split(':', 1)[0]}:{env['PATH']}"
+        self.assert_stopped(self.run_lever("7", **env), 1, "cannot read")
+        self.assertEqual(self.codex_calls(), [], "codex never ran")
+
+    def test_the_callers_perl_variables_are_removed(self):
+        """PERL5OPT would load code into the perl that bounds gh and git and resolves paths; the lever removes PERL*."""
+        run = self.run_lever("7", PERL5OPT="-MU71bNoSuchModule")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_no_python3_on_path_refuses(self):
+        bindir = Path(tempfile.mkdtemp(dir=self.root, prefix="nopython-"))
+        for tool in (
+            "codex",
+            "gh",
+            "git",
+            "perl",
+            "awk",
+            "grep",
+            "sed",
+            "cat",
+            "rm",
+            "mkdir",
+            "mktemp",
+            "od",
+            "ln",
+            "shasum",
+        ):
+            found = shutil.which(tool, path=self.env["PATH"])
+            if found:
+                (bindir / tool).symlink_to(found)
+        run = self.run_lever("7", PATH=f"{bindir}:/bin:/usr/sbin:/sbin")
+        if shutil.which("python3", path="/bin:/usr/sbin:/sbin"):
+            self.skipTest("a python3 in /bin")
+        self.assert_stopped(run, 2, "no python3 on PATH")
 
     def test_main_audit_rules_that_cannot_be_read_whole_refuse_before_codex(self):
         """main:AGENTS.md is read once and whole (U71b audit round 3): a failed or short read never yields rules."""

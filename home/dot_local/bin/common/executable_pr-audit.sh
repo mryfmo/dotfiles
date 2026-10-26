@@ -63,9 +63,9 @@
 #   denial, any other curl status (0, a timeout, 126/127), or a probe that cannot run, is a refusal: the measured
 #   property is a precondition of every run. Then
 #   `codex exec --strict-config --skip-git-repo-check --ephemeral -C <empty cwd> -o <verdict> -` reads the prompt,
-#   bounded by PR_AUDIT_TIMEOUT seconds. Every codex call runs in a process group of its own under a supervisor that
-#   stops the whole group on its deadline and on INT, TERM or HUP; the lever forwards those signals to it and exits
-#   128 + the signal's number. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
+#   bounded by PR_AUDIT_TIMEOUT seconds. Every codex call runs in a session and process group of its own under one
+#   Python supervisor (`python3 -I -S`, from PATH; none is a refusal) that stops the whole group on its deadline and
+#   on INT, TERM or HUP; the lever forwards those signals to it and exits 128 + the signal's number. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
 #   run directory keeps `prompt.md`, `codex.log` and `verdict.md`, or is removed whole when codex never started.
 # @arg $1 int The pull request number.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
@@ -144,8 +144,8 @@ lever_self_check
 # No git variable of the caller reaches any git this lever runs (U71b audit round 7: an inherited GIT_GRAFT_FILE
 # rewrote the ancestry, so merge-base(main, head) was the head and the audited range was empty). Rather than name
 # the variables git reads (a list that misses the next one), every exported `GIT_*` name is removed, and every `PERL*`
-# name (PERL5OPT, PERL5LIB and the rest would load code into the perl that supervises codex and resolves paths, U71b
-# audit round 9); a failed listing or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
+# name (PERL5OPT, PERL5LIB and the rest would load code into the perl that bounds the gh and git calls and resolves
+# paths, U71b audit round 9; the codex supervisor's python runs isolated, `-I -S`); a failed listing or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
 # named from the cwd alone, and the audited repository is created fresh with no template, so it holds no grafts file
 # (checked before its first read, below) and no refs but the two it fetches.
 git_names=$(compgen -e) || {
@@ -222,142 +222,149 @@ git_tree() {
         -c core.fsmonitor=false "$@"
 }
 
-# The supervisor of every codex run (perl): it starts the command in a process group of its own and waits, bounded by
-# its first argument in seconds. The `codex` on PATH is a launcher that starts the native binary as a child, so a
-# signal to the launcher alone left the native process running the audit on the login after the lever had reported
-# the run failed (measured 2026-10-26 with codex-cli 0.163.0 and PR_AUDIT_TIMEOUT=1). On the deadline, and on INT,
-# TERM or HUP to the supervisor (U71b audit round 4: those signals used to kill the supervisor and leave the group
-# running), the whole group gets TERM, then KILL once the leader has exited or after 5 seconds, and the supervisor
-# exits 124 (deadline) or 128 + the signal's number. ALRM, HUP, INT and TERM are blocked (sigprocmask) before the
-# handlers are installed and before the fork, and the parent unblocks them only after it holds the child's pid (U71b
-# audit round 10: a signal between fork and the pid assignment exited the supervisor without stopping the child), so
-# a signal that arrives earlier stays pending and its handler always has a child to stop. The child restores the
-# default handlers, then its signal mask, before anything else. After a normal exit any process the group left behind
-# gets KILL. The child runs the command only in a process group of its own (U71b audit round 9): it checks setpgrp's
-# result and that getpgrp is its own pid, then reports `ok` through a pipe before exec; without that report the
-# command never starts. The supervisor then writes the reason (`no process group`, or `signal mask` when it cannot
-# unblock the signals, after which it kills the child) to the mark file (its second argument) and exits 125. The stop
-# signals both the group and the child, so a signal before the group exists still reaches the child.
-# The single quotes keep the perl variables for perl, never this shell.
+# The supervisor of every codex run (U71b audit round 12, treadmill rule: three rounds of a hand-built perl supervisor
+# kept failing in new windows, so it was replaced by this one Python program on the standard library's primitives). It
+# runs as `python3 -I -S` (isolated: no PYTHON* variable, no user or site packages) with the deadline in seconds, the
+# mark file and the command. The `codex` on PATH is a launcher that starts the native binary as a child, so codex
+# runs in a session and process group of its own (`start_new_session`) and is always stopped as a group.
+# - INT, TERM and HUP handlers are installed before the launch. While the child does not exist yet they only record
+#   the first signal; right after the launch returns a recorded signal stops the group. Once the child exists a signal
+#   stops the group at once. Stopping: the further signals are ignored, the group gets TERM, the leader gets a grace
+#   of 5 seconds, then the group always gets KILL, the leader is reaped, and the exit is 128 + the signal's number.
+# - The deadline is the timeout of the wait for the leader: when it expires the group is stopped the same way and the
+#   exit is 124. After a normal exit any process left in the group gets KILL.
+# - A launch that fails (setsid or exec in the child raise in the parent), a killpg that fails with any error but
+#   ESRCH (the group is gone), and any other exception write the reason to the mark file and exit 125: the lever then
+#   refuses. No path exits 0 unless codex itself did.
+# The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
-group_supervisor='
-    use POSIX qw(:sys_wait_h :signal_h);
-    my $seconds = shift;
-    my $group_mark = shift;
-    my $pid;
-    my $mark = sub {
-        my ($reason) = @_;
-        my $out;
-        print {$out} "$reason\n" if open($out, ">", $group_mark);
-        exit 125;
-    };
-    my $stop = sub {
-        my ($code) = @_;
-        alarm 0;
-        kill "TERM", -$pid;
-        kill "TERM", $pid;
-        for (1 .. 50) { last if waitpid($pid, WNOHANG) != 0; select(undef, undef, undef, 0.1); }
-        kill "KILL", -$pid;
-        waitpid($pid, 0);
-        exit $code;
-    };
-    my $blocked = POSIX::SigSet->new(SIGALRM, SIGHUP, SIGINT, SIGTERM);
-    my $previous = POSIX::SigSet->new;
-    sigprocmask(SIG_BLOCK, $blocked, $previous) or die "sigprocmask: $!\n";
-    $SIG{ALRM} = sub { $stop->(124) };
-    $SIG{HUP} = sub { $stop->(129) };
-    $SIG{INT} = sub { $stop->(130) };
-    $SIG{TERM} = sub { $stop->(143) };
-    pipe(my $ready_r, my $ready_w) or die "pipe: $!\n";
-    defined($pid = fork) or die "fork: $!\n";
-    if ($pid == 0) {
-        $SIG{$_} = "DEFAULT" for qw(ALRM HUP INT TERM);
-        sigprocmask(SIG_SETMASK, $previous) or exit 125;
-        close $ready_r;
-        # The command runs only in a process group of its own: setpgrp must succeed and the group must be this pid.
-        setpgrp(0, 0) or exit 125;
-        getpgrp(0) == $$ or exit 125;
-        syswrite($ready_w, "ok") == 2 or exit 125;
-        exec @ARGV or die "exec $ARGV[0]: $!\n";
-    }
-    if (!sigprocmask(SIG_SETMASK, $previous)) {
-        kill "KILL", -$pid;
-        kill "KILL", $pid;
-        waitpid($pid, 0);
-        $mark->("signal mask");
-    }
-    close $ready_w;
-    my $ready = "";
-    sysread($ready_r, $ready, 2);
-    close $ready_r;
-    if ($ready ne "ok") {
-        waitpid($pid, 0);
-        $mark->("no process group");
-    }
-    alarm $seconds;
-    waitpid($pid, 0);
-    my $status = $?;
-    alarm 0;
-    kill "KILL", -$pid;
-    exit($status & 127 ? 128 + ($status & 127) : $status >> 8);
+codex_supervisor='
+import os
+import signal
+import subprocess
+import sys
+
+GRACE = 5
+state = {"proc": None, "pending": None}
+
+
+def mark(reason):
+    try:
+        with open(sys.argv[2], "w") as out:
+            out.write(reason + "\n")
+    finally:
+        os._exit(125)
+
+
+def kill_group(sig):
+    try:
+        os.killpg(state["proc"].pid, sig)
+    except ProcessLookupError:
+        pass
+    except OSError as error:
+        mark(f"killpg {sig.name}: {error.strerror or error}")
+
+
+def stop(code):
+    for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+        signal.signal(getattr(signal, name), signal.SIG_IGN)
+    proc = state["proc"]
+    kill_group(signal.SIGTERM)
+    try:
+        proc.wait(timeout=GRACE)
+    except subprocess.TimeoutExpired:
+        pass
+    kill_group(signal.SIGKILL)
+    proc.wait()
+    os._exit(code)
+
+
+def on_signal(signum, frame):
+    if state["proc"] is None:
+        if state["pending"] is None:
+            state["pending"] = signum
+        return
+    stop(128 + signum)
+
+
+def main():
+    seconds = int(sys.argv[1])
+    argv = sys.argv[3:]
+    for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+        signal.signal(getattr(signal, name), on_signal)
+    try:
+        proc = subprocess.Popen(argv, start_new_session=True)
+    except (OSError, subprocess.SubprocessError) as error:
+        mark(f"launch: {error}")
+    state["proc"] = proc
+    if state["pending"] is not None:
+        stop(128 + state["pending"])
+    try:
+        status = proc.wait(timeout=seconds)
+    except subprocess.TimeoutExpired:
+        stop(124)
+    kill_group(signal.SIGKILL)
+    os._exit(128 - status if status < 0 else status)
+
+
+try:
+    main()
+except BaseException as error:
+    mark(f"supervisor: {type(error).__name__}: {error}")
 '
 
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
-#   no XDG base directories, under the group supervisor bounded by $1 seconds; a supervisor that could not create the
-#   group is a refusal (exit 2, codex never ran). The supervisor runs in the background
-#   and the shell waits for it, so the INT, TERM and HUP traps of the lever run while it is running and stop it. The
-#   launch and the assignment of its pid run with the signals held (hold_signals), so a signal in between is acted on
-#   as soon as the pid is known.
+#   no XDG base directories, under the supervisor bounded by $1 seconds; a supervisor that failed (status 125 with a
+#   mark) is a refusal (exit 2). The supervisor runs as a background job and the shell waits for it, so the INT, TERM
+#   and HUP traps of the lever run while it is running; they find it in the job table (`jobs -p`), which holds it from
+#   the moment it is launched until `wait` has reaped it, so no pid variable opens a window.
 # @arg $1 int Seconds the run may take.
 # @arg $2 path The file codex reads as stdin.
 # @arg $3 path The file that gets codex's stdout and stderr.
 # @arg $@ string The codex arguments.
-# @set codex_pid The supervisor's pid while it runs, empty after.
 codex_scratch() {
     local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark reason
     shift 3
     rm -f -- "${mark}" || fail "cannot remove ${mark}"
-    hold_signals
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
         HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir \
-            exec perl -e "${group_supervisor}" "${seconds}" "${mark}" codex "$@" < "${input}" > "${output}" 2>&1
+            exec "${python}" -I -S -c "${codex_supervisor}" "${seconds}" "${mark}" codex "$@" \
+            < "${input}" > "${output}" 2>&1
     ) &
-    codex_pid=$!
-    release_signals
-    wait "${codex_pid}" || status=$?
-    codex_pid=''
-    # A supervisor that could not start codex safely ran nothing it did not stop; a status of 125 without the mark is
-    # codex's own.
+    wait "$!" || status=$?
+    # A failed supervisor marks its reason; a status of 125 without the mark is codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
         reason=$(cat -- "${mark}") || fail "cannot read ${mark}"
-        refuse "cannot run codex under its supervisor (${reason}), so its deadline could not stop it; codex did not run"
+        refuse "codex's supervisor failed (${reason}); no verdict was taken from this run"
     fi
     return "${status}"
 }
 
-# Bash has no sigprocmask, so the lever defers its INT, TERM and HUP handling itself (U71b audit round 11: TERM or HUP
-# between a supervisor's background launch and `codex_pid=$!` found no pid, and the lever exited leaving the supervisor
-# and codex running). Every window in which the handler depends on a name set after an action is held: the launch of
-# a supervisor until its pid is recorded (codex_scratch), and the creation of the run directory until the EXIT trap
-# that removes it is set. A signal inside a held window is only recorded; release_signals acts on it at once. The one
-# window left is a single assignment: `codex_pid=''` after `wait` returned, where a signal makes the handler TERM a
-# pid already reaped (harmless unless the system reused it in between; residual).
+# The lever's INT, TERM and HUP handling. The running supervisor is found in the job table, not in a variable, so a
+# signal right after its launch or right after its `wait` finds the right set (U71b audit round 11 found a window
+# between the launch and a pid variable). One window still depends on a name set after an action, the run directory's
+# creation until the EXIT trap that removes it is set; it is held: a signal inside it is only recorded, and
+# release_signals acts on it at once.
 signal_hold=0
 signal_pending=''
 
-# @description Stop the running supervisor, if any (which stops codex's whole process group), wait for it, then exit
-#   128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be caught: a KILL to the lever
-#   leaves the supervisor running, which still stops the group at its deadline; a KILL to the supervisor itself leaves
-#   the group unsupervised (residual).
+# @description Stop the running supervisor, if any (the lever's only background job; it stops codex's whole process
+#   group), wait for it, then exit 128 + the signal's number; the EXIT trap removes the scratch tree. A KILL cannot be
+#   caught: a KILL to the lever leaves the supervisor running, which still stops the group at its deadline; a KILL to
+#   the supervisor itself leaves the group unsupervised (residual).
 # @arg $1 string The signal's name.
 # @arg $2 int The signal's number.
 stop_on_signal() {
+    local jobs_running
     trap '' INT TERM HUP
-    if [[ -n ${codex_pid:-} ]]; then
-        kill -TERM "${codex_pid}" 2> /dev/null || true
-        wait "${codex_pid}" 2> /dev/null || true
+    jobs_running=$(jobs -p) || jobs_running=''
+    if [[ -n ${jobs_running} ]]; then
+        # Word splitting is meant: one pid per word.
+        # shellcheck disable=SC2086
+        kill -TERM ${jobs_running} 2> /dev/null || true
+        wait 2> /dev/null || true
     fi
     echo "${lever}: stopped by SIG$1; codex was stopped and no verdict was written" >&2
     exit $((128 + $2))
@@ -388,7 +395,6 @@ release_signals() {
         stop_on_signal "${name}" "${number}"
     fi
 }
-codex_pid=''
 trap 'on_signal INT 2' INT
 trap 'on_signal TERM 15' TERM
 trap 'on_signal HUP 1' HUP
@@ -472,6 +478,7 @@ for value in "${gh_timeout}" "${audit_timeout}" "${probe_timeout}" "${wait_tries
 done
 [[ ${wait_seconds} =~ ^[0-9]+$ ]] || refuse 'PR_AUDIT_WAIT_SECONDS must be a non-negative integer'
 command -v codex > /dev/null || refuse 'no codex on PATH'
+python=$(command -v python3) || refuse 'no python3 on PATH (it runs the codex supervisor)'
 
 # The login: a regular file (a symlink to one is accepted), linked into the scratch CODEX_HOME, never copied.
 login_home=${CODEX_HOME:-${HOME}/.codex}

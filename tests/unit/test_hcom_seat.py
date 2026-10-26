@@ -1755,7 +1755,8 @@ class HcomSeatTest(unittest.TestCase):
     def test_the_checks_start_no_more_processes_for_more_worktrees(self):
         """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
         table, one size read, one pointer read, one resolving subshell), so a dry run with 300 registered worktrees
-        starts exactly as many processes as one with 10. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
+        starts exactly as many processes as one with 10. The one exception, one git config per non-empty
+        config.worktree, has its own test; the configs here are absent or empty. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
         wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
         stat runs and subshells per worktree and write root)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
@@ -1764,6 +1765,27 @@ class HcomSeatTest(unittest.TestCase):
         self.add_worktrees(10, 290)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
         self.assert_same_counts(few, self.spawn_counts())
+
+    def test_each_non_empty_config_worktree_costs_one_git_config_and_an_empty_one_nothing(self):
+        """U95 round 14: the one per-worktree cost the checks keep. git config validates one --file per run (a
+        concatenation would let one file's section run into the next), so each non-empty `config.worktree` (a sparse
+        checkout's `core.sparseCheckout`) costs exactly one git process in one subshell; an empty one (what a launch
+        creates) is skipped by its size, and an absent one is not read. 10 worktrees with 5 empty configs, then 3 made
+        sparse (+3), then 300 worktrees with 150 empty configs and the same 3 sparse (no more)."""
+        self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
+        self.add_worktrees(0, 10)
+        empty = self.spawn_counts()
+        common = (self.repo / ".git").resolve()
+        for n in (1, 3, 5):
+            (common / f"worktrees/w{n}/config.worktree").write_text("[core]\n\tsparseCheckout = true\n")
+        sparse = self.spawn_counts()
+        grown = sparse[0].copy()
+        grown.subtract(empty[0])
+        self.assertEqual(+grown, collections.Counter({'"${git_cmd[@]}"': 3}), "one git per non-empty config.worktree")
+        self.assertEqual(-grown, collections.Counter(), "nothing runs less often")
+        self.assertEqual(sparse[1], empty[1] + 3, "one subshell per non-empty config.worktree")
+        self.add_worktrees(10, 290)
+        self.assert_same_counts(sparse, self.spawn_counts())
 
     def test_more_seat_directories_start_no_more_processes(self):
         """U95 round 13: the seat directories under the seats root are resolved in one batch (physical_paths) in both

@@ -961,6 +961,8 @@ git_state_check() {
         if [[ ${f##*/} == config.worktree && -e ${f} ]]; then configs+=("${f}"); fi
     done
     # An empty config.worktree (what a launch creates) holds no key, so git reads only the others (U95): one size read.
+    # The rest cost one git each: git config validates one --file per run, and joining files would let one file's
+    # section run into the next. A sparse checkout's file is the only non-empty one git writes (none on this host).
     sizes_of ${configs[@]+"${configs[@]}"}
     for ((i = 0; i < ${#configs[@]}; i++)); do
         ((size_list[i] > 0)) || continue

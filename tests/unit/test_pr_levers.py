@@ -1561,6 +1561,24 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.branch_changes(), ["A\t.orchestration/orchestrate/prog/notes.md"])
 
+    def test_a_secret_or_a_home_path_in_a_file_name_refuses(self):
+        """U101 round 5: a clean file named after a token published the token in its path. The scan tests each path of
+        the copy set as it tests the content, and the refusal names neither the path nor what was found."""
+        self.github()
+        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for case, relative in (("a secret", f"{token}.md"), ("a home path", "home/runner/notes.md")):
+            with self.subTest(case):
+                path = self.records / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("clean\n")
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn("(exit 1); its output is withheld", run.stderr)
+                for found in (token, "runner"):
+                    self.assertNotIn(found, run.stdout + run.stderr)
+                self.assert_nothing_left()
+                path.unlink()
+
     def test_the_identifier_scan_refuses_what_the_masking_left(self):
         """U101: the scan is a refusal of its own, not a re-run of the masker: with a validator on origin/main whose
         masking leaves the copies as they are, a home path and a secret pattern still stop the run."""

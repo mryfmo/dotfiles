@@ -2451,9 +2451,36 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         path.write_text("clean\n")
         result = self.scan(clean, path)
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertEqual(result.stderr, "--scan-identifiers: file 2: redact word on line 4\n")
+        self.assertEqual(result.stderr, "--scan-identifiers: file 2: redact word on line 4 in the path\n")
         self.assertNotIn("operator1", (result.stdout + result.stderr).lower())
         self.assertEqual(self.scan(path, words=False).returncode, 0)
+
+    def test_every_content_test_also_applies_to_the_path(self) -> None:
+        # U101 round 5: the secret and home-path tests read the content only, so a clean file named after a token
+        # published it. Each kind is a finding of the path; no output line names the path or what was found.
+        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        cases = (
+            ("a secret pattern", Path(f"{token}.md")),
+            ("a home directory path", Path("store/home/runner/notes.md")),  # the same glued forms as content
+            ("redact word on line 2", Path("MBP-Kana/notes.md")),
+        )
+        for reason, relative in cases:
+            with self.subTest(reason):
+                path = self.temp_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("clean\n")
+                result = subprocess.run(
+                    [sys.executable, str(VALIDATOR), "--scan-identifiers", "--redact-words", str(self.words), "--"]
+                    + [str(relative)],
+                    cwd=self.temp_dir,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1: {reason} in the path\n")
+                for found in (token.lower(), "runner", "kana"):
+                    self.assertNotIn(found, (result.stdout + result.stderr).lower())
 
     def test_usage_and_unreadable_files_exit_2(self) -> None:
         present = self.temp_dir / "present.md"

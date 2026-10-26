@@ -24,6 +24,13 @@ WORKFLOW = ROOT / ".github/workflows/test.yaml"
 MAKEFILE = ROOT / "Makefile"
 MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
 GUARD = ROOT / "scripts/ci/pinned-tool-version.sh"
+RUNNER = ROOT / "scripts/ci/run-on-lint-files.sh"
+# The three checks, each on its file set: the commands make format and CI's steps both run.
+SET_CHECKS = (
+    "scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d",
+    "scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check",
+    "scripts/ci/run-on-lint-files.sh markdown prettier --check",
+)
 # Each lint tool's mise key and the banner its `--version` prints, as the real releases print it.
 TOOLS = {
     "shellcheck": ("http:shellcheck", "ShellCheck - shell script analysis tool\nversion: {v}\nlicense: GNU GPLv3\n"),
@@ -48,15 +55,15 @@ INSTALL_RUN = (
 )
 SHFMT_RUN = (
     "scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shfmt\n"
-    "git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d\n"
+    "scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d\n"
 )
 FORMAT_RUN = (
     f"mise -C {COPY} x http:ruff -- \\\n"
     '  sh -c \'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml ruff && '
-    'git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check\'\n'
+    "scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check'\n"
     f"mise -C {COPY} x node npm:prettier -- \\\n"
     '  sh -c \'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml prettier && '
-    'git ls-files -z "*.md" | xargs -0 prettier --check\'\n'
+    "scripts/ci/run-on-lint-files.sh markdown prettier --check'\n"
 )
 
 
@@ -342,6 +349,180 @@ class PinnedLintToolsTest(unittest.TestCase):
         install = steps["Install tools"]["run"]
         self.assertIn("brew install bash bats-core gawk parallel\n", install)
         self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", install)
+
+
+class LintFileSetTest(unittest.TestCase):
+    """make format and CI check the same tracked files, from scripts/ci/run-on-lint-files.sh (U97)."""
+
+    def setUp(self):
+        self.repo = Path(tempfile.mkdtemp(prefix="lint-file-set-test-")).resolve()
+        self.bin = self.repo.parent / f"{self.repo.name}-bin"
+        self.bin.mkdir()
+        self.addCleanup(shutil.rmtree, self.bin)
+        self.addCleanup(shutil.rmtree, self.repo)
+        for relative in ("scripts/ci/run-on-lint-files.sh", "scripts/ci/pinned-tool-version.sh"):
+            (self.repo / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / relative, self.repo / relative)
+        (self.repo / "home/dot_mise").mkdir(parents=True)
+        shutil.copy2(MISE_CONFIG, self.repo / "home/dot_mise/config.toml")
+        files = {
+            ".gitignore": "ignored/\nscripts/ignored.sh\n",
+            "install/common/tracked.sh": "#!/usr/bin/env bash\necho tracked\n",
+            "scripts/lib/deep.sh": "#!/usr/bin/env bash\necho deep\n",
+            "home/outside.sh": "#!/usr/bin/env bash\necho outside\n",
+            "tool.py": "print(1)\n",
+            "notes.md": "# notes\n",
+        }
+        for name, body in files.items():
+            (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / name).write_text(body)
+        self.git("init", "-q")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "fixture")
+        # Not tracked: a new file, an ignored file, and an ignored directory's copies, each badly formatted.
+        bad = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
+        for name in ("scripts/untracked.sh", "scripts/ignored.sh", "ignored/scripts/copy.sh", "untracked.py", "x.md"):
+            (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / name).write_text(bad)
+
+    def git(self, *args):
+        env = os.environ | {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t"}
+        env |= {"GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+        subprocess.run(["git", "-C", str(self.repo), "-c", "commit.gpgsign=false", *args], check=True, env=env)
+
+    def run_set(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(self.repo / "scripts/ci/run-on-lint-files.sh"), *args],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+    def fake_tools(self) -> dict:
+        """shfmt, ruff and prettier that report their pins, log each file argument, and fail when one holds `bad`."""
+        for tool, version in pins().items():
+            if tool == "shellcheck":
+                continue
+            banner = TOOLS[tool][1].format(v=version)
+            path = self.bin / tool
+            path.write_text(
+                "#!/bin/sh\n"
+                f"if [ \"$1\" = --version ]; then printf '%s' '{banner}'; exit 0; fi\n"
+                "status=0\n"
+                'for arg in "$@"; do\n'
+                '  [ -f "$arg" ] || continue\n'
+                '  printf \'%s\\n\' "$arg" >> "$0.log"\n'
+                '  if grep -q bad "$arg"; then status=1; fi\n'
+                "done\n"
+                'exit "$status"\n'
+            )
+            path.chmod(0o755)
+        return os.environ | {"PATH": f"{self.bin}:{os.environ['PATH']}"}
+
+    def logged(self, tool: str) -> list[str]:
+        log = self.bin / f"{tool}.log"
+        return sorted(log.read_text().splitlines()) if log.exists() else []
+
+    def test_each_set_is_the_tracked_files_of_its_patterns_only(self):
+        for name, expected in (
+            (
+                "shell",
+                [
+                    "install/common/tracked.sh",
+                    "scripts/ci/pinned-tool-version.sh",
+                    "scripts/ci/run-on-lint-files.sh",
+                    "scripts/lib/deep.sh",
+                ],
+            ),
+            ("python", ["tool.py"]),
+            ("markdown", ["notes.md"]),
+        ):
+            with self.subTest(name):
+                result = self.run_set(name, "printf", "%s\\n")
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected, sorted(result.stdout.splitlines()))
+
+    def test_a_set_that_cannot_be_listed_is_refused_never_empty(self):
+        for args, message in (
+            (("shell",), "usage:"),
+            (("css", "true"), "css is not a lint file set"),
+        ):
+            with self.subTest(args=args):
+                result = self.run_set(*args)
+                self.assertEqual(2, result.returncode)
+                self.assertIn(message, result.stderr)
+        (self.repo / "notes.md").unlink()
+        self.git("rm", "-q", "--cached", "notes.md")
+        empty = self.run_set("markdown", "true")
+        self.assertEqual(2, empty.returncode)
+        self.assertIn("the markdown set lists no tracked file; nothing was checked", empty.stderr)
+        outside = subprocess.run(
+            [str(RUNNER), "shell", "true"], cwd=self.bin, capture_output=True, text=True, timeout=30, check=False
+        )
+        self.assertEqual(2, outside.returncode)
+        self.assertIn("git ls-files failed for the shell set", outside.stderr)
+
+    def test_make_format_reads_tracked_files_only_and_fails_on_a_tracked_one(self):
+        env = self.fake_tools()
+
+        def make_format():
+            return subprocess.run(
+                ["make", "-s", "-f", str(MAKEFILE), "format"],
+                cwd=self.repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+
+        # The untracked and ignored files are badly formatted; none is read, so make format passes.
+        clean = make_format()
+        self.assertEqual(0, clean.returncode, clean.stdout + clean.stderr)
+        self.assertEqual(
+            [
+                "install/common/tracked.sh",
+                "scripts/ci/pinned-tool-version.sh",
+                "scripts/ci/run-on-lint-files.sh",
+                "scripts/lib/deep.sh",
+            ],
+            self.logged("shfmt"),
+        )
+        self.assertEqual(["tool.py"], self.logged("ruff"))
+        self.assertEqual(["notes.md"], self.logged("prettier"))
+        # The same bad text in a tracked file of the set fails it.
+        (self.repo / "scripts/lib/deep.sh").write_text("#!/usr/bin/env bash\nif true;then echo  bad;fi\n")
+        dirty = make_format()
+        self.assertNotEqual(0, dirty.returncode)
+
+    @unittest.skipUnless(shutil.which("shfmt"), "needs shfmt (CI puts the pin on PATH)")
+    def test_the_real_shfmt_check_ignores_untracked_and_ignored_files_and_fails_a_tracked_one(self):
+        check = ("shell", "shfmt", "-i", "4", "-sr", "-d")
+        self.assertEqual(0, self.run_set(*check).returncode)
+        (self.repo / "install/common/tracked.sh").write_text("#!/usr/bin/env bash\nif true;then echo  bad;fi\n")
+        failed = self.run_set(*check)
+        self.assertNotEqual(0, failed.returncode)
+        self.assertIn("install/common/tracked.sh", failed.stdout)
+        self.assertNotIn("untracked.sh", failed.stdout + failed.stderr)
+        self.assertNotIn("ignored", failed.stdout + failed.stderr)
+
+    def test_make_format_and_ci_run_the_same_check_on_the_same_set(self):
+        result = subprocess.run(
+            ["make", "-n", "-s", "format"], cwd=ROOT, capture_output=True, text=True, timeout=60, check=True
+        )
+        self.assertEqual(list(SET_CHECKS), result.stdout.splitlines()[1:])
+        steps = {step["name"]: step for step in step_blocks(WORKFLOW.read_text())}
+        ci = "\n".join(
+            commands(steps["Run `shfmt`"]["run"]) + commands(steps["Check Python and Markdown formatting"]["run"])
+        )
+        for check in SET_CHECKS:
+            self.assertIn(check, ci)
+        # Neither side lists files any other way.
+        for text in (result.stdout, ci):
+            self.assertNotIn("git ls-files", text)
+            self.assertNotRegex(text, r"shfmt [^\n]* \.$")
 
 
 if __name__ == "__main__":

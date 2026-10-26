@@ -206,13 +206,15 @@ reset-config:
 # from a copy of the same file. scripts/ci/pinned-tool-version.sh runs first in each lint target and refuses a tool on
 # PATH of any other version, naming both.
 LINT_PIN_CONFIG := home/dot_mise/config.toml
+# Each check reads one tracked-file set from scripts/ci/run-on-lint-files.sh, the same call CI's steps make, so an
+# untracked or ignored file is never read and local and CI check the same files (U97).
 
 .PHONY: format
 format:
 	@scripts/ci/pinned-tool-version.sh $(LINT_PIN_CONFIG) shfmt ruff prettier
-	shfmt --indent 4 --space-redirects --diff .
-	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
-	git ls-files -z '*.md' | xargs -0 prettier --check
+	scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d
+	scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check
+	scripts/ci/run-on-lint-files.sh markdown prettier --check
 
 # UNIT_TEST_JOBS=1 is the serial run; any other count runs the test modules in parallel shards, that many at a time
 # (0, the default, is the CPU count), with one combined summary (scripts/ci/unittest-shards.py). Tests that run

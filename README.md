@@ -289,7 +289,12 @@ disagree on findings and formatting (CI's apt ShellCheck 0.9.0 reported SC2015
 where a local 0.11.0 did not), so a run under another version stops instead of
 passing locally and failing in CI. To move an `http:` tool, change its version
 and its four URLs and checksums together; `make drift` reports a newer GitHub
-release. `make update` leaves all four where they are.
+release. `make update` leaves all four where they are. The files each formatting
+check reads have one definition too: `scripts/ci/run-on-lint-files.sh` lists the
+tracked shell scripts under `install/` and `scripts/`, every tracked `*.py` and
+every tracked `*.md`, and both `make format` and CI's steps run their checks
+through it, so an untracked or gitignored file is never checked and the two
+check the same files.
 
 **Holding a tool back** uses the manager's own feature:
 

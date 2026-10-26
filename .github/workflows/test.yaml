@@ -406,7 +406,8 @@ jobs:
           # The pinned shfmt from the step above; brew and apt ship other versions, and 3.14 changed heredoc-in-if
           # formatting, so the guard refuses any other.
           scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shfmt
-          git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d
+          # The tracked shell scripts under install/ and scripts/, the set make format checks too.
+          scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d
 
       - name: Check Python and Markdown formatting
         if: ${{ steps.decide.outputs.should_test == 'true' }}
@@ -417,9 +418,9 @@ jobs:
           # .prettierignore apply. --config makes the root ruff.toml govern every file, so its
           # exclusions also cover vendor/compactiondb, which has its own pyproject.
           mise -C "${RUNNER_TEMP}/statusline-mise" x http:ruff -- \
-            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml ruff && git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check'
+            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml ruff && scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check'
           mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
-            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml prettier && git ls-files -z "*.md" | xargs -0 prettier --check'
+            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml prettier && scripts/ci/run-on-lint-files.sh markdown prettier --check'
 
       - name: Run `ShellCheck`
         if: ${{ steps.decide.outputs.should_test == 'true' }}

@@ -19,6 +19,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init, quiet_git_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 FAKE = ROOT / "tests/fixtures/hcom-seat/fake-tool.py"
@@ -29,14 +32,17 @@ BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
 SYSTEM_PATH = "/usr/bin:/bin"
 
 
-GIT_IDENTITY = {
-    "GIT_CONFIG_GLOBAL": "/dev/null",
-    "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "t",
-    "GIT_AUTHOR_EMAIL": "t@example.invalid",
-    "GIT_COMMITTER_NAME": "t",
-    "GIT_COMMITTER_EMAIL": "t@example.invalid",
-}
+# U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
+GIT_IDENTITY = quiet_git_env(
+    {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.invalid",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    }
+)
 
 
 class HcomSeatTest(unittest.TestCase):
@@ -96,7 +102,7 @@ class HcomSeatTest(unittest.TestCase):
             "HCOM_DIR": str(self.store),
             "FAKE_CALLS": str(self.calls),
         }
-        self.git("init", "-q")
+        git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.git("update-ref", "refs/remotes/origin/main", "HEAD")
         self.head = self.git("rev-parse", "HEAD")
@@ -246,7 +252,7 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 2)
         foreign = Path(self.seats) / "worker-3"
         foreign.mkdir()
-        subprocess.run(["git", "init", "-q"], cwd=foreign, env=self.env, check=True)
+        git_init(foreign, env=self.env)
         refused = self.seat("worker", "--name", "worker-3", "--seats-root", self.seats)
         self.assertEqual((refused.returncode, refused.stdout), (2, ""), refused.stderr)
         self.assertIn(str(foreign), refused.stderr)
@@ -795,7 +801,10 @@ class HcomSeatTest(unittest.TestCase):
         clone = Path(self.seats, "worker")
         # The caller's own GIT_CONFIG_COUNT/_KEY_n/_VALUE_n (a test run that turns signing off) outrank the file.
         inherited = ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")
-        host = {k: v for k, v in self.env.items() if not k.startswith(inherited)} | {"GIT_CONFIG_GLOBAL": str(signing)}
+        # Stripped, they are added back for background maintenance only (U100): signing is still the file's.
+        host = quiet_git_env(
+            {k: v for k, v in self.env.items() if not k.startswith(inherited)} | {"GIT_CONFIG_GLOBAL": str(signing)}
+        )
 
         def commit(env, message):
             argv = ["git", "-C", str(clone), "commit", "-q", "--allow-empty", "-m", message]
@@ -942,7 +951,7 @@ class HcomSeatTest(unittest.TestCase):
         """U85 round 20: hcom-seat removes every inherited `GIT_*` variable before its first git command, so a
         GIT_DIR, GIT_COMMON_DIR or GIT_WORK_TREE naming another repository steers neither host git nor the seat."""
         other = Path(self.temp.name).resolve() / "other"
-        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        git_init(other)
         steer = {"GIT_DIR": str(other / ".git"), "GIT_COMMON_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
         for name, value in steer.items():
             with self.subTest(variable=name):
@@ -2173,7 +2182,7 @@ class HcomSeatTest(unittest.TestCase):
         (`--separate-git-dir`) that holds the seats root would grant every worker its siblings, so it is refused."""
         root = Path(self.temp.name).resolve()
         gitdir, checkout = root / "g", root / "sep"
-        subprocess.run(["git", "init", "-q", f"--separate-git-dir={gitdir}", str(checkout)], env=self.env, check=True)
+        git_init(checkout, f"--separate-git-dir={gitdir}", env=self.env)
         for args in (
             ["commit", "-q", "--allow-empty", "-m", "init"],
             ["update-ref", "refs/remotes/origin/main", "HEAD"],
@@ -2192,10 +2201,10 @@ class HcomSeatTest(unittest.TestCase):
         in a dry run as well."""
         checkout = Path(self.temp.name).resolve() / "has space" / "repo"
         checkout.mkdir(parents=True)
-        # No background maintenance after the commit: its lock and pack files would race the comparison below.
-        quiet = ["-c", "maintenance.auto=false", "-c", "gc.auto=0"]
-        for args in (["init", "-q"], ["commit", "-q", "--allow-empty", "-m", "init"]):
-            subprocess.run(["git", *quiet, *args], cwd=checkout, env=self.env, check=True)
+        # No background maintenance after the commit (git_init's repository config): its lock and pack files would
+        # race the comparison below.
+        git_init(checkout, env=self.env)
+        subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=checkout, env=self.env, check=True)
         before = sorted(str(path) for path in (checkout / ".git").rglob("*"))
         for extra in ([], ["--dry-run"]):
             with self.subTest(extra=extra):

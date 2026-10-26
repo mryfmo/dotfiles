@@ -13,6 +13,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "scripts/lint-retired-terms.py"
 LIST = ROOT / "scripts/retired-terms.tsv"
@@ -75,7 +78,7 @@ class LintTest(unittest.TestCase):
         (self.repo / "scripts").mkdir(parents=True)
         (self.repo / "home").mkdir()
         (self.repo / "home/.chezmoiremove").write_text(".local/bin/common/gone-tool\n")
-        self.git("init", "-q")
+        git_init(self.repo, env=os.environ | GIT_ENV)
 
     def git(self, *args: str) -> None:
         subprocess.run(["git", "-C", str(self.repo), *args], env=os.environ | GIT_ENV, check=True, capture_output=True)

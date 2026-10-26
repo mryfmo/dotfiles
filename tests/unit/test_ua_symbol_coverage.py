@@ -11,6 +11,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_ua-symbol-coverage"
 
@@ -32,7 +35,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.repo = Path(self.temporary.name)
-        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
+        git_init(self.repo)
 
     def tearDown(self) -> None:
         self.temporary.cleanup()

@@ -9,19 +9,26 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 INIT = ROOT / "scripts/orchestrator/regime-init"
 TEMPLATES = ROOT / "home/dot_agents/regime"
 STORE_FILES = ("preferences.md", "units.tsv", "ledger.tsv", "decisions.tsv", "gates.md")
-GIT_IDENTITY = {
-    "GIT_CONFIG_GLOBAL": "/dev/null",
-    "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "t",
-    "GIT_AUTHOR_EMAIL": "t@example.invalid",
-    "GIT_COMMITTER_NAME": "t",
-    "GIT_COMMITTER_EMAIL": "t@example.invalid",
-}
+# U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
+GIT_IDENTITY = quiet_git_env(
+    {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.invalid",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    }
+)
 
 
 class AuditSectionTest(unittest.TestCase):
@@ -45,7 +52,7 @@ class RegimeInitTest(unittest.TestCase):
         self.repo = self.root / "kit-pilot"
         self.repo.mkdir()
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
-        subprocess.run(["git", "init", "-q"], cwd=self.repo, env=self.env, check=True)
+        git_init(self.repo, env=self.env)
         subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=self.repo, env=self.env, check=True)
         self.store = self.repo / ".orchestration/orchestrate/pilot"
         self.origin = self.home / ".local/state/hcom/kit-pilot/origin"

@@ -11,17 +11,24 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "scripts/orchestrator/regime-env"
-GIT_IDENTITY = {
-    "GIT_CONFIG_GLOBAL": "/dev/null",
-    "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "t",
-    "GIT_AUTHOR_EMAIL": "t@example.invalid",
-    "GIT_COMMITTER_NAME": "t",
-    "GIT_COMMITTER_EMAIL": "t@example.invalid",
-}
+# U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
+GIT_IDENTITY = quiet_git_env(
+    {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.invalid",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.invalid",
+    }
+)
 PROBE = (
     'printf "%s|%s|%s|%s|%s\\n" "${REGIME_TOPLEVEL:-}" "${REGIME_SLUG:-}" "${HCOM_DIR:-}" "${HCOM_TEAM:-}" '
     '"${REGIME_SEATS_ROOT:-}"'
@@ -38,7 +45,7 @@ class RegimeEnvTest(unittest.TestCase):
         self.repo = self.root / "Kit Pilot"
         self.repo.mkdir()
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
-        self.git("init", "-q")
+        git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
 
     def git(self, *args, cwd=None):

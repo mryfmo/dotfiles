@@ -1169,6 +1169,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
+        names += ("nested_path_check",)
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1538,6 +1539,42 @@ class HcomSeatTest(unittest.TestCase):
         )  # fmt: skip
         self.assertEqual(live.stdout.split(), ["mkdir-denied", "git-denied", "sibling-made"], live.stderr)
         self.assertFalse(gone.exists())
+
+    def test_a_nested_worktree_recorded_through_a_link_is_refused(self):
+        """U95 (audit of a8485776): a worktree git records as `<checkout>/.claude/worktrees/x` where `x` is a symbolic
+        link to `y` beside it. The deny would cover only `y`, and the seat could replace the link with a tree of its
+        own that host git takes for the registered worktree, so the orchestrator's launch is refused, naming the link
+        and `git worktree move`; a worker launch is refused too (it checks the orchestrator's roots). The same holds
+        for an absent registered path under a linked parent. A worktree at a real path launches as before."""
+        worktrees = self.repo / ".claude/worktrees"
+        real = worktrees / "y"
+        self.git("worktree", "add", "-q", "--detach", str(real), "HEAD")
+        link = worktrees / "x"
+        link.symlink_to("y")
+        admin = self.repo / ".git/worktrees/y"
+        (admin / "gitdir").write_text(f"{link.resolve().parent / 'x'}/.git\n")
+        recorded = worktrees.resolve() / "x"
+        self.assertIn(f"worktree {recorded}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        for role in ("orchestrator", "worker"):
+            with self.subTest(role=role, case="registered through a link"):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the worktree {recorded} lies inside a write root of the orchestrator seat", run.stderr)
+                self.assertIn(f"through the symbolic link {recorded}", run.stderr)
+                self.assertIn("git worktree move", run.stderr)
+        # An absent registered path below a linked directory.
+        (admin / "gitdir").write_text(f"{recorded}/gone/.git\n")
+        run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"through the symbolic link {recorded}", run.stderr)
+        # Back at its real path the worktree is protected and the launch goes ahead.
+        (admin / "gitdir").write_text(f"{real.resolve()}/.git\n")
+        link.unlink()
+        for role in ("orchestrator", "worker"):
+            with self.subTest(role=role, case="real path"):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"the worktree {real.resolve()} lies inside a write root", run.stderr)
 
     def add_worktrees(self, first, count, nested):
         """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first

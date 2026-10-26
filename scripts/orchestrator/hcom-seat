@@ -1250,6 +1250,31 @@ if ((${#worktree_paths[@]} > 1)); then
     worktree_phys=("${phys_list[@]}")
 fi
 
+# @description Refuse (exit 2) a worktree inside a seat's write root whose path as git records it is not its physical
+#   path (regime-cutover U95): a symbolic link on the way (`repo/x -> repo/y`, registered as `repo/x`) sits in the
+#   writable root, so the seat could replace the link with a directory of its own holding a `.git` file and a tree,
+#   which host git then takes for the registered worktree, while the deny covers only `repo/y`. The link itself is
+#   not denied instead: a sandbox rule matches the resolved path, not the link's name. The refusal names the first
+#   link on the recorded path (found with builtins) and says to move the worktree to a real path. An absent
+#   registered path under a linked parent is caught the same way (its physical form resolves the parent).
+# @arg $1 string The seat whose write root holds the worktree.
+# @arg $2 string The worktree as git records it.
+# @arg $3 string Its physical path.
+nested_path_check() {
+    local link='' c
+    [[ $2 != "$3" ]] || return 0 # lint-comparisons: allow the recorded spelling against the physical one, which must be identical
+    c=$2
+    while [[ -n ${c} && ${c} != / ]]; do # lint-comparisons: allow the walk ends at the root, no path compare
+        # The deepest link, the one nearest the worktree.
+        if [[ -z ${link} && -L ${c} ]]; then link=${c}; fi
+        c=${c%/*}
+    done
+    if [[ -n ${link} ]]; then
+        refuse "the worktree $2 lies inside a write root of the $1 seat through the symbolic link ${link}, which the seat could replace with a tree of its own; move the worktree to a real path first (\`git worktree move $2 <a path without links>\`)"
+    fi
+    refuse "the worktree $2 lies inside a write root of the $1 seat but git records it as $2, not its physical path $3; move it to its physical path first (\`git worktree move $2 $3\`)"
+}
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
@@ -1270,7 +1295,8 @@ fi
 # @arg $@ string The seat's allowWrite roots after them, physical, its own slots first (seat_write_roots).
 # @set seat_nested The worktrees inside the seat's write roots, write-denied to it.
 seat_overlap_check() {
-    local own_role=$1 own_dir=$2 r p i j k nroots seats_phys labels=() protected=() own=() nested=() roots=()
+    local own_role=$1 own_dir=$2 r p i j k w nroots seats_phys labels=() protected=() own=() nested=() roots=()
+    local registered=()
     shift 2
     roots=("$@")
     nroots=$#
@@ -1286,9 +1312,10 @@ seat_overlap_check() {
     # One resolved path per linked worktree git records (physical_paths), or the deny list below could miss one.
     ((${#worktree_phys[@]} == ${#worktree_paths[@]} - 1)) ||
         refuse "the worktrees of ${repo} were not all resolved (${#worktree_phys[@]} of $((${#worktree_paths[@]} - 1)))"
-    for p in ${worktree_phys[@]+"${worktree_phys[@]}"}; do
+    for ((w = 0; w < ${#worktree_phys[@]}; w++)); do
         labels+=("the worktree")
-        protected+=("${p}")
+        protected+=("${worktree_phys[w]}")
+        registered[${#protected[@]} - 1]=${worktree_paths[w + 1]}
     done
     for p in "${protected[@]}"; do
         require_clean_path 'a protected seat path' "${p}"
@@ -1315,6 +1342,7 @@ seat_overlap_check() {
                 # A worktree strictly inside the root that is no seat's write root is protected by a write deny.
                 if [[ ${labels[i]} == 'the worktree' ]] && ! within_ix "${j}" "${k}" &&
                     [[ ${tbl_exists[j]} == 0 || ${root_ids} != *$'\n'"${tbl_first[j]}"$'\n'* ]]; then # lint-comparisons: allow a fixed label and (device, inode) identities, not paths
+                    nested_path_check "${own_role}" "${registered[i]}" "${p}"
                     nested[i]=1
                     continue
                 fi

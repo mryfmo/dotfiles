@@ -110,7 +110,7 @@ jobs:
             case "${path}" in *[[:cntrl:]]*) control=true ;; esac
           done < "${changed}"
           if [ ! -s "${changed}" ] || [ "${control}" = true ] ||
-            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
+            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|scripts/ci/drop-azure-apt-mirror\.py$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
             paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           elif [ -s "${home_paths}" ]; then
@@ -134,22 +134,9 @@ jobs:
           printf '### public-bootstrap skipped\n\n%s\n' "${message}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Drop the Azure apt mirror from the runner image
+        # Before setup.sh's apt installs (actions/runner-images#14823; scripts/ci/drop-azure-apt-mirror.py, run by the system python3).
         if: ${{ steps.decide.outputs.should_run == 'true' && runner.os == 'Linux' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mirrors=/etc/apt/apt-mirrors.txt
-          if [ ! -e "${mirrors}" ]; then
-            echo 'apt-mirrors.txt absent; nothing to change'
-            exit 0
-          fi
-          echo "${mirrors} before:"
-          cat "${mirrors}"
-          # actions/runner-images#14823: a trickling Azure mirror never trips apt's 15 s timeout, so apt never fails over.
-          sudo sed -i '/azure\.archive\.ubuntu\.com/d' "${mirrors}"
-          echo "${mirrors} after:"
-          cat "${mirrors}"
-          grep -q 'priority:' "${mirrors}" || { echo "no apt mirror left in ${mirrors}" >&2; exit 1; }
+        run: /usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py
 
       - name: Bootstrap the checked-out public source
         if: ${{ steps.decide.outputs.should_run == 'true' }}

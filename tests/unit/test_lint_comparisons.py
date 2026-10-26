@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -412,6 +413,8 @@ class LintComparisonsTest(unittest.TestCase):
 
         (repo / "scripts").mkdir(parents=True)
         shutil.copy(LINT, repo / "scripts/lint-comparisons.py")
+        (repo / "home/dot_mise").mkdir(parents=True)  # the shfmt pin the lint checks PATH's shfmt against
+        shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
         row = hashlib.sha256(refused.strip().encode()).hexdigest()
         (repo / "scripts/lint-comparisons-baseline.tsv").write_text(f"scripts/old.sh\tR1\t{row}\n")
         for name, text in (("main.sh", "true\n"), ("old.sh", refused)):
@@ -553,6 +556,10 @@ class LintComparisonsTest(unittest.TestCase):
             [("ac.sh", "msg=$'it\\'s fine'\n[[ $path == /x ]] # lint-comparisons: allow the fixture\n", [])]
         )
 
+    @staticmethod
+    def shfmt_pin() -> str:
+        return tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]["http:shfmt"]["version"]
+
     def test_shfmt_missing_refuses_without_fallback(self):
         (self.temp / "m.sh").write_text("[[ $path == /x ]]\n")
         env = {"PATH": str(self.temp / "empty")}  # neither shfmt nor mise, whatever the host has in /usr/bin
@@ -573,19 +580,27 @@ class LintComparisonsTest(unittest.TestCase):
         env = {"PATH": f"{fake.parent}:/usr/bin:/bin"}
         for answer in ("not-json", "{}", "null", '{"Type": "Word"}'):
             with self.subTest(answer=answer):
-                fake.write_text(f"#!/bin/sh\necho '{answer}'\n")
+                version = f'[ "$1" = --version ] && {{ echo v{self.shfmt_pin()}; exit 0; }}\n'
+                fake.write_text(f"#!/bin/sh\n{version}echo '{answer}'\n")
                 fake.chmod(0o755)
                 result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn("ok.sh: shfmt gave no JSON AST", result.stderr)
 
-    def test_shfmt_falls_back_to_the_pinned_mise_form_with_the_file_dialect_and_blanked_actions(self):  # amendment 1
-        fake = self.temp / "mise-only/mise"  # no shfmt on PATH, so the pinned mise form runs; it logs argv and input
-        fake.parent.mkdir()
+    def fake_shfmt(self, version: str) -> Path:
+        """A shfmt on an otherwise empty PATH that logs argv and input, reports `version`, and answers a file node."""
+        fake = self.temp / "path-only/shfmt"
+        fake.parent.mkdir(exist_ok=True)
         fake.write_text(
-            '#!/bin/sh\necho "$*" >> "$0.log"\n[ "$5" = --version ] || /bin/cat >> "$0.log"\necho \'{"Type": "File"}\'\n'
+            '#!/bin/sh\necho "$*" >> "$0.log"\n'
+            f'[ "$1" = --version ] && {{ echo v{version}; exit 0; }}\n'
+            '/bin/cat >> "$0.log"\necho \'{"Type": "File"}\'\n'
         )
         fake.chmod(0o755)
+        return fake
+
+    def test_shfmt_on_path_runs_with_the_file_dialect_and_blanked_actions(self):  # amendment 1
+        fake = self.fake_shfmt(self.shfmt_pin())
         files = {
             "t.sh.tmpl": '(\n{{ include "x" }}\n)\n{{ includeTemplate "y" }}\necho "{{ .y }}"\n',
             "z.zsh": "echo\n",
@@ -597,22 +612,28 @@ class LintComparisonsTest(unittest.TestCase):
             "--baseline", str(self.temp / "none.tsv"), *files, "--changed", env={"PATH": str(fake.parent)}
         )
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
-        run, blanked = (
-            "x shfmt@3.14.1 -- shfmt",
-            f'(\n:{" " * 16}\n)\n:{" " * 24}\necho "{" " * 8}"\n',
-        )  # an include alone is `:`
-        log = (
-            f"{run} --version\n{run} -ln bash --tojson\n{blanked}{run} -ln zsh --tojson\necho\n{run} -ln zsh --tojson\n"
-        )
-        self.assertEqual(log + "#!/bin/zsh\necho\n", Path(f"{fake}.log").read_text())
-        shfmt = fake.parent / "shfmt"  # shfmt on PATH comes first: the mise form runs no more
-        shfmt.write_text(fake.read_text())
-        shfmt.chmod(0o755)
-        args = ("--baseline", str(self.temp / "none.tsv"), "z.zsh", "--changed")
-        result = self.lint(*args, env={"PATH": str(fake.parent)})
-        found = (result.returncode, result.stdout + result.stderr, Path(f"{shfmt}.log").read_text())
-        self.assertEqual((0, "", "--version\n-ln zsh --tojson\necho\n"), found)
-        self.assertEqual(log + "#!/bin/zsh\necho\n", Path(f"{fake}.log").read_text())
+        blanked = f'(\n:{" " * 16}\n)\n:{" " * 24}\necho "{" " * 8}"\n'  # an include alone is `:`
+        log = f"--version\n-ln bash --tojson\n{blanked}-ln zsh --tojson\necho\n-ln zsh --tojson\n#!/bin/zsh\necho\n"
+        self.assertEqual(log, Path(f"{fake}.log").read_text())
+
+    def test_a_shfmt_that_is_not_the_pin_is_refused_naming_both(self):  # U97: one shfmt version, no fallback
+        pin = self.shfmt_pin()
+        (self.temp / "m.sh").write_text("echo\n")
+        mise = self.temp / "path-only/mise"  # a mise on PATH is never asked for another shfmt
+        for found in ("0.0.1", f"{pin}.1"):
+            with self.subTest(found=found):
+                fake = self.fake_shfmt(found)
+                mise.write_text('#!/bin/sh\necho "$*" >> "$0.log"\nexit 1\n')
+                mise.chmod(0o755)
+                result = self.lint(
+                    "--baseline", str(self.temp / "none.tsv"), "m.sh", "--changed", env={"PATH": str(fake.parent)}
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(f"the shfmt on PATH is version {found}, but ", result.stderr)
+                self.assertIn(f"pins shfmt {pin};", result.stderr)
+                self.assertEqual("--version\n", Path(f"{fake}.log").read_text())
+                self.assertFalse(Path(f"{mise}.log").exists())
+                Path(f"{fake}.log").unlink()
 
     def test_jq_hit_lines_follow_the_source_through_escapes_and_continuations(self):
         # worker review round 1: a decoded $'\n' adds no source line and an unquoted backslash-newline still ends one; a
@@ -902,15 +923,11 @@ class LintComparisonsTest(unittest.TestCase):
         )
 
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
-        runs = []
-        for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order
-            exe = shutil.which(cmd[0])
-            run = exe and subprocess.run([exe, *cmd[1:], "--version"], check=False, capture_output=True, text=True)
-            runs.append(bool(run) and run.returncode == 0)
-            print(
-                f"\nshfmt probe: {' '.join(cmd)}: {exe} {run and (run.returncode, run.stdout.strip())}", file=sys.stderr
-            )
-        self.assertTrue(any(runs), "shfmt missing: the lint refuses every shell file")
+        exe = shutil.which("shfmt")  # the lint's only shfmt, which must be the pin (U97)
+        run = exe and subprocess.run([exe, "--version"], check=False, capture_output=True, text=True)
+        print(f"\nshfmt probe: shfmt: {exe} {run and (run.returncode, run.stdout.strip())}", file=sys.stderr)
+        self.assertTrue(run and run.returncode == 0, "shfmt missing: the lint refuses every shell file")
+        self.assertEqual(f"v{self.shfmt_pin()}", run.stdout.strip(), "the lint refuses a shfmt that is not the pin")
 
 
 if __name__ == "__main__":

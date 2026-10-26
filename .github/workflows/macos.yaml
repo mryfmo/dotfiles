@@ -166,7 +166,7 @@ jobs:
           cache: true
 
       - name: Test file existence
-        # The hard stop: one BATS_PER_TEST_TIMEOUT (600 s) plus the brew install, with margin. No passing log of this step
+        # The hard stop: one per-test bound (the wrapper's default) plus the brew install, with margin. No passing log of this step
         # exists (the build job is skipped without the bootstrap secrets); the files suite took under 1 s in
         # test.yaml's passing runs. scripts/ci/run-bats.py names a stalled test and signals nothing.
         timeout-minutes: 25

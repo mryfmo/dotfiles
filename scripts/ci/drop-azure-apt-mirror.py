@@ -33,9 +33,15 @@ class Refused(Exception):
 
 
 def read(path, when):
+    """The file's bytes. Only ENOENT is not an error, and only on the first read (None: no list on this runner); any
+    other OSError (EACCES on the file or a parent, EISDIR, ENAMETOOLONG, EIO) is refused with its reason."""
     try:
         with open(path, "rb") as handle:
             return handle.read()
+    except FileNotFoundError as error:
+        if when:
+            raise Refused(f"cannot read {path}{when}: {error.strerror or error}") from error
+        return None
     except OSError as error:
         raise Refused(f"cannot read {path}{when}: {error.strerror or error}") from error
 
@@ -68,10 +74,11 @@ def show(label, data):
 
 def main(argv):
     path = argv[0] if argv else DEFAULT
-    if not os.path.lexists(path):
+    # No existence pre-check: os.path.exists and lexists turn EACCES, EIO or ENAMETOOLONG into "absent".
+    before = read(path, "")
+    if before is None:
         print(f"{path} is absent; no apt mirror list to change")
         return 0
-    before = read(path, "")
     show(f"{path} before", before)
     lines = before.splitlines(keepends=True)
     kept = [line for line in lines if AZURE not in line]

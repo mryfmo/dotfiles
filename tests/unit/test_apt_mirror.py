@@ -137,6 +137,24 @@ class MirrorScriptTest(unittest.TestCase):
         self.assert_refused(self.run_script(str(self.list)), "no apt mirror would be left")
         self.assertEqual(only, self.list.read_text())
 
+    def test_only_a_missing_list_is_absent(self) -> None:
+        # Audit of db045676: os.path.lexists() read EACCES and ENAMETOOLONG as "absent". Only ENOENT is absent now.
+        missing = self.run_script(str(self.temp / "no-such-dir" / "apt-mirrors.txt"))
+        self.assertEqual(0, missing.returncode, missing.stderr)
+        self.assertIn("is absent", missing.stdout)
+        overlong = self.temp / ("x" * 300)
+        self.assert_refused(self.run_script(str(overlong)), "File name too long")
+        locked = self.temp / "locked"
+        locked.mkdir()
+        (locked / "apt-mirrors.txt").write_text(MIRRORS)
+        locked.chmod(0o000)
+        self.addCleanup(locked.chmod, 0o755)
+        if os.access(locked / "apt-mirrors.txt", os.R_OK):
+            self.skipTest("running as a user who can search a mode-000 directory")
+        self.assert_refused(
+            self.run_script(str(locked / "apt-mirrors.txt")), f"cannot read {locked}/apt-mirrors.txt: Permission denied"
+        )
+
     def test_a_list_that_cannot_be_read_fails_named_and_is_not_written(self) -> None:
         # Audit of 9a885470: bash's read took a read error for the end of the file. A mode-000 file and a directory.
         self.fake("tee", f'echo tee ran >> "{self.temp}/tee.log"; cat > /dev/null')

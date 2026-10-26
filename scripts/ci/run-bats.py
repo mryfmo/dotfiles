@@ -3,7 +3,7 @@
 
 `run-bats.py <bats arguments>` runs `bats --formatter cat <arguments>`, Bats' extended stream, and prints its TAP
 lines. Each `begin <n> <name>` line becomes `running: <n> <name>`, so a log that stops shows the test it stopped in.
-When a test has no result within BATS_PER_TEST_TIMEOUT seconds (default 600), or the stream is silent that long
+When a test has no result within BATS_PER_TEST_TIMEOUT seconds (default: DEFAULT_BOUND below), or the stream is silent that long
 outside a test (Bats sources every file before its plan line), it prints `not ok <n> <name> # timeout after <s> s`,
 then a read-only diagnosis as TAP comments: every process under Bats as a tree, with its elapsed time, state, Linux
 wchan and full command (or `diagnosis unavailable: <reason>` when `ps` fails or hangs), and exits 124.

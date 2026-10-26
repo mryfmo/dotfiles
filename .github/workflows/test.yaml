@@ -503,7 +503,7 @@ jobs:
       - name: Run unit test
         # The hard stop. Passing Ubuntu client runs took 184-210 s here, and 1143-1361 s when a slow Azure apt mirror
         # served misc (1055-1077 s); the Azure mirror is now dropped first. scripts/ci/run-bats.py names a stalled test
-        # after BATS_PER_TEST_TIMEOUT (600 s) and prints its diagnosis; one earlier test as slow as that bound, the stalled
+        # after its per-test bound (the wrapper's default) and prints its diagnosis; one earlier test as slow as that bound, the stalled
         # test's bound and the other tests (at most 284 s measured) fit under this, so the name prints first (BoundOrderTest).
         timeout-minutes: 35
         if: ${{ steps.decide.outputs.should_test == 'true' }}

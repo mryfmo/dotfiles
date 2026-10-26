@@ -25,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+from scratch_git import git_init, quiet_git_env
 from test_generate_agent_configs import load_generator, sample_manifest
 from test_pr_levers import JQ
 
@@ -93,25 +94,27 @@ class PrAuditTest(unittest.TestCase):
         self.auth.write_text('{"tokens": {}}\n')
         gitconfig = self.root / "gitconfig"
         gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
-        self.env = {
-            **scratch_env(self.home),
-            "PATH": f"{self.bin}:{os.environ['PATH']}",
-            "TMPDIR": str(self.tmp),
-            "LC_ALL": "C",
-            "GIT_CONFIG_GLOBAL": str(gitconfig),
-            "GIT_CONFIG_NOSYSTEM": "1",
-            "FAKE_GH_CALLS": str(self.rec / "gh-calls"),
-            "FAKE_GH_RESPONSES": str(self.rec / "gh-responses.json"),
-            "FAKE_GH_STATE": str(self.rec / "gh-state.json"),
-            "FAKE_GH_JQ": JQ,
-            "FAKE_CODEX_CALLS": str(self.rec / "codex-calls"),
-            "PR_AUDIT_WAIT_TRIES": "1",
-            "PR_AUDIT_WAIT_SECONDS": "0",
-        }
+        self.env = quiet_git_env(
+            {
+                **scratch_env(self.home),
+                "PATH": f"{self.bin}:{os.environ['PATH']}",
+                "TMPDIR": str(self.tmp),
+                "LC_ALL": "C",
+                "GIT_CONFIG_GLOBAL": str(gitconfig),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "FAKE_GH_CALLS": str(self.rec / "gh-calls"),
+                "FAKE_GH_RESPONSES": str(self.rec / "gh-responses.json"),
+                "FAKE_GH_STATE": str(self.rec / "gh-state.json"),
+                "FAKE_GH_JQ": JQ,
+                "FAKE_CODEX_CALLS": str(self.rec / "codex-calls"),
+                "PR_AUDIT_WAIT_TRIES": "1",
+                "PR_AUDIT_WAIT_SECONDS": "0",
+            }
+        )
         self.origin = self.root / "origin.git"
         self.repo = self.root / "repo"
-        self.git("init", "-q", "--bare", str(self.origin), cwd=self.root)
-        self.git("init", "-q", str(self.repo), cwd=self.root)
+        git_init(self.origin, "--bare", env=self.env, cwd=self.root)
+        git_init(self.repo, env=self.env, cwd=self.root)
         (self.repo / "AGENTS.md").write_text(f"# Rules\n\n{RULES}\n## Other\n\nNot audit rules.\n")
         self.git("add", "AGENTS.md")
         self.git("commit", "-q", "-m", "main")
@@ -568,7 +571,7 @@ class PrAuditTest(unittest.TestCase):
         grafts = self.root / "grafts"
         grafts.write_text(f"{self.main} {self.head}\n")  # main's parent becomes the head
         other = self.root / "other-repo"
-        self.git("init", "-q", str(other), cwd=self.root)
+        git_init(other, env=self.env, cwd=self.root)
         empty_objects = self.root / "empty-objects"
         (empty_objects / "info").mkdir(parents=True)
         index = self.root / "foreign-index"

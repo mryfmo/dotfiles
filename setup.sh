@@ -343,10 +343,9 @@ function chezmoi_external_download() {
 # @arg $4 number The refresh period in seconds (0: never re-download).
 # @arg $5 path chezmoi's cache directory.
 # @stderr What failed, naming the external and its URL.
-# @exitcode 1 A local producer failed (hash, date, temporary file, cache directory or install): nothing cached.
+# @exitcode 1 The download failed, or a local producer did (hash, date, temporary file, cache directory, install):
+#   nothing cached.
 # @exitcode 2 The sha256 of a complete download differed: not retried, nothing cached.
-# @exitcode 3 The download failed (network, truncation, a retryable HTTP error after the bound, or another 4xx):
-#   nothing cached. Only this code may hand an external to chezmoi's fallback URLs.
 #
 function prefetch_chezmoi_external() {
     local name="$1" url="$2" expected="$3" refresh="$4" cache="$5"
@@ -410,17 +409,21 @@ function prefetch_chezmoi_external() {
             printf 'chezmoi external %s: downloaded from %s, sha256 verified\n' "${name}" "${url}"
             return 0
         fi
-        # A request curl could not make (bad option, URL or protocol) or a write error is not a network failure, and
-        # an HTTP 4xx other than a timeout or a rate limit will answer the same way again.
-        retry=1
+        # Retried only from an allowlist of transient remote or network faults (curl(1), "Exit codes"): 6 could not
+        # resolve host, 7 failed to connect, 18 partial file, 28 operation timeout, 35 SSL connect error, 52 the
+        # server did not reply anything, 55 failed sending network data, 56 failure in receiving network data, 92
+        # stream error in the HTTP/2 framing layer (a server or proxy resetting an HTTP/2 stream mid-transfer); and,
+        # through --fail's 22, HTTP 408, 429 and 5xx. Every other code, a local one such as 23 (write error) or 27
+        # (out of memory) included, fails at once.
+        retry=0
         case "${status}/${code}" in # lint-comparisons: allow curl's exit status and HTTP code, not a path
-        1/* | 2/* | 3/* | 23/* | 27/* | 22/4[0-9][0-9]) [[ "${code}" =~ ^(408|429)$ ]] || retry=0 ;;
+        6/* | 7/* | 18/* | 28/* | 35/* | 52/* | 55/* | 56/* | 92/* | 22/408 | 22/429 | 22/5[0-9][0-9]) retry=1 ;;
         esac
         if [ "${retry}" -eq 0 ] || [ "${attempt}" -ge "${CHEZMOI_EXTERNAL_ATTEMPTS}" ]; then
             rm -f "${partial}"
             printf 'chezmoi external %s: %s: download failed after %s attempt(s) (last: curl exit %s, HTTP %s); nothing cached\n' \
                 "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" >&2
-            return 3
+            return 1
         fi
         printf 'chezmoi external %s: %s: attempt %s failed (curl exit %s, HTTP %s); retrying in %ss\n' \
             "${name}" "${url}" "${attempt}" "${status}" "${code:-none}" "${delay}" >&2
@@ -431,9 +434,10 @@ function prefetch_chezmoi_external() {
 }
 
 #
-# @description Print every external a chezmoi source declares, one per line: target path, type, sha256, refresh
-#   period and its URLs, tab-separated. A missing type or sha256 prints as `-` and a missing refresh period as `0`, so
-#   no field is empty (a tab is whitespace to `read`, which would merge two tabs into one separator). Every `.chezmoiexternal.<format>` file anywhere in the source and every file
+# @description Print every external a chezmoi source declares, one per line, tab-separated: target path, type,
+#   sha256, refresh period, the number of fallback `urls`, and `url`. A missing type, sha256 or url prints as `-` and
+#   a missing refresh period as `0`, so no field is empty (a tab is whitespace to `read`, which would merge two tabs
+#   into one separator). Every `.chezmoiexternal.<format>` file anywhere in the source and every file
 #   in a `.chezmoiexternals/` directory is rendered by chezmoi itself (`execute-template`, with the source's
 #   templates) and decoded by its own fromYaml, fromJson, fromJsonc or fromToml. Every producer's status is
 #   checked: a failed find, render or decode is an error that names the file, never an empty list.
@@ -448,7 +452,7 @@ function chezmoi_external_list() {
     local fields
     # Go template text, not shell: every $ belongs to chezmoi. A missing type or sha256 is `-`, a missing period `0`.
     # shellcheck disable=SC2016
-    fields='{{ $name }}{{ "\t" }}{{ dig "type" "-" $e }}{{ "\t" }}{{ dig "checksum" "sha256" "-" $e }}{{ "\t" }}{{ dig "refreshPeriod" "0" $e }}{{ with dig "url" "" $e }}{{ "\t" }}{{ . }}{{ end }}{{ range dig "urls" list $e }}{{ "\t" }}{{ . }}{{ end }}'
+    fields='{{ $name }}{{ "\t" }}{{ dig "type" "-" $e }}{{ "\t" }}{{ dig "checksum" "sha256" "-" $e }}{{ "\t" }}{{ dig "refreshPeriod" "0" $e }}{{ "\t" }}{{ len (dig "urls" list $e) }}{{ "\t" }}{{ dig "url" "-" $e }}'
     declarations="$(find "${source}" \( -type f -name '.chezmoiexternal.*' \) -o \( -type f -path '*/.chezmoiexternals/*' \))" || {
         printf 'chezmoi externals: cannot list the declarations under %s\n' "${source}" >&2
         return 1
@@ -489,24 +493,20 @@ ${prefix:+${prefix}/}${fields}
 
 #
 # @description Fetch the `file`, `archive` and `archive-file` externals of a chezmoi source into chezmoi's cache,
-#   verified, before any command reads the target state. Only an external whose every URL (url, then urls) is http(s)
-#   is prefetched; any other, and every `git-repo`, is left whole to chezmoi with one line saying so. Of an all-http(s)
-#   list only the first URL is prefetched, the one chezmoi reads first: chezmoi tries url, then urls, and keys its
-#   cache by each URL (chezmoi 2.73.3 internal/chezmoi/sourcestate.go:1861-1886, :1921-1923), so a fallback cached
-#   under its own key would still leave chezmoi requesting the uncached first URL, and a fallback's bytes under the
-#   first URL's key would change the URL chezmoi guesses the archive format from (:2696-2709). When the first URL
-#   keeps failing and fallbacks exist, the external is left to chezmoi, which tries them, with one line saying so.
-#   An external without a sha256 is refused: it could not be verified before it is cached. A sha256 mismatch stops
-#   at once, as chezmoi does (it checks the checksum of the first URL that answers, :1756-1831). Without curl the step
-#   only says so, and chezmoi fetches the externals itself as before.
+#   verified, before any command reads the target state. Only an external with one http(s) `url` and no fallback
+#   `urls` is prefetched. One with `urls` (chezmoi tries url, then urls, and keys its cache by each URL, chezmoi 2.73.3
+#   internal/chezmoi/sourcestate.go:1861-1886, :1921-1923, which this step does not reproduce) or with a url that is
+#   not http(s), and every `git-repo`, is left whole to chezmoi, untouched, with one line saying so. Every failure to
+#   prefetch a single-URL http(s) external is fatal. An external without a sha256 is refused: it could not be verified
+#   before it is cached. Without curl the step only says so, and chezmoi fetches the externals itself as before.
 # @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
 # @stdout One line per external.
 # @stderr What failed, naming the external and its URL.
 # @exitcode 1 When an external cannot be fetched and verified, the externals cannot be listed, or a listed external
-#   has no name, an unknown type or no URL this step or chezmoi can fetch.
+#   has no name, an unknown type or no url.
 #
 function prefetch_chezmoi_externals() {
-    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds url other fetched
+    local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds fallbacks url
     local -a fields
     if ! command -v curl > /dev/null 2>&1; then
         printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n' >&2
@@ -526,8 +526,9 @@ function prefetch_chezmoi_externals() {
     while IFS=$'\t' read -r -a fields; do
         [ "${#fields[@]}" -gt 0 ] || continue
         name="${fields[0]}" type="${fields[1]:-}" sha256="${fields[2]:-}" refresh="${fields[3]:-}"
+        fallbacks="${fields[4]:-}" url="${fields[5]:-}"
         # A line the decode did not produce whole is refused, never skipped: it decides what is fetched.
-        [ "${#fields[@]}" -ge 4 ] && [ -n "${name}" ] || {
+        [ "${#fields[@]}" -eq 6 ] && [ -n "${name}" ] && [[ "${fallbacks}" =~ ^[0-9]+$ ]] || {
             printf 'chezmoi externals: an external decoded without its fields: %s\n' "${fields[*]}" >&2
             return 1
         }
@@ -539,21 +540,21 @@ function prefetch_chezmoi_externals() {
             return 1
             ;;
         esac
-        [ "${#fields[@]}" -gt 4 ] || {
+        if [ "${fallbacks}" -ne 0 ]; then
+            printf 'chezmoi external %s: left to chezmoi: its declaration lists fallback urls\n' "${name}"
+            continue
+        fi
+        [ "${url}" != - ] || { # lint-comparisons: allow the listing's `-` placeholder for a missing url, not a URL
             printf 'chezmoi external %s: no url\n' "${name}" >&2
             return 1
         }
-        other=""
-        for url in "${fields[@]:4}"; do
-            [[ "${url}" =~ ^https?:// ]] || other="${url}"
-        done
-        if [ -n "${other}" ]; then
-            printf 'chezmoi external %s: left to chezmoi: %s is not http(s)\n' "${name}" "${other}"
+        if ! [[ "${url}" =~ ^https?:// ]]; then
+            printf 'chezmoi external %s: left to chezmoi: %s is not http(s)\n' "${name}" "${url}"
             continue
         fi
         [[ "${sha256}" =~ ^[0-9a-f]{64}$ ]] || {
             printf 'chezmoi external %s: %s has no sha256 checksum; it cannot be verified before it is cached\n' \
-                "${name}" "${fields[4]}" >&2
+                "${name}" "${url}" >&2
             return 1
         }
         seconds="$(chezmoi_external_seconds "${refresh}")" || {
@@ -567,18 +568,7 @@ function prefetch_chezmoi_externals() {
                 return 1
             }
         fi
-        fetched=0
-        prefetch_chezmoi_external "${name}" "${fields[4]}" "${sha256}" "${seconds}" "${cache}" || fetched=$?
-        # Only a failed download may go to chezmoi's fallbacks; a local producer failure (1), a checksum mismatch (2)
-        # and any other code stay fatal whatever the URL list.
-        case "${fetched}" in
-        0) ;;
-        3)
-            [ "${#fields[@]}" -gt 5 ] || return 1
-            printf 'chezmoi external %s: left to chezmoi, which tries the fallbacks %s\n' "${name}" "${fields[*]:5}"
-            ;;
-        *) return 1 ;;
-        esac
+        prefetch_chezmoi_external "${name}" "${url}" "${sha256}" "${seconds}" "${cache}" || return 1
     done <<< "${listing}"
 }
 # --- chezmoi-externals.sh end ---

@@ -195,7 +195,7 @@ class ChezmoiExternalsTest(ServerFixture):
 
         result = self.prefetch_one(url)
 
-        self.assertEqual(3, result.returncode)  # a failed download: the only code that may reach a fallback
+        self.assertEqual(1, result.returncode)
         self.assertEqual(4, self.requests())  # CHEZMOI_EXTERNAL_ATTEMPTS
         self.assertIn(f"chezmoi external .ext: {url}: download failed after 4 attempt(s)", result.stderr)
         self.assertEqual([], list((self.cache / "external").iterdir()))
@@ -216,7 +216,7 @@ class ChezmoiExternalsTest(ServerFixture):
                     CHEZMOI_EXTERNAL_ATTEMPTS=value,
                     CHEZMOI_EXTERNAL_RETRY_DELAY=value,
                 )
-                self.assertEqual(3, result.returncode, result.stderr)
+                self.assertEqual(1, result.returncode, result.stderr)
                 self.assertEqual(4, self.requests())
                 self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
 
@@ -273,9 +273,69 @@ class ChezmoiExternalsTest(ServerFixture):
         self.log.unlink()
         missing = f"{self.base}/absent.tar.gz"
         result = self.prefetch_one(missing)
-        self.assertEqual(3, result.returncode)
+        self.assertEqual(1, result.returncode)
         self.assertEqual(1, self.requests())
         self.assertIn(f"{missing}: download failed after 1 attempt(s) (last: curl exit 22, HTTP 404)", result.stderr)
+
+    def run_codes(self, status: str, http: str) -> subprocess.CompletedProcess[str]:
+        # chezmoi_external_download replaced by one that fails with a fixed curl exit and HTTP code, counting calls.
+        self.log.unlink(missing_ok=True)
+        self.sleeps.unlink(missing_ok=True)
+        inject = 'chezmoi_external_download() { printf "x\\n" >> "$CALLS"; printf "%s" "$HTTP"; return "$STATUS"; }; '
+        return self.bash(
+            inject + 'prefetch_chezmoi_external .ext "$@"',
+            f"{self.base}/coded.tar.gz",
+            self.sha256,
+            "0",
+            str(self.cache),
+            CALLS=str(self.log),
+            STATUS=status,
+            HTTP=http,
+        )
+
+    def test_a_local_or_unlisted_curl_failure_is_fatal_without_a_retry(self) -> None:
+        # Round 4: curl 23 (write error) and 27 (out of memory) are local; they and every code outside the allowlist
+        # fail at once, naming the code. Mutant check: a retry on any non-zero exit fails this test.
+        for status, http in (
+            ("23", "200"),
+            ("27", "200"),
+            ("1", "000"),
+            ("3", "000"),
+            ("47", "301"),
+            ("22", "404"),
+            ("22", "403"),
+        ):
+            with self.subTest(status=status, http=http):
+                result = self.run_codes(status, http)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(1, self.requests())
+                self.assertFalse(self.sleeps.exists())
+                self.assertIn(
+                    f"download failed after 1 attempt(s) (last: curl exit {status}, HTTP {http})", result.stderr
+                )
+                self.assertEqual([], self.cached())
+
+    def test_each_allowlisted_transient_failure_is_retried_up_to_the_bound(self) -> None:
+        # curl(1) "Exit codes": 6, 7, 18, 28, 35, 52, 55, 56, 92; and through --fail's 22, HTTP 408, 429 and 5xx.
+        for status, http in (
+            *((code, "000") for code in ("6", "7", "18", "28", "35", "52", "55", "56", "92")),
+            ("22", "408"),
+            ("22", "429"),
+            ("22", "500"),
+            ("22", "503"),
+            ("22", "599"),
+        ):
+            with self.subTest(status=status, http=http):
+                result = self.run_codes(status, http)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(4, self.requests())
+                self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
+                self.assertIn(
+                    f"download failed after 4 attempt(s) (last: curl exit {status}, HTTP {http})", result.stderr
+                )
+                self.assertEqual([], self.cached())
 
     def test_a_checksum_mismatch_after_a_complete_download_fails_at_once(self) -> None:
         url = self.serve("wrong.tar.gz", "corrupt", "ok")
@@ -450,6 +510,12 @@ class ChezmoiSourceExternalsTest(ServerFixture):
                 {},
                 "cannot list the declarations",
             ),
+            (
+                "the scratch directory cannot be created",
+                'mktemp() { [ "$1" != -d ] || return 1; command mktemp "$@"; }; ',
+                {},
+                "cannot create a scratch directory",
+            ),
             ("the render fails", "", {"FAIL_RENDER": "1"}, f"cannot render {declaration}"),
             ("the decode fails", "", {"FAIL_DECODE": "1"}, f"cannot decode {declaration} as yaml"),
             (
@@ -498,18 +564,22 @@ class ChezmoiSourceExternalsTest(ServerFixture):
             f"{unknown} has a format this step does not read",
         )
 
-    def status(self, chezmoi: Path) -> subprocess.CompletedProcess[str]:
-        return subprocess.run([str(chezmoi), "status"], capture_output=True, text=True, timeout=120, check=False)
-
-    def test_an_external_with_any_url_that_is_not_http_is_left_whole_to_chezmoi(self) -> None:
-        # Audit of 0f69d7af: only the first URL's scheme was checked. Now any non-http(s) URL in url or urls leaves the
-        # whole external to chezmoi, untouched, with one line.
-        http = self.serve("mixed.tar.gz", "ok")
+    def test_an_external_with_urls_or_a_url_that_is_not_http_is_left_whole_to_chezmoi(self) -> None:
+        # Round 4 (decisions.tsv treadmill-u96-fallback): no fallback hand-over. An external whose declaration lists
+        # `urls`, or whose url is not http(s), is not prefetched at all: one line, no request, no cache entry.
+        http = self.serve("whole.tar.gz", "ok")
         local = f"file://{self.case}/local.tar.gz"
-        for name, url, urls, other in (
-            ("http primary, file fallback", http, (local,), local),
-            ("file primary, http fallback", local, (http,), local),
-            ("ftp fallback", http, ("ftp://x.invalid/a.tar.gz",), "ftp://x.invalid/a.tar.gz"),
+        for name, url, urls, line in (
+            ("http url, http urls", http, (http,), "left to chezmoi: its declaration lists fallback urls"),
+            ("http url, file urls", http, (local,), "left to chezmoi: its declaration lists fallback urls"),
+            ("file url, http urls", local, (http,), "left to chezmoi: its declaration lists fallback urls"),
+            ("file url alone", local, (), f"left to chezmoi: {local} is not http(s)"),
+            (
+                "ftp url alone",
+                "ftp://x.invalid/a.tar.gz",
+                (),
+                "left to chezmoi: ftp://x.invalid/a.tar.gz is not http(s)",
+            ),
         ):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
@@ -519,92 +589,51 @@ class ChezmoiSourceExternalsTest(ServerFixture):
                 result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
 
                 self.assertEqual(0, result.returncode, result.stderr)
-                self.assertEqual(
-                    [f"chezmoi external .ext: left to chezmoi: {other} is not http(s)"], result.stdout.splitlines()
-                )
+                self.assertEqual([f"chezmoi external .ext: {line}"], result.stdout.splitlines())
                 self.assertEqual(0, self.requests())
                 self.assertEqual([], self.cached())
-
-    def test_an_all_http_list_prefetches_the_first_url_and_leaves_a_failing_one_to_chezmoi(self) -> None:
-        # chezmoi tries url, then urls, and keys each by its own sha256 (sourcestate.go:1861-1886, :1921-1923), so only
-        # the first URL's entry spares chezmoi a request; the fallbacks stay chezmoi's.
-        primary = self.serve("primary.tar.gz", "truncate", "ok")
-        fallback = self.serve("fallback.tar.gz", "ok")
-        chezmoi = self.source(primary, urls=(fallback,))
-
-        result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
-        status = self.status(chezmoi)
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn(f"downloaded from {primary}, sha256 verified", result.stdout)
-        self.assertEqual([self.entry(primary).name], self.cached())
-        self.assertEqual(0, status.returncode, status.stderr)
-        # The truncated attempt and its retry; chezmoi's status read the first URL's entry and requested nothing.
-        self.assertEqual((2, 0), (self.requests(primary), self.requests(fallback)))
-
-        # A first URL that keeps failing: the step caches nothing and says chezmoi tries the fallback, which it does.
-        self.log.unlink()
-        shutil.rmtree(self.cache)
-        self.routes["/primary.tar.gz"]["plan"] = ["503"]
-        self.plan.write_text(json.dumps({"log": str(self.log), "paths": self.routes}))
-
-        result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn(f"chezmoi external .ext: left to chezmoi, which tries the fallbacks {fallback}", result.stdout)
-        self.assertIn(f"{primary}: download failed after 4 attempt(s)", result.stderr)
-        self.assertEqual([], self.cached())
-        self.assertEqual((4, 0), (self.requests(primary), self.requests(fallback)))
-        status = self.status(chezmoi)
-        self.assertEqual(0, status.returncode, status.stderr)
-        self.assertIn("A .ext/blob", status.stdout)
-        self.assertEqual((5, 1), (self.requests(primary), self.requests(fallback)))
-
-        # Without a fallback, a first URL that keeps failing stops the step, naming it.
+        # Only `urls`, no `url`: chezmoi's own fallback list again, left whole.
         shutil.rmtree(self.case / "source")
-        chezmoi = self.source(primary)
+        chezmoi = self.source(http, urls=(http,))
+        tmpl = self.case / "source/.chezmoitemplates/ext.yaml.tmpl"
+        tmpl.write_text(tmpl.read_text().replace(f"  url: {json.dumps(http)}\n", ""))
         result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
-        self.assertEqual(1, result.returncode)
-        self.assertIn(f"chezmoi external .ext: {primary}: download failed after 4 attempt(s)", result.stderr)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            ["chezmoi external .ext: left to chezmoi: its declaration lists fallback urls"], result.stdout.splitlines()
+        )
+        self.assertEqual(0, self.requests())
 
-    def test_a_producer_failure_is_fatal_with_or_without_a_fallback(self) -> None:
-        # Audit of 943c429e: with fallbacks, any failure of the first URL was handed to chezmoi, so a hash, temp-file
-        # or install failure read as success. Only a failed download may be handed over; every case here is fatal (or,
-        # for an unreadable entry age or digest, refetched from the first URL), with or without a fallback.
-        primary = self.serve("first.tar.gz", "ok")
-        fallback = self.serve("second.tar.gz", "ok")
-        entry = self.entry(primary)
-        for with_fallback in (False, True):
-            urls = (fallback,) if with_fallback else ()
-            for name, inject, _code, message, requests in PRODUCER_CASES:
-                with self.subTest(case=name, fallback=with_fallback):
-                    self.log.unlink(missing_ok=True)
-                    shutil.rmtree(self.cache, ignore_errors=True)
-                    shutil.rmtree(self.case / "source", ignore_errors=True)
-                    chezmoi = self.source(primary, urls=urls)
+    def test_a_producer_failure_stops_the_whole_step(self) -> None:
+        # Every prefetch failure of a single-URL http(s) external is fatal; an unreadable entry age or digest refetches.
+        url = self.serve("first.tar.gz", "ok")
+        entry = self.entry(url)
+        for name, inject, _code, message, requests in PRODUCER_CASES:
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.cache, ignore_errors=True)
+                shutil.rmtree(self.case / "source", ignore_errors=True)
+                chezmoi = self.source(url)
 
-                    result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi))
+                result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi))
 
-                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-                    self.assertIn(message, result.stderr)
-                    self.assertNotIn("left to chezmoi", result.stdout)
-                    self.assertEqual((requests, 0), (self.requests(primary), self.requests(fallback)))
-                    self.assertEqual([], self.cached())
-            for name, inject, refetched in AGE_CASES:
-                with self.subTest(case=name, fallback=with_fallback):
-                    self.log.unlink(missing_ok=True)
-                    shutil.rmtree(self.case / "source", ignore_errors=True)
-                    chezmoi = self.source(primary, urls=urls)
-                    entry.parent.mkdir(parents=True, exist_ok=True)
-                    entry.write_bytes(b"fresh but unread")
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertEqual(requests, self.requests())
+                self.assertEqual([], self.cached())
+        for name, inject, refetched in AGE_CASES:
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.case / "source", ignore_errors=True)
+                chezmoi = self.source(url)
+                entry.parent.mkdir(parents=True, exist_ok=True)
+                entry.write_bytes(b"fresh but unread")
 
-                    result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi), ENTRY=str(entry))
+                result = self.bash(inject + 'prefetch_chezmoi_externals "$1"', str(chezmoi), ENTRY=str(entry))
 
-                    self.assertEqual(0 if refetched else 1, result.returncode, result.stdout + result.stderr)
-                    self.assertNotIn("left to chezmoi", result.stdout)
-                    self.assertEqual((int(refetched), 0), (self.requests(primary), self.requests(fallback)))
-                    self.assertEqual(self.data if refetched else b"fresh but unread", entry.read_bytes())
-                    self.assertEqual([entry.name], self.cached())
+                self.assertEqual(0 if refetched else 1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(int(refetched), self.requests())
+                self.assertEqual(self.data if refetched else b"fresh but unread", entry.read_bytes())
 
     def test_externals_chezmoi_fetches_itself_are_left_to_it(self) -> None:
         # git-repo and file:// externals never reach chezmoi's download cache.

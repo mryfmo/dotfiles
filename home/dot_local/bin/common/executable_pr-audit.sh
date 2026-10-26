@@ -1002,9 +1002,11 @@ rm -f -- "${run}/canary" || fail "cannot remove the canary ${run}/canary"
 # Only curl's own resolve or connect failures show the network denied: 6 (could not resolve host, measured with the
 # profile on macOS) and 7 (could not connect). Anything else refuses: 0 reached the network, 28 is a timeout that
 # proves no denial, 126/127 or a missing curl mean the probe never ran.
+# The call carries the canonical network bound (tests.unit.test_network_bounds); none of its options changes a
+# resolve or connect failure, and the probe's own supervisor deadline (PR_AUDIT_PROBE_TIMEOUT) still caps it.
 # shellcheck disable=SC2016
 net_probe='command -v curl > /dev/null 2>&1 || { echo "pr-audit-probe: no curl"; exit 0; }
-curl -sS -m 10 -o /dev/null https://github.com > /dev/null 2>&1
+curl -sS --connect-timeout 30 --speed-limit 1024 --speed-time 60 -o /dev/null https://github.com > /dev/null 2>&1
 echo "pr-audit-probe: curl $?"'
 status=0
 codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${net_probe}" || status=$?

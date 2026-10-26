@@ -1337,7 +1337,7 @@ class HcomSeatTest(unittest.TestCase):
             (admin_root / "worktrees" / t / "gitdir").write_text(f"{root}/trees/{t}/.git\n")
         listed = f"{root}/trees/a {root}/trees/b"
         match_call = (
-            f"git_fix_hint='' worktree_phys=({listed})\n"
+            f"git_fix_hint='' worktree_phys=(${{listed_override:-{listed}}})\n"
             'dir_entries "$1/worktrees"\nadmin_dirs=("${dir_list[@]}")\nadmin_dirs_match "$1"\necho matched'
         )
         good = run(match_call, [str(admin_root)])
@@ -1366,6 +1366,16 @@ class HcomSeatTest(unittest.TestCase):
                 "cannot resolve the path",
             ),
         }  # fmt: skip
+        # A case alias on a case-insensitive volume: git lists `trees/a` and `TREES/A` (two admin directories), which
+        # `cd -P` leaves as two texts for one directory; identity sees one.
+        alias = root / "TREES/A"
+        if alias.exists() and alias.samefile(root / "trees/a"):
+            match_cases["two admin directories recording one worktree by case alias"] = (
+                recorded(f"{alias}/.git\n"),
+                None,
+                f"listed_override='{root}/trees/a {alias}'",
+                "records too",
+            )
         for label, (mutate, replace, prelude, message) in match_cases.items():
             with self.subTest(producer="admin_dirs_match", case=label):
                 if mutate:
@@ -1786,6 +1796,32 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(sparse[1], empty[1] + 3, "one subshell per non-empty config.worktree")
         self.add_worktrees(10, 290)
         self.assert_same_counts(sparse, self.spawn_counts())
+
+    def test_two_git_directories_recording_one_worktree_by_case_alias_refuse(self):
+        """U95 round 15: on a case-insensitive volume (APFS by default; skipped on a case-sensitive one, detected at
+        runtime) a second admin directory whose `gitdir` spells an existing worktree in other case makes git list two
+        worktrees for one directory. `cd -P` keeps the spelling, so the texts differ; admin_dirs_match compares
+        identities and refuses the duplicate."""
+        tree = Path(self.temp.name).resolve() / "away" / "t"
+        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+        alias = tree.parent.parent / "AWAY" / "T"
+        if not (alias.exists() and alias.samefile(tree)):
+            self.skipTest("a case-sensitive volume: no case alias")
+        common = (self.repo / ".git").resolve()
+        twin = common / "worktrees" / "twin"
+        twin.mkdir()
+        for name in ("commondir", "HEAD"):
+            shutil.copy(common / "worktrees/t" / name, twin / name)
+        (twin / "gitdir").write_text(f"{alias}/.git\n")
+        self.assertIn(f"worktree {alias}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        for role in ("worker", "orchestrator"):
+            with self.subTest(role=role):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("which another worktree git directory records too", run.stderr)
+        shutil.rmtree(twin)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_more_seat_directories_start_no_more_processes(self):
         """U95 round 13: the seat directories under the seats root are resolved in one batch (physical_paths) in both

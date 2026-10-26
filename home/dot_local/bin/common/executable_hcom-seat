@@ -1079,7 +1079,7 @@ for ext in "${exts[@]}"; do
         # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
         [[ -d ${entry} ]] || continue
         entry_real=$(cd "${entry}" && pwd -P) || continue
-        if [[ ${entry_real} == "${real}" ]]; then listed=${entry_real}; fi # lint-comparisons: allow both sides are pwd -P forms
+        if [[ ${entry_real} -ef ${real} ]]; then listed=${entry_real}; fi
     done <<< "${allowed}"
     [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
     checked+=("${listed}")
@@ -1372,38 +1372,47 @@ fi
 #   `gitdir` names, the way git reads it (worktree.c get_linked_worktree: trailing `/.git` stripped, a relative path
 #   resolved against the admin directory), a worktree git lists, no two name the same one, and their number is the
 #   number git lists. So every consumer (the git-state denies, the shape check, the overlap check) sees the same set:
-#   an admin directory no listed worktree owns, or one the scan missed, refuses. One read and one resolving batch.
+#   an admin directory no listed worktree owns, or one the scan missed, refuses. Sameness is identity, never text:
+#   `cd -P` keeps a spelling's case, so on a case-insensitive volume `trees/a` and `TREES/A` are one directory under
+#   two texts. Each path's key is its identity_table entry, the (device, inode) of its deepest existing ancestor
+#   followed by the case-folded absent rest (`/` for an existing path), the same rule within_ix decides by. One read,
+#   one resolving batch and one identity table.
 # @arg $1 string The physical git common directory.
 admin_dirs_match() {
-    local a v listed='' seen='' i derived=() gitdirs=()
+    local a v key listed=$'\n' seen=$'\n' i n derived=() gitdirs=()
     dir_entries "$1/worktrees"
     ((${#dir_list[@]} == ${#admin_dirs[@]})) ||
         refuse "the worktree git directories of $1 changed while hcom-seat ran (${#dir_list[@]} now, ${#admin_dirs[@]} checked)"
     ((${#admin_dirs[@]} == ${#worktree_phys[@]})) ||
         refuse "$1/worktrees holds ${#admin_dirs[@]} worktree git directories but git lists ${#worktree_phys[@]} linked worktrees; an entry no listed worktree owns cannot be checked${git_fix_hint}"
-    for a in ${admin_dirs[@]+"${admin_dirs[@]}"}; do
+    n=${#worktree_phys[@]}
+    ((n)) || return 0
+    for a in "${admin_dirs[@]}"; do
         [[ -f ${a}/gitdir && ! -L ${a}/gitdir ]] ||
             refuse "the worktree git directory ${a} has no regular gitdir file, so git lists no worktree for it${git_fix_hint}"
         gitdirs+=("${a}/gitdir")
     done
-    pointer_values ${gitdirs[@]+"${gitdirs[@]}"}
-    for ((i = 0; i < ${#admin_dirs[@]}; i++)); do
+    pointer_values "${gitdirs[@]}"
+    for ((i = 0; i < n; i++)); do
         v=${pointer_list[i]%/.git}
         case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
         /*) derived+=("${v}") ;;
         *) derived+=("${admin_dirs[i]}/${v}") ;;
         esac
     done
-    physical_paths ${derived[@]+"${derived[@]}"}
-    for v in ${worktree_phys[@]+"${worktree_phys[@]}"}; do listed+=$'\n'${v}; done
-    listed+=$'\n'
-    for ((i = 0; i < ${#admin_dirs[@]}; i++)); do
+    physical_paths "${derived[@]}"
+    ((${#phys_list[@]} == n)) || refuse "the worktrees the git directories of $1 record were not all resolved"
+    # Listed worktrees at indices 0..n-1, recorded ones at n..2n-1.
+    identity_table "${worktree_phys[@]}" "${phys_list[@]}"
+    for ((i = 0; i < n; i++)); do listed+=${tbl_first[i]}${tbl_rest[i]}$'\n'; done
+    for ((i = 0; i < n; i++)); do
         v=${phys_list[i]}
-        [[ ${listed} == *$'\n'"${v}"$'\n'* ]] || # lint-comparisons: allow physical paths, both from physical_paths
+        key=${tbl_first[n + i]}${tbl_rest[n + i]}
+        [[ ${listed} == *$'\n'"${key}"$'\n'* ]] || # lint-comparisons: allow compares (device, inode) identities with case-folded absent rests, not paths
             refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which git does not list as a worktree${git_fix_hint}"
-        [[ ${seen} != *$'\n'"${v}"$'\n'* ]] || # lint-comparisons: allow physical paths, both from physical_paths
-            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which another worktree git directory records too${git_fix_hint}"
-        seen+=$'\n'${v}$'\n'
+        [[ ${seen} != *$'\n'"${key}"$'\n'* ]] || # lint-comparisons: allow compares (device, inode) identities with case-folded absent rests, not paths
+            refuse "the worktree git directory ${admin_dirs[i]} records ${v}, which another worktree git directory records too (the same directory by identity)${git_fix_hint}"
+        seen+=${key}$'\n'
     done
 }
 if ((${#worktree_paths[@]} > 1 || ${#admin_dirs[@]} > 0)); then admin_dirs_match "${early_common}"; fi

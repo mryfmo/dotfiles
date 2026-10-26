@@ -15,13 +15,12 @@ The settings, per git-config(1):
   stays in the foreground;
 - gc.auto=0: `git gc --auto` does nothing.
 
-Three layers:
+Layers:
 - git_init()/git_clone() (every repository a test creates; test_scratch_git's sweep checks the call sites):
   create the repository and write the settings into its own config, so no env a later git runs under can drop
   them, not even one that strips every GIT_* variable;
-- quiet_git() (module level in every test module that creates a git repository) and the shard runner
-  (scripts/ci/unittest-shards.py): add them to the environment every subprocess inherits;
-- quiet_git_env(env) (every env a test builds from scratch for git): adds them to that env.
+- quiet_git_env(env): the shard runner (scripts/ci/unittest-shards.py) passes quiet_git_env(os.environ) to every
+  shard, and every env a test builds from scratch for git is wrapped with it.
 
 The environment layers use `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n` (git-config(1),
 ENVIRONMENT), which git reads like `-c` options, after every config file; the last value of a key wins.
@@ -55,11 +54,6 @@ def quiet_git_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
         count += 1
     result["GIT_CONFIG_COUNT"] = str(count)
     return result
-
-
-def quiet_git() -> None:
-    """Apply SETTINGS to this process's environment, for every git command a test runs without an env of its own."""
-    os.environ.update(quiet_git_env(os.environ))
 
 
 def quiet_repository(path: Path) -> None:

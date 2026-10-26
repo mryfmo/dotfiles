@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -14,13 +13,9 @@ import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import SETTINGS, git_clone, git_init, quiet_git, quiet_git_env  # noqa: E402
-
-quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+from scratch_git import SETTINGS, git_clone, git_init, quiet_git_env  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-# A git command whose subcommand is init: ["git", …, "init"], git(…"init"), self.git("init"), and ("init", "-…") argv.
-INIT = re.compile(r"""(\bgit\b[^\n]{0,160}?["']init["'])|(\(\s*\(?["']init["'],\s*["']-)|(\[\s*["']init["'],)""")
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 # The git init/clone call sites in tests/unit that do not go through scratch_git's git_init/git_clone, each with why.
 RAW_REPOSITORY_SITES = {
@@ -30,16 +25,6 @@ RAW_REPOSITORY_SITES = {
 }
 SUBCOMMANDS = {"init", "clone"}
 MESSAGE = {"-m", "-qm", "--message"}
-
-
-def calls_quiet_git_at_module_level(tree: ast.Module) -> bool:
-    return any(
-        isinstance(node, ast.Expr)
-        and isinstance(node.value, ast.Call)
-        and isinstance(node.value.func, ast.Name)
-        and node.value.func.id == "quiet_git"
-        for node in tree.body
-    )
 
 
 def repository_sites(tree: ast.Module):
@@ -88,16 +73,6 @@ class ScratchGitTest(unittest.TestCase):
 
     def raw_init(self, env: dict) -> None:
         self.git("init", "-q", env=env)
-
-    def test_every_module_that_creates_a_git_repository_quiets_git(self):
-        # PR #559: test_pinned_lint_tools committed, git's detached auto maintenance held maintenance.lock, and the
-        # test's rmtree failed. Every module that creates a repository calls quiet_git() at module level.
-        missing = []
-        for path in sorted(HERE.glob("test_*.py")):
-            text = path.read_text()
-            if INIT.search(text) and not calls_quiet_git_at_module_level(ast.parse(text)):
-                missing.append(path.name)
-        self.assertEqual([], missing)
 
     def test_every_git_init_and_clone_goes_through_git_init_or_git_clone(self):
         # The repository then carries the settings in its own config, so no env a later git runs under can drop them.
@@ -165,9 +140,9 @@ class ScratchGitTest(unittest.TestCase):
             with self.subTest(key):
                 self.assertEqual(value, self.git("config", "--get", key, env=env))
 
-    def test_the_shard_runner_quiets_git_for_a_module_that_does_not(self):
+    def test_the_shard_runner_passes_the_settings_to_every_shard(self):
         # Process-wide layer: scripts/ci/unittest-shards.py (what `make unit-test` and CI run) passes the settings to
-        # every shard, so a module without its own quiet_git() call, started with none of them inherited, has them.
+        # every shard, so a module that makes its repository by hand, started with none of them inherited, has them.
         start = self.repo / "start"
         start.mkdir()
         (start / "test_bare.py").write_text(

@@ -10,7 +10,7 @@ for it in this process: a shard that dies or stops early cannot read as a pass.
 
 Every shard runs with tests/unit/scratch_git.py's settings in its environment (regime-cutover U100), so no git a test
 runs in a scratch repository starts background maintenance (`git maintenance run --auto`, detached and holding
-maintenance.lock since git 2.55), whether or not the module calls quiet_git() itself.
+maintenance.lock since git 2.55), however the test made the repository.
 """
 
 from __future__ import annotations

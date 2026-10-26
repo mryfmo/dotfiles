@@ -85,9 +85,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes
-from scratch_git import git_clone, git_init, quiet_git  # noqa: E402
-
-quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+from scratch_git import git_clone, git_init  # noqa: E402
 
 
 def setUpModule() -> None:

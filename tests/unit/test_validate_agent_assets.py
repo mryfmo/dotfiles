@@ -22,9 +22,7 @@ from unittest import mock
 from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import git_init, quiet_git  # noqa: E402
-
-quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
+from scratch_git import git_init  # noqa: E402
 
 sys.dont_write_bytecode = True
 

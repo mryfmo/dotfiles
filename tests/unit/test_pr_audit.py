@@ -14,6 +14,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -1096,7 +1097,10 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(run.stdout, "")
 
     # Each step of the supervisor's stop made to raise in the `codex exec` run (U71b audit round 15): the step's name in
-    # the mark, and the injected Python that makes it raise.
+    # the mark, and the injected Python that makes it raise. The snapshot and the survivor report are the only callers
+    # of process_table (`/bin/ps -A -o ...`); the KILL step's EPERM check lists the group with its own argv
+    # (`/bin/ps -axo pid=,pgid=,stat=`), so counting every ps call would move the second injection into the KILL step
+    # whenever macOS answers EPERM (CI of 5473e543).
     STOP_STEP_INJECTIONS = (
         (
             "ignore signals",
@@ -1115,7 +1119,7 @@ class PrAuditTest(unittest.TestCase):
                 "_run = subprocess.run\n"
                 "_ps = []\n"
                 "def _first_ps(argv, **k):\n"
-                "    if argv[0] == '/bin/ps':\n"
+                "    if argv[:3] == ['/bin/ps', '-A', '-o']:\n"
                 "        _ps.append(1)\n"
                 "        if len(_ps) == 1:\n"
                 "            raise RuntimeError('injected step')\n"
@@ -1184,7 +1188,7 @@ class PrAuditTest(unittest.TestCase):
                 "_run = subprocess.run\n"
                 "_ps = []\n"
                 "def _second_ps(argv, **k):\n"
-                "    if argv[0] == '/bin/ps':\n"
+                "    if argv[:3] == ['/bin/ps', '-A', '-o']:\n"
                 "        _ps.append(1)\n"
                 "        if len(_ps) == 2:\n"
                 "            raise RuntimeError('injected step')\n"
@@ -1194,17 +1198,53 @@ class PrAuditTest(unittest.TestCase):
         ),
     )
 
+    # The KILL as macOS answers it while the group vanishes (CI of 5473e543): the real KILL (its own error ignored), a
+    # wait until ps lists no live member of the group, then EPERM, so the KILL step's EPERM check runs its own ps
+    # every time. Its waiting ps uses the unhooked subprocess.run, and each EPERM it raises is logged to MARK.
+    EPERM_KILL = (
+        "import errno, time\n"
+        "_real_killpg, _real_run = os.killpg, subprocess.run\n"
+        "def _eperm_kill(pgid, sig):\n"
+        "    if sig != signal.SIGKILL:\n"
+        "        return _real_killpg(pgid, sig)\n"
+        "    try:\n"
+        "        _real_killpg(pgid, sig)\n"
+        "    except OSError:\n"
+        "        pass\n"
+        "    end = time.monotonic() + 5\n"
+        "    while time.monotonic() < end:\n"
+        "        rows = _real_run(['/bin/ps', '-axo', 'pid=,pgid=,stat='], capture_output=True, text=True).stdout\n"
+        "        rows = [r.split() for r in rows.splitlines() if r.strip()]\n"
+        "        if not [r for r in rows if r[1] == str(pgid) and not r[2].startswith('Z')]:\n"
+        "            break\n"
+        "        time.sleep(0.05)\n"
+        "    open(MARK, 'a').write('eperm\\n')\n"
+        "    raise PermissionError(errno.EPERM, 'Operation not permitted')\n"
+        "os.killpg = _eperm_kill\n"
+    )
+
+    def stop_step_cases(self):
+        """(label, step the reason must name, injected body, EPERM log or None): every step, then the two process-table
+        steps again under a KILL that answers EPERM."""
+        cases = [(name, name, body, None) for name, body in self.STOP_STEP_INJECTIONS]
+        bodies = dict(self.STOP_STEP_INJECTIONS)
+        for name in ("snapshot", "survivors"):
+            log = self.root / f"eperm-{name}"
+            body = f"MARK = {str(log)!r}\n" + self.EPERM_KILL + bodies[name]
+            cases.append((f"{name} with KILL answering EPERM", name, body, log))
+        return cases
+
     def test_each_stop_step_that_raises_still_stops_the_group(self):
         """U71b audit round 15: a statement of the stop that raised skipped the steps after it (rounds 13 to 15). Each
         step now runs on its own; whichever raises, the group is gone and the run fails closed (exit 125, refusal)."""
-        for name, body in self.STOP_STEP_INJECTIONS:
-            with self.subTest(step=name):
+        for label, name, body, log in self.stop_step_cases():
+            with self.subTest(step=label):
                 if name == "sweep" and not sys.platform.startswith("linux"):
                     self.skipTest("the subreaper sweep runs on Linux only")
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
                 (self.rec / "codex-calls").unlink(missing_ok=True)
-                marker = self.root / f"step-{name.replace(' ', '-')}"
+                marker = self.root / f"step-{label.replace(' ', '-')}"
                 code = "import os, signal, subprocess, sys\nif 'exec' in sys.argv:\n" + "".join(
                     f"    {line}\n" for line in body.splitlines()
                 )
@@ -1218,8 +1258,10 @@ class PrAuditTest(unittest.TestCase):
                 )
                 self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
                 self.assertEqual(run.stdout, "")
-                self.assertIn("refused: codex's supervisor failed (", run.stderr)
-                self.assertIn(f"{name}: RuntimeError: injected step", run.stderr)
+                reasons = re.findall(r"refused: codex's supervisor failed \((.*)\); no verdict", run.stderr)
+                self.assertEqual(reasons, [f"{name}: RuntimeError: injected step"], run.stderr)
+                if log is not None:
+                    self.assertEqual(log.read_text(), "eperm\n", "the KILL answered EPERM once")
                 record = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])
                 time.sleep(1)
                 self.assert_gone(record["pid"], record["child_pid"])

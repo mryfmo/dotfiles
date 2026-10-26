@@ -20,14 +20,17 @@
 #   In a new detached worktree under `$TMPDIR` at `origin/main` it copies the set, deletes what the store lacks,
 #   masks the copies with the worktree's own `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files
 #   are never changed; a masking failure aborts), then refuses the run if that validator's `--scan-identifiers`
-#   still finds a secret pattern, a home directory path or a redact word (in a copy's text or path), and refuses a
+#   still finds a secret pattern, a home directory path or a redact word (in a copy's text or path). Neither tool's
+#   output is shown (it may name a copy's path or an original key): both go to files in the scratch directory, and
+#   a failure prints a fixed message with the exit status only (U101). It also refuses a
 #   staged path outside `.orchestration/` and an empty change. `<n>` is then one more than the largest number among
 #   the remote heads, the local branches (U28b F6) and the heads of the newest 1000 pull requests named
 #   `records/sync-<n>`, `records/program-store-<n>` or `records/<program>-sync-<n>` (the earlier syncs), and the
 #   branch must match `records/sync-<n>`. It commits `chore(records): <program> sync <n>` with the footer, author and
-#   committer both the identity `git config user.name`/`user.email` read once at the start, and passed only as
-#   `-c user.name`/`-c user.email`. Every `GIT_*` variable the caller exported (GIT_AUTHOR_*, GIT_COMMITTER_*,
-#   GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs (U101). The push never runs in the
+#   committer both the identity `git config user.name`/`user.email` read once at the start, set for the commit
+#   alone as GIT_AUTHOR_*/GIT_COMMITTER_*, which outrank every `user.*`, `author.*` and `committer.*` config key of
+#   the repository, an include or the worktree. Every `GIT_*` variable the caller exported (GIT_AUTHOR_*,
+#   GIT_COMMITTER_*, GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs (U101). The push never runs in the
 #   checkout's repository, whose config and includes (an `includeIf "gitdir:…/worktrees/**"` switches on only in the
 #   sync worktree) could rewrite its URL: the one commit is fetched by object id into a new empty bare repository
 #   in the scratch directory (`git init --bare --template=`, so no hooks), and pushed from there to origin's https
@@ -55,7 +58,7 @@
 set -euo pipefail
 
 # Git is steered by no inherited environment (U101, as hcom-seat does since U85): an exported GIT_AUTHOR_NAME would
-# outrank `-c user.name`, and GIT_CONFIG_* would add config, includes and URL rewrites to every git command.
+# name the commit's author, and GIT_CONFIG_* would add config, includes and URL rewrites to every git command.
 inherited=$(compgen -e) || {
     echo 'records-sync.sh: refused: cannot list the environment' >&2
     exit 2
@@ -317,14 +320,21 @@ for path in ${gone[@]+"${gone[@]}"}; do
     git -C "${tree}" rm --quiet -- "${path}" || fail "git rm ${path} failed"
 done
 if ((${#masked[@]})); then
-    # The per-file counts name each copy's path, which may hold a redact word; only errors reach stderr.
-    uv run --no-project python -I "${tree}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" > /dev/null ||
-        fail 'masking the copies failed; nothing was committed or pushed'
+    # U101: neither tool's output is shown. The masker prints each copy's path and, on a key collision, the original
+    # keys; either may hold a redact word or a secret. Both go to files in the scratch directory (removed on exit),
+    # and a failure says only that it happened and the exit status.
+    status=0
+    uv run --no-project python -I "${tree}/scripts/validate-agent-assets.py" --mask-secrets "${masked[@]}" \
+        > "${scratch}/mask.log" 2>&1 || status=$?
+    ((status == 0)) || fail "masking the copies failed (exit ${status}); its output is withheld, nothing was published"
     # U101: after masking, no copy may still name a secret, a home path or a redact word, its path included.
     scan=(--scan-identifiers)
     [[ -z ${words_real} ]] || scan+=(--redact-words "${words_real}")
-    (cd "${tree}" && uv run --no-project python -I scripts/validate-agent-assets.py "${scan[@]}" -- "${files[@]}" >&2) ||
-        refuse 'the identifier scan found the findings above in the masked copies; nothing was committed or pushed'
+    (cd "${tree}" && uv run --no-project python -I scripts/validate-agent-assets.py "${scan[@]}" -- "${files[@]}") \
+        > "${scratch}/scan.log" 2>&1 || status=$?
+    ((status != 1)) ||
+        refuse 'the identifier scan found a secret, a home path or a redact word in the masked copies (exit 1); its output is withheld, nothing was published'
+    ((status == 0)) || fail "the identifier scan failed (exit ${status}); its output is withheld, nothing was published"
 fi
 git -C "${tree}" add -A -- .orchestration || fail 'git add failed'
 staged=$(git -C "${tree}" diff --cached --no-renames --name-only -z | tr '\0' '\n') || fail 'git diff --cached failed'
@@ -356,7 +366,12 @@ units=$(git -C "${tree}" diff --cached -U0 -- "${records}/units.tsv" | sed -n -E
 decisions=$(git -C "${tree}" diff --cached -U0 -- "${records}/decisions.tsv" | sed -n -E 's/^\+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)\t.*/\1/p' | sort -u | paste -sd ' ' -) ||
     fail 'cannot list the decisions'
 title="chore(records): ${program} sync ${n}"
-git_plain -C "${tree}" -c "user.name=${author_name}" -c "user.email=${author_email}" commit --quiet -m "${title}" \
+# U101: author and committer come from the environment, which outranks every config key (user.*, author.*,
+# committer.*, in the repository, an include or the worktree's config); the GIT_* scrub above left none inherited.
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    GIT_AUTHOR_NAME=${author_name} GIT_AUTHOR_EMAIL=${author_email} \
+    GIT_COMMITTER_NAME=${author_name} GIT_COMMITTER_EMAIL=${author_email} \
+    git -C "${tree}" commit --quiet -m "${title}" \
     -m "Carries ${count} file(s) of ${records}/ from the main checkout, compared with origin/main (records-sync.sh)." -m "${footer}" ||
     fail 'git commit failed'
 oid=$(git -C "${tree}" rev-parse --verify 'HEAD^{commit}') || fail 'cannot read the sync commit'

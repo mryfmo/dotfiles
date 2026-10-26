@@ -1444,6 +1444,64 @@ class RecordsSyncTest(PrLeverTestCase):
         people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", "records/sync-7", cwd=self.origin)
         self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
 
+    def test_author_and_committer_config_in_the_repository_or_the_worktree_is_ignored(self):
+        """U101 round 3: `author.*` and `committer.*` config outranked `-c user.*`. The identity now rides on
+        GIT_AUTHOR_*/GIT_COMMITTER_*, which outrank every config key. The worktree case is an include that switches
+        on only in the sync worktree (`includeIf "gitdir:**/worktrees/**"`), the config only that worktree reads."""
+        self.github()
+        worktree_only = self.root / "worktree-identity.gitconfig"
+        worktree_only.write_text(
+            "[author]\n\tname = wt-author\n\temail = wt-author@example.invalid\n"
+            "[committer]\n\tname = wt-committer\n\temail = wt-committer@example.invalid\n"
+        )
+        cases = {
+            "repository config": (
+                ("author.name", "repo-author"),
+                ("author.email", "repo-author@example.invalid"),
+                ("committer.name", "repo-committer"),
+                ("committer.email", "repo-committer@example.invalid"),
+            ),
+            "worktree config": (("includeIf.gitdir:**/worktrees/**.path", str(worktree_only)),),
+        }
+        for number, (case, settings) in enumerate(cases.items()):
+            with self.subTest(case):
+                for key, value in settings:
+                    self.git("config", key, value)
+                with (self.records / "units.tsv").open("a") as units:
+                    units.write(f"U{number + 2}\tseats\n")
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                branch = run.stdout.split()[1].removeprefix("branch=")
+                people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", branch, cwd=self.origin)
+                self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
+                for key, _ in settings:
+                    self.git("config", "--unset", key)
+                self.git("push", "-q", "origin", "--delete", branch)
+                entries = json.loads(self.responses.read_text())
+                entries[2]["match"] = r"^pr create --base main --head records/sync-\d+ "
+                self.responses.write_text(json.dumps(entries))
+
+    def test_the_masker_s_output_is_never_shown(self):
+        """U101 round 3: on a key collision the masker prints the file's path and both original keys, so a redact word
+        or a secret reached the lever's stderr before the scan ran. Its output now goes to the scratch directory."""
+        self.github()
+        (self.records / "redact-words.txt").write_text("operator1\n")
+        first, second = ("ghp_" + letter * 36 for letter in "AB")
+        cases = {
+            "in the content": ("notes.json", {f"operator1 {first}": 1, f"operator1 {second}": 2}),
+            "in the file name": ("notes-operator1.json", {first: 1, second: 2}),
+        }
+        for case, (name, document) in cases.items():
+            with self.subTest(case):
+                (self.records / name).write_text(json.dumps(document))
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn("masking the copies failed (exit 1); its output is withheld", run.stderr)
+                for secret in ("operator1", first, second):
+                    self.assertNotIn(secret, run.stdout + run.stderr)
+                self.assert_nothing_left()
+                (self.records / name).unlink()
+
     def test_a_redact_word_in_a_store_file_refuses(self):
         """U101: host and user names are refused even as bare words; the words file is never published."""
         self.github()
@@ -1457,8 +1515,7 @@ class RecordsSyncTest(PrLeverTestCase):
                 (self.records / name).write_text(text)
                 run = self.run_lever("records-sync.sh")
                 self.assert_refused(run, "identifier scan")
-                self.assertIn("redact word", run.stderr)
-                self.assertIn("redact word on line", run.stderr)
+                self.assertIn("its output is withheld", run.stderr)
                 for word in ("mbp-kana", "operator1"):
                     self.assertNotIn(word, run.stderr.lower(), "no output line quotes a word, in a path either")
                 self.assert_nothing_left()
@@ -1487,7 +1544,8 @@ class RecordsSyncTest(PrLeverTestCase):
                 (self.records / "notes.md").write_text(text)
                 run = self.run_lever("records-sync.sh")
                 self.assert_refused(run, "identifier scan")
-                self.assertIn(f"(.orchestration/orchestrate/prog/notes.md): {kind}", run.stderr)
+                self.assertIn("(exit 1); its output is withheld", run.stderr)
+                self.assertNotIn("notes.md", run.stderr, "not even the path the scan found it in")
                 self.assertNotIn(planted, run.stderr)
                 self.assert_nothing_left()
 

@@ -419,6 +419,8 @@ def runnable(tool: str, cwd: Path) -> bool:
 
 # The shell set of LintFileSetTest's repository: its .sh files, its scripts by bash or sh shebang, nothing excluded.
 SHELL_SET = [
+    # Paths git prints in C style (core.quotePath=true): a tab, a double quote and a non-ASCII byte, each decoded.
+    "home/caf\u00e9.sh",
     "home/dot_local/bin/executable_tool",
     # Round-4 audit of 3b293cd5: the interpreter is a token, so a comment naming zsh does not exclude the script.
     "home/env-comment",
@@ -428,6 +430,8 @@ SHELL_SET = [
     "home/locked/inner.sh",
     "home/modify_config.yml",
     "home/outside.sh",
+    'home/quote"d.sh',
+    "home/tab\tname.sh",
     "install/common/tracked.sh",
     "scripts/ci/pinned-tool-version.sh",
     "scripts/ci/run-on-lint-files.sh",
@@ -569,6 +573,9 @@ class LintFileSetTest(unittest.TestCase):
             "home/modify_config.yml": "#!/bin/sh\nexec cat\n",
             "home/env-split": "#!/usr/bin/env -S bash -e\necho split\n",
             "home/env-comment": "#!/usr/bin/env -S bash # zsh is not supported\necho comment\n",
+            "home/caf\u00e9.sh": "#!/bin/sh\necho cafe\n",
+            'home/quote"d.sh': "#!/bin/sh\necho quoted\n",
+            "home/tab\tname.sh": "#!/bin/sh\necho tab\n",
             "home/env-i": "#!/usr/bin/env -i PATH=/x bash\necho i\n",
             "home/env-u": "#!/usr/bin/env -u FOO sh\necho u\n",
             "home/locked/inner.sh": "#!/usr/bin/env bash\necho inner\n",
@@ -698,6 +705,35 @@ class LintFileSetTest(unittest.TestCase):
         self.assertEqual(0, clean.returncode, clean.stderr)
         self.assertIn("./home/dot_local/bin/executable_tool", clean.stdout.splitlines())
         self.assertEqual("", clean.stderr)
+
+    def test_the_script_uses_no_construct_backed_by_a_temporary_file(self):
+        # Round-5 audit of cdf72bb6: bash 3.2 backs here-strings and here-documents with a temporary file, and an
+        # `or-colon` hid a failure to make one, so a script was excluded. Neither, nor `|| true`, is in the script.
+        text = RUNNER.read_text()
+        for construct in ("<<<", "<<", "|| :", "|| true"):
+            self.assertNotIn(construct, text)
+
+    def test_the_set_is_the_same_with_tmpdir_unwritable_under_every_bash(self):
+        # macOS's /bin/bash (3.2) and the bash on PATH (5 on CI) both classify the fixture with TMPDIR unwritable.
+        locked = self.repo.parent / f"{self.repo.name}-tmp"
+        locked.mkdir(mode=0o555)
+        self.addCleanup(shutil.rmtree, locked, True)
+        self.addCleanup(locked.chmod, 0o755)
+        shells = {path for path in ("/bin/bash", shutil.which("bash")) if path and Path(path).exists()}
+        for shell in sorted(shells):
+            with self.subTest(shell):
+                result = subprocess.run(
+                    [shell, str(self.repo / "scripts/ci/run-on-lint-files.sh"), "shell", "printf", "%s\\n"],
+                    cwd=self.repo,
+                    env=os.environ | {"TMPDIR": str(locked)},
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(dotted(SHELL_SET), sorted(result.stdout.splitlines()))
+                self.assertEqual("", result.stderr)
 
     def assert_stops(self, message: str) -> None:
         result = self.run_set("shell", "true")

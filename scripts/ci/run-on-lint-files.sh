@@ -4,8 +4,11 @@
 # @description
 #   The one definition of which files each formatting check reads (regime-cutover U97). `make format` and CI's
 #   `Run shfmt` and formatting steps call this with the same set and command, so a local run and CI check the same
-#   files. The sets come from git's index (`git ls-files -s -z`): an untracked or gitignored file, such as a worklog
+#   files. The sets come from git's index (`git ls-files -s`): an untracked or gitignored file, such as a worklog
 #   copy, is never read. The listing's status is checked and an empty set is refused, so no check passes on no files.
+#   Nothing here needs a temporary file (round-5 audit of cdf72bb6: bash 3.2 backs here-strings and here-documents
+#   with one, and an `or-colon` hid its failure): the listing is a command substitution, and every split is word
+#   splitting with globbing off, so the script runs the same with TMPDIR unwritable.
 #   Each path reaches the command as `./<path>`, so a tracked file named like an option (`-version`, `--help`, `-l`)
 #   is read as a file: shfmt, ruff and prettier all take `./`-prefixed paths as paths, ruff's force-exclude and
 #   .prettierignore still match them, and the form needs no `--` support from the command. An unmerged index (a
@@ -54,11 +57,20 @@ esac
 # @exitcode 1 env carries an option this function does not know, so the interpreter cannot be told.
 #
 function shebang_interpreter() {
-    local line=$1 index=1 word
+    local line=$1 index=1 word IFS=$' \t'
     local -a words=()
     interpreter=
     [[ ${line} == '#!'* ]] || return 0
-    read -r -a words <<< "${line#??}" || :
+    # Word splitting on blanks, with globbing off so a `*` in the line stays a word; the noglob state is restored.
+    if [[ $- == *f* ]]; then
+        # shellcheck disable=SC2206 # split on purpose: IFS is blanks and globbing is off
+        words=(${line#??})
+    else
+        set -f
+        # shellcheck disable=SC2206 # split on purpose: IFS is blanks and globbing is off
+        words=(${line#??})
+        set +f
+    fi
     ((${#words[@]} > 0)) || return 0
     word=${words[0]}
     if [[ ${word##*/} != env ]]; then
@@ -149,23 +161,83 @@ function in_shell_set() {
     [[ ${interpreter} == bash || ${interpreter} == sh ]]
 }
 
-# The NUL-separated listing goes through a file, so its status is checked and no path is split or lost.
-listing=$(mktemp "${TMPDIR:-/tmp}/run-on-lint-files.XXXXXX") || {
-    printf 'run-on-lint-files: cannot create a scratch file\n' >&2
-    exit 2
+#
+# @description Decode a path git printed in C style (core.quotePath=true): the text between the double quotes, with
+#   \a \b \t \n \v \f \r \" \\ and three-digit octal escapes, the forms git's quote_c_style writes. Byte-wise.
+# @arg $1 string The quoted path, quotes included.
+# @set decoded string The path's bytes.
+# @exitcode 1 The text is not a quoted path in that form.
+#
+function unquote_path() {
+    local quoted=$1 rest character code LC_ALL=C
+    decoded=
+    if ((${#quoted} < 2)) || [[ ${quoted:0:1} != '"' || ${quoted: -1} != '"' ]]; then
+        return 1
+    fi
+    rest=${quoted:1:${#quoted}-2}
+    while [[ -n ${rest} ]]; do
+        character=${rest:0:1}
+        if [[ ${character} != "\\" ]]; then
+            decoded+=${character}
+            rest=${rest:1}
+            continue
+        fi
+        character=${rest:1:1}
+        case ${character} in
+        a) decoded+=$'\a' ;;
+        b) decoded+=$'\b' ;;
+        t) decoded+=$'\t' ;;
+        n) decoded+=$'\n' ;;
+        v) decoded+=$'\v' ;;
+        f) decoded+=$'\f' ;;
+        r) decoded+=$'\r' ;;
+        '"' | "\\") decoded+=${character} ;;
+        [0-3])
+            code=${rest:1:3}
+            [[ ${code} =~ ^[0-3][0-7][0-7]$ ]] || return 1
+            printf -v character '%b' "\\0${code}"
+            decoded+=${character}
+            rest=${rest:4}
+            continue
+            ;;
+        *) return 1 ;;
+        esac
+        rest=${rest:2}
+    done
 }
+
+# The listing is a command substitution (a pipe, never a file) with its status checked. core.quotePath=true makes git
+# print every path holding a control character, a quote, a backslash or a non-ASCII byte in double quotes, so a line
+# is never split inside a path and an unquoted path is the path as given; unquote_path decodes the rest.
 # No EXIT trap: under bash 3.2 (macOS's /bin/bash) an expansion error with an EXIT trap set exits 0, so a failed run
-# could read as a passed check. The scratch file is removed once read.
-if ! git ls-files -s -z -- "${pathspecs[@]}" > "${listing}"; then
+# could read as a passed check.
+if ! listing=$(git -c core.quotePath=true ls-files -s -- "${pathspecs[@]}"); then
     printf 'run-on-lint-files: git ls-files failed for the %s set; nothing was checked\n' "${set_name}" >&2
     exit 2
+fi
+entries=()
+if [[ -n ${listing} ]]; then
+    saved_ifs=${IFS}
+    IFS=$'\n'
+    set -f
+    # shellcheck disable=SC2206 # split on purpose: one entry per line, globbing off
+    entries=(${listing})
+    set +f
+    IFS=${saved_ifs}
 fi
 files=()
 failure=
 # Each entry is `<mode> <object> <stage>\t<path>`.
-while IFS= read -r -d '' entry; do
+for entry in ${entries[@]+"${entries[@]}"}; do
     meta=${entry%%$'\t'*}
     path=${entry#*$'\t'}
+    if [[ ${path} == '"'* ]]; then # lint-comparisons: allow git's C-style quote mark, not a path comparison
+        if ! unquote_path "${path}"; then
+            failure="git printed the path ${path} in a form this script does not decode"
+            break
+        fi
+        path=${decoded}
+    fi
     mode=${meta%% *}
     stage=${meta##* }
     if [[ ${stage} != 0 ]]; then
@@ -184,8 +256,7 @@ while IFS= read -r -d '' entry; do
         break
         ;;
     esac
-done < "${listing}"
-rm -f "${listing}"
+done
 if [[ -n ${failure} ]]; then
     printf 'run-on-lint-files: %s; nothing was checked\n' "${failure}" >&2
     exit 2

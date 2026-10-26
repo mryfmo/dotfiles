@@ -482,7 +482,8 @@ class PinRecordsTest(unittest.TestCase):
         good = '[tools]\n# Held: reason\nfd = "10.3.0"\njq = "latest"\n\n# Held: http\n[tools."http:bats"]\nversion = "1"\n'
         self.assertEqual(["fd", "http:bats"], records.load_mise_holds(self.write("mise.toml", good)))
         self.assertEqual(
-            ["npm:ccstatusline", "npm:ccusage", "npm:pnpm"], records.load_mise_holds(ROOT / "home/dot_mise/config.toml")
+            ["npm:ccstatusline", "npm:ccusage", "npm:prettier", "npm:pnpm"],
+            records.load_mise_holds(ROOT / "home/dot_mise/config.toml"),
         )
         for name, text in (
             ("hold above a setting", '[settings]\n# Held: x\nminimum_release_age = "72h"\n'),

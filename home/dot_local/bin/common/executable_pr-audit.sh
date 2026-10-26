@@ -100,6 +100,30 @@ if [[ $- != *p* ]]; then
 fi
 set -euo pipefail
 
+# The environment is cleaned before any external command runs, the self-check's hash tools included (U71b audit round
+# 17: the `shasum` fallback is a perl script, and a caller's PERL5OPT ran its code before the clean-up). Every statement
+# up to here and in this block is a shell builtin. No git variable of the caller reaches any git this lever runs (U71b
+# audit round 7: an inherited GIT_GRAFT_FILE rewrote the ancestry, so merge-base(main, head) was the head and the
+# audited range was empty); rather than name the variables a tool reads (a list that misses the next one), every
+# exported `GIT_*`, `PERL*` (PERL5OPT, PERL5LIB, PERL5DB and the rest load code into every perl: `shasum`, the bounded
+# gh and git calls, the path resolution) and `PYTHON*` name is removed (the codex supervisor's python runs isolated,
+# `-I -S`, as well). A failed listing or removal refuses. Then only the lever's own are set: no replace objects, no
+# terminal prompt. The checkout is named from the cwd alone, and the audited repository is created fresh with no
+# template, so it holds no grafts file (checked before its first read, below) and no refs but the two it fetches.
+git_names=$(compgen -e) || {
+    echo "pr-audit.sh: refused: cannot list the environment to remove the caller's GIT_*, PERL* and PYTHON* variables" >&2
+    exit 2
+}
+while IFS= read -r git_name; do
+    [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
+    unset "${git_name}" 2> /dev/null || {
+        echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
+        exit 2
+    }
+done <<< "${git_names}"
+unset git_names git_name
+export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
+
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
@@ -155,26 +179,6 @@ lever_self_check() {
 }
 lever_self_check
 
-# No git variable of the caller reaches any git this lever runs (U71b audit round 7: an inherited GIT_GRAFT_FILE
-# rewrote the ancestry, so merge-base(main, head) was the head and the audited range was empty). Rather than name
-# the variables git reads (a list that misses the next one), every exported `GIT_*` name is removed, and every `PERL*`
-# name (PERL5OPT, PERL5LIB and the rest would load code into the perl that bounds the gh and git calls and resolves
-# paths, U71b audit round 9; the codex supervisor's python runs isolated, `-I -S`); a failed listing or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
-# named from the cwd alone, and the audited repository is created fresh with no template, so it holds no grafts file
-# (checked before its first read, below) and no refs but the two it fetches.
-git_names=$(compgen -e) || {
-    echo "pr-audit.sh: refused: cannot list the environment to remove the caller's GIT_* variables" >&2
-    exit 2
-}
-while IFS= read -r git_name; do
-    [[ ${git_name} == GIT_* || ${git_name} == PERL* ]] || continue
-    unset "${git_name}" 2> /dev/null || {
-        echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
-        exit 2
-    }
-done <<< "${git_names}"
-unset git_names git_name
-export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
 # The caller's cwd, against which a relative store path the caller's environment names is resolved (U71b audit round
 # 8), the way the tool that reads the variable resolves it.
 caller_cwd=$(pwd -P) || {
@@ -263,9 +267,11 @@ git_tree() {
 #   to `<mark>.survivors`, which the lever prints as a warning; a process already reparented away (a double fork) is
 #   not in the snapshot. A `ps` that fails is a failed step like any other (exit 125).
 # - The supervisor stops codex by itself when the lever goes away (U71b audit round 16: the lever's own signal
-#   handling had failed silently when its job lookup failed). It records its parent at start; on Linux it also asks for
-#   SIGTERM when that parent dies (prctl PR_SET_PDEATHSIG; a failure refuses); on both OSes every wait slice compares
-#   getppid() with the recorded parent, and a change counts as a recorded SIGTERM, so the stop runs.
+#   handling had failed silently when its job lookup failed). The lever passes its own pid; before the launch the
+#   supervisor checks that its parent is that pid (and on Linux checks again right after asking for SIGTERM on the
+#   parent's death, prctl PR_SET_PDEATHSIG; a failure refuses), else it exits 125 without launching (U71b audit round
+#   17); every wait slice compares getppid() with that pid, and a change counts as a recorded SIGTERM, so the stop
+#   runs.
 # - Exit, decided once after the wait loop by one rule: a recorded signal gives 128 + its number, else a deadline that
 #   has passed gives 124 (also when the last wait returned after it), else codex's own status. A launch
 #   that fails (setsid or exec in the child raise in the parent), a stop step that raised (killpg with any error but
@@ -439,24 +445,31 @@ def stop_group(proc, errors):
 
 
 def main():
-    parent = os.getppid()
     seconds = int(sys.argv[1])
-    argv = sys.argv[3:]
+    parent = int(sys.argv[3])
+    argv = sys.argv[4:]
     for sig in STOP_SIGNALS:
         signal.signal(sig, on_signal)
+    # The lever passed its own pid: a supervisor whose parent is already another process (the lever died before this
+    # point) launches nothing (U71b audit round 17: a parent recorded at start could be the reaper that adopted it).
+    if os.getppid() != parent:
+        write_mark([f"the lever {parent} was gone before the launch"])
+        return 125
     if sys.platform.startswith("linux"):
         try:
             prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
         except BaseException as error:
             write_mark([f"parent death signal: {type(error).__name__}: {error}"])
             return 125
+        # The standard race check: a parent that died before the request above sent no signal.
+        if os.getppid() != parent:
+            write_mark([f"the lever {parent} was gone before the launch"])
+            return 125
         try:
             become_subreaper()
         except BaseException as error:
             write_mark([f"subreaper: {type(error).__name__}: {error}"])
             return 125
-    if os.getppid() != parent:
-        on_signal(signal.SIGTERM, None)
     try:
         proc = subprocess.Popen(argv, start_new_session=True)
     except (OSError, subprocess.SubprocessError) as error:
@@ -520,7 +533,7 @@ codex_scratch() {
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
         HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir \
-            exec "${python}" -I -S -c "${codex_supervisor}" "${seconds}" "${mark}" codex "$@" \
+            exec "${python}" -I -S -c "${codex_supervisor}" "${seconds}" "${mark}" "$$" codex "$@" \
             < "${input}" > "${output}" 2>&1
     ) &
     wait "$!" || status=$?

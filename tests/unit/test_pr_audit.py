@@ -1257,6 +1257,84 @@ class PrAuditTest(unittest.TestCase):
         self.assert_stopped(run, 2, "run it by its path")
         self.assertFalse((self.rec / "gh-calls").exists())
 
+    def test_a_supervisor_whose_lever_is_gone_never_launches_codex(self):
+        """U71b audit round 17: the supervisor recorded whatever parent it found, so after the lever died it recorded
+        the reaper and launched codex anyway. It now checks the pid the lever passed: before the launch, and on Linux
+        again right after asking for its parent-death signal. The pause stands in for each window (the second as a
+        Linux supervisor whose prctl is slow)."""
+        before = (
+            "import os, sys, time\n"
+            "if 'exec' in sys.argv:\n"
+            "    open(sys.argv[2] + '.paused', 'w').close()\n"
+            "    time.sleep(2)\n"
+        )
+        during_prctl = (
+            "import ctypes, os, sys, time\n"
+            "if 'exec' in sys.argv:\n"
+            "    sys.platform = 'linux'\n"
+            "    class Libc:\n"
+            "        def prctl(self, option, *args):\n"
+            "            if option == 1:\n"
+            "                open(sys.argv[2] + '.paused', 'w').close()\n"
+            "                time.sleep(2)\n"
+            "            return 0\n"
+            "    ctypes.CDLL = lambda *a, **k: Libc()\n"
+        )
+        for name, code in (("before the first check", before), ("during the parent-death request", during_prctl)):
+            with self.subTest(window=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                lever = subprocess.Popen(
+                    [str(LEVER), "7"],
+                    cwd=self.repo,
+                    env={**self.env, **self.injected(code), "PR_AUDIT_TIMEOUT": "600"},
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                deadline = time.monotonic() + 60
+                while not list(self.tmp.glob("pr-audit-7.*/work/group-mark.paused")):
+                    self.assertIsNone(lever.poll(), "the lever ended before the exec supervisor started")
+                    self.assertLess(time.monotonic(), deadline)
+                    time.sleep(0.02)
+                lever.kill()
+                lever.communicate(timeout=30)
+                time.sleep(4)
+                self.assertEqual([c for c in self.codex_calls() if c["argv"][:1] == ["exec"]], [], "codex launched")
+                (mark,) = self.tmp.glob("pr-audit-7.*/work/group-mark")
+                self.assertIn("was gone before the launch", mark.read_text())
+
+    def test_no_perl_code_of_the_caller_runs_in_the_hash_check(self):
+        """U71b audit round 17: the self-check's `shasum` fallback is a perl script and ran before PERL5OPT was removed.
+        The environment is now cleaned first; with only `sed` and `shasum` on PATH the run reaches its first refusal
+        after the self-check (no codex) and the caller's module never loads."""
+        shasum = shutil.which("shasum", path=self.env["PATH"])
+        if shasum is None:
+            self.skipTest("no shasum here")
+        farm = Path(tempfile.mkdtemp(dir=self.root, prefix="hash-farm-"))
+        for tool in ("sed", "shasum"):
+            (farm / tool).symlink_to(shutil.which(tool, path=self.env["PATH"]))
+        lib = Path(tempfile.mkdtemp(dir=self.root, prefix="perl-lib-"))
+        marker = self.root / "perl-marker-fired"
+        (lib / "U71bMarker.pm").write_text(
+            "package U71bMarker;\nmy $out;\nprint {$out} \"ran\\n\" if open($out, '>', $ENV{U71B_PERL_MARKER});\n1;\n"
+        )
+        env = {
+            **self.env,
+            "PATH": str(farm),
+            "PERL5LIB": str(lib),
+            "PERL5OPT": "-MU71bMarker",
+            "PERL5DB": "BEGIN { open(my $o, '>', $ENV{U71B_PERL_MARKER}) }",
+            "U71B_PERL_MARKER": str(marker),
+        }
+        run = subprocess.run(
+            [str(LEVER), "7"], cwd=self.repo, env=env, capture_output=True, text=True, timeout=60, check=False
+        )
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn("no codex on PATH", run.stderr, "the self-check passed through the shasum fallback")
+        self.assertFalse(marker.exists(), "the caller's perl module ran inside the lever")
+
     def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
         code = "import subprocess\ndef Popen(*a, **k):\n    raise OSError(1, 'no')\nsubprocess.Popen = Popen\n"
         env = self.injected(code)

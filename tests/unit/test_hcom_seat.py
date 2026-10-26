@@ -1165,11 +1165,11 @@ class HcomSeatTest(unittest.TestCase):
         printf; it calls no pwd and prints nothing back), sizes_of (stat), pointer_values (cat, and its sizes), and
         the identity table (stat; its fold is builtin, so a fold that keeps case, changes length or fails refuses).
         Round 3: every result is assigned to its input's index, and the overlap check refuses when a worktree has no
-        resolved path or a protected path no result, so the nested deny list cannot omit one."""
+        resolved path, so it cannot miss one. dir_entries (the one enumeration) refuses a failed or short read."""
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("spelled_physically", "nested_shape_check", "nested_deny_unit", "tracked_top_entries", "dir_entries")
+        names += ("dir_entries",)
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1255,26 +1255,6 @@ class HcomSeatTest(unittest.TestCase):
                 result = run(values_call, pointers, {"/usr/bin/tr": stand_in})
                 self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
                 self.assertIn("cannot read the git pointer files", result.stderr)
-        # tracked_top_entries (ls-tree | tr): its git and tr, failing after plausible output, short, malformed.
-        top_call = 'tracked_top_entries "$1"\nprintf "%s" "$tracked_entries"'
-        listing = "printf 'docs\\0home\\0'"
-        git_cases = {
-            "git fails after plausible output": f"git() {{ {listing}; return 7; }}",
-            "a short read (last record unterminated)": "git() { printf 'docs\\0ho'; }",
-            "a malformed name": "git() { printf 'docs\\0a/b\\0'; }",
-            "an empty name": "git() { printf 'docs\\0\\0'; }",
-        }
-        good = run(top_call, [str(root)], prelude=f"git() {{ {listing}; }}")
-        self.assertEqual((good.returncode, good.stdout), (0, "docs\nhome\n"), good.stderr)
-        for label, prelude in git_cases.items():
-            with self.subTest(producer="tracked_top_entries", case=label):
-                result = run(top_call, [str(root)], prelude=prelude)
-                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
-        with self.subTest(producer="tracked_top_entries (tr)", case="fails after plausible output"):
-            result = run(
-                top_call, [str(root)], {"/usr/bin/tr": fake("tr-top", "cat\nexit 7")}, f"git() {{ {listing}; }}"
-            )
-            self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
         with self.subTest(producer="pointer_values (its sizes)"):
             result = run(values_call, pointers, {"/usr/bin/stat": stat_cases["fails after plausible output"]})
             self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
@@ -1307,34 +1287,50 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertIn("cannot fold the absent part", result.stderr)
         # The overlap consumer: two worktrees under the checkout both reach the deny list; one without its resolved
         # path, or a protected path without its result, refuses.
-        checkout, seats = root / "checkout", root / "seats"
-        for tree in ("w1", "w2"):
-            (checkout / ".claude/worktrees" / tree).mkdir(parents=True)
+        # dir_entries: an empty directory lists nothing; a listing that fails after plausible output, or counts
+        # other entries than the glob saw, refuses; an unreadable or linked directory refuses before any glob.
+        listed = root / "listed"
+        (listed / ".dot").mkdir(parents=True)
+        (listed / "plain").mkdir()
+        (root / "empty").mkdir()
+        entries_call = 'dir_entries "$1"\nprintf "%s\\n" ${dir_list[@]+"${dir_list[@]}"}'
+        good = run(entries_call, [str(listed)])
+        self.assertEqual(
+            (good.returncode, sorted(good.stdout.split())), (0, [str(listed / ".dot"), str(listed / "plain")])
+        )
+        empty = run(entries_call, [str(root / "empty")])
+        self.assertEqual((empty.returncode, empty.stdout), (0, "\n"), empty.stderr)
+        absent = run(entries_call, [str(root / "absent-dir")])
+        self.assertEqual((absent.returncode, absent.stdout), (0, "\n"), absent.stderr)
+        (root / "linked-dir").symlink_to(listed)
+        ls_cases = {
+            "fails after plausible output": ({"/bin/ls": fake("ls-fail", "printf '.dot\\nplain\\n'\nexit 7")}, listed),
+            "counts fewer entries": ({"/bin/ls": fake("ls-short", "printf 'plain\\n'")}, listed),
+            "counts an entry the glob missed": ({"/bin/ls": fake("ls-more", "printf 'x\\n'")}, root / "empty"),
+            "a linked directory": (None, root / "linked-dir"),
+        }
+        for label, (replace, target) in ls_cases.items():
+            with self.subTest(producer="dir_entries", case=label):
+                result = run(entries_call, [str(target)], replace)
+                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+                self.assertIn("cannot list", result.stderr)
+        # The overlap consumer: worktrees outside every write root pass; one without its resolved path refuses.
+        checkout, seats, away = root / "checkout", root / "seats", root / "away"
+        checkout.mkdir()
         seats.mkdir()
-        trees = [str(checkout / ".claude/worktrees" / t) for t in ("w1", "w2")]
+        for tree in ("w1", "w2"):
+            (away / tree).mkdir(parents=True)
+        trees = [str(away / t) for t in ("w1", "w2")]
         overlap = (
             f"seats_root={seats} checkout={checkout} common={root}/no-git repo={checkout} root_ids=$'\\n'\n"
             f'worktree_paths=({checkout} "$@")\nworktree_phys=("$@")\n'
-            # The trees here are bare directories: the shape check has its own test.
-            "nested_shape_check() { :; }\nos=Darwin tracked_entries=''\n"
         )
-        overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\nprintf "%s\\n" "${seat_nested[@]}"'
+        overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\necho checked'
         whole = run(overlap_call, trees, prelude=overlap)
-        self.assertEqual((whole.returncode, whole.stdout.split()), (0, trees), whole.stderr)
-        overlap_cases = {
-            "a worktree without its resolved path": (overlap + 'worktree_phys=("$1")', "were not all resolved"),
-            # Each decision first drops the result of the first worktree (index 3), as an omitted record would.
-            "a protected path without its result": (
-                overlap + "within_ix() { unset 'nested[3]'; real_within_ix \"$@\"; }",
-                "does not hold one result per protected path",
-            ),
-        }
-        for label, (prelude, message) in overlap_cases.items():
-            with self.subTest(producer="seat_overlap_check", case=label):
-                swap = {"within_ix() {": "real_within_ix() {"} if "real_within_ix" in prelude else None
-                result = run(overlap_call, trees, swap, prelude=prelude)
-                self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
-                self.assertIn(message, result.stderr)
+        self.assertEqual((whole.returncode, whole.stdout), (0, "checked\n"), whole.stderr)
+        result = run(overlap_call, trees, prelude=overlap + 'worktree_phys=("$1")')
+        self.assertEqual((result.returncode, result.stdout), (2, ""), result.stdout + result.stderr)
+        self.assertIn("were not all resolved", result.stderr)
 
     def test_own_slots_that_are_links_are_refused(self):
         """U85 round 16: the overlap check exempts a seat's own slots by position, so they are first proved to be
@@ -1458,330 +1454,87 @@ class HcomSeatTest(unittest.TestCase):
                 )  # fmt: skip
                 self.assertEqual((run.returncode, run.stdout), (0, f"{expected}\n"), run.stderr)
 
-    def test_a_nested_claude_worktree_is_write_denied_not_refused(self):
-        """U95: Claude Code keeps its worktrees under `<checkout>/.claude/worktrees`, inside the orchestrator's write
-        root. Such a worktree is no seat, so both roles launch; the orchestrator's settings write-deny its directory
-        (its `.git` file and tracked files) beside its git state, and each launch names it. With a real srt on this
-        host, a write into it from inside the seat is denied while the checkout around it stays writable."""
+    def test_a_worktree_inside_a_seat_write_root_refuses(self):
+        """U95 (operator decision U95-nested-refuse-decided): a linked worktree inside any seat's write root refuses the
+        launch, as in U85, dry runs included: Claude Code's `<checkout>/.claude/worktrees/x` inside the orchestrator's
+        checkout, present or absent, for both roles (every launch checks the orchestrator's roots). The message names
+        the worktree and `git worktree move`, `remove` and `prune`. Once it is moved out, both launch."""
         nested = self.repo / ".claude/worktrees/x"
         self.git("worktree", "add", "-q", "--detach", str(nested), "HEAD")
-        self.git("worktree", "lock", str(nested))
         nested = nested.resolve()
-        for role in ("worker", "orchestrator"):
-            with self.subTest(role=role):
-                dry = self.seat(role, "--seats-root", self.seats, "--dry-run")
-                self.assertEqual(dry.returncode, 0, dry.stderr)
-                self.assertIn(f"the worktree {nested} lies inside a write root of the orchestrator seat", dry.stderr)
-                run = self.seat(role, "--seats-root", self.seats)
-                self.assertEqual(run.returncode, 0, run.stderr)
-        settings = self.settings_of("orchestrator")["filesystem"]
-        common = (self.repo / ".git").resolve()
-        self.assertIn(str(self.repo.resolve()), settings["allowWrite"])
-        # The deny unit: the worktree on macOS, the checkout's top-level entry holding it on Linux (nested_deny_unit).
-        unit = nested if sys.platform == "darwin" else self.repo.resolve() / ".claude"
-        for denied in (unit, common / "worktrees/x/gitdir", common / "worktrees/x/config.worktree"):
-            self.assertIn(str(denied), settings["denyWrite"])
-        self.assertNotIn(str(unit), self.settings_of("worker")["filesystem"]["denyWrite"])
-        srt = shutil.which("srt")
-        if srt is None:
-            self.skipTest("no srt on this host's PATH for the live write probe")
-        settings_file = Path(self.seats, ".sandbox/orchestrator/srt-settings.json")
-        probe = (
-            'if (printf x >> "$1/.git") 2>/dev/null; then echo wrote-git; else echo git-denied; fi; '
-            'if (: > "$1/new") 2>/dev/null; then echo wrote-new; else echo new-denied; fi; '
-            'if (: > "$2/probe") 2>/dev/null; then echo root-written; fi; '
-            # U95 round 8: no ancestor of the denied worktree can be renamed away; a sibling can.
-            'for a in "$2/.claude" "$2/.claude/worktrees"; do '
-            'if mv "$a" "$a.moved" 2>/dev/null; then echo "moved-${a##*/}"; mv "$a.moved" "$a"; else echo rename-denied; fi; '
-            'done; mkdir "$2/sib" && mv "$2/sib" "$2/sib2" && echo sibling-renamed'
-        )
-        live = subprocess.run(
-            [srt, "--settings", str(settings_file), "--", "/bin/sh", "-c", probe, "_", str(nested), str(self.repo)],
-            cwd=self.repo, capture_output=True, text=True, check=False, timeout=120,
-        )  # fmt: skip
-        self.assertEqual(
-            live.stdout.split(),
-            ["git-denied", "new-denied", "root-written", "rename-denied", "rename-denied", "sibling-renamed"],
-            live.stderr,
-        )
-        self.assertEqual((nested / ".git").read_text().split()[0], "gitdir:")
-        self.assertFalse((nested / "new").exists())
-
-    def test_an_absent_nested_worktree_is_denied_on_macos_and_refused_on_linux(self):
-        """U95 (PR #567 review): a worktree git still records under the checkout whose directory is gone. srt on Linux
-        cannot deny an absent path, so there the orchestrator's launch is refused, naming `git worktree prune`, and a
-        worker launch says so (nested_worktree_plan, run with each system's name). On macOS the path is write-denied
-        and, with an srt on this host, a seat's attempt to recreate it and write its `.git` file is denied live. Each
-        message says what the launch does."""
-        gone = self.repo / ".claude/worktrees/gone"
-        self.git("worktree", "add", "-q", "--detach", str(gone), "HEAD")
-        gone = gone.resolve()
-        shutil.rmtree(gone)
-        text = SEAT.read_text()
-        functions = "\n".join(
-            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "nested_worktree_plan")
-        )
-        present = Path(self.temp.name).resolve() / "present"
-        present.mkdir()
-        cases = {
-            ("Linux", "orchestrator", "1"): (
-                2,
-                "its directory is absent; srt on Linux cannot deny a path that does not exist",
-            ),
-            ("Linux", "orchestrator", "0"): (
-                0,
-                "the orchestrator's launch is refused: its directory is absent; srt on Linux cannot deny",
-            ),
-            ("Darwin", "orchestrator", "1"): (
-                0,
-                "the seat's settings write-deny its absent path, creating it included",
-            ),
-            ("Darwin", "orchestrator", "0"): (
-                0,
-                "the orchestrator's launch write-denies its absent path, creating it included",
-            ),
-        }
-        for (system, seat, mine), (status, message) in cases.items():
-            with self.subTest(system=system, own=mine):
-                run = subprocess.run(
-                    ["/bin/bash", "-c", f'set -euo pipefail\n{functions}\nnested_worktree_plan "$@"', "_", system, seat,
-                     mine, str(present), str(present), "", str(gone), str(gone), ""],
-                    capture_output=True, text=True, check=False,
-                )  # fmt: skip
-                self.assertEqual(run.returncode, status, run.stderr)
-                self.assertIn(f"the worktree {gone} lies inside a write root of the orchestrator seat", run.stderr)
-                self.assertIn(message, run.stderr)
-                self.assertIn(f"the worktree {present} lies inside a write root", run.stderr)
-        if sys.platform != "darwin":
-            run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
-            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-            self.assertIn("run `git worktree prune`", run.stderr)
-            return
-        for role in ("worker", "orchestrator"):
-            with self.subTest(role=role):
-                dry = self.seat(role, "--seats-root", self.seats, "--dry-run")
-                self.assertEqual(dry.returncode, 0, dry.stderr)
-                self.assertIn(f"the worktree {gone} lies inside a write root of the orchestrator seat; the", dry.stderr)
-        run = self.seat("orchestrator", "--seats-root", self.seats)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn(str(gone), self.settings_of("orchestrator")["filesystem"]["denyWrite"])
-        srt = shutil.which("srt")
-        if srt is None:
-            self.skipTest("no srt on this host's PATH for the live recreate probe")
-        settings_file = Path(self.seats, ".sandbox/orchestrator/srt-settings.json")
-        probe = (
-            'if mkdir -p "$1" 2>/dev/null; then echo made; else echo mkdir-denied; fi; '
-            'if (printf "gitdir: /evil\\n" > "$1/.git") 2>/dev/null; then echo wrote-git; else echo git-denied; fi; '
-            'if mkdir "$2" 2>/dev/null; then echo sibling-made; fi'
-        )
-        sibling = gone.parent / "sibling"
-        live = subprocess.run(
-            [srt, "--settings", str(settings_file), "--", "/bin/sh", "-c", probe, "_", str(gone), str(sibling)],
-            cwd=self.repo, capture_output=True, text=True, check=False, timeout=120,
-        )  # fmt: skip
-        self.assertEqual(live.stdout.split(), ["mkdir-denied", "git-denied", "sibling-made"], live.stderr)
-        self.assertFalse(gone.exists())
-
-    def test_a_nested_worktree_recorded_through_a_link_is_refused(self):
-        """U95 (audit of a8485776): a worktree git records as `<checkout>/.claude/worktrees/x` where `x` is a symbolic
-        link to `y` beside it. The deny would cover only `y`, and the seat could replace the link with a tree of its
-        own that host git takes for the registered worktree, so the orchestrator's launch is refused, naming the link
-        and `git worktree move`; a worker launch is refused too (it checks the orchestrator's roots). The same holds
-        for an absent registered path under a linked parent. A worktree at a real path launches as before."""
-        worktrees = self.repo / ".claude/worktrees"
-        real = worktrees / "y"
-        self.git("worktree", "add", "-q", "--detach", str(real), "HEAD")
-        link = worktrees / "x"
-        link.symlink_to("y")
-        admin = self.repo / ".git/worktrees/y"
-        (admin / "gitdir").write_text(f"{link.resolve().parent / 'x'}/.git\n")
-        recorded = worktrees.resolve() / "x"
-        self.assertIn(f"worktree {recorded}\n", self.git("worktree", "list", "--porcelain") + "\n")
+        for state in ("present", "absent"):
+            if state == "absent":
+                shutil.rmtree(nested)
+            for role in ("orchestrator", "worker"):
+                for dry in (["--dry-run"], []):
+                    with self.subTest(state=state, role=role, dry=bool(dry)):
+                        run = self.seat(role, "--seats-root", self.seats, *dry)
+                        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                        self.assertIn(
+                            f"the worktree {nested} lies inside the orchestrator seat's write root", run.stderr
+                        )
+                        for advice in ("git worktree move", "git worktree remove", "git worktree prune"):
+                            self.assertIn(advice, run.stderr)
+                        self.assertEqual(self.calls_of("hcom"), [])
+        self.git("worktree", "prune")
+        away = Path(self.temp.name).resolve() / "away"
+        self.git("worktree", "add", "-q", "--detach", str(away), "HEAD")
         for role in ("orchestrator", "worker"):
-            with self.subTest(role=role, case="registered through a link"):
-                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
-                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-                self.assertIn(f"inside a write root of the orchestrator seat as {recorded} runs through", run.stderr)
-                self.assertIn(f"through the symbolic link {recorded}", run.stderr)
-                self.assertIn("git worktree move", run.stderr)
-        # An absent registered path below a linked directory.
-        (admin / "gitdir").write_text(f"{recorded}/gone/.git\n")
-        run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"through the symbolic link {recorded}", run.stderr)
-        # Back at its real path the worktree is protected and the launch goes ahead.
-        (admin / "gitdir").write_text(f"{real.resolve()}/.git\n")
-        link.unlink()
-        for role in ("orchestrator", "worker"):
-            with self.subTest(role=role, case="real path"):
+            with self.subTest(moved=role):
                 run = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual(run.returncode, 0, run.stderr)
-                self.assertIn(f"the worktree {real.resolve()} lies inside a write root", run.stderr)
 
-    def test_the_deny_unit_is_the_worktree_on_macos_and_its_top_level_entry_on_linux(self):
-        """U95 (audit of 24694b96): on Linux a read-only bind on the nested worktree alone lets the seat rename a
-        writable ancestor and recreate the registered path, so the deny unit is the top-level entry of the seat's own
-        directory that holds it (renaming that mountpoint fails with EBUSY). A worktree under an entry the seat must
-        write (the orchestrator's `.orchestration`, a worker's tracked tree) or in another write root is refused,
-        naming it. On macOS srt also blocks renaming every ancestor of a denied path, so the worktree itself is the
-        unit (the live probe is in test_a_nested_claude_worktree_is_write_denied_not_refused)."""
-        text = SEAT.read_text()
-        function = "\n".join(
-            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("nested_deny_unit",)
-        )
-        d = "/w/checkout"
-        cases = (
-            (("Linux", "orchestrator", d, "0", f"{d}/.claude/worktrees/x"), (f"{d}/.claude", "")),
-            (("Linux", "orchestrator", d, "0", f"{d}/scratch/x"), (f"{d}/scratch", "")),
-            (("Linux", "orchestrator", d, "0", f"{d}/.orchestration/orchestrate/x"), ("", f"{d}/.orchestration, which the orchestrator seat must write")),
-            (("Linux", "worker", d, "0", f"{d}/docs/x"), ("", f"{d}/docs, which the worker seat must write")),
-            (("Linux", "worker", d, "0", f"{d}/.claude/worktrees/x"), (f"{d}/.claude", "")),
-            (("Linux", "orchestrator", d, "3", "/w/store/x"), ("", "not the seat's own directory")),
-            (("Linux", "orchestrator", d, "0", f"{d}/x"), ("", "cannot be named below")),
-            (("Darwin", "orchestrator", d, "0", f"{d}/.orchestration/orchestrate/x"), (f"{d}/.orchestration/orchestrate/x", "")),
-            (("Darwin", "worker", d, "3", "/w/store/x"), ("/w/store/x", "")),
-        )  # fmt: skip
-        for args, (unit, problem) in cases:
-            with self.subTest(args=args):
-                run = subprocess.run(
-                    ["/bin/bash", "-c", (f'set -euo pipefail\n{function}\ntracked_entries=$\'docs\\nhome\\n\'\n'
-                     'nested_deny_unit "$@"\nprintf "%s\\n%s\\n" "$deny_unit" "$deny_problem"'), "_", *args],
-                    capture_output=True, text=True, check=False,
-                )  # fmt: skip
-                self.assertEqual(run.returncode, 0, run.stderr)
-                got_unit, got_problem = run.stdout.split("\n")[:2]
-                self.assertEqual(got_unit, unit)
-                if problem:
-                    self.assertIn(problem, got_problem)
-                    self.assertIn("git worktree", got_problem)
-                else:
-                    self.assertEqual(got_problem, "")
-        plan = "\n".join(
-            text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3]
-            for name in ("refuse", "nested_worktree_plan")
-        )
-        present = Path(self.temp.name).resolve() / "c/.claude/worktrees/x"
-        present.mkdir(parents=True)
-        unit = str(present.parents[1])
-        for mine, status, message in (
-            (
-                "1",
-                0,
-                f"the seat's settings write-deny the top-level entry {unit} that holds it (a rename of that mountpoint fails with EBUSY)",
-            ),
-            ("1", 2, "which the orchestrator seat must write"),
-            ("0", 0, "the orchestrator's launch is refused: on Linux its deny"),
-        ):
-            with self.subTest(plan=message[:40]):
-                problem = (
-                    ""
-                    if status == 0 and mine == "1"
-                    else "on Linux its deny is the whole top-level entry .orchestration, which the orchestrator seat must write"
-                )
-                run = subprocess.run(
-                    ["/bin/bash", "-c", f'set -euo pipefail\n{plan}\nnested_worktree_plan "$@"', "_", "Linux", "orchestrator",
-                     mine, str(present), unit if not problem else "", problem], capture_output=True, text=True, check=False,
-                )  # fmt: skip
-                self.assertEqual(run.returncode, status, run.stderr)
-                self.assertIn(message, run.stderr)
-
-    def test_a_nested_worktree_is_admitted_only_in_its_plain_shape(self):
-        """U95 (treadmill rule, decisions.tsv treadmill-u95-nested-shape): a nested worktree is admitted only in the
-        shape `git worktree add` makes, else the launch is refused naming the deviation and `git worktree
-        move`/`remove`/`prune`. One case per deviation, each on a fresh worktree; FIFOs are refused by their type
-        before anything reads them (a timeout guards against a blocked read). The plain shape is admitted."""
-        worktrees = self.repo / ".claude/worktrees"
+    def test_worktree_git_directories_are_checked_in_git_s_shape(self):
+        """U95: every worktree's admin directory `<common>/worktrees/<id>` is enumerated once, dot names included as
+        git's own readdir does, held one to one to the worktrees git lists, and checked in git's shape: a real
+        directory with `commondir` (without it git takes the directory for its own common directory and reads a config
+        and hooks a seat can write), none of the names git keeps in the common directory, and each git file absent or
+        a regular file, its type read before its size or content (a FIFO no longer reads as empty or blocks). One
+        fresh worktree outside every write root per deviation; the plain shape launches. A dot-named admin
+        directory's git files are write-denied to every seat."""
         common = (self.repo / ".git").resolve()
-        other = Path(self.temp.name).resolve() / "other"
-        subprocess.run(["git", "init", "-q", str(other)], env=self.env, check=True)
-        subprocess.run(["git", "-C", str(other), "commit", "-q", "--allow-empty", "-m", "o"], env=self.env, check=True)
-        subprocess.run(["git", "-C", str(other), "worktree", "add", "-q", "--detach", str(other.parent / "ow")],
-                       env=self.env, check=True)  # fmt: skip
-        foreign = (other / ".git/worktrees/ow").resolve()
-
-        def symlink_dotgit(tree, admin):
-            (self.repo / "pointer").write_text((tree / ".git").read_text())
-            (tree / ".git").unlink()
-            (tree / ".git").symlink_to(self.repo / "pointer")
-
-        def dir_dotgit(tree, admin):
-            (tree / ".git").unlink()
-            (tree / ".git").mkdir()
-
-        def two_lines(tree, admin):
-            (tree / ".git").write_text((tree / ".git").read_text() + f"gitdir: {foreign}\n")
-
-        def foreign_gitdir(tree, admin):
-            (tree / ".git").write_text(f"gitdir: {foreign}\n")
-
-        def linked_admin(tree, admin):
-            admin.rename(admin.with_name(admin.name + "-real"))
-            admin.symlink_to(admin.name + "-real")
+        away = Path(self.temp.name).resolve() / "away"
 
         def fifo(name):
-            def make(tree, admin):
+            def make(admin):
                 (admin / name).unlink(missing_ok=True)
                 os.mkfifo(admin / name)
 
             return make
 
-        def aliased_target(tree, admin):
-            (self.repo / "alias").symlink_to(common / "worktrees")
-            (tree / ".git").write_text(f"gitdir: {self.repo / 'alias' / admin.name}\n")
-
-        def aliased_back_pointer(tree, admin):
-            (self.repo / "alias").symlink_to(tree.parent)
-            (admin / "gitdir").write_text(f"{self.repo / 'alias' / tree.name}/.git\n")
-
-        def relative_target(tree, admin):
-            (tree / ".git").write_text(f"gitdir: ../../../.git/worktrees/{admin.name}\n")
+        def linked_admin(admin):
+            admin.rename(admin.with_name(admin.name + "-real"))
+            admin.symlink_to(admin.name + "-real")
 
         cases = {
-            ".git a symbolic link": (symlink_dotgit, "has a .git that is a symbolic link"),
-            ".git naming its git directory through a linked alias": (aliased_target, "runs through the symbolic link"),
-            "gitdir recording the worktree through a linked alias": (
-                aliased_back_pointer,
-                "runs through the symbolic link",
-            ),
-            ".git naming its git directory by a relative path": (relative_target, "not as its physical path"),
-            ".git a directory": (dir_dotgit, "has a .git that is not a regular file"),
-            ".git with two lines": (two_lines, "as one line free of control characters"),
-            "gitdir naming another repository": (foreign_gitdir, f"outside this repository's {common}/worktrees"),
-            "gitdir directory a link": (linked_admin, "is not a real directory (a symbolic link"),
+            "git directory a link": (linked_admin, "is not a real directory (a symbolic link"),
             "config.worktree a FIFO": (fifo("config.worktree"), "config.worktree is not a regular file"),
             "commondir a FIFO": (fifo("commondir"), "commondir is not a regular file"),
             "gitdir a FIFO": (fifo("gitdir"), "gitdir is not a regular file"),
-            # U95 round 9: the admin directory in git's own shape (PR body, "Admin directory files").
-            "commondir missing": (lambda tree, admin: (admin / "commondir").unlink(), "has no commondir"),
-            "commondir an absolute path to the common directory": (
-                lambda tree, admin: (admin / "commondir").write_text(f"{common}\n"),
-                "not '../..' as git writes it",
+            "commondir missing": (lambda admin: (admin / "commondir").unlink(), "has no commondir"),
+            "config in it": (lambda admin: (admin / "config").write_text(""), "holds config"),
+            "hooks in it": (lambda admin: (admin / "hooks").mkdir(), "holds hooks"),
+            "objects in it": (lambda admin: (admin / "objects").mkdir(), "holds objects"),
+            "packed-refs in it": (lambda admin: (admin / "packed-refs").write_text(""), "holds packed-refs"),
+            "an orphan beside it": (
+                lambda admin: ((common / "worktrees/orphan").mkdir(), (common / "worktrees/orphan/commondir").write_text("../..\n")),
+                "worktree git directories but git lists",
             ),
-            "config in the admin directory": (lambda tree, admin: (admin / "config").write_text(""), "holds config"),
-            "hooks in the admin directory": (lambda tree, admin: (admin / "hooks").mkdir(), "holds hooks"),
-            "objects in the admin directory": (lambda tree, admin: (admin / "objects").mkdir(), "holds objects"),
-            "packed-refs in the admin directory": (
-                lambda tree, admin: (admin / "packed-refs").write_text(""),
-                "holds packed-refs",
-            ),
-        }
+        }  # fmt: skip
         for n, (label, (mutate, message)) in enumerate(cases.items()):
             with self.subTest(deviation=label):
-                tree = worktrees / f"d{n}"
+                tree = away / f"d{n}"
                 self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
-                tree, admin = tree.resolve(), common / "worktrees" / f"d{n}"
+                admin = common / "worktrees" / f"d{n}"
                 try:
-                    mutate(tree, admin)
-                    for role in ("orchestrator", "worker"):
-                        run = subprocess.run(
-                            [str(SEAT), role, "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
-                            capture_output=True, text=True, check=False, timeout=120,
-                        )  # fmt: skip
-                        self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
-                        self.assertIn(message, run.stderr, role)
-                        self.assertIn("git worktree", run.stderr, role)
+                    mutate(admin)
+                    run = subprocess.run(
+                        [str(SEAT), "worker", "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
+                        capture_output=True, text=True, check=False, timeout=120,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                    self.assertIn(message, run.stderr)
+                    self.assertIn("git worktree", run.stderr)
                 finally:
                     # Always undone, a FIFO above all: a later `git worktree add` would block reading it.
                     shutil.rmtree(tree, ignore_errors=True)
@@ -1789,65 +1542,20 @@ class HcomSeatTest(unittest.TestCase):
                         admin.unlink()
                         admin = admin.with_name(admin.name + "-real")
                     shutil.rmtree(admin, ignore_errors=True)
-                    (self.repo / "pointer").unlink(missing_ok=True)
-                    (self.repo / "alias").unlink(missing_ok=True)
-        plain = worktrees / "plain"
+                    shutil.rmtree(common / "worktrees/orphan", ignore_errors=True)
+        plain = away / "plain"
         self.git("worktree", "add", "-q", "--detach", str(plain), "HEAD")
-        for role in ("orchestrator", "worker"):
-            with self.subTest(shape="plain", role=role):
-                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
-                self.assertEqual(run.returncode, 0, run.stderr)
-                self.assertIn(f"the worktree {plain.resolve()} lies inside a write root", run.stderr)
-
-    def test_admin_directories_are_one_list_dot_names_included(self):
-        """U95 (audit of b58abbaa): `<common>/worktrees` is enumerated once, dot names included as git's own readdir
-        does, and held one to one to the worktrees git lists. A dot-named admin directory (`.hidden`) of a nested
-        worktree gets its git-state denies (the literal denies, the only ones on Linux) and its shape checked on both
-        systems; an admin directory no listed worktree owns, or two recording one worktree, refuse."""
-        text = SEAT.read_text()
-        function = text[text.index("dir_entries() {") : text.index("\n}\n", text.index("dir_entries() {")) + 3]
-        common = (self.repo / ".git").resolve()
-        tree = self.repo / ".claude/worktrees/h"
-        self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
-        tree = tree.resolve()
         hidden = common / "worktrees/.hidden"
-        (common / "worktrees/h").rename(hidden)
-        (tree / ".git").write_text(f"gitdir: {hidden}\n")
-        self.assertIn(f"worktree {tree}\n", self.git("worktree", "list", "--porcelain") + "\n")
-        run = subprocess.run(
-            ["/bin/bash", "-c", f'set -euo pipefail\n{function}\ndir_entries "$1"\nprintf "%s\\n" "${{dir_list[@]}}"',
-             "_", str(common / "worktrees")], capture_output=True, text=True, check=False,
-        )  # fmt: skip
-        self.assertEqual((run.returncode, run.stdout), (0, f"{hidden}\n"), run.stderr)
+        (common / "worktrees/plain").rename(hidden)
+        (plain / ".git").write_text(f"gitdir: {hidden}\n")
+        self.assertIn(f"worktree {plain}\n", self.git("worktree", "list", "--porcelain") + "\n")
         for role in ("worker", "orchestrator"):
-            with self.subTest(role=role):
+            with self.subTest(shape="plain, dot-named", role=role):
                 run = self.seat(role, "--seats-root", self.seats)
                 self.assertEqual(run.returncode, 0, run.stderr)
                 deny = self.settings_of(role)["filesystem"]["denyWrite"]
                 for name in ("gitdir", "commondir", "config.worktree", "info"):
                     self.assertIn(str(hidden / name), deny)
-        # Its shape is checked like any other: a dot-named admin directory without commondir refuses.
-        (hidden / "commondir").rename(hidden / "commondir.saved")
-        run = self.seat("orchestrator", "--seats-root", self.seats, "--dry-run")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"{hidden} has no commondir", run.stderr)
-        (hidden / "commondir.saved").rename(hidden / "commondir")
-        # An admin directory no listed worktree owns (no gitdir file: git skips it).
-        orphan = common / "worktrees/orphan"
-        orphan.mkdir()
-        (orphan / "commondir").write_text("../..\n")
-        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("worktree git directories but git lists", run.stderr)
-        # Two admin directories recording one worktree.
-        (orphan / "gitdir").write_text(f"{tree}/.git\n")
-        (orphan / "HEAD").write_text(f"{self.head}\n")
-        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("which another worktree git directory records too", run.stderr)
-        shutil.rmtree(orphan)
-        run = self.seat("worker", "--seats-root", self.seats, "--name", "w-orphan", "--dry-run")
-        self.assertEqual(run.returncode, 0, run.stderr)
 
     def add_worktrees(self, first, count, nested):
         """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first
@@ -1915,12 +1623,11 @@ class HcomSeatTest(unittest.TestCase):
         wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
         stat runs and subshells per worktree and write root)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
-        self.add_worktrees(0, 10, nested=3)
-        programs_10, subshells_10, nested_10 = self.spawn_counts()
-        self.add_worktrees(10, 290, nested=7)
+        self.add_worktrees(0, 10, nested=0)
+        programs_10, subshells_10, _ = self.spawn_counts()
+        self.add_worktrees(10, 290, nested=0)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 301)
-        programs_300, subshells_300, nested_300 = self.spawn_counts()
-        self.assertEqual((nested_10, nested_300), (3, 10))
+        programs_300, subshells_300, _ = self.spawn_counts()
         self.assertIn("/usr/bin/stat", programs_10, "the counter sees programs run by absolute path")
         grown = programs_300.copy()
         grown.subtract(programs_10)

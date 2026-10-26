@@ -178,11 +178,11 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            brew install bash bats-core gawk parallel shellcheck
+            brew install bash bats-core gawk parallel
 
           elif [[ "${OS}" == ubuntu-* ]]; then
             # Ruby is required for bashcov/simplecov formatters.
-            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
+            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby
 
           else
             echo "${OS} and ${SYSTEM} are not supported" >&2
@@ -270,7 +270,7 @@ jobs:
           mise -C "${RUNNER_TEMP}/statusline-mise" install node
           # Every version comes from the copied config and its minimum_release_age (no literal here).
           mise -C "${RUNNER_TEMP}/statusline-mise" install npm:ccstatusline npm:ccusage
-          mise -C "${RUNNER_TEMP}/statusline-mise" install ruff npm:prettier
+          mise -C "${RUNNER_TEMP}/statusline-mise" install http:ruff npm:prettier
 
       - name: Install Claude Code for the Linux doctor check
         if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' }}
@@ -391,33 +391,37 @@ jobs:
             exit 1
           fi
 
+      - name: Put the pinned `ShellCheck` and `shfmt` on PATH
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # Each version and each platform's sha256 come from home/dot_mise/config.toml ([tools."http:shellcheck"] and
+        # [tools."http:shfmt"], copied by "Prepare statusline tool config"); mise checks each download against that
+        # sha256. Neither apt nor brew installs either tool, and the lint steps refuse any other version (U97).
+        # make shellcheck, scripts/ci/masked-dirname-check.sh and the unit tests get the same two from PATH.
+        # scripts/ci/install-pinned-lint-tools.sh checks each install and lookup before it touches GITHUB_PATH.
+        run: scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt
+
       - name: Run `shfmt`
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
-          # shfmt is version-pinned via mise: brew/apt ship divergent versions
-          # (3.14 changed heredoc-in-if formatting) and unpinned runners disagree.
-          git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
+          # The pinned shfmt from the step above; brew and apt ship other versions, and 3.14 changed heredoc-in-if
+          # formatting, so the guard refuses any other.
+          scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shfmt
+          # Every tracked bash or sh script (by extension or shebang, less the exclusions the script names), the set
+          # make format checks too.
+          scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d
 
       - name: Check Python and Markdown formatting
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
-          # ruff and prettier come from home/dot_mise/config.toml (latest behind the cooldown).
-          # mise -C resolves those versions and changes directory, so each check
-          # returns to the repository, where ruff.toml and .prettierignore apply.
-          # --config makes the root ruff.toml govern every file, so its
+          # ruff and prettier are the versions home/dot_mise/config.toml pins ([tools."http:ruff"] and
+          # "npm:prettier", U97), and each check refuses any other first. mise -C resolves them from the copied
+          # config and changes directory, so each check returns to the repository, where ruff.toml and
+          # .prettierignore apply. --config makes the root ruff.toml govern every file, so its
           # exclusions also cover vendor/compactiondb, which has its own pyproject.
-          mise -C "${RUNNER_TEMP}/statusline-mise" x ruff -- \
-            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check'
+          mise -C "${RUNNER_TEMP}/statusline-mise" x http:ruff -- \
+            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml ruff && scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check'
           mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
-            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
-
-      - name: Put the pinned `shfmt` on PATH
-        if: ${{ steps.decide.outputs.should_test == 'true' }}
-        # scripts/ci/masked-dirname-check.sh parses with shfmt, in `make shellcheck` and in its unit tests; this is
-        # the version the `shfmt` step pins.
-        run: |
-          mise install shfmt@3.14.1
-          dirname "$(mise which --tool shfmt@3.14.1 shfmt)" >> "${GITHUB_PATH}"
+            sh -c 'cd "${GITHUB_WORKSPACE}" && scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml prettier && scripts/ci/run-on-lint-files.sh markdown prettier --check'
 
       - name: Run `ShellCheck`
         if: ${{ steps.decide.outputs.should_test == 'true' }}

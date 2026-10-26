@@ -24,9 +24,10 @@ function run_update_fixture() {
     local git_pull_exit="${11:-0}"
     local git_unmerged="${12:-0}"
     local reload_output="${13:-}"
+    local prefetch_exit="${14:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
-    mkdir -p "${fixture}/bin" "${fixture}/scripts" \
+    mkdir -p "${fixture}/bin" "${fixture}/scripts/lib" \
         "${fixture}/home/.local/share/chezmoi-private" \
         "${fixture}/home/.config/chezmoi-private"
     touch "${fixture}/home/.config/chezmoi-private/chezmoi.yaml"
@@ -40,6 +41,13 @@ EOF
 #!/usr/bin/env bash
 printf 'upgrade-tools%s\n' "\${*:+ \$*}" >> "${fixture}/calls"
 exit ${upgrade_exit}
+EOF
+    # make update sources the externals library and prefetches before chezmoi apply (U96); the stub records the call.
+    cat > "${fixture}/scripts/lib/chezmoi-externals.sh" << EOF
+prefetch_chezmoi_externals() {
+    printf 'prefetch %s\n' "\$*" >> "${fixture}/calls"
+    return ${prefetch_exit}
+}
 EOF
     cat > "${fixture}/bin/git" << EOF
 #!/usr/bin/env bash
@@ -113,12 +121,21 @@ EOF
     run_update_fixture running
     [ "$status" -eq 0 ]
     run cat "${UPDATE_FIXTURE}/calls"
-    [ "$output" = "chezmoi apply --verbose
+    [ "$output" = "prefetch chezmoi
+chezmoi apply --verbose
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
 upgrade-tools
 assets
 herdr status server --json
 herdr server reload-config" ]
+}
+
+@test "[common] update stops before chezmoi apply when the externals cannot be fetched" {
+    run_update_fixture running 0 0 0 0 0 "" feature/test origin/feature/test 0 0 0 "" 1
+    [ "$status" -ne 0 ]
+    # The prefetch ran and nothing after it: no apply, no tool upgrade, no assets, no Herdr reload.
+    run cat "${UPDATE_FIXTURE}/calls"
+    [ "$output" = "prefetch chezmoi" ]
 }
 
 @test "[common] update stops before agent assets and Herdr when the tool upgrade fails" {
@@ -138,8 +155,9 @@ herdr server reload-config" ]
 
 @test "[common] update skips reload when Herdr is absent" {
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
-    mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
+    mkdir -p "${fixture}/bin" "${fixture}/scripts/lib" "${fixture}/home"
     cp Makefile "${fixture}/Makefile"
+    printf 'prefetch_chezmoi_externals() { return 0; }\n' > "${fixture}/scripts/lib/chezmoi-externals.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/upgrade-tools.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"

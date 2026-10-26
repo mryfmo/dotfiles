@@ -413,11 +413,24 @@ def mise_repo(name: str, spec) -> str | None:
         return MISE_CORE_GITHUB.get(name)
     if backend in ("github", "aqua"):
         return github_repo(rest)
-    if backend == "http" and isinstance(spec, dict) and isinstance(spec.get("url"), str):
-        parts = urllib.parse.urlsplit(spec["url"])
-        if (parts.scheme, parts.hostname) == ("https", "github.com"):
-            return github_repo("/".join(parts.path.split("/")[1:3]))
-    return None
+    if backend != "http" or not isinstance(spec, dict):
+        return None
+    # An http tool's url, or, when it has none, the url of every platform: one GitHub repository for all of them.
+    if isinstance(spec.get("url"), str):
+        urls = [spec["url"]]
+    else:
+        platforms = spec.get("platforms")
+        entries = list(platforms.values()) if isinstance(platforms, dict) else []
+        urls = [entry.get("url") if isinstance(entry, dict) else None for entry in entries]
+    repos = set()
+    for url in urls:
+        if not isinstance(url, str):
+            return None
+        parts = urllib.parse.urlsplit(url)
+        if (parts.scheme, parts.hostname) != ("https", "github.com"):
+            return None
+        repos.add(github_repo("/".join(parts.path.split("/")[1:3])))
+    return repos.pop() if len(repos) == 1 else None
 
 
 class Watch:

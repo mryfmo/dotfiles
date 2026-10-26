@@ -23,6 +23,8 @@ ruff = "latest"
 
 "npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "latest"
+# sandbox-runtime: the `srt` that contains the omp seats (scripts/orchestrator/hcom-seat, regime-cutover U85).
+"npm:@anthropic-ai/sandbox-runtime" = "latest"
 "npm:bash-language-server" = "latest"
 # Held with ccusage: the CI statusline smoke runs both; keep until ccusage restores linux-x64 (U42).
 "npm:ccstatusline" = "2.2.32"

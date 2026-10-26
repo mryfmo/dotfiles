@@ -190,6 +190,10 @@ siwc_state() {
         printf 'absent (no %s)\n' "${reg}"
         return 1
     fi
+    if ! command -v jq > /dev/null; then
+        printf 'unreadable (no jq on PATH to read %s)\n' "${reg}"
+        return 2
+    fi
     if ! fields=$(jq -ers "${registration_filter}" "${reg}" 2> /dev/null); then
         printf 'unreadable (%s)\n' "${reg}"
         return 2

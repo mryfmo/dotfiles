@@ -6,6 +6,7 @@ checkout's `home/dot_agents/agent-config.yaml` otherwise. Every test builds the 
 from the checkout's own bytes; nothing reads the real `~/.agents` or `~/.local/bin`.
 """
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -121,15 +122,41 @@ class LeverSelfCheckTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(name), "manifest unreadable")
 
     def test_a_failing_producer_refuses_instead_of_passing(self):
-        """Each read the decision rests on fails closed (preferences 21): the hash tools, then sed."""
+        """Each read the decision rests on fails closed (preferences 21): the hash tools, then sed.
+
+        hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
+        round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
+        """
+        path_levers = [name for name in LEVERS if name != "hcom-seat"]
         env = self.fake_tools("sha256sum", "shasum")
-        for name in LEVERS:
+        for name in path_levers:
             with self.subTest(lever=name, producer="hash"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot hash")
+        self.assert_passed(self.run_lever("hcom-seat", env=env))
         env = self.fake_tools("sed")
-        for name in LEVERS:
+        for name in path_levers:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
+        self.assert_passed(self.run_lever("hcom-seat", env=env))
+
+    def test_hcom_seat_self_check_refuses_a_failing_producer(self):
+        """U85 round 15: hcom-seat's own self-check fails closed on a failing sed or hash tool too. Its first statement
+        pins PATH to the system directories, so the failures are injected into a variant whose only change is that
+        line (PATH kept as the caller's), installed with its own pin in the scratch manifest."""
+        original = (self.bin / "hcom-seat").read_text()
+        reset = "\nPATH=${system_path}\n"
+        self.assertEqual(original.count(reset), 1, "the PATH reset line hcom-seat starts with")
+        variant = original.replace(reset, "\nPATH=${caller_path}\n")
+        (self.bin / "hcom-seat").write_text(variant)
+        manifest = self.home / ".agents/agent-config.yaml"
+        text = manifest.read_text()
+        pin_line = next(line for line in text.splitlines() if line.startswith("      hcom-seat: "))
+        digest = hashlib.sha256(variant.encode()).hexdigest()
+        manifest.write_text(text.replace(pin_line, f"      hcom-seat: {digest}"))
+        self.assert_passed(self.run_lever("hcom-seat"))
+        for producers, message in ((("sha256sum", "shasum"), "cannot hash"), (("sed",), "cannot read")):
+            with self.subTest(producer=producers[0]):
+                self.assert_refused(self.run_lever("hcom-seat", env=self.fake_tools(*producers)), message)
 
     def test_a_failing_dirname_is_not_consulted(self):
         """The script directory is split in the shell (U31b, audit row 2586): a dirname that prints an existing

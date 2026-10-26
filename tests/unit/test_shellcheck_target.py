@@ -6,6 +6,9 @@ here: the step runs exactly `make shellcheck`; the target's dry run names exactl
 group, each linted with the root .shellcheckrc (no --norc) and scripts/ci/masked-dirname-check.sh; and the target, run
 in a scratch repository, fails on an SC2312 finding or a masked dirname in either group, and refuses a group that lists
 no file, no bash script, or (the installer group) a file that is not a bash script.
+
+The target first refuses a shellcheck or shfmt that is not the version home/dot_mise/config.toml pins (U97);
+tests/unit/test_pinned_lint_tools.py checks that guard and every consumer of the pins.
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/test.yaml"
 MAKEFILE = ROOT / "Makefile"
+MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
+GUARD = ROOT / "scripts/ci/pinned-tool-version.sh"
 
 
 def on_ci_runner() -> bool:
@@ -57,15 +62,22 @@ class ShellCheckStepTest(unittest.TestCase):
         steps = run_steps(WORKFLOW.read_text())
         shellcheck = [run for name, run in steps if name == "Run `ShellCheck`"]
         self.assertEqual(["make shellcheck"], shellcheck)
-        # No other step lints shell, so the target is the only ShellCheck the workflow runs.
+        # No other step lints shell, so the target is the only ShellCheck the workflow runs. The one other step that
+        # names it installs the pin and runs nothing else (tests/unit/test_pinned_lint_tools.py holds its text, U97).
+        install = 'scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt'
         others = [(name, run) for name, run in steps if "shellcheck" in run.lower() and name != "Run `ShellCheck`"]
-        self.assertEqual([], others)
+        self.assertEqual([("Put the pinned `ShellCheck` and `shfmt` on PATH", install)], others)
 
     def test_the_target_dry_run_names_both_groups_and_both_checks(self):
         result = subprocess.run(
             ["make", "-n", "-s", "shellcheck"], cwd=ROOT, capture_output=True, text=True, timeout=60, check=True
         )
-        commands = [line for line in result.stdout.splitlines() if line.startswith("bash ")]
+        lines = result.stdout.splitlines()
+        # The version guard runs first, on the one pin file, before either group is linted.
+        self.assertEqual(
+            "scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shellcheck shfmt", lines[0], result.stdout
+        )
+        commands = [line for line in lines if line.startswith("bash ")]
         self.assertEqual(2, len(commands), result.stdout)
         for command, mode, group in zip(commands, ("every", "bash"), (INSTALLER_GROUP, MASKED_GROUP)):
             with self.subTest(mode=mode):
@@ -93,6 +105,9 @@ class ShellCheckTargetBehaviourTest(unittest.TestCase):
         self.repo = Path(tempfile.mkdtemp(prefix="shellcheck-target-test-"))
         (self.repo / "scripts/ci").mkdir(parents=True)
         shutil.copy2(ROOT / "scripts/ci/masked-dirname-check.sh", self.repo / "scripts/ci/masked-dirname-check.sh")
+        shutil.copy2(GUARD, self.repo / "scripts/ci/pinned-tool-version.sh")
+        (self.repo / "home/dot_mise").mkdir(parents=True)
+        shutil.copy2(MISE_CONFIG, self.repo / "home/dot_mise/config.toml")
         shutil.copy2(ROOT / ".shellcheckrc", self.repo / ".shellcheckrc")
         for name, body in (
             ("clean.sh", CLEAN),

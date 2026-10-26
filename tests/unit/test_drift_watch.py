@@ -58,6 +58,8 @@ RUNNER_ISSUES = f"{GH}/actions/runner-images/issues?labels=Announcement&state=op
 FD = f"{GH}/sharkdp/fd/releases?per_page=100&page=1"
 BATS = f"{GH}/bats-core/bats-core/releases?per_page=100&page=1"
 STARSHIP = f"{GH}/starship/starship/releases?per_page=100&page=1"
+SHELLCHECK = f"{GH}/koalaman/shellcheck/releases?per_page=100&page=1"
+SHELLCHECK_ASSET = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0"
 
 
 def page(first: str, number: int) -> str:
@@ -96,9 +98,16 @@ url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
 [tools."http:gcloud"]
 version = "590.0.1"
 
+[tools."http:shellcheck"]
+version = "0.11.0"
+
+[tools."http:shellcheck".platforms]
+linux-x64 = { url = "{SHELLCHECK_ASSET}.linux.x86_64.tar.xz", checksum = "sha256:00" }
+macos-arm64 = { url = "{SHELLCHECK_ASSET}.darwin.aarch64.tar.xz", checksum = "sha256:00" }
+
 [settings]
 minimum_release_age = "72h"
-"""
+""".replace("{SHELLCHECK_ASSET}", SHELLCHECK_ASSET)
 CURRENT_MANIFEST = {
     "assets": {
         "starship": {"source": "github-release", "upstream": "starship/starship", "pin": "v1.27.0"},
@@ -169,6 +178,7 @@ CURRENT_UPSTREAM = {
         release("v1.28.0", "2026-10-24T06:00:00Z"),
         release("v1.27.0", "2026-10-17T00:00:00Z"),
     ],
+    SHELLCHECK: [release("v0.11.0", "2025-08-04T00:27:19Z"), release("v0.10.0", "2024-03-08T02:37:35Z")],
     CLAUDE_CATALOG: {"plugins": [{"name": "ponytail", "source": "./"}]},
     f"{PONYTAIL}/.claude-plugin/plugin.json": {"version": "5.3.2"},
     f"{GH}/anthropics/claude-plugins-official/contents/.claude-plugin/marketplace.json": {
@@ -195,6 +205,7 @@ CURRENT_UPSTREAM = {
 def stale_tree():
     """The current tree aged: a retiring runner image in the matrix and every watched pin a release behind."""
     mise = CURRENT_MISE.replace('fd = "10.5.0"', 'fd = "10.3.0"').replace('version = "1.14.0"', 'version = "1.13.0"')
+    mise = mise.replace('version = "0.11.0"', 'version = "0.10.0"')
     manifest = copy.deepcopy(CURRENT_MANIFEST)
     assets = manifest["assets"]
     assets["starship"]["pin"] = "v1.26.0"
@@ -212,6 +223,7 @@ STALE = {
     ("runner-image", "macos-14"),
     ("mise-pin", "fd"),
     ("mise-pin", "http:bats"),
+    ("mise-pin", "http:shellcheck"),
     ("manifest-pin", "starship.pin"),
     ("plugin-pin", "claude-plugins.ponytail@ponytail"),
     ("plugin-pin", "codex-plugins.ponytail"),
@@ -224,6 +236,35 @@ def load_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class MiseRepoTest(unittest.TestCase):
+    def test_an_http_tool_is_watched_only_when_every_url_names_one_github_repository(self):
+        mise_repo = load_module().mise_repo
+        asset = "https://github.com/koalaman/shellcheck/releases/download/v1/s"
+        for name, spec, repo in (
+            ("one url", {"url": "https://github.com/bats-core/bats-core/archive/v1.tar.gz"}, "bats-core/bats-core"),
+            (
+                "platforms",
+                {"platforms": {"a": {"url": f"{asset}.a"}, "b": {"url": f"{asset}.b"}}},
+                "koalaman/shellcheck",
+            ),
+            (
+                "a platform elsewhere",
+                {"platforms": {"a": {"url": f"{asset}.a"}, "b": {"url": "https://e.invalid/b"}}},
+                None,
+            ),
+            (
+                "two repositories",
+                {"platforms": {"a": {"url": f"{asset}.a"}, "b": {"url": "https://github.com/o/r/b"}}},
+                None,
+            ),
+            ("a platform without a url", {"platforms": {"a": {"url": f"{asset}.a"}, "b": {}}}, None),
+            ("no url at all", {"version": "1"}, None),
+            ("plain http", {"platforms": {"a": {"url": "http://github.com/o/r/a"}}}, None),
+        ):
+            with self.subTest(name):
+                self.assertEqual(repo, mise_repo("http:tool", {"version": "1", **spec}))
 
 
 class DriftWatchTest(unittest.TestCase):

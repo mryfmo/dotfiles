@@ -283,12 +283,36 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                     self.assertIn("SC1044", lint.stdout)
 
     def test_a_missing_shfmt_refuses_the_list(self) -> None:
+        # PATH holds only what the check needs besides shfmt (U97: the shfmt is PATH's, no variable selects it).
         clean = self.script("clean", "true\n")
+        bare = self.temp_dir / "bare-bin"
+        bare.mkdir()
+        for tool in ("python3", "cat"):
+            (bare / tool).symlink_to(shutil.which(tool))
 
-        result = self.run_check(clean, env=os.environ | {"SHFMT": str(self.temp_dir / "no-shfmt")})
+        result = subprocess.run(
+            [shutil.which("bash"), str(CHECK), str(clean)],
+            text=True,
+            capture_output=True,
+            check=False,
+            env={"PATH": str(bare)},
+            timeout=60,
+        )
 
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-        self.assertIn("no-shfmt not found; the list is refused", result.stderr)
+        self.assertIn("shfmt not found; the list is refused", result.stderr)
+
+    def test_a_shfmt_variable_cannot_select_another_binary(self) -> None:
+        # Round-2 audit of 473b63a1: the guard checks PATH's shfmt, so SHFMT pointing elsewhere must change nothing.
+        clean = self.script("clean", "true\n")
+        other = self.temp_dir / "other-shfmt"
+        other.write_text(f'#!/bin/sh\ntouch "{self.temp_dir}/other-ran"\nexit 0\n')
+        other.chmod(0o755)
+
+        result = self.run_check(clean, env=os.environ | {"SHFMT": str(other)})
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse((self.temp_dir / "other-ran").exists())
 
 
 if __name__ == "__main__":

@@ -423,6 +423,11 @@ main
         lines = text.splitlines()
         held = {"npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
         held["http:gcloud"] = '[tools."http:gcloud"]'
+        # U97: the lint gates (make shellcheck, make format, CI) run exactly these versions.
+        held["http:shellcheck"] = '[tools."http:shellcheck"]'
+        held["http:shfmt"] = '[tools."http:shfmt"]'
+        held["http:ruff"] = '[tools."http:ruff"]'
+        held["npm:prettier"] = '"npm:prettier" = '
         # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
         held["npm:ccusage"] = '"npm:ccusage" = '
         held["npm:ccstatusline"] = '"npm:ccstatusline" = '
@@ -470,8 +475,11 @@ main
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
-        # The agmsg retire step left with herdr-agents (U72): the apply is the first step of the tree update.
-        self.assertTrue(tree.startswith("\tchezmoi apply --verbose\n"), tree[:200])
+        # The agmsg retire step left with herdr-agents (U72); since U96 the apply follows only the externals' verified
+        # fetch into chezmoi's cache, which changes no target.
+        prefetch = "\tbash -c 'source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi'\n"
+        steps = [line for line in tree.splitlines(keepends=True) if not line.startswith("\t@#")]
+        self.assertEqual([prefetch, "\tchezmoi apply --verbose\n"], steps[:2], tree[:300])
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -552,6 +560,43 @@ main
                 entry["url"],
             )
             self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
+        # The pinned lint tools (U97): each platform's release asset, built from the version, with its sha256.
+        for name, options, url, assets in (
+            (
+                "http:shellcheck",
+                {"strip_components": 1},
+                "https://github.com/koalaman/shellcheck/releases/download/v{v}/shellcheck-v{v}.{a}.tar.xz",
+                ("linux.x86_64", "linux.aarch64", "darwin.x86_64", "darwin.aarch64"),
+            ),
+            (
+                "http:shfmt",
+                {"bin": "shfmt"},
+                "https://github.com/mvdan/sh/releases/download/v{v}/shfmt_v{v}_{a}",
+                ("linux_amd64", "linux_arm64", "darwin_amd64", "darwin_arm64"),
+            ),
+            (
+                "http:ruff",
+                {"strip_components": 1},
+                "https://github.com/astral-sh/ruff/releases/download/{v}/ruff-{a}.tar.gz",
+                (
+                    "x86_64-unknown-linux-gnu",
+                    "aarch64-unknown-linux-gnu",
+                    "x86_64-apple-darwin",
+                    "aarch64-apple-darwin",
+                ),
+            ),
+        ):
+            with self.subTest(name):
+                tool = config["tools"][name]
+                self.assertEqual({"version", "platforms", *options}, set(tool))
+                for key, value in options.items():
+                    self.assertEqual(value, tool[key])
+                platforms = dict(zip(("linux-x64", "linux-arm64", "macos-x64", "macos-arm64"), assets))
+                self.assertEqual(set(platforms), set(tool["platforms"]))
+                for platform, asset in platforms.items():
+                    entry = tool["platforms"][platform]
+                    self.assertEqual(url.format(v=tool["version"], a=asset), entry["url"])
+                    self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         # The bootstrap takes the newest cooled-down mise release instead of a pin;
         # test_rolling_installers_resolve_through_the_release_helper covers it.

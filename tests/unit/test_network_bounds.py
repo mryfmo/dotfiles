@@ -95,6 +95,7 @@ class Exempt(NamedTuple):
     call: bool = False
 
 
+MENTION = "names the tool without running it"
 # (file, the whole stripped line, exactly) -> Exempt. Every entry must still match a line (test_no_exemption_is_stale).
 EXEMPT: dict[tuple[str, str], Exempt] = {
     (
@@ -208,9 +209,55 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("comment; names the tool without running it"),
     (
         ".github/workflows/test.yaml",
-        "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck",
+        "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby",
     ): Exempt("an apt-get install package name"),
     (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): Exempt("an apt-get install package name"),
+    # U96's chezmoi externals prefetch (scripts/lib/chezmoi-externals.sh and its copy in setup.sh): its own allowlisted
+    # retry loop, so curl's --retry stays off; --max-time 900 caps one attempt on the checked continuation.
+    **{
+        (relative, line): entry
+        for relative in ("setup.sh", "scripts/lib/chezmoi-externals.sh")
+        for line, entry in (
+            ("# @stdout The HTTP status curl saw.", Exempt(f"shdoc; {MENTION}")),
+            (
+                "# @exitcode * curl's exit status (22 for an HTTP error, 18 for a truncated transfer).",
+                Exempt(f"shdoc; {MENTION}"),
+            ),
+            (
+                "curl --proto '=http,https' --location --fail --silent --show-error --connect-timeout 30 --speed-limit 1024 --speed-time 60 \\",
+                Exempt("the prefetch download; options on line +1", continued=1, options="--max-time 900", call=True),
+            ),
+            (
+                '# Retried only from an allowlist of transient remote or network faults (curl(1), "Exit codes"): 6 could not',
+                Exempt(f"comment; {MENTION}"),
+            ),
+            (
+                'case "${status}/${code}" in # lint-comparisons: allow curl\'s exit status and HTTP code, not a path',
+                Exempt(f"case on curl's status; {MENTION}"),
+            ),
+            (
+                "printf 'chezmoi external %s: %s: download failed after %s attempt(s) (last: curl exit %s, HTTP %s); nothing cached\\n' \\",
+                Exempt(f"message; {MENTION}", continued=1),
+            ),
+            (
+                "printf 'chezmoi external %s: %s: attempt %s failed (curl exit %s, HTTP %s); retrying in %ss\\n' \\",
+                Exempt(f"message; {MENTION}", continued=1),
+            ),
+            (
+                "#   before it is cached. Without curl the step only says so, and chezmoi fetches the externals itself as before.",
+                Exempt(f"shdoc; {MENTION}"),
+            ),
+            ("if ! command -v curl > /dev/null 2>&1; then", Exempt(f"presence check; {MENTION}")),
+            (
+                "printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\\n' >&2",
+                Exempt(f"message; {MENTION}"),
+            ),
+        )
+    },
+    (
+        "scripts/lib/chezmoi-externals.sh",
+        "#   tests/unit/test_chezmoi_externals.py keeps the copies equal. It needs curl, awk and sha256sum or shasum.",
+    ): Exempt(f"comment; {MENTION}"),
     ("setup.sh", "curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 -K - \\"): Exempt(
         "a bounded call whose remaining arguments continue", continued=1, call=True
     ),

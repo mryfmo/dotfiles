@@ -525,7 +525,7 @@ pointer_values() {
         off=$((off + size_list[i]))
         value=${value%$'\n'}
         [[ -n ${value} && ${value} != *[[:cntrl:]]* ]] ||
-            refuse "cannot read ${files[i]} as one line free of control characters"
+            refuse "cannot read ${files[i]} as one line free of control characters${pointer_hint:-}"
         pointer_list+=("${value}")
     done
 }
@@ -816,17 +816,34 @@ done
 # @arg $1 string The physical git common directory.
 # @arg $2 string The physical seat directory, or empty.
 # @set git_state The paths, for the seat's write denies.
+# The repair a refusal over a worktree's git files names (regime-cutover U95).
+# shellcheck disable=SC2016 # literal backquotes in a message
+git_fix_hint='; repair or drop the worktree first (`git worktree move`, `git worktree remove` or `git worktree prune`)'
 git_state_check() {
     local common_real=$1 dir_real=$2 wt f names name line target i pointers=() configs=()
     git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
     for wt in "${common_real}"/worktrees/*/; do
         [[ -d ${wt} ]] || continue
         wt=${wt%/}
+        [[ ! -L ${wt} ]] ||
+            refuse "the worktree git directory ${wt} is a symbolic link, which host git would follow${git_fix_hint}"
         git_state+=("${wt}/config.worktree" "${wt}/info")
         for f in commondir gitdir; do
             if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
         done
-        if [[ -e ${wt}/commondir ]]; then pointers+=("${wt}/commondir"); fi
+    done
+    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then git_state+=("${dir_real}/.git"); fi
+    # The file type comes first, before any size or content is read (U95): a FIFO reads as size 0 and would block
+    # a read or a write, and a device or socket is no file git means. Each entry is absent, or a real directory
+    # (`info`, `hooks`), or a regular file, never a symbolic link.
+    for f in "${git_state[@]}"; do
+        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link${git_fix_hint}"
+        [[ -e ${f} ]] || continue
+        case ${f##*/} in
+        info | hooks) [[ -d ${f} ]] || refuse "the git state ${f} is not a directory${git_fix_hint}" ;;
+        *) [[ -f ${f} ]] || refuse "the git state ${f} is not a regular file (a FIFO, device, socket or directory)${git_fix_hint}" ;;
+        esac
+        if [[ ${f##*/} == commondir && ${f} == "${common_real}"/worktrees/* ]]; then pointers+=("${f}"); fi # lint-comparisons: allow a fixed file name below the common directory
     done
     # Read here before any git may run (the first call precedes the first git command); git has no query for
     # another worktree's commondir. One line or a refusal: git would consume every line. All in one read (U95).
@@ -840,9 +857,7 @@ git_state_check() {
         esac
         [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
     done
-    if [[ -n ${dir_real} && -f ${dir_real}/.git ]]; then git_state+=("${dir_real}/.git"); fi
     for f in "${git_state[@]}"; do
-        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
         # A dry run validates and creates nothing: an absent file holds no setting, and the real launch creates it.
         ((! dry_run)) || continue
         case ${f##*/} in
@@ -1275,6 +1290,66 @@ nested_path_check() {
     refuse "the worktree $2 lies inside a write root of the $1 seat but git records it as $2, not its physical path $3; move it to its physical path first (\`git worktree move $2 $3\`)"
 }
 
+# @description Admit the worktrees `$2...` inside a write root of seat `$1` only in the plain shape `git worktree add`
+#   makes, else refuse (exit 2) naming the deviation and the repair (regime-cutover U95: an allowlist, after an
+#   audit found one more indirection in each of three rounds). Their recorded paths are already their physical
+#   paths (nested_path_check), and every git file of every worktree has passed git_state_check's type checks. An
+#   absent worktree has no `.git` to check (nested_worktree_plan denies or refuses it). For one that exists:
+#   - the worktree is a real directory, and its `.git` a regular file, no symbolic link, holding exactly one line
+#     `gitdir: <path>` (pointer_values, one read for all);
+#   - that path, made absolute against the worktree, is a real directory, no link, directly in this repository's
+#     `<common>/worktrees`;
+#   - its `gitdir` file is a regular file, no link, whose one line leads back to this worktree's `.git` (a second
+#     read for all), so the `.git` names this worktree's own git directory and no other's.
+#   The reads are two batches whatever the number of worktrees, so the process count stays flat.
+# @arg $1 string The seat whose write root holds the worktrees.
+# @arg $@ string The worktrees after it, physical.
+nested_shape_check() {
+    local seat=$1 w i v target dotgits=() trees=() admins=() pointer_hint=${git_fix_hint}
+    shift
+    for w in "$@"; do
+        if [[ ! -e ${w} && ! -L ${w} ]]; then continue; fi
+        [[ -d ${w} && ! -L ${w} ]] ||
+            refuse "the worktree ${w} inside a write root of the ${seat} seat is not a real directory${git_fix_hint}"
+        [[ ! -L ${w}/.git ]] ||
+            refuse "the worktree ${w} inside a write root of the ${seat} seat has a .git that is a symbolic link, which the seat could retarget${git_fix_hint}"
+        [[ -e ${w}/.git ]] ||
+            refuse "the worktree ${w} inside a write root of the ${seat} seat has no .git file${git_fix_hint}"
+        [[ -f ${w}/.git ]] ||
+            refuse "the worktree ${w} inside a write root of the ${seat} seat has a .git that is not a regular file (a directory, FIFO or device)${git_fix_hint}"
+        dotgits+=("${w}/.git")
+        trees+=("${w}")
+    done
+    pointer_values ${dotgits[@]+"${dotgits[@]}"}
+    for ((i = 0; i < ${#trees[@]}; i++)); do
+        v=${pointer_list[i]}
+        [[ ${v} == 'gitdir: '* ]] || # lint-comparisons: allow the literal prefix git writes, no path compare
+            refuse "the worktree ${trees[i]} has a .git holding '${v}', not one 'gitdir: <path>' line${git_fix_hint}"
+        target=${v#gitdir: }
+        case ${target} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) ;;
+        *) target=${trees[i]}/${target} ;;
+        esac
+        [[ -d ${target} && ! -L ${target} ]] ||
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, which is not a real directory${git_fix_hint}"
+        [[ ${target%/*} -ef ${common}/worktrees ]] ||
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, outside this repository's ${common}/worktrees${git_fix_hint}"
+        [[ -f ${target}/gitdir && ! -L ${target}/gitdir ]] ||
+            refuse "the worktree ${trees[i]} has a .git naming ${target}, whose gitdir file is not a regular file${git_fix_hint}"
+        admins+=("${target}")
+    done
+    pointer_values ${admins[@]+"${admins[@]/%//gitdir}"}
+    for ((i = 0; i < ${#trees[@]}; i++)); do
+        v=${pointer_list[i]}
+        case ${v} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+        /*) target=${v} ;;
+        *) target=${admins[i]}/${v} ;;
+        esac
+        [[ ${target} -ef ${trees[i]}/.git ]] ||
+            refuse "the worktree ${trees[i]} has a .git naming ${admins[i]}, which records ${v}, another worktree${git_fix_hint}"
+    done
+}
+
 # @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
 #   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
 #   path P, R must not be or contain P, and R must not lie inside P. The protected paths are defined once: the main
@@ -1365,6 +1440,7 @@ seat_overlap_check() {
         *) refuse "the overlap table of the ${own_role} seat has no result for ${protected[i]}" ;;
         esac
     done
+    nested_shape_check "${own_role}" ${seat_nested[@]+"${seat_nested[@]}"}
 }
 
 dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"

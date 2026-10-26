@@ -1169,7 +1169,7 @@ class HcomSeatTest(unittest.TestCase):
         text = SEAT.read_text()
         names = ("refuse", "clean_path", "require_clean_path", "physical_path", "physical_paths", "sizes_of")
         names += ("pointer_values", "ancestors_of", "identity_table", "ascii_lower", "within_ix", "seat_overlap_check")
-        names += ("nested_path_check",)
+        names += ("nested_path_check", "nested_shape_check")
         functions = "\n".join(
             text[text.index(f"{name}() {{") : text.index("\n}\n", text.index(f"{name}() {{")) + 3] for name in names
         )
@@ -1286,6 +1286,8 @@ class HcomSeatTest(unittest.TestCase):
         overlap = (
             f"seats_root={seats} checkout={checkout} common={root}/no-git repo={checkout} root_ids=$'\\n'\n"
             f'worktree_paths=({checkout} "$@")\nworktree_phys=("$@")\n'
+            # The trees here are bare directories: the shape check has its own test.
+            "nested_shape_check() { :; }\n"
         )
         overlap_call = 'seat_overlap_check orchestrator "$checkout" "$checkout"\nprintf "%s\\n" "${seat_nested[@]}"'
         whole = run(overlap_call, trees, prelude=overlap)
@@ -1575,6 +1577,84 @@ class HcomSeatTest(unittest.TestCase):
                 run = self.seat(role, "--seats-root", self.seats, "--dry-run")
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertIn(f"the worktree {real.resolve()} lies inside a write root", run.stderr)
+
+    def test_a_nested_worktree_is_admitted_only_in_its_plain_shape(self):
+        """U95 (treadmill rule, decisions.tsv treadmill-u95-nested-shape): a nested worktree is admitted only in the
+        shape `git worktree add` makes, else the launch is refused naming the deviation and `git worktree
+        move`/`remove`/`prune`. One case per deviation, each on a fresh worktree; FIFOs are refused by their type
+        before anything reads them (a timeout guards against a blocked read). The plain shape is admitted."""
+        worktrees = self.repo / ".claude/worktrees"
+        common = (self.repo / ".git").resolve()
+        other = Path(self.temp.name).resolve() / "other"
+        subprocess.run(["git", "init", "-q", str(other)], env=self.env, check=True)
+        subprocess.run(["git", "-C", str(other), "commit", "-q", "--allow-empty", "-m", "o"], env=self.env, check=True)
+        subprocess.run(["git", "-C", str(other), "worktree", "add", "-q", "--detach", str(other.parent / "ow")],
+                       env=self.env, check=True)  # fmt: skip
+        foreign = (other / ".git/worktrees/ow").resolve()
+
+        def symlink_dotgit(tree, admin):
+            (self.repo / "pointer").write_text((tree / ".git").read_text())
+            (tree / ".git").unlink()
+            (tree / ".git").symlink_to(self.repo / "pointer")
+
+        def dir_dotgit(tree, admin):
+            (tree / ".git").unlink()
+            (tree / ".git").mkdir()
+
+        def two_lines(tree, admin):
+            (tree / ".git").write_text((tree / ".git").read_text() + f"gitdir: {foreign}\n")
+
+        def foreign_gitdir(tree, admin):
+            (tree / ".git").write_text(f"gitdir: {foreign}\n")
+
+        def linked_admin(tree, admin):
+            admin.rename(admin.with_name(admin.name + "-real"))
+            admin.symlink_to(admin.name + "-real")
+
+        def fifo(name):
+            def make(tree, admin):
+                (admin / name).unlink(missing_ok=True)
+                os.mkfifo(admin / name)
+
+            return make
+
+        cases = {
+            ".git a symbolic link": (symlink_dotgit, "has a .git that is a symbolic link"),
+            ".git a directory": (dir_dotgit, "has a .git that is not a regular file"),
+            ".git with two lines": (two_lines, "as one line free of control characters"),
+            "gitdir naming another repository": (foreign_gitdir, f"outside this repository's {common}/worktrees"),
+            "gitdir directory a link": (linked_admin, "is a symbolic link, which host git would follow"),
+            "config.worktree a FIFO": (fifo("config.worktree"), "config.worktree is not a regular file"),
+            "commondir a FIFO": (fifo("commondir"), "commondir is not a regular file"),
+            "gitdir a FIFO": (fifo("gitdir"), "gitdir is not a regular file"),
+        }
+        for n, (label, (mutate, message)) in enumerate(cases.items()):
+            with self.subTest(deviation=label):
+                tree = worktrees / f"d{n}"
+                self.git("worktree", "add", "-q", "--detach", str(tree), "HEAD")
+                tree, admin = tree.resolve(), common / "worktrees" / f"d{n}"
+                mutate(tree, admin)
+                for role in ("orchestrator", "worker"):
+                    run = subprocess.run(
+                        [str(SEAT), role, "--seats-root", self.seats, "--dry-run"], cwd=self.repo, env=self.env,
+                        capture_output=True, text=True, check=False, timeout=120,
+                    )  # fmt: skip
+                    self.assertEqual((run.returncode, run.stdout), (2, ""), f"{role}: {run.stderr}")
+                    self.assertIn(message, run.stderr, role)
+                    self.assertIn("git worktree", run.stderr, role)
+                shutil.rmtree(tree, ignore_errors=True)
+                if admin.is_symlink():
+                    admin.unlink()
+                    admin = admin.with_name(admin.name + "-real")
+                shutil.rmtree(admin)
+                (self.repo / "pointer").unlink(missing_ok=True)
+        plain = worktrees / "plain"
+        self.git("worktree", "add", "-q", "--detach", str(plain), "HEAD")
+        for role in ("orchestrator", "worker"):
+            with self.subTest(shape="plain", role=role):
+                run = self.seat(role, "--seats-root", self.seats, "--dry-run")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"the worktree {plain.resolve()} lies inside a write root", run.stderr)
 
     def add_worktrees(self, first, count, nested):
         """Register worktrees w<first>..w<first+count-1> the way `git worktree add --no-checkout` does, the first

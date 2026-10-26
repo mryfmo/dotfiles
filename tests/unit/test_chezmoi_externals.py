@@ -3,6 +3,7 @@ archive externals into its cache, against a local server that truncates, fails o
 
 from __future__ import annotations
 
+import faulthandler
 import hashlib
 import io
 import json
@@ -142,12 +143,29 @@ AGE_CASES = (
 )
 
 
+# Every wait in this module is bounded, so a hang fails the test that hit it instead of the CI job (U96: the macos-15
+# job was cancelled at its 30-minute limit). Each subprocess call has its own timeout; the whole module has one more.
+COMMAND_SECONDS = 60
+SERVER_START_SECONDS = 30
+MODULE_SECONDS = 900
+
+
+def setUpModule() -> None:
+    # Past MODULE_SECONDS the module prints every thread's stack, the running test included, and exits.
+    faulthandler.dump_traceback_later(MODULE_SECONDS, exit=True)
+
+
+def tearDownModule() -> None:
+    faulthandler.cancel_dump_traceback_later()
+
+
 class ServerFixture(unittest.TestCase):
     """One local server per class; each test starts with an empty request log and its own cache."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.temp = Path(tempfile.mkdtemp(prefix="chezmoi-externals-test-"))
+        cls.addClassCleanup(shutil.rmtree, cls.temp, True)
         cls.www = cls.temp / "www"
         cls.www.mkdir()
         cls.data = archive()
@@ -156,19 +174,36 @@ class ServerFixture(unittest.TestCase):
         cls.log = cls.temp / "requests.log"
         cls.plan.write_text(json.dumps({"log": str(cls.log), "paths": {}}))
         port_file = cls.temp / "port"
-        cls.server = subprocess.Popen([sys.executable, str(SERVER), str(cls.plan), str(port_file)])
-        deadline = time.monotonic() + 30
-        while not (port_file.exists() and port_file.read_text()):
-            if time.monotonic() > deadline:
-                raise RuntimeError("the fixture server did not start")
+        server_log = cls.temp / "server.log"
+        # The server never holds the test's stdout or stderr: unittest-shards reads those pipes to EOF, so a server
+        # left running on them blocked the shard for good. Its output goes to a file in the class's directory.
+        with server_log.open("wb") as log:
+            cls.server = subprocess.Popen(
+                [sys.executable, str(SERVER), str(cls.plan), str(port_file)],
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+        # A class cleanup runs even when setUpClass fails below, unlike tearDownClass, so the server always stops.
+        cls.addClassCleanup(cls.stop_server)
+        deadline = time.monotonic() + SERVER_START_SECONDS
+        while not (port_file.exists() and port_file.read_text().isdigit()):
+            if time.monotonic() > deadline or cls.server.poll() is not None:
+                raise RuntimeError(
+                    f"the fixture server did not start within {SERVER_START_SECONDS}s "
+                    f"(exit {cls.server.poll()}): {server_log.read_text(errors='replace')}"
+                )
             time.sleep(0.05)
         cls.base = f"http://127.0.0.1:{port_file.read_text()}"
 
     @classmethod
-    def tearDownClass(cls) -> None:
+    def stop_server(cls) -> None:
         cls.server.terminate()
-        cls.server.wait(timeout=30)
-        shutil.rmtree(cls.temp)
+        try:
+            cls.server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            cls.server.kill()
+            cls.server.wait(timeout=10)
 
     def setUp(self) -> None:
         self.case = Path(tempfile.mkdtemp(prefix="case-", dir=self.temp))
@@ -201,7 +236,7 @@ class ServerFixture(unittest.TestCase):
             env=env,
             capture_output=True,
             text=True,
-            timeout=300,
+            timeout=COMMAND_SECONDS,
             check=False,
         )
 
@@ -457,11 +492,13 @@ class FixtureServerTest(ServerFixture):
                     ],
                     capture_output=True,
                     text=True,
-                    timeout=60,
+                    timeout=COMMAND_SECONDS,
                     check=False,
                 ).stdout
                 self.assertEqual("404", code)
-        fetched = subprocess.run(["curl", "--silent", "--fail", url], capture_output=True, timeout=60, check=False)
+        fetched = subprocess.run(
+            ["curl", "--silent", "--fail", url], capture_output=True, timeout=COMMAND_SECONDS, check=False
+        )
         self.assertEqual(self.data, fetched.stdout)
 
 
@@ -507,7 +544,9 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         chezmoi = self.source(url)
 
         result = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
-        status = subprocess.run([str(chezmoi), "status"], capture_output=True, text=True, timeout=120, check=False)
+        status = subprocess.run(
+            [str(chezmoi), "status"], capture_output=True, text=True, timeout=COMMAND_SECONDS, check=False
+        )
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(f"chezmoi external .ext: downloaded from {url}, sha256 verified", result.stdout)

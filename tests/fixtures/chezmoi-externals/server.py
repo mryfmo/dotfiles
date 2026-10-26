@@ -11,11 +11,17 @@ unregistered path gets a 404. Each request for a path takes the next behaviour o
 - "503": an HTTP 503 with no body.
 Every request is appended to the file named by plan.json's "log" key as one line, its path; the requests already
 logged for a path decide which behaviour comes next, so removing the log starts every plan again.
+
+It starts at once on every host and never outlives its test (U96): see Server.server_bind and watch_parent.
 """
 
 import http.server
 import json
+import os
+import socketserver
 import sys
+import threading
+import time
 from pathlib import Path
 
 PLAN, PORT_FILE = (Path(arg) for arg in sys.argv[1:3])
@@ -59,6 +65,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
-server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+class Server(http.server.ThreadingHTTPServer):
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        # http.server.HTTPServer.server_bind also calls socket.getfqdn(host), a reverse lookup of 127.0.0.1. On the
+        # macos-15 runner that lookup takes about 35 s (test_remote_host_logins starts 5 HTTPServers: 182.7 s there,
+        # 7.2 s on ubuntu-24.04), longer than the tests wait for this server. The name is never used here.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
+def watch_parent(server: Server, parent: int) -> None:
+    """Stop serving once the test process that started this server is gone, so no server outlives its tests."""
+    while os.getppid() == parent:
+        time.sleep(1)
+    server.shutdown()
+
+
+server = Server(("127.0.0.1", 0), Handler)
+threading.Thread(target=watch_parent, args=(server, os.getppid()), daemon=True).start()
 PORT_FILE.write_text(str(server.server_address[1]))
 server.serve_forever()

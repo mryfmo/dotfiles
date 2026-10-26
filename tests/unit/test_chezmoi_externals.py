@@ -43,9 +43,10 @@ class ServerFixture(unittest.TestCase):
         cls.data = archive()
         cls.sha256 = hashlib.sha256(cls.data).hexdigest()
         cls.plan = cls.temp / "plan.json"
-        cls.plan.write_text("{}")
+        cls.log = cls.temp / "requests.log"
+        cls.plan.write_text(json.dumps({"log": str(cls.log), "paths": {}}))
         port_file = cls.temp / "port"
-        cls.server = subprocess.Popen([sys.executable, str(SERVER), str(cls.www), str(cls.plan), str(port_file)])
+        cls.server = subprocess.Popen([sys.executable, str(SERVER), str(cls.plan), str(port_file)])
         deadline = time.monotonic() + 30
         while not (port_file.exists() and port_file.read_text()):
             if time.monotonic() > deadline:
@@ -62,12 +63,14 @@ class ServerFixture(unittest.TestCase):
     def setUp(self) -> None:
         self.case = Path(tempfile.mkdtemp(prefix="case-", dir=self.temp))
         self.cache = self.case / "cache"
-        self.log = self.www / "requests.log"
+        self.sleeps = self.case / "sleeps"
         self.log.unlink(missing_ok=True)
 
     def serve(self, name: str, *behaviours: str) -> str:
+        # Registers one URL path: the server answers it from this file and answers nothing else.
         (self.www / name).write_bytes(self.data)
-        self.plan.write_text(json.dumps({f"/{name}": list(behaviours)}))
+        route = {"file": str(self.www / name), "plan": list(behaviours)}
+        self.plan.write_text(json.dumps({"log": str(self.log), "paths": {f"/{name}": route}}))
         return f"{self.base}/{name}"
 
     def requests(self) -> int:
@@ -77,15 +80,12 @@ class ServerFixture(unittest.TestCase):
         # chezmoi's cache key: the sha256 of the URL as written (chezmoi 2.73.3 sourcestate.go:1921-1923).
         return self.cache / "external" / hashlib.sha256(url.encode()).hexdigest()
 
-    def bash(self, script: str, *args: str) -> subprocess.CompletedProcess[str]:
-        env = {
-            **os.environ,
-            "HOME": str(self.case),
-            "TMPDIR": str(self.case),
-            "CHEZMOI_EXTERNAL_RETRY_DELAY": "0",
-        }
+    def bash(self, script: str, *args: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        # The waits between attempts are recorded instead of slept: the library's delays are constants.
+        env = {**os.environ, "HOME": str(self.case), "TMPDIR": str(self.case), "SLEEPS": str(self.sleeps), **extra}
+        wait = 'sleep() { printf "%s\\n" "$1" >> "$SLEEPS"; }; '
         return subprocess.run(
-            ["bash", "-c", f'source "$1"; shift; {script}', "_", str(LIB), *args],
+            ["bash", "-c", f'source "$1"; shift; {wait}{script}', "_", str(LIB), *args],
             env=env,
             capture_output=True,
             text=True,
@@ -118,6 +118,26 @@ class ChezmoiExternalsTest(ServerFixture):
         self.assertEqual(4, self.requests())  # CHEZMOI_EXTERNAL_ATTEMPTS
         self.assertIn(f"chezmoi external .ext: {url}: download failed after 4 attempt(s)", result.stderr)
         self.assertEqual([], list((self.cache / "external").iterdir()))
+
+    def test_the_retry_bound_and_backoff_are_constants_no_environment_changes(self) -> None:
+        # Audit of f2c724a6: an attempt count read from the environment could be non-numeric and unbound the loop.
+        url = self.serve("bounded.tar.gz", "truncate")
+        for value in ("abc", "0", "-1", "999999999999", ""):
+            with self.subTest(value=value):
+                self.log.unlink(missing_ok=True)
+                self.sleeps.unlink(missing_ok=True)
+                result = self.bash(
+                    'prefetch_chezmoi_external .ext "$@"',
+                    url,
+                    self.sha256,
+                    "0",
+                    str(self.cache),
+                    CHEZMOI_EXTERNAL_ATTEMPTS=value,
+                    CHEZMOI_EXTERNAL_RETRY_DELAY=value,
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(4, self.requests())
+                self.assertEqual(["5", "10", "20"], self.sleeps.read_text().split())
 
     def test_a_server_error_is_retried_and_a_missing_file_is_not(self) -> None:
         url = self.serve("busy.tar.gz", "503", "ok")
@@ -173,6 +193,41 @@ class ChezmoiExternalsTest(ServerFixture):
                 self.assertEqual(1, self.bash('chezmoi_external_seconds "$1"', text).returncode)
 
 
+class FixtureServerTest(ServerFixture):
+    def test_the_server_answers_only_registered_paths(self) -> None:
+        # Audit of f2c724a6: a `..` request path served the repository's Makefile. The server now looks the path up in
+        # the registered mapping and never in the filesystem.
+        url = self.serve("only.tar.gz", "ok")
+        (self.www / "other.tar.gz").write_bytes(b"not registered")
+        for path in (
+            "/../../../Makefile",
+            "/%2e%2e/%2e%2e/Makefile",
+            "/other.tar.gz",
+            "/only.tar.gz/../only.tar.gz",
+            "/" + str(ROOT / "Makefile").lstrip("/"),
+        ):
+            with self.subTest(path=path):
+                code = subprocess.run(
+                    [
+                        "curl",
+                        "--silent",
+                        "--path-as-is",
+                        "--output",
+                        "/dev/null",
+                        "--write-out",
+                        "%{http_code}",
+                        self.base + path,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                ).stdout
+                self.assertEqual("404", code)
+        fetched = subprocess.run(["curl", "--silent", "--fail", url], capture_output=True, timeout=60, check=False)
+        self.assertEqual(self.data, fetched.stdout)
+
+
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
 class ChezmoiSourceExternalsTest(ServerFixture):
     """The whole step against a chezmoi source: chezmoi renders and lists the externals, and the status that follows
@@ -191,8 +246,19 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         (source / "dot_plain").write_text("plain\n")
         (self.case / "chezmoi.yaml").write_text("")
         wrapper = self.case / "chezmoi"
+        # The real chezmoi, but each producer the step reads can be made to fail: FAIL_SOURCE_PATH, EMPTY_SOURCE_PATH,
+        # FAIL_RENDER (the declaration on stdin), FAIL_DECODE and SHORT_DECODE (the listing template: fails, or exits
+        # 0 with a line missing its fields) and FAIL_CACHE_DIR.
         wrapper.write_text(
-            f'#!/bin/sh\nexec "{CHEZMOI}" --source "{source}" --destination "{self.case}/home" '
+            "#!/bin/sh\n"
+            'case "$1:$#:$2" in\n'
+            '  source-path:*) [ -z "$FAIL_SOURCE_PATH" ] || exit 7; [ -z "$EMPTY_SOURCE_PATH" ] || exit 0 ;;\n'
+            '  execute-template:1:) [ -z "$FAIL_RENDER" ] || exit 7 ;;\n'
+            '  execute-template:2:*include*) [ -z "$FAIL_DECODE" ] || exit 7\n'
+            '    [ -z "$SHORT_DECODE" ] || { printf "only-a-name\\n"; exit 0; } ;;\n'
+            '  execute-template:2:*cacheDir*) [ -z "$FAIL_CACHE_DIR" ] || exit 7 ;;\n'
+            "esac\n"
+            f'exec "{CHEZMOI}" --source "{source}" --destination "{self.case}/home" '
             f'--cache "{self.cache}" --config "{self.case}/chezmoi.yaml" "$@"\n'
         )
         wrapper.chmod(0o755)
@@ -232,6 +298,83 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         self.assertEqual(1, result.returncode)
         self.assertIn("has no sha256 checksum", result.stderr)
         self.assertEqual(0, self.requests())
+
+    def assert_refused(self, result: subprocess.CompletedProcess[str], message: str) -> None:
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(message, result.stderr)
+        self.assertNotIn("downloaded from", result.stdout)
+        self.assertEqual(0, self.requests())
+        self.assertFalse((self.cache / "external").exists())
+
+    def test_every_discovery_producer_that_fails_stops_the_step_naming_it(self) -> None:
+        # Audit of f2c724a6: discovery decides what is fetched and checked, so a producer that fails is an error,
+        # never an empty list. Each producer's status is checked; nothing is fetched or cached after one fails.
+        url = self.serve("discovery.tar.gz", "ok")
+        chezmoi = self.source(url)
+        declaration = self.case / "source/.chezmoiexternal.yaml.tmpl"
+        cases = (
+            ("chezmoi source-path fails", "", {"FAIL_SOURCE_PATH": "1"}, "chezmoi source-path failed"),
+            ("chezmoi source-path prints nothing", "", {"EMPTY_SOURCE_PATH": "1"}, "named no directory"),
+            ("find fails", "find() { return 1; }; ", {}, "cannot list the declarations under"),
+            # A find that lists some files and then fails (an unreadable directory) is a failure too.
+            (
+                "find fails after listing",
+                'find() { command find "$@"; return 1; }; ',
+                {},
+                "cannot list the declarations",
+            ),
+            ("the render fails", "", {"FAIL_RENDER": "1"}, f"cannot render {declaration}"),
+            ("the decode fails", "", {"FAIL_DECODE": "1"}, f"cannot decode {declaration} as yaml"),
+            (
+                "the decode succeeds with a short line",
+                "",
+                {"SHORT_DECODE": "1"},
+                "decoded without its fields: only-a-name",
+            ),
+            (
+                "the cache directory cannot be read",
+                "",
+                {"FAIL_CACHE_DIR": "1"},
+                "cannot read chezmoi's cache directory",
+            ),
+        )
+        for name, prefix, env, message in cases:
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                result = self.bash(f'{prefix}prefetch_chezmoi_externals "$1"', str(chezmoi), **env)
+                self.assert_refused(result, message)
+
+    def test_a_malformed_declaration_or_entry_is_refused(self) -> None:
+        url = self.serve("malformed.tar.gz", "ok")
+        chezmoi = self.source(url)
+        source = self.case / "source"
+        declaration = source / ".chezmoiexternal.yaml.tmpl"
+        good = declaration.read_text()
+        cases = (
+            ("invalid YAML", '".ext": [unclosed\n', f"cannot decode {declaration} as yaml"),
+            ("an entry that is not a mapping", '".ext": "an archive"\n', f"cannot decode {declaration} as yaml"),
+            ("an unknown type", '".ext":\n  type: tarball\n  url: "https://x.invalid/a"\n', "unknown type tarball"),
+            ("a missing type", '".ext":\n  url: "https://x.invalid/a"\n', "unknown type -"),
+            ("no url", '".ext":\n  type: archive\n', "chezmoi external .ext: no url"),
+            (
+                "another scheme",
+                '".ext":\n  type: archive\n  url: "ftp://x.invalid/a"\n',
+                "is neither http(s) nor file://",
+            ),
+        )
+        for name, text, message in cases:
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                declaration.write_text(text)
+                self.assert_refused(self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi)), message)
+        declaration.write_text(good)
+        unknown = source / ".chezmoiexternal.ini"
+        unknown.write_text("")
+        self.log.unlink(missing_ok=True)
+        self.assert_refused(
+            self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi)),
+            f"{unknown} has a format this step does not read",
+        )
 
     def test_externals_chezmoi_fetches_itself_are_left_to_it(self) -> None:
         # git-repo and file:// externals never reach chezmoi's download cache.

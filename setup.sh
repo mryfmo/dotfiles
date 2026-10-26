@@ -271,14 +271,16 @@ function is_ci_runner() {
 # Copied from scripts/lib/chezmoi-externals.sh, because setup.sh runs before the repository
 # exists; tests/unit/test_chezmoi_externals.py keeps the copy equal to the original.
 # --- chezmoi-externals.sh begin ---
-# Download attempts per URL, and the first wait between them in seconds (doubled after each failure).
-CHEZMOI_EXTERNAL_ATTEMPTS="${CHEZMOI_EXTERNAL_ATTEMPTS:-4}"
-CHEZMOI_EXTERNAL_RETRY_DELAY="${CHEZMOI_EXTERNAL_RETRY_DELAY:-5}"
+# Download attempts per URL, and the first wait between them in seconds (doubled after each failure): constants,
+# never read from the environment, so no caller can unbound the retries. Tests replace `sleep` instead.
+CHEZMOI_EXTERNAL_ATTEMPTS=4
+CHEZMOI_EXTERNAL_RETRY_DELAY=5
 
 #
 # @description Print the lowercase sha256 of a file, or of standard input with no argument.
 # @arg $1 path Optional file to hash.
 # @stdout The digest.
+# @exitcode 1 When the hash tool fails or prints no 64-digit lowercase hex digest.
 #
 function chezmoi_external_sha256() {
     local digest
@@ -287,7 +289,9 @@ function chezmoi_external_sha256() {
     else
         digest="$(shasum -a 256 "$@")" || return 1
     fi
-    printf '%s\n' "${digest%% *}"
+    digest="${digest%% *}"
+    [[ "${digest}" =~ ^[0-9a-f]{64}$ ]] || return 1
+    printf '%s\n' "${digest}"
 }
 
 #
@@ -345,11 +349,19 @@ function chezmoi_external_download() {
 function prefetch_chezmoi_external() {
     local name="$1" url="$2" expected="$3" refresh="$4" cache="$5"
     local key entry modified now partial actual code status retry attempt=1 delay="${CHEZMOI_EXTERNAL_RETRY_DELAY}"
-    key="$(printf '%s' "${url}" | chezmoi_external_sha256)" || return 1
+    key="$(printf '%s' "${url}" | chezmoi_external_sha256)" || {
+        printf 'chezmoi external %s: cannot hash the URL %s for its cache key\n' "${name}" "${url}" >&2
+        return 1
+    }
     entry="${cache}/external/${key}"
     if [ -f "${entry}" ]; then
+        # An entry this step cannot read the age or the digest of is fetched again, never kept.
         modified="$(stat -c %Y "${entry}" 2> /dev/null || stat -f %m "${entry}")" || modified=0
-        now="$(date +%s)" || return 1
+        [[ "${modified}" =~ ^[0-9]+$ ]] || modified=0
+        now="$(date +%s)" && [[ "${now}" =~ ^[0-9]+$ ]] || {
+            printf 'chezmoi external %s: date +%%s failed; cannot tell the cache entry'\''s age\n' "${name}" >&2
+            return 1
+        }
         actual="$(chezmoi_external_sha256 "${entry}")" || actual=""
         if [ "${actual}" = "${expected}" ] && { [ "${refresh}" -eq 0 ] || [ $((modified + refresh)) -gt "${now}" ]; }; then
             printf 'chezmoi external %s: cached, sha256 verified\n' "${name}"
@@ -360,12 +372,19 @@ function prefetch_chezmoi_external() {
         printf 'chezmoi external %s: cannot create the cache directory %s/external\n' "${name}" "${cache}" >&2
         return 1
     fi
-    partial="$(mktemp "${cache}/external/.prefetch.XXXXXX")" || return 1
+    partial="$(mktemp "${cache}/external/.prefetch.XXXXXX")" || {
+        printf 'chezmoi external %s: cannot create a download file in %s/external\n' "${name}" "${cache}" >&2
+        return 1
+    }
     while :; do
         status=0
         code="$(chezmoi_external_download "${url}" "${partial}")" || status=$?
         if [ "${status}" -eq 0 ]; then
-            actual="$(chezmoi_external_sha256 "${partial}")" || actual="unreadable"
+            actual="$(chezmoi_external_sha256 "${partial}")" || {
+                rm -f "${partial}"
+                printf 'chezmoi external %s: %s: cannot hash the download; nothing cached\n' "${name}" "${url}" >&2
+                return 1
+            }
             if [ "${actual}" != "${expected}" ]; then
                 rm -f "${partial}"
                 printf 'chezmoi external %s: %s: SHA256 mismatch after a complete download: expected %s, got %s; not retried, nothing cached\n' \
@@ -405,7 +424,8 @@ function prefetch_chezmoi_external() {
 #   period and its URLs, tab-separated. A missing type or sha256 prints as `-` and a missing refresh period as `0`, so
 #   no field is empty (a tab is whitespace to `read`, which would merge two tabs into one separator). Every `.chezmoiexternal.<format>` file anywhere in the source and every file
 #   in a `.chezmoiexternals/` directory is rendered by chezmoi itself (`execute-template`, with the source's
-#   templates) and decoded by its own fromYaml, fromJson, fromJsonc or fromToml.
+#   templates) and decoded by its own fromYaml, fromJson, fromJsonc or fromToml. Every producer's status is
+#   checked: a failed find, render or decode is an error that names the file, never an empty list.
 # @arg $1 path The chezmoi command.
 # @arg $2 path The source directory (`chezmoi source-path`).
 # @arg $3 path A scratch directory for the rendered files.
@@ -466,7 +486,8 @@ ${prefix:+${prefix}/}${fields}
 # @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
 # @stdout One line per external.
 # @stderr What failed, naming the external and its URL.
-# @exitcode 1 When an external cannot be fetched and verified, or the externals cannot be listed.
+# @exitcode 1 When an external cannot be fetched and verified, the externals cannot be listed, or a listed external
+#   has no name, an unknown type or no URL this step or chezmoi can fetch.
 #
 function prefetch_chezmoi_externals() {
     local chezmoi="$1" source cache="" scratch listing status=0 name type sha256 refresh seconds url fetched
@@ -479,18 +500,38 @@ function prefetch_chezmoi_externals() {
         printf 'chezmoi externals: chezmoi source-path failed or named no directory\n' >&2
         return 1
     }
-    scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || return 1
+    scratch="$(mktemp -d "${TMPDIR:-/tmp}/chezmoi-externals.XXXXXX")" || {
+        printf 'chezmoi externals: cannot create a scratch directory\n' >&2
+        return 1
+    }
     listing="$(chezmoi_external_list "${chezmoi}" "${source}" "${scratch}")" || status=1
     rm -rf "${scratch}"
     [ "${status}" -eq 0 ] || return 1
     while IFS=$'\t' read -r -a fields; do
         [ "${#fields[@]}" -gt 0 ] || continue
         name="${fields[0]}" type="${fields[1]:-}" sha256="${fields[2]:-}" refresh="${fields[3]:-}"
+        # A line the decode did not produce whole is refused, never skipped: it decides what is fetched.
+        [ "${#fields[@]}" -ge 4 ] && [ -n "${name}" ] || {
+            printf 'chezmoi externals: an external decoded without its fields: %s\n' "${fields[*]}" >&2
+            return 1
+        }
         case "${type}" in
         file | archive | archive-file) ;;
-        *) continue ;;
+        git-repo) continue ;;
+        *)
+            printf 'chezmoi external %s: unknown type %s\n' "${name}" "${type}" >&2
+            return 1
+            ;;
         esac
-        [ "${#fields[@]}" -gt 4 ] && [[ "${fields[4]}" =~ ^https?:// ]] || continue
+        [ "${#fields[@]}" -gt 4 ] || {
+            printf 'chezmoi external %s: no url\n' "${name}" >&2
+            return 1
+        }
+        [[ "${fields[4]}" =~ ^file:// ]] && continue
+        [[ "${fields[4]}" =~ ^https?:// ]] || {
+            printf 'chezmoi external %s: %s is neither http(s) nor file://\n' "${name}" "${fields[4]}" >&2
+            return 1
+        }
         [[ "${sha256}" =~ ^[0-9a-f]{64}$ ]] || {
             printf 'chezmoi external %s: %s has no sha256 checksum; it cannot be verified before it is cached\n' \
                 "${name}" "${fields[4]}" >&2
@@ -502,7 +543,7 @@ function prefetch_chezmoi_externals() {
         }
         # Read once, at the first external to fetch: a source without one needs no cache.
         if [ -z "${cache}" ]; then
-            cache="$("${chezmoi}" execute-template '{{ .chezmoi.cacheDir }}')" && [ -n "${cache}" ] || {
+            cache="$("${chezmoi}" execute-template '{{ .chezmoi.cacheDir }}')" && [[ "${cache}" == /* ]] || { # lint-comparisons: allow an absolute-path prefix test
                 printf 'chezmoi externals: cannot read chezmoi'\''s cache directory\n' >&2
                 return 1
             }

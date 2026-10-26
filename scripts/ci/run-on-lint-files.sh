@@ -21,8 +21,8 @@
 # @arg $@ string The command and its arguments, after the set; the set's paths are appended.
 # @exitcode 0 The command passed on the set.
 # @exitcode 2 An unknown set, no command, a failed listing, an unmerged index, a shell-set entry that cannot be decided
-#   (an unknown mode, a file the index holds that cannot be read, a shebang mentioning a shell in an unrecognised
-#   form), or an
+#   (an unknown mode, a file the index holds that cannot be read, a `#!` line outside the table of recognised
+#   shebangs), or an
 #   empty set: nothing was checked.
 # @exitcode * The command's own status otherwise.
 # @example
@@ -45,27 +45,41 @@ markdown) pathspecs=('*.md') ;;
     ;;
 esac
 
+# The recognised shebangs, `<kind> <interpreter part>` (round-7 audit of 1198f86d: any "mentions a shell" test stays
+# open-world, `env -S "sh"` slipped past it). The interpreter part is the first word, plus for /usr/bin/env the next
+# word, plus for `/usr/bin/env -S` the word after that; words after the interpreter part are free. It is matched
+# exactly, so every `#!` line outside this table stops the run. Seeded from the forms the tree uses (marked *), plus
+# the plain bash and sh paths and their env forms. Add a form here, with its kind, when a new script needs one.
+#   shell: in the shell set. zsh: out (shfmt does not parse zsh), whatever the name. other: out unless named *.sh or
+#   *.bash.
+SHEBANG_FORMS=(
+    'shell /usr/bin/env bash' # *
+    'shell /bin/bash'         # *
+    'shell /bin/sh'           # *
+    'shell /usr/bin/bash'
+    'shell /usr/bin/sh'
+    'shell /usr/bin/env sh'
+    'shell /usr/bin/env -S bash'
+    'shell /usr/bin/env -S sh'
+    'zsh /usr/bin/env zsh' # *
+    'zsh /bin/zsh'
+    'zsh /usr/bin/zsh'
+    'other /usr/bin/env python3' # *
+    'other /usr/bin/env ruby'    # *
+    'other /usr/bin/env -S uv'   # * (env -S uv run --no-cache --script)
+)
+
 #
-# @description Classify a first line's shebang against a closed set of recognised forms (round-6 audit of 000e9faa).
-#   env's argument grammar is not emulated: two rounds of emulation still missed forms (`env -S -- NAME=v bash`).
-#   Instead the forms below are recognised, and any other shebang that mentions a shell fails closed, so no shell
-#   script can be silently left out. The line is split on blanks with globbing off; a word mentions a shell when its
-#   basename contains `bash` or ends in `sh`, which takes in `-Sbash`, `--split-string=sh`, dash, ksh and zsh in any
-#   form outside the recognised ones, whatever env option is glued to it.
-#   - shell: `#!/bin/bash`, `#!/bin/sh`, `#!/usr/bin/bash`, `#!/usr/bin/sh`, `#!/usr/bin/env bash`, `#!/usr/bin/env sh`
-#     and `#!/usr/bin/env -S bash` or `-S sh`, each with any blank-separated words after it. The repository uses
-#     `#!/usr/bin/env bash`, `#!/bin/bash` and `#!/bin/sh`.
-#   - zsh: `#!/bin/zsh`, `#!/usr/bin/zsh` and `#!/usr/bin/env zsh`, each with any words after it.
-#   - other: a shebang none of whose words mentions a shell (python3, ruby, node, `env -S uv run …`), or no shebang.
+# @description Classify a first line by SHEBANG_FORMS: its interpreter part, matched exactly against the table.
 # @arg $1 string The first line.
-# @set kind string shell, zsh or other.
-# @exitcode 0 Classified.
-# @exitcode 1 The shebang mentions a shell in a form outside the recognised set.
+# @set kind string shell, zsh or other from the table; none when the line is no shebang.
+# @exitcode 0 Classified, or no shebang.
+# @exitcode 1 A `#!` line whose interpreter part is not in the table.
 #
 function shebang_kind() {
-    local line=$1 word IFS=$' \t'
+    local line=$1 key form IFS=$' \t'
     local -a words=()
-    kind=other
+    kind=none
     [[ ${line} == '#!'* ]] || return 0
     # Word splitting on blanks, with globbing off so a `*` in the line stays a word; the noglob state is restored.
     if [[ $- == *f* ]]; then
@@ -77,42 +91,20 @@ function shebang_kind() {
         words=(${line#??})
         set +f
     fi
-    ((${#words[@]} > 0)) || return 0
-    case ${words[0]} in
-    /bin/bash | /bin/sh | /usr/bin/bash | /usr/bin/sh)
-        kind=shell
-        return 0
-        ;;
-    /bin/zsh | /usr/bin/zsh)
-        kind=zsh
-        return 0
-        ;;
-    /usr/bin/env)
-        case ${words[1]:-} in
-        bash | sh)
-            kind=shell
+    key=${words[0]:-}
+    if [[ ${key} == /usr/bin/env ]]; then # lint-comparisons: allow a shebang word matched against the table
+        key+=" ${words[1]:-}"
+        if [[ ${words[1]:-} == -S ]]; then
+            key+=" ${words[2]:-}"
+        fi
+    fi
+    for form in "${SHEBANG_FORMS[@]}"; do
+        if [[ ${form#* } == "${key}" ]]; then # lint-comparisons: allow a shebang word matched against the table
+            kind=${form%% *}
             return 0
-            ;;
-        zsh)
-            kind=zsh
-            return 0
-            ;;
-        -S)
-            case ${words[2]:-} in
-            bash | sh)
-                kind=shell
-                return 0
-                ;;
-            esac
-            ;;
-        esac
-        ;;
-    esac
-    for word in "${words[@]}"; do
-        case ${word##*/} in
-        *bash* | *sh) return 1 ;;
-        esac
+        fi
     done
+    return 1
 }
 
 #
@@ -125,10 +117,9 @@ function shebang_kind() {
 #     actions of the rest, and the scripts most of them include are in the set).
 #   - Every other regular entry is read: its first line comes from head, whose status is checked. A missing file, an
 #     unreadable one, an unsearchable parent or a read error stops the run; it is never an exclusion.
-#   - The shebang is classified by shebang_kind; one that mentions a shell in an unrecognised form stops the run.
-#   - Included: any file with a recognised shell shebang, and a `*.sh` or `*.bash` file unless its shebang is a
-#     recognised zsh form (shfmt does not parse zsh). The extension wins over every other shebang: a `*.sh` file with
-#     a python or other shebang is checked, and shfmt says so if it is not shell. Only zsh takes a file back out.
+#   - A `#!` first line is classified by SHEBANG_FORMS; one whose interpreter part is not in the table stops the run.
+#   - Included: a shebang of kind shell; or, named `*.sh` or `*.bash`, a file with no shebang or one of kind other
+#     (the extension wins, and shfmt says so if it is not shell). A shebang of kind zsh is out whatever the name.
 # @arg $1 string The index mode.
 # @arg $2 path The tracked path, relative to the repository root.
 # @set reason string Why the entry cannot be decided, when the function returns 2.
@@ -163,7 +154,7 @@ function in_shell_set() {
         return 2
     fi
     if ! shebang_kind "${first}"; then
-        reason="${path}: unrecognised shebang form; add it to the recognised forms in scripts/ci/run-on-lint-files.sh"
+        reason="${path}: unrecognised shebang; add it to the table with its kind (SHEBANG_FORMS in scripts/ci/run-on-lint-files.sh)"
         return 2
     fi
     [[ ${kind} != zsh ]] || return 1

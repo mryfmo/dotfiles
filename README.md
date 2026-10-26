@@ -291,11 +291,14 @@ passing locally and failing in CI. To move an `http:` tool, change its version
 and its four URLs and checksums together; `make drift` reports a newer GitHub
 release. `make update` leaves all four where they are. The files each formatting
 check reads have one definition too: `scripts/ci/run-on-lint-files.sh` lists the
-tracked bash and sh scripts (a `*.sh` or `*.bash` file, or a bash or sh shebang,
-less records, Bats files, chezmoi templates and zsh), every tracked `*.py` and
-every tracked `*.md`, and both `make format` and CI's steps run their checks
-through it, so an untracked or gitignored file is never checked and the two
-check the same files.
+tracked bash and sh scripts (a `*.sh` or `*.bash` file, or a shell shebang, less
+records, Bats files, chezmoi templates and zsh), every tracked `*.py` and every
+tracked `*.md`, and both `make format` and CI's steps run their checks through
+it, so an untracked or gitignored file is never checked and the two check the
+same files. Every `#!` line in the tree must match a row of its `SHEBANG_FORMS`
+table, which gives each recognised interpreter its kind (shell, zsh or other);
+any other shebang stops the run, so a new form is added to the table with its
+kind.
 
 **Holding a tool back** uses the manager's own feature:
 

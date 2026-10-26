@@ -774,20 +774,24 @@ class LintFileSetTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(dotted(SHELL_SET), sorted(result.stdout.splitlines()))
 
-    def test_a_shebang_mentioning_a_shell_in_an_unrecognised_form_stops_the_shell_set(self):
-        # Round-6 audit of 000e9faa: emulating env's grammar missed `env -S -- NAME=value bash`. The forms are a closed
-        # set now, and any other shebang that names bash or sh fails closed instead of being parsed.
+    def test_a_shebang_outside_the_table_stops_the_shell_set(self):
+        # Round-7 audit of 1198f86d: `env -S "sh"` passed the "mentions a shell" test. Every `#!` line must match the
+        # table exactly; any other stops the run, whatever it names and whatever the file is called.
         for first in (
+            '#!/usr/bin/env -S "sh"',
+            "#!/usr/bin/env -Sbash",
+            "#!/usr/local/bin/bash",
+            "#!/usr/bin/perl",
             "#!/usr/bin/env -S -- NAME=value bash",
             "#!/usr/bin/env -i PATH=/x bash",
             "#!/usr/bin/env -u FOO sh",
-            "#!/usr/bin/env --frobnicate bash",
-            "#!/usr/bin/env -Sbash",
-            "#!/usr/local/bin/bash",
             "#!/opt/homebrew/bin/bash -e",
             "#!/usr/bin/env --split-string=sh",
             "#!/bin/dash",
             "#!/usr/bin/env -S zsh -f",
+            "#!/usr/bin/env node",
+            "#!/usr/bin/env",
+            "#!",
         ):
             with self.subTest(first):
                 for extension in ("", ".sh"):
@@ -795,11 +799,34 @@ class LintFileSetTest(unittest.TestCase):
                     (self.repo / name).write_text(f"{first}\necho x\n")
                     self.git("add", "--", name)
                     self.assert_stops(
-                        f"{name}: unrecognised shebang form; add it to the recognised forms in "
-                        "scripts/ci/run-on-lint-files.sh"
+                        f"{name}: unrecognised shebang; add it to the table with its kind "
+                        "(SHEBANG_FORMS in scripts/ci/run-on-lint-files.sh)"
                     )
                     self.git("rm", "-q", "--cached", "--", name)
                     (self.repo / name).unlink()
+
+    def test_each_table_entry_classifies_as_its_kind(self):
+        # Every SHEBANG_FORMS row, with free words after its interpreter part, and named with and without .sh:
+        # shell is in either way, zsh is out either way, other is in only by the .sh name.
+        text = RUNNER.read_text()
+        table = text[text.index("SHEBANG_FORMS=(\n") : text.index("\n)\n", text.index("SHEBANG_FORMS=(\n"))]
+        forms = [re.match(r"\s*'(\w+) ([^']+)'", line) for line in table.splitlines()[1:]]
+        self.assertTrue(forms and all(forms), table)
+        self.assertEqual({"shell", "zsh", "other"}, {form.group(1) for form in forms}, "the table names every kind")
+        added = []
+        for number, form in enumerate(forms):
+            for extension in ("", ".sh"):
+                name = f"home/form-{number}{extension}"
+                (self.repo / name).write_text(f"#!{form.group(2)} --free word\necho x\n")
+                added.append((name, form.group(1), extension))
+        self.git("add", "--", *(name for name, _, _ in added))
+        result = self.run_set("shell", "printf", "%s\\n")
+        self.assertEqual(0, result.returncode, result.stderr)
+        listed = set(result.stdout.splitlines())
+        for name, kind, extension in added:
+            with self.subTest(name=name, kind=kind):
+                expected = kind == "shell" or (kind == "other" and extension == ".sh")
+                self.assertEqual(expected, f"./{name}" in listed)
 
     def test_every_shebang_the_repository_uses_is_a_recognised_form(self):
         # The closed set covers the tree: the real shell set lists without a refusal.

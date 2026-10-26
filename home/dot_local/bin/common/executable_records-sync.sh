@@ -14,10 +14,13 @@
 #   read NUL-delimited from files: a git failure, even after output, or a listing that ends mid-entry refuses the
 #   run before anything is created. The store's `redact-words.txt` (one literal word per line, `#` comments) is
 #   never copied, deleted or published. Every path must lie under `.orchestration/`, hold no control character
-#   (a newline would hide a component from the symlink check), no component of it may be a symlink (git lists the
-#   files below a linked directory too, U28b F2), and an existing source must be a regular file whose directory
-#   resolves (`pwd -P`) inside the store, else the run is refused before anything is created.
-#   In a new detached worktree under `$TMPDIR` at `origin/main` it copies the set, deletes what the store lacks,
+#   (a newline would hide a component from the symlink check) and no `..`. A path the store listing names must also
+#   have no symlink component (git lists the files below a linked directory too, U28b F2), and an existing one must
+#   be a regular file whose directory resolves (`pwd -P`) inside the store, or a directory (a file that became one),
+#   else the run is refused before anything is created. A deletion candidate (a path of `origin/main` the store no
+#   longer holds as a regular file) gets the name checks only: it is never read, only removed. A file that became a
+#   directory, or the reverse, is mirrored as the deletion plus the additions in the one commit.
+#   In a new detached worktree under `$TMPDIR` at `origin/main` it deletes what the store lacks, then copies the set,
 #   masks the copies with the worktree's own `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files
 #   are never changed; a masking failure aborts), then refuses the run if that validator's `--scan-identifiers`
 #   still finds a secret pattern, a home directory path or a redact word (in a copy's text or path). Neither tool's
@@ -180,13 +183,12 @@ gh_plain() {
     GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 gh_bounded "$@"
 }
 
-# @description Refuse a path of the copy set that leaves `.orchestration/`, holds `..` or a symlink component, or
-#   (when it exists) is no regular file whose directory resolves inside the store (U28b F2).
+# @description Refuse a path by its name alone: a control character (a newline would end the component split of
+#   check_path early and leave the leaf unchecked), a place outside `.orchestration/`, or `..`. A deletion candidate
+#   gets only this check (U101): it is never read, only removed from the sync worktree.
 # @arg $1 string The repository-relative path.
-check_path() {
-    local path=$1 prefix='' part source_dir
-    local -a parts
-    # U101: a newline would end the component split below early and leave the leaf unchecked.
+check_name() {
+    local path=$1
     [[ ${path} != *[[:cntrl:]]* ]] || refuse 'a path of the copy set holds a control character' # lint-comparisons: allow a character test on the raw git path
 
     case ${path} in # lint-comparisons: allow a repository-relative path as git prints it, refused unless under the store
@@ -194,16 +196,28 @@ check_path() {
     *) refuse "a path of the copy set is outside .orchestration/: ${path}" ;;
     esac
     [[ ${path} != *..* ]] || refuse "a path of the copy set holds '..': ${path}" # lint-comparisons: allow refuses a raw git path that holds ..
+}
+
+# @description Refuse a path the store listing names (check_name, then): a symlink component, or, when it exists,
+#   anything but a regular file whose directory resolves inside the store (U28b F2) or a directory. A directory
+#   stands where the index still has a file of that name (the file became a directory, U101): its own files are
+#   listed as entries of their own, and the file it replaced is carried as a deletion.
+# @arg $1 string The repository-relative path.
+check_path() {
+    local path=$1 prefix='' part source_dir
+    local -a parts
+    check_name "${path}"
     IFS=/ read -r -a parts <<< "${path}"
     for part in "${parts[@]}"; do
         prefix=${prefix:+${prefix}/}${part}
         [[ ! -L ${prefix} ]] || refuse "a component of a path of the copy set is a symlink: ${prefix} (in ${path})"
     done
-    if [[ -e ${path} ]]; then
-        [[ -f ${path} ]] || refuse "a path of the copy set is not a regular file: ${path}"
+    if [[ -f ${path} ]]; then
         source_dir=$(cd "${path%/*}" && pwd -P) || refuse "cannot resolve the directory of ${path}"
         [[ ${source_dir} == "${store_root}" || ${source_dir} == "${store_root}"/* ]] || # lint-comparisons: allow both sides are pwd -P forms
             refuse "a path of the copy set resolves outside ${store_root}: ${path}"
+    elif [[ -e ${path} && ! -d ${path} ]]; then
+        refuse "a path of the copy set is not a regular file: ${path}"
     fi
 }
 
@@ -262,6 +276,7 @@ done
 words=${records}/redact-words.txt
 if [[ -e ${words} || -L ${words} ]]; then
     check_path "${words}"
+    [[ -f ${words} ]] || refuse "${words} is not a regular file"
     words_real=$(cd "${records}" && pwd -P)/redact-words.txt || refuse "cannot resolve ${words}"
 else
     words_real=''
@@ -291,7 +306,7 @@ path=''
 while IFS= read -r -d '' path; do
     [[ ${path} != "${words}" ]] || continue # lint-comparisons: allow both are repository-relative paths as git prints them
     check_path "${path}"
-    if [[ -e ${path} && ${present} != *$'\n'"${path}"$'\n'* ]]; then # lint-comparisons: allow repository-relative paths as git prints them
+    if [[ -f ${path} && ${present} != *$'\n'"${path}"$'\n'* ]]; then # lint-comparisons: allow repository-relative paths as git prints them
         files+=("${path}")
         present+=${path}$'\n'
     fi
@@ -301,7 +316,7 @@ git ls-tree -r -z --name-only "${base}" -- "${records}/" > "${listing}" || fail 
 gone=()
 path=''
 while IFS= read -r -d '' path; do
-    check_path "${path}"
+    check_name "${path}"
     [[ ${path} != "${words}" && ${present} != *$'\n'"${path}"$'\n'* ]] || continue # lint-comparisons: allow repository-relative paths as git prints them
     gone+=("${path}")
 done < "${listing}"
@@ -311,13 +326,15 @@ done < "${listing}"
 tree=${scratch}/tree
 git worktree add --quiet --detach "${tree}" "${base}" || fail 'git worktree add failed'
 masked=()
+# Deletions first: a file that became a directory (or the reverse) frees its name before the copy needs it, and the
+# one commit carries the deletion and the additions (U101).
+for path in ${gone[@]+"${gone[@]}"}; do
+    git -C "${tree}" rm --quiet -- "${path}" || fail "git rm ${path} failed"
+done
 for path in ${files[@]+"${files[@]}"}; do
     mkdir -p "${tree}/${path%/*}" || fail "mkdir for ${path} failed"
     cp -p "${path}" "${tree}/${path}" || fail "cp ${path} failed"
     masked+=("${tree}/${path}")
-done
-for path in ${gone[@]+"${gone[@]}"}; do
-    git -C "${tree}" rm --quiet -- "${path}" || fail "git rm ${path} failed"
 done
 if ((${#masked[@]})); then
     # U101: neither tool's output is shown. The masker prints each copy's path and, on a key collision, the original

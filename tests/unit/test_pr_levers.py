@@ -1311,6 +1311,42 @@ class RecordsSyncTest(PrLeverTestCase):
     def branch_changes(self, branch="records/sync-7"):
         return self.git("diff", "--no-renames", "--name-status", "main", branch, cwd=self.origin).splitlines()
 
+    def test_a_file_that_became_a_directory_and_the_reverse_are_mirrored_in_one_commit(self):
+        """U101 round 4: a deletion candidate got the regular-file check, so a store file `briefs` that became a
+        directory `briefs/` refused with "not a regular file". A deletion candidate is now checked by name only, the
+        deletions run before the copies, and the one commit carries the deletion and the additions."""
+        self.github()
+        prog = ".orchestration/orchestrate/prog"
+        cases = {
+            "file to directory": (("briefs",), ("briefs/B1.md",)),
+            "directory to file": (("briefs/B1.md", "briefs/B2.md"), ("briefs",)),
+        }
+        for case, (before, after) in cases.items():
+            with self.subTest(case):
+                shutil.rmtree(self.records / "briefs", ignore_errors=True)
+                (self.records / "briefs").unlink(missing_ok=True)
+                for name in before:
+                    (self.records / name).parent.mkdir(parents=True, exist_ok=True)
+                    (self.records / name).write_text(f"{name} on main\n")
+                self.git("add", "-A")
+                self.git("commit", "-q", "-m", f"main holds {before}")
+                self.git("push", "-q", "origin", "main")
+                shutil.rmtree(self.records / "briefs", ignore_errors=True)
+                (self.records / "briefs").unlink(missing_ok=True)
+                for name in after:
+                    (self.records / name).parent.mkdir(parents=True, exist_ok=True)
+                    (self.records / name).write_text(f"{name} in the store\n")
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                branch = run.stdout.split()[1].removeprefix("branch=")
+                expected = sorted([f"D\t{prog}/{name}" for name in before] + [f"A\t{prog}/{name}" for name in after])
+                self.assertEqual(sorted(self.branch_changes(branch)), expected)
+                self.assertEqual(self.git("rev-list", "--count", f"main..{branch}", cwd=self.origin), "1")
+                self.git("push", "-q", "origin", "--delete", branch)
+                entries = json.loads(self.responses.read_text())
+                entries[2]["match"] = r"^pr create --base main --head records/sync-\d+ "
+                self.responses.write_text(json.dumps(entries))
+
     def test_a_stale_checkout_adds_nothing_main_lacks_and_a_store_deletion_is_synced(self):
         """U101: sync 11 carried 99 untracked validation files of a checkout 60 commits behind origin/main. The copy
         set is the store alone, compared with origin/main: the stale HEAD and the files outside the store do not

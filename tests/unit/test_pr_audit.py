@@ -391,13 +391,57 @@ class PrAuditTest(unittest.TestCase):
                 action = f'exec "$REAL" -I{PERL_FIXTURES} -M{module} "$@"'
                 path = self.failing_tool("perl", "*setpgrp*", action)
                 run = self.run_lever("7", PATH=path)
-                self.assert_stopped(run, 2, "cannot run codex in a process group of its own")
+                self.assert_stopped(run, 2, "cannot run codex under its supervisor (no process group)")
                 self.assertEqual(self.codex_calls(), [], "codex never started")
 
     def test_no_codex_on_path_refuses_before_any_call(self):
         run = self.run_lever("7", PATH="/usr/bin:/bin")
         self.assert_stopped(run, 2, "no codex on PATH")
         self.assertFalse((self.rec / "gh-calls").exists())
+
+    def test_a_signal_between_fork_and_the_pid_stops_the_child(self):
+        """U71b audit round 10: TERM to the supervisor after fork returned but before it stored the child's pid exited
+        the supervisor and left the child running. The signals are now blocked across the fork, so the TERM waits until
+        the pid is known and stops the child's whole group."""
+        marker = self.root / "child-still-ran"
+        pidfile = self.root / "supervisor.pid"
+        action = f'exec "$REAL" -I{PERL_FIXTURES} -MPauseFork={pidfile} "$@"'
+        path = self.failing_tool("perl", "*setpgrp*", action)
+        lever = subprocess.Popen(
+            [str(LEVER), "7"],
+            cwd=self.repo,
+            env={**self.env, "PATH": path, "PR_AUDIT_TIMEOUT": "600", "FAKE_CODEX_HANG": str(marker)},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + 60
+        # Wait until the supervisor is paused in the window and the child has already started codex (its call is
+        # recorded): a child still writing its `ok` would die of SIGPIPE with the supervisor and hide the defect.
+        while not (pidfile.exists() and any(c["argv"][:1] == ["exec"] for c in self.codex_calls())):
+            self.assertIsNone(lever.poll(), "the lever ended before the supervisor forked codex exec")
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.02)
+        os.kill(int(pidfile.read_text()), signal.SIGTERM)  # inside the 2 s window between fork and the pid
+        _, stderr = lever.communicate(timeout=60)
+        self.assertEqual(lever.returncode, 1, stderr)
+        self.assertIn("codex exec exited 143", stderr)
+        time.sleep(4)
+        self.assertFalse(marker.exists(), "the child outlived a signal sent before its pid was stored")
+
+    def test_a_supervisor_that_cannot_unblock_its_signals_runs_nothing(self):
+        action = f'exec "$REAL" -I{PERL_FIXTURES} -MFailUnblock "$@"'
+        path = self.failing_tool("perl", "*setpgrp*", action)
+        run = self.run_lever("7", PATH=path)
+        self.assert_stopped(run, 2, "cannot run codex under its supervisor (signal mask)")
+        self.assertEqual(self.codex_calls(), [], "codex never ran")
+
+    def test_a_mark_that_cannot_be_read_is_a_failure_not_a_run(self):
+        path = self.failing_tool("perl", "*setpgrp*", f'exec "$REAL" -I{PERL_FIXTURES} -MNoPgrp "$@"')
+        cat = self.failing_tool("cat", "*group-mark*", "exit 1")
+        run = self.run_lever("7", PATH=f"{cat.split(':', 1)[0]}:{path}")
+        self.assert_stopped(run, 1, "cannot read")
+        self.assertEqual(self.codex_calls(), [], "codex never ran")
 
     def test_the_callers_perl_variables_are_removed(self):
         """PERL5OPT and PERL5LIB would load code into the supervisor; the lever removes every PERL* first."""

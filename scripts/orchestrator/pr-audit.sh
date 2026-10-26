@@ -228,23 +228,32 @@ git_tree() {
 # the run failed (measured 2026-10-26 with codex-cli 0.163.0 and PR_AUDIT_TIMEOUT=1). On the deadline, and on INT,
 # TERM or HUP to the supervisor (U71b audit round 4: those signals used to kill the supervisor and leave the group
 # running), the whole group gets TERM, then KILL once the leader has exited or after 5 seconds, and the supervisor
-# exits 124 (deadline) or 128 + the signal's number. The handlers are set before the fork, so no signal finds the
-# group unsupervised. After a normal exit any process the group left behind gets KILL. The child runs the command only
-# in a process group of its own (U71b audit round 9: setpgrp's result was ignored): it checks setpgrp's result and
-# that getpgrp is its own pid, then reports `ok` through a pipe before exec; without that report the command never
-# starts, the supervisor writes `no process group` to the mark file (its second argument) and exits 125. The stop
+# exits 124 (deadline) or 128 + the signal's number. ALRM, HUP, INT and TERM are blocked (sigprocmask) before the
+# handlers are installed and before the fork, and the parent unblocks them only after it holds the child's pid (U71b
+# audit round 10: a signal between fork and the pid assignment exited the supervisor without stopping the child), so
+# a signal that arrives earlier stays pending and its handler always has a child to stop. The child restores the
+# default handlers, then its signal mask, before anything else. After a normal exit any process the group left behind
+# gets KILL. The child runs the command only in a process group of its own (U71b audit round 9): it checks setpgrp's
+# result and that getpgrp is its own pid, then reports `ok` through a pipe before exec; without that report the
+# command never starts. The supervisor then writes the reason (`no process group`, or `signal mask` when it cannot
+# unblock the signals, after which it kills the child) to the mark file (its second argument) and exits 125. The stop
 # signals both the group and the child, so a signal before the group exists still reaches the child.
 # The single quotes keep the perl variables for perl, never this shell.
 # shellcheck disable=SC2016
 group_supervisor='
-    use POSIX ":sys_wait_h";
+    use POSIX qw(:sys_wait_h :signal_h);
     my $seconds = shift;
     my $group_mark = shift;
     my $pid;
+    my $mark = sub {
+        my ($reason) = @_;
+        my $out;
+        print {$out} "$reason\n" if open($out, ">", $group_mark);
+        exit 125;
+    };
     my $stop = sub {
         my ($code) = @_;
         alarm 0;
-        exit $code unless $pid;
         kill "TERM", -$pid;
         kill "TERM", $pid;
         for (1 .. 50) { last if waitpid($pid, WNOHANG) != 0; select(undef, undef, undef, 0.1); }
@@ -252,6 +261,9 @@ group_supervisor='
         waitpid($pid, 0);
         exit $code;
     };
+    my $blocked = POSIX::SigSet->new(SIGALRM, SIGHUP, SIGINT, SIGTERM);
+    my $previous = POSIX::SigSet->new;
+    sigprocmask(SIG_BLOCK, $blocked, $previous) or die "sigprocmask: $!\n";
     $SIG{ALRM} = sub { $stop->(124) };
     $SIG{HUP} = sub { $stop->(129) };
     $SIG{INT} = sub { $stop->(130) };
@@ -260,6 +272,7 @@ group_supervisor='
     defined($pid = fork) or die "fork: $!\n";
     if ($pid == 0) {
         $SIG{$_} = "DEFAULT" for qw(ALRM HUP INT TERM);
+        sigprocmask(SIG_SETMASK, $previous) or exit 125;
         close $ready_r;
         # The command runs only in a process group of its own: setpgrp must succeed and the group must be this pid.
         setpgrp(0, 0) or exit 125;
@@ -267,15 +280,19 @@ group_supervisor='
         syswrite($ready_w, "ok") == 2 or exit 125;
         exec @ARGV or die "exec $ARGV[0]: $!\n";
     }
+    if (!sigprocmask(SIG_SETMASK, $previous)) {
+        kill "KILL", -$pid;
+        kill "KILL", $pid;
+        waitpid($pid, 0);
+        $mark->("signal mask");
+    }
     close $ready_w;
     my $ready = "";
     sysread($ready_r, $ready, 2);
     close $ready_r;
     if ($ready ne "ok") {
         waitpid($pid, 0);
-        my $mark;
-        print {$mark} "no process group\n" if open($mark, ">", $group_mark);
-        exit 125;
+        $mark->("no process group");
     }
     alarm $seconds;
     waitpid($pid, 0);
@@ -295,7 +312,7 @@ group_supervisor='
 # @arg $@ string The codex arguments.
 # @set codex_pid The supervisor's pid while it runs, empty after.
 codex_scratch() {
-    local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark
+    local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark reason
     shift 3
     rm -f -- "${mark}" || fail "cannot remove ${mark}"
     (
@@ -307,10 +324,11 @@ codex_scratch() {
     codex_pid=$!
     wait "${codex_pid}" || status=$?
     codex_pid=''
-    # A supervisor that could not give codex a process group of its own ran nothing; a status of 125 without the mark
-    # is codex's own.
+    # A supervisor that could not start codex safely ran nothing it did not stop; a status of 125 without the mark is
+    # codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
-        refuse "cannot run codex in a process group of its own, so its deadline could not stop it; codex did not run"
+        reason=$(cat -- "${mark}") || fail "cannot read ${mark}"
+        refuse "cannot run codex under its supervisor (${reason}), so its deadline could not stop it; codex did not run"
     fi
     return "${status}"
 }

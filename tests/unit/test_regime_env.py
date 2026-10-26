@@ -14,7 +14,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+from scratch_git import git_init, quiet_git, quiet_git_env  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -47,7 +47,7 @@ class RegimeEnvTest(unittest.TestCase):
         self.repo = self.root / "Kit Pilot"
         self.repo.mkdir()
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
-        self.git("init", "-q")
+        git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
 
     def git(self, *args, cwd=None):

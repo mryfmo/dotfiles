@@ -21,7 +21,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -612,7 +612,7 @@ class LintFileSetTest(unittest.TestCase):
         (self.repo / "home/link.sh").symlink_to("outside.sh")  # a symlink is no script of its own
         # A binary whose first line holds NUL bytes: read without a warning and left out (no shell shebang).
         (self.repo / "home/image.png").write_bytes(b"\x89PNG\x00\x00\x00\rIHDR\x00\n\x1a\n")
-        self.git("init", "-q")
+        git_init(self.repo)
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "fixture")
         # Not tracked: a new file, an ignored file, and an ignored directory's copies, each badly formatted.

@@ -19,7 +19,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -153,7 +153,7 @@ class DirtySourceGuardTest(unittest.TestCase):
         shutil.copy(LIB, self.repo / "scripts/lib/ci-runner.sh")
         (self.repo / "home/tracked").write_text("tracked\n")
         git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
-        subprocess.run([*git, "init", "--quiet", "--initial-branch=main"], check=True)
+        git_init(self.repo, "--initial-branch=main")
         subprocess.run([*git, "add", "."], check=True)
         subprocess.run([*git, "commit", "--quiet", "-m", "base"], check=True)
         rendered = subprocess.run(

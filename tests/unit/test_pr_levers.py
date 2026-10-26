@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+from scratch_git import git_init, quiet_git, quiet_git_env  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -128,7 +128,7 @@ class PrLeverTestCase(unittest.TestCase):
         (self.root / "home").mkdir()
         self.repo = self.root / "repo"
         self.repo.mkdir()
-        self.git("init", "-q")
+        git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "initial")
 
     def git(self, *args, cwd=None, env=None):
@@ -1086,7 +1086,7 @@ class RecordsSyncTest(PrLeverTestCase):
         wrapper.chmod(0o755)
         self.env["REAL_GIT"] = shutil.which("git", path=os.environ["PATH"])
         self.origin = self.root / "origin.git"
-        self.git("init", "-q", "--bare", str(self.origin))
+        git_init(self.origin, "--bare", env=self.env)
         (self.repo / "scripts").mkdir()
         shutil.copy2(ROOT / "scripts/validate-agent-assets.py", self.repo / "scripts/validate-agent-assets.py")
         self.records = self.repo / ".orchestration/orchestrate/prog"

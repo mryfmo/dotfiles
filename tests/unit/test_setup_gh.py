@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -60,7 +60,7 @@ class SetupGhTest(unittest.TestCase):
         self.checkout = self.temp / "elsewhere/dotfiles"
         (self.checkout / "home").mkdir(parents=True)
         (self.checkout / "scripts").mkdir()
-        subprocess.run(["git", "init", "-q", str(self.checkout)], check=True, env={"PATH": "/usr/bin:/bin"})
+        git_init(self.checkout, env={"PATH": "/usr/bin:/bin"})
         self.gh_auth = self.checkout / "scripts/gh-auth.sh"
         self.gh_auth.write_text(FAKE_GH_AUTH)
         self.gh_auth.chmod(0o755)

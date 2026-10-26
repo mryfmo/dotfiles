@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+from scratch_git import git_init, quiet_git, quiet_git_env  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -54,7 +54,7 @@ class RegimeInitTest(unittest.TestCase):
         self.repo = self.root / "kit-pilot"
         self.repo.mkdir()
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), **GIT_IDENTITY}
-        subprocess.run(["git", "init", "-q"], cwd=self.repo, env=self.env, check=True)
+        git_init(self.repo, env=self.env)
         subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=self.repo, env=self.env, check=True)
         self.store = self.repo / ".orchestration/orchestrate/pilot"
         self.origin = self.home / ".local/state/hcom/kit-pilot/origin"

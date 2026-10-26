@@ -33,7 +33,7 @@ GOOD_SKILLS = {
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from claude_plugin_fixture import install_reviewed
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -1751,7 +1751,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         copy = self.target_root / ".codex/plugins/cache/tail/tail/5.0.0"
         git = ["git", "-C", str(copy), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
-        subprocess.run([*git, "init", "-q", "-b", "main"], check=True)
+        git_init(copy, "-b", "main")
         subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
         # A branch HEAD (`ref: refs/heads/main`) is resolved by git; that commit is not the pinned ref.
         errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]

@@ -18,7 +18,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_clone, git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -82,8 +82,8 @@ class WorktreeGcTest(unittest.TestCase):
             "FAKE_GH_MERGED": str(self.merged),
         }
         self.checkout = self.root / "checkout"
-        self.git("init", "--bare", str(self.root / "origin.git"), cwd=self.root)
-        self.git("clone", str(self.root / "origin.git"), str(self.checkout), cwd=self.root)
+        git_init(self.root / "origin.git", "--bare", env=self.env)
+        git_clone(self.root / "origin.git", self.checkout, env=self.env)
         (self.checkout / "README").write_text("scratch\n")
         self.git("add", "README")
         self.git("commit", "-m", "initial")

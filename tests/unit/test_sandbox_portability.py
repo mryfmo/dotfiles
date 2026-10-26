@@ -36,7 +36,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git, quiet_git_env  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -369,15 +369,17 @@ class SandboxPortabilityTest(unittest.TestCase):
         repo = Path(temp.name).resolve()
         (repo / "scripts").mkdir()
         (repo / "scripts" / name).write_text(text)
-        env = {
-            "GIT_AUTHOR_NAME": "t",
-            "GIT_AUTHOR_EMAIL": "t@t",
-            "GIT_COMMITTER_NAME": "t",
-            "GIT_COMMITTER_EMAIL": "t@t",
-            "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
-        }
+        env = quiet_git_env(
+            {
+                "GIT_AUTHOR_NAME": "t",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t",
+                "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+            }
+        )
+        git_init(repo, "-b", "main", env=env)
         for args in (
-            ["init", "-q", "-b", "main"],
             ["add", "."],
             ["-c", "commit.gpgsign=false", "commit", "-q", "-m", "x"],
         ):

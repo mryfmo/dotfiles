@@ -22,7 +22,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git, quiet_git_env  # noqa: E402
+from scratch_git import git_init, quiet_git, quiet_git_env  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -94,7 +94,7 @@ class RegimeStartTest(unittest.TestCase):
             "REGIME_START_WAIT_SECONDS": "4",
             **GIT_IDENTITY,
         }
-        self.git("init", "-q")
+        git_init(self.repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.registry = self.home / ".local/state/regime-supervisor"
         self.conf = self.conf_of(self.repo)
@@ -106,7 +106,7 @@ class RegimeStartTest(unittest.TestCase):
 
     def make_repo(self, path):
         path.mkdir(parents=True)
-        self.git("init", "-q", cwd=path)
+        git_init(path, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init", cwd=path)
         return path
 
@@ -326,7 +326,7 @@ class RegimeStartTest(unittest.TestCase):
         """Until the one-time move, the dotfiles seats talk on `regime` in `hcom-regime` (decisions 10:19:06Z)."""
         repo = self.temp / "dotfiles"
         repo.mkdir()
-        self.git("init", "-q", cwd=repo)
+        git_init(repo, env=self.env)
         self.git("commit", "-q", "--allow-empty", "-m", "init", cwd=repo)
         legacy = self.home / ".local/state/hcom-regime"
         legacy.mkdir(parents=True)

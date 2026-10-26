@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -80,7 +80,7 @@ class LintTest(unittest.TestCase):
         (self.repo / "scripts").mkdir(parents=True)
         (self.repo / "home").mkdir()
         (self.repo / "home/.chezmoiremove").write_text(".local/bin/common/gone-tool\n")
-        self.git("init", "-q")
+        git_init(self.repo, env=os.environ | GIT_ENV)
 
     def git(self, *args: str) -> None:
         subprocess.run(["git", "-C", str(self.repo), *args], env=os.environ | GIT_ENV, check=True, capture_output=True)

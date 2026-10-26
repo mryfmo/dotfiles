@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -29,7 +29,7 @@ class FormatEditedFilesHookTest(unittest.TestCase):
             temp_dir = Path(temp)
             repo = temp_dir / "repo"
             (repo / "records").mkdir(parents=True)
-            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            git_init(repo)
             record = repo / "records/note.md"
             record.write_text("# note\n")
             script = repo / "tool.py"
@@ -74,7 +74,7 @@ class FormatEditedFilesHookTest(unittest.TestCase):
     def test_project_prettier_config_code_never_runs(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             repo = Path(temp)
-            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            git_init(repo)
             marker = repo / "MARKER"
             # A sandboxed command can write this file; the hook runs outside the sandbox.
             (repo / "prettier.config.js").write_text(

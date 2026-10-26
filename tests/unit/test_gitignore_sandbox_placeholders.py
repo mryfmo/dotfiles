@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -29,7 +29,7 @@ class SandboxPlaceholderIgnoreTest(unittest.TestCase):
         # .git/info/exclude and the user's global excludes cannot mask a gap.
         self.repo = Path(tempfile.mkdtemp(prefix="gitignore-placeholders-"))
         self.addCleanup(shutil.rmtree, self.repo)
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        git_init(self.repo)
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
 
     def check_ignore(self, path: str) -> int:

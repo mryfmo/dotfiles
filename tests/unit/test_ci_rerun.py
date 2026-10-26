@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import quiet_git  # noqa: E402
+from scratch_git import git_init, quiet_git  # noqa: E402
 
 quiet_git()  # U100: no git command in this module's scratch repositories starts background maintenance
 
@@ -144,7 +144,7 @@ class CiRerunTest(unittest.TestCase):
         self.repo = self.t / "repo"
         (self.repo / "scripts/orchestrator").mkdir(parents=True)
         (self.repo / ".github").mkdir()
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        git_init(self.repo)
         shutil.copy(ROOT / "scripts/orchestrator/ci-rerun.sh", self.repo / "scripts/orchestrator")
         (self.repo / ".github/flakes.yaml").write_text(FLAKES)
         (self.t / "bin").mkdir()

@@ -1773,10 +1773,11 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(many[1], few[1], "subshells forked with more worktrees and with fewer")
 
     def test_the_checks_start_no_more_processes_for_more_worktrees(self):
-        """U95: the overlap and git-state checks read every worktree in a fixed number of processes (one identity
-        table, one size read, one pointer read, one resolving subshell), so a dry run with 300 registered worktrees
-        starts exactly as many processes as one with 10. The one exception, one git config per non-empty
-        config.worktree, has its own test; the configs here are absent or empty. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
+        """U95, a regression test for the measured shape "present worktrees": the overlap and git-state checks
+        resolve worktree records in batches (one identity table, one size read, one pointer read, one resolving
+        subshell), and a dry run with 300 registered worktrees started the same programs and subshells as one with 10.
+        Not a general guarantee; the user-visible requirement is the launch latency (PR body). The configs here are
+        absent or empty; non-empty ones have their own test. Counted by bash's own DEBUG trap (spawn_counts), not timed: a
         wall-clock bound inside the parallel suite is flaky. Before U95 the count grew with the worktrees (several
         stat runs and subshells per worktree and write root)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
@@ -1864,7 +1865,8 @@ class HcomSeatTest(unittest.TestCase):
 
     def test_more_seat_directories_start_no_more_processes(self):
         """U95 round 13: the seat directories under the seats root are resolved in one batch (physical_paths) in both
-        overlap checks, so a dry run with 10 of them starts exactly as many processes as one with 1. Before, each cost
+        overlap checks; a regression test for the measured shape "seats": a dry run with 10 of them started the same
+        processes as one with 1. Before, each cost
         one physical_path subshell per check (1 vs 10 seats: 2 vs 11 substitutions per check)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
         seats = Path(self.seats)
@@ -1878,7 +1880,8 @@ class HcomSeatTest(unittest.TestCase):
     def test_absent_worktrees_start_no_more_processes_either(self):
         """U95 round 12: registered worktrees whose directories are gone (prunable records, outside every write root)
         are resolved in the same one subshell as present ones (physical_paths: the deepest existing ancestor by
-        builtins, then `cd -P`), so 300 of them start exactly as many processes as 10. Before, each absent path cost
+        builtins, then `cd -P`); a regression test for the measured shape "absent": 300 of them started the same
+        processes as 10. Before, each absent path cost
         two subshells of physical_path (10 vs 300 absent: 21 vs 601 subshells)."""
         self.seat("worker", "--seats-root", self.seats, "--dry-run")  # the private tool links exist from here on
         self.add_worktrees(0, 10, absent=True)

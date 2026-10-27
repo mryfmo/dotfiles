@@ -303,8 +303,22 @@ else
     words_real=''
 fi
 # The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.
-author_name=$(git config user.name) || refuse 'git config user.name is unset'
-author_email=$(git config user.email) || refuse 'git config user.email is unset'
+# `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read
+# (3 for an unparsable file), so the two are told apart; an empty value is refused here, before any branch exists,
+# where commit-tree would otherwise refuse it later.
+read_identity() {
+    local value status=0
+    value=$(git config --get "$1") || status=$?
+    case ${status} in
+    0) [[ -n ${value} ]] || refuse "git config $1 is empty" ;;
+    1) refuse "git config $1 is unset" ;;
+    *) fail "cannot read git config $1 (git config exited ${status})" ;;
+    esac
+    printf -v "$2" '%s' "${value}"
+}
+author_name='' author_email=''
+read_identity user.name author_name
+read_identity user.email author_email
 # U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.
 push_url=$(git_plain config --get remote.origin.url) || refuse 'no remote.origin.url'
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself

@@ -1066,7 +1066,8 @@ class DispositionDriftTest(unittest.TestCase):
 GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
-    sys.exit("fake-git: failing as asked")
+    print("fake-git: failing as asked", file=sys.stderr)
+    sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
 # The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
 # repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push.
 https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
@@ -1269,6 +1270,29 @@ class RecordsSyncTest(PrLeverTestCase):
         run = self.run_lever("records-sync.sh", "--unit", "U20")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 "), run.stdout)
+
+    def test_an_identity_read_that_fails_is_not_read_as_unset_and_an_empty_value_refuses(self):
+        """U101 round 10 (bot finding 4379614437): `|| refuse 'unset'` read a failed `git config` as an unset key, and
+        a configured empty value passed to be refused by commit-tree after the branch existed. Exit 1 is unset
+        (refused), any other status is a read failure (failed), an empty value is refused; all before any gh call."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env |= {"FAKE_GIT_FAIL": "config", "FAKE_GIT_FAIL_STATUS": "3"}
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_FAIL"], self.env["FAKE_GIT_FAIL_STATUS"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config user.name (git config exited 3)", run.stderr)
+        self.assertNotIn("unset", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        self.git("config", "user.email", "")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is empty")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_a_staged_rename_carries_its_source(self):
         """U28c F1: with rename detection the source path was dropped and the old record stayed on the branch."""
@@ -1577,8 +1601,8 @@ class RecordsSyncTest(PrLeverTestCase):
         """U101 round 5: a clean file named after a token published the token in its path. The scan tests each path of
         the copy set as it tests the content, and the refusal names neither the path nor what was found."""
         self.github()
-        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
-        for case, relative in (("a secret", f"{token}.md"), ("a home path", "home/runner/notes.md")):
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for case, relative in (("a secret", f"{planted}.md"), ("a home path", "home/runner/notes.md")):
             with self.subTest(case):
                 path = self.records / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -1586,7 +1610,7 @@ class RecordsSyncTest(PrLeverTestCase):
                 run = self.run_lever("records-sync.sh")
                 self.assert_refused(run, "identifier scan")
                 self.assertIn("(exit 1); its output is withheld", run.stderr)
-                for found in (token, "runner"):
+                for found in (planted, "runner"):
                     self.assertNotIn(found, run.stdout + run.stderr)
                 self.assert_nothing_left()
                 path.unlink()

@@ -809,23 +809,30 @@ class PrAuditTest(unittest.TestCase):
                 self.assertFalse((rundir / "verdict.md").exists())
 
     def test_a_line_with_a_zero_fraction_is_an_integer_and_one_with_a_fraction_is_not(self):
-        """JSON Schema's `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1), and Python's json
-        reads `1.0` as a float: a final message with `"line": 1.0` names line 1 and is written as `path:1`; `1.5` and a
-        bool are not of type integer or null, exit 1 naming verdict.json, no stdout line, no verdict.md."""
+        """JSON Schema's `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1), judged on the digits
+        codex wrote: `1.0` and `1E2` name lines 1 and 100 and are written as `path:1` and `path:100`. Python's json
+        would first round `1.0000000000000001` to 1.0 and `1e-999` to 0.0 (U106 audit round 2); the reader reads each
+        number exactly, so those two, `1.5` and a bool are not of type integer or null: exit 1 naming verdict.json, no
+        stdout line, no verdict.md. The literals are spliced as text, since json.dumps would round them too."""
 
         def document(line):
-            finding = {"priority": "P3", "confidence": "high", "path": "change.txt", "line": line, "rationale": "Why."}
-            return json.dumps({"verdict": "correct", "findings": [finding], "reproduced": [], "notes": None})
+            finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
+            return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": null}}'
 
-        run = self.run_lever("7", FAKE_CODEX_VERDICT=document(1.0))
-        self.assertEqual(run.returncode, 0, run.stderr)
-        (rundir,) = self.tmp.iterdir()
-        self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: correct\n")
-        self.assertIn('"line": 1.0', (rundir / "verdict.json").read_text(), "the file codex wrote is kept as is")
-        text = (rundir / "verdict.md").read_text()
-        self.assertIn("- P3 (high) change.txt:1: Why.\n", text)
-        self.assertNotIn("1.0", text)
-        for line in (1.5, True):
+        for line, number in (("1.0", 1), ("1E2", 100)):
+            with self.subTest(line=line):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=document(line))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: correct\n")
+                written = (rundir / "verdict.json").read_text()
+                self.assertIn(f'"line": {line},', written, "the file codex wrote is kept as is")
+                text = (rundir / "verdict.md").read_text()
+                self.assertIn(f"- P3 (high) f.txt:{number}: Why.\n", text)
+                self.assertNotIn(line, text)
+        for line in ("1.5", "true", "1.0000000000000001", "1e-999"):
             with self.subTest(line=line):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)

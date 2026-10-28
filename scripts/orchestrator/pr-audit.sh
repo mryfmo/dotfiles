@@ -78,7 +78,8 @@
 #   the JSON Schema `verdict.schema.json` into the run directory and passes it with `--output-schema`, so the final
 #   message codex writes to `verdict.json` is an object with `verdict` (`correct`, `incorrect` or `blocked`),
 #   `findings` (each with `priority` P0 to P3, `confidence` high, medium or low, `path`, `line` as an integer (a
-#   number with a zero fraction, as JSON Schema defines the type, `1.0` included; `1.5` is refused) or null, and
+#   number whose written digits have a zero fraction, as JSON Schema defines the type: `1.0` and `1E2` are accepted,
+#   `1.5`, `1.0000000000000001` and `1e-999` refused; the number is read exactly, never rounded first) or null, and
 #   `rationale`), `reproduced` (strings) and `notes` (a string or null); no other key. A reader
 #   (`python3 -I -S`, status checked) validates that file against the same schema file and refuses, exit 1 naming
 #   the file, on invalid JSON, a missing or unknown key, a value outside its enum or type, or a finding without its
@@ -1133,6 +1134,7 @@ verdict_schema='{
 # 1) and prints no verdict. The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
 verdict_reader='
+import decimal
 import json
 import sys
 
@@ -1141,14 +1143,17 @@ GATING = ("P0", "P1", "P2")
 # `blocked` need none. A pair outside this table is a contradiction and is refused, never corrected.
 ACCEPTED_WITH = {"correct": "correct", "incorrect": "incorrect", "blocked": "correct"}
 # The JSON Schema type `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1: a JSON number without
-# a fractional or exponent part, or whose fractional part is zero), so `1.0` is an integer and `1.5` is not. The json
-# module reads `1.0` as a float; the check asks the value, never the type the parser chose. A bool is never a number.
+# a fractional or exponent part, or whose fractional part is zero), so `1.0` and `1E2` are integers and `1.5` is not.
+# The rule is judged on the written digits (U106 audit round 2: the float the json module builds is rounded first, so
+# `1.0000000000000001` became 1.0 and `1e-999` became 0.0 and both passed): every number with a fraction or exponent
+# is read as an exact Decimal, an integer literal stays int, and the check asks the value, never the type the parser
+# chose. A bool is never a number.
 IS_TYPE = {
     "object": lambda value: isinstance(value, dict),
     "array": lambda value: isinstance(value, list),
     "string": lambda value: isinstance(value, str),
     "integer": lambda value: (isinstance(value, int) and not isinstance(value, bool))
-    or (isinstance(value, float) and value.is_integer()),
+    or (isinstance(value, decimal.Decimal) and value.is_finite() and value == value.to_integral_value()),
     "null": lambda value: value is None,
 }
 
@@ -1197,7 +1202,7 @@ def main():
         refuse(schema_path, f"cannot read the verdict schema: {error}")
     try:
         with open(verdict_path, encoding="utf-8") as handle:
-            document = json.load(handle)
+            document = json.load(handle, parse_float=decimal.Decimal)
     except OSError as error:
         refuse(verdict_path, f"cannot read the verdict file: {error}")
     except ValueError as error:

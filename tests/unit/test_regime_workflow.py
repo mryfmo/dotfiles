@@ -9,6 +9,10 @@ The YAML is read as data. Each `run` script is read from the syntax tree of the 
 by statement, word by word, part by part, the shape SCRIPTS holds for it; nothing else is admitted, and no text scan
 stands in for the parser (decision of 2026-10-28T12:12Z, after two rounds of regexes over the run text were each
 passed by a text-level edit: a quoted gap in `git`, a commented-out fetch, an option the reader discarded).
+
+Each step's `env:` and `with:` must equal, key for key and value for value, the mapping INPUTS holds for it, and the
+workflow and the job carry no `env:` at all: bash reads BASH_ENV before a script's first word, so a variable the table
+does not hold runs code the tree never sees (the round-4 audit ran the fetched head from a job-level BASH_ENV).
 """
 
 from __future__ import annotations
@@ -37,6 +41,9 @@ BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_VARIABLE = "PR_BODY"
 # The body on its own: not a literal that names it, not an expression computed from it. The script reads this value.
 BODY_CARRIER = "${{ github.event.pull_request.body }}"
+HEAD_EXPRESSION = "${{ github.event.pull_request.head.sha }}"
+NUMBER_EXPRESSION = "${{ github.event.pull_request.number }}"
+AUTHOR_EXPRESSION = "${{ github.event.pull_request.author_association }}"
 # GitHub expands an expression before the shell reads the script, so a run holding one is another text than the tree
 # reads; it is refused before parsing. The body and every other field reach the script through env: alone.
 EXPRESSION = "${{"
@@ -118,6 +125,32 @@ SCRIPTS = (
 )
 
 
+class Inputs(NamedTuple):
+    """One step's input channels: the regime.yml text a message points at, and the exact env: and with: mappings the
+    step carries, key for key and value for value; None where the step has no such key."""
+
+    protects: str
+    env: dict[str, str] | None
+    options: dict[str, object] | None
+
+
+# The steps of the workflow, in order, each pinned to the last key of its two input channels. bash reads BASH_ENV,
+# ENV and PATH from the environment before a script's first word, git reads GIT_DIR and GIT_CONFIG_*, python reads
+# PYTHONSTARTUP and PYTHONPATH, uv reads UV_*: a variable the table does not hold runs or redirects code the tree
+# never sees. The workflow and the job carry no env: (every step would inherit it), the action steps carry no env:,
+# the run steps carry no with:, and the body reaches the verifier through the one PR_BODY the table holds.
+INPUTS = (
+    Inputs("persist-credentials: false", None, {"fetch-depth": 0, "ref": BASE_BRANCH, "persist-credentials": False}),
+    Inputs("enable-cache: false", None, {"enable-cache": False}),
+    Inputs(f"PR_NUMBER: {NUMBER_EXPRESSION}", {"PR_NUMBER": NUMBER_EXPRESSION, "HEAD_SHA": HEAD_EXPRESSION}, None),
+    Inputs(
+        f"{BODY_VARIABLE}: {BODY_CARRIER}",
+        {"HEAD_SHA": HEAD_EXPRESSION, BODY_VARIABLE: BODY_CARRIER, "PR_AUTHOR_ASSOCIATION": AUTHOR_EXPRESSION},
+        None,
+    ),
+)
+
+
 def load(path: Path) -> dict:
     """The workflow parsed by PyYAML under uv (as test_regime_ci.py reads it): the test interpreter has no YAML parser."""
     read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
@@ -155,6 +188,25 @@ def steps(doc: dict) -> list[dict]:
     found = [step for job in jobs(doc).values() for step in job.get("steps") or []]
     require(found, "steps:", "the workflow has no steps")
     return [mapping(step, "steps:") for step in found]
+
+
+class Owner(NamedTuple):
+    """A scope whose keys every step inherits: the name a message gives it, its mapping, and the line to point at."""
+
+    label: str
+    scope: dict
+    protects: str
+
+
+def owners(doc: dict) -> list[Owner]:
+    return [
+        Owner("the workflow", doc, "jobs:"),
+        *(Owner(f"the job {name}", job, f"{name}:") for name, job in jobs(doc).items()),
+    ]
+
+
+def step_name(step: dict) -> str:
+    return str(step.get("name", step.get("uses", step.get("run"))))
 
 
 def shfmt_tree(script: str, protects: str) -> dict:
@@ -326,10 +378,9 @@ def check_run_scripts(doc: dict) -> None:
     # A defaults: mapping of the workflow or a job gives every run step a shell (`bash -c '...; bash {0}'` runs its
     # own text before the script) or a directory other than the checkout. It is refused whatever it holds, as a
     # step's own shell: key is, so the tree reads what the runner's bash runs in the base's checkout.
-    scopes = {"the workflow": doc, **{f"the job {name}": job for name, job in jobs(doc).items()}}
-    for owner, scope in scopes.items():
-        detail = f"{owner} sets defaults: {scope.get('defaults')!r}; the tree reads the runner's bash in the checkout"
-        require("defaults" not in scope, "run:", detail)
+    for owner in owners(doc):
+        detail = f"{owner.label} sets defaults: {owner.scope.get('defaults')!r}; the tree reads the runner's bash"
+        require("defaults" not in owner.scope, owner.protects, detail)
     found = [step for step in steps(doc) if "run" in step]
     require(len(found) == len(SCRIPTS), "steps:", f"{len(found)} run steps; the table holds {len(SCRIPTS)}")
     for step, row in zip(found, SCRIPTS):
@@ -352,15 +403,37 @@ def check_run_scripts(doc: dict) -> None:
                 raise AssertionError(f"{line(row.protects)}: {detail}")
 
 
-def check_body_is_data(doc: dict) -> None:
-    """One env: mapping carries the body expression alone; no run reads it (the table has no such word, and a run
-    holding an expression is refused by check_run_scripts before parsing)."""
-    protects = f"{BODY_VARIABLE}: {BODY_CARRIER}"
-    scopes = [*jobs(doc).values(), *steps(doc)]
-    envs = [mapping(scope.get("env") or {}, protects) for scope in scopes]
-    carriers = [env[BODY_VARIABLE] for env in envs if BODY_VARIABLE in env]
-    require(len(carriers) == 1, protects, f"{len(carriers)} env: mappings name {BODY_VARIABLE}; one carries the body")
-    require(carriers == [BODY_CARRIER], protects, f"{BODY_VARIABLE} is {carriers[0]!r}, not the body expression alone")
+def differences(found: dict, held: dict) -> str:
+    """The keys the step and the table disagree on, each named with what was found and what the table holds."""
+    lines = []
+    for key in sorted(set(found) | set(held)):
+        if key not in found or key not in held or found[key] != held[key]:
+            got = repr(found[key]) if key in found else "no such key"
+            kept = repr(held[key]) if key in held else "no such key"
+            lines.append(f"{key}: found {got}, the table holds {kept}")
+    return "; ".join(lines)
+
+
+def check_step_inputs(doc: dict) -> None:
+    """Every step's env: and with: are its row of INPUTS, key for key and value for value, and no env: is inherited:
+    no variable the table does not hold reaches a step's shell, and the body reaches the verifier through the one
+    PR_BODY the table holds (a run reading it as an expression is refused by check_run_scripts before parsing)."""
+    for owner in owners(doc):
+        detail = f"{owner.label} sets env: {owner.scope.get('env')!r}; every step's shell would read it first"
+        require("env" not in owner.scope, owner.protects, detail)
+    found = steps(doc)
+    require(len(found) == len(INPUTS), "steps:", f"{len(found)} steps; the table holds {len(INPUTS)}")
+    for step, row in zip(found, INPUTS):
+        name = step_name(step)
+        for key, held in (("env", row.env), ("with", row.options)):
+            if held is None:
+                detail = f"the step {name!r} sets {key}: {step.get(key)!r}; the table holds no {key}: for it"
+                require(key not in step, row.protects, detail)
+                continue
+            require(key in step, row.protects, f"the step {name!r} has no {key}:; the table holds {held!r}")
+            given = mapping(step[key], row.protects)
+            detail = f"the {key}: of the step {name!r} is not the table's: {differences(given, held)}"
+            require(given == held, row.protects, detail)
 
 
 def check_cancel_in_progress(doc: dict) -> None:
@@ -388,8 +461,20 @@ def verify_step(doc: dict) -> dict:
     return run_step(doc, 1)
 
 
+def checkout_step(doc: dict) -> dict:
+    return next(step for step in regime_steps(doc) if step.get("uses", "").startswith("actions/checkout@"))
+
+
 def checkout_options(doc: dict) -> dict:
-    return next(step["with"] for step in regime_steps(doc) if step.get("uses", "").startswith("actions/checkout@"))
+    return checkout_step(doc)["with"]
+
+
+def setup_options(doc: dict) -> dict:
+    return next(step["with"] for step in regime_steps(doc) if step.get("uses", "").startswith("astral-sh/setup-uv@"))
+
+
+def fetch_env(doc: dict) -> dict:
+    return fetch_step(doc)["env"]
 
 
 def body_env(doc: dict) -> dict:
@@ -428,9 +513,9 @@ def replace_run(getter: Callable[[dict], dict], old: str, new: str) -> Callable[
     return mutate
 
 
-def add_step(run: str) -> Callable[[dict], None]:
+def add_step(step: dict) -> Callable[[dict], None]:
     def mutate(doc: dict) -> None:
-        regime_steps(doc).append({"run": run})
+        regime_steps(doc).append(step)
 
     return mutate
 
@@ -449,7 +534,6 @@ class Invariant(NamedTuple):
     breaks: dict[str, Mutation]
 
 
-HEAD_EXPRESSION = "${{ github.event.pull_request.head.sha }}"
 REFMAP = "--no-tags --update-head-ok --refmap=+refs/pull/${PR_NUMBER}/head:refs/heads/main"
 # the defaults.run.shell the round-3 audit ran: the runner's bash checks the head out, then runs the step's script
 INHERITED_SHELL = {"run": {"shell": f"bash -c 'git checkout {HEAD_REF}; bash {{0}}'"}}
@@ -548,22 +632,55 @@ RUN_SCRIPTS = Invariant(
         "a default directory for the job": Mutation(
             set_in(regime_job, "defaults", {"run": {"working-directory": "/other"}}), "working-directory"
         ),
-        "a third run step": Mutation(add_step(f"git checkout {HEAD_REF}\n"), "3 run steps"),
+        "a third run step": Mutation(add_step({"run": f"git checkout {HEAD_REF}\n"}), "3 run steps"),
     },
 )
-BODY_IS_DATA = Invariant(
-    check_body_is_data,
+# the round-4 audit's edit: bash reads BASH_ENV at the start of every non-interactive shell, so the verifier step ran
+# on the fetched head while its run text, its tree and every other check were unchanged
+STARTUP = f"$(git checkout {HEAD_REF})"
+BASE_EXPRESSION = "${{ github.event.pull_request.base.sha }}"
+STEP_INPUTS = Invariant(
+    check_step_inputs,
     {
-        "no env carries the body": Mutation(delete_in(body_env, BODY_VARIABLE), "0 env: mappings"),
+        # a variable every step inherits: the workflow's or the job's env: mapping
+        "BASH_ENV in the job's env": Mutation(set_in(regime_job, "env", {"BASH_ENV": STARTUP}), "BASH_ENV"),
+        "BASH_ENV in the workflow's env": Mutation(set_in(lambda d: d, "env", {"BASH_ENV": STARTUP}), "BASH_ENV"),
         "a second env carries the body": Mutation(
-            set_in(lambda d: regime_job(d).setdefault("env", {}), BODY_VARIABLE, BODY_CARRIER), "2 env: mappings"
+            set_in(regime_job, "env", {BODY_VARIABLE: BODY_CARRIER}), f"sets env: {{'{BODY_VARIABLE}'"
         ),
+        # a variable added to one step's env, or an env: on a step the table holds none for
+        "BASH_ENV in the verifier step's env": Mutation(set_in(body_env, "BASH_ENV", STARTUP), "BASH_ENV: found"),
+        "BASH_ENV in the fetch step's env": Mutation(set_in(fetch_env, "BASH_ENV", STARTUP), "BASH_ENV: found"),
+        "BASH_ENV in the checkout step's env": Mutation(
+            set_in(checkout_step, "env", {"BASH_ENV": STARTUP}), "sets env: {'BASH_ENV'"
+        ),
+        "PATH in the verifier step's env": Mutation(set_in(body_env, "PATH", "/tmp/head/bin:/usr/bin"), "PATH: found"),
+        "GIT_DIR in the verifier step's env": Mutation(
+            set_in(body_env, "GIT_DIR", "/tmp/other/.git"), "GIT_DIR: found"
+        ),
+        "the env as a string": Mutation(set_in(verify_step, "env", f"BASH_ENV={STARTUP}"), "found 'BASH_ENV="),
+        # another value or source for a pinned variable, or a pinned variable gone
+        "the base sha as the head sha": Mutation(
+            set_in(body_env, "HEAD_SHA", BASE_EXPRESSION), f"HEAD_SHA: found {BASE_EXPRESSION!r}"
+        ),
+        "another pull request's number": Mutation(set_in(fetch_env, "PR_NUMBER", "1"), "PR_NUMBER: found '1'"),
+        "no env carries the body": Mutation(delete_in(body_env, BODY_VARIABLE), f"{BODY_VARIABLE}: found no such key"),
         "the body's name as a literal": Mutation(
-            set_in(body_env, BODY_VARIABLE, "github.event.pull_request.body"), "'github.event.pull_request.body', not"
+            set_in(body_env, BODY_VARIABLE, "github.event.pull_request.body"),
+            f"{BODY_VARIABLE}: found 'github.event.pull_request.body'",
         ),
         "a boolean of the body": Mutation(
-            set_in(body_env, BODY_VARIABLE, "${{ github.event.pull_request.body != '' }}"), "!= ''"
+            set_in(body_env, BODY_VARIABLE, "${{ github.event.pull_request.body != '' }}"), f"{BODY_VARIABLE}: found"
         ),
+        "no env on the verifier step": Mutation(delete_in(verify_step, "env"), "has no env:"),
+        # the other input channel: a with: on a run step, a changed or missing with: on an action step
+        "a with: on the verifier step": Mutation(set_in(verify_step, "with", {"ref": HEAD_REF}), "sets with: {'ref'"),
+        "a with: on the fetch step": Mutation(set_in(fetch_step, "with", {"ref": HEAD_REF}), "sets with: {'ref'"),
+        "a deeper checkout": Mutation(set_in(checkout_options, "fetch-depth", 1), "fetch-depth: found 1"),
+        "submodules on the checkout": Mutation(set_in(checkout_options, "submodules", True), "submodules: found True"),
+        "no checkout options": Mutation(delete_in(checkout_step, "with"), "has no with:"),
+        "a cache for setup-uv": Mutation(set_in(setup_options, "enable-cache", True), "enable-cache: found True"),
+        "a fifth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "5 steps"),
     },
 )
 CANCEL_IN_PROGRESS = Invariant(
@@ -599,8 +716,8 @@ class RegimeWorkflowTest(unittest.TestCase):
     def test_the_run_scripts_are_the_table_s_statements_and_nothing_else(self) -> None:
         check_run_scripts(self.doc)
 
-    def test_the_body_reaches_the_script_through_one_env_mapping(self) -> None:
-        check_body_is_data(self.doc)
+    def test_every_step_s_env_and_with_are_the_table_s_and_no_env_is_inherited(self) -> None:
+        check_step_inputs(self.doc)
 
     def test_a_newer_head_cancels_the_older_run(self) -> None:
         check_cancel_in_progress(self.doc)
@@ -640,8 +757,8 @@ class RedCopyTest(unittest.TestCase):
     def test_the_run_script_check_goes_red(self) -> None:
         self.goes_red(RUN_SCRIPTS)
 
-    def test_the_body_check_goes_red(self) -> None:
-        self.goes_red(BODY_IS_DATA)
+    def test_the_step_input_check_goes_red(self) -> None:
+        self.goes_red(STEP_INPUTS)
 
     def test_the_cancel_in_progress_check_goes_red(self) -> None:
         self.goes_red(CANCEL_IN_PROGRESS)

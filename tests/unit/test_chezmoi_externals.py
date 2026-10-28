@@ -1109,6 +1109,76 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
             tree.index("chezmoi apply --verbose"),
         )
 
+    def bootstrap(self, check_exit: int) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+        """Run setup.sh's run_chezmoi with every step before the externals stubbed and the cache check replaced by an
+        injected function that records its call and exits check_exit. The chezmoi it installs is a stub that records
+        every call, so the calls after the check are read from the record, not from the text of setup.sh."""
+        case = Path(tempfile.mkdtemp(prefix="chezmoi-bootstrap-abort-")).resolve()
+        self.addCleanup(shutil.rmtree, case, True)
+        (case / "home").mkdir()
+        calls = case / "calls"
+        stub = case / "chezmoi"
+        stub.write_text(
+            "#!/bin/sh\n"
+            'printf "%s\\n" "$*" >> "$CALLS"\n'
+            '[ "$1" = source-path ] && { mkdir -p "$HOME/source"; printf "%s\\n" "$HOME/source"; }\n'
+            "exit 0\n"
+        )
+        stub.chmod(0o755)
+        inject = (
+            # The release steps: no gh, so the reviewed fallback; its downloads and digests are not the subject here.
+            "github_attestation_ready() { return 1; }; "
+            "get_os_type() { printf 'Linux\\n'; }; uname() { printf 'x86_64\\n'; }; "
+            "fetch_file() { :; }; verify_checksum_manifest() { :; }; verify_sha256() { :; }; "
+            'tar() { cp "$STUB" "$4/chezmoi"; }; '
+            # The externals step: a prefetch that records and succeeds, a check that records and exits as told.
+            'prefetch_chezmoi_externals() { printf \'prefetch %s\\n\' "$1" >> "$CALLS"; }; '
+            'assert_chezmoi_externals_cached() { printf \'cache-check %s\\n\' "$1" >> "$CALLS"; '
+            "printf 'chezmoi externals: chezmoi did not read the externals from its cache (injected)\\n' >&2; "
+            'return "$CHECK_EXIT"; }; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; {inject}run_chezmoi', "_", str(ROOT / "setup.sh")],
+            env={
+                "PATH": os.environ["PATH"],
+                "HOME": str(case / "home"),
+                "TMPDIR": str(case),
+                "CALLS": str(calls),
+                "STUB": str(stub),
+                "CHECK_EXIT": str(check_exit),
+            },
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+        return result, calls.read_text().splitlines() if calls.exists() else []
+
+    def test_a_failed_cache_check_stops_the_bootstrap_before_chezmoi_reads_the_target_state(self) -> None:
+        # The abort itself, not its text: the check is replaced by a function that fails, and the chezmoi stub's
+        # record shows what ran after it. Removing the `return 1` lets the apply run; removing the call leaves the
+        # record without the check. Both fail here, so this is the pin on setup.sh:1109-1112.
+        result, calls = self.bootstrap(check_exit=1)
+
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("chezmoi externals: chezmoi did not read the externals from its cache (injected)", result.stderr)
+        self.assertIn(
+            "chezmoi did not read the prefetched externals from its cache; no destination targets were changed.",
+            result.stderr,
+        )
+        self.assertIn("prefetch ", calls[-2])
+        self.assertIn("cache-check ", calls[-1])
+        self.assertEqual([], [call for call in calls if call.split()[0] in ("status", "diff", "apply")], calls)
+
+        # The control: the same bootstrap with a check that passes reaches the apply, so the record above is the
+        # abort's doing and not a harness that never got that far.
+        result, calls = self.bootstrap(check_exit=0)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("no destination targets were changed", result.stderr)
+        after = calls[calls.index(next(call for call in calls if call.startswith("cache-check "))) + 1 :]
+        self.assertEqual(["status", "diff", "apply"], [call.split()[0] for call in after], calls)
+
     def test_the_public_bootstrap_row_requires_the_cache_check_s_verdict_line(self) -> None:
         # The CI row is the live proof: it fails unless setup.sh printed the verdict, which names the chezmoi version
         # and the guard. The literal it requires is the library's own, so a reworded verdict fails here first.

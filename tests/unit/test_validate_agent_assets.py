@@ -2417,10 +2417,10 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         )
 
     def test_each_kind_is_a_finding_and_a_clean_file_passes(self) -> None:
-        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         # The words sit on physical lines 2 and 4 of the file (a comment and a blank line around them).
         cases = (
-            ("a secret pattern", f"token {token}\n"),
+            ("a secret pattern", f"token {planted}\n"),
             ("a home directory path", "ran in /Users/someone/x\n"),
             ("redact word on line 2", "seen on MBP-KANA\n"),
             ("redact word on line 4", '{"host": "operator1"}\n'),
@@ -2436,7 +2436,7 @@ class ScanIdentifiersModeTest(unittest.TestCase):
                 result = self.scan(path)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): {finding}\n")
-                self.assertNotIn(token, result.stderr)
+                self.assertNotIn(planted, result.stderr)
         clean = self.temp_dir / "clean.md"
         clean.write_text("mbp-kanax and xoperator1 are other words; ~/x is masked\n")
         result = self.scan(clean)
@@ -2458,9 +2458,9 @@ class ScanIdentifiersModeTest(unittest.TestCase):
     def test_every_content_test_also_applies_to_the_path(self) -> None:
         # U101 round 5: the secret and home-path tests read the content only, so a clean file named after a token
         # published it. Each kind is a finding of the path; no output line names the path or what was found.
-        token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         cases = (
-            ("a secret pattern", Path(f"{token}.md")),
+            ("a secret pattern", Path(f"{planted}.md")),
             ("a home directory path", Path("store/home/runner/notes.md")),  # the same glued forms as content
             ("redact word on line 2", Path("MBP-Kana/notes.md")),
         )
@@ -2479,7 +2479,7 @@ class ScanIdentifiersModeTest(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertEqual(result.stderr, f"--scan-identifiers: file 1: {reason} in the path\n")
-                for found in (token.lower(), "runner", "kana"):
+                for found in (planted.lower(), "runner", "kana"):
                     self.assertNotIn(found, (result.stdout + result.stderr).lower())
 
     def test_usage_and_unreadable_files_exit_2(self) -> None:

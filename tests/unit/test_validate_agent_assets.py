@@ -2097,6 +2097,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.module.checked_allowlist((row("*", "a row with no condition"),))
 
+    def test_a_provider_token_in_a_unit_test_file_is_reported(self) -> None:
+        """No SECRET_ALLOWLIST row names a test file: the planted fixtures are split literals, and a real token pasted
+        into either file is a finding like anywhere else. Each file's committed text is scanned as a scratch copy."""
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for row in self.module.SECRET_ALLOWLIST:
+            if row.path_regex is not None:
+                self.assertIsNone(row.path_regex.search("tests/unit/test_validate_agent_assets.py"), row.reason)
+                self.assertIsNone(row.path_regex.search("tests/unit/test_pr_levers.py"), row.reason)
+        for name in ("test_validate_agent_assets.py", "test_pr_levers.py"):
+            with self.subTest(file=name):
+                source = (ROOT / "tests/unit" / name).read_text()
+                copy = self.write_text_file(f"tests/unit/{name}", source)
+                self.module.validate_no_obvious_secrets()  # the committed text is clean on its own
+
+                copy.write_text(f"{source}\n{planted}\n")
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_no_obvious_secrets()
+                self.assertIn("1 finding(s)", stderr.getvalue())
+                self.assertIn(f"tests/unit/{name}:github-pat:{source.count(chr(10)) + 2} ghp_...", stderr.getvalue())
+                copy.unlink()
+
     def test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries(self) -> None:
         binary = self.temp_dir / "home/dot_local/share/blob.bin"
         binary.parent.mkdir(parents=True, exist_ok=True)

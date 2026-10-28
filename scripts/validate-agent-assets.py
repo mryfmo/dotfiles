@@ -160,16 +160,6 @@ SECRET_ALLOWLIST = checked_allowlist(
             ),
         ),
         SecretAllowance(
-            "github-pat",
-            "test fixture, the planted token is split or synthetic",
-            path_regex=re.compile(r"^tests/unit/test_validate_agent_assets\.py$"),
-        ),
-        SecretAllowance(
-            "github-pat",
-            "test fixture, the planted token is split or synthetic",
-            path_regex=re.compile(r"^tests/unit/test_pr_levers\.py$"),
-        ),
-        SecretAllowance(
             "*",
             "the name of the environment variable a template reads, bare or as a shell reference, never its value",
             secret_regex=re.compile(r"(?:\$\{?)?(?:GITHUB_PERSONAL_ACCESS_TOKEN|FIGMA_OAUTH_TOKEN)\}?"),

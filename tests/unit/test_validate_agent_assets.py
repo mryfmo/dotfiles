@@ -40,6 +40,9 @@ API_KEY = "api_" + "key"
 # A quoted value above the generic rules' entropy threshold (20 distinct characters, 4.32 bits) and one below it.
 HIGH_ENTROPY_VALUE = "Qz7vR2mK9pL4wX8nJ3fT"
 LOW_ENTROPY_VALUE = "real-secret"
+# 160 characters at 2 bits whose every 20-character window is 2 bits: beside a secret on its line it brought the
+# whole line under the threshold (round 7 finding on 38a83e45).
+LOW_ENTROPY_PADDING = "low-" * 40
 
 
 def load_validator():
@@ -2151,15 +2154,23 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         mask = module.SECRET_MASK
         escaped = 'x\\"' + HIGH_ENTROPY_VALUE
         planted = "ghp_" + "a" * 60
-        for text, rule, secret in (
-            (f'{PASSWORD_KEY} = "x\'{HIGH_ENTROPY_VALUE}"\n', "generic-password", f'"x\'{HIGH_ENTROPY_VALUE}"'),
-            (f'{PASSWORD_KEY} = "{escaped}"\n', "generic-password", f'"{escaped}"'),
-            (f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n', "github-pat", planted),
-            (f'{FIELD} = "{HIGH_ENTROPY_VALUE}"  # rotated\n', "generic-token", f'"{HIGH_ENTROPY_VALUE}"  # rotated'),
-            (f"{SECRET_KEY}: '{HIGH_ENTROPY_VALUE}'\r\n", "generic-secret", f"'{HIGH_ENTROPY_VALUE}'"),
+        for text, expected in (
+            (f'{PASSWORD_KEY} = "x\'{HIGH_ENTROPY_VALUE}"\n', [("generic-password", f'"x\'{HIGH_ENTROPY_VALUE}"')]),
+            (f'{PASSWORD_KEY} = "{escaped}"\n', [("generic-password", f'"{escaped}"')]),
+            # The densest window of the value is the 20-character value itself, so the generic rule reports the line
+            # beside the provider rule (round 6 measured the whole value, mostly `a`, under the threshold).
+            (
+                f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n',
+                [("generic-token", f'"{HIGH_ENTROPY_VALUE} {planted}"'), ("github-pat", planted)],
+            ),
+            (
+                f'{FIELD} = "{HIGH_ENTROPY_VALUE}"  # rotated\n',
+                [("generic-token", f'"{HIGH_ENTROPY_VALUE}"  # rotated')],
+            ),
+            (f"{SECRET_KEY}: '{HIGH_ENTROPY_VALUE}'\r\n", [("generic-secret", f"'{HIGH_ENTROPY_VALUE}'")]),
         ):
             with self.subTest(text=text):
-                self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], [(rule, secret)])
+                self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], expected)
                 masked, _ = module.mask_secret_matches(text)
                 self.assertEqual(masked, f"{mask}{text[len(text.rstrip()) :]}")
                 self.assertEqual(module.secret_findings(masked), [])
@@ -2211,22 +2222,86 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(json.dumps(masked, indent=2) + "\n")
         module.validate_no_obvious_secrets()
 
+    def test_a_secret_beside_padding_on_its_line_is_found_by_its_densest_window(self) -> None:
+        """Round 7 finding on 38a83e45: a line holding two assignments, 160 characters of padding and then a 4.32-bit
+        value, was one capture whose entropy over the whole line was under the threshold, so the tree scan and both
+        CLIs accepted it in plain text and in JSON. A secret is found by its densest window, not by the average of
+        its line: the line is reported under its rule and masked whole, in either order of the two assignments."""
+        module = self.module
+        mask = module.SECRET_MASK
+        padded = f'{FIELD} = "{LOW_ENTROPY_PADDING}" {FIELD} = "{HIGH_ENTROPY_VALUE}"\n'
+        secret_first = f'{PASSWORD_KEY} = "{HIGH_ENTROPY_VALUE}" {PASSWORD_KEY} = "{LOW_ENTROPY_PADDING}"\n'
+        for text, rule in ((padded, "generic-token"), (secret_first, "generic-password")):
+            with self.subTest(text=text):
+                secret = text.split(" = ", 1)[1].rstrip()
+                self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], [(rule, secret)])
+                self.assertEqual(module.mask_secret_matches(text), (f"{mask}\n", 1))
+                path = self.write_text_file("docs/notes.md", text)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    module.validate_no_obvious_secrets()
+                self.assertIn(f"docs/notes.md:{rule}:1 {secret[:4]}...", stderr.getvalue())
+                self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+                path.write_text(f"{mask}\n")
+                module.validate_no_obvious_secrets()
+        # The same line inside a JSON string: reported on its literal's line (line 4 of the document) and masked.
+        document = json.dumps({"items": [{"note": padded.rstrip("\n")}]}, indent=2) + "\n"
+        path = self.write_text_file("fixtures/evidence.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('fixtures/evidence.json:generic-token:4 "low...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        masked, count = module.mask_json_strings(json.loads(document))
+        self.assertEqual((masked, count), ({"items": [{"note": mask}]}, 1))
+        path.write_text(json.dumps(masked, indent=2) + "\n")
+        module.validate_no_obvious_secrets()
+        # The whole rest of the line is under the threshold; its densest window is the value alone.
+        captured = module.measured_text(padded.split(" = ", 1)[1].rstrip())
+        self.assertLess(module.shannon_entropy(captured), module.GENERIC_SECRET_ENTROPY)
+        self.assertGreaterEqual(module.densest_window_entropy(captured), module.GENERIC_SECRET_ENTROPY)
+
+    def test_a_long_low_entropy_value_alone_is_not_a_finding(self) -> None:
+        """The windowed measure keeps the threshold's other side: 160 characters of padding alone, beside the
+        masker's marker, beside a word, before a comment, or inside a JSON string has no window over the threshold
+        (passes on 38a83e45 too)."""
+        module = self.module
+        path = self.write_text_file("docs/notes.md", "")
+        for text in (
+            f'{FIELD} = "{LOW_ENTROPY_PADDING}"\n',
+            f'{FIELD} = "{LOW_ENTROPY_PADDING} {module.SECRET_MASK}"\n',
+            f'{SECRET_KEY}: "{LOW_ENTROPY_PADDING} {LOW_ENTROPY_VALUE}"\n',
+            f'{PASSWORD_KEY} = "{LOW_ENTROPY_PADDING}"  # a name\n',
+            json.dumps({"note": f'{FIELD} = "{LOW_ENTROPY_PADDING}"'}, indent=2) + "\n",
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                self.assertEqual(module.secret_findings(text), [])
+                self.assertEqual(module.mask_secret_matches(text), (text, 0))
+                module.validate_no_obvious_secrets()
+
     def test_masking_repeats_until_the_text_passes_the_scan(self) -> None:
         """Round 4 verdict on 43fe25f3: for a quoted assignment whose value is a word and a provider token, the masker
         removed the token and left a remainder above the generic threshold, so --mask-secrets exited 0 and
         --scan-identifiers exited 1 on its output. The masker now repeats until a pass masks nothing, so its output is
-        the scan's fixpoint."""
+        the scan's fixpoint. Since round 7 the densest window finds the round-4 value beside its token in the first
+        pass; the remainder that needs a second pass is two short words a token (or a home path) kept apart."""
         module = self.module
         mask = module.SECRET_MASK
         planted = "ghp_" + "a" * 60
-        two_part = f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n'
-        # One pass sees the provider token alone: the whole value, mostly `a`, is below the generic threshold.
-        self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(two_part)], [("github-pat", planted)])
-        self.assertEqual(module.mask_secret_matches(two_part), (f"{mask}\n", 2))
-        # A home path inside the value: the `~` written in its place raises the remainder's entropy the same way.
-        home = f'{FIELD} = "/home/{"a" * 40}/{HIGH_ENTROPY_VALUE}"\n'
+        # One pass sees the provider token alone: every window of the value, mostly `a`, is below the generic
+        # threshold; the two words it kept apart make one window above it once the marker is removed.
+        apart = f'{FIELD} = "abcdefghi {planted} jklmnopqr"\n'
+        self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(apart)], [("github-pat", planted)])
+        self.assertEqual(module.mask_secret_matches(apart), (f"{mask}\n", 2))
+        # A home path inside the value: the `~` written in its place joins the words the same way.
+        home = f'{FIELD} = "/home/{"a" * 40}/abcde fghij"\n'
+        self.assertEqual(module.secret_findings(home), [])
         self.assertEqual(module.mask_secret_matches(home), (f"{mask}\n", 2))
-        for text in (two_part, home, f'{FIELD} = "prefix {planted}"\n', f"{HIGH_ENTROPY_VALUE} {planted}\n"):
+        # The round-4 value beside its token is found by its own window in the first pass: one mask over the line.
+        two_part = f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n'
+        self.assertEqual(module.mask_secret_matches(two_part), (f"{mask}\n", 1))
+        for text in (apart, home, two_part, f'{FIELD} = "prefix {planted}"\n', f"{HIGH_ENTROPY_VALUE} {planted}\n"):
             with self.subTest(text=text):
                 masked, _ = module.mask_secret_matches(text)
                 self.assertEqual(module.secret_findings(masked), [])
@@ -2974,21 +3049,24 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         """Round 4 verdict on 43fe25f3, through the two CLIs records-sync.sh runs: masking only the provider token
         out of a quoted assignment whose value is a word and the token left a value above the generic threshold, so
         --mask-secrets exited 0 and --scan-identifiers exited 1 on its output. The masker now repeats until its
-        output passes the scan."""
+        output passes the scan: two words a token kept apart need the second pass, and the round-4 value beside its
+        token is found by its own window in the first pass (round 7)."""
         module = load_validator()
-        evidence = self.temp_dir / "audit.md"
         planted = "ghp_" + "a" * 60
-        evidence.write_text(f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\nVerdict: correct\n')
-        masked = subprocess.run(
-            [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
-        )
-        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
-        self.assertEqual(masked.stdout, f"masked 2 match(es) in {evidence}\n")
-        self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
+        for value, masks in ((f"abcdefghi {planted} jklmnopqr", 2), (f"{HIGH_ENTROPY_VALUE} {planted}", 1)):
+            with self.subTest(value=value):
+                evidence = self.temp_dir / "audit.md"
+                evidence.write_text(f'{FIELD} = "{value}"\nVerdict: correct\n')
+                masked = subprocess.run(
+                    [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
+                )
+                self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+                self.assertEqual(masked.stdout, f"masked {masks} match(es) in {evidence}\n")
+                self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
 
-        result = self.scan(evidence)
-        self.assertEqual((result.returncode, result.stderr), (0, ""))
-        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+                result = self.scan(evidence)
+                self.assertEqual((result.returncode, result.stderr), (0, ""))
+                self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
     def test_a_quoted_value_with_an_apostrophe_is_refused_whole(self) -> None:
         """Round 4 verdict on 43fe25f3: a double-quoted value with an apostrophe after its first character was
@@ -3018,6 +3096,35 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
         self.assertEqual(masked.stdout, f"masked 1 match(es) in {evidence}\n")
         self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
+        result = self.scan(evidence)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_secret_beside_padding_on_its_line_is_refused_and_masked_whole(self) -> None:
+        """Round 7 finding on 38a83e45, through the two CLIs records-sync.sh runs: a line holding two assignments,
+        160 characters of padding and then a 4.32-bit value, exited 0 from --scan-identifiers and --mask-secrets left
+        it as it was. The line is refused, the masker writes one marker over all of it, and the padding alone still
+        passes."""
+        module = load_validator()
+        evidence = self.temp_dir / "audit.md"
+        padded = f'{FIELD} = "{LOW_ENTROPY_PADDING}" {FIELD} = "{HIGH_ENTROPY_VALUE}"'
+        evidence.write_text(f"{padded}\nVerdict: correct\n")
+        result = self.scan(evidence)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({evidence}): a secret pattern\n")
+        self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        self.assertEqual(masked.stdout, f"masked 1 match(es) in {evidence}\n")
+        self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
+        result = self.scan(evidence)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+        evidence.write_text(f'{FIELD} = "{LOW_ENTROPY_PADDING}"\nVerdict: correct\n')
         result = self.scan(evidence)
         self.assertEqual((result.returncode, result.stderr), (0, ""))
         self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")

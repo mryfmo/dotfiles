@@ -52,10 +52,11 @@ class SecretRule(NamedTuple):
     `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
     whole match). `entropy` is the least Shannon entropy, in bits per character, the secret must reach, or None
     for a provider rule whose prefix alone is the evidence; it is measured over measured_text(secret), the secret
-    with every SECRET_MASK and every quoting character removed (`reaches_entropy`), so the masker's own output
-    passes the scan, a value beside a marker is judged on its own, and no quoting changes the measure. The rule
-    runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a cheap filter before
-    the regex.
+    with every SECRET_MASK and every quoting character removed, as the greatest entropy of any window of
+    GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's own output passes the scan, a value
+    beside a marker is judged on its own, no quoting changes the measure, and nothing else on the line can dilute
+    it. The rule runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a cheap
+    filter before the regex.
     """
 
     id: str
@@ -66,13 +67,13 @@ class SecretRule(NamedTuple):
     keywords: tuple[str, ...]
 
     def reaches_entropy(self, secret: str) -> bool:
-        """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the entropy of
-        measured_text(SECRET) reaches the threshold. `"prefix <redacted:secret-pattern>"`, the masker's output for a
-        quoted assignment that held a provider token, is 3.77 bits with the marker and `prefix ` 2.81 without it; a
-        real value beside the marker keeps its own entropy."""
+        """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the densest
+        window of measured_text(SECRET) reaches the threshold (densest_window_entropy). `"prefix
+        <redacted:secret-pattern>"`, the masker's output for a quoted assignment that held a provider token, is 3.77
+        bits with the marker and `prefix ` 2.81 without it; a real value beside the marker keeps its own entropy."""
         if self.entropy is None:
             return True
-        return shannon_entropy(measured_text(secret)) >= self.entropy
+        return densest_window_entropy(measured_text(secret)) >= self.entropy
 
 
 # A key prefix starts after a non-word character or the start, or right after an escape sequence (a backslash
@@ -85,6 +86,11 @@ KEY_PREFIX_BOUNDARY = (
 # gitleaks' documented example threshold for a generic rule: a quoted value below it is a word or a name
 # (`real-secret` is 2.85, `password123` 3.28), a key or a random token is above it (a ghp_ token is about 4.8).
 GENERIC_SECRET_ENTROPY = 3.5
+# The window a generic rule measures, the least key body a provider rule accepts (`{20,}`): a secret is found by its
+# densest window, not by the average of its line. Round 6 measured one entropy over the whole rest of the line, so a
+# line holding two assignments, 160 characters of padding and then a 4.32-bit value, measured 1.43 bits and passed
+# (round 7 finding on 38a83e45); a 20-character window over that value measures the value alone.
+GENERIC_SECRET_MIN_LENGTH = 20
 # What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
 SECRET_MASK = "<redacted:secret-pattern>"
 # The quoting characters, removed before a value is measured: they are the writer's syntax, not the value. Rounds 4
@@ -98,6 +104,16 @@ def measured_text(secret: str) -> str:
     return secret.replace(SECRET_MASK, "").translate(QUOTING_CHARACTERS)
 
 
+def densest_window_entropy(text: str) -> float:
+    """The greatest Shannon entropy of any window of GENERIC_SECRET_MIN_LENGTH characters of TEXT, or of TEXT itself
+    when it is shorter: a secret is found by its densest window, not by the average of its line, so low-entropy
+    padding beside it on the line (a second assignment, a long value, prose) cannot bring it under the threshold.
+    A text shorter than the window is measured whole, as it was, and the window's length caps what a short text can
+    reach (log2 of its length), so nothing shorter is loosened."""
+    starts = range(max(len(text) - GENERIC_SECRET_MIN_LENGTH, 0) + 1)
+    return max(shannon_entropy(text[start : start + GENERIC_SECRET_MIN_LENGTH]) for start in starts)
+
+
 def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
     """A rule for a key format whose prefix identifies it: the whole match is the secret, no entropy test."""
     regex = re.compile("(?i)" + KEY_PREFIX_BOUNDARY + body)
@@ -106,7 +122,8 @@ def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> Se
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
     """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its line, trimmed, is the secret,
-    judged by its entropy over measured_text, so a variable named `token` holding a word is not a finding.
+    judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy), so a
+    variable named `token` holding a word is not a finding and padding beside a secret on its line does not hide it.
 
     No quote ends the capture. Rounds 4 and 5 (verdicts on 43fe25f3 and a7b060cd) each assumed a regex can find
     where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
@@ -114,9 +131,11 @@ def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str,
     value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
     with the quotes and backslashes removed, and the finding's span is the whole line from the key: the masker
     writes one marker over all of it, so its output has no remainder to measure. What follows the value on its line
-    (a trailing comment, a second literal) is captured, measured and masked with it: over-capture errs on the
-    refusing side, and a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
-    shorter capture. The capture ends before the line's trailing whitespace and before `\\r`.
+    (a trailing comment, a second literal, a second assignment) is captured, measured and masked with it: the measure
+    is the densest window, so what is captured with a secret cannot dilute it (round 7 finding on 38a83e45: 160
+    characters of padding before a second assignment brought the whole line to 1.43 bits), and over-capture errs on
+    the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
+    shorter capture or a looser measure. The capture ends before the line's trailing whitespace and before `\\r`.
 
     The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
     unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,

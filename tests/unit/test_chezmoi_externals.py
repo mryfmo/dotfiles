@@ -882,6 +882,33 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         self.assertIn(" with chezmoi version v", result.stdout)
         self.assertEqual(1, self.requests())  # the prefetch's; the denied read reached no server
 
+    def test_without_curl_nothing_is_prefetched_and_the_check_denies_chezmoi_nothing(self) -> None:
+        # The wget-only bootstrap against the real chezmoi: with curl off PATH the prefetch declines and the check
+        # does not run, so the apply that follows fetches the externals itself as before U96. On e2129b1c the guarded
+        # check ran and failed with `dial tcp … operation not permitted` before any apply: a bootstrap stopped for a
+        # download nothing had replaced. Nothing reaches the server and nothing is cached.
+        url = self.serve("nocurl.tar.gz", "ok")
+        chezmoi = self.source(url)
+        bare = self.case / "bare-bin"
+        bare.mkdir()
+        for name, options, *_ in both_ways((("no curl", ""),)):
+            with self.subTest(name):
+                result = self.bash(
+                    f'{options}PATH="{bare}"; prefetch_chezmoi_externals "$1" && assert_chezmoi_externals_cached "$1"',
+                    str(chezmoi),
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    "chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n", result.stderr
+                )
+                self.assertEqual(
+                    "chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove"
+                    " and does not run\n",
+                    result.stdout,
+                )
+                self.assertEqual(0, self.requests())
+                self.assertEqual([], self.cached())
+
 
 class ChezmoiCacheCheckTest(unittest.TestCase):
     """assert_chezmoi_externals_cached against a chezmoi stub: the verdict table, each producer's failure, the
@@ -956,7 +983,9 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
         # setup.sh's wget-only Bats case (tests/install/common/setup.bats) runs the bootstrap with exactly these tools
         # on PATH and no grep or tail; on 3aabd8e8 the check's grep was not found and every mode of that case failed
         # with "cannot scan chezmoi's output". The whole verdict table holds with that PATH and the stub: the scan
-        # and the last-line read are the shell's own.
+        # and the last-line read are the shell's own. curl stands beside them as the one tool whose presence makes
+        # the prefetch, and so the check, run at all; the case itself has none, and the check then declines
+        # (test_without_curl_nothing_was_prefetched_and_the_check_does_not_run).
         tools = self.case / "bats-bin"
         tools.mkdir()
         for tool in (
@@ -975,6 +1004,7 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
             "awk",
             "shasum",
             "date",
+            "curl",
         ):
             found = shutil.which(tool)
             self.assertIsNotNone(found, tool)
@@ -993,6 +1023,24 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
                 else:
                     self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
                     self.assertIn(f"status exited {code}): {reason}", result.stderr)
+
+    def test_without_curl_nothing_was_prefetched_and_the_check_does_not_run(self) -> None:
+        # The wget-only bootstrap: prefetch_chezmoi_externals declines without curl and chezmoi fetches the externals
+        # itself, so the check has nothing to prove. Run anyway, as on e2129b1c, it denied the network to that very
+        # download under a working guard, or called the download a cache read unguarded. It says so and never calls
+        # chezmoi.
+        narrow = f'PATH="{self.case}"; '
+        for name, options, *_ in both_ways((("no curl", ""),)):
+            with self.subTest(name):
+                result = self.check(options + narrow)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    "chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove"
+                    " and does not run\n",
+                    result.stdout,
+                )
+                self.assertEqual("", result.stderr)
+                self.assertEqual([], self.recorded())
 
     def test_the_first_guard_whose_probe_runs_wraps_the_chezmoi_call(self) -> None:
         # The table is probed in order with `true`; the chosen guard runs chezmoi, not only the probe.

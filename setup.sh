@@ -664,23 +664,31 @@ function prefetch_chezmoi_externals() {
 #   for CHEZMOI_EXTERNAL_NETWORK_ERRORS, are read; the status lines are not. The entry filter narrows what status
 #   compares, not what chezmoi reads: every external is read with the source state, so an external the prefetch
 #   leaves to chezmoi (fallback urls, a url that is not http(s)) has to be cached already or the guarded check
-#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Needs grep and tail.
+#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Runs no command but
+#   chezmoi and the guard: setup.sh carries it into a bootstrap whose tools are the bare minimum (the wget-only
+#   Bats case pins them, with no grep or tail), so the scan and the last-line read are shell expansions.
 # @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
 # @stdout The chezmoi version and the guard the check ran under, then its verdict.
 # @stderr The one-line reason when it fails.
 # @exitcode 0 chezmoi exited 0 and printed none of the strings.
-# @exitcode 1 chezmoi exited non-zero or printed one of them, or a producer failed (version, output file, scan).
+# @exitcode 1 chezmoi exited non-zero or printed one of them, or a producer failed (version, guard table read,
+#   output file, scan, last-line read).
 #
 function assert_chezmoi_externals_cached() {
-    local chezmoi="$1" version entry how=unguarded output status=0 scan=0 reason
-    local -a guard cmd scan_args
+    local chezmoi="$1" version entry how=unguarded output status=0 reason="" pattern before offset=-1
+    local -a guard cmd
     if ! version="$("${chezmoi}" --version)"; then
         printf 'chezmoi externals: cannot read chezmoi'\''s version\n' >&2
         return 1
     fi
     cmd=("${chezmoi}" --refresh-externals=never status --include=externals)
     for entry in "${CHEZMOI_EXTERNAL_NETWORK_GUARDS[@]}"; do
-        IFS=$'\t' read -r -a guard <<< "${entry}" || continue
+        # An entry this step cannot read is a failure, never skipped: skipping would run the check unguarded, and an
+        # entry read to no words would probe bare `true` and call the check guarded, while the log claimed otherwise.
+        if ! IFS=$'\t' read -r -a guard <<< "${entry}" || [ "${#guard[@]}" -eq 0 ]; then
+            printf 'chezmoi externals: cannot read a command from the guard table entry '\''%s'\''\n' "${entry//$'\t'/ }" >&2
+            return 1
+        fi
         if "${guard[@]}" true > /dev/null 2>&1; then
             how="under ${guard[*]}"
             cmd=("${guard[@]}" "${cmd[@]}")
@@ -691,28 +699,24 @@ function assert_chezmoi_externals_cached() {
     if [ "${how}" = unguarded ]; then
         printf 'chezmoi externals: no network-denial tool runs here (unshare, sandbox-exec); the check runs unguarded and cannot tell a download from a cache read\n'
     fi
-    output="$(mktemp "${TMPDIR:-/tmp}/chezmoi-externals-status.XXXXXX")" || {
-        printf 'chezmoi externals: cannot create a file for chezmoi'\''s output\n' >&2
-        return 1
-    }
-    "${cmd[@]}" > "${output}" 2>&1 || status=$?
-    for reason in "${CHEZMOI_EXTERNAL_NETWORK_ERRORS[@]}"; do
-        scan_args+=(-e "${reason}")
+    output="$("${cmd[@]}" 2>&1)" || status=$?
+    # The reason is the line holding the first listed string in the output, whichever string that is.
+    for pattern in "${CHEZMOI_EXTERNAL_NETWORK_ERRORS[@]}"; do
+        [[ "${output}" == *"${pattern}"* ]] || continue
+        before="${output%%"${pattern}"*}"
+        if [ "${offset}" -lt 0 ] || [ "${#before}" -lt "${offset}" ]; then
+            offset="${#before}"
+        fi
     done
-    reason="$(grep -F -m 1 "${scan_args[@]}" "${output}")" || scan=$?
-    if [ "${scan}" -gt 1 ]; then
-        rm -f "${output}"
-        printf 'chezmoi externals: cannot scan chezmoi'\''s output\n' >&2
-        return 1
+    if [ "${offset}" -ge 0 ]; then
+        before="${output:0:${offset}}"
+        reason="${before##*$'\n'}${output:${offset}}"
+        reason="${reason%%$'\n'*}"
+    elif [ "${status}" -ne 0 ]; then
+        # No listed string: the reason is chezmoi's last line, the one its error takes.
+        reason="${output##*$'\n'}"
     fi
-    # No listed string: the reason is chezmoi's last line, the one its error takes.
-    if [ "${scan}" -eq 1 ] && [ "${status}" -ne 0 ] && ! reason="$(tail -n 1 "${output}")"; then
-        rm -f "${output}"
-        printf 'chezmoi externals: cannot read chezmoi'\''s output\n' >&2
-        return 1
-    fi
-    rm -f "${output}"
-    if [ "${scan}" -eq 0 ] || [ "${status}" -ne 0 ]; then
+    if [ "${offset}" -ge 0 ] || [ "${status}" -ne 0 ]; then
         printf 'chezmoi externals: chezmoi did not read the externals from its cache (%s, status exited %s): %s\n' \
             "${how}" "${status}" "${reason:-no output}" >&2
         return 1

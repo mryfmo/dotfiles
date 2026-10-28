@@ -168,16 +168,23 @@ VERDICT_CASES = (
     ("exits 1 with another message", "chezmoi: config: parse error\n", 1, False, "chezmoi: config: parse error"),
     ("exits 1 and prints nothing", "", 1, False, "no output"),
 )
-# Producers of the cache check made to fail: (name, shell definitions, environment, the reason).
+# Producers of the cache check made to fail: (name, shell definitions, environment, the reason). The guard table is
+# read entry by entry; a read that fails, or an entry read to no words (it would run bare `true` and call the check
+# guarded), stops the check naming the entry instead of falling through to the next one or to the unguarded run.
+# chezmoi's output is read and scanned with shell expansions, so the check has no other producer to fail.
 CHECK_PRODUCER_CASES = (
     ("chezmoi --version fails", "", {"FAIL_VERSION": "1"}, "cannot read chezmoi's version"),
-    ("the output file cannot be made", "mktemp() { return 1; }; ", {}, "cannot create a file for chezmoi's output"),
-    ("the scan fails", "grep() { return 2; }; ", {}, "cannot scan chezmoi's output"),
     (
-        "the last line cannot be read",
-        "tail() { return 1; }; ",
-        {"STUB_OUTPUT": "chezmoi: config: parse error\n", "STUB_EXIT": "1"},
-        "cannot read chezmoi's output",
+        "the guard table cannot be read",
+        "read() { return 1; }; ",
+        {},
+        "cannot read a command from the guard table entry 'unshare --net'",
+    ),
+    (
+        "a guard table entry holds no command",
+        "CHEZMOI_EXTERNAL_NETWORK_GUARDS=('false' ''); ",
+        {},
+        "cannot read a command from the guard table entry ''",
     ),
 )
 
@@ -944,6 +951,48 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 self.assertIn(f"chezmoi externals: {reason}", result.stderr)
                 self.assertNotIn("read the externals from its cache (", result.stdout)
+
+    def test_the_check_runs_with_the_bootstrap_s_bare_tools_on_path(self) -> None:
+        # setup.sh's wget-only Bats case (tests/install/common/setup.bats) runs the bootstrap with exactly these tools
+        # on PATH and no grep or tail; on 3aabd8e8 the check's grep was not found and every mode of that case failed
+        # with "cannot scan chezmoi's output". The whole verdict table holds with that PATH and the stub: the scan
+        # and the last-line read are the shell's own.
+        tools = self.case / "bats-bin"
+        tools.mkdir()
+        for tool in (
+            "sh",
+            "find",
+            "rm",
+            "mkdir",
+            "chmod",
+            "cat",
+            "cp",
+            "tar",
+            "gzip",
+            "install",
+            "mv",
+            "mktemp",
+            "awk",
+            "shasum",
+            "date",
+        ):
+            found = shutil.which(tool)
+            self.assertIsNotNone(found, tool)
+            (tools / tool).symlink_to(found)
+        narrow = f'PATH="{tools}:{self.case}"; '
+        cases = (
+            (f"{case[0]} [{label}]", options, *case[1:]) for label, options in SHELL_MODES for case in VERDICT_CASES
+        )
+        for name, options, output, code, passes, reason in cases:
+            with self.subTest(name):
+                result = self.check(options + narrow, STUB_OUTPUT=output, STUB_EXIT=str(code))
+                self.assertEqual(0 if passes else 1, result.returncode, result.stdout + result.stderr)
+                if passes:
+                    self.assertIn("chezmoi externals: chezmoi read the externals from its cache (", result.stdout)
+                    self.assertEqual("", result.stderr)
+                else:
+                    self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+                    self.assertIn(f"status exited {code}): {reason}", result.stderr)
 
     def test_the_first_guard_whose_probe_runs_wraps_the_chezmoi_call(self) -> None:
         # The table is probed in order with `true`; the chosen guard runs chezmoi, not only the probe.

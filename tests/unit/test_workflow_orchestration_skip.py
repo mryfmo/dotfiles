@@ -16,6 +16,8 @@ REMOTE = WORKFLOWS / "remote.yaml"
 PRIVATE = WORKFLOWS / "private-bootstrap.yaml"
 TEST = WORKFLOWS / "test.yaml"
 AGENT_ASSETS = WORKFLOWS / "agent-assets.yml"
+MACOS = WORKFLOWS / "macos.yaml"
+UBUNTU = WORKFLOWS / "ubuntu.yaml"
 # Plan 024 Q1: a pull request's newer head cancels its older run; every main push runs to completion.
 CONCURRENCY = (
     "\nconcurrency:\n"
@@ -23,6 +25,18 @@ CONCURRENCY = (
     "github.event.pull_request.number) || format('main-{0}', github.sha) }}\n"
     "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n"
 )
+# Plan P-32: every workflow's run-level concurrency block. private-bootstrap never runs on a pull request, so its
+# runs are grouped by commit and none is cancelled; the others cancel a superseded pull request run only.
+RUN_CONCURRENCY = {
+    TEST: CONCURRENCY,
+    REMOTE: CONCURRENCY,
+    AGENT_ASSETS: CONCURRENCY,
+    MACOS: CONCURRENCY,
+    UBUNTU: CONCURRENCY,
+    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.sha }}\n  cancel-in-progress: false\n",
+}
+# Plan P-32: the benchmark push serialises across runs, since the run-level group keeps every main commit's run.
+BENCHMARK_CONCURRENCY = "\n    concurrency:\n      group: macos-benchmark\n      cancel-in-progress: false"
 # A copy of the ruleset's required status checks (a unit test cannot read the
 # ruleset); this is what changes when the ruleset changes.
 REQUIRED_CONTEXTS = frozenset(
@@ -58,8 +72,8 @@ BOOTSTRAP_OUTPUT = {
 }
 # The workflows whose bootstrap needs repository secrets, each gated by a `secrets` job (F050, gate G13).
 SECRET_GATED = (
-    (WORKFLOWS / "macos.yaml", "build"),
-    (WORKFLOWS / "ubuntu.yaml", "build"),
+    (MACOS, "build"),
+    (UBUNTU, "build"),
     (PRIVATE, "private-bootstrap"),
 )
 # Steps a deciding job runs on every diff: setup, the checkout the decision
@@ -741,12 +755,19 @@ class WorkflowTriggerTest(unittest.TestCase):
                             self.assertIn("Bootstrap skipped", summary.read_text())
                             self.assertIn("::notice title=Bootstrap skipped::", result.stdout)
 
-    def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
-        for path in (TEST, REMOTE, AGENT_ASSETS):
+    def test_every_workflow_cancels_superseded_pull_request_runs_only_and_keeps_every_main_run(self) -> None:
+        for path, block in RUN_CONCURRENCY.items():
             with self.subTest(workflow=path.name):
                 text = path.read_text()
                 self.assertEqual(1, text.count("\nconcurrency:"))
-                self.assertIn(CONCURRENCY, text.split("\njobs:\n", 1)[0])
+                self.assertIn(block, text.split("\njobs:\n", 1)[0])
+
+    def test_the_benchmark_push_queues_runs_from_different_main_commits(self) -> None:
+        # The run-level group keeps every main commit's run, so without this job-level group two of them can push
+        # to the benchmark repository at once; the job must queue, never cancel, since a cancelled push is half done.
+        build = MACOS.read_text().split("\n  build:\n", 1)[1].split("\n    runs-on:", 1)[0]
+        self.assertIn(BENCHMARK_CONCURRENCY, build)
+        self.assertEqual("", jobs(MACOS)["build"]["keys"]["concurrency"])
 
     def test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script(
         self,

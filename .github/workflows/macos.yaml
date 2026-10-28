@@ -25,6 +25,11 @@ on:
       - "tests/install/common/**"
       - "tests/install/macos/**"
 
+# The block test.yaml lines 17 to 19 use: a pull request's newer head cancels its older run, a main push is grouped by its commit and never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -58,13 +63,19 @@ jobs:
   build:
     needs: secrets
     if: ${{ needs.secrets.outputs.available == 'true' }}
-    # One matrix row per macOS image; one at a time, because every row pushes to
-    # the same benchmark repository.
+    # One matrix row per macOS image; one at a time, because every row pushes to the same benchmark repository.
+    # max-parallel serialises the rows of one run; the job-level `macos-benchmark` group below serialises the runs.
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
         os: [macos-15]
+    # The run-level MacOS-main-<sha> group keeps every main commit's run, so two of them can still push to the same
+    # benchmark repository at once; this fixed group queues the later run instead. Never cancelled: a cancelled push
+    # leaves the benchmark repository half written.
+    concurrency:
+      group: macos-benchmark
+      cancel-in-progress: false
     runs-on: ${{ matrix.os }} # Apple silicon
     # Two full setup.sh runs, the benchmark and the file tests; a hung install cancels the job instead of running 6 h.
     timeout-minutes: 60

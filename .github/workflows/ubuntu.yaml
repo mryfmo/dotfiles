@@ -25,6 +25,11 @@ on:
       - "tests/install/common/**"
       - "tests/install/ubuntu/**"
 
+# The block test.yaml lines 17 to 19 use: a pull request's newer head cancels its older run, a main push is grouped by its commit and never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 

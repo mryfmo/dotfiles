@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
+# No pull request ever runs this workflow, so each run is grouped by its commit and never cancelled.
+concurrency:
+  group: private-bootstrap-${{ github.sha }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 

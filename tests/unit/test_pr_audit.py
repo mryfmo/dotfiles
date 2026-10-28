@@ -5,8 +5,9 @@ The lever runs from the checkout (its self-check reads the checkout's manifest a
 holding `main` and `refs/pull/7/head`, with `tests/fixtures/pr-levers/fake-gh.py` as `gh` and
 `tests/fixtures/pr-audit/fake-codex.py` as `codex` first on PATH, under a scratch HOME (agent_home_isolation). The
 tests assert the exact codex argv (never `-s`), the config each call saw, the probe paths, the refusals (exit 2, no
-`codex exec`) and that nothing outside the run directory under TMPDIR is written. The real `codex` and `gh` are never
-called.
+`codex exec`), that the verdict is taken only from a `--output-schema` conforming JSON file whose verdict agrees
+with its findings (U106), and that nothing outside the run directory under TMPDIR is written. The real `codex` and
+`gh` are never called.
 """
 
 import contextlib
@@ -220,14 +221,35 @@ class PrAuditTest(unittest.TestCase):
         rundir = rundirs[0]
         verdict = rundir / "verdict.md"
         self.assertEqual(run.stdout, f"{verdict}\nVerdict: correct\n")
-        self.assertEqual(sorted(p.name for p in rundir.iterdir()), ["codex.log", "prompt.md", "verdict.md"])
+        self.assertEqual(
+            sorted(p.name for p in rundir.iterdir()),
+            ["codex.log", "prompt.md", "verdict.json", "verdict.md", "verdict.schema.json"],
+        )
+        self.assertEqual(
+            verdict.read_text(),
+            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nVerdict: correct\n",
+        )
         self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before, "nothing outside the run dir is written")
 
         calls = self.codex_calls()
         self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
         work = rundir / "work"
-        exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "-C", str(work / "cwd")]
-        self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(verdict), "-"])
+        exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "--ignore-rules"]
+        exec_argv += ["-C", str(work / "cwd"), "--output-schema", str(rundir / "verdict.schema.json")]
+        self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(rundir / "verdict.json"), "-"])
+        self.assertNotIn("--ignore-user-config", calls[2]["argv"], "it would skip the scratch config.toml")
+        schema = json.loads(calls[2]["schema"])
+        self.assertEqual(json.loads((rundir / "verdict.schema.json").read_text()), schema)
+        self.assertEqual(schema["required"], ["verdict", "findings", "reproduced", "notes"])
+        self.assertIs(schema["additionalProperties"], False)
+        self.assertEqual(schema["properties"]["verdict"]["enum"], ["correct", "incorrect", "blocked"])
+        finding = schema["properties"]["findings"]["items"]
+        self.assertEqual(finding["required"], ["priority", "confidence", "path", "line", "rationale"])
+        self.assertIs(finding["additionalProperties"], False)
+        self.assertEqual(finding["properties"]["priority"]["enum"], ["P0", "P1", "P2", "P3"])
+        self.assertEqual(finding["properties"]["confidence"]["enum"], ["high", "medium", "low"])
+        self.assertEqual(finding["properties"]["line"]["type"], ["integer", "null"])
+        self.assertEqual(schema["properties"]["notes"]["type"], ["string", "null"])
         for call in calls:
             self.assertNotIn("-s", call["argv"])
             self.assertFalse(
@@ -249,6 +271,11 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("The head's own rules", prompt)
         self.assertIn("It guarantees one thing.", prompt)
         self.assertIn(f"diff {self.main}..{self.head}", prompt)
+        for field in ("`verdict`", "`findings`", "`priority`", "`confidence`", "`path`", "`line`", "`rationale`"):
+            self.assertIn(field, prompt)
+        self.assertIn("`reproduced`", prompt)
+        self.assertIn("`notes`", prompt)
+        self.assertNotIn("End with exactly one line", prompt)
 
     def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
         """The one write outside the run directory: Codex's own token refresh through the login link lands on the
@@ -677,12 +704,12 @@ class PrAuditTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
 
-    def test_a_failed_run_or_a_message_without_a_verdict_line_exits_1(self):
-        awk = self.failing_tool("awk", "*", "exit 2")
-        for env in (
-            {"FAKE_CODEX_EXEC_EXIT": "1"},
-            {"FAKE_CODEX_VERDICT": "Verdict: correct\n\nmore text\n"},
-            {"PATH": awk},  # the read of the verdict's last line fails: no verdict is printed
+    def test_a_failed_run_or_a_failed_verdict_reader_exits_1_with_no_verdict(self):
+        """Standing order 21: the reader's status decides; a reader that could not run yields no verdict."""
+        reader = self.failing_tool("python3", "*verdict.md*", "exit 1")
+        for env, message in (
+            ({"FAKE_CODEX_EXEC_EXIT": "1"}, "codex exec exited 1"),
+            ({"PATH": reader}, "no verdict was taken from"),
         ):
             with self.subTest(env=env):
                 for path in self.tmp.iterdir():
@@ -690,6 +717,96 @@ class PrAuditTest(unittest.TestCase):
                 run = self.run_lever("7", **env)
                 self.assertEqual(run.returncode, 1, run.stderr)
                 self.assertEqual(run.stdout, "")
+                self.assertIn(message, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertFalse((rundir / "verdict.md").exists(), "no verdict text without a verdict")
+
+    def test_a_verdict_is_taken_only_from_a_schema_conforming_file(self):
+        """U106: the fake's modes (b) to (e) of the brief, then the other shapes the schema rejects (a missing key, a
+        finding without its keys, an unknown key, a wrong type, a non-object). Each is exit 1 naming verdict.json, no
+        stdout line, no verdict.md."""
+        bad_finding = {"priority": "P3", "confidence": "high", "path": "change.txt"}
+        conforming = {"verdict": "correct", "findings": [], "reproduced": [], "notes": None}
+        cases = (
+            ({"FAKE_CODEX_VERDICT_MODE": "contradiction"}, "verdict correct contradicts its findings: 1 of priority"),
+            ({"FAKE_CODEX_VERDICT_MODE": "invalid-json"}, "not valid JSON"),
+            ({"FAKE_CODEX_VERDICT_MODE": "unknown-enum"}, 'verdict.verdict is "maybe", not one of correct, incorrect'),
+            ({"FAKE_CODEX_VERDICT_MODE": "none"}, "wrote no final message to"),
+            (
+                {"FAKE_CODEX_VERDICT": json.dumps({k: v for k, v in conforming.items() if k != "reproduced"})},
+                "lacks the required key reproduced",
+            ),
+            (
+                {"FAKE_CODEX_VERDICT": json.dumps({**conforming, "findings": [bad_finding]})},
+                "findings[0] lacks the required key line",
+            ),
+            ({"FAKE_CODEX_VERDICT": json.dumps({**conforming, "extra": 1})}, "has the unknown key extra"),
+            ({"FAKE_CODEX_VERDICT": json.dumps({**conforming, "notes": 3})}, "notes is not of type string or null"),
+            ({"FAKE_CODEX_VERDICT": json.dumps([conforming])}, "the verdict is not of type object"),
+        )
+        for env, message in cases:
+            with self.subTest(message=message):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", **env)
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(str(rundir / "verdict.json"), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+
+    def test_the_decision_rule_is_applied_from_the_findings(self):
+        """Any P0, P1 or P2 finding means incorrect; none means correct or blocked. A verdict the findings do not
+        derive is refused, never corrected: the lever prints no verdict at all."""
+
+        def finding(priority, line=12):
+            return {
+                "priority": priority,
+                "confidence": "medium",
+                "path": "change.txt",
+                "line": line,
+                "rationale": "Why.",
+            }
+
+        accepted = (
+            ({"verdict": "incorrect", "findings": [finding("P2"), finding("P3", None)]}, "incorrect"),
+            ({"verdict": "incorrect", "findings": [finding("P0")]}, "incorrect"),
+            ({"verdict": "correct", "findings": [finding("P3")]}, "correct"),
+            ({"verdict": "blocked", "findings": []}, "blocked"),
+        )
+        for document, value in accepted:
+            with self.subTest(verdict=value, findings=[f["priority"] for f in document["findings"]]):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                document = {**document, "reproduced": ["bash -n: ok"], "notes": "A note."}
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=json.dumps(document))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: {value}\n")
+                text = (rundir / "verdict.md").read_text()
+                self.assertTrue(text.endswith(f"\nVerdict: {value}\n"), text)
+                for item in document["findings"]:
+                    at = "change.txt" if item["line"] is None else f"change.txt:{item['line']}"
+                    self.assertIn(f"- {item['priority']} (medium) {at}: Why.\n", text)
+                self.assertIn("## Reproduced\n\n- bash -n: ok\n", text)
+                self.assertIn("## Notes\n\nA note.\n", text)
+        refused = (
+            {"verdict": "incorrect", "findings": [finding("P3")]},
+            {"verdict": "incorrect", "findings": []},
+            {"verdict": "blocked", "findings": [finding("P1")]},
+        )
+        for document in refused:
+            with self.subTest(verdict=document["verdict"], findings=[f["priority"] for f in document["findings"]]):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                document = {**document, "reproduced": [], "notes": None}
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=json.dumps(document))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(f"verdict {document['verdict']} contradicts its findings", run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertFalse((rundir / "verdict.md").exists())
 
     def test_the_timeout_stops_every_process_codex_started(self):
         """PR_AUDIT_TIMEOUT ends the audit, not just the launcher: a child codex left behind would keep running on the

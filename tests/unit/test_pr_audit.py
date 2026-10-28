@@ -248,7 +248,9 @@ class PrAuditTest(unittest.TestCase):
         self.assertIs(finding["additionalProperties"], False)
         self.assertEqual(finding["properties"]["priority"]["enum"], ["P0", "P1", "P2", "P3"])
         self.assertEqual(finding["properties"]["confidence"]["enum"], ["high", "medium", "low"])
-        self.assertEqual(finding["properties"]["line"]["type"], ["integer", "null"])
+        self.assertEqual(finding["properties"]["line"]["type"], "integer")
+        self.assertEqual(finding["properties"]["line"]["minimum"], 1)
+        self.assertEqual(finding["properties"]["line"]["maximum"], 2147483647)
         self.assertEqual(schema["properties"]["notes"]["type"], ["string", "null"])
         for call in calls:
             self.assertNotIn("-s", call["argv"])
@@ -276,6 +278,9 @@ class PrAuditTest(unittest.TestCase):
         self.assertIn("`reproduced`", prompt)
         self.assertIn("`notes`", prompt)
         self.assertNotIn("End with exactly one line", prompt)
+        self.assertNotIn("null when the finding has no line", prompt)
+        self.assertIn("is met by the `verdict` field of that object", prompt)
+        self.assertIn("an integer from 1 to 2147483647, never null", prompt)
 
     def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
         """The one write outside the run directory: Codex's own token refresh through the login link lands on the
@@ -770,7 +775,7 @@ class PrAuditTest(unittest.TestCase):
             }
 
         accepted = (
-            ({"verdict": "incorrect", "findings": [finding("P2"), finding("P3", None)]}, "incorrect"),
+            ({"verdict": "incorrect", "findings": [finding("P2"), finding("P3", 7)]}, "incorrect"),
             ({"verdict": "incorrect", "findings": [finding("P0")]}, "incorrect"),
             ({"verdict": "correct", "findings": [finding("P3")]}, "correct"),
             ({"verdict": "blocked", "findings": []}, "blocked"),
@@ -787,8 +792,7 @@ class PrAuditTest(unittest.TestCase):
                 text = (rundir / "verdict.md").read_text()
                 self.assertTrue(text.endswith(f"\nVerdict: {value}\n"), text)
                 for item in document["findings"]:
-                    at = "change.txt" if item["line"] is None else f"change.txt:{item['line']}"
-                    self.assertIn(f"- {item['priority']} (medium) {at}: Why.\n", text)
+                    self.assertIn(f"- {item['priority']} (medium) change.txt:{item['line']}: Why.\n", text)
                 self.assertIn("## Reproduced\n\n- bash -n: ok\n", text)
                 self.assertIn("## Notes\n\nA note.\n", text)
         refused = (
@@ -808,18 +812,21 @@ class PrAuditTest(unittest.TestCase):
                 (rundir,) = self.tmp.iterdir()
                 self.assertFalse((rundir / "verdict.md").exists())
 
-    def test_a_line_with_a_zero_fraction_is_an_integer_and_one_with_a_fraction_is_not(self):
+    def test_a_line_is_an_integer_within_its_bound_judged_on_the_written_digits(self):
         """JSON Schema's `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1), judged on the digits
-        codex wrote: `1.0` and `1E2` name lines 1 and 100 and are written as `path:1` and `path:100`. Python's json
-        would first round `1.0000000000000001` to 1.0 and `1e-999` to 0.0 (U106 audit round 2); the reader reads each
-        number exactly, so those two, `1.5` and a bool are not of type integer or null: exit 1 naming verdict.json, no
-        stdout line, no verdict.md. The literals are spliced as text, since json.dumps would round them too."""
+        codex wrote: `7`, `1.0` and `1E2` name lines 7, 1 and 100 and are written as `path:7`, `path:1` and `path:100`.
+        Python's json would first round `1.0000000000000001` to 1.0 and `1e-999` to 0.0 (U106 audit round 2); the
+        reader reads each number exactly, so those two, `1.5`, a bool and `null` (the rules ask for the exact
+        `file:line`) are not of type integer. `0` and `1E6000` are integers outside the bound 1 to 2147483647 and are
+        refused by it, with no traceback (U106 audit round 4: the 6001-digit value raised in the formatting of
+        `path:line`). Each refusal is exit 1 naming verdict.json, no stdout line, no verdict.md. The literals are
+        spliced as text, since json.dumps would round them too."""
 
         def document(line):
             finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
             return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": null}}'
 
-        for line, number in (("1.0", 1), ("1E2", 100)):
+        for line, number in (("7", 7), ("1.0", 1), ("1E2", 100)):
             with self.subTest(line=line):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
@@ -831,8 +838,18 @@ class PrAuditTest(unittest.TestCase):
                 self.assertIn(f'"line": {line},', written, "the file codex wrote is kept as is")
                 text = (rundir / "verdict.md").read_text()
                 self.assertIn(f"- P3 (high) f.txt:{number}: Why.\n", text)
-                self.assertNotIn(line, text)
-        for line in ("1.5", "true", "1.0000000000000001", "1e-999"):
+                self.assertNotIn(f"f.txt:{line}:", text.replace(f"f.txt:{number}:", ""))
+        not_integer = "findings[0].line is not of type integer"
+        refused = (
+            ("1.5", not_integer),
+            ("true", not_integer),
+            ("null", not_integer),
+            ("1.0000000000000001", not_integer),
+            ("1e-999", not_integer),
+            ("0", "findings[0].line is 0, below the minimum 1"),
+            ("1E6000", "findings[0].line is 1E+6000, above the maximum 2147483647"),
+        )
+        for line, message in refused:
             with self.subTest(line=line):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
@@ -841,8 +858,83 @@ class PrAuditTest(unittest.TestCase):
                 self.assertEqual(run.stdout, "")
                 (rundir,) = self.tmp.iterdir()
                 self.assertIn(str(rundir / "verdict.json"), run.stderr)
-                self.assertIn("findings[0].line is not of type integer or null", run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
                 self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+
+    def test_the_reader_refuses_a_schema_outside_its_keyword_and_type_tables(self):
+        """The schema codex is sent and the one the reader applies are one file; a keyword the reader does not implement
+        (a `pattern`, say) or a type outside JSON Schema would bind codex alone. The reader, run on its own with the
+        lever's embedded schema as the control, refuses such a schema naming the schema file, before the verdict is read
+        and without a traceback."""
+        source = LEVER.read_text()
+        reader = source[source.index("verdict_reader='\n") + len("verdict_reader='\n") : source.index("\n'\n\nschema=")]
+        schema = json.loads(
+            source[source.index("verdict_schema='") + len("verdict_schema='") : source.index("}'\n") + 1]
+        )
+        work = self.root / "reader-work"
+        work.mkdir()
+        verdict = work / "verdict.json"
+        verdict.write_text(json.dumps({"verdict": "correct", "findings": [], "reproduced": [], "notes": None}))
+        text = work / "verdict.md"
+
+        def run_reader(document):
+            path = work / "schema.json"
+            path.write_text(json.dumps(document))
+            return path, subprocess.run(
+                ["python3", "-I", "-S", "-c", reader, str(path), str(verdict), str(text)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+
+        _, control = run_reader(schema)
+        self.assertEqual((control.returncode, control.stdout), (0, "correct\n"), control.stderr)
+        self.assertTrue(text.read_text().endswith("\nVerdict: correct\n"))
+        text.unlink()
+        line = schema["properties"]["findings"]["items"]["properties"]["line"]
+        cases = (
+            (
+                {**schema, "pattern": "x"},
+                "the schema uses the keyword pattern, which the verdict reader does not implement",
+            ),
+            (
+                {
+                    **schema,
+                    "properties": {**schema["properties"], "notes": {"type": ["string", "null"], "maxLength": 9}},
+                },
+                "the schema.properties.notes uses the keyword maxLength",
+            ),
+            (
+                {
+                    **schema,
+                    "properties": {
+                        **schema["properties"],
+                        "findings": {
+                            **schema["properties"]["findings"],
+                            "items": {
+                                **schema["properties"]["findings"]["items"],
+                                "properties": {
+                                    **schema["properties"]["findings"]["items"]["properties"],
+                                    "line": {**line, "type": "float"},
+                                },
+                            },
+                        },
+                    },
+                },
+                'the schema.properties.findings.items.properties.line names the type "float"',
+            ),
+            ([schema], "the schema is not an object"),
+        )
+        for document, message in cases:
+            with self.subTest(message=message):
+                path, run = run_reader(document)
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(f"pr-audit.sh: {path} refused: {message}", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertFalse(text.exists(), "a refused schema reads no verdict")
 
     def test_the_timeout_stops_every_process_codex_started(self):
         """PR_AUDIT_TIMEOUT ends the audit, not just the launcher: a child codex left behind would keep running on the

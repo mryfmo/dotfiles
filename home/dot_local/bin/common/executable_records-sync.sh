@@ -303,9 +303,10 @@ else
     words_real=''
 fi
 # The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.
-# `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read
-# (3 for an unparsable file), so the two are told apart; an empty value is refused here, before any branch exists,
-# where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).
+# `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read:
+# measured on git 2.56.0 (2026-10-28), 128 for an unparsable file, where the manual says 3. Any status other than 0
+# and 1 is a failure here, so the reader is right under both. An empty value is refused here, before any branch
+# exists, where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).
 # @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).
 # @arg $2 string The configuration key.
 # @arg $3 string The variable that receives the value.
@@ -506,12 +507,24 @@ commit=$(printf '%s\n' "${message}" |
 git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     push --quiet "${push_url}" "${commit}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
 body=${scratch}/body.md
+# U108: the `## Contract` section is what pr-audit.sh judges the pull request against (a body without one is
+# refused), so every records sync gets an orchestrator verdict. Only the program name is interpolated.
+# shellcheck disable=SC2016 # the backticks are Markdown code spans
+contract=(
+    "The changed paths are exactly the files of \`.orchestration/orchestrate/${program}/\` that differ from origin/main: added, changed or deleted."
+    'No path lies outside that directory.'
+    'Every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program'"'"'s `redact-words.txt` when present.'
+    'The commit was built in a repository with no user, system or checkout configuration, and pushed over https with no user configuration.'
+    'Left out: the content of the records is not reviewed for truth, only by the identifier scan.'
+)
 {
     # shellcheck disable=SC2016 # the backticks are Markdown code spans
     printf '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the main checkout and compared with origin/main; every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`.\n\n' "${n}" "${program}" "${count}"
     printf -- '- units.tsv rows added or changed: %s\n' "${units:-none}"
     printf -- '- decisions.tsv rows added or changed: %s\n\n' "${decisions:-none}"
-    printf 'Program-Unit: %s/%s\n\n' "${program}" "${unit}"
+    printf '## Contract\n\n'
+    printf -- '- %s\n' "${contract[@]}"
+    printf '\nProgram-Unit: %s/%s\n\n' "${program}" "${unit}"
     printf '%s\n' "${pr_footer}"
 } > "${body}" || fail 'cannot write the body'
 url=$(gh_plain pr create --base main --head "${branch}" --title "${title}" --body-file "${body}") ||

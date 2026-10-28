@@ -24,14 +24,21 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/regime.yml"
 BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_EXPRESSION = "github.event.pull_request.body"
+BODY_VARIABLE = "PR_BODY"
+# The body on its own: not a literal that names it, not an expression computed from it. The script reads this value.
+BODY_CARRIER = "${{ github.event.pull_request.body }}"
 HEAD_REF = "refs/regime/pr-head"
+# The one fetch of the head in its exact form: the pull request's own `/head` ref (not `/merge`, which GitHub builds
+# from the head and the base) into the data ref, from origin. The words of the fetch that are not options.
+HEAD_REFSPEC = "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
+FETCH_WORDS = ["origin", HEAD_REFSPEC]
 UNSAFE_OPTION = "allow-unsafe-pr-checkout"
 READ_ONLY = {"contents": "read"}
-# A git subcommand that puts a commit into the work tree or moves HEAD; after the fetch, any of them could run the
-# head's files as the base's. A verb inside a path (`refs/pull/`, `pr-head`) is not a subcommand.
-TREE_VERBS = "checkout|switch|worktree|reset|restore|merge|rebase|cherry-pick|pull|read-tree|apply|am|stash"
-MOVES_TREE = re.compile(rf"\bgit\b.*(?<![/\w-])(?:{TREE_VERBS})(?![/\w-])")
-FETCH = re.compile(r"\bgit\b.*\bfetch\b")
+# The first word after `git` in a run line is one of these: fetch writes the one ref the refspec check pins, rev-parse
+# reads. Any other word is refused, an option before the subcommand included. An exact allowlist (plan D1), because a
+# list of verbs that move the work tree missed `update-ref --no-deref HEAD`, which moves HEAD without naming one.
+GIT_SUBCOMMANDS = frozenset({"fetch", "rev-parse"})
+GIT_CALL = re.compile(r"(?<![\w.-])git(?![\w.-])(?:\s+(?P<word>[^\s)\"'`;|&]+))?")
 
 
 def load(path: Path) -> dict:
@@ -77,6 +84,17 @@ def run_lines(doc: dict) -> list[str]:
     return [text for step in steps(doc) for text in str(step.get("run", "")).splitlines()]
 
 
+def git_subcommands(text: str, protects: str) -> list[str]:
+    """The first word after each `git` of a run line. A call with no word, or a word off the allowlist, is refused."""
+    found = []
+    for call in GIT_CALL.finditer(text):
+        word = call.group("word")
+        require(word is not None, protects, f"a git call with no subcommand: {text!r}")
+        require(word in GIT_SUBCOMMANDS, protects, f"a git subcommand outside {sorted(GIT_SUBCOMMANDS)}: {text!r}")
+        found.append(word)
+    return found
+
+
 def check_trigger(doc: dict) -> None:
     # PyYAML reads the key `on` as the boolean true, which JSON spells "true".
     on = mapping(doc.get("true", doc.get("on")), "pull_request_target:")
@@ -108,34 +126,32 @@ def check_no_unsafe_checkout(doc: dict) -> None:
 
 
 def check_head_is_data(doc: dict) -> None:
-    protects = "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
+    protects = HEAD_REFSPEC
     fetches = 0
     for text in run_lines(doc):
         require(not text.rstrip().endswith("\\"), protects, f"a continued line hides its words: {text!r}")
-        require(not MOVES_TREE.search(text), protects, f"a step moves the work tree or HEAD: {text!r}")
-        if not FETCH.search(text):
+        calls = git_subcommands(text, protects)
+        if "fetch" not in calls:
             continue
         fetches += 1
+        require(calls == ["fetch"], protects, f"a fetch line with another git call on it: {text!r}")
         try:
             words = shlex.split(text)
         except ValueError as error:
             raise AssertionError(f"{line(protects)}: a fetch line this check cannot read: {text!r}") from error
-        refspecs = [word for word in words[words.index("fetch") + 1 :] if not word.startswith("-")][1:]
-        require(refspecs, protects, f"a fetch with no refspec: {text!r}")
-        for refspec in refspecs:
-            source, _, target = refspec.partition(":")
-            head_as_data = source.startswith("refs/pull/") and target == HEAD_REF
-            require(head_as_data, protects, f"a fetch writes elsewhere: {text!r}")
+        require(words.count("fetch") == 1, protects, f"a fetch line this check cannot read: {text!r}")
+        given = [word for word in words[words.index("fetch") + 1 :] if not word.startswith("-")]
+        require(given == FETCH_WORDS, protects, f"the fetch names {given!r}, not {FETCH_WORDS!r}")
     require(fetches == 1, protects, f"{fetches} fetch lines; the head is fetched once, into {HEAD_REF}")
 
 
 def check_body_is_data(doc: dict) -> None:
-    protects = "PR_BODY: ${{ github.event.pull_request.body }}"
+    protects = f"{BODY_VARIABLE}: {BODY_CARRIER}"
     scopes = [*jobs(doc).values(), *steps(doc)]
-    carriers = [
-        value for scope in scopes for value in (scope.get("env") or {}).values() if BODY_EXPRESSION in str(value)
-    ]
-    require(carriers, protects, "no env: mapping carries the body to the script")
+    envs = [mapping(scope.get("env") or {}, protects) for scope in scopes]
+    carriers = [env[BODY_VARIABLE] for env in envs if BODY_VARIABLE in env]
+    require(len(carriers) == 1, protects, f"{len(carriers)} env: mappings name {BODY_VARIABLE}; one carries the body")
+    require(carriers == [BODY_CARRIER], protects, f"{BODY_VARIABLE} is {carriers[0]!r}, not the body expression alone")
     for text in run_lines(doc):
         require(BODY_EXPRESSION not in text, protects, f"the body is inlined into run: {text!r}")
         require("${{" not in text, protects, f"an expression is inlined into run: {text!r}")
@@ -155,11 +171,15 @@ def checkout_options(doc: dict) -> dict:
 
 
 def fetch_step(doc: dict) -> dict:
-    return next(step for step in regime_steps(doc) if FETCH.search(step.get("run", "")))
+    return next(step for step in regime_steps(doc) if "git fetch" in step.get("run", ""))
 
 
 def verify_step(doc: dict) -> dict:
-    return next(step for step in regime_steps(doc) if "PR_BODY" in step.get("env", {}))
+    return next(step for step in regime_steps(doc) if BODY_VARIABLE in step.get("env", {}))
+
+
+def body_env(doc: dict) -> dict:
+    return verify_step(doc)["env"]
 
 
 def inline_body(doc: dict) -> None:
@@ -183,6 +203,13 @@ def delete_in(getter: Callable[[dict], dict], key: str) -> Callable[[dict], None
 def append_run(getter: Callable[[dict], dict], text: str) -> Callable[[dict], None]:
     def mutate(doc: dict) -> None:
         getter(doc)["run"] += text
+
+    return mutate
+
+
+def replace_run(getter: Callable[[dict], dict], old: str, new: str) -> Callable[[dict], None]:
+    def mutate(doc: dict) -> None:
+        getter(doc)["run"] = getter(doc)["run"].replace(old, new)
 
     return mutate
 
@@ -238,10 +265,10 @@ UNSAFE_CHECKOUT = Invariant(
 HEAD_IS_DATA = Invariant(
     check_head_is_data,
     {
-        "a fetch into a branch": lambda d: fetch_step(d).__setitem__(
-            "run", fetch_step(d)["run"].replace(HEAD_REF, "refs/heads/pr")
-        ),
+        "a fetch into a branch": replace_run(fetch_step, HEAD_REF, "refs/heads/pr"),
+        "a fetch of the merge ref": replace_run(fetch_step, "/head:", "/merge:"),
         "a checkout of the fetched head": append_run(fetch_step, f"git checkout {HEAD_REF}\n"),
+        "HEAD moved onto the fetched head": append_run(fetch_step, f"git update-ref --no-deref HEAD {HEAD_REF}\n"),
         "a second fetch of the head": append_run(fetch_step, 'git fetch origin "${HEAD_SHA}"\n'),
         "no fetch at all": lambda d: fetch_step(d).__setitem__("run", "true\n"),
     },
@@ -250,7 +277,9 @@ BODY_IS_DATA = Invariant(
     check_body_is_data,
     {
         "the body inlined into run": inline_body,
-        "no env carries the body": delete_in(lambda d: verify_step(d)["env"], "PR_BODY"),
+        "no env carries the body": delete_in(body_env, BODY_VARIABLE),
+        "the body's name as a literal": set_in(body_env, BODY_VARIABLE, BODY_EXPRESSION),
+        "a boolean of the body": set_in(body_env, BODY_VARIABLE, "${{ github.event.pull_request.body != '' }}"),
         "another expression inlined into run": append_run(verify_step, ' "${{ github.head_ref }}"'),
     },
 )

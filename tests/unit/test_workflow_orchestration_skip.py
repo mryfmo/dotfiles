@@ -16,12 +16,42 @@ REMOTE = WORKFLOWS / "remote.yaml"
 PRIVATE = WORKFLOWS / "private-bootstrap.yaml"
 TEST = WORKFLOWS / "test.yaml"
 AGENT_ASSETS = WORKFLOWS / "agent-assets.yml"
+MACOS = WORKFLOWS / "macos.yaml"
+UBUNTU = WORKFLOWS / "ubuntu.yaml"
 # Plan 024 Q1: a pull request's newer head cancels its older run; every main push runs to completion.
 CONCURRENCY = (
     "\nconcurrency:\n"
     "  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', "
     "github.event.pull_request.number) || format('main-{0}', github.sha) }}\n"
     "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n"
+)
+# Plan P-32: every workflow's run-level concurrency block. private-bootstrap never runs on a pull request, and its weekly
+# and dispatched runs share main's sha, so its runs of one commit share a group that queues every pending run and
+# cancels none; the others cancel a superseded pull request run only.
+RUN_CONCURRENCY = {
+    TEST: CONCURRENCY,
+    REMOTE: CONCURRENCY,
+    AGENT_ASSETS: CONCURRENCY,
+    MACOS: CONCURRENCY,
+    UBUNTU: CONCURRENCY,
+    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.sha }}\n  cancel-in-progress: false\n  queue: max\n",
+}
+# Plan P-32: the benchmark push serialises across main runs, since the run-level group keeps every main commit's run;
+# a pull request's build job never pushes and gets its own group, so it cannot displace a pending main run.
+BENCHMARK_CONCURRENCY = (
+    "\n    concurrency:\n"
+    "      group: ${{ github.event_name == 'push' && 'macos-benchmark' || format('macos-benchmark-run-{0}', "
+    "github.run_id) }}\n"
+    "      cancel-in-progress: false\n"
+    "      queue: max"
+)
+# The groups whose every run completes (the Contract): the private bootstrap's per-commit group and the MacOS build
+# job's, as (workflow, job or None for the run level). GitHub's default queue holds one pending run and a third arrival
+# replaces it whatever cancel-in-progress says; queue: max holds up to 100, and GitHub rejects it next to
+# cancel-in-progress: true, so a completion group carries queue: max and cancel-in-progress: false.
+COMPLETION_GROUPS = (
+    (PRIVATE, None),
+    (MACOS, "build"),
 )
 # A copy of the ruleset's required status checks (a unit test cannot read the
 # ruleset); this is what changes when the ruleset changes.
@@ -58,8 +88,8 @@ BOOTSTRAP_OUTPUT = {
 }
 # The workflows whose bootstrap needs repository secrets, each gated by a `secrets` job (F050, gate G13).
 SECRET_GATED = (
-    (WORKFLOWS / "macos.yaml", "build"),
-    (WORKFLOWS / "ubuntu.yaml", "build"),
+    (MACOS, "build"),
+    (UBUNTU, "build"),
     (PRIVATE, "private-bootstrap"),
 )
 # Steps a deciding job runs on every diff: setup, the checkout the decision
@@ -153,6 +183,115 @@ def jobs(path: Path) -> dict[str, dict]:
                 raise ValueError(f"unsupported step form inside jobs: {line!r}")
             block_key, step[block_key] = plain_key(stripped, line)
     return result
+
+
+def job_block(path: Path, name: str) -> str:
+    """A job's keys before `runs-on`, where its `concurrency` block sits (the jobs reader keeps the key, not the block)."""
+    return path.read_text().split(f"\n  {name}:\n", 1)[1].split("\n    runs-on:", 1)[0]
+
+
+def concurrency(text: str, indent: str = "") -> tuple[str, str, str]:
+    """The one `concurrency:` block at this indentation as its raw (group, cancel-in-progress, queue) values.
+
+    `queue` is "" when the block has none: GitHub's default, `single`, which holds one pending run.
+    """
+    pattern = (
+        rf"\n{indent}concurrency:\n{indent}  group: (.*)\n{indent}  cancel-in-progress: (.*)"
+        rf"(?:\n{indent}  queue: (.*))?(?:\n|\Z)"
+    )
+    blocks = re.findall(pattern, text)
+    assert len(blocks) == 1, blocks
+    return blocks[0]
+
+
+EXPRESSION_TOKEN = re.compile(r"\s*('(?:[^']|'')*'|&&|\|\||==|[(),]|[A-Za-z_][\w.]*)")
+
+
+def rendered(template: str, context: dict[str, str]) -> str:
+    """The template with each `${{ }}` evaluated for one run's `github` context.
+
+    Evaluates the forms the workflows' groups use: a `github.*` reference, a quoted literal, `format()`, `==`, and
+    `&&`/`||` (the ternary form). Any other form raises, so an expression this reader does not evaluate never reads
+    as a fixed or a distinct group.
+    """
+
+    def evaluate(expression: str) -> str | bool:
+        tokens: list[str] = []
+        position = 0
+        while position < len(expression.rstrip()):
+            match = EXPRESSION_TOKEN.match(expression, position)
+            if not match:
+                raise ValueError(f"unsupported expression: {expression!r}")
+            tokens.append(match.group(1))
+            position = match.end()
+        tokens.reverse()  # pop() yields the next token
+
+        def primary() -> str | bool:
+            token = tokens.pop()
+            if token.startswith("'"):
+                return token[1:-1].replace("''", "'")
+            if token == "(":
+                value = disjunction()
+                if tokens.pop() != ")":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                return value
+            if token == "format":
+                if tokens.pop() != "(":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                parts = [disjunction()]
+                while (separator := tokens.pop()) == ",":
+                    parts.append(disjunction())
+                if separator != ")":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                return str(parts[0]).format(*parts[1:])
+            if token.startswith("github."):
+                return context[token[len("github.") :]]
+            raise ValueError(f"unsupported token {token!r} in {expression!r}")
+
+        def equality() -> str | bool:
+            value = primary()
+            if tokens and tokens[-1] == "==":
+                tokens.pop()
+                return value == primary()
+            return value
+
+        def conjunction() -> str | bool:
+            value = equality()
+            while tokens and tokens[-1] == "&&":
+                tokens.pop()
+                right = equality()
+                value = right if value else value
+            return value
+
+        def disjunction() -> str | bool:
+            value = conjunction()
+            while tokens and tokens[-1] == "||":
+                tokens.pop()
+                right = conjunction()
+                value = value if value else right
+            return value
+
+        value = disjunction()
+        if tokens:
+            raise ValueError(f"unsupported expression: {expression!r}")
+        return value
+
+    def substitute(match: re.Match[str]) -> str:
+        value = evaluate(match.group(1))
+        return value if isinstance(value, str) else str(value).lower()
+
+    return re.sub(r"\$\{\{(.*?)\}\}", substitute, template)
+
+
+def run(event_name: str, run_id: str, sha: str | None = None, number: str = "7") -> dict[str, str]:
+    """One run's `github` context: its event, its id, its commit (distinct per run unless given) and a pull request number."""
+    return {
+        "workflow": "W",
+        "event_name": event_name,
+        "run_id": run_id,
+        "sha": sha or run_id.rjust(40, "0"),
+        "event.pull_request.number": number,
+    }
 
 
 def step_name(step: dict) -> str:
@@ -741,12 +880,75 @@ class WorkflowTriggerTest(unittest.TestCase):
                             self.assertIn("Bootstrap skipped", summary.read_text())
                             self.assertIn("::notice title=Bootstrap skipped::", result.stdout)
 
-    def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
-        for path in (TEST, REMOTE, AGENT_ASSETS):
+    def test_every_workflow_cancels_superseded_pull_request_runs_only_and_keeps_every_main_run(self) -> None:
+        for path, block in RUN_CONCURRENCY.items():
             with self.subTest(workflow=path.name):
                 text = path.read_text()
                 self.assertEqual(1, text.count("\nconcurrency:"))
-                self.assertIn(CONCURRENCY, text.split("\njobs:\n", 1)[0])
+                self.assertIn(block, text.split("\njobs:\n", 1)[0])
+
+    def test_the_benchmark_push_queues_runs_from_different_main_commits(self) -> None:
+        # The run-level group keeps every main commit's run, so without this job-level group two of them can push
+        # to the benchmark repository at once; the job must queue, never cancel, since a cancelled push is half done.
+        build = job_block(MACOS, "build")
+        self.assertIn(BENCHMARK_CONCURRENCY, build)
+        self.assertEqual("", jobs(MACOS)["build"]["keys"]["concurrency"])
+
+    def test_same_commit_private_bootstrap_runs_share_one_queued_group(self) -> None:
+        # A weekly and a dispatched run carry main's commit, the same sha as the push that made it. The three share one
+        # group, so two bootstraps of one commit never run side by side; the group queues every pending run and cancels
+        # none (test_every_completion_group_keeps_every_pending_run), so every main push, weekly and dispatched run
+        # completes (the Contract's promise). A group per run would queue nothing.
+        group, cancel, _ = concurrency(PRIVATE.read_text().split("\njobs:\n", 1)[0])
+        self.assertEqual("false", cancel)
+        sha = "a" * 40
+        groups = {
+            rendered(group, run(event_name, run_id, sha))
+            for run_id, event_name in (
+                ("1", "push"),
+                ("2", "schedule"),
+                ("3", "workflow_dispatch"),
+                ("4", "workflow_dispatch"),
+            )
+        }
+        self.assertEqual(1, len(groups), groups)
+        # Per commit, not fixed: another commit's push is a second group and does not wait for this one.
+        self.assertNotIn(rendered(group, run("push", "5", "b" * 40)), groups)
+
+    def test_a_pull_request_build_never_displaces_a_pending_main_benchmark_run(self) -> None:
+        # The fixed group queues main pushes behind each other, but a group holds one running and one pending run, so
+        # a pull request's build job in the same group (it never pushes the benchmark) would cancel a pending main run.
+        # Main pushes share the group; every pull request run gets its own.
+        build = job_block(MACOS, "build")
+        group, cancel, _ = concurrency(build, "    ")
+        self.assertEqual("false", cancel)
+        first, second = (rendered(group, run("push", run_id)) for run_id in ("1", "2"))
+        self.assertEqual("macos-benchmark", first)
+        self.assertEqual(first, second)
+        pull_requests = {rendered(group, run("pull_request", run_id)) for run_id in ("3", "4")}
+        self.assertNotIn(first, pull_requests)
+        self.assertEqual(2, len(pull_requests), pull_requests)
+
+    def test_every_completion_group_keeps_every_pending_run(self) -> None:
+        # GitHub's default queue holds one pending run, and a third arrival replaces it whatever cancel-in-progress
+        # says: a third main push reaching macos-benchmark while one runs and one waits would cost the waiting commit
+        # its benchmark point. queue: max holds every pending run. GitHub rejects queue: max next to
+        # cancel-in-progress: true, so every block that carries it says false, and the scan reads every block.
+        for path, job in COMPLETION_GROUPS:
+            with self.subTest(workflow=path.name, job=job):
+                text = path.read_text().split("\njobs:\n", 1)[0] if job is None else job_block(path, job)
+                group, cancel, queue = concurrency(text, "" if job is None else "    ")
+                self.assertEqual(("false", "max"), (cancel, queue), group)
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            text = path.read_text()
+            blocks = re.findall(
+                r"\n( *)concurrency:\n\1  group: .*\n\1  cancel-in-progress: (.*)(?:\n\1  queue: (.*))?(?:\n|\Z)", text
+            )
+            with self.subTest(workflow=path.name):
+                self.assertEqual(text.count("concurrency:"), len(blocks), blocks)
+                for _, cancel, queue in blocks:
+                    if queue == "max":
+                        self.assertEqual("false", cancel)
 
     def test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script(
         self,

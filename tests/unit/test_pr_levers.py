@@ -1215,7 +1215,7 @@ class RecordsSyncTest(PrLeverTestCase):
         for bullet, phrase in zip(
             bullets,
             (
-                "exactly the files of `.orchestration/orchestrate/prog/` that differ from origin/main: added, changed or deleted",
+                "exactly the files of `.orchestration/orchestrate/prog/` on disk, tracked or untracked and not ignored, that differ from origin/main by content: added, changed, or deleted when origin/main holds a path the store lacks. Its `redact-words.txt` is never copied, deleted or published",
                 "No path lies outside that directory",
                 "masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program's `redact-words.txt` when present",
                 "no user, system or checkout configuration, and pushed over https with no user configuration",

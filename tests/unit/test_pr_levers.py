@@ -1271,10 +1271,11 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 "), run.stdout)
 
-    def test_an_identity_read_that_fails_is_not_read_as_unset_and_an_empty_value_refuses(self):
-        """U101 round 10 (bot finding 4379614437): `|| refuse 'unset'` read a failed `git config` as an unset key, and
-        a configured empty value passed to be refused by commit-tree after the branch existed. Exit 1 is unset
-        (refused), any other status is a read failure (failed), an empty value is refused; all before any gh call."""
+    def test_a_config_read_that_fails_is_not_read_as_unset_and_an_empty_value_refuses(self):
+        """U101 round 10 (bot finding 4379614437, audit of 0c7bf092): `|| refuse 'unset'` read a failed `git config` as
+        an unset key (the identity, then origin's URL), and a configured empty value passed to be refused by
+        commit-tree after the branch existed. Exit 1 is unset (refused), any other status is a read failure (failed),
+        an empty value is refused; all before any gh call."""
         self.github()
         with (self.records / "units.tsv").open("a") as units:
             units.write("U2\tseats\n")
@@ -1291,8 +1292,47 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
         self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
+        self.env |= {"FAKE_GIT_FAIL": "remote.origin.url", "FAKE_GIT_FAIL_STATUS": "3"}
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_FAIL"], self.env["FAKE_GIT_FAIL_STATUS"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config remote.origin.url (git config exited 3)", run.stderr)
+        self.git("config", "remote.origin.url", "")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is empty")
+        self.git("config", "remote.origin.url", self.url)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
         run = self.run_lever("records-sync.sh")
         self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_store_directory_that_cannot_be_entered_refuses_instead_of_deleting_its_files(self):
+        """U101 round 10 (audit of 0c7bf092): `git ls-files` warns and exits 0 for a directory it cannot open, so its
+        files left the listing and, absent from the store as far as the lever could see, were pushed as deletions.
+        The store is walked first; a directory that cannot be read or entered refuses the run before anything exists."""
+        if os.geteuid() == 0:
+            self.skipTest("file modes do not bind root")
+        self.github()
+        (self.records / "briefs").mkdir()
+        (self.records / "briefs/B1.md").write_text("brief\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "a brief")
+        self.git("push", "-q", "origin", "main")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        locked = self.records / "briefs"
+        self.addCleanup(locked.chmod, 0o755)
+        for mode in (0o000, 0o444, 0o111):
+            with self.subTest(oct(mode)):
+                locked.chmod(mode)
+                run = self.run_lever("records-sync.sh")
+                locked.chmod(0o755)
+                self.assert_refused(run, "cannot be read or entered")
+                self.assertNotIn("B1.md", run.stdout + run.stderr, "no output names a store path")
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
 
     def test_a_staged_rename_carries_its_source(self):
         """U28c F1: with rename detection the source path was dropped and the old record stayed on the branch."""

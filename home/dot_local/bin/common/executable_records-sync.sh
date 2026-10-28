@@ -305,22 +305,25 @@ fi
 # The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.
 # `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read
 # (3 for an unparsable file), so the two are told apart; an empty value is refused here, before any branch exists,
-# where commit-tree would otherwise refuse it later.
-read_identity() {
+# where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).
+# @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).
+# @arg $2 string The configuration key.
+# @arg $3 string The variable that receives the value.
+read_config() {
     local value status=0
-    value=$(git config --get "$1") || status=$?
+    value=$("$1" config --get "$2") || status=$?
     case ${status} in
-    0) [[ -n ${value} ]] || refuse "git config $1 is empty" ;;
-    1) refuse "git config $1 is unset" ;;
-    *) fail "cannot read git config $1 (git config exited ${status})" ;;
+    0) [[ -n ${value} ]] || refuse "git config $2 is empty" ;;
+    1) refuse "git config $2 is unset" ;;
+    *) fail "cannot read git config $2 (git config exited ${status})" ;;
     esac
-    printf -v "$2" '%s' "${value}"
+    printf -v "$3" '%s' "${value}"
 }
-author_name='' author_email=''
-read_identity user.name author_name
-read_identity user.email author_email
+author_name='' author_email='' push_url=''
+read_config git user.name author_name
+read_config git user.email author_email
 # U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.
-push_url=$(git_plain config --get remote.origin.url) || refuse 'no remote.origin.url'
+read_config git_plain remote.origin.url push_url
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself
 https://?*) ;;
 *) refuse "the push needs an https origin URL, not ${push_url}" ;;
@@ -343,7 +346,22 @@ main_tree=$(git_scratch rev-parse --verify "${main}^{tree}") || fail 'cannot rea
 # NUL-delimited: a git failure, even after output, and a listing whose last entry has no NUL end (cut short) refuse
 # here, before any copy, commit or gh call.
 listing=${scratch}/listing
-git ls-files -z --cached --others --exclude-standard -- "${records}/" > "${listing}" || fail 'git ls-files failed'
+# Audit of 0c7bf092: `git ls-files` warns and exits 0 for a directory it cannot open, and a file it then leaves out
+# of the listing is absent from the store as far as this lever can see, which is a deletion. So the store is walked
+# first (find exits non-zero for a directory it cannot read, and each directory is checked readable and
+# searchable), and any warning of the listing refuses the run as well; neither output is shown (a store path may
+# hold a redact word).
+find "${records}" -type d -print0 > "${scratch}/dirs" 2> "${scratch}/walk.err" ||
+    refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
+dir=''
+while IFS= read -r -d '' dir; do
+    [[ -r ${dir} && -x ${dir} ]] || refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
+done < "${scratch}/dirs"
+[[ -z ${dir} ]] || refuse "the walk of ${records}/ ends mid-entry; nothing was created"
+git ls-files -z --cached --others --exclude-standard -- "${records}/" > "${listing}" 2> "${scratch}/listing.err" ||
+    fail 'git ls-files failed'
+[[ ! -s ${scratch}/listing.err ]] ||
+    refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
 files=()
 present=$'\n'
 path=''

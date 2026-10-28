@@ -9,12 +9,15 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
-# No pull request ever runs this workflow. A group holds one running and one pending run, and a third arrival cancels
+# No pull request ever runs this workflow. GitHub's default queue holds one pending run, and a third arrival cancels
 # the pending one whatever cancel-in-progress says; a weekly and a dispatched run carry the same commit as the push that
-# made it, so a group keyed on the sha could lose one of them. Each run is its own group: none waits, none is cancelled.
+# made it, so a group keyed on the sha could lose one of them. Each run is its own group, and queue: max keeps every
+# pending run should two ever share one: none waits, none is cancelled. GitHub refuses queue: max next to
+# cancel-in-progress: true.
 concurrency:
   group: private-bootstrap-${{ github.run_id }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read

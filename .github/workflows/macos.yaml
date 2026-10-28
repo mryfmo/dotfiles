@@ -72,12 +72,15 @@ jobs:
         os: [macos-15]
     # The run-level MacOS-main-<sha> group keeps every main commit's run, so two of them can still push to the same
     # benchmark repository at once; the fixed group queues the later main run instead. Only a main push joins it: a
-    # group holds one running and one pending run, so a pull request's build job (it never pushes) in the same group
-    # would cancel a pending main run; each pull request run gets a group of its own. Never cancelled: a cancelled push
-    # leaves the benchmark repository half written.
+    # pull request's build job (it never pushes) would take a slot in the group's queue; each pull request run gets a
+    # group of its own. Never cancelled: a cancelled push leaves the benchmark repository half written. queue: max
+    # holds every pending main run (GitHub's default queue holds one and a third arrival replaces it, whatever
+    # cancel-in-progress says), so every main push lands its benchmark point; GitHub refuses queue: max next to
+    # cancel-in-progress: true.
     concurrency:
       group: ${{ github.event_name == 'push' && 'macos-benchmark' || format('macos-benchmark-run-{0}', github.run_id) }}
       cancel-in-progress: false
+      queue: max
     runs-on: ${{ matrix.os }} # Apple silicon
     # Two full setup.sh runs, the benchmark and the file tests; a hung install cancels the job instead of running 6 h.
     timeout-minutes: 60

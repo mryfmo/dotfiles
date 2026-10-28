@@ -34,7 +34,9 @@ RUN_CONCURRENCY = {
     AGENT_ASSETS: CONCURRENCY,
     MACOS: CONCURRENCY,
     UBUNTU: CONCURRENCY,
-    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.run_id }}\n  cancel-in-progress: false\n",
+    PRIVATE: (
+        "\nconcurrency:\n  group: private-bootstrap-${{ github.run_id }}\n  cancel-in-progress: false\n  queue: max\n"
+    ),
 }
 # Plan P-32: the benchmark push serialises across main runs, since the run-level group keeps every main commit's run;
 # a pull request's build job never pushes and gets its own group, so it cannot displace a pending main run.
@@ -42,7 +44,16 @@ BENCHMARK_CONCURRENCY = (
     "\n    concurrency:\n"
     "      group: ${{ github.event_name == 'push' && 'macos-benchmark' || format('macos-benchmark-run-{0}', "
     "github.run_id) }}\n"
-    "      cancel-in-progress: false"
+    "      cancel-in-progress: false\n"
+    "      queue: max"
+)
+# The groups whose every run completes (the Contract): the private bootstrap's run-level group and the MacOS build
+# job's, as (workflow, job or None for the run level). GitHub's default queue holds one pending run and a third arrival
+# replaces it whatever cancel-in-progress says; queue: max holds up to 100, and GitHub rejects it next to
+# cancel-in-progress: true, so a completion group carries queue: max and cancel-in-progress: false.
+COMPLETION_GROUPS = (
+    (PRIVATE, None),
+    (MACOS, "build"),
 )
 # A copy of the ruleset's required status checks (a unit test cannot read the
 # ruleset); this is what changes when the ruleset changes.
@@ -176,12 +187,23 @@ def jobs(path: Path) -> dict[str, dict]:
     return result
 
 
-def concurrency(text: str, indent: str = "") -> tuple[str, str]:
-    """The one `concurrency:` block at this indentation as its raw (group, cancel-in-progress) values."""
-    pattern = rf"\n{indent}concurrency:\n{indent}  group: (.*)\n{indent}  cancel-in-progress: (.*)(?:\n|\Z)"
-    pairs = re.findall(pattern, text)
-    assert len(pairs) == 1, pairs
-    return pairs[0]
+def job_block(path: Path, name: str) -> str:
+    """A job's keys before `runs-on`, where its `concurrency` block sits (the jobs reader keeps the key, not the block)."""
+    return path.read_text().split(f"\n  {name}:\n", 1)[1].split("\n    runs-on:", 1)[0]
+
+
+def concurrency(text: str, indent: str = "") -> tuple[str, str, str]:
+    """The one `concurrency:` block at this indentation as its raw (group, cancel-in-progress, queue) values.
+
+    `queue` is "" when the block has none: GitHub's default, `single`, which holds one pending run.
+    """
+    pattern = (
+        rf"\n{indent}concurrency:\n{indent}  group: (.*)\n{indent}  cancel-in-progress: (.*)"
+        rf"(?:\n{indent}  queue: (.*))?(?:\n|\Z)"
+    )
+    blocks = re.findall(pattern, text)
+    assert len(blocks) == 1, blocks
+    return blocks[0]
 
 
 EXPRESSION_TOKEN = re.compile(r"\s*('(?:[^']|'')*'|&&|\|\||==|[(),]|[A-Za-z_][\w.]*)")
@@ -870,7 +892,7 @@ class WorkflowTriggerTest(unittest.TestCase):
     def test_the_benchmark_push_queues_runs_from_different_main_commits(self) -> None:
         # The run-level group keeps every main commit's run, so without this job-level group two of them can push
         # to the benchmark repository at once; the job must queue, never cancel, since a cancelled push is half done.
-        build = MACOS.read_text().split("\n  build:\n", 1)[1].split("\n    runs-on:", 1)[0]
+        build = job_block(MACOS, "build")
         self.assertIn(BENCHMARK_CONCURRENCY, build)
         self.assertEqual("", jobs(MACOS)["build"]["keys"]["concurrency"])
 
@@ -879,7 +901,7 @@ class WorkflowTriggerTest(unittest.TestCase):
         # cancel-in-progress says. A weekly and a dispatched run carry main's commit, the same sha as the push that made
         # it, so a group keyed on the sha could hold all three and lose one. Every run gets a group of its own, so
         # every main push, weekly and dispatched run completes (the Contract's promise).
-        group, cancel = concurrency(PRIVATE.read_text().split("\njobs:\n", 1)[0])
+        group, cancel, _ = concurrency(PRIVATE.read_text().split("\njobs:\n", 1)[0])
         self.assertEqual("false", cancel)
         sha = "a" * 40
         groups = [
@@ -894,8 +916,8 @@ class WorkflowTriggerTest(unittest.TestCase):
         # The fixed group queues main pushes behind each other, but a group holds one running and one pending run, so
         # a pull request's build job in the same group (it never pushes the benchmark) would cancel a pending main run.
         # Main pushes share the group; every pull request run gets its own.
-        build = MACOS.read_text().split("\n  build:\n", 1)[1].split("\n    runs-on:", 1)[0]
-        group, cancel = concurrency(build, "    ")
+        build = job_block(MACOS, "build")
+        group, cancel, _ = concurrency(build, "    ")
         self.assertEqual("false", cancel)
         first, second = (rendered(group, run("push", run_id)) for run_id in ("1", "2"))
         self.assertEqual("macos-benchmark", first)
@@ -903,6 +925,27 @@ class WorkflowTriggerTest(unittest.TestCase):
         pull_requests = {rendered(group, run("pull_request", run_id)) for run_id in ("3", "4")}
         self.assertNotIn(first, pull_requests)
         self.assertEqual(2, len(pull_requests), pull_requests)
+
+    def test_every_completion_group_keeps_every_pending_run(self) -> None:
+        # GitHub's default queue holds one pending run, and a third arrival replaces it whatever cancel-in-progress
+        # says: a third main push reaching macos-benchmark while one runs and one waits would cost the waiting commit
+        # its benchmark point. queue: max holds every pending run. GitHub rejects queue: max next to
+        # cancel-in-progress: true, so every block that carries it says false, and the scan reads every block.
+        for path, job in COMPLETION_GROUPS:
+            with self.subTest(workflow=path.name, job=job):
+                text = path.read_text().split("\njobs:\n", 1)[0] if job is None else job_block(path, job)
+                group, cancel, queue = concurrency(text, "" if job is None else "    ")
+                self.assertEqual(("false", "max"), (cancel, queue), group)
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            text = path.read_text()
+            blocks = re.findall(
+                r"\n( *)concurrency:\n\1  group: .*\n\1  cancel-in-progress: (.*)(?:\n\1  queue: (.*))?(?:\n|\Z)", text
+            )
+            with self.subTest(workflow=path.name):
+                self.assertEqual(text.count("concurrency:"), len(blocks), blocks)
+                for _, cancel, queue in blocks:
+                    if queue == "max":
+                        self.assertEqual("false", cancel)
 
     def test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script(
         self,

@@ -859,7 +859,7 @@ claude:
       records-sync.sh: 8e2bd76f70bdc1af724bf3bb8926b5bc5f0eb88de6ac7a38f936455424ff29f4
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 69400a684e115020916b033c0eff492497c333b9762a3c2e9466b30644443add
+      pr-audit.sh: 0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

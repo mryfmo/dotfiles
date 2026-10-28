@@ -87,12 +87,18 @@
 #   `verdict` field, from which the lever writes that line into `verdict.md`; a `Verdict:` line written as text is
 #   not the JSON object and is refused. A reader (`python3 -I -S`, status checked) validates that file against the
 #   same schema file and refuses, exit 1 naming the file, on invalid JSON, a missing or unknown key, a value outside
-#   its enum, type or bound, or a finding without its keys; it also refuses the schema itself, naming it, when it
-#   uses a keyword or type the reader does not implement, so no rule can bind codex and not the lever. The decision
-#   rule is applied from the data, never trusted from the model: any P0, P1 or P2 finding means `incorrect`, none
-#   means `correct` (or `blocked`, when the audit could not be completed); a `verdict` that contradicts its findings
-#   is refused, never corrected. The reader then writes `verdict.md` beside the JSON (the findings as a list, what
-#   was reproduced, the notes, then one last line `Verdict: <value>`), the file whose path the lever prints, so the
+#   its enum, type or bound, or a finding without its keys. It reads JSON as RFC 8259 defines it, not as Python's
+#   json module extends it (U106 audit round 4): `NaN`, `Infinity` and `-Infinity` are not JSON values, a key
+#   written twice in one object is refused rather than read as its last value, every number is read as an exact
+#   decimal and one outside what that represents (`1e9999999999999999999`) is refused rather than raising, and a
+#   string holding a lone surrogate (not a Unicode scalar value, so no UTF-8 text can carry it) is not of type
+#   string. It also refuses the schema itself, naming it, when it uses a keyword or type the reader does not
+#   implement, so no rule can bind codex and not the lever. The decision rule is applied from the data, never
+#   trusted from the model: any P0, P1 or P2 finding means `incorrect`, none means `correct` (or `blocked`, when
+#   the audit could not be completed); a `verdict` that contradicts its findings is refused, never corrected. The
+#   reader then writes `verdict.md` beside the JSON (the findings as a list, what was reproduced, the notes, then
+#   one last line `Verdict: <value>`), whole or not at all (written under a partial name and renamed over the
+#   final one, so a failed write leaves no `verdict.md`); that is the file whose path the lever prints, so the
 #   store's `verdicts/U<n>-<sha8>.md` copy keeps its shape. On exit the scratch repository, HOME, CODEX_HOME and
 #   TMPDIR are removed; the run directory keeps `prompt.md`, `verdict.schema.json`, `codex.log`, `verdict.json` and
 #   `verdict.md`, or is removed whole when codex never started.
@@ -106,8 +112,10 @@
 # @stdout Two lines: the path of `verdict.md`, then `Verdict: correct|incorrect|blocked`, the value read from the JSON.
 # @exitcode 0 The verdict file conforms to the schema and agrees with its findings; `verdict.md` is written.
 # @exitcode 1 A read, the fetch, the repack or the codex run failed, codex wrote no final message, or the verdict file
-#   is not valid JSON, does not conform to the schema (a type, enum or bound), or names a verdict its findings
-#   contradict; or the schema uses a keyword or type the reader does not implement.
+#   is not JSON (RFC 8259: a `NaN`, `Infinity` or `-Infinity` literal, a key written twice, a lone surrogate, or a
+#   number the reader cannot represent are not), does not conform to the schema (a type, enum or bound), or names a
+#   verdict its findings contradict; or the schema uses a keyword or type the reader does not implement; or
+#   `verdict.md` could not be written (then none is left).
 # @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, the
 #   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
 #   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could
@@ -1145,14 +1153,17 @@ verdict_schema='{
 # The reader of the verdict file: `python3 -I -S` with the schema path, the verdict path and the path of the text to
 # write. It first refuses the schema itself (naming it) when it uses a keyword or type outside the tables below, since
 # the Responses API would then validate the final message by a rule the reader does not know (a bound, for one), and
-# the two readings of the schema would differ. It then validates the document against the schema (type, enum, bounds,
-# properties, required, additionalProperties false, items), applies the decision rule from the findings, writes
-# `verdict.md` and prints the verdict. Any refusal names the file on stderr and exits 3; the lever fails on it (exit
-# 1) and prints no verdict. The single quotes keep the Python source for Python, never this shell.
+# the two readings of the schema would differ. It then reads the document as JSON (RFC 8259, through hooks that refuse
+# what the json module alone would take: a NaN or Infinity literal, a key written twice, a number outside the exact
+# decimal it reads every number as), validates it against the schema (type, enum, bounds, properties, required,
+# additionalProperties false, items), applies the decision rule from the findings, writes `verdict.md` whole or not
+# at all, and prints the verdict. Any refusal names the file on stderr and exits 3; the lever fails on it (exit 1)
+# and prints no verdict. The single quotes keep the Python source for Python, never this shell.
 # shellcheck disable=SC2016
 verdict_reader='
 import decimal
 import json
+import os
 import sys
 
 GATING = ("P0", "P1", "P2")
@@ -1177,9 +1188,58 @@ KEYWORDS = frozenset(
 )
 
 
+class Departure(Exception):
+    """A text the json module of Python would accept that is not JSON (RFC 8259), or not a number this reader
+    represents."""
+
+
+def number(text):
+    """Every JSON number read exactly as its written digits, an integer literal too (the int of Python stops at 4300
+    digits with a ValueError, and the bound below must judge the value, not the digit count). A number the decimal
+    cannot hold (U106 audit round 4: `1e9999999999999999999` raised InvalidOperation out of the parser) is a refusal."""
+    try:
+        return decimal.Decimal(text)
+    except decimal.DecimalException:
+        raise Departure(f"the number {text} is outside what the reader represents") from None
+
+
+def constant(text):
+    """The json module reads `NaN`, `Infinity` and `-Infinity`; RFC 8259 section 6 has no such literal (U106 audit
+    round 4: `"notes": NaN, "notes": null` was read as a conforming null)."""
+    raise Departure(f"{text} is not a JSON value")
+
+
+def pairs(items):
+    """An object whose key appears twice is refused, never read as its last value (RFC 8259 section 4)."""
+    seen = set()
+    for key, _ in items:
+        if key in seen:
+            raise Departure(f"the key {json.dumps(key)} appears twice in one object")
+        seen.add(key)
+    return dict(items)
+
+
 def is_number(value):
-    """A JSON number as the parser below delivers it (an int literal, or an exact Decimal); a bool is never a number."""
+    """A JSON number as the parser below delivers it (an exact Decimal; the bounds of the schema are int literals); a
+    bool is never a number."""
     return isinstance(value, (int, decimal.Decimal)) and not isinstance(value, bool)
+
+
+def is_string(value):
+    """A JSON string is a sequence of Unicode scalar values (RFC 8259 section 8.2). The json module decodes an escaped
+    lone surrogate (`"\\ud800"`) into a str that UTF-8 cannot encode (U106 audit round 4: it raised in the writing of
+    verdict.md and left the file empty), so such a value is not of type string."""
+    if not isinstance(value, str):
+        return False
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def shown(value):
+    return json.dumps(value, default=str)
 
 
 # Every JSON Schema type (draft 2020-12, section 6.1.1). `integer` is a number with a zero fraction (a JSON number
@@ -1193,7 +1253,7 @@ IS_TYPE = {
     "boolean": lambda value: isinstance(value, bool),
     "object": lambda value: isinstance(value, dict),
     "array": lambda value: isinstance(value, list),
-    "string": lambda value: isinstance(value, str),
+    "string": is_string,
     "number": is_number,
     "integer": lambda value: is_number(value)
     and (isinstance(value, int) or (value.is_finite() and value == value.to_integral_value())),
@@ -1236,14 +1296,15 @@ def check(value, schema, where, path):
     kinds = kinds_of(schema)
     if kinds and not any(IS_TYPE[kind](value) for kind in kinds):
         allowed = " or ".join(kinds)
-        refuse(path, f"{where} is not of type {allowed}")
+        detail = ": it holds a lone surrogate" if "string" in kinds and isinstance(value, str) else ""
+        refuse(path, f"{where} is not of type {allowed}{detail}")
     if is_number(value):
         for keyword, side, outside in BOUNDS:
             if keyword in schema and outside(value, schema[keyword]):
                 refuse(path, f"{where} is {value}, {side} the {keyword} {schema[keyword]}")
     if "enum" in schema and value not in schema["enum"]:
         allowed = ", ".join(schema["enum"])
-        refuse(path, f"{where} is {json.dumps(value)}, not one of {allowed}")
+        refuse(path, f"{where} is {shown(value)}, not one of {allowed}")
     if isinstance(value, dict):
         for key in schema.get("required", []):
             if key not in value:
@@ -1265,6 +1326,23 @@ def one_line(text):
     return " ".join(str(text).split())
 
 
+def write_whole(text_path, text):
+    """verdict.md appears whole or not at all: written under a partial name beside it and renamed over the final name.
+    A write that fails leaves no verdict.md (U106 audit round 4: a failed write left an empty file at the path the
+    lever prints)."""
+    partial = f"{text_path}.partial"
+    try:
+        with open(partial, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(partial, text_path)
+    except (OSError, ValueError) as error:
+        try:
+            os.unlink(partial)
+        except OSError:
+            pass
+        refuse(text_path, f"cannot write the verdict text: {error}")
+
+
 def main():
     schema_path, verdict_path, text_path = sys.argv[1:4]
     try:
@@ -1275,11 +1353,15 @@ def main():
     check_schema(schema, "the schema", schema_path)
     try:
         with open(verdict_path, encoding="utf-8") as handle:
-            document = json.load(handle, parse_float=decimal.Decimal)
+            document = json.load(
+                handle, parse_float=number, parse_int=number, parse_constant=constant, object_pairs_hook=pairs
+            )
     except OSError as error:
         refuse(verdict_path, f"cannot read the verdict file: {error}")
     except ValueError as error:
         refuse(verdict_path, f"not valid JSON: {error}")
+    except Departure as error:
+        refuse(verdict_path, f"not JSON: {error}")
     check(document, schema, "the verdict", verdict_path)
     verdict = document["verdict"]
     gating = [finding for finding in document["findings"] if finding["priority"] in GATING]
@@ -1303,11 +1385,7 @@ def main():
     if document["notes"]:
         lines += ["", "## Notes", "", document["notes"].rstrip()]
     lines += ["", f"Verdict: {verdict}", ""]
-    try:
-        with open(text_path, "w", encoding="utf-8") as handle:
-            handle.write("\n".join(lines))
-    except OSError as error:
-        refuse(text_path, f"cannot write the verdict text: {error}")
+    write_whole(text_path, "\n".join(lines))
     print(verdict)
 
 

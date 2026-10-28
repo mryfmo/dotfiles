@@ -51,10 +51,11 @@ class SecretRule(NamedTuple):
 
     `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
     whole match). `entropy` is the least Shannon entropy, in bits per character, the secret must reach, or None
-    for a provider rule whose prefix alone is the evidence; it is measured with every SECRET_MASK removed from the
-    secret (`reaches_entropy`), so the masker's own output passes the scan and a value beside a marker is judged on
-    its own. The rule runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a
-    cheap filter before the regex.
+    for a provider rule whose prefix alone is the evidence; it is measured over measured_text(secret), the secret
+    with every SECRET_MASK and every quoting character removed (`reaches_entropy`), so the masker's own output
+    passes the scan, a value beside a marker is judged on its own, and no quoting changes the measure. The rule
+    runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a cheap filter before
+    the regex.
     """
 
     id: str
@@ -66,12 +67,12 @@ class SecretRule(NamedTuple):
 
     def reaches_entropy(self, secret: str) -> bool:
         """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the entropy of
-        the secret with every SECRET_MASK removed reaches the threshold. `"prefix <redacted:secret-pattern>"`, the
-        masker's output for a quoted assignment that held a provider token, is 3.77 bits with the marker and `prefix `
-        2.81 without it; a real value beside the marker keeps its own entropy."""
+        measured_text(SECRET) reaches the threshold. `"prefix <redacted:secret-pattern>"`, the masker's output for a
+        quoted assignment that held a provider token, is 3.77 bits with the marker and `prefix ` 2.81 without it; a
+        real value beside the marker keeps its own entropy."""
         if self.entropy is None:
             return True
-        return shannon_entropy(secret.replace(SECRET_MASK, "")) >= self.entropy
+        return shannon_entropy(measured_text(secret)) >= self.entropy
 
 
 # A key prefix starts after a non-word character or the start, or right after an escape sequence (a backslash
@@ -84,8 +85,17 @@ KEY_PREFIX_BOUNDARY = (
 # gitleaks' documented example threshold for a generic rule: a quoted value below it is a word or a name
 # (`real-secret` is 2.85, `password123` 3.28), a key or a random token is above it (a ghp_ token is about 4.8).
 GENERIC_SECRET_ENTROPY = 3.5
-# What --mask-secrets writes over a finding; SecretRule.reaches_entropy removes it before measuring a value.
+# What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
 SECRET_MASK = "<redacted:secret-pattern>"
+# The quoting characters, removed before a value is measured: they are the writer's syntax, not the value. Rounds 4
+# and 5 each let them decide where the value ended and each fell to the next quoting corner (an apostrophe inside a
+# double-quoted value, then an escaped quote); now nothing written on the line decides what is measured.
+QUOTING_CHARACTERS = str.maketrans("", "", "\"'\\")
+
+
+def measured_text(secret: str) -> str:
+    """What a generic rule measures: SECRET with every SECRET_MASK and every quote and backslash removed."""
+    return secret.replace(SECRET_MASK, "").translate(QUOTING_CHARACTERS)
 
 
 def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
@@ -95,13 +105,24 @@ def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> Se
 
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
-    """A `<key> = "<value>"` rule: the quoted value is the secret and is judged by its entropy, so a variable named
-    `token` holding a word, or a split literal such as `"ghp_"`, is not a finding. The value runs from the opening
-    quote to the next quote of the same kind, so an apostrophe inside a double-quoted value (or a double quote
-    inside a single-quoted one) is part of the value and is measured with it (round 4 verdict on 43fe25f3: a
-    capture that stopped at either quote measured `"x'Qz7v..."` as `x`)."""
-    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'])((?:(?!\1)[\s\S])+)\1""")
-    return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 2, GENERIC_SECRET_ENTROPY, keywords)
+    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its line, trimmed, is the secret,
+    judged by its entropy over measured_text, so a variable named `token` holding a word is not a finding.
+
+    No quote ends the capture. Rounds 4 and 5 (verdicts on 43fe25f3 and a7b060cd) each assumed a regex can find
+    where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
+    an apostrophe inside a double-quoted value, then an escaped quote, each measured as its first character. A
+    value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
+    with the quotes and backslashes removed, and the finding's span is the whole line from the key: the masker
+    writes one marker over all of it, so its output has no remainder to measure. What follows the value on its line
+    (a trailing comment, a second literal) is captured, measured and masked with it: over-capture errs on the
+    refusing side, and a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
+    shorter capture. The capture ends before the line's trailing whitespace and before `\\r`.
+
+    The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
+    unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
+    prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
+    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\r\n]*?)(?=[^\S\n]*(?:\n|\Z))""")
+    return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 1, GENERIC_SECRET_ENTROPY, keywords)
 
 
 SECRET_RULES = (
@@ -187,7 +208,8 @@ SECRET_ALLOWLIST = checked_allowlist(
         SecretAllowance(
             "*",
             "the name of the environment variable a template reads, bare or as a shell reference, never its value",
-            secret_regex=re.compile(r"(?:\$\{?)?(?:GITHUB_PERSONAL_ACCESS_TOKEN|FIGMA_OAUTH_TOKEN)\}?"),
+            # The secret is the whole rest of the assignment line, so the name's quotes are part of it.
+            secret_regex=re.compile(r"""["']?(?:\$\{?)?(?:GITHUB_PERSONAL_ACCESS_TOKEN|FIGMA_OAUTH_TOKEN)\}?["']?"""),
         ),
     )
 )

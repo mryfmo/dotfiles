@@ -2052,8 +2052,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             f'{FIELD} = "{LOW_ENTROPY_VALUE}"\n',
             f"{PASSWORD_KEY} = 'password123'\n",
             f'{API_KEY}: "{LOW_ENTROPY_VALUE}"\n',
-            # A split literal: the assignment holds a low-entropy prefix and the provider rule sees no token body.
-            f'{FIELD} = "ghp_" + "{planted[4:]}"\n',
         ):
             with self.subTest(text=text):
                 path.write_text(text)
@@ -2064,6 +2062,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             (f'{PASSWORD_KEY} = "{HIGH_ENTROPY_VALUE}"\n', "generic-password"),
             (f'{API_KEY.replace("_", "-")} = "{HIGH_ENTROPY_VALUE}"\n', "generic-api-key"),
             (f'{FIELD} = "{planted}"\n', "github-pat"),
+            # A split literal: the provider rule sees no token body, but the token's characters are on the line and
+            # the generic rule measures the whole rest of the line, so the split token is reported under it.
+            (f'{FIELD} = "ghp_" + "{planted[4:]}"\n', "generic-token"),
         ):
             with self.subTest(text=text):
                 path.write_text(text)
@@ -2109,33 +2110,106 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_a_quoted_value_with_the_other_quote_inside_is_measured_whole_and_reported(self) -> None:
         """Round 4 verdict on 43fe25f3: the quoted-value capture stopped at either quote, so `"x'Qz7v..."` was
-        measured as `x` and a 4.46-bit value passed both scans. The value now runs to the quote that opened it."""
+        measured as `x` and a 4.46-bit value passed both scans. The secret is now the whole rest of the line from the
+        opening quote, so no quote inside the value can end it."""
         module = self.module
         apostrophe = "x'" + HIGH_ENTROPY_VALUE
         double_quote = 'it"s' + HIGH_ENTROPY_VALUE
         self.assertEqual(
             [(f.rule.id, f.secret) for f in module.secret_findings(f'{PASSWORD_KEY} = "{apostrophe}"\n')],
-            [("generic-password", apostrophe)],
+            [("generic-password", f'"{apostrophe}"')],
         )
         self.assertEqual(
             [(f.rule.id, f.secret) for f in module.secret_findings(f"{FIELD} = '{double_quote}'\n")],
-            [("generic-token", double_quote)],
+            [("generic-token", f"'{double_quote}'")],
         )
         path = self.write_text_file("docs/notes.md", f'{PASSWORD_KEY} = "{apostrophe}"\n')
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             module.validate_no_obvious_secrets()
-        self.assertIn("docs/notes.md:generic-password:1 x'Qz... (a quoted password assignment)", stderr.getvalue())
+        self.assertIn("docs/notes.md:generic-password:1 \"x'Q... (a quoted password assignment)", stderr.getvalue())
         self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
-        # A word with an apostrophe is still a word, and a value still ends at its own closing quote: the second
-        # literal of a split assignment is not part of the first.
+        # A word with an apostrophe is still a word.
+        path.write_text(f'{PASSWORD_KEY} = "don\'t tell"\n')
+        module.validate_no_obvious_secrets()
+        # The second literal of a split assignment is on the line, so it is measured with the first: over-capture
+        # errs on the refusing side, and a legitimate line is absorbed by a fingerprint row.
+        path.write_text(f'{FIELD} = "{LOW_ENTROPY_VALUE}" + "{HIGH_ENTROPY_VALUE}"\n')
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('docs/notes.md:generic-token:1 "rea... (a quoted token assignment)', stderr.getvalue())
+
+    def test_a_generic_rule_measures_the_whole_rest_of_the_assignment_line(self) -> None:
+        """Round 5 verdict on a7b060cd: the quote-matched capture stopped at an escaped quote, so `"x\\"Qz7v..."` was
+        measured as `x\\` and a 4.46-bit value passed scanning and masking. A generic rule's secret is now the whole
+        rest of the line from the opening quote, trimmed, measured with the quotes and backslashes removed, so
+        nothing written on the line decides where the value ends: the three values the audits used are reported with
+        the whole text as the secret and masked whole, a trailing comment is captured with the value, and the
+        trailing whitespace is not."""
+        module = self.module
+        mask = module.SECRET_MASK
+        escaped = 'x\\"' + HIGH_ENTROPY_VALUE
+        planted = "ghp_" + "a" * 60
+        for text, rule, secret in (
+            (f'{PASSWORD_KEY} = "x\'{HIGH_ENTROPY_VALUE}"\n', "generic-password", f'"x\'{HIGH_ENTROPY_VALUE}"'),
+            (f'{PASSWORD_KEY} = "{escaped}"\n', "generic-password", f'"{escaped}"'),
+            (f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n', "github-pat", planted),
+            (f'{FIELD} = "{HIGH_ENTROPY_VALUE}"  # rotated\n', "generic-token", f'"{HIGH_ENTROPY_VALUE}"  # rotated'),
+            (f"{SECRET_KEY}: '{HIGH_ENTROPY_VALUE}'\r\n", "generic-secret", f"'{HIGH_ENTROPY_VALUE}'"),
+        ):
+            with self.subTest(text=text):
+                self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], [(rule, secret)])
+                masked, _ = module.mask_secret_matches(text)
+                self.assertEqual(masked, f"{mask}{text[len(text.rstrip()) :]}")
+                self.assertEqual(module.secret_findings(masked), [])
+        trailing = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"   \n'
+        self.assertEqual([f.secret for f in module.secret_findings(trailing)], [f'"{HIGH_ENTROPY_VALUE}"'])
+        self.assertEqual(module.mask_secret_matches(trailing), (f"{mask}   \n", 1))
+        path = self.write_text_file("docs/notes.md", f'{PASSWORD_KEY} = "{escaped}"\n')
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('docs/notes.md:generic-password:1 "x\\"... (a quoted password assignment)', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        # The measure removes the writer's syntax, not the value's characters.
+        self.assertEqual(module.measured_text(f'"{escaped}"'), "x" + HIGH_ENTROPY_VALUE)
+        self.assertEqual(module.measured_text(f'"{mask}"\\'), "")
+
+    def test_a_low_entropy_quoted_word_is_not_a_finding_whatever_its_quoting(self) -> None:
+        """The whole-line measure keeps the threshold's other side: a word with an escaped quote, an apostrophe or
+        the masker's marker, and a word followed by a comment, are not findings (passes on a7b060cd too)."""
+        module = self.module
+        path = self.write_text_file("docs/notes.md", "")
         for text in (
+            f'{PASSWORD_KEY} = "it\\"s fine"\n',
             f'{PASSWORD_KEY} = "don\'t tell"\n',
-            f'{FIELD} = "{LOW_ENTROPY_VALUE}" + "{HIGH_ENTROPY_VALUE}"\n',
+            f'{FIELD} = "{module.SECRET_MASK}"\n',
+            f'{FIELD} = "{LOW_ENTROPY_VALUE}"  # a name\n',
         ):
             with self.subTest(text=text):
                 path.write_text(text)
+                self.assertEqual(module.secret_findings(text), [])
                 module.validate_no_obvious_secrets()
+
+    def test_a_json_member_with_an_escaped_quote_is_reported_on_the_line_of_its_literal(self) -> None:
+        """Round 5 verdict on a7b060cd, in JSON: a decoded string holding a `<key> = "x\\"Qz7v..."` assignment passed
+        the per-string scan. It is a finding placed on its literal's line (line 4 of the document), and the masker
+        clears it."""
+        module = self.module
+        escaped = 'x\\"' + HIGH_ENTROPY_VALUE
+        document = json.dumps({"items": [{"note": f'{PASSWORD_KEY} = "{escaped}"'}]}, indent=2) + "\n"
+        self.assertIn('\\\\"', document)
+        path = self.write_text_file("fixtures/evidence.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('fixtures/evidence.json:generic-password:4 "x\\"...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        masked, count = module.mask_json_strings(json.loads(document))
+        self.assertEqual((masked, count), ({"items": [{"note": module.SECRET_MASK}]}, 1))
+        path.write_text(json.dumps(masked, indent=2) + "\n")
+        module.validate_no_obvious_secrets()
 
     def test_masking_repeats_until_the_text_passes_the_scan(self) -> None:
         """Round 4 verdict on 43fe25f3: for a quoted assignment whose value is a word and a provider token, the masker
@@ -2917,13 +2991,36 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
     def test_a_quoted_value_with_an_apostrophe_is_refused_whole(self) -> None:
-        """Round 4 verdict on 43fe25f3: `password = "x'<value>"` was measured as `x`, so the scan accepted it."""
+        """Round 4 verdict on 43fe25f3: a double-quoted value with an apostrophe after its first character was
+        measured as that character, so the scan accepted it."""
         evidence = self.temp_dir / "audit.md"
         evidence.write_text(f'{PASSWORD_KEY} = "x\'{HIGH_ENTROPY_VALUE}"\n')
         result = self.scan(evidence)
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({evidence}): a secret pattern\n")
         self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+
+    def test_a_quoted_value_with_an_escaped_quote_is_refused_and_masked_whole(self) -> None:
+        """Round 5 verdict on a7b060cd, through the two CLIs records-sync.sh runs: a double-quoted value with an
+        escaped quote after its first character exited 0 from --scan-identifiers, and --mask-secrets left it as it
+        was. The value is refused, and the masker writes one marker over the whole line."""
+        module = load_validator()
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_text(f'{PASSWORD_KEY} = "x\\"{HIGH_ENTROPY_VALUE}"\nVerdict: correct\n')
+        result = self.scan(evidence)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({evidence}): a secret pattern\n")
+        self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        self.assertEqual(masked.stdout, f"masked 1 match(es) in {evidence}\n")
+        self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
+        result = self.scan(evidence)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
 
 if __name__ == "__main__":

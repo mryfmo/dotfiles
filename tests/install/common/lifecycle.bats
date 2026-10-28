@@ -25,6 +25,7 @@ function run_update_fixture() {
     local git_unmerged="${12:-0}"
     local reload_output="${13:-}"
     local prefetch_exit="${14:-0}"
+    local check_exit="${15:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts/lib" \
@@ -51,6 +52,7 @@ prefetch_chezmoi_externals() {
 }
 assert_chezmoi_externals_cached() {
     printf 'cache-check %s\n' "\$*" >> "${fixture}/calls"
+    return ${check_exit}
 }
 EOF
     cat > "${fixture}/bin/git" << EOF
@@ -141,6 +143,16 @@ herdr server reload-config" ]
     # The prefetch ran and nothing after it: no apply, no tool upgrade, no assets, no Herdr reload.
     run cat "${UPDATE_FIXTURE}/calls"
     [ "$output" = "prefetch chezmoi" ]
+}
+
+@test "[common] update stops before chezmoi apply when chezmoi does not read the externals from its cache" {
+    run_update_fixture running 0 0 0 0 0 "" feature/test origin/feature/test 0 0 0 "" 0 1
+    [ "$status" -ne 0 ]
+    # The prefetch passed, the check failed, and nothing ran after it: no apply, no tool upgrade, no assets, no
+    # Herdr reload.
+    run cat "${UPDATE_FIXTURE}/calls"
+    [ "$output" = "prefetch chezmoi
+cache-check chezmoi" ]
 }
 
 @test "[common] update stops before agent assets and Herdr when the tool upgrade fails" {

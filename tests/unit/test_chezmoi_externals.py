@@ -1193,6 +1193,102 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
         self.assertLess(step.index("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"), setup)
         self.assertLess(setup, step.index(f"grep -F '{verdict}' \"${{RUNNER_TEMP}}/setup.log\""))
 
+    def public_bootstrap_step(self) -> str:
+        """The run text of the public-bootstrap row's bootstrap step, dedented and cut after the line that requires
+        the verdict: the step's own shell options, the sentinels, the setup.sh pipeline through tee and the grep."""
+        workflow = (ROOT / ".github/workflows/remote.yaml").read_text()
+        step = workflow[workflow.index("- name: Bootstrap the checked-out public source") :]
+        step = step[: step.index("\n      - name: ")]
+        run = step[step.index("run: |\n") + len("run: |\n") :]
+        lines = [line.removeprefix(" " * 10) for line in run.splitlines()]
+        verdict = "chezmoi externals: chezmoi read the externals from its cache"
+        found = [index for index, line in enumerate(lines) if line.startswith(f"grep -F '{verdict}'")]
+        self.assertEqual(1, len(found), "the step requires the verdict line once")
+        return "\n".join(lines[: found[0] + 1]) + "\n"
+
+    def run_public_bootstrap_step(
+        self, setup_exit: int, setup_output: str
+    ) -> tuple[subprocess.CompletedProcess[str], str, str]:
+        """Run the step's text as the runner does (a script file under bash, no profile, no rc) in a scratch
+        checkout whose setup.sh is a stub that records its stdin and environment, prints setup_output and exits
+        setup_exit. Returns the run, the stub's record and the setup.log the step kept. The runner's `shell: bash`
+        adds `-eo pipefail` of its own; this run leaves that out, so the options the step sets are the ones in force."""
+        case = Path(tempfile.mkdtemp(prefix="public-bootstrap-step-")).resolve()
+        self.addCleanup(shutil.rmtree, case, True)
+        workspace, home, runner_temp = case / "workspace", case / "home", case / "runner-temp"
+        for directory in (workspace, home, runner_temp):
+            directory.mkdir()
+        git = ["git", "-C", str(workspace), "-c", "user.name=step", "-c", "user.email=step@example.invalid"]
+        subprocess.run(["git", "init", "-q", str(workspace)], check=True, timeout=COMMAND_SECONDS)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "checkout"], check=True, timeout=COMMAND_SECONDS)
+        stub = workspace / "setup.sh"
+        stub.write_text(
+            "#!/bin/sh\n"
+            'cat > "$RECORD"\n'
+            'printf "DOTFILES_REPO_URL=%s BRANCH_NAME=%s\\n" "$DOTFILES_REPO_URL" "$BRANCH_NAME" >> "$RECORD"\n'
+            'printf "%s" "$SETUP_OUTPUT"\n'
+            'exit "$SETUP_EXIT"\n'
+        )
+        script = case / "step.sh"
+        script.write_text(self.public_bootstrap_step())
+        record = case / "record"
+        result = subprocess.run(
+            ["bash", "--noprofile", "--norc", str(script)],
+            cwd=workspace,
+            env={
+                "PATH": os.environ["PATH"],
+                "HOME": str(home),
+                "GITHUB_WORKSPACE": str(workspace),
+                "RUNNER_TEMP": str(runner_temp),
+                "RUNNER_OS": "macOS",
+                "SYSTEM": "client",
+                "RECORD": str(record),
+                "SETUP_OUTPUT": setup_output,
+                "SETUP_EXIT": str(setup_exit),
+            },
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+        log = runner_temp / "setup.log"
+        return result, record.read_text() if record.exists() else "", log.read_text() if log.exists() else ""
+
+    def test_the_public_bootstrap_step_fails_on_a_failed_setup_sh_and_on_a_missing_verdict_line(self) -> None:
+        # The step itself, run: setup.sh is a stub, so what the step does with its exit status and its output is
+        # read from the step's own exit, not from the text of the pipeline. Without `pipefail` the tee masks the
+        # failed setup.sh and case (b) exits 0; without the grep, case (c) does.
+        verdict = (
+            "chezmoi externals: chezmoi read the externals from its cache"
+            " (under /usr/bin/sandbox-exec -p (version 1)(allow default)(deny network*))"
+        )
+        output = (
+            f"chezmoi externals: cache check under sandbox-exec with chezmoi version v9.9.9-stub\n{verdict}\nApplied.\n"
+        )
+
+        with self.subTest("(a) setup.sh prints the verdict and exits 0"):
+            result, record, log = self.run_public_bootstrap_step(setup_exit=0, setup_output=output)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(output, log)  # tee kept the whole output
+            self.assertEqual(2, result.stdout.count(verdict), result.stdout)  # once from tee, once from the grep
+            # The stub got the answers the live bootstrap gets and the source the row points it at.
+            self.assertEqual("ci@example.invalid\nclient\n", record[: record.index("DOTFILES_REPO_URL=")])
+            self.assertIn("DOTFILES_REPO_URL=", record)
+            self.assertTrue(record.endswith(" BRANCH_NAME=bootstrap-under-test\n"), record)
+
+        with self.subTest("(b) setup.sh prints the verdict and exits 1"):
+            result, record, log = self.run_public_bootstrap_step(setup_exit=1, setup_output=output)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(verdict, log)  # the verdict was there: the failure is setup.sh's status through the tee
+
+        with self.subTest("(c) setup.sh exits 0 without the verdict"):
+            result, record, log = self.run_public_bootstrap_step(
+                setup_exit=0, setup_output="chezmoi externals: cache check under sandbox-exec with chezmoi version v9\n"
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertNotIn(verdict, log)
+            self.assertTrue(log, "setup.sh ran and tee kept its output")
+
 
 if __name__ == "__main__":
     unittest.main()

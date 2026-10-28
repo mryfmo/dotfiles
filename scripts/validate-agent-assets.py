@@ -96,9 +96,12 @@ def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> Se
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
     """A `<key> = "<value>"` rule: the quoted value is the secret and is judged by its entropy, so a variable named
-    `token` holding a word, or a split literal such as `"ghp_"`, is not a finding."""
-    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*["']([^"']+)["']""")
-    return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 1, GENERIC_SECRET_ENTROPY, keywords)
+    `token` holding a word, or a split literal such as `"ghp_"`, is not a finding. The value runs from the opening
+    quote to the next quote of the same kind, so an apostrophe inside a double-quoted value (or a double quote
+    inside a single-quoted one) is part of the value and is measured with it (round 4 verdict on 43fe25f3: a
+    capture that stopped at either quote measured `"x'Qz7v..."` as `x`)."""
+    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'])((?:(?!\1)[\s\S])+)\1""")
+    return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 2, GENERIC_SECRET_ENTROPY, keywords)
 
 
 SECRET_RULES = (
@@ -130,7 +133,9 @@ class SecretAllowance(NamedTuple):
 
     `rule_id` is a SECRET_RULES id or `*`. Every condition the row sets must hold: `path_regex` over the
     repository-relative path, `fingerprint` equal to the finding's `<path>:<rule_id>:<line>`, `secret_regex` over
-    the whole secret. A row with no condition would allow everything, so the table refuses it at load.
+    the whole secret. A row with no condition would allow everything, so the table refuses it at load. A path
+    regex ends in `\\Z`, never `$`: `$` also matches before a trailing newline, so a file whose name ends in a
+    newline would satisfy a `$`-anchored row; the table refuses a path regex with an unescaped `$` at load.
     `--mask-secrets` and `--scan-identifiers` see text without a repository path, so only `secret_regex` rows
     reach them.
     """
@@ -154,11 +159,18 @@ class SecretAllowance(NamedTuple):
         return self.secret_regex is None or self.secret_regex.fullmatch(secret) is not None
 
 
+# A `$` that is not escaped: in a path regex it would also match before a trailing newline.
+UNESCAPED_DOLLAR = re.compile(r"(?<!\\)(?:\\\\)*\$")
+
+
 def checked_allowlist(rows: tuple[SecretAllowance, ...]) -> tuple[SecretAllowance, ...]:
-    """ROWS, after refusing a row that sets no condition: such a row would allow every finding of its rule."""
+    """ROWS, after refusing a row that sets no condition (such a row would allow every finding of its rule) and a
+    path regex anchored with `$` (which a path ending in a newline satisfies; `\\Z` is the end of the path)."""
     for row in rows:
         if not row.has_condition():
             raise ValueError(f"SECRET_ALLOWLIST row {row.reason!r} sets no path, fingerprint or secret condition")
+        if row.path_regex is not None and UNESCAPED_DOLLAR.search(row.path_regex.pattern):
+            raise ValueError(f"SECRET_ALLOWLIST row {row.reason!r} anchors its path regex with `$`; use `\\Z`")
     return rows
 
 
@@ -169,7 +181,7 @@ SECRET_ALLOWLIST = checked_allowlist(
             "CompactionDB plants dummy credentials to exercise its redaction boundary",
             path_regex=re.compile(
                 r"^vendor/compactiondb/(validate\.py|tests/test_(migration|redaction)\.py"
-                r"|\.claude/contextdb/contextdb/redaction\.py)$"
+                r"|\.claude/contextdb/contextdb/redaction\.py)\Z"
             ),
         ),
         SecretAllowance(
@@ -2023,21 +2035,30 @@ def secret_spans(text: str) -> list[tuple[int, int]]:
 
 
 def mask_secret_matches(text: str) -> tuple[str, int]:
-    """Replace what the committed-secret scan would flag, and normalise home paths.
+    """Replace what the committed-secret scan would flag, and normalise home paths, until the text passes the scan.
 
     Mirrors validate_no_obvious_secrets(): the same rules and the same content allowlist rows decide what is masked,
-    so masked text always passes the scan, and every other byte is kept. Home directory prefixes then become `~`
-    (mask_home_paths), which the scan requires of `.orchestration` evidence.
+    and every other byte is kept. Home directory prefixes become `~` (mask_home_paths), which the scan requires of
+    `.orchestration` evidence. A mask changes what is left: masking a provider token (or a home path) out of a longer
+    quoted value raises the entropy of the remainder, so after one pass `token = "Qz7v... <redacted:secret-pattern>"`
+    is a generic finding the scan reports (round 4 verdict on 43fe25f3). The pass repeats until one masks nothing,
+    so the text written is the scan's fixpoint; each masking pass replaces at least one unmasked character, so the
+    passes end. The count is every mask written over every pass.
     """
-    pieces = []
-    cursor = 0
-    spans = secret_spans(text)
-    for start, end in spans:
-        pieces.extend((text[cursor:start], SECRET_MASK))
-        cursor = end
-    pieces.append(text[cursor:])
-    masked, homes = mask_home_paths("".join(pieces))
-    return masked, len(spans) + homes
+    count = 0
+    while True:
+        pieces = []
+        cursor = 0
+        spans = secret_spans(text)
+        for start, end in spans:
+            pieces.extend((text[cursor:start], SECRET_MASK))
+            cursor = end
+        pieces.append(text[cursor:])
+        masked, homes = mask_home_paths("".join(pieces))
+        count += len(spans) + homes
+        if not spans and not homes:
+            return masked, count
+        text = masked
 
 
 def mask_json_strings(value: Any) -> tuple[Any, int]:

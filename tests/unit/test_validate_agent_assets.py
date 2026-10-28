@@ -2107,6 +2107,91 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     module.validate_no_obvious_secrets()
                 self.assertIn(f".orchestration/validation/t-a01.md:{rule}:1 ", stderr.getvalue())
 
+    def test_a_quoted_value_with_the_other_quote_inside_is_measured_whole_and_reported(self) -> None:
+        """Round 4 verdict on 43fe25f3: the quoted-value capture stopped at either quote, so `"x'Qz7v..."` was
+        measured as `x` and a 4.46-bit value passed both scans. The value now runs to the quote that opened it."""
+        module = self.module
+        apostrophe = "x'" + HIGH_ENTROPY_VALUE
+        double_quote = 'it"s' + HIGH_ENTROPY_VALUE
+        self.assertEqual(
+            [(f.rule.id, f.secret) for f in module.secret_findings(f'{PASSWORD_KEY} = "{apostrophe}"\n')],
+            [("generic-password", apostrophe)],
+        )
+        self.assertEqual(
+            [(f.rule.id, f.secret) for f in module.secret_findings(f"{FIELD} = '{double_quote}'\n")],
+            [("generic-token", double_quote)],
+        )
+        path = self.write_text_file("docs/notes.md", f'{PASSWORD_KEY} = "{apostrophe}"\n')
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn("docs/notes.md:generic-password:1 x'Qz... (a quoted password assignment)", stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        # A word with an apostrophe is still a word, and a value still ends at its own closing quote: the second
+        # literal of a split assignment is not part of the first.
+        for text in (
+            f'{PASSWORD_KEY} = "don\'t tell"\n',
+            f'{FIELD} = "{LOW_ENTROPY_VALUE}" + "{HIGH_ENTROPY_VALUE}"\n',
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                module.validate_no_obvious_secrets()
+
+    def test_masking_repeats_until_the_text_passes_the_scan(self) -> None:
+        """Round 4 verdict on 43fe25f3: for a quoted assignment whose value is a word and a provider token, the masker
+        removed the token and left a remainder above the generic threshold, so --mask-secrets exited 0 and
+        --scan-identifiers exited 1 on its output. The masker now repeats until a pass masks nothing, so its output is
+        the scan's fixpoint."""
+        module = self.module
+        mask = module.SECRET_MASK
+        planted = "ghp_" + "a" * 60
+        two_part = f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\n'
+        # One pass sees the provider token alone: the whole value, mostly `a`, is below the generic threshold.
+        self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(two_part)], [("github-pat", planted)])
+        self.assertEqual(module.mask_secret_matches(two_part), (f"{mask}\n", 2))
+        # A home path inside the value: the `~` written in its place raises the remainder's entropy the same way.
+        home = f'{FIELD} = "/home/{"a" * 40}/{HIGH_ENTROPY_VALUE}"\n'
+        self.assertEqual(module.mask_secret_matches(home), (f"{mask}\n", 2))
+        for text in (two_part, home, f'{FIELD} = "prefix {planted}"\n', f"{HIGH_ENTROPY_VALUE} {planted}\n"):
+            with self.subTest(text=text):
+                masked, _ = module.mask_secret_matches(text)
+                self.assertEqual(module.secret_findings(masked), [])
+                self.assertIsNone(module.home_path_pattern().search(masked))
+        # A pass that finds nothing writes nothing, so a one-pass result and a clean text are unchanged.
+        self.assertEqual(
+            module.mask_secret_matches(f'{FIELD} = "prefix {planted}"\n'), (f'{FIELD} = "prefix {mask}"\n', 1)
+        )
+        self.assertEqual(module.mask_secret_matches("prose\nVerdict: correct\n"), ("prose\nVerdict: correct\n", 0))
+
+    def test_a_path_ending_in_a_newline_matches_no_allowlist_row(self) -> None:
+        """A path regex anchored with `$` also matches before a trailing newline, so a file named `validate.py` plus
+        a newline under the CompactionDB row's directory was suppressed like the real one (round 4 live run on
+        43fe25f3). Every path row ends in `\\Z`, and a `$`-anchored path row is refused when the table loads."""
+        module = self.module
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        allowed = "vendor/compactiondb/validate.py"
+        self.write_text_file(allowed, f"{planted}\n")
+        module.validate_no_obvious_secrets()
+        self.write_text_file(allowed + "\n", f"{planted}\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn("1 finding(s)", stderr.getvalue())
+        self.assertIn(f"possible committed secret {allowed}\n:github-pat:1 ghp_...", stderr.getvalue())
+        self.assertIsNotNone(module.secret_allowance("github-pat", planted, allowed, f"{allowed}:github-pat:1"))
+        self.assertIsNone(module.secret_allowance("github-pat", planted, allowed + "\n", f"{allowed}\n:github-pat:1"))
+
+        for row in module.SECRET_ALLOWLIST:
+            if row.path_regex is not None:
+                self.assertIsNone(module.UNESCAPED_DOLLAR.search(row.path_regex.pattern), row.reason)
+        row = module.SecretAllowance
+        with self.assertRaisesRegex(ValueError, r"anchors its path regex with `\$`; use `\\Z`"):
+            module.checked_allowlist((row("*", "a row ending in $", path_regex=re.compile(r"^fixtures/a\.md$")),))
+        with self.assertRaisesRegex(ValueError, r"anchors its path regex with `\$`"):
+            module.checked_allowlist((row("*", "a $ in the middle", path_regex=re.compile(r"^fixtures/(a$|b\Z)")),))
+        # An escaped `$` is a character of the path, not an anchor.
+        module.checked_allowlist((row("*", "a literal dollar", path_regex=re.compile(r"^fixtures/\$a\.md\Z")),))
+
     def test_a_nul_orchestration_file_and_a_later_token_are_both_reported_in_one_run(self) -> None:
         """Round 3 verdict on ce36a3a5: read_scannable_text() exited at the first NUL orchestration file, dropping the
         findings collected before it and skipping every file after it. A NUL or UTF-16 evidence file is now one
@@ -2810,6 +2895,35 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         result = self.scan(evidence)
         self.assertEqual(result.returncode, 1)
         self.assertIn(f"file 1 ({evidence}): a secret pattern", result.stderr)
+
+    def test_a_token_inside_a_longer_quoted_value_masks_to_text_the_scan_accepts(self) -> None:
+        """Round 4 verdict on 43fe25f3, through the two CLIs records-sync.sh runs: masking only the provider token
+        out of a quoted assignment whose value is a word and the token left a value above the generic threshold, so
+        --mask-secrets exited 0 and --scan-identifiers exited 1 on its output. The masker now repeats until its
+        output passes the scan."""
+        module = load_validator()
+        evidence = self.temp_dir / "audit.md"
+        planted = "ghp_" + "a" * 60
+        evidence.write_text(f'{FIELD} = "{HIGH_ENTROPY_VALUE} {planted}"\nVerdict: correct\n')
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        self.assertEqual(masked.stdout, f"masked 2 match(es) in {evidence}\n")
+        self.assertEqual(evidence.read_text(), f"{module.SECRET_MASK}\nVerdict: correct\n")
+
+        result = self.scan(evidence)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_quoted_value_with_an_apostrophe_is_refused_whole(self) -> None:
+        """Round 4 verdict on 43fe25f3: `password = "x'<value>"` was measured as `x`, so the scan accepted it."""
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_text(f'{PASSWORD_KEY} = "x\'{HIGH_ENTROPY_VALUE}"\n')
+        result = self.scan(evidence)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({evidence}): a secret pattern\n")
+        self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

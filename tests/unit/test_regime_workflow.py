@@ -13,6 +13,11 @@ passed by a text-level edit: a quoted gap in `git`, a commented-out fetch, an op
 Each step's `env:` and `with:` must equal, key for key and value for value, the mapping INPUTS holds for it, and the
 workflow and the job carry no `env:` at all: bash reads BASH_ENV before a script's first word, so a variable the table
 does not hold runs code the tree never sees (the round-4 audit ran the fetched head from a job-level BASH_ENV).
+
+The whole document must equal DOCUMENT, key for key and value for value down to each scalar's type, with the run
+scripts left to the tree reader: a key no table names (`container`, `services`, a second job, a step's `if`) is
+refused by its path (the round-5 audit ran a container image taken from the pull request's title), and `false` is
+never `0` (PyYAML reads them as different inputs and Actions passes them as different strings; `==` has them equal).
 """
 
 from __future__ import annotations
@@ -53,6 +58,11 @@ VERIFIER = "scripts/orchestrator/regime-ci.py"
 UNSAFE_OPTION = "allow-unsafe-pr-checkout"
 READ_ONLY = {"contents": "read"}
 POSITION = {"Offset", "Line", "Col"}
+TITLE_EXPRESSION = "${{ github.event.pull_request.title }}"
+CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+SETUP_UV_ACTION = "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7"
+EVENT_TYPES = ["opened", "edited", "synchronize", "reopened", "ready_for_review"]
+MISSING = object()
 
 # A shape is a run script with every position dropped and four kinds of part admitted, each pinned in full:
 #   ("lit", text)              a literal fragment of a word
@@ -149,6 +159,40 @@ INPUTS = (
         None,
     ),
 )
+
+
+class RunScript:
+    """Marks a step's run in DOCUMENT: the text is read from the shfmt tree by check_run_scripts, not compared here."""
+
+    def __repr__(self) -> str:
+        return "a run script (read by the run-script check)"
+
+
+SCRIPT = RunScript()
+
+# The table of the whole document, as PyYAML reads it: every key at every level, with the env: and with: mappings
+# taken from INPUTS and the run texts left to SCRIPTS. A key no table holds (`container`, `services`, a second job,
+# a `strategy`, a step's `if` or `working-directory`) runs code or moves the step in a way no other check sees: the
+# round-5 audit ran a container image taken from the pull request's title past every check. PyYAML reads `on` as
+# the boolean true, which the JSON the reader hands over spells "true".
+DOCUMENT = {
+    "name": "regime",
+    "true": {"pull_request_target": {"types": EVENT_TYPES, "branches": ["main"]}},
+    "concurrency": {"group": f"regime-pr-{NUMBER_EXPRESSION}", "cancel-in-progress": True},
+    "permissions": READ_ONLY,
+    "jobs": {
+        "regime": {
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": 10,
+            "steps": [
+                {"uses": CHECKOUT_ACTION, "with": INPUTS[0].options},
+                {"uses": SETUP_UV_ACTION, "with": INPUTS[1].options},
+                {"name": "Fetch the pull request's head as data", "env": INPUTS[2].env, "run": SCRIPT},
+                {"name": "Check the pull request with the base's verifier", "env": INPUTS[3].env, "run": SCRIPT},
+            ],
+        }
+    },
+}
 
 
 def load(path: Path) -> dict:
@@ -403,15 +447,62 @@ def check_run_scripts(doc: dict) -> None:
                 raise AssertionError(f"{line(row.protects)}: {detail}")
 
 
-def differences(found: dict, held: dict) -> str:
-    """The keys the step and the table disagree on, each named with what was found and what the table holds."""
-    lines = []
-    for key in sorted(set(found) | set(held)):
-        if key not in found or key not in held or found[key] != held[key]:
-            got = repr(found[key]) if key in found else "no such key"
-            kept = repr(held[key]) if key in held else "no such key"
-            lines.append(f"{key}: found {got}, the table holds {kept}")
-    return "; ".join(lines)
+def describe(value: object) -> str:
+    """A value with its type, for a message: 0 and False, 1 and True, 10 and '10' read alike without the type."""
+    return f"{value!r} ({type(value).__name__})"
+
+
+def differences(found: object, held: object, path: str = "") -> list[str]:
+    """Every point where the document and the table disagree, named by its path (`jobs.regime.steps[0].with.ref`)
+    with what was found and what the table holds. The types must agree: PyYAML reads `false` and `0` as different
+    inputs and Actions hands an action different strings for them, so a bool is never an int, a str or a float here,
+    as `==` would have it (the round-5 audit passed `fetch-depth: false` and `enable-cache: 0` through `==`)."""
+    if held is SCRIPT:
+        return [] if isinstance(found, str) else [f"{path}: found {describe(found)}, the table holds {held!r}"]
+    if type(found) is not type(held):
+        return [f"{path}: found {describe(found)}, the table holds {describe(held)}"]
+    lines: list[str] = []
+    if isinstance(held, dict):
+        for key in sorted(set(found) | set(held)):
+            at = f"{path}.{key}" if path else key
+            if key not in held:
+                lines.append(f"{at}: found {describe(found[key])}, the table holds no such key")
+            elif key not in found:
+                lines.append(f"{at}: found no such key, the table holds {describe(held[key])}")
+            else:
+                lines.extend(differences(found[key], held[key], at))
+    elif isinstance(held, list):
+        for index, (got, kept) in enumerate(zip_longest(found, held, fillvalue=MISSING)):
+            at = f"{path}[{index}]"
+            if kept is MISSING:
+                lines.append(f"{at}: found {describe(got)}, the table holds no such item")
+            elif got is MISSING:
+                lines.append(f"{at}: found no such item, the table holds {describe(kept)}")
+            else:
+                lines.extend(differences(got, kept, at))
+    elif found != held:
+        lines.append(f"{path}: found {describe(found)}, the table holds {describe(held)}")
+    return lines
+
+
+def key_line(path: str) -> str:
+    """`regime.yml:<n>` of the deepest key of the path the file still holds, so a message points at the mapping an
+    added key sits in (`jobs.regime.container` points at `regime:`) or at the key whose value changed."""
+    for component in reversed([part.split("[")[0] for part in path.split(".")]):
+        key = "on:" if component == "true" else f"{component}:"
+        for number, content in enumerate(WORKFLOW.read_text().splitlines(), 1):
+            if content.strip().removeprefix("- ").startswith(key):
+                return f"regime.yml:{number} ({key})"
+    return "regime.yml:1 (name: regime)"
+
+
+def check_document(doc: dict) -> None:
+    """The document is DOCUMENT and nothing else: every key at every level, every value down to its type, with the
+    run texts left to check_run_scripts. The property checks name what each line is for; this one closes the rest."""
+    found = differences(doc, DOCUMENT)
+    if found:
+        path = found[0].split(":", 1)[0]
+        raise AssertionError(f"{key_line(path)}: the document is not the table's: {'; '.join(found)}")
 
 
 def check_step_inputs(doc: dict) -> None:
@@ -432,8 +523,9 @@ def check_step_inputs(doc: dict) -> None:
                 continue
             require(key in step, row.protects, f"the step {name!r} has no {key}:; the table holds {held!r}")
             given = mapping(step[key], row.protects)
-            detail = f"the {key}: of the step {name!r} is not the table's: {differences(given, held)}"
-            require(given == held, row.protects, detail)
+            found_lines = differences(given, held)
+            detail = f"the {key}: of the step {name!r} is not the table's: {'; '.join(found_lines)}"
+            require(not found_lines, row.protects, detail)
 
 
 def check_cancel_in_progress(doc: dict) -> None:
@@ -680,6 +772,16 @@ STEP_INPUTS = Invariant(
         "submodules on the checkout": Mutation(set_in(checkout_options, "submodules", True), "submodules: found True"),
         "no checkout options": Mutation(delete_in(checkout_step, "with"), "has no with:"),
         "a cache for setup-uv": Mutation(set_in(setup_options, "enable-cache", True), "enable-cache: found True"),
+        # the round-5 audit's edits: `==` has False equal to 0 and True to 1, and Actions passes the strings apart
+        "fetch-depth as a boolean": Mutation(
+            set_in(checkout_options, "fetch-depth", False), "fetch-depth: found False (bool), the table holds 0 (int)"
+        ),
+        "enable-cache as a number": Mutation(
+            set_in(setup_options, "enable-cache", 0), "enable-cache: found 0 (int), the table holds False (bool)"
+        ),
+        "persist-credentials as a string": Mutation(
+            set_in(checkout_options, "persist-credentials", "false"), "found 'false' (str), the table holds False"
+        ),
         "a fifth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "5 steps"),
     },
 )
@@ -690,6 +792,93 @@ CANCEL_IN_PROGRESS = Invariant(
             set_in(lambda d: d["concurrency"], "cancel-in-progress", False), "'cancel-in-progress': False"
         ),
         "no concurrency group": Mutation(delete_in(lambda d: d, "concurrency"), "found None"),
+    },
+)
+# the round-5 audit's edit: a container whose image the pull request names runs every step inside code of the pull
+# request's choosing, while the steps, their scripts, their env: and their with: are unchanged
+CONTAINER = {"image": TITLE_EXPRESSION}
+DOCUMENT_SHAPE = Invariant(
+    check_document,
+    {
+        # a key of the job no table holds: it runs or hosts code, or moves the job, past every other check
+        "a container from the pull request's title": Mutation(
+            set_in(regime_job, "container", CONTAINER), "jobs.regime.container: found {'image'"
+        ),
+        "a container image as a string": Mutation(set_in(regime_job, "container", "node:20"), "jobs.regime.container"),
+        "a service from the pull request's title": Mutation(
+            set_in(regime_job, "services", {"db": CONTAINER}), "jobs.regime.services"
+        ),
+        "a strategy matrix": Mutation(
+            set_in(regime_job, "strategy", {"matrix": {"ref": [HEAD_REF]}}), "jobs.regime.strategy"
+        ),
+        "an environment for the job": Mutation(set_in(regime_job, "environment", "release"), "jobs.regime.environment"),
+        "a job that continues on error": Mutation(
+            set_in(regime_job, "continue-on-error", True), "jobs.regime.continue-on-error"
+        ),
+        "a runner from the pull request's title": Mutation(
+            set_in(regime_job, "runs-on", TITLE_EXPRESSION), "jobs.regime.runs-on"
+        ),
+        "a self-hosted runner": Mutation(
+            set_in(regime_job, "runs-on", ["self-hosted"]), "jobs.regime.runs-on: found ['self-hosted'] (list)"
+        ),
+        "no timeout": Mutation(delete_in(regime_job, "timeout-minutes"), "jobs.regime.timeout-minutes: found no such"),
+        # a second job, a key of the workflow, or a trigger beside the one
+        "a second job": Mutation(
+            set_in(lambda d: d["jobs"], "build", {"runs-on": "ubuntu-24.04", "steps": [{"run": "make\n"}]}),
+            "jobs.build",
+        ),
+        "a run-name from the pull request's title": Mutation(
+            set_in(lambda d: d, "run-name", TITLE_EXPRESSION), "run-name: found"
+        ),
+        "a manual trigger": Mutation(set_in(triggers, "workflow_dispatch", {}), "true.workflow_dispatch"),
+        "a shorter types list": Mutation(
+            set_in(lambda d: triggers(d)["pull_request_target"], "types", ["opened"]),
+            "true.pull_request_target.types[1]: found no such item",
+        ),
+        # a key of a step no table holds, or an action other than the pinned one
+        "another checkout action": Mutation(
+            set_in(checkout_step, "uses", "actions/checkout@v4"), "jobs.regime.steps[0].uses"
+        ),
+        "a local action": Mutation(
+            set_in(lambda d: regime_steps(d)[1], "uses", "./.github/actions/setup-uv"), "jobs.regime.steps[1].uses"
+        ),
+        "a condition on the verifier step": Mutation(
+            set_in(verify_step, "if", "github.event.pull_request.draft == false"), "jobs.regime.steps[3].if"
+        ),
+        "a working directory for the verifier": Mutation(
+            set_in(verify_step, "working-directory", "/tmp/head"), "jobs.regime.steps[3].working-directory"
+        ),
+        "a step that continues on error": Mutation(
+            set_in(fetch_step, "continue-on-error", True), "jobs.regime.steps[2].continue-on-error"
+        ),
+        "the fetch run as a list": Mutation(
+            set_in(fetch_step, "run", ["git", "fetch"]), "jobs.regime.steps[2].run: found ['git', 'fetch'] (list)"
+        ),
+        # the round-5 audit's other edits: a value whose type differs from the table's, equal under `==`
+        "fetch-depth as a boolean": Mutation(
+            set_in(checkout_options, "fetch-depth", False),
+            "jobs.regime.steps[0].with.fetch-depth: found False (bool), the table holds 0 (int)",
+        ),
+        "enable-cache as a number": Mutation(
+            set_in(setup_options, "enable-cache", 0),
+            "jobs.regime.steps[1].with.enable-cache: found 0 (int), the table holds False (bool)",
+        ),
+        "persist-credentials as a string": Mutation(
+            set_in(checkout_options, "persist-credentials", "false"),
+            "jobs.regime.steps[0].with.persist-credentials: found 'false' (str), the table holds False (bool)",
+        ),
+        "fetch-depth as a float": Mutation(
+            set_in(checkout_options, "fetch-depth", 0.0),
+            "jobs.regime.steps[0].with.fetch-depth: found 0.0 (float), the table holds 0 (int)",
+        ),
+        "the timeout as a string": Mutation(
+            set_in(regime_job, "timeout-minutes", "10"),
+            "jobs.regime.timeout-minutes: found '10' (str), the table holds 10 (int)",
+        ),
+        "cancel-in-progress as a number": Mutation(
+            set_in(lambda d: d["concurrency"], "cancel-in-progress", 1),
+            "concurrency.cancel-in-progress: found 1 (int), the table holds True (bool)",
+        ),
     },
 )
 
@@ -722,6 +911,9 @@ class RegimeWorkflowTest(unittest.TestCase):
     def test_a_newer_head_cancels_the_older_run(self) -> None:
         check_cancel_in_progress(self.doc)
 
+    def test_the_document_is_the_table_s_and_nothing_else(self) -> None:
+        check_document(self.doc)
+
 
 class RedCopyTest(unittest.TestCase):
     """Each check goes red on a copy of the workflow with its property taken away, so a regression cannot pass."""
@@ -736,7 +928,8 @@ class RedCopyTest(unittest.TestCase):
             with self.subTest(label):
                 broken = copy.deepcopy(self.doc)
                 mutation.edit(broken)
-                self.assertFalse(self.doc == broken, f"regime.yml already carries this edit: {label}")
+                # the strict comparison: `==` would read `fetch-depth: false` as the file's own 0
+                self.assertTrue(differences(broken, self.doc), f"regime.yml already carries this edit: {label}")
                 with self.assertRaises(AssertionError) as caught:
                     invariant.check(broken)
                 self.assertIn("regime.yml", str(caught.exception))
@@ -762,6 +955,9 @@ class RedCopyTest(unittest.TestCase):
 
     def test_the_cancel_in_progress_check_goes_red(self) -> None:
         self.goes_red(CANCEL_IN_PROGRESS)
+
+    def test_the_document_check_goes_red(self) -> None:
+        self.goes_red(DOCUMENT_SHAPE)
 
     def test_a_workflow_the_parser_cannot_read_fails_instead_of_passing(self) -> None:
         # Standing order 21: a failed read is never an absence. A parse error stops the suite, and a document that is

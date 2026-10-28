@@ -12,7 +12,9 @@ One writer: the coordinator. Each row names who can act and why. "Agent" means t
 | U98 #570 | `HTTPServer.server_bind` reverse DNS lookup (about 35 s on macos-15). | landed as 3aea4608 |
 | U99 #571 | No bats test or installer download had a time bound. | landed as 88cd19a2 |
 | U100 #572 | Git 2.55 background maintenance raced test cleanup and reddened main. | landed as 04a15081 |
-| U71b #559 | Audit lever pr-audit.sh (gate G18). | in flight: macOS killpg EPERM fix at 46488caa, then U99's download lint on the merged branch |
+| U71b #559 | Audit lever pr-audit.sh (gate G18). | landed as d677de9e; deployed on macOS; audits now run through it (standing order 28, ship.sh) |
+| U102 #575 | The real-install bats test stalled on the trickling Azure apt mirror; the step timeout fired before the per-test bound. | landed as 950dd803 |
+| U101 #574 | records-sync copied 99 foreign files from a stale checkout and pushed through a rewriting user config. | landed as 590db689 (13 rounds; the copy set is the store against origin/main, built in a config-less scratch repository; the checkout listing runs no fsmonitor hook) |
 
 ## B. Program bookkeeping (agent)
 
@@ -20,10 +22,10 @@ One writer: the coordinator. Each row names who can act and why. "Agent" means t
 | --- | --- | --- |
 | B1 | units.tsv row U71b said `planned feat/audit-lever`; the real branch is feat/audit-lever-g18, PR #559, in flight. | Corrected in place. |
 | B2 | gates.md G12 to G16 had no status although their units landed. | Annotated with the landing evidence; G16 points at section C. |
-| B3 | Records sync 11 (store redacted on 2026-10-26: no host or user identifiers left). | Run records-sync.sh after the last unit lands, then land its PR. |
-| B4 | macOS deploy of everything merged after f1374ba7. | Done at 88cd19a2: `make update` rc 0, `make doctor` tools=passed, runtime=passed with the C6 and C7 warnings. Redo once after U71b lands. |
+| B3 | Records sync (store redacted; bare host word and home paths included). | Sync 11 landed as 5bd0fb07 after a hand correction (decisions.tsv deviation-records-sync-11). The next sync waits for U101's fixed lever. |
+| B4 | macOS deploy. | Done at d677de9e (U71b): `make update` rc 0, `make doctor` tools=passed, runtime=passed with the C6 and C7 warnings; ShellCheck 0.11.0 and shfmt 3.14.1 from the pins; the seat dry run refuses in 8 s naming the nested worktree. |
 | B5 | Phase R done predicate (phase-r-plan.md). | Verify clause by clause at close, with evidence rows. |
-| B6 | The audit model sometimes answers `Selected model is at capacity` and leaves no verdict. | /tmp/audit/run-audit.sh now exits 3 with `NO VERDICT`; rerun. pr-audit.sh replaces it after U71b. |
+| B6 | The audit model sometimes answers `Selected model is at capacity` and leaves no verdict. | Audits now run through the installed pr-audit.sh (ship.sh); a missing verdict exits 3 and is rerun. |
 
 ## C. Operator only
 
@@ -38,3 +40,4 @@ One writer: the coordinator. Each row names who can act and why. "Agent" means t
 | C7 | `make doctor` on macOS warns that `ai-coe-daily-ops@ai-coe` is enabled with no pin. It comes from a local directory marketplace under ~/Workspace (work content). | Pinning it in the public manifest would publish a work identifier; pinning it in the private source is a policy choice. | Choose: disable it, keep it with the warning, or ask for a private-source pin unit. | Keep it; the warning stays. |
 | C8 | U88: seats use the operator's GitHub identity. | Creating a GitHub machine account needs a human. | Create the account and a fine-grained PAT (design in units.tsv U88). | U88 stays planned; G17 conditions still hold. |
 | C9 | F027: whether SIWC model discovery returns a list. The probe parser is fixed (U79), but the live re-probe was never run. | The probe (`.orchestration/validation/025-pilot-s0-siwc-probe.py`) signs in through a browser OAuth consent on auth.openai.com with the operator's ChatGPT account and registers an agent; only the operator can consent. | Run the probe once, consent in the browser, and paste its model count; the agent then registers fetchDynamicModels if the list is non-empty. | Static model rows stay (works today). |
+| C10 | The agent's read-only ssh to <ubuntu-host> now stops at a Tailscale SSH check (`# Tailscale SSH requires an additional check`, a login.tailscale.com link), so the agent can no longer measure that host. | The check is a browser login. | Approve the Tailscale SSH check once, or tell the coordinator to rely on your reports for that host. | The Ubuntu rows in this file stay as measured on 2026-10-26. |

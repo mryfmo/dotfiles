@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,16 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = ROOT / "scripts/validate-agent-assets.py"
+
+# Built at runtime so this test file never holds a literal rule match: the generic rules' key words are split, and a
+# planted provider token is split at its prefix.
+FIELD = "tok" + "en"
+SECRET_KEY = "sec" + "ret"
+PASSWORD_KEY = "pass" + "word"
+API_KEY = "api_" + "key"
+# A quoted value above the generic rules' entropy threshold (20 distinct characters, 4.32 bits) and one below it.
+HIGH_ENTROPY_VALUE = "Qz7vR2mK9pL4wX8nJ3fT"
+LOW_ENTROPY_VALUE = "real-secret"
 
 
 def load_validator():
@@ -1986,7 +1997,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_secret_scan_checks_extensionless_executables(self) -> None:
         path = self.write_text_file(
             "home/dot_local/bin/common/executable_leaky",
-            "api_" + 'key = "real-secret"\n',
+            f'{API_KEY} = "{HIGH_ENTROPY_VALUE}"\n',
         )
         path.chmod(0o755)
 
@@ -1994,7 +2005,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_no_obvious_secrets()
 
     def test_secret_scan_checks_docs_paths(self) -> None:
-        self.write_text_file("docs/reference/leaky.md", "to" + 'ken = "real-secret"\n')
+        self.write_text_file("docs/reference/leaky.md", f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\n')
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
@@ -2015,6 +2026,76 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
+
+    def test_secret_scan_reports_every_finding_in_one_run(self) -> None:
+        first = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        second = "ghp_" + "Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3i2"
+        self.write_text_file("docs/a.md", f"one\n{first}\n")
+        self.write_text_file("scripts/b.sh", f"two\n\n{second}\n")
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as raised:
+            self.module.validate_no_obvious_secrets()
+
+        self.assertEqual(raised.exception.code, 1)
+        report = stderr.getvalue()
+        self.assertIn("2 finding(s) in the committed-secret scan", report)
+        self.assertIn("possible committed secret docs/a.md:github-pat:2 ghp_... (GitHub personal access token)", report)
+        self.assertIn("possible committed secret scripts/b.sh:github-pat:3 ghp_...", report)
+        for token in (first, second):
+            self.assertNotIn(token[4:], report, "the report shows a secret's first four characters only")
+
+    def test_secret_scan_judges_a_quoted_assignment_by_its_entropy(self) -> None:
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        path = self.write_text_file("docs/notes.md", "")
+        for text in (
+            f'{FIELD} = "{LOW_ENTROPY_VALUE}"\n',
+            f"{PASSWORD_KEY} = 'password123'\n",
+            f'{API_KEY}: "{LOW_ENTROPY_VALUE}"\n',
+            # A split literal: the assignment holds a low-entropy prefix and the provider rule sees no token body.
+            f'{FIELD} = "ghp_" + "{planted[4:]}"\n',
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                self.module.validate_no_obvious_secrets()
+        for text, rule in (
+            (f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\n', "generic-token"),
+            (f"{SECRET_KEY}: '{HIGH_ENTROPY_VALUE}'\n", "generic-secret"),
+            (f'{PASSWORD_KEY} = "{HIGH_ENTROPY_VALUE}"\n', "generic-password"),
+            (f'{API_KEY.replace("_", "-")} = "{HIGH_ENTROPY_VALUE}"\n', "generic-api-key"),
+            (f'{FIELD} = "{planted}"\n', "github-pat"),
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_no_obvious_secrets()
+                self.assertIn(f"docs/notes.md:{rule}:1 ", stderr.getvalue())
+
+    def test_an_allowlist_row_suppresses_by_path_or_by_one_fingerprint(self) -> None:
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        self.write_text_file("fixtures/planted.md", f"{planted}\n\n{planted}\n")
+        row = self.module.SecretAllowance
+        by_path = row("github-pat", "fixture", path_regex=re.compile(r"^fixtures/"))
+        with mock.patch.object(self.module, "SECRET_ALLOWLIST", (by_path,)):
+            self.module.validate_no_obvious_secrets()
+
+        other_rule = row("openai-api-key", "another rule's fixture", path_regex=re.compile(r"^fixtures/"))
+        with mock.patch.object(self.module, "SECRET_ALLOWLIST", (other_rule,)):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+
+        line_one = row("*", "the first line only", fingerprint="fixtures/planted.md:github-pat:1")
+        with mock.patch.object(self.module, "SECRET_ALLOWLIST", (line_one,)):
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+        self.assertIn("1 finding(s)", stderr.getvalue())
+        self.assertIn("fixtures/planted.md:github-pat:3 ", stderr.getvalue())
+        self.assertNotIn("fixtures/planted.md:github-pat:1 ", stderr.getvalue())
+
+        with self.assertRaises(ValueError):
+            self.module.checked_allowlist((row("*", "a row with no condition"),))
 
     def test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries(self) -> None:
         binary = self.temp_dir / "home/dot_local/share/blob.bin"
@@ -2056,8 +2137,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for name, text in (
             ("key-shaped object key", json.dumps({key: "value"})),
             ("duplicate key's earlier value", '{"m": "' + key + '", "m": "later"}'),
-            ("escaped quoted assignment", json.dumps({"body": f"{FIELD} = " + '"abc"'})),
-            ("not JSON, text scan", across_fields[:-1]),
+            ("escaped quoted assignment", json.dumps({"body": f'{FIELD} = "{HIGH_ENTROPY_VALUE}"'})),
+            ("not JSON, text scan", across_fields[:-1] + f'\n{FIELD} = "{HIGH_ENTROPY_VALUE}"'),
         ):
             with self.subTest(case=name):
                 path.write_text(text)
@@ -2095,7 +2176,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_secret_scan_checks_utf16_bom_text(self) -> None:
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(("to" + 'ken = "real-secret"\n').encode("utf-16"))
+        path.write_bytes(f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\n'.encode("utf-16"))
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
@@ -2168,66 +2249,63 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_manifest_home_paths()
 
 
-# Built at runtime so this test file never contains a literal SECRET_PATTERN match.
-FIELD = "tok" + "en"
-
-
-class SecretPatternBoundaryTest(unittest.TestCase):
+class SecretRuleBoundaryTest(unittest.TestCase):
     """Key prefixes match only at a word boundary, so hyphenated slugs stay clean."""
 
+    def setUp(self) -> None:
+        self.module = load_validator()
+
+    def found(self, text: str) -> bool:
+        return bool(self.module.secret_findings(text))
+
     def test_a_key_prefix_inside_a_hyphenated_word_is_clean(self) -> None:
-        pattern = load_validator().SECRET_PATTERN
         for text in (
             "dotfiles-T67-audit-task-level-a01-review-receipt.md",
             "the dotfiles-T75-shell-dead-code-a01 report",
         ):
             with self.subTest(text=text):
-                self.assertIsNone(pattern.search(text))
+                self.assertFalse(self.found(text))
 
     def test_a_real_key_prefix_is_still_flagged(self) -> None:
-        pattern = load_validator().SECRET_PATTERN
         openai, github = "s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12
         for text in (f"x {openai}", f'"{openai}"', openai, f"KEY={openai}", f"x {github}"):
             with self.subTest(text=text):
-                self.assertIsNotNone(pattern.search(text))
+                self.assertTrue(self.found(text))
 
     def test_a_key_after_json_escaped_whitespace_is_flagged(self) -> None:
         # Audit evidence holds JSON-encoded transcripts: the character before the
         # key is then the n/r/t of an escape sequence, a word character.
-        pattern = load_validator().SECRET_PATTERN
         keys = ("s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12, "github" + "_pat_" + "a1" * 12)
         for key in keys:
             for text in (json.dumps({"m": "\n" + key}), json.dumps({"m": "\t" + key}), json.dumps({"m": "\r" + key})):
                 with self.subTest(text=text):
-                    self.assertIsNotNone(pattern.search(text))
+                    self.assertTrue(self.found(text))
             # Any escape sequence (a backslash, then up to nine letters or digits)
             # right before the key: JSON \uXXXX, \b, \f, TOML \UXXXXXXXX, YAML \x, \0.
             escapes = ("\\u000a", "\\u000d", "\\u0009", "\\u0020", "\\b", "\\f", "\\U0000000A", "\\x0a", "\\0")
             for escape in escapes:
                 text = '{"m": "' + escape + key + '"}'
                 with self.subTest(text=text):
-                    self.assertIsNotNone(pattern.search(text))
+                    self.assertTrue(self.found(text))
 
     def test_an_sk_key_body_needs_a_hyphen_free_run(self) -> None:
-        pattern = load_validator().SECRET_PATTERN
         bare, project = "s" + "k-" + "a1" * 12, "s" + "k-" + "proj-" + "a1" * 12
         for text in (f"x {bare}", f"x {project}", json.dumps({"m": "\n" + project})):
             with self.subTest(text=text):
-                self.assertIsNotNone(pattern.search(text))
+                self.assertTrue(self.found(text))
         slug = "dotfiles-T91-secret-scan-" + "s" + "k-boundary-a01"
         for text in (f"{slug}-audit-1845139e.md", f"{slug}-pr-feedback.json", f"{slug}-review-receipt.md"):
             with self.subTest(text=text):
-                self.assertIsNone(pattern.search(text))
+                self.assertFalse(self.found(text))
 
     def test_a_long_hyphenated_run_scans_in_linear_time(self) -> None:
-        pattern = load_validator().SECRET_PATTERN
         text = "-s" + "k-a" * 1 + ("-s" + "k-a") * (64 * 1024 // 5)
         started = time.monotonic()
-        self.assertIsNone(pattern.search(text))
+        self.assertFalse(self.found(text))
         self.assertLess(time.monotonic() - started, 1.0)
 
     def test_masking_keeps_the_escape_before_the_key(self) -> None:
-        module = load_validator()
+        module = self.module
         key = "s" + "k-" + "a1" * 12
         for escape in ("\\n", "\\u000a", "\\U0000000A"):
             text = '{"m": "x' + escape + key + '"}'
@@ -2241,7 +2319,7 @@ class SecretPatternBoundaryTest(unittest.TestCase):
 
 
 class MaskSecretsModeTest(unittest.TestCase):
-    """`--mask-secrets` rewrites SECRET_PATTERN matches in place (audit evidence)."""
+    """`--mask-secrets` rewrites the committed-secret scan's findings in place (audit evidence)."""
 
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="mask-secrets-test-"))
@@ -2260,7 +2338,8 @@ class MaskSecretsModeTest(unittest.TestCase):
     def test_masks_every_match_in_place_and_reports_counts(self) -> None:
         evidence = self.temp_dir / "audit.md"
         evidence.write_text(
-            f'schema:\n  design_{FIELD}: "abcdefgh"\n  applies_{FIELD}: "xyz"\nprose line stays\nVerdict: correct\n'
+            f'schema:\n  design_{FIELD}: "{HIGH_ENTROPY_VALUE}"\n  applies_{FIELD}: "{HIGH_ENTROPY_VALUE}"\n'
+            "prose line stays\nVerdict: correct\n"
         )
         last = self.temp_dir / "audit.md.last.md"
         last.write_text("No findings.\nVerdict: correct\n")
@@ -2281,7 +2360,7 @@ class MaskSecretsModeTest(unittest.TestCase):
         )
         self.assertEqual(last.read_text(), "No findings.\nVerdict: correct\n")
         module = load_validator()
-        self.assertIsNone(module.SECRET_PATTERN.search(text))
+        self.assertEqual(module.secret_findings(text), [])
 
     def test_normalises_home_paths_in_text_and_json_evidence(self) -> None:
         home = str(Path.home())
@@ -2341,7 +2420,7 @@ class MaskSecretsModeTest(unittest.TestCase):
         key = "ghp_" + "b" * 25
         items = [
             {"body": f"ends with {FIELD} = ", "url": "https://x/1"},
-            {"body": f"line\n{key}\nset {FIELD} = " + '"abc"', "url": "https://x/2"},
+            {"body": f'line\n{key}\nset {FIELD} = "{HIGH_ENTROPY_VALUE}"', "url": "https://x/2"},
             {key: "a key-shaped member name"},
         ]
         evidence.write_text(json.dumps({"items": items}, indent=2) + "\n")
@@ -2371,7 +2450,7 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(json.loads(evidence.read_text()), {"items": [{"body": "safe replacement"}]})
         module = load_validator()
         strings = module.json_strings(evidence.read_text())
-        self.assertFalse(any(module.SECRET_PATTERN.search(s) for s in strings))
+        self.assertFalse(any(module.secret_findings(s) for s in strings))
 
     def test_a_masked_key_collision_fails_and_leaves_the_file_unchanged(self) -> None:
         evidence = self.temp_dir / "t-pr-feedback.json"
@@ -2396,6 +2475,57 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("missing.md", result.stderr)
         self.assertEqual(evidence.read_text(), f'{FIELD}: "abc"\n')
+
+
+class MaskerProviderRuleParityTest(unittest.TestCase):
+    """For every provider-rule match, the masker writes the bytes origin/main's masker wrote (U107)."""
+
+    def setUp(self) -> None:
+        before = subprocess.run(
+            ["git", "-C", str(ROOT), "show", "origin/main:scripts/validate-agent-assets.py"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(before.returncode, 0, before.stderr)
+        temp_dir = Path(tempfile.mkdtemp(prefix="masker-before-"))
+        self.addCleanup(shutil.rmtree, temp_dir)
+        path = temp_dir / "validate-agent-assets.py"
+        path.write_text(before.stdout)
+        spec = importlib.util.spec_from_file_location("validate_agent_assets_before", path)
+        assert spec and spec.loader
+        self.before = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.before)
+        # Both maskers read the repository's home/ entry names from ROOT for the home-path pass.
+        self.before.ROOT = ROOT
+        self.after = load_validator()
+
+    def test_every_provider_match_masks_to_the_same_bytes(self) -> None:
+        github = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        fine_grained = "github_" + "pat_" + "11AAAAAAA0bcdefghijklmnopqrstuvwxyz"
+        openai, project = "s" + "k-" + "a1" * 12, "s" + "k-" + "proj-" + "a1" * 12
+        samples = (
+            f"{FIELD} {github}\n",
+            f'"{github}"',
+            github,
+            github.upper(),
+            f"KEY={openai}",
+            f"{github} and {openai} on one line\n",
+            f"{github}\n{fine_grained}\n{project}\n",
+            f"{github}{openai}",
+            json.dumps({"m": "\n" + github}),
+            json.dumps({"m": "\t" + fine_grained}),
+            '{"m": "\\u000a' + openai + '"}',
+            '{"m": "\\U0000000A' + project + '"}',
+            f"see /home/alice/x and {github}\n",
+            f"dotfiles-T91-secret-scan-s" + f"k-boundary-a01-review-receipt.md {github}",
+            "progress 10%\rprogress 100%\r\n" + github + "\r\n",
+        )
+        for text in samples:
+            with self.subTest(text=text):
+                masked, count = self.after.mask_secret_matches(text)
+                self.assertGreaterEqual(count, 1)
+                self.assertEqual((masked, count), self.before.mask_secret_matches(text))
 
 
 class ScanIdentifiersModeTest(unittest.TestCase):

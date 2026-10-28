@@ -42,11 +42,15 @@ EOF
 printf 'upgrade-tools%s\n' "\${*:+ \$*}" >> "${fixture}/calls"
 exit ${upgrade_exit}
 EOF
-    # make update sources the externals library and prefetches before chezmoi apply (U96); the stub records the call.
+    # make update sources the externals library, prefetches (U96) and checks chezmoi reads the cache (U111) before
+    # chezmoi apply; the stub records both calls.
     cat > "${fixture}/scripts/lib/chezmoi-externals.sh" << EOF
 prefetch_chezmoi_externals() {
     printf 'prefetch %s\n' "\$*" >> "${fixture}/calls"
     return ${prefetch_exit}
+}
+assert_chezmoi_externals_cached() {
+    printf 'cache-check %s\n' "\$*" >> "${fixture}/calls"
 }
 EOF
     cat > "${fixture}/bin/git" << EOF
@@ -122,6 +126,7 @@ EOF
     [ "$status" -eq 0 ]
     run cat "${UPDATE_FIXTURE}/calls"
     [ "$output" = "prefetch chezmoi
+cache-check chezmoi
 chezmoi apply --verbose
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
 upgrade-tools
@@ -157,7 +162,7 @@ herdr server reload-config" ]
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
     mkdir -p "${fixture}/bin" "${fixture}/scripts/lib" "${fixture}/home"
     cp Makefile "${fixture}/Makefile"
-    printf 'prefetch_chezmoi_externals() { return 0; }\n' > "${fixture}/scripts/lib/chezmoi-externals.sh"
+    printf 'prefetch_chezmoi_externals() { return 0; }\nassert_chezmoi_externals_cached() { return 0; }\n' > "${fixture}/scripts/lib/chezmoi-externals.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/upgrade-tools.sh"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"

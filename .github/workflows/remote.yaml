@@ -159,9 +159,13 @@ jobs:
           before_checksum="$(checksum "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
           before_mode="$(mode "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
 
+          # setup.sh's output is kept so this row can require the externals cache check's verdict (U111): the line
+          # names the chezmoi version and the network-denial guard it ran under, or that it ran unguarded. pipefail
+          # keeps a failed setup.sh failing through the tee.
           printf 'ci@example.invalid\n%s\n' "${SYSTEM}" | \
             DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
-            bash "${GITHUB_WORKSPACE}/setup.sh"
+            bash "${GITHUB_WORKSPACE}/setup.sh" | tee "${RUNNER_TEMP}/setup.log"
+          grep -F 'chezmoi externals: chezmoi read the externals from its cache' "${RUNNER_TEMP}/setup.log"
 
           test "$(git -C "${HOME}/.local/share/chezmoi" rev-parse HEAD)" = "${GITHUB_SHA}"
           test "$(checksum "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")" = "${before_checksum}"

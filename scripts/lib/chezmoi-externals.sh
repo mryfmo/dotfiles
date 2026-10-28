@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 
 # @file scripts/lib/chezmoi-externals.sh
-# @brief Fetch chezmoi's archive and file externals into its cache before chezmoi reads them.
+# @brief Fetch chezmoi's archive and file externals into its cache before chezmoi reads them, and prove it reads them.
 # @description
 #   chezmoi downloads a `file`, `archive` or `archive-file` external the first time a command reads the target
 #   state (`chezmoi status`, `diff`, `apply`) and keeps it in `<cacheDir>/external/<sha256 of the URL>`, which it
@@ -13,6 +13,9 @@
 #   prefetch_chezmoi_externals takes that download out of chezmoi: one bounded, retried download per external, its
 #   sha256 checked before it is cached, so the read that follows finds a fresh, verified cache and fetches nothing.
 #   A dropped or failed transfer is retried; a complete download whose sha256 differs fails at once.
+#   assert_chezmoi_externals_cached then proves that chezmoi reads that cache: the cache layout above is read from
+#   one chezmoi version's source and documented nowhere, while the installed version floats, so a release that moved
+#   or re-keyed the cache would otherwise leave the prefetch green and chezmoi downloading unbounded again (U111).
 #   setup.sh runs before the repository exists, so it carries a copy of the functions below;
 #   tests/unit/test_chezmoi_externals.py keeps the copies equal. It needs curl, awk and sha256sum or shasum.
 
@@ -22,6 +25,21 @@ CHEZMOI_EXTERNAL_EMPTY_SHA256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca4
 # never read from the environment, so no caller can unbound the retries. Tests replace `sleep` instead.
 CHEZMOI_EXTERNAL_ATTEMPTS=4
 CHEZMOI_EXTERNAL_RETRY_DELAY=5
+# Network-denial guards for assert_chezmoi_externals_cached, probed in this order, each a tab-separated argv (the
+# sandbox profile holds spaces): a new network namespace alone (needs CAP_SYS_ADMIN: root, as test.yaml's `sudo
+# unshare --net`), the same inside an unprivileged user namespace with the current uid mapped, then without a mapping
+# (hosts differ in which write the kernel and AppArmor allow), and macOS's sandbox-exec with the profile
+# .github/workflows/test.yaml's statusline smoke test uses. The first whose probe runs `true` wraps the chezmoi call;
+# none leaves the check unguarded, and the log says so. Which one a host takes is read from its log, not assumed.
+CHEZMOI_EXTERNAL_NETWORK_GUARDS=(
+    $'unshare\t--net'
+    $'unshare\t--map-current-user\t--net'
+    $'unshare\t--user\t--net'
+    $'/usr/bin/sandbox-exec\t-p\t(version 1)(allow default)(deny network*)'
+)
+# What chezmoi prints when it had to download an external and could not, or the transfer dropped: any of these in
+# its output fails the cache check whatever its exit status.
+CHEZMOI_EXTERNAL_NETWORK_ERRORS=('unexpected EOF' 'dial tcp' 'Get "http' 'no such host')
 
 #
 # @description Print the lowercase sha256 of one file. It never reads standard input, so no caller hashes through a
@@ -376,4 +394,71 @@ function prefetch_chezmoi_externals() {
         fi
         prefetch_chezmoi_external "${name}" "${url}" "${sha256}" "${seconds}" "${cache}" || return 1
     done <<< "${listing}"
+}
+
+#
+# @description Prove that chezmoi reads the prefetched externals from its cache, before anything applies: run
+#   `chezmoi status` over the externals' entries (`--include=externals`) with `--refresh-externals=never` and the
+#   network denied, so a cache entry chezmoi does not find (a release that moved or re-keyed `<cacheDir>/external`,
+#   a prefetch that wrote under another key) is a download that fails here, under a named chezmoi version, instead
+#   of the unbounded download the apply would make. The network is denied by the first guard in
+#   CHEZMOI_EXTERNAL_NETWORK_GUARDS whose probe runs; with none the check still runs, unguarded, and says so: it then
+#   catches a chezmoi that fails outright, not one that downloads. Only chezmoi's exit status and its output, scanned
+#   for CHEZMOI_EXTERNAL_NETWORK_ERRORS, are read; the status lines are not. The entry filter narrows what status
+#   compares, not what chezmoi reads: every external is read with the source state, so an external the prefetch
+#   leaves to chezmoi (fallback urls, a url that is not http(s)) has to be cached already or the guarded check
+#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Needs grep and tail.
+# @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
+# @stdout The chezmoi version and the guard the check ran under, then its verdict.
+# @stderr The one-line reason when it fails.
+# @exitcode 0 chezmoi exited 0 and printed none of the strings.
+# @exitcode 1 chezmoi exited non-zero or printed one of them, or a producer failed (version, output file, scan).
+#
+function assert_chezmoi_externals_cached() {
+    local chezmoi="$1" version entry how=unguarded output status=0 scan=0 reason
+    local -a guard cmd scan_args
+    if ! version="$("${chezmoi}" --version)"; then
+        printf 'chezmoi externals: cannot read chezmoi'\''s version\n' >&2
+        return 1
+    fi
+    cmd=("${chezmoi}" --refresh-externals=never status --include=externals)
+    for entry in "${CHEZMOI_EXTERNAL_NETWORK_GUARDS[@]}"; do
+        IFS=$'\t' read -r -a guard <<< "${entry}" || continue
+        if "${guard[@]}" true > /dev/null 2>&1; then
+            how="under ${guard[*]}"
+            cmd=("${guard[@]}" "${cmd[@]}")
+            break
+        fi
+    done
+    printf 'chezmoi externals: cache check %s with %s\n' "${how}" "${version:-a chezmoi that printed no version}"
+    if [ "${how}" = unguarded ]; then
+        printf 'chezmoi externals: no network-denial tool runs here (unshare, sandbox-exec); the check runs unguarded and cannot tell a download from a cache read\n'
+    fi
+    output="$(mktemp "${TMPDIR:-/tmp}/chezmoi-externals-status.XXXXXX")" || {
+        printf 'chezmoi externals: cannot create a file for chezmoi'\''s output\n' >&2
+        return 1
+    }
+    "${cmd[@]}" > "${output}" 2>&1 || status=$?
+    for reason in "${CHEZMOI_EXTERNAL_NETWORK_ERRORS[@]}"; do
+        scan_args+=(-e "${reason}")
+    done
+    reason="$(grep -F -m 1 "${scan_args[@]}" "${output}")" || scan=$?
+    if [ "${scan}" -gt 1 ]; then
+        rm -f "${output}"
+        printf 'chezmoi externals: cannot scan chezmoi'\''s output\n' >&2
+        return 1
+    fi
+    # No listed string: the reason is chezmoi's last line, the one its error takes.
+    if [ "${scan}" -eq 1 ] && [ "${status}" -ne 0 ] && ! reason="$(tail -n 1 "${output}")"; then
+        rm -f "${output}"
+        printf 'chezmoi externals: cannot read chezmoi'\''s output\n' >&2
+        return 1
+    fi
+    rm -f "${output}"
+    if [ "${scan}" -eq 0 ] || [ "${status}" -ne 0 ]; then
+        printf 'chezmoi externals: chezmoi did not read the externals from its cache (%s, status exited %s): %s\n' \
+            "${how}" "${status}" "${reason:-no output}" >&2
+        return 1
+    fi
+    printf 'chezmoi externals: chezmoi read the externals from its cache (%s)\n' "${how}"
 }

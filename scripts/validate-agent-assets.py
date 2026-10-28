@@ -2051,8 +2051,25 @@ def mask_members(pairs: Iterable[tuple[str, Any]]) -> tuple[dict[str, Any], int]
     return masked, count
 
 
-def json_strings(text: str) -> list[str] | None:
-    """Every key and string value of a JSON document, or None when text is not JSON.
+class JsonString(NamedTuple):
+    """One string literal of a JSON document: the offset of its opening quote in the text, and its decoded text."""
+
+    offset: int
+    text: str
+
+
+class JsonStringMismatch(ValueError):
+    """The string literals found in a JSON text are not the strings its parsed document holds, so no finding in it
+    can be placed on a line."""
+
+
+# A JSON string literal. Outside a literal a valid document has no quote, and a literal's quotes and backslashes
+# are escaped, so over a text json.loads accepted this finds every literal, in document order.
+JSON_STRING_LITERAL = re.compile(r'"(?:[^"\\]|\\.)*"')
+
+
+def decoded_json_strings(text: str) -> list[str] | None:
+    """Every key and string value of a JSON document in document order, or None when text is not JSON.
 
     Objects are read as pair tuples, so a duplicate key's earlier value is kept.
     """
@@ -2067,12 +2084,34 @@ def json_strings(text: str) -> list[str] | None:
         if isinstance(value, str):
             strings.append(value)
         elif isinstance(value, list):
-            stack.extend(value)
+            stack.extend(reversed(value))
         elif isinstance(value, tuple):
-            for key, item in value:
-                strings.append(key)
+            for key, item in reversed(value):
                 stack.append(item)
+                stack.append(key)
     return strings
+
+
+def json_strings(text: str) -> list[JsonString] | None:
+    """Every key and string value of a JSON document with the offset of its literal, in document order, or None
+    when text is not JSON.
+
+    The literals are found in the text and decoded one by one, then compared with the parsed document's strings;
+    a difference raises JsonStringMismatch, since a finding would otherwise be placed on another literal's line.
+    """
+    decoded = decoded_json_strings(text)
+    if decoded is None:
+        return None
+    literals = [
+        JsonString(match.start(), json.decoder.scanstring(text, match.start() + 1)[0])
+        for match in JSON_STRING_LITERAL.finditer(text)
+    ]
+    if [literal.text for literal in literals] != decoded:
+        raise JsonStringMismatch(
+            f"{len(literals)} JSON string literal(s) in the text do not match the {len(decoded)} string(s) of the "
+            "parsed document"
+        )
+    return literals
 
 
 def mask_secrets(paths: list[str]) -> int:
@@ -2178,7 +2217,7 @@ def identifier_findings(path: Path, words: list[tuple[int, str]]) -> list[str]:
         text = data.decode()
     except UnicodeDecodeError:
         return ["not UTF-8 text"]
-    strings = json_strings(text) or [text]
+    strings = decoded_json_strings(text) or [text]
     return identifier_reasons([text, *strings], words, secret_strings=strings)
 
 
@@ -2222,16 +2261,11 @@ def scan_identifiers(args: list[str]) -> int:
     return 1 if findings else 0
 
 
-def finding_line(text: str, finding: SecretFinding, in_json: bool) -> int:
-    """The 1-based line of FINDING in a file's TEXT. A finding in a decoded JSON string is placed where its raw or
-    JSON-encoded form occurs in the text, or on line 0 when the writer's escaping hides it."""
-    offset = finding.start
-    if in_json:
-        offset = text.find(finding.secret)
-        if offset == -1:
-            offset = text.find(json.dumps(finding.secret)[1:-1])
-        if offset == -1:
-            return 0
+def finding_line(text: str, finding: SecretFinding, literal: JsonString | None) -> int:
+    """The 1-based line of FINDING in a file's TEXT. A finding in a decoded JSON string is placed on the line of
+    LITERAL, the string it was found in: a strict JSON literal holds no raw newline, so it sits on one line, whatever
+    escapes the writer used. Elsewhere the finding's own offset in TEXT names the line."""
+    offset = finding.start if literal is None else literal.offset
     return text.count("\n", 0, offset) + 1
 
 
@@ -2254,17 +2288,22 @@ def validate_no_obvious_secrets() -> None:
         relative = relative_path.as_posix()
         # A JSON document is scanned per key and string value, so a match never
         # spans JSON syntax between two fields; any other text is scanned whole.
-        strings = json_strings(text)
-        for string in strings or [text]:
-            for finding in secret_findings(string):
-                fingerprint = f"{relative}:{finding.rule.id}:{finding_line(text, finding, bool(strings))}"
+        try:
+            literals = json_strings(text)
+        except JsonStringMismatch as error:
+            problems.append(f"{relative} cannot be scanned per JSON string: {error}")
+            continue
+        scanned = literals if literals is not None else [None]
+        for literal in scanned:
+            for finding in secret_findings(text if literal is None else literal.text):
+                fingerprint = f"{relative}:{finding.rule.id}:{finding_line(text, finding, literal)}"
                 if secret_allowance(finding.rule.id, finding.secret, relative, fingerprint) is None:
                     problems.append(
                         f"possible committed secret {fingerprint} {finding.masked()} ({finding.rule.description})"
                     )
         # Decoded JSON strings too: a JSON writer may escape the slashes (`\/home\/...`).
         if relative_path.parts[:1] == (".orchestration",) and any(
-            home_path_pattern().search(s) for s in (text, *(strings or []))
+            home_path_pattern().search(s) for s in (text, *(literal.text for literal in literals or []))
         ):
             problems.append(
                 f"{relative} names a home directory; normalise it with "

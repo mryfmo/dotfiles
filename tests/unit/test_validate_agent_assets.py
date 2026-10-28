@@ -2097,6 +2097,87 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.module.checked_allowlist((row("*", "a row with no condition"),))
 
+    def test_identical_json_secrets_on_two_lines_get_two_fingerprints_and_a_row_suppresses_one(self) -> None:
+        """Each finding in a JSON document is placed on the line of its own string literal, so two copies of one
+        secret get two fingerprints and a fingerprint row names one of them (Codex P2 on PR #582)."""
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        text = json.dumps({"items": [{"body": planted, "url": "https://x/1"}, {"body": planted}]}, indent=2)
+        self.write_text_file("fixtures/planted.json", text + "\n")
+        lines = [number for number, line in enumerate(text.splitlines(), 1) if planted in line]
+        self.assertEqual(len(lines), 2)
+        first, second = (f"fixtures/planted.json:github-pat:{number}" for number in lines)
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn("2 finding(s)", stderr.getvalue())
+        self.assertIn(f"possible committed secret {first} ghp_...", stderr.getvalue())
+        self.assertIn(f"possible committed secret {second} ghp_...", stderr.getvalue())
+
+        line_one = self.module.SecretAllowance("*", "the first copy only", fingerprint=first)
+        with mock.patch.object(self.module, "SECRET_ALLOWLIST", (line_one,)):
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+        self.assertIn("1 finding(s)", stderr.getvalue())
+        self.assertIn(f"{second} ", stderr.getvalue())
+        self.assertNotIn(f"{first} ", stderr.getvalue())
+
+    def test_an_escaped_json_secret_is_placed_on_the_line_of_its_literal(self) -> None:
+        """A writer's escaping (`\\u0067hp_`, `\\u005f`) hides the raw token from the text; the finding is still
+        placed on its literal's line, never on line 0, and the whole token is the secret the rule reports."""
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        escaped = "\\u0067hp\\u005f" + planted[4:]
+        self.assertEqual(json.loads(f'"{escaped}"'), planted)
+        # The escaped literal sits on line 5 of the document.
+        lines = ["{", '  "items": [', "    {", '      "url": "https://x/1",', f'      "body": "see {escaped}"', "    }"]
+        text = "\n".join((*lines, "  ]", "}", ""))
+        self.assertNotIn(planted, text)
+        path = self.write_text_file("fixtures/escaped.json", text)
+
+        literals = self.module.json_strings(text)
+        expected = ["items", "url", "https://x/1", "body", f"see {planted}"]
+        self.assertEqual([literal.text for literal in literals], expected)
+        self.assertTrue(all(text[literal.offset] == '"' for literal in literals))
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn("1 finding(s)", stderr.getvalue())
+        self.assertIn("possible committed secret fixtures/escaped.json:github-pat:5 ghp_...", stderr.getvalue())
+        self.assertNotIn(":github-pat:0 ", stderr.getvalue())
+
+        row = self.module.SecretAllowance("github-pat", "fixture", fingerprint="fixtures/escaped.json:github-pat:5")
+        with mock.patch.object(self.module, "SECRET_ALLOWLIST", (row,)):
+            self.module.validate_no_obvious_secrets()
+        path.unlink()
+
+    def test_json_strings_refuses_when_the_literals_do_not_match_the_parsed_document(self) -> None:
+        """The literals found in the text are compared with the parsed document's strings; a difference is refused
+        rather than placing a finding on another literal's line, and the tree scan reports the file."""
+        text = json.dumps({"a": "one", "b": ["two", "three"]}, indent=2) + "\n"
+        literals = self.module.json_strings(text)
+        self.assertEqual([literal.text for literal in literals], ["a", "one", "b", "two", "three"])
+        self.assertEqual([text[literal.offset] for literal in literals], ['"'] * 5)
+        self.assertIsNone(self.module.json_strings("not json\n"))
+        self.assertEqual(self.module.json_strings("42\n"), [])
+
+        self.write_text_file("fixtures/mismatch.json", text)
+        with mock.patch.object(self.module, "decoded_json_strings", return_value=["a", "one", "b", "two"]):
+            with self.assertRaises(self.module.JsonStringMismatch):
+                self.module.json_strings(text)
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_no_obvious_secrets()
+        self.assertIn("1 finding(s)", stderr.getvalue())
+        self.assertIn(
+            "fixtures/mismatch.json cannot be scanned per JSON string: 5 JSON string literal(s) in the text do not "
+            "match the 4 string(s) of the parsed document",
+            stderr.getvalue(),
+        )
+        for value in ("one", "two", "three"):
+            self.assertNotIn(f'"{value}"', stderr.getvalue(), "the refusal quotes no string")
+
     def test_a_provider_token_in_a_unit_test_file_is_reported(self) -> None:
         """No SECRET_ALLOWLIST row names a test file: the planted fixtures are split literals, and a real token pasted
         into either file is a finding like anywhere else. Each file's committed text is scanned as a scratch copy."""
@@ -2413,7 +2494,7 @@ class MaskSecretsModeTest(unittest.TestCase):
         for path in (evidence, prose):
             text = path.read_text()
             with self.subTest(path=path.name):
-                strings = module.json_strings(text) or [text]
+                strings = [literal.text for literal in module.json_strings(text) or ()] or [text]
                 self.assertFalse(any(module.home_path_pattern().search(s) for s in (text, *strings)))
 
     def test_keeps_carriage_returns_and_every_unmasked_byte(self) -> None:
@@ -2471,8 +2552,8 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(result.stdout, f"masked 1 match(es) in {evidence}\n")
         self.assertEqual(json.loads(evidence.read_text()), {"items": [{"body": "safe replacement"}]})
         module = load_validator()
-        strings = module.json_strings(evidence.read_text())
-        self.assertFalse(any(module.secret_findings(s) for s in strings))
+        literals = module.json_strings(evidence.read_text())
+        self.assertFalse(any(module.secret_findings(literal.text) for literal in literals))
 
     def test_a_masked_key_collision_fails_and_leaves_the_file_unchanged(self) -> None:
         evidence = self.temp_dir / "t-pr-feedback.json"

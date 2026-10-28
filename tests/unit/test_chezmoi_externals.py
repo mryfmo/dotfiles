@@ -889,8 +889,9 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
         self.chezmoi.chmod(0o755)
 
     def check(self, inject: str = "", **extra: str) -> subprocess.CompletedProcess[str]:
+        # The stub is found on PATH under chezmoi's own name, the way make update names it.
         env = {**os.environ, "HOME": str(self.case), "TMPDIR": str(self.case), "CALLS": str(self.calls)}
-        env.update({"STUB_OUTPUT": "", "STUB_EXIT": "0", **extra})
+        env.update({"PATH": f"{self.case}{os.pathsep}{env['PATH']}", "STUB_OUTPUT": "", "STUB_EXIT": "0", **extra})
         self.calls.unlink(missing_ok=True)
         return subprocess.run(
             [
@@ -899,7 +900,7 @@ class ChezmoiCacheCheckTest(unittest.TestCase):
                 f'source "$1"; shift; {inject}assert_chezmoi_externals_cached "$1"',
                 "_",
                 str(LIB),
-                str(self.chezmoi),
+                "chezmoi",
             ],
             env=env,
             capture_output=True,

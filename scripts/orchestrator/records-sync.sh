@@ -358,8 +358,11 @@ while IFS= read -r -d '' dir; do
     [[ -r ${dir} && -x ${dir} ]] || refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
 done < "${scratch}/dirs"
 [[ -z ${dir} ]] || refuse "the walk of ${records}/ ends mid-entry; nothing was created"
-git ls-files -z --cached --others --exclude-standard -- "${records}/" > "${listing}" 2> "${scratch}/listing.err" ||
-    fail 'git ls-files failed'
+# Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any
+# configuration the checkout reads would run inside it (and could write into the store before the copy). The
+# command line turns it off, with the hooks path; the user's ignore rules (core.excludesFile) still apply.
+git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files -z --cached --others --exclude-standard -- "${records}/" \
+    > "${listing}" 2> "${scratch}/listing.err" || fail 'git ls-files failed'
 [[ ! -s ${scratch}/listing.err ]] ||
     refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
 files=()

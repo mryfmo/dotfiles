@@ -1658,27 +1658,35 @@ class RecordsSyncTest(PrLeverTestCase):
     def test_a_hook_of_the_checkout_never_runs(self):
         """U101 round 6: a post-checkout or pre-commit hook of the checkout's repository dropped files in the sync
         worktree that `add -A` then staged, unmasked and unscanned. The sync now has no worktree: it is built in its
-        own repository, which has no hooks, so none of the checkout's runs."""
+        own repository, which has no hooks, so none of the checkout's runs. Round 12 (audit of 7b3c2718): a
+        `core.fsmonitor` hook runs inside `git ls-files`, the lever's one index read in the checkout, and could plant a
+        store file there before the copy; the listing turns it off."""
         self.github()
         marker = self.root / "hook-ran"
         hooks = self.repo / ".git/hooks"
         hooks.mkdir(exist_ok=True)
+        body = (
+            "#!/bin/sh\n"
+            "mkdir -p .orchestration/validation .orchestration/orchestrate/other\n"
+            "echo hooked > .orchestration/validation/hooked.md\n"
+            "echo hooked > .orchestration/orchestrate/other/hooked.md\n"
+            "echo hooked > .orchestration/orchestrate/prog/hooked.md\n"
+        )
         for name in ("post-checkout", "pre-commit", "post-commit", "pre-push", "reference-transaction"):
             hook = hooks / name
-            hook.write_text(
-                "#!/bin/sh\n"
-                "mkdir -p .orchestration/validation .orchestration/orchestrate/other\n"
-                "echo hooked > .orchestration/validation/hooked.md\n"
-                "echo hooked > .orchestration/orchestrate/other/hooked.md\n"
-                f"echo {name} >> {marker}\n"
-            )
+            hook.write_text(body + f"echo {name} >> {marker}\n")
             hook.chmod(0o755)
+        fsmonitor = self.root / "fsmonitor-hook"
+        fsmonitor.write_text(body + f"echo fsmonitor >> {marker}\n")
+        fsmonitor.chmod(0o755)
+        self.git("config", "core.fsmonitor", str(fsmonitor))
         with (self.records / "units.tsv").open("a") as units:
             units.write("U2\tseats\n")
         run = self.run_lever("records-sync.sh")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
         self.assertFalse(marker.exists(), "no hook ran")
+        self.assertFalse((self.records / "hooked.md").exists(), "nothing was planted in the store")
 
     def test_a_tree_entry_outside_the_copy_set_refuses(self):
         """U101 rounds 6 and 8: the new tree's change against main must equal the computed set exactly, so one more

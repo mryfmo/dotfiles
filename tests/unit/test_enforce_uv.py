@@ -4,7 +4,8 @@
 The hook parses a Bash line with shfmt's syntax tree (U76 round 8), so the decision rows need shfmt on PATH: the mise
 config installs it on the hosts and CI puts the pinned 3.14.1 there (as for scripts/ci/masked-dirname-check.sh).
 Every probe the hook makes over that tree has three outcomes (U105 round 5): found, empty, and a failed read, which
-is exit 2 naming the probe and the status. The injection tests below stub one tool on PATH at a time.
+is exit 2 naming the probe and the status. A probe that prints one value (a count, the source directory) is held to
+one line (round 6): none or several is a failed read too. The injection tests below stub one tool on PATH at a time.
 """
 
 from __future__ import annotations
@@ -36,6 +37,11 @@ SHFMT_STUB = """#!/bin/sh
 {real} "$@"
 [ "$1" = --version ] && exit 0
 exit 3
+"""
+# A chezmoi whose `source-path` answers as the test says; the deployed copy of the hook asks it for the source directory.
+CHEZMOI_STUB = """#!/bin/sh
+[ "$1" = source-path ] || exit 64
+{answer}
 """
 # The three probes over the tree, by a fragment of their jq program, with the name the refusal gives each.
 PROBES = (
@@ -156,16 +162,33 @@ class EnforceUvTest(unittest.TestCase):
                 self.assertEqual("", result.stderr)
 
     def tool_path(self, stubs: dict[str, str] | None = None) -> Path:
-        """A PATH directory holding the real tools, each stub script in place of the tool it is named after."""
+        """A PATH directory holding the real tools, each stub script in place of the tool it is named after (or
+        added, for a tool such as chezmoi that the real PATH of the test need not hold)."""
         bin_dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, bin_dir)
         for tool in TOOLS:
             (bin_dir / tool).symlink_to(shutil.which(tool))
         for tool, script in (stubs or {}).items():
-            (bin_dir / tool).unlink()
+            (bin_dir / tool).unlink(missing_ok=True)
             (bin_dir / tool).write_text(script.replace("{real}", shutil.which(tool) or tool))
             (bin_dir / tool).chmod(0o755)
         return bin_dir
+
+    def deployed_hook(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+        """The hook copied outside the checkout, as chezmoi deploys it, run on PAYLOAD under env (HOME is the copy's)."""
+        deployed = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, deployed)
+        copy = deployed / "hooks" / "enforce-uv.sh"
+        copy.parent.mkdir()
+        shutil.copy(HOOK, copy)
+        return subprocess.run(
+            ["bash", str(copy)],
+            input=PAYLOAD,
+            capture_output=True,
+            text=True,
+            check=False,
+            env={"HOME": str(deployed), **env},
+        )
 
     def test_a_probe_that_finds_nothing_is_no_decision_and_the_stub_free_path_keeps_the_deny(self) -> None:
         """The control for the injection tests: the empty result keeps its behaviour, and the PATH idiom alone
@@ -208,6 +231,28 @@ class EnforceUvTest(unittest.TestCase):
         self.assertEqual("", result.stdout)
         self.assertIn("enforce-uv: shfmt parsing the line exited 3; the line cannot be judged", result.stderr)
 
+    def test_a_count_probe_that_prints_no_count_or_two_is_a_refusal_naming_the_probe(self) -> None:
+        """Round 6: jq's `length` prints one count, so none or several is a failed read, never 0 or the first one.
+        The offsets probe prints one pair per call statement, so none there is the empty result, as before."""
+        counts = [(fragment, probe) for fragment, probe in PROBES if probe.startswith("jq counting")]
+        self.assertEqual(2, len(counts))
+        for failure, wording in (
+            ("exit 0", "printed nothing, not a count"),
+            ("printf '1\\n2\\n'", "printed 2 lines, not a count"),
+        ):
+            bin_dir = self.tool_path({"jq": JQ_STUB.replace("{failure}", failure)})
+            for fragment, probe in counts:
+                with self.subTest(probe=probe, failure=failure):
+                    result = self.hook(PAYLOAD, env={"PATH": str(bin_dir), "STUB_PROBE": fragment})
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual("", result.stdout, "no decision stands in for the refusal")
+                    self.assertIn(f"enforce-uv: {probe} {wording}; the line cannot be judged", result.stderr)
+        bin_dir = self.tool_path({"jq": JQ_STUB.replace("{failure}", "exit 0")})
+        result = self.hook(PAYLOAD, env={"PATH": str(bin_dir), "STUB_PROBE": "CallExpr"})
+        self.assertEqual(
+            (0, "", ""), (result.returncode, result.stdout, result.stderr), "no call statement: no decision"
+        )
+
     def test_without_shfmt_or_on_a_line_it_cannot_parse_the_hook_refuses(self) -> None:
         """No parser, or a parse error, is "could not judge" (exit 2 naming it), never a silent no decision."""
         with tempfile.TemporaryDirectory() as bin_dir:
@@ -223,20 +268,50 @@ class EnforceUvTest(unittest.TestCase):
         self.assertIn("enforce-uv: shfmt parsing the line exited 1; the line cannot be judged", result.stderr)
 
     def test_a_deployed_copy_that_finds_no_contract_module_decides_nothing(self) -> None:
-        """The one fail-open left: a copy outside the checkout, with no chezmoi on PATH to name the source directory."""
-        with tempfile.TemporaryDirectory() as deployed:
-            copy = Path(deployed) / "hooks" / "enforce-uv.sh"
-            copy.parent.mkdir()
-            shutil.copy(HOOK, copy)
-            result = subprocess.run(
-                ["bash", str(copy)],
-                input=PAYLOAD,
-                capture_output=True,
-                text=True,
-                check=False,
-                env={"PATH": str(self.tool_path()), "HOME": deployed},
-            )
-        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+        """The one fail-open left: a copy outside the checkout with no chezmoi on PATH to name the source directory,
+        or whose source directory is real and holds no module. A source directory that holds it is judged as the
+        checkout is (the deny comes out)."""
+        with self.subTest(source="no chezmoi on PATH"):
+            result = self.deployed_hook({"PATH": str(self.tool_path())})
+            self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+        with tempfile.TemporaryDirectory() as source, self.subTest(source="a real directory without the module"):
+            stub = CHEZMOI_STUB.replace("{answer}", f"echo {source}")
+            result = self.deployed_hook({"PATH": str(self.tool_path({"chezmoi": stub}))})
+            self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+        with self.subTest(source="the checkout's source directory"):
+            stub = CHEZMOI_STUB.replace("{answer}", f"echo {ROOT / 'home'}")
+            result = self.deployed_hook({"PATH": str(self.tool_path({"chezmoi": stub}))})
+            self.assertEqual((0, ""), (result.returncode, result.stderr))
+            self.assertIn('"permissionDecision":"deny"', result.stdout)
+
+    def test_a_source_path_read_that_fails_or_names_no_directory_is_a_refusal(self) -> None:
+        """Round 6: `chezmoi source-path` is a producer like the others. Its failure, or an answer that is no single
+        absolute path to a directory, is exit 2 naming the probe, never "no module" and exit 0."""
+        probe = "chezmoi source-path naming the source directory"
+        cases = (
+            (
+                'echo "chezmoi: injected failure" >&2; exit 1',
+                f"enforce-uv: {probe} exited 1; the line cannot be judged",
+            ),
+            ("exit 0", f"enforce-uv: {probe} printed nothing, not an absolute path; the line"),
+            ("echo relative/home", f"enforce-uv: {probe} printed 'relative/home', not an absolute path; the line"),
+            ("printf '/a\\n/b\\n'", f"enforce-uv: {probe} printed 2 lines, not an absolute path; the line"),
+            (
+                "echo /nonexistent/source",
+                "enforce-uv: chezmoi source-path named '/nonexistent/source', which is no directory; the line",
+            ),
+        )
+        for answer, message in cases:
+            with self.subTest(answer=answer):
+                stub = CHEZMOI_STUB.replace("{answer}", answer)
+                result = self.deployed_hook({"PATH": str(self.tool_path({"chezmoi": stub}))})
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout, "no decision stands in for the refusal")
+                self.assertIn(message, result.stderr)
+                if "injected" in answer:
+                    self.assertIn(
+                        "chezmoi: injected failure", result.stderr, "the tool's own diagnostic reaches the caller"
+                    )
 
 
 if __name__ == "__main__":

@@ -4,12 +4,14 @@ This directory is the snapshot of the `regime-cutover` program as the coordinato
 
 ## Files
 
-| File                                                             | Diátaxis mode | Question it answers                                                                                            |
-| ---------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
-| [01-program-status.md](01-program-status.md)                     | reference     | Where does the program stand after the 2026-10-28 pickup, phase by phase and unit by unit?                     |
-| [02-audit-treadmill-analysis.md](02-audit-treadmill-analysis.md) | explanation   | Why did the audit round set the program's pace, and what did the units with ten or more rounds have in common? |
-| [03-remediation-spec.md](03-remediation-spec.md)                 | how-to        | What does the adopting coordinator copy into a brief to remove the cause of the long audit runs?               |
-| [04-open-items.md](04-open-items.md)                             | reference     | Which items stay open, who owns each, what blocks it, and what happens if nobody acts?                         |
+| File                                                             | Diátaxis mode | Question it answers                                                                                                                  |
+| ---------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [01-program-status.md](01-program-status.md)                     | reference     | Where does the program stand after the 2026-10-28 pickup, phase by phase and unit by unit?                                           |
+| [02-audit-treadmill-analysis.md](02-audit-treadmill-analysis.md) | explanation   | Why did the audit round set the program's pace, and what did the units with ten or more rounds have in common?                       |
+| [03-remediation-spec.md](03-remediation-spec.md)                 | how-to        | What does the adopting coordinator copy into a brief to remove the cause of the long audit runs?                                     |
+| [04-open-items.md](04-open-items.md)                             | reference     | Which items stay open, who owns each, what blocks it, and what happens if nobody acts?                                               |
+| [05-remediation-plan.md](05-remediation-plan.md)                 | explanation   | Which mechanism do the vendor sources support for each root cause, what did the program decide, and in which order do the units run? |
+| [research/](research/)                                           | reference     | The problem statement and the two research files (git and shell, CI reliability) that hold every citation the plan rests on.         |
 
 ## Conventions
 

@@ -23,15 +23,26 @@ The YAML is read by a loader whose booleans are YAML 1.2's (`true` and `false` i
 else), so the key `on` is the string `on`: PyYAML's own YAML 1.1 resolver reads `on`, `yes` and `true` as one boolean
 key, and a workflow whose trigger key was `true:` or `yes:` read as this one while GitHub found no trigger (the
 round-6 audit renamed `on:` to `true:` past every check).
+
+The file itself must equal WORKFLOW_BYTES, byte for byte, with the sha256 WORKFLOW_SHA256 (round 8). Seven audits each
+found a new way the parsed form stood for a file GitHub reads otherwise: regexes over the run text, unpinned channels
+(`defaults`, `env`, `with`, `container`), a bool conflated with an int, YAML 1.1 booleans, and duplicate keys, which
+SafeLoader overwrites in silence (the round-7 audit's edit). The premise they shared, that the test can read the YAML as
+GitHub does, is dropped: nothing a parser reads differently survives a byte comparison. The byte pin is the control for
+the parser layer, and the property checks are the explanation layer: they run on the parsed form of the same bytes and
+say which property a change took away, so an editor knows what to restore before updating the pin.
 """
 
 from __future__ import annotations
 
 import copy
+import difflib
+import hashlib
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import tomllib
 import unittest
@@ -47,6 +58,65 @@ WORKFLOW = ROOT / ".github/workflows/regime.yml"
 # the guard the lint gates run first. Another version, or none, fails every run-script check instead of skipping it.
 PIN_GUARD = ROOT / "scripts/ci/pinned-tool-version.sh"
 MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
+# The file's exact bytes and their sha256, written once from the file at this head and never read from the file: the
+# control for the parser layer. A duplicate key, a boolean spelling, an indentation, a line ending or a byte order mark
+# reads one way in PyYAML and another in GitHub, and none survives a byte comparison. A change to regime.yml updates
+# both constants in the same commit, once the property checks pass on the new text; a reviewer verifies the pin with
+# `shasum -a 256 .github/workflows/regime.yml` without reading the literal.
+WORKFLOW_SHA256 = "e32b3341b26543bb19da9087666e28e295eeb0eaac019cfb0a047dfb649ba6e0"
+WORKFLOW_BYTES = """\
+name: regime
+
+# The regime job: the base's scripts/orchestrator/regime-ci.py reads the pull request's diff and body, and runs only
+# git. A pull request passes when it changes records alone (every path under .orchestration/), or when its body carries
+# its own line `Program-Unit: <program>/U<n>` for a program whose store the base holds and its author is the owner, a
+# member or a collaborator (operator decision D-024-131; U71). pull_request_target runs this workflow as it is on the
+# base; the pull request's head is fetched as data and is never checked out or executed. The verdict depends on the
+# body, so an edit re-runs it (`edited`); only pull requests into main run it, so no other base branch's verifier
+# decides (U71). It is an optional check until the operator adds `regime` to the ruleset's required contexts (gate G10).
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: regime-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          # The base branch's tip at run time: the event's recorded base sha can lag the branch (on PR #420 it was the
+          # head's fork point, from before this verifier; ci:39185982423:1). The pull request cannot move this branch.
+          ref: refs/heads/${{ github.base_ref }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - name: Fetch the pull request's head as data
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
+          test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"
+      - name: Check the pull request with the base's verifier
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # the program marker (D-024-131) is read from the event payload as data, never interpolated into run:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          # who wrote the pull request (U71, F152): only an owner, member or collaborator's Program-Unit line counts
+          PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+"""
 BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_VARIABLE = "PR_BODY"
 # The body on its own: not a literal that names it, not an expression computed from it. The script reads this value.
@@ -409,6 +479,51 @@ def render_part(part: Part) -> str:
     return "$(" + "; ".join(render(statement) for statement in value) + ")"
 
 
+def shown(raw: bytes) -> str:
+    """A line of the file for a message, with its ending and every invisible byte spelled out (`\\r\\n`, `\\ufeff`, a
+    trailing space), or a note that there is no such line."""
+    return repr(raw.decode("utf-8", errors="backslashreplace")) if raw else "no such line"
+
+
+def check_bytes(path: Path) -> None:
+    """The file is WORKFLOW_BYTES, byte for byte, and their sha256 is WORKFLOW_SHA256: the control for the parser
+    layer. A duplicate key, a boolean spelling, an indentation, a line ending or a byte order mark reads one way in
+    PyYAML and another in GitHub (the round-7 audit's duplicate `run:` was the table's document to SafeLoader), and
+    none survives a byte comparison. The message shows the file against the pin as a unified diff, names the first
+    differing line, both digests, and the way to change the workflow: update the pin in the same commit."""
+    found = path.read_bytes()
+    pin = WORKFLOW_BYTES.encode()
+    digest = hashlib.sha256(found).hexdigest()
+    if found == pin and digest == WORKFLOW_SHA256:
+        return
+    if found == pin:
+        detail = f"the file is the pinned bytes, but their sha256 is {digest} and WORKFLOW_SHA256 is {WORKFLOW_SHA256}"
+        raise AssertionError(f"regime.yml:1 (name: regime): {detail}; the two constants are updated together")
+    found_lines, pin_lines = found.splitlines(keepends=True), pin.splitlines(keepends=True)
+    pairs = enumerate(zip_longest(found_lines, pin_lines, fillvalue=b""), 1)
+    number, (got, held) = next((number, pair) for number, pair in pairs if pair[0] != pair[1])
+    diff = difflib.unified_diff(
+        [visible(raw) for raw in pin_lines],
+        [visible(raw) for raw in found_lines],
+        fromfile="WORKFLOW_BYTES (the pin)",
+        tofile="regime.yml (the file)",
+        lineterm="",
+    )
+    detail = (
+        f"regime.yml:{number}: the file is not the pinned bytes: its sha256 is {digest}, the pin's is {WORKFLOW_SHA256};"
+        f" the first difference is line {number}: found {shown(got)}, the pin holds {shown(held)}. A change to"
+        " regime.yml updates WORKFLOW_BYTES and WORKFLOW_SHA256 in tests/unit/test_regime_workflow.py in the same"
+        " commit, once the property checks pass on the new text (shasum -a 256 .github/workflows/regime.yml gives"
+        " the digest).\n"
+    )
+    raise AssertionError(detail + "\n".join(diff))
+
+
+def visible(raw: bytes) -> str:
+    """A line for the diff: decoded, its newline dropped, every other invisible byte spelled out (`\\r`, `\\ufeff`)."""
+    return raw.decode("utf-8", errors="backslashreplace").removesuffix("\n").encode("unicode_escape").decode()
+
+
 def check_trigger(doc: dict) -> None:
     # `on` is the string `on` here (the reader's booleans are YAML 1.2's): a trigger key spelled true: or yes:, which
     # PyYAML's own resolver would fold into `on`, is a missing key, as it is for GitHub.
@@ -561,6 +676,19 @@ def check_step_inputs(doc: dict) -> None:
 def check_cancel_in_progress(doc: dict) -> None:
     group = mapping(doc.get("concurrency"), "cancel-in-progress: true")
     require(group.get("cancel-in-progress") is True, "cancel-in-progress: true", f"concurrency is {group!r}")
+
+
+# The parsed checks in module order: the explanation layer, each naming the property a change took away.
+PARSED_CHECKS = (
+    check_trigger,
+    check_permissions,
+    check_checkout,
+    check_no_unsafe_checkout,
+    check_run_scripts,
+    check_document,
+    check_step_inputs,
+    check_cancel_in_progress,
+)
 
 
 def regime_job(doc: dict) -> dict:
@@ -948,6 +1076,24 @@ DOCUMENT_SHAPE = Invariant(
 )
 
 
+class BytePinTest(unittest.TestCase):
+    """The first check: the head's regime.yml is the pinned bytes with the pinned sha256, before anything is parsed."""
+
+    def test_the_file_is_the_pinned_bytes_and_their_sha256(self) -> None:
+        check_bytes(WORKFLOW)
+        self.assertEqual(hashlib.sha256(WORKFLOW_BYTES.encode()).hexdigest(), WORKFLOW_SHA256)
+
+    def test_a_sha256_that_is_not_the_bytes_is_refused_naming_both(self) -> None:
+        # The two constants change together: a pin whose literal was updated and whose digest was not is refused
+        # although the file is the literal's bytes, so a reviewer's `shasum -a 256` always agrees with the module.
+        with mock.patch.object(sys.modules[__name__], "WORKFLOW_SHA256", "0" * 64):
+            with self.assertRaises(AssertionError) as caught:
+                check_bytes(WORKFLOW)
+        message = str(caught.exception)
+        self.assertIn(f"the file is the pinned bytes, but their sha256 is {WORKFLOW_SHA256}", message)
+        self.assertIn(f"WORKFLOW_SHA256 is {'0' * 64}", message)
+
+
 class RegimeWorkflowTest(unittest.TestCase):
     """The head's regime.yml holds every property; a failure message names the line to restore."""
 
@@ -1035,6 +1181,104 @@ class RedCopyTest(unittest.TestCase):
             broken.write_text("- a list\n")
             with self.assertRaises(AssertionError):
                 load(broken)
+
+
+class RawEdit(NamedTuple):
+    """One edit of the file's text that the parsed form may hide: the edit on the bytes, the regime.yml line the byte
+    check must name first, and whether every property check passes on the parsed copy (then the byte check is the only
+    control for it; otherwise the property checks also explain it)."""
+
+    edit: Callable[[bytes], bytes]
+    line: int
+    parses_the_same: bool
+
+
+def swap(old: str, new: str) -> Callable[[bytes], bytes]:
+    """The one occurrence of `old` in the file replaced by `new`: an edit of the text, not of a parsed copy."""
+
+    def edit(text: bytes) -> bytes:
+        count = text.count(old.encode())
+        if count != 1:
+            raise AssertionError(f"{old!r} occurs {count} times in the pinned bytes, not once")
+        return text.replace(old.encode(), new.encode())
+
+    return edit
+
+
+STRAY_RUN = f"        run: git checkout {HEAD_REF}\n"
+# The edits the parser cannot tell from the file, or tells apart only by chance: the round-7 audit's two duplicate
+# keys (SafeLoader keeps the last value and says nothing, so the parsed copy is the table's while GitHub reads another
+# file or refuses it), the round-6 audit's spelling, and the text-level changes no parsed check could ever see.
+RAW_EDITS = {
+    "a duplicate run: key on the verifier step (the auditor's edit)": RawEdit(
+        swap("        run: uv run", f"{STRAY_RUN}        run: uv run"), 51, True
+    ),
+    "a duplicate run: key on the fetch step": RawEdit(
+        swap("        run: |\n", f"{STRAY_RUN}        run: |\n"), 41, True
+    ),
+    "a duplicate permissions: key (the auditor's edit)": RawEdit(
+        swap("\npermissions:\n", "\npermissions: write-all\npermissions:\n"), 19, True
+    ),
+    "the trigger key spelled true": RawEdit(swap("\non:\n", "\ntrue:\n"), 10, False),
+    "a trailing space": RawEdit(swap("  contents: read\n", "  contents: read \n"), 20, True),
+    "an indentation that parses the same": RawEdit(
+        swap(
+            f"  group: regime-pr-{NUMBER_EXPRESSION}\n  cancel-in-progress: true\n",
+            f"    group: regime-pr-{NUMBER_EXPRESSION}\n    cancel-in-progress: true\n",
+        ),
+        16,
+        True,
+    ),
+    "a comment": RawEdit(swap("\npermissions:\n", "\n# the token\npermissions:\n"), 19, True),
+    "CRLF line endings": RawEdit(lambda text: text.replace(b"\n", b"\r\n"), 1, True),
+    "a byte order mark": RawEdit(lambda text: b"\xef\xbb\xbf" + text, 1, True),
+}
+
+
+class RawTextTest(unittest.TestCase):
+    """Each edit of the file's text fails the byte check with the diff naming its first line, whether or not the parsed
+    copy still passes every property check: for most of these edits it does, and the byte check is the one control."""
+
+    def edited(self, label: str, raw: RawEdit) -> Path:
+        text = raw.edit(WORKFLOW_BYTES.encode())
+        self.assertNotEqual(text, WORKFLOW_BYTES.encode(), f"the edit changed nothing: {label}")
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        edited = Path(temp.name) / "regime.yml"
+        edited.write_bytes(text)
+        return edited
+
+    def test_every_raw_text_edit_fails_the_byte_check_with_a_diff_naming_its_first_line(self) -> None:
+        for label, raw in RAW_EDITS.items():
+            with self.subTest(label):
+                edited = self.edited(label, raw)
+                with self.assertRaises(AssertionError) as caught:
+                    check_bytes(edited)
+                message = str(caught.exception)
+                self.assertTrue(message.startswith(f"regime.yml:{raw.line}: the file is not the pinned bytes"), message)
+                self.assertIn(f"the first difference is line {raw.line}: found ", message)
+                self.assertIn(f"its sha256 is {hashlib.sha256(edited.read_bytes()).hexdigest()}", message)
+                self.assertIn(f"the pin's is {WORKFLOW_SHA256}", message)
+                self.assertIn("updates WORKFLOW_BYTES and WORKFLOW_SHA256", message)
+                for marker in ("\n--- WORKFLOW_BYTES (the pin)", "\n+++ regime.yml (the file)", "\n@@ -", "\n+", "\n-"):
+                    self.assertIn(marker, message)
+
+    def test_the_property_checks_see_only_the_edits_the_table_says_they_see(self) -> None:
+        # The explanation layer's reach, measured: the parsed copy of most edits passes every property check (the
+        # parser hands over the table's document), so no check but the byte check stands between them and the suite.
+        for label, raw in RAW_EDITS.items():
+            with self.subTest(label):
+                doc = load(self.edited(label, raw))
+                refused = []
+                for check in PARSED_CHECKS:
+                    try:
+                        check(doc)
+                    except AssertionError as error:
+                        refused.append(f"{check.__name__}: {error}")
+                if raw.parses_the_same:
+                    self.assertEqual(refused, [], f"a property check sees {label}; the table says none does")
+                else:
+                    self.assertTrue(refused, f"no property check sees {label}; the table says one does")
 
 
 class LoaderTest(unittest.TestCase):

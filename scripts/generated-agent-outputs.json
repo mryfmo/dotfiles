@@ -544,6 +544,11 @@
     {
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
+      "glob": "brief-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
       "glob": "bus-history.sh"
     },
     {

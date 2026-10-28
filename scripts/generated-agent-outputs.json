@@ -424,7 +424,7 @@
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7"
+      "sha256": "8e2bd76f70bdc1af724bf3bb8926b5bc5f0eb88de6ac7a38f936455424ff29f4"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",

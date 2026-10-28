@@ -2398,5 +2398,98 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(evidence.read_text(), f'{FIELD}: "abc"\n')
 
 
+class ScanIdentifiersModeTest(unittest.TestCase):
+    """`--scan-identifiers` refuses a secret, a home path or a redact word, and never quotes what it found (U101)."""
+
+    def setUp(self) -> None:
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="scan-identifiers-test-"))
+        self.addCleanup(shutil.rmtree, self.temp_dir)
+        self.words = self.temp_dir / "redact-words.txt"
+        self.words.write_text("# host and user names\nmbp-kana\n\nOperator1\n")
+
+    def scan(self, *paths: Path, words: bool = True) -> "subprocess.CompletedProcess[str]":
+        args = ["--redact-words", str(self.words)] if words else []
+        return subprocess.run(
+            [sys.executable, str(VALIDATOR), "--scan-identifiers", *args, "--", *map(str, paths)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_each_kind_is_a_finding_and_a_clean_file_passes(self) -> None:
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        # The words sit on physical lines 2 and 4 of the file (a comment and a blank line around them).
+        cases = (
+            ("a secret pattern", f"token {planted}\n"),
+            ("a home directory path", "ran in /Users/someone/x\n"),
+            ("redact word on line 2", "seen on MBP-KANA\n"),
+            ("redact word on line 4", '{"host": "operator1"}\n'),
+            # U101 audit P2: a KELVIN SIGN (U+212A) is no ASCII letter, so it bounds the word; inside the word it
+            # folds to k, as the word's case-insensitive match allows.
+            ("redact word on line 4", "\u212aoperator1-test\n"),
+            ("redact word on line 2", "mbp-\u212aana\n"),
+        )
+        for finding, text in cases:
+            with self.subTest(finding=finding, text=text):
+                path = self.temp_dir / "evidence.md"
+                path.write_text(text)
+                result = self.scan(path)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): {finding}\n")
+                self.assertNotIn(planted, result.stderr)
+        clean = self.temp_dir / "clean.md"
+        clean.write_text("mbp-kanax and xoperator1 are other words; ~/x is masked\n")
+        result = self.scan(clean)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_redact_word_in_the_path_is_a_finding_that_never_prints_the_path(self) -> None:
+        # U101 audit P2: the finding printed the raw path, and so the word in it; the file is now named by its place.
+        clean = self.temp_dir / "clean.md"
+        clean.write_text("clean\n")
+        path = self.temp_dir / "notes-operator1.md"
+        path.write_text("clean\n")
+        result = self.scan(clean, path)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "--scan-identifiers: file 2: redact word on line 4 in the path\n")
+        self.assertNotIn("operator1", (result.stdout + result.stderr).lower())
+        self.assertEqual(self.scan(path, words=False).returncode, 0)
+
+    def test_every_content_test_also_applies_to_the_path(self) -> None:
+        # U101 round 5: the secret and home-path tests read the content only, so a clean file named after a token
+        # published it. Each kind is a finding of the path; no output line names the path or what was found.
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        cases = (
+            ("a secret pattern", Path(f"{planted}.md")),
+            ("a home directory path", Path("store/home/runner/notes.md")),  # the same glued forms as content
+            ("redact word on line 2", Path("MBP-Kana/notes.md")),
+        )
+        for reason, relative in cases:
+            with self.subTest(reason):
+                path = self.temp_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("clean\n")
+                result = subprocess.run(
+                    [sys.executable, str(VALIDATOR), "--scan-identifiers", "--redact-words", str(self.words), "--"]
+                    + [str(relative)],
+                    cwd=self.temp_dir,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1: {reason} in the path\n")
+                for found in (planted.lower(), "runner", "kana"):
+                    self.assertNotIn(found, (result.stdout + result.stderr).lower())
+
+    def test_usage_and_unreadable_files_exit_2(self) -> None:
+        present = self.temp_dir / "present.md"
+        present.write_text("clean\n")
+        self.assertEqual(self.scan(self.temp_dir / "missing.md").returncode, 2)
+        self.assertEqual(self.scan().returncode, 2)
+        self.words.unlink()
+        self.assertEqual(self.scan(present).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

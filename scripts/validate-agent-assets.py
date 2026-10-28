@@ -31,8 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def generator() -> Any:
     """scripts/generate-agent-configs.py, the one owner of the manifest's rendering rules and expected outputs.
 
-    Loaded on first use, never at import: `--mask-secrets` is a standalone mode that records-sync.sh runs from a tree
-    holding this script alone, and it needs nothing from the generator.
+    Loaded on first use, never at import: `--mask-secrets` and `--scan-identifiers` are standalone modes that
+    records-sync.sh runs from a tree holding this script alone, and they need nothing from the generator.
     """
     path = Path(__file__).resolve().parent / "generate-agent-configs.py"
     spec = importlib.util.spec_from_file_location("generate_agent_configs", path)
@@ -1986,6 +1986,102 @@ def mask_secrets(paths: list[str]) -> int:
     return status
 
 
+def redact_words(path: Path) -> list[tuple[int, str]]:
+    """The literal words of a redact-words file with their physical line numbers: one word per line, blank lines and
+    `#` comments skipped."""
+    words = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        word = line.strip()
+        if word and not word.startswith("#"):
+            words.append((number, word))
+    return words
+
+
+def redact_word_pattern(word: str) -> re.Pattern[str]:
+    """WORD, case-insensitively, where no ASCII letter or digit adjoins it.
+
+    Only the word is case-folded, by a scoped `(?i:...)` group: under a global IGNORECASE the boundary class
+    `[A-Za-z0-9]` would also match the letters that fold to ASCII (U+212A KELVIN SIGN folds to `k`), so a word glued
+    to one would escape. The boundaries stay ASCII: any other character, a Kelvin sign included, is a boundary."""
+    return re.compile(rf"(?<![A-Za-z0-9])(?i:{re.escape(word)})(?![A-Za-z0-9])")
+
+
+def identifier_reasons(
+    strings: list[str], words: list[tuple[int, str]], secret_strings: list[str] | None = None
+) -> list[str]:
+    """The secret, home-path and redact-word tests over STRINGS, as reasons that quote nothing they found.
+
+    The tests are validate_no_obvious_secrets()': the secret pattern over SECRET_STRINGS (default STRINGS; a JSON
+    document's keys and string values, so no match spans JSON syntax), the home path over STRINGS; a redact word
+    (redact_word_pattern) is named by its physical line number in the words file."""
+    reasons = []
+    if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in secret_strings or strings):
+        reasons.append("a secret pattern")
+    if any(home_path_pattern().search(s) for s in strings):
+        reasons.append("a home directory path")
+    for number, word in words:
+        pattern = redact_word_pattern(word)
+        if any(pattern.search(s) for s in strings):
+            reasons.append(f"redact word on line {number}")
+    return reasons
+
+
+def identifier_findings(path: Path, words: list[tuple[int, str]]) -> list[str]:
+    """What --scan-identifiers refuses in one file's content, as reasons; none quotes a redact word or a match.
+
+    A JSON document is tested as the committed-secret scan tests it (the secret pattern per key and string value),
+    and the home path and the words also over its whole text; any other file as its whole text."""
+    data = path.read_bytes()
+    if b"\0" in data or data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return ["not UTF-8 text"]
+    try:
+        text = data.decode()
+    except UnicodeDecodeError:
+        return ["not UTF-8 text"]
+    strings = json_strings(text) or [text]
+    return identifier_reasons([text, *strings], words, secret_strings=strings)
+
+
+def scan_identifiers(args: list[str]) -> int:
+    """`--scan-identifiers [--redact-words <file>] [--] <files>`: 0 when no file names a secret, a home path or a
+    redact word, in its content or in its path as given; 1 listing each finding (records-sync.sh refuses its commit
+    on it); 2 on usage or an unreadable file.
+
+    Every content test also applies to the path (U101), its findings ending `in the path`. A file is named
+    `file <n>` (its place among the arguments), followed by its path only when the path has no finding, so no
+    output line discloses what was found."""
+    words: list[tuple[int, str]] = []
+    if args[:1] == ["--redact-words"]:
+        if len(args) < 2:
+            print("--scan-identifiers: --redact-words needs a file", file=sys.stderr)
+            return 2
+        try:
+            words = redact_words(Path(args[1]))
+        except (OSError, UnicodeDecodeError) as error:
+            print(f"--scan-identifiers: cannot read the redact-words file: {type(error).__name__}", file=sys.stderr)
+            return 2
+        args = args[2:]
+    if args[:1] == ["--"]:
+        args = args[1:]
+    if not args:
+        print("--scan-identifiers: no files", file=sys.stderr)
+        return 2
+    findings = []
+    for index, name in enumerate(args, 1):
+        in_path = [f"{reason} in the path" for reason in identifier_reasons([name], words)]
+        label = f"file {index}" if in_path else f"file {index} ({name})"
+        findings += [f"{label}: {reason}" for reason in in_path]
+        try:
+            findings += [f"{label}: {reason}" for reason in identifier_findings(Path(name), words)]
+        except OSError as error:
+            print(f"--scan-identifiers: cannot read {label}: {type(error).__name__}", file=sys.stderr)
+            return 2
+    for finding in findings:
+        print(f"--scan-identifiers: {finding}", file=sys.stderr)
+    print(f"scanned {len(args)} file(s): {len(findings)} finding(s), {len(words)} redact word(s)")
+    return 1 if findings else 0
+
+
 def validate_no_obvious_secrets() -> None:
     # CompactionDB uses intentional dummy credentials to exercise its redaction boundary.
     compactiondb_dummy_secret_fixtures = {
@@ -2089,4 +2185,6 @@ def main() -> None:
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--mask-secrets"]:
         raise SystemExit(mask_secrets(sys.argv[2:]))
+    if sys.argv[1:2] == ["--scan-identifiers"]:
+        raise SystemExit(scan_identifiers(sys.argv[2:]))
     main()

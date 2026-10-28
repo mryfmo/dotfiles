@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import git_init, quiet_git_env  # noqa: E402
+from scratch_git import git_clone, git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVERS = ROOT / "scripts/orchestrator"
@@ -1066,12 +1066,34 @@ class DispositionDriftTest(unittest.TestCase):
 GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
-    sys.exit("fake-git: failing as asked")
-run = subprocess.run([os.environ["REAL_GIT"], *sys.argv[1:]], stdout=subprocess.PIPE)
-sys.stdout.buffer.write(run.stdout)
+    print("fake-git: failing as asked", file=sys.stderr)
+    sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
+# The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
+# repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push.
+https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
+mapping = ["-c", "url.{1}.insteadOf={0}".format(*https_origin.split("=", 1))] if https_origin else []
+# FAKE_GIT_EXTRA_ENTRY=<path>: before a `write-tree`, one more entry (an empty blob) enters the index it writes, as
+# something other than the lever's own update-index calls would.
+extra_entry = os.environ.get("FAKE_GIT_EXTRA_ENTRY")
+if extra_entry and "write-tree" in sys.argv[1:]:
+    git_dir = [arg for arg in sys.argv[1:] if arg.startswith("--git-dir=")]
+    empty = subprocess.run(
+        [os.environ["REAL_GIT"], *git_dir, "hash-object", "-w", "--stdin"], input=b"", stdout=subprocess.PIPE, check=True
+    ).stdout.decode().strip()
+    subprocess.run(
+        [os.environ["REAL_GIT"], *git_dir, "update-index", "--add", "--cacheinfo", f"100644,{empty},{extra_entry}"],
+        check=True,
+    )
+run = subprocess.run([os.environ["REAL_GIT"], *mapping, *sys.argv[1:]], stdout=subprocess.PIPE)
+out = run.stdout
+if os.environ.get("FAKE_GIT_TRUNCATE") in sys.argv[1:]:
+    out = out[:-3]  # the last entry cut short, its NUL end gone
+sys.stdout.buffer.write(out)
 extra = os.environ.get("FAKE_GIT_EXTRA_OTHERS")
 if extra and "--others" in sys.argv:
     sys.stdout.buffer.write(extra.encode() + b"\\0")
+if os.environ.get("FAKE_GIT_FAIL_AFTER") in sys.argv[1:]:
+    sys.exit(1)  # a failure after plausible output
 sys.exit(run.returncode)
 """
 
@@ -1094,7 +1116,13 @@ class RecordsSyncTest(PrLeverTestCase):
         (self.repo / "README").write_text("scratch\n")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "base")
-        self.git("remote", "add", "origin", str(self.origin))
+        # The lever removes every inherited GIT_* variable, so the user config it reads is HOME's own .gitconfig.
+        user_config = self.root / "home/.gitconfig"
+        shutil.copy2(self.env["GIT_CONFIG_GLOBAL"], user_config)
+        self.env["GIT_CONFIG_GLOBAL"] = str(user_config)
+        self.url = "https://github.com/acme/widgets.git"
+        self.env["FAKE_GIT_HTTPS_ORIGIN"] = f"{self.url}={self.origin}"
+        self.git("remote", "add", "origin", self.url)
         self.git("push", "-q", "origin", "main")
         self.git("fetch", "-q", "origin")
 
@@ -1234,7 +1262,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.github()
         with (self.records / "units.tsv").open("a") as units:
             units.write("U2\tseats\n")
-        self.env["FAKE_GIT_FAIL"] = "commit"
+        self.env["FAKE_GIT_FAIL"] = "commit-tree"
         run = self.run_lever("records-sync.sh", "--unit", "U20")
         del self.env["FAKE_GIT_FAIL"]
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
@@ -1242,6 +1270,69 @@ class RecordsSyncTest(PrLeverTestCase):
         run = self.run_lever("records-sync.sh", "--unit", "U20")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 "), run.stdout)
+
+    def test_a_config_read_that_fails_is_not_read_as_unset_and_an_empty_value_refuses(self):
+        """U101 round 10 (bot finding 4379614437, audit of 0c7bf092): `|| refuse 'unset'` read a failed `git config` as
+        an unset key (the identity, then origin's URL), and a configured empty value passed to be refused by
+        commit-tree after the branch existed. Exit 1 is unset (refused), any other status is a read failure (failed),
+        an empty value is refused; all before any gh call."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env |= {"FAKE_GIT_FAIL": "config", "FAKE_GIT_FAIL_STATUS": "3"}
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_FAIL"], self.env["FAKE_GIT_FAIL_STATUS"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config user.name (git config exited 3)", run.stderr)
+        self.assertNotIn("unset", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        self.git("config", "user.email", "")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is empty")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
+        self.env |= {"FAKE_GIT_FAIL": "remote.origin.url", "FAKE_GIT_FAIL_STATUS": "3"}
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_FAIL"], self.env["FAKE_GIT_FAIL_STATUS"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config remote.origin.url (git config exited 3)", run.stderr)
+        self.git("config", "remote.origin.url", "")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is empty")
+        self.git("config", "remote.origin.url", self.url)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_store_directory_that_cannot_be_entered_refuses_instead_of_deleting_its_files(self):
+        """U101 round 10 (audit of 0c7bf092): `git ls-files` warns and exits 0 for a directory it cannot open, so its
+        files left the listing and, absent from the store as far as the lever could see, were pushed as deletions.
+        The store is walked first; a directory that cannot be read or entered refuses the run before anything exists."""
+        if os.geteuid() == 0:
+            self.skipTest("file modes do not bind root")
+        self.github()
+        (self.records / "briefs").mkdir()
+        (self.records / "briefs/B1.md").write_text("brief\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "a brief")
+        self.git("push", "-q", "origin", "main")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        locked = self.records / "briefs"
+        self.addCleanup(locked.chmod, 0o755)
+        for mode in (0o000, 0o444, 0o111):
+            with self.subTest(oct(mode)):
+                locked.chmod(mode)
+                run = self.run_lever("records-sync.sh")
+                locked.chmod(0o755)
+                self.assert_refused(run, "cannot be read or entered")
+                self.assertNotIn("B1.md", run.stdout + run.stderr, "no output names a store path")
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
 
     def test_a_staged_rename_carries_its_source(self):
         """U28c F1: with rename detection the source path was dropped and the old record stayed on the branch."""
@@ -1282,6 +1373,516 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-8 "), run.stdout)
         self.assertEqual(self.git("rev-parse", "records/sync-7"), self.git("rev-parse", "main"), "left as it was")
+
+    def advance_main(self, *changes):
+        """Another clone moves origin/main past the checkout, which is never pulled (the operator's stale HEAD)."""
+        other = self.root / "other"
+        git_clone(self.origin, other, env=self.env)
+        for change in changes:
+            change(other)
+        self.git("add", "-A", cwd=other)
+        self.git("commit", "-q", "-m", "main moves on", cwd=other)
+        self.git("push", "-q", "origin", "HEAD:main", cwd=other)
+
+    def branch_changes(self, branch="records/sync-7"):
+        return self.git("diff", "--no-renames", "--name-status", "main", branch, cwd=self.origin).splitlines()
+
+    def test_a_file_that_became_a_directory_and_the_reverse_are_mirrored_in_one_commit(self):
+        """U101 round 4: a deletion candidate got the regular-file check, so a store file `briefs` that became a
+        directory `briefs/` refused with "not a regular file". A deletion candidate is now checked by name only, the
+        deletions run before the copies, and the one commit carries the deletion and the additions."""
+        self.github()
+        prog = ".orchestration/orchestrate/prog"
+        cases = {
+            "file to directory": (("briefs",), ("briefs/B1.md",)),
+            "directory to file": (("briefs/B1.md", "briefs/B2.md"), ("briefs",)),
+        }
+        for case, (before, after) in cases.items():
+            with self.subTest(case):
+                shutil.rmtree(self.records / "briefs", ignore_errors=True)
+                (self.records / "briefs").unlink(missing_ok=True)
+                for name in before:
+                    (self.records / name).parent.mkdir(parents=True, exist_ok=True)
+                    (self.records / name).write_text(f"{name} on main\n")
+                self.git("add", "-A")
+                self.git("commit", "-q", "-m", f"main holds {before}")
+                self.git("push", "-q", "origin", "main")
+                shutil.rmtree(self.records / "briefs", ignore_errors=True)
+                (self.records / "briefs").unlink(missing_ok=True)
+                for name in after:
+                    (self.records / name).parent.mkdir(parents=True, exist_ok=True)
+                    (self.records / name).write_text(f"{name} in the store\n")
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                branch = run.stdout.split()[1].removeprefix("branch=")
+                expected = sorted([f"D\t{prog}/{name}" for name in before] + [f"A\t{prog}/{name}" for name in after])
+                self.assertEqual(sorted(self.branch_changes(branch)), expected)
+                self.assertEqual(self.git("rev-list", "--count", f"main..{branch}", cwd=self.origin), "1")
+                self.git("push", "-q", "origin", "--delete", branch)
+                entries = json.loads(self.responses.read_text())
+                entries[2]["match"] = r"^pr create --base main --head records/sync-\d+ "
+                self.responses.write_text(json.dumps(entries))
+
+    def test_a_stale_checkout_adds_nothing_main_lacks_and_a_store_deletion_is_synced(self):
+        """U101: sync 11 carried 99 untracked validation files of a checkout 60 commits behind origin/main. The copy
+        set is the store alone, compared with origin/main: the stale HEAD and the files outside the store do not
+        matter, and a file deleted from the store is deleted on the branch."""
+        self.github()
+        validation = self.repo / ".orchestration/validation"
+        validation.mkdir()
+        (validation / "old.md").write_text("old\n")
+        (self.records / "briefs").mkdir()
+        (self.records / "briefs/B1.md").write_text("brief\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "validation and a brief")
+        self.git("push", "-q", "origin", "main")
+
+        def drop_old_validation(other):
+            (other / ".orchestration/validation/old.md").unlink()
+            (other / "README").write_text("main's\n")
+
+        self.advance_main(drop_old_validation)
+        (validation / "old.md").write_text("old, edited in the checkout\n")  # tracked at the stale HEAD, gone on main
+        (validation / "new.md").write_text("an untracked validation file\n")
+        (self.repo / "README").write_text("the checkout's\n")
+        (self.records / "briefs/B1.md").unlink()  # deleted from the store, never with git rm
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            self.branch_changes(),
+            ["D\t.orchestration/orchestrate/prog/briefs/B1.md", "M\t.orchestration/orchestrate/prog/units.tsv"],
+        )
+        self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 files=2 "), run.stdout)
+
+    def test_a_push_instead_of_in_the_user_config_does_not_redirect_the_push(self):
+        """U101: the operator's global config rewrites https://github.com/ to an SSH URL for pushes, and the host has
+        no SSH key; the push, the commit and the gh steps read no user config, and the identity is read once."""
+        self.github()
+        gitconfig = Path(self.env["GIT_CONFIG_GLOBAL"])
+        with gitconfig.open("a") as config:
+            config.write('[url "/nonexistent-push-target/"]\n\tpushInsteadOf = https://github.com/\n')
+        refused = subprocess.run(
+            ["git", "push", "--dry-run", "origin", "main"],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(refused.returncode, 0, "the rewrite is live for a plain push")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        author = self.git("log", "-1", "--format=%an <%ae>", "records/sync-7", cwd=self.origin)
+        self.assertEqual(author, "t <t@example.invalid>")
+
+    def test_the_push_url_and_the_identity_are_checked_before_anything_is_created(self):
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.git("remote", "set-url", "origin", "git@github.com:acme/widgets.git")
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https origin URL")
+        self.git("remote", "set-url", "origin", str(self.origin))
+        self.assert_refused(self.run_lever("records-sync.sh"), "needs an https origin URL")
+        self.git("remote", "set-url", "origin", self.url)
+        Path(self.env["GIT_CONFIG_GLOBAL"]).write_text("[init]\n\tdefaultBranch = main\n")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.name is unset")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+
+    def assert_a_worktree_push_is_redirected(self, evil, env):
+        """The rewrite is live: a push from a linked worktree of the checkout lands in EVIL, not in origin."""
+        probe = self.root / "probe-tree"
+        self.git("worktree", "add", "-q", "--detach", str(probe))
+        self.git("push", "-q", "origin", "HEAD:refs/heads/probe", cwd=probe, env=env)
+        self.git("worktree", "remove", "--force", str(probe))
+        self.assertIn("refs/heads/probe", self.git("for-each-ref", cwd=evil))
+        self.git("update-ref", "-d", "refs/heads/probe", cwd=evil)
+
+    def assert_the_sync_reached_origin_only(self, evil, env=None):
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env.update(env or {})
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertEqual(self.git("for-each-ref", cwd=evil), "", "nothing reached the rewrite's target")
+
+    def hostile_include(self):
+        """An include file whose pushInsteadOf sends the https origin to a bare repository of its own."""
+        evil = git_init(self.root / "evil.git", "--bare", env=self.env)
+        include = self.root / "worktrees.gitconfig"
+        include.write_text(f'[url "{evil}"]\n\tpushInsteadOf = {self.url}\n')
+        return evil, include
+
+    def test_an_include_if_worktree_rule_in_the_repository_config_does_not_redirect_the_push(self):
+        """U101 round 2: the rewrite check read the checkout's config, where `includeIf "gitdir:**/worktrees/**"` is
+        off; the push ran in the sync worktree, where it is on. The push now runs in a fresh repository."""
+        self.github()
+        evil, include = self.hostile_include()
+        self.git("config", "includeIf.gitdir:**/worktrees/**.path", str(include))
+        self.assert_a_worktree_push_is_redirected(evil, None)
+        self.assert_the_sync_reached_origin_only(evil)
+
+    def test_an_include_if_worktree_rule_through_git_config_variables_does_not_redirect_the_push(self):
+        self.github()
+        evil, include = self.hostile_include()
+        count = int(self.env["GIT_CONFIG_COUNT"])
+        hostile = {
+            "GIT_CONFIG_COUNT": str(count + 1),
+            f"GIT_CONFIG_KEY_{count}": "includeIf.gitdir:**/worktrees/**.path",
+            f"GIT_CONFIG_VALUE_{count}": str(include),
+        }
+        self.assert_a_worktree_push_is_redirected(evil, hostile)
+        self.assert_the_sync_reached_origin_only(evil, hostile)
+
+    def test_inherited_author_and_committer_variables_are_ignored(self):
+        """U101 round 2: an exported GIT_AUTHOR_* or GIT_COMMITTER_* outranked `-c user.name`/`-c user.email`."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env |= {
+            "GIT_AUTHOR_NAME": "intruder",
+            "GIT_AUTHOR_EMAIL": "intruder@example.invalid",
+            "GIT_COMMITTER_NAME": "intruder",
+            "GIT_COMMITTER_EMAIL": "intruder@example.invalid",
+        }
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", "records/sync-7", cwd=self.origin)
+        self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
+
+    def test_author_and_committer_config_in_the_repository_or_the_worktree_is_ignored(self):
+        """U101 round 3: `author.*` and `committer.*` config outranked `-c user.*`. The identity now rides on
+        GIT_AUTHOR_*/GIT_COMMITTER_*, which outrank every config key. The worktree case is an include that switches
+        on only in the sync worktree (`includeIf "gitdir:**/worktrees/**"`), the config only that worktree reads."""
+        self.github()
+        worktree_only = self.root / "worktree-identity.gitconfig"
+        worktree_only.write_text(
+            "[author]\n\tname = wt-author\n\temail = wt-author@example.invalid\n"
+            "[committer]\n\tname = wt-committer\n\temail = wt-committer@example.invalid\n"
+        )
+        cases = {
+            "repository config": (
+                ("author.name", "repo-author"),
+                ("author.email", "repo-author@example.invalid"),
+                ("committer.name", "repo-committer"),
+                ("committer.email", "repo-committer@example.invalid"),
+            ),
+            "worktree config": (("includeIf.gitdir:**/worktrees/**.path", str(worktree_only)),),
+        }
+        for number, (case, settings) in enumerate(cases.items()):
+            with self.subTest(case):
+                for key, value in settings:
+                    self.git("config", key, value)
+                with (self.records / "units.tsv").open("a") as units:
+                    units.write(f"U{number + 2}\tseats\n")
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                branch = run.stdout.split()[1].removeprefix("branch=")
+                people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", branch, cwd=self.origin)
+                self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
+                for key, _ in settings:
+                    self.git("config", "--unset", key)
+                self.git("push", "-q", "origin", "--delete", branch)
+                entries = json.loads(self.responses.read_text())
+                entries[2]["match"] = r"^pr create --base main --head records/sync-\d+ "
+                self.responses.write_text(json.dumps(entries))
+
+    def test_the_masker_s_output_is_never_shown(self):
+        """U101 round 3: on a key collision the masker prints the file's path and both original keys, so a redact word
+        or a secret reached the lever's stderr before the scan ran. Its output now goes to the scratch directory."""
+        self.github()
+        (self.records / "redact-words.txt").write_text("operator1\n")
+        first, second = ("ghp_" + letter * 36 for letter in "AB")
+        cases = {
+            "in the content": ("notes.json", {f"operator1 {first}": 1, f"operator1 {second}": 2}),
+            "in the file name": ("notes-operator1.json", {first: 1, second: 2}),
+        }
+        for case, (name, document) in cases.items():
+            with self.subTest(case):
+                (self.records / name).write_text(json.dumps(document))
+                run = self.run_lever("records-sync.sh")
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn("masking the copies failed (exit 1); its output is withheld", run.stderr)
+                for secret in ("operator1", first, second):
+                    self.assertNotIn(secret, run.stdout + run.stderr)
+                self.assert_nothing_left()
+                (self.records / name).unlink()
+
+    def test_a_redact_word_in_a_store_file_refuses(self):
+        """U101: host and user names are refused even as bare words; the words file is never published."""
+        self.github()
+        (self.records / "redact-words.txt").write_text("# host and user names\nmbp-kana\n\noperator1\n")
+        cases = {
+            "in the text": ("notes.md", "the run went from MBP-Kana fine\n"),
+            "in a file name": ("notes-operator1.md", "clean\n"),
+        }
+        for case, (name, text) in cases.items():
+            with self.subTest(case):
+                (self.records / name).write_text(text)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn("its output is withheld", run.stderr)
+                for word in ("mbp-kana", "operator1"):
+                    self.assertNotIn(word, run.stderr.lower(), "no output line quotes a word, in a path either")
+                self.assert_nothing_left()
+                (self.records / name).unlink()
+        (self.records / "notes.md").write_text("mbp-kanax is another word\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["A\t.orchestration/orchestrate/prog/notes.md"])
+
+    def test_a_secret_or_a_home_path_in_a_file_name_refuses(self):
+        """U101 round 5: a clean file named after a token published the token in its path. The scan tests each path of
+        the copy set as it tests the content, and the refusal names neither the path nor what was found."""
+        self.github()
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for case, relative in (("a secret", f"{planted}.md"), ("a home path", "home/runner/notes.md")):
+            with self.subTest(case):
+                path = self.records / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("clean\n")
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn("(exit 1); its output is withheld", run.stderr)
+                for found in (planted, "runner"):
+                    self.assertNotIn(found, run.stdout + run.stderr)
+                self.assert_nothing_left()
+                path.unlink()
+
+    def test_a_hook_of_the_checkout_never_runs(self):
+        """U101 round 6: a post-checkout or pre-commit hook of the checkout's repository dropped files in the sync
+        worktree that `add -A` then staged, unmasked and unscanned. The sync now has no worktree: it is built in its
+        own repository, which has no hooks, so none of the checkout's runs. Round 12 (audit of 7b3c2718): a
+        `core.fsmonitor` hook runs inside `git ls-files`, the lever's one index read in the checkout, and could plant a
+        store file there before the copy; the listing turns it off."""
+        self.github()
+        marker = self.root / "hook-ran"
+        hooks = self.repo / ".git/hooks"
+        hooks.mkdir(exist_ok=True)
+        body = (
+            "#!/bin/sh\n"
+            "mkdir -p .orchestration/validation .orchestration/orchestrate/other\n"
+            "echo hooked > .orchestration/validation/hooked.md\n"
+            "echo hooked > .orchestration/orchestrate/other/hooked.md\n"
+            "echo hooked > .orchestration/orchestrate/prog/hooked.md\n"
+        )
+        for name in ("post-checkout", "pre-commit", "post-commit", "pre-push", "reference-transaction"):
+            hook = hooks / name
+            hook.write_text(body + f"echo {name} >> {marker}\n")
+            hook.chmod(0o755)
+        fsmonitor = self.root / "fsmonitor-hook"
+        fsmonitor.write_text(body + f"echo fsmonitor >> {marker}\n")
+        fsmonitor.chmod(0o755)
+        self.git("config", "core.fsmonitor", str(fsmonitor))
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        self.assertFalse(marker.exists(), "no hook ran")
+        self.assertFalse((self.records / "hooked.md").exists(), "nothing was planted in the store")
+
+    def test_a_tree_entry_outside_the_copy_set_refuses(self):
+        """U101 rounds 6 and 8: the new tree's change against main must equal the computed set exactly, so one more
+        entry in the index the tree is written from, inside or outside .orchestration/, refuses."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        for extra in (".orchestration/validation/extra.md", ".orchestration/orchestrate/other/extra.md", "scripts/x"):
+            with self.subTest(extra):
+                self.env["FAKE_GIT_EXTRA_ENTRY"] = extra
+                run = self.run_lever("records-sync.sh")
+                del self.env["FAKE_GIT_EXTRA_ENTRY"]
+                self.assert_refused(run, "the new tree changes other paths than the copy set")
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_the_checkout_s_git_config_has_no_effect_on_the_commit_or_the_push(self):
+        """U101 round 8: each round found another channel from the checkout's git config into the sync worktree
+        (includeIf rewrites, author config, hooks, clean filters). The commit is now built in a repository of its own,
+        so every one of them at once changes nothing: the committed bytes are the store's, the author is the
+        identity, and the push reaches origin only."""
+        self.github()
+        evil, include = self.hostile_include()
+        marker = self.root / "filter-ran"
+        identity = self.root / "identity.gitconfig"
+        identity.write_text("[author]\n\tname = included\n\temail = included@example.invalid\n")
+        for key, value in (
+            ("filter.evil.clean", f"sh -c 'echo clean >> {marker}; sed s/seats/CLEANED/'"),
+            ("filter.evil.smudge", f"sh -c 'echo smudge >> {marker}; sed s/seats/SMUDGED/'"),
+            ("filter.evil.required", "true"),
+            ("includeIf.gitdir:**/worktrees/**.path", str(include)),
+            ("include.path", str(identity)),
+            ("committer.name", "repo-committer"),
+            ("url./nonexistent-fetch-target/.insteadOf", self.url),
+            ("core.hooksPath", str(self.root / "hooks")),
+        ):
+            self.git("config", key, value)
+        (self.repo / ".git/info").mkdir(exist_ok=True)
+        (self.repo / ".git/info/attributes").write_text("* filter=evil\n")
+        hooks = self.root / "hooks"
+        hooks.mkdir()
+        for name in ("post-checkout", "pre-commit", "post-commit", "pre-push"):
+            (hooks / name).write_text(f"#!/bin/sh\necho {name} >> {marker}\n")
+            (hooks / name).chmod(0o755)
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.branch_changes(), ["M\t.orchestration/orchestrate/prog/units.tsv"])
+        committed = self.git("show", "records/sync-7:.orchestration/orchestrate/prog/units.tsv", cwd=self.origin)
+        self.assertEqual(committed + "\n", (self.records / "units.tsv").read_text(), "no filter touched the bytes")
+        people = self.git("log", "-1", "--format=%an <%ae>|%cn <%ce>", "records/sync-7", cwd=self.origin)
+        self.assertEqual(people, "t <t@example.invalid>|t <t@example.invalid>")
+        self.assertEqual(self.git("for-each-ref", cwd=evil), "", "nothing reached the rewrite's target")
+        self.assertFalse(marker.exists(), "no filter or hook of the checkout ran")
+
+    def test_the_committed_blobs_are_the_scanned_bytes(self):
+        """U101 round 8: what the identifier scan reads is what is committed, byte for byte. Main's validator is
+        wrapped to copy every file it scans; each committed blob equals that copy, masked tokens and rewritten JSON
+        included."""
+        self.github()
+        dump = self.root / "scanned"
+        validator = self.repo / "scripts/validate-agent-assets.py"
+        text = validator.read_text()
+        hook = '    if sys.argv[1:2] == ["--scan-identifiers"]:\n'
+        self.assertIn(hook, text)
+        validator.write_text(
+            text.replace(
+                hook,
+                hook + "        for _name in sys.argv[sys.argv.index('--') + 1 :]:\n"
+                f"            _target = Path({str(dump)!r}) / _name\n"
+                "            _target.parent.mkdir(parents=True, exist_ok=True)\n"
+                "            _target.write_bytes(Path(_name).read_bytes())\n",
+                1,
+            )
+        )
+        self.git("commit", "-q", "-am", "a validator that records what it scans")
+        self.git("push", "-q", "origin", "main")
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        (self.records / "notes.md").write_text(f"token {planted}\n")
+        (self.records / "evidence.json").write_text('{"b": 1,   "a": "' + planted + '"}')
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        prog = ".orchestration/orchestrate/prog"
+        for name in ("notes.md", "evidence.json", "units.tsv"):
+            with self.subTest(name):
+                blob = subprocess.run(
+                    ["git", "-C", str(self.origin), "cat-file", "blob", f"records/sync-7:{prog}/{name}"],
+                    env=self.env,
+                    capture_output=True,
+                    check=True,
+                ).stdout
+                self.assertEqual(blob, (dump / prog / name).read_bytes())
+                self.assertNotIn(planted.encode(), blob)
+
+    @unittest.skipUnless(Path("/bin/bash").is_file(), "no /bin/bash")
+    def test_the_git_scrub_holds_under_bin_bash_with_an_unwritable_tmpdir(self):
+        """U101 round 6: on macOS /bin/bash is 3.2, whose here-strings need a temporary file; the scrub now reads
+        compgen through a command substitution. With TMPDIR unwritable and GIT_DIR and GIT_WORK_TREE exported, the
+        run gets past every git command that would fail under them and stops at the lever's own mktemp."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        locked = self.root / "locked"
+        locked.mkdir()
+        locked.chmod(0o555)
+        self.addCleanup(locked.chmod, 0o755)
+        env = self.env | {
+            "TMPDIR": str(locked),
+            "GIT_DIR": str(self.root / "nonexistent.git"),
+            "GIT_WORK_TREE": str(self.root / "nonexistent"),
+        }
+        run = subprocess.run(
+            ["/bin/bash", str(LEVERS / "records-sync.sh")],
+            cwd=self.repo,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("records-sync.sh: mktemp failed", run.stderr)
+        self.assertNotIn("not in a git checkout", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
+
+    def test_the_identifier_scan_refuses_what_the_masking_left(self):
+        """U101: the scan is a refusal of its own, not a re-run of the masker: with a validator on origin/main whose
+        masking leaves the copies as they are, a home path and a secret pattern still stop the run."""
+        self.github()
+        validator = self.repo / "scripts/validate-agent-assets.py"
+        text = validator.read_text()
+        hook = '    if sys.argv[1:2] == ["--mask-secrets"]:\n'
+        self.assertIn(hook, text)
+        validator.write_text(
+            text.replace(hook, '    if sys.argv[1:2] == ["--mask-secrets"]:\n        raise SystemExit(0)\n', 1)
+        )
+        self.git("commit", "-q", "-am", "a masker that masks nothing")
+        self.git("push", "-q", "origin", "main")
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        for kind, text in (("a home directory path", "from /Users/someone/x\n"), ("a secret pattern", f"{planted}\n")):
+            with self.subTest(kind):
+                (self.records / "notes.md").write_text(text)
+                run = self.run_lever("records-sync.sh")
+                self.assert_refused(run, "identifier scan")
+                self.assertIn("(exit 1); its output is withheld", run.stderr)
+                self.assertNotIn("notes.md", run.stderr, "not even the path the scan found it in")
+                self.assertNotIn(planted, run.stderr)
+                self.assert_nothing_left()
+
+    def test_a_listing_that_fails_or_is_cut_short_refuses_before_anything_is_created(self):
+        """U101 audit P2: the origin/main listing decides what is deleted, and the store listing what is carried; a
+        git failure before or after output and a listing whose last entry is cut short each stop the run first."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        cases = (
+            ("FAKE_GIT_FAIL", "ls-tree", 1, "git ls-tree origin/main failed"),
+            ("FAKE_GIT_FAIL_AFTER", "ls-tree", 1, "git ls-tree origin/main failed"),
+            (
+                "FAKE_GIT_TRUNCATE",
+                "ls-tree",
+                2,
+                "the listing of origin/main:.orchestration/orchestrate/prog/ ends mid-entry",
+            ),
+            ("FAKE_GIT_FAIL_AFTER", "ls-files", 1, "git ls-files failed"),
+            ("FAKE_GIT_TRUNCATE", "ls-files", 2, "the listing of .orchestration/orchestrate/prog/ ends mid-entry"),
+        )
+        for variable, command, code, message in cases:
+            with self.subTest(variable=variable, command=command):
+                self.env[variable] = command
+                run = self.run_lever("records-sync.sh")
+                del self.env[variable]
+                self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assert_nothing_left()
+                self.assertEqual(self.gh_calls(), [])
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_path_with_a_newline_is_refused_before_any_copy(self):
+        """U101 audit P1: a newline in a name ended the component split early, so a symlink at the real name went
+        unchecked and cp published its target. Any control character in a path of the copy set is refused."""
+        self.github()
+        outside = self.root / "outside.md"
+        outside.write_text("outside the store\n")
+        (self.records / "x\nnotes.md").symlink_to(outside)
+        run = self.run_lever("records-sync.sh")
+        self.assert_refused(run, "holds a control character")
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
 
 
 if __name__ == "__main__":

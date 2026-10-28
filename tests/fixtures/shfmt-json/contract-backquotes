@@ -1,0 +1,4 @@
+# The second input of scripts/ci/shfmt_json_contract.py. Backquotes cannot live in contract.sh: the formatting gate
+# (`shfmt -i 4 -sr -d` over every tracked *.sh) rewrites them to $(), so this sibling, unformatted by name and shebang,
+# holds the one backquoted substitution, nested inside another so masked-dirname-check reports it at line 4.
+dir=$(cd `dirname "$0"` && pwd -P) || exit 2

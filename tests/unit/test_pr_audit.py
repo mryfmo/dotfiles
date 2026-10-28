@@ -5,8 +5,9 @@ The lever runs from the checkout (its self-check reads the checkout's manifest a
 holding `main` and `refs/pull/7/head`, with `tests/fixtures/pr-levers/fake-gh.py` as `gh` and
 `tests/fixtures/pr-audit/fake-codex.py` as `codex` first on PATH, under a scratch HOME (agent_home_isolation). The
 tests assert the exact codex argv (never `-s`), the config each call saw, the probe paths, the refusals (exit 2, no
-`codex exec`) and that nothing outside the run directory under TMPDIR is written. The real `codex` and `gh` are never
-called.
+`codex exec`), that the verdict is taken only from a `--output-schema` conforming JSON file whose verdict agrees
+with its findings (U106), and that nothing outside the run directory under TMPDIR is written. The real `codex` and
+`gh` are never called.
 """
 
 import contextlib
@@ -72,6 +73,14 @@ def probe_sections(args):
         else:
             sections[current].append(arg)
     return sections["--control"], sections["--read"], sections["--write"]
+
+
+def embedded_reader():
+    """The lever's verdict reader (its Python source) and the schema it is given (parsed), as the lever embeds them."""
+    source = LEVER.read_text()
+    reader = source[source.index("verdict_reader='\n") + len("verdict_reader='\n") : source.index("\n'\n\nschema=")]
+    schema = json.loads(source[source.index("verdict_schema='") + len("verdict_schema='") : source.index("}'\n") + 1])
+    return reader, schema
 
 
 @unittest.skipUnless(JQ, "no jq or gojq (gh's --jq dialect) on this host")
@@ -220,14 +229,37 @@ class PrAuditTest(unittest.TestCase):
         rundir = rundirs[0]
         verdict = rundir / "verdict.md"
         self.assertEqual(run.stdout, f"{verdict}\nVerdict: correct\n")
-        self.assertEqual(sorted(p.name for p in rundir.iterdir()), ["codex.log", "prompt.md", "verdict.md"])
+        self.assertEqual(
+            sorted(p.name for p in rundir.iterdir()),
+            ["codex.log", "prompt.md", "verdict.json", "verdict.md", "verdict.schema.json"],
+        )
+        self.assertEqual(
+            verdict.read_text(),
+            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nVerdict: correct\n",
+        )
         self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before, "nothing outside the run dir is written")
 
         calls = self.codex_calls()
         self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
         work = rundir / "work"
-        exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "-C", str(work / "cwd")]
-        self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(verdict), "-"])
+        exec_argv = ["exec", "--strict-config", "--skip-git-repo-check", "--ephemeral", "--ignore-rules"]
+        exec_argv += ["-C", str(work / "cwd"), "--output-schema", str(rundir / "verdict.schema.json")]
+        self.assertEqual(calls[2]["argv"], [*exec_argv, "-o", str(rundir / "verdict.json"), "-"])
+        self.assertNotIn("--ignore-user-config", calls[2]["argv"], "it would skip the scratch config.toml")
+        schema = json.loads(calls[2]["schema"])
+        self.assertEqual(json.loads((rundir / "verdict.schema.json").read_text()), schema)
+        self.assertEqual(schema["required"], ["verdict", "findings", "reproduced", "notes"])
+        self.assertIs(schema["additionalProperties"], False)
+        self.assertEqual(schema["properties"]["verdict"]["enum"], ["correct", "incorrect", "blocked"])
+        finding = schema["properties"]["findings"]["items"]
+        self.assertEqual(finding["required"], ["priority", "confidence", "path", "line", "rationale"])
+        self.assertIs(finding["additionalProperties"], False)
+        self.assertEqual(finding["properties"]["priority"]["enum"], ["P0", "P1", "P2", "P3"])
+        self.assertEqual(finding["properties"]["confidence"]["enum"], ["high", "medium", "low"])
+        self.assertEqual(finding["properties"]["line"]["type"], "integer")
+        self.assertEqual(finding["properties"]["line"]["minimum"], 1)
+        self.assertEqual(finding["properties"]["line"]["maximum"], 2147483647)
+        self.assertEqual(schema["properties"]["notes"]["type"], ["string", "null"])
         for call in calls:
             self.assertNotIn("-s", call["argv"])
             self.assertFalse(
@@ -249,6 +281,14 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("The head's own rules", prompt)
         self.assertIn("It guarantees one thing.", prompt)
         self.assertIn(f"diff {self.main}..{self.head}", prompt)
+        for field in ("`verdict`", "`findings`", "`priority`", "`confidence`", "`path`", "`line`", "`rationale`"):
+            self.assertIn(field, prompt)
+        self.assertIn("`reproduced`", prompt)
+        self.assertIn("`notes`", prompt)
+        self.assertNotIn("End with exactly one line", prompt)
+        self.assertNotIn("null when the finding has no line", prompt)
+        self.assertIn("is met by the `verdict` field of that object", prompt)
+        self.assertIn("an integer from 1 to 2147483647, never null", prompt)
 
     def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
         """The one write outside the run directory: Codex's own token refresh through the login link lands on the
@@ -677,12 +717,12 @@ class PrAuditTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
 
-    def test_a_failed_run_or_a_message_without_a_verdict_line_exits_1(self):
-        awk = self.failing_tool("awk", "*", "exit 2")
-        for env in (
-            {"FAKE_CODEX_EXEC_EXIT": "1"},
-            {"FAKE_CODEX_VERDICT": "Verdict: correct\n\nmore text\n"},
-            {"PATH": awk},  # the read of the verdict's last line fails: no verdict is printed
+    def test_a_failed_run_or_a_failed_verdict_reader_exits_1_with_no_verdict(self):
+        """Standing order 21: the reader's status decides; a reader that could not run yields no verdict."""
+        reader = self.failing_tool("python3", "*verdict.md*", "exit 1")
+        for env, message in (
+            ({"FAKE_CODEX_EXEC_EXIT": "1"}, "codex exec exited 1"),
+            ({"PATH": reader}, "no verdict was taken from"),
         ):
             with self.subTest(env=env):
                 for path in self.tmp.iterdir():
@@ -690,6 +730,297 @@ class PrAuditTest(unittest.TestCase):
                 run = self.run_lever("7", **env)
                 self.assertEqual(run.returncode, 1, run.stderr)
                 self.assertEqual(run.stdout, "")
+                self.assertIn(message, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertFalse((rundir / "verdict.md").exists(), "no verdict text without a verdict")
+
+    def test_a_verdict_is_taken_only_from_a_schema_conforming_file(self):
+        """U106: the fake's modes (b) to (e) of the brief, then the other shapes the schema rejects (a missing key, a
+        finding without its keys, an unknown key, a wrong type, a non-object). Each is exit 1 naming verdict.json, no
+        stdout line, no verdict.md."""
+        bad_finding = {"priority": "P3", "confidence": "high", "path": "change.txt"}
+        conforming = {"verdict": "correct", "findings": [], "reproduced": [], "notes": None}
+        cases = (
+            ({"FAKE_CODEX_VERDICT_MODE": "contradiction"}, "verdict correct contradicts its findings: 1 of priority"),
+            ({"FAKE_CODEX_VERDICT_MODE": "invalid-json"}, "not valid JSON"),
+            ({"FAKE_CODEX_VERDICT_MODE": "unknown-enum"}, 'verdict.verdict is "maybe", not one of correct, incorrect'),
+            ({"FAKE_CODEX_VERDICT_MODE": "none"}, "wrote no final message to"),
+            (
+                {"FAKE_CODEX_VERDICT": json.dumps({k: v for k, v in conforming.items() if k != "reproduced"})},
+                "lacks the required key reproduced",
+            ),
+            (
+                {"FAKE_CODEX_VERDICT": json.dumps({**conforming, "findings": [bad_finding]})},
+                "findings[0] lacks the required key line",
+            ),
+            ({"FAKE_CODEX_VERDICT": json.dumps({**conforming, "extra": 1})}, "has the unknown key extra"),
+            ({"FAKE_CODEX_VERDICT": json.dumps({**conforming, "notes": 3})}, "notes is not of type string or null"),
+            ({"FAKE_CODEX_VERDICT": json.dumps([conforming])}, "the verdict is not of type object"),
+        )
+        for env, message in cases:
+            with self.subTest(message=message):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", **env)
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(str(rundir / "verdict.json"), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+
+    def test_the_decision_rule_is_applied_from_the_findings(self):
+        """Any P0, P1 or P2 finding means incorrect; none means correct or blocked. A verdict the findings do not
+        derive is refused, never corrected: the lever prints no verdict at all."""
+
+        def finding(priority, line=12):
+            return {
+                "priority": priority,
+                "confidence": "medium",
+                "path": "change.txt",
+                "line": line,
+                "rationale": "Why.",
+            }
+
+        accepted = (
+            ({"verdict": "incorrect", "findings": [finding("P2"), finding("P3", 7)]}, "incorrect"),
+            ({"verdict": "incorrect", "findings": [finding("P0")]}, "incorrect"),
+            ({"verdict": "correct", "findings": [finding("P3")]}, "correct"),
+            ({"verdict": "blocked", "findings": []}, "blocked"),
+        )
+        for document, value in accepted:
+            with self.subTest(verdict=value, findings=[f["priority"] for f in document["findings"]]):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                document = {**document, "reproduced": ["bash -n: ok"], "notes": "A note."}
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=json.dumps(document))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: {value}\n")
+                text = (rundir / "verdict.md").read_text()
+                self.assertTrue(text.endswith(f"\nVerdict: {value}\n"), text)
+                for item in document["findings"]:
+                    self.assertIn(f"- {item['priority']} (medium) change.txt:{item['line']}: Why.\n", text)
+                self.assertIn("## Reproduced\n\n- bash -n: ok\n", text)
+                self.assertIn("## Notes\n\nA note.\n", text)
+        refused = (
+            {"verdict": "incorrect", "findings": [finding("P3")]},
+            {"verdict": "incorrect", "findings": []},
+            {"verdict": "blocked", "findings": [finding("P1")]},
+        )
+        for document in refused:
+            with self.subTest(verdict=document["verdict"], findings=[f["priority"] for f in document["findings"]]):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                document = {**document, "reproduced": [], "notes": None}
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=json.dumps(document))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(f"verdict {document['verdict']} contradicts its findings", run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertFalse((rundir / "verdict.md").exists())
+
+    def test_a_line_is_an_integer_within_its_bound_judged_on_the_written_digits(self):
+        """JSON Schema's `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1), judged on the digits
+        codex wrote: `7`, `1.0` and `1E2` name lines 7, 1 and 100 and are written as `path:7`, `path:1` and `path:100`.
+        Python's json would first round `1.0000000000000001` to 1.0 and `1e-999` to 0.0 (U106 audit round 2); the
+        reader reads each number exactly, so those two, `1.5`, a bool and `null` (the rules ask for the exact
+        `file:line`) are not of type integer. `0` and `1E6000` are integers outside the bound 1 to 2147483647 and are
+        refused by it, with no traceback (U106 audit round 4: the 6001-digit value raised in the formatting of
+        `path:line`). Each refusal is exit 1 naming verdict.json, no stdout line, no verdict.md. The literals are
+        spliced as text, since json.dumps would round them too."""
+
+        def document(line):
+            finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
+            return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": null}}'
+
+        for line, number in (("7", 7), ("1.0", 1), ("1E2", 100)):
+            with self.subTest(line=line):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=document(line))
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (rundir,) = self.tmp.iterdir()
+                self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: correct\n")
+                written = (rundir / "verdict.json").read_text()
+                self.assertIn(f'"line": {line},', written, "the file codex wrote is kept as is")
+                text = (rundir / "verdict.md").read_text()
+                self.assertIn(f"- P3 (high) f.txt:{number}: Why.\n", text)
+                self.assertNotIn(f"f.txt:{line}:", text.replace(f"f.txt:{number}:", ""))
+        not_integer = "findings[0].line is not of type integer"
+        refused = (
+            ("1.5", not_integer),
+            ("true", not_integer),
+            ("null", not_integer),
+            ("1.0000000000000001", not_integer),
+            ("1e-999", not_integer),
+            ("0", "findings[0].line is 0, below the minimum 1"),
+            ("1E6000", "findings[0].line is 1E+6000, above the maximum 2147483647"),
+        )
+        for line, message in refused:
+            with self.subTest(line=line):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=document(line))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(str(rundir / "verdict.json"), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+
+    def test_a_text_the_json_module_takes_but_json_does_not_is_refused(self):
+        """The reader reads JSON as RFC 8259 defines it, not as Python's json module extends it (U106 audit round 4:
+        `"notes": NaN, "notes": null` was read as a conforming null, `"line": 1e9999999999999999999` raised
+        decimal.InvalidOperation out of the parser, and `"notes": "\\ud800"` raised UnicodeEncodeError in the writing of
+        verdict.md and left it empty). Eight departures, each spliced as text: the three constants the module reads,
+        that constant followed by the duplicate key that overwrote it, a key written twice on its own, a number
+        outside the exact decimal every number is read as, a 4301-digit integer (past the digit limit of Python's int,
+        so judged by the bound), and a lone surrogate (not a Unicode scalar value, so not of type string). Each is
+        exit 1 naming verdict.json, no stdout line, no traceback, and a run directory without verdict.md or a partial
+        file beside it."""
+
+        def document(notes="null", line="1", extra=""):
+            finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
+            return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": {notes}{extra}}}'
+
+        departures = (
+            (document(notes="NaN"), "not JSON: NaN is not a JSON value"),
+            (document(notes="Infinity"), "not JSON: Infinity is not a JSON value"),
+            (document(notes="-Infinity"), "not JSON: -Infinity is not a JSON value"),
+            (document(notes="NaN", extra=', "notes": null'), "not JSON: NaN is not a JSON value"),
+            (document(extra=', "verdict": "incorrect"'), 'not JSON: the key "verdict" appears twice in one object'),
+            (
+                document(line="1e9999999999999999999"),
+                "not JSON: the number 1e9999999999999999999 is outside what the reader represents",
+            ),
+            (document(line="1" + "0" * 4300), f"findings[0].line is 1{'0' * 4300}, above the maximum 2147483647"),
+            (document(notes='"\\ud800"'), "notes is not of type string or null: it holds a lone surrogate"),
+        )
+        for index, (text, message) in enumerate(departures, 1):
+            with self.subTest(departure=index):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=text)
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(str(rundir / "verdict.json"), run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertEqual((rundir / "verdict.json").read_text(), text, "the file codex wrote is kept as is")
+                self.assertEqual(
+                    sorted(p.name for p in rundir.iterdir()),
+                    ["codex.log", "prompt.md", "verdict.json", "verdict.schema.json"],
+                    "a refused verdict writes no verdict text, whole or partial",
+                )
+
+    def test_the_reader_refuses_a_schema_outside_its_keyword_and_type_tables(self):
+        """The schema codex is sent and the one the reader applies are one file; a keyword the reader does not implement
+        (a `pattern`, say) or a type outside JSON Schema would bind codex alone. The reader, run on its own with the
+        lever's embedded schema as the control, refuses such a schema naming the schema file, before the verdict is read
+        and without a traceback."""
+        reader, schema = embedded_reader()
+        work = self.root / "reader-work"
+        work.mkdir()
+        verdict = work / "verdict.json"
+        verdict.write_text(json.dumps({"verdict": "correct", "findings": [], "reproduced": [], "notes": None}))
+        text = work / "verdict.md"
+
+        def run_reader(document):
+            path = work / "schema.json"
+            path.write_text(json.dumps(document))
+            return path, subprocess.run(
+                ["python3", "-I", "-S", "-c", reader, str(path), str(verdict), str(text)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+
+        _, control = run_reader(schema)
+        self.assertEqual((control.returncode, control.stdout), (0, "correct\n"), control.stderr)
+        self.assertTrue(text.read_text().endswith("\nVerdict: correct\n"))
+        text.unlink()
+        line = schema["properties"]["findings"]["items"]["properties"]["line"]
+        cases = (
+            (
+                {**schema, "pattern": "x"},
+                "the schema uses the keyword pattern, which the verdict reader does not implement",
+            ),
+            (
+                {
+                    **schema,
+                    "properties": {**schema["properties"], "notes": {"type": ["string", "null"], "maxLength": 9}},
+                },
+                "the schema.properties.notes uses the keyword maxLength",
+            ),
+            (
+                {
+                    **schema,
+                    "properties": {
+                        **schema["properties"],
+                        "findings": {
+                            **schema["properties"]["findings"],
+                            "items": {
+                                **schema["properties"]["findings"]["items"],
+                                "properties": {
+                                    **schema["properties"]["findings"]["items"]["properties"],
+                                    "line": {**line, "type": "float"},
+                                },
+                            },
+                        },
+                    },
+                },
+                'the schema.properties.findings.items.properties.line names the type "float"',
+            ),
+            ([schema], "the schema is not an object"),
+        )
+        for document, message in cases:
+            with self.subTest(message=message):
+                path, run = run_reader(document)
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(f"pr-audit.sh: {path} refused: {message}", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertFalse(text.exists(), "a refused schema reads no verdict")
+
+    def test_the_verdict_text_is_written_whole_or_not_at_all(self):
+        """verdict.md is written under a partial name and renamed over the final one (U106 audit round 4: a write that
+        raised midway left an empty verdict.md at the path the lever prints). The reader, run on its own with the
+        lever's schema: a final name that is a directory (the rename fails after the partial was written) and a final
+        name under a missing directory (the partial cannot be opened) are each exit 3 naming the final path, with no
+        verdict on stdout, no traceback, and nothing left beside the inputs; the control run leaves verdict.md alone."""
+        reader, schema = embedded_reader()
+        work = self.root / "writer-work"
+        work.mkdir()
+        (work / "schema.json").write_text(json.dumps(schema))
+        verdict = work / "verdict.json"
+        verdict.write_text(json.dumps({"verdict": "correct", "findings": [], "reproduced": [], "notes": None}))
+        (work / "taken").mkdir()
+
+        def run_reader(text):
+            return subprocess.run(
+                ["python3", "-I", "-S", "-c", reader, str(work / "schema.json"), str(verdict), str(text)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+
+        for text in (work / "taken", work / "missing" / "verdict.md"):
+            with self.subTest(text=str(text.relative_to(work))):
+                run = run_reader(text)
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertIn(f"pr-audit.sh: {text} refused: cannot write the verdict text", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertEqual(sorted(p.name for p in work.iterdir()), ["schema.json", "taken", "verdict.json"])
+        control = run_reader(work / "verdict.md")
+        self.assertEqual((control.returncode, control.stdout), (0, "correct\n"), control.stderr)
+        self.assertEqual(sorted(p.name for p in work.iterdir()), ["schema.json", "taken", "verdict.json", "verdict.md"])
+        self.assertTrue((work / "verdict.md").read_text().endswith("\nVerdict: correct\n"))
 
     def test_the_timeout_stops_every_process_codex_started(self):
         """PR_AUDIT_TIMEOUT ends the audit, not just the launcher: a child codex left behind would keep running on the

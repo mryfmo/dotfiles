@@ -20,6 +20,7 @@ import argparse
 import ast
 import functools
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -90,7 +91,19 @@ OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
 @functools.cache
-def shfmt():  # PATH's shfmt, refused unless it is the pinned version
+def contract():  # scripts/ci/shfmt_json_contract.py by its path: the lint runs under python3 -I, so no import path
+    path = ROOT / "scripts/ci/shfmt_json_contract.py"
+    spec = importlib.util.spec_from_file_location("shfmt_json_contract", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+SEEN = Counter()  # files parsed as shell and the statement nodes the token rules saw in them (U105)
+
+
+@functools.cache
+def shfmt():  # PATH's shfmt, refused unless it is the pinned version and its JSON matches the pinned node table
     try:
         pin = tomllib.loads(SHFMT_PIN_CONFIG.read_text())["tools"]["http:shfmt"]["version"]
     except (OSError, tomllib.TOMLDecodeError, KeyError, TypeError):
@@ -107,6 +120,12 @@ def shfmt():  # PATH's shfmt, refused unless it is the pinned version
             f"lint-comparisons: the shfmt on PATH is version {found or 'unknown'}, but {SHFMT_PIN_CONFIG} pins shfmt "
             f'{pin}; run "mise install http:shfmt" and put it first on PATH'
         )
+    module = contract()
+    try:
+        module.verify()
+    except module.ContractError as error:
+        print(f"lint-comparisons: shfmt's JSON does not match the pinned node table ({error})", file=sys.stderr)
+        sys.exit(2)
     return ["shfmt"]
 
 
@@ -139,6 +158,8 @@ def shfmt_tree(rel, text, zsh=None):  # (AST, text as parsed): shfmt's JSON AST 
         if nested:
             return None, text
         sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON AST")
+    if not nested:
+        SEEN.update(files=1, statements=contract().count(tree)["Stmt"])
     return tree, text
 
 
@@ -761,6 +782,13 @@ def main(argv=None):
         report(rel, f"stale baseline row {rel} {rule}", "row")
     if sum(warned.values()):
         print(f"warning: {warned['hit']} unbaselined hit(s) and {warned['row']} stale row(s) in unchanged files")
+    if SEEN["files"] and not SEEN["statements"]:  # "no findings" must never be "saw nothing"
+        print(
+            f"lint-comparisons: the token rules saw no statement in {SEEN['files']} shell file(s), while the contract "
+            "fixture holds some; the run is refused",
+            file=sys.stderr,
+        )
+        return 2
     return int(failed)
 
 

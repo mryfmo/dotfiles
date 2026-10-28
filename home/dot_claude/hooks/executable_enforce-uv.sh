@@ -6,8 +6,16 @@
 #   Emit PreToolUse permissionDecision deny for direct `pip` or `python` usage;
 #   other input exits successfully without output. Contract verified 2026-10-05.
 #   Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config)
-#   into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot
-#   parse the line, the hook decides nothing and exits 0 (fail open).
+#   into its syntax tree, and every simple command in it is judged on its own text. shfmt's JSON must match the
+#   pinned node table of scripts/ci/shfmt_json_contract.py (regime-cutover U105). Every read of a producer keeps
+#   its three outcomes apart (standing order 21): what it found is judged; an empty result (a line with no simple
+#   command) is no decision, exit 0 without output; a failed read is a blocking error, exit 2 with the probe and
+#   the status on stderr, never a silent "no decision". Failed reads: no shfmt on PATH, shfmt exiting nonzero (a
+#   line it cannot parse included), a JSON that does not match the table, jq exiting nonzero or printing another
+#   shape or another number of lines than the probe has, a tree whose statements the walk cannot see, a `chezmoi
+#   source-path` that exits nonzero or names no directory. The one fail-open left is a deployed copy that finds no
+#   contract module (contract_module): no chezmoi on PATH, or none under the source directory it names; it decides
+#   nothing, exit 0.
 # @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control
 
 # @description Encode the denial reason from stdin using the current hook contract.
@@ -189,21 +197,138 @@ function handle_python_run() {
     exit 0
 }
 
+# @description Find scripts/ci/shfmt_json_contract.py: relative to this file in the dotfiles checkout
+#   (home/dot_claude/hooks/), else under the chezmoi source directory the deployed copy came from. The source-path
+#   read keeps its three outcomes (regime-cutover U105 round 6): no chezmoi on PATH is an absence, a directory it
+#   names is searched (the module there is found, or absent), and a nonzero status, no path, several lines, a
+#   relative path or a path that is no directory is a failed read, named in REFUSAL for main to report (exit 2).
+# @set MODULE string On return 0, the module path; empty otherwise.
+# @set REFUSAL string On return 2, why the line cannot be judged.
+# @exitcode 0 Found.
+# @exitcode 1 No module beside this file, and no chezmoi on PATH or no module under the directory it names: the fail-open.
+# @exitcode 2 chezmoi source-path exited nonzero or printed no directory.
+function contract_module() {
+    local here source status=0
+    case ${BASH_SOURCE[0]} in
+    */*) here=${BASH_SOURCE[0]%/*} ;;
+    *) here=. ;;
+    esac
+    MODULE="${here}/../../../scripts/ci/shfmt_json_contract.py"
+    [[ -f ${MODULE} ]] && return 0
+    MODULE=""
+    command -v chezmoi > /dev/null 2>&1 || return 1
+    source=$(chezmoi source-path) || status=$?
+    read_or_refuse "chezmoi source-path naming the source directory" "$status" "$source" '^/' "an absolute path" one || return 2
+    if [[ ! -d ${source} ]]; then
+        REFUSAL="chezmoi source-path named '${source}', which is no directory; the line cannot be judged"
+        return 2
+    fi
+    MODULE="${source}/../scripts/ci/shfmt_json_contract.py"
+    [[ -f ${MODULE} ]] && return 0
+    MODULE=""
+    return 1
+}
+
+# @description Judge one probe's read of a producer. The status, the shape of every non-empty output line and the
+#   number of such lines are checked: a status 0 with lines of the given shape, as many as the probe has, is a found
+#   result; a status 0 without output is an empty one where the probe allows it; anything else is a failed read,
+#   named in REFUSAL for main to report (exit 2).
+# @arg $1 string The probe, as the refusal names it ("jq counting the statements the tree lists").
+# @arg $2 int The tool's exit status.
+# @arg $3 string The tool's output.
+# @arg $4 string An extended regular expression every non-empty output line must match.
+# @arg $5 string What a line of that shape is called ("a count").
+# @arg $6 string The cardinality of a found result: `one` (exactly one line, as a count or a path is printed: none
+#   or several is a failed read, never an empty result) or `any` (zero or more lines, as offset pairs are; none is
+#   the empty result).
+# @set REFUSAL string On return 2, why the line cannot be judged.
+# @exitcode 0 Found or empty.
+# @exitcode 2 A failed read.
+function read_or_refuse() {
+    local probe="$1" status="$2" output="$3" shape="$4" called="$5" cardinality="$6" row lines=0
+    if ((status != 0)); then
+        REFUSAL="${probe} exited ${status}; the line cannot be judged"
+        return 2
+    fi
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        if [[ ! "$row" =~ $shape ]]; then
+            REFUSAL="${probe} printed '${row}', not ${called}; the line cannot be judged"
+            return 2
+        fi
+        lines=$((lines + 1))
+    done <<< "$output"
+    if [[ ${cardinality} == one ]] && ((lines == 0)); then
+        REFUSAL="${probe} printed nothing, not ${called}; the line cannot be judged"
+        return 2
+    elif [[ ${cardinality} == one ]] && ((lines > 1)); then
+        REFUSAL="${probe} printed ${lines} lines, not ${called}; the line cannot be judged"
+        return 2
+    fi
+}
+
 # @description Collect the simple commands of a Bash line from shfmt's syntax tree (`shfmt -ln bash --to-json`):
 #   every statement whose command is a call (`CallExpr`), in tree order, nested ones (in a pipeline, a list, a
 #   subshell, `$(...)`) included, each as its source text from the statement's start to its end offset, so the
 #   suggestion keeps its quotes and redirections. Comments and here-document bodies are no statements, and quoting,
-#   escapes and line continuations are shfmt's, not this script's.
+#   escapes and line continuations are shfmt's, not this script's. Before the walk, the contract module proves the
+#   parser still produces these nodes; a line whose tree lists statements the walk then cannot see is refused too.
+#   Each probe's three outcomes (regime-cutover U105 rounds 5 and 6); a failed read is named by read_or_refuse,
+#   contract_module or here:
+#   | probe                                | found           | empty                           | failed read (return 2)                     |
+#   | command -v shfmt                     | a path          |                                 | no shfmt on PATH                           |
+#   | shfmt -ln bash --to-json on the line | the tree        |                                 | nonzero status (a parse error too), no tree |
+#   | contract_module: beside this file    | the module path | none: chezmoi is asked          |                                            |
+#   | contract_module: chezmoi source-path | one directory   | no chezmoi on PATH: return 1    | nonzero status, no path, several lines, a  |
+#   |                                      |                 | (open); a directory without the | relative path, a path that is no directory |
+#   |                                      |                 | module: return 1 (open)         |                                            |
+#   | python3 -I on the module (contract)  | status 0        |                                 | 2: the JSON does not match; other: named   |
+#   | jq: statements the tree lists        | one count       | 0                               | nonzero status, no count, several, no digit|
+#   | jq: statement nodes the walk sees    | one count       | 0 (refused when any was listed) | nonzero status, no count, several, no digit|
+#   | jq: the call statements' offsets     | start-end lines | none: no segment, no decision   | nonzero status, or a line of another shape |
 # @arg $1 string The command line.
 # @set SEGMENTS array The simple commands, in order.
-# @exitcode 0 The line parsed.
-# @exitcode 1 shfmt or jq is absent, or the line does not parse.
+# @set REFUSAL string On return 2, why the line cannot be judged.
+# @exitcode 0 The line parsed; SEGMENTS holds its simple commands, possibly none.
+# @exitcode 1 No contract module beside this file, and no chezmoi on PATH or none under its source directory: the fail-open.
+# @exitcode 2 A failed read (chezmoi source-path included), a contract mismatch, or a tree whose statements the walk cannot see: main exits 2.
 function split_segments() {
-    local line="$1" tree spans start end
+    local line="$1" tree spans start end listed visited status found=0
     SEGMENTS=()
-    command -v shfmt > /dev/null 2>&1 || return 1
-    tree=$(printf '%s' "$line" | shfmt -ln bash --to-json 2> /dev/null) || return 1
-    spans=$(jq -r '.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"' <<< "$tree") || return 1
+    REFUSAL=""
+    if ! command -v shfmt > /dev/null 2>&1; then
+        REFUSAL="shfmt is not on PATH, so no Bash line can be judged; home/dot_mise/config.toml installs the pinned one"
+        return 2
+    fi
+    tree=$(printf '%s' "$line" | shfmt -ln bash --to-json)
+    read_or_refuse "shfmt parsing the line" "$?" "" "" "" any || return 2
+    if [[ -z "$tree" ]]; then
+        REFUSAL="shfmt printed no tree for the line; the line cannot be judged"
+        return 2
+    fi
+    contract_module || found=$?
+    ((found == 0)) || return "$found"
+    python3 -I "$MODULE"
+    status=$?
+    if ((status == 2)); then
+        REFUSAL="shfmt's JSON does not match the pinned node table; no Bash line can be judged"
+        return 2
+    elif ((status != 0)); then
+        REFUSAL="python3 -I ${MODULE} exited ${status} proving the contract; the line cannot be judged"
+        return 2
+    fi
+    # The statements the tree lists against the statement nodes the walk can see: a renamed field would leave the
+    # walk empty and the line silently undecided.
+    listed=$(jq -r '.Stmts // [] | length' <<< "$tree")
+    read_or_refuse "jq counting the statements the tree lists" "$?" "$listed" '^[0-9]+$' "a count" one || return 2
+    visited=$(jq -r '[.. | objects | select(has("Cmd"))] | length' <<< "$tree")
+    read_or_refuse "jq counting the statement nodes the walk sees" "$?" "$visited" '^[0-9]+$' "a count" one || return 2
+    if ((listed > 0 && visited == 0)); then
+        REFUSAL="shfmt's tree lists ${listed} statement(s) but the walk saw none; the line cannot be judged"
+        return 2
+    fi
+    spans=$(jq -r '.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"' <<< "$tree")
+    read_or_refuse "jq reading the call statements' offsets" "$?" "$spans" '^[0-9]+ [0-9]+$' "an offset pair" any || return 2
     # shfmt's offsets count bytes, so slice the line byte-wise.
     local LC_ALL=C
     while read -r start end; do
@@ -284,9 +409,16 @@ function main() {
     command=$(echo "$input" | jq -r '.tool_input.command // ""' 2> /dev/null || echo "")
 
     if [[ "$tool_name" == "Bash" ]]; then
-        local segment
-        # Advisory: a line shfmt cannot parse (or no shfmt) gets no decision.
-        split_segments "$command" || exit 0
+        local segment parsed=0
+        split_segments "$command" || parsed=$?
+        # 1 is the one fail-open: no contract module on this host, so no decision. Any other failure is a refusal,
+        # reported the way a contract mismatch is: the tool call is blocked and the reason reaches the caller.
+        if ((parsed == 1)); then
+            exit 0
+        elif ((parsed != 0)); then
+            echo "enforce-uv: ${REFUSAL}" >&2
+            exit 2
+        fi
         for segment in "${SEGMENTS[@]}"; do
             classify_segment "$segment"
         done

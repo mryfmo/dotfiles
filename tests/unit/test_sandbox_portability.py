@@ -32,6 +32,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 import sys
 
@@ -39,6 +40,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts/ci"))
+import shfmt_json_contract as contract  # noqa: E402
+
 ROOTS = ("scripts", "home", "install")
 SHELL = re.compile(r"#!.*\b(sh|bash|zsh)\b")
 PYTHON = re.compile(r"#!.*python")
@@ -59,7 +63,8 @@ ENV_READS = ("os.environ.get", "os.getenv")
 
 @functools.cache
 def shfmt():
-    """PATH's shfmt, the version home/dot_mise/config.toml pins ([tools."http:shfmt"], U97), or an error."""
+    """PATH's shfmt, the version home/dot_mise/config.toml pins ([tools."http:shfmt"], U97) whose JSON matches the
+    pinned node table (U105), or an error."""
     run = subprocess.run(
         [str(ROOT / "scripts/ci/pinned-tool-version.sh"), str(ROOT / "home/dot_mise/config.toml"), "shfmt"],
         stdin=subprocess.DEVNULL,
@@ -69,6 +74,10 @@ def shfmt():
     )
     if run.returncode != 0:
         raise RuntimeError(f"shfmt is not the pinned parser: {run.stderr.strip()}")
+    try:
+        contract.verify()
+    except contract.ContractError as error:
+        raise RuntimeError(f"shfmt's JSON does not match the pinned node table: {error}") from None
     return ["shfmt"]
 
 
@@ -243,11 +252,14 @@ def misread_lines(tree):
             yield n["Pos"]["Line"]
 
 
-def findings(rel, text):
-    """{"diff": [line...], "tmp": [line...], "misread": [line...]} for one file, by its kind."""
+def findings(rel, text, seen=None):
+    """{"diff": [line...], "tmp": [line...], "misread": [line...]} for one file, by its kind; seen, a Counter, gains
+    the shell files parsed and the statement nodes their trees hold."""
     if rel.removesuffix(".tmpl").endswith(".py") or PYTHON.match(text):
         return {"diff": [], "tmp": sorted(set(python_tmp_lines(text))), "misread": []}
     tree = shell_tree(rel, text)
+    if seen is not None:
+        seen.update(files=1, statements=contract.count(tree)["Stmt"])
     allowed = frozenset(w for (f, w) in ALLOWED_TMP if f == rel)  # lint-comparisons: allow git ls-files names
     rules = {"diff": diff_lines, "tmp": lambda t: shell_tmp_lines(t, allowed), "misread": misread_lines}
     return {rule: sorted(set(lines(tree))) for rule, lines in rules.items()}
@@ -270,11 +282,15 @@ def tracked(repo):
 
 
 def guard(repo):
-    """`<path>:<line>: <rule>: <source line>` per hit across the repository's tracked scripts."""
-    hits = []
+    """`<path>:<line>: <rule>: <source line>` per hit across the repository's tracked scripts; a run whose shell files
+    held no statement node is an error, never a clean run."""
+    hits, seen = [], Counter()
     for rel, text in tracked(repo):
         lines = text.split("\n")
-        hits += [f"{rel}:{n}: {rule}: {lines[n - 1].strip()}" for rule, ns in findings(rel, text).items() for n in ns]
+        found = findings(rel, text, seen)
+        hits += [f"{rel}:{n}: {rule}: {lines[n - 1].strip()}" for rule, ns in found.items() for n in ns]
+    if seen["files"] and not seen["statements"]:
+        raise RuntimeError(f"the walk saw no statement in {seen['files']} shell file(s); the run cannot be judged")
     return hits
 
 

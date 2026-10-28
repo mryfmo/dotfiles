@@ -18,6 +18,9 @@ import time
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 LIB = ROOT / "scripts/lib/chezmoi-externals.sh"
 SERVER = ROOT / "tests/fixtures/chezmoi-externals/server.py"
@@ -1219,7 +1222,7 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
         for directory in (workspace, home, runner_temp):
             directory.mkdir()
         git = ["git", "-C", str(workspace), "-c", "user.name=step", "-c", "user.email=step@example.invalid"]
-        subprocess.run(["git", "init", "-q", str(workspace)], check=True, timeout=COMMAND_SECONDS)
+        git_init(workspace)  # scratch_git: the checkout's commit starts no background maintenance (U100)
         subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "checkout"], check=True, timeout=COMMAND_SECONDS)
         stub = workspace / "setup.sh"
         stub.write_text(

@@ -20,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from test_workflow_orchestration_skip import jobs
@@ -102,6 +103,13 @@ RUN_KEY = re.compile(r"run:(?:[ \t]+(.*))?")
 # The first character of a plain scalar: no block header, quote, flow bracket or other YAML indicator.
 PLAIN_SCALAR = re.compile(r"""[^|>"'{}\[\],#&*!%@`\s]""")
 READ_FORMS = "the reader returns `run: |` and a one-line plain scalar, nothing else"
+# Round 4 (audit of 81fa7256): that census assumed the reader's own indentation (a dash at six spaces, keys at
+# eight), so a step written with its dash at five and keys at seven, YAML the runner executes, was skipped by the
+# census as by the reader, and an apt step there passed without timeout-minutes. The census now derives the shape
+# from the text, places every line inside `jobs:` or refuses it by line, and names by its dash line every step the
+# reader's rule does not reach.
+READER_STEP_SHAPE = (6, 8)
+READER_SHAPE = "the reader reads a step's dash at six spaces and its keys at eight, nothing else"
 
 
 def step_text(step: dict) -> str:
@@ -173,44 +181,96 @@ def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None =
     return [f"{name}: {line}" for name, line in exempt if line not in lines.get(name, set())]
 
 
-def text_steps(text: str) -> dict[str, list[dict]]:
-    """Every step of every job, from the raw text alone: `{job: [{"line", "runs": [{"line", "header", "body"}]}]}`.
+class Census(NamedTuple):
+    """Every job's steps from the raw text, `{job: [{"line", "dash", "keys", "runs": [{"line", "header", "body"}]}]}`
+    ("dash" and "keys" the step's indents), and the lines inside `jobs:` the census could not place, `(line, why)`."""
 
-    The reader's own indentation rule: a job at two spaces, `steps:` at four, a step's dash at six, its keys at
-    eight. A `run:` key's body is every following line indented past eight spaces, blank lines included, up to the
-    first that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
+    steps: dict[str, list[dict]]
+    refused: list[tuple[int, str]]
+
+
+def census(text: str) -> Census:
+    """Every step of every job, from the raw text alone, at whatever indentation the file uses.
+
+    The shape is derived, never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a
+    job its keys', the first dash under `steps:` the dashes', and each dash line its own keys' (the column after
+    `- `). Any other line inside `jobs:` is the value of the key above it when it is indented past that key (a
+    `run: |` body, a nested `with:` mapping; a `run:` there is not a key) and is refused by line otherwise. A
+    `run:` key's body is every following line indented past the step's keys, blank lines included, up to the first
+    that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
     head, _, rest = text.partition("\njobs:\n")
-    result: dict[str, list[dict]] = {}
+    steps_by_job: dict[str, list[dict]] = {}
+    refused: list[tuple[int, str]] = []
     steps: list[dict] = []
-    step = body = None
+    jobs_at = keys_at = dash_at = value_at = step = body = None
     in_steps = False
     for number, line in enumerate(rest.split("\n"), head.count("\n") + 3):
         stripped = line.strip()
         indent = len(line) - len(line.lstrip(" "))
-        if body is not None and (not stripped or indent > 8):
-            body.append(line)
+        if value_at is not None and (not stripped or indent > value_at):
+            if body is not None:
+                body.append(line)
             continue
-        body = key = None
+        if body is not None:
+            body = value_at = None  # a less indented line, a comment too, ends a block body for good (YAML 8.1.1)
         if not stripped or stripped.startswith("#"):
             continue
         if indent == 0:
             break
-        if indent == 2:
-            result[stripped.split(":", 1)[0]] = steps = []
-            in_steps, step = False, None
-        elif indent == 4:
-            in_steps, step = stripped == "steps:", None
-        elif in_steps and indent == 6 and stripped.startswith("- "):
-            step = {"line": number, "runs": []}
+        key = None
+        if jobs_at is None:
+            jobs_at = indent
+        dash = in_steps and stripped.startswith("- ") and dash_at in (None, indent) and indent >= keys_at
+        if indent == jobs_at:
+            steps_by_job[stripped.split(":", 1)[0]] = steps = []
+            keys_at = dash_at = step = value_at = None
+            in_steps = False
+        elif dash:
+            dash_at = indent
+            key = stripped[1:].lstrip(" ")
+            step = {"line": number, "dash": indent, "keys": indent + len(stripped) - len(key), "runs": []}
             steps.append(step)
-            key = stripped[2:]
-        elif in_steps and indent == 8 and step is not None:
+            value_at = step["keys"]
+        elif indent > jobs_at and (keys_at is None or indent == keys_at):
+            keys_at = indent
+            in_steps = stripped == "steps:"
+            dash_at = step = None
+            value_at = None if in_steps else indent
+        elif in_steps and step is not None and indent == step["keys"]:
             key = stripped
+            value_at = indent
+        else:
+            levels = [f"a job at {jobs_at}"]
+            if keys_at is not None:
+                levels.append(f"a job key at {keys_at}")
+            if in_steps and dash_at is None:
+                levels.append(f"a step's dash at or past {keys_at}")
+            elif dash_at is not None:
+                levels.append(f"a step's dash at {dash_at}")
+            if step is not None:
+                levels.append(f"a step key at {step['keys']}")
+            if value_at is not None:
+                levels.append(f"a value past {value_at}")
+            refused.append((number, f"{stripped} (indented {indent}, where the shape has {', '.join(levels)})"))
         match = RUN_KEY.fullmatch(key) if key is not None else None
         if match:
             body = []
             step["runs"].append({"line": number, "header": (match.group(1) or "").strip(), "body": body})
-    return result
+    for steps in steps_by_job.values():
+        for run in (run for step in steps for run in step["runs"]):
+            while run["body"] and not run["body"][-1].strip():
+                run["body"].pop()  # the blank lines after a body belong to no key
+    return Census(steps_by_job, refused)
+
+
+def text_steps(text: str) -> dict[str, list[dict]]:
+    """The census's steps alone, for a caller that has already taken its refusals (census_problems names them)."""
+    return census(text).steps
+
+
+def reader_reaches(step: dict) -> bool:
+    """Whether the reader's fixed indentation rule returns this text step at all."""
+    return (step["dash"], step["keys"]) == READER_STEP_SHAPE
 
 
 def run_text(step: dict) -> str:
@@ -220,23 +280,35 @@ def run_text(step: dict) -> str:
 
 
 def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list[str]:
-    """Every `run:` key in the raw text of one workflow that the reader did not return whole, by `file:line`.
+    """Every line of one workflow the census could not place and every `run:` key in its raw text that the reader
+    did not return whole, by `file:line`.
 
     The text is the census and the reader must agree with it job by job and step by step: the same steps, and for
-    each `run:` the same body (`run: |`) or the same one-line value (a plain scalar). Any other form is refused,
-    since the reader returns nothing for it or returns it undecoded."""
-    problems = []
-    by_job = text_steps(text)
+    each `run:` the same body (`run: |`) or the same one-line value (a plain scalar). A step at an indentation the
+    reader's rule does not reach is refused on its dash line, since the reader returns nothing for it; any other
+    form is refused, since the reader returns nothing for it or returns it undecoded."""
+    found = census(text)
+    problems = [f"{name}:{number}: {why}" for number, why in found.refused]
+    by_job = found.steps
     if list(by_job) != list(parsed):
         problems.append(f"{name}: the text holds jobs {list(by_job)}, the reader returned {list(parsed)}")
     for job, steps in by_job.items():
         read = parsed.get(job)
         if read is None:
             continue  # named above
-        if len(read) != len(steps):
-            problems.append(f"{name}: {job}: {len(steps)} steps in the text, {len(read)} from the reader")
+        readable = []
+        for step in steps:
+            if reader_reaches(step):
+                readable.append(step)
+            else:
+                problems.append(
+                    f"{name}:{step['line']}: a step with its dash at {step['dash']} spaces and its keys at "
+                    f"{step['keys']} ({READER_SHAPE})"
+                )
+        if len(read) != len(readable):
+            problems.append(f"{name}: {job}: {len(readable)} steps in the text, {len(read)} from the reader")
             continue
-        for step, got in zip(steps, read):
+        for step, got in zip(readable, read):
             if not step["runs"]:
                 if "run" in got:
                     problems.append(f"{name}:{step['line']}: the reader returned a run: the text does not hold")
@@ -280,25 +352,27 @@ def bounded_steps() -> list[dict]:
     ]
 
 
-def render(steps_by_job: dict[str, list[dict]]) -> str:
-    """Workflow text for in-memory steps: every `run` as a `run: |` block, the other keys plain, in the step's order."""
+def render(steps_by_job: dict[str, list[dict]], shape: tuple[int, int, int, int] = (2, 4, 6, 8)) -> str:
+    """Workflow text for in-memory steps: every `run` as a `run: |` block, the other keys plain, in the step's order,
+    at `shape`: the indents of a job, its keys, a step's dash and its keys (the reader's by default), bodies two past."""
+    job_at, key_at, dash_at, step_at = shape
     lines = ["name: x", "on: push", "jobs:"]
     for job, steps in steps_by_job.items():
-        lines += [f"  {job}:", "    runs-on: ubuntu-24.04", "    steps:"]
+        lines += [f"{' ' * job_at}{job}:", f"{' ' * key_at}runs-on: ubuntu-24.04", f"{' ' * key_at}steps:"]
         for step in steps:
             for position, (key, value) in enumerate(step.items()):
-                lead = "      - " if position == 0 else "        "
+                lead = " " * dash_at + "-" + " " * (step_at - dash_at - 1) if position == 0 else " " * step_at
                 if key == "run":
                     lines.append(f"{lead}run: |")
-                    lines += [f"          {line}" for line in value.splitlines()]
+                    lines += [f"{' ' * (step_at + 2)}{line}" for line in value.splitlines()]
                 else:
                     lines.append(f"{lead}{key}: {value}")
     return "\n".join(lines) + "\n"
 
 
-def dash_lines(text: str) -> list[int]:
-    """The line of each step's dash, in step order."""
-    return [number for number, line in enumerate(text.splitlines(), 1) if line.startswith("      - ")]
+def dash_lines(text: str, dash_at: int = 6) -> list[int]:
+    """The line of each step's dash at `dash_at` spaces, in step order."""
+    return [number for number, line in enumerate(text.splitlines(), 1) if line.startswith(" " * dash_at + "- ")]
 
 
 def parsed_steps(path: Path) -> dict[str, list[dict]]:
@@ -310,19 +384,20 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
 
     The steps that run apt are found in the raw text (the `run:` key and the lines under it, comment lines left
     out), once the census has shown the reader returned every `run:`; the reader's structure only attaches the name
-    and timeout-minutes. Steps are keyed by (workflow, job, index), the name carried for the message, so no step
-    replaces another; a name used twice in one job is refused on its own, since STEP_REST_BUDGET refers to steps by
-    name. Then every apt step has a budget row and the timeout-minutes the formula gives, and every budget row has
-    its step."""
+    and timeout-minutes, its steps matched in order to the text steps its rule reaches (the census has named the
+    others). Steps are keyed by (workflow, job, index), the name carried for the message, so no step replaces
+    another; a name used twice in one job is refused on its own, since STEP_REST_BUDGET refers to steps by name.
+    Then every apt step has a budget row and the timeout-minutes the formula gives, and every budget row has its
+    step."""
     problems, found = [], {}
     for workflow, text in texts.items():
         by_job = parsed.get(workflow, {})
         problems.extend(census_problems(workflow, text, by_job))
         for job, steps in text_steps(text).items():
-            read = by_job.get(job, [])
+            read = iter(by_job.get(job, []))
             seen: dict[str, int] = {}
             for index, step in enumerate(steps):
-                got = read[index] if index < len(read) else {}
+                got = next(read, {}) if reader_reaches(step) else {}
                 name = got.get("name")
                 label = name or f"step {index}"
                 where = f"{workflow}:{step['line']}: {job}: step {index} {label!r}"
@@ -711,7 +786,8 @@ class BoundOrderTest(unittest.TestCase):
 class ReaderCensusTest(unittest.TestCase):
     """Standing order 21 on the workflow reader: every `run:` the text holds is one the reader returned whole, or the
     step is named by file and line. Audit of 0a9fa727: `jobs()` returned no body for `run: |-` and `run: >`, so an
-    apt step added in that form passed the step check without timeout-minutes."""
+    apt step added in that form passed the step check without timeout-minutes. Audit of 81fa7256: the census read
+    only the reader's indentation, so a step at five and seven spaces passed both."""
 
     FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
@@ -854,34 +930,217 @@ class ReaderCensusTest(unittest.TestCase):
                 path = self.written(self.BASE + step)
                 self.assertEqual([], census_problems("x.yaml", path.read_text(), parsed_steps(path)))
 
+    def added_job_at(self, dash: int, keys: int, command: str) -> tuple[Path, int]:
+        """test.yaml with a job `added` after `test`, its one step `Added` a `run: |` holding `command`, the step list
+        with its dash at `dash` spaces and its keys at `keys` (a list's dashes share one indent, so the shape is the
+        list's, not one step's): (path, dash line)."""
+        text = (WORKFLOWS / "test.yaml").read_text()
+        lead = " " * dash + "-" + " " * (keys - dash - 1)
+        job = f"\n  added:\n    runs-on: ubuntu-24.04\n    steps:\n{lead}name: Added\n{' ' * keys}run: |\n{' ' * (keys + 2)}{command}\n"
+        return self.written(text + job, "test.yaml"), len(text.splitlines()) + 5
+
+    def agrees_with_yaml(self, text: str) -> None:
+        """Where PyYAML is installed, it reads the same jobs, steps and run bodies as the census; elsewhere nothing."""
+        try:
+            import yaml
+        except ImportError:
+            return
+        document = yaml.safe_load(text)
+        found = text_steps(text)
+        self.assertEqual(list(document["jobs"]), list(found))
+        for job, steps in found.items():
+            parsed = document["jobs"][job]["steps"]
+            self.assertEqual(len(parsed), len(steps), job)
+            for step, got in zip(steps, parsed):
+                self.assertEqual("run" in got, bool(step["runs"]), (job, step["line"]))
+                for run in step["runs"]:
+                    written = (
+                        [line.strip() for line in run["body"] if line.strip()]
+                        if run["header"] == "|"
+                        else [run["header"]]
+                    )
+                    self.assertEqual(
+                        written,
+                        [line.strip() for line in str(got["run"]).splitlines() if line.strip()],
+                        (job, run["line"]),
+                    )
+
     def test_the_text_census_agrees_with_a_yaml_parser_when_one_is_present(self) -> None:
         # Not a dependency: CI's interpreter has none. Where PyYAML is installed, it is a second reader of the same
         # files, and the census must see every step and every run body it sees.
         try:
-            import yaml
+            import yaml  # noqa: F401
         except ImportError:
             self.skipTest("no PyYAML in this interpreter (the CI form)")
         for path in sorted(WORKFLOWS.glob("*.y*ml")):
             with self.subTest(workflow=path.name):
-                document = yaml.safe_load(path.read_text())
-                census = text_steps(path.read_text())
-                self.assertEqual(list(document["jobs"]), list(census))
-                for job, steps in census.items():
-                    parsed = document["jobs"][job]["steps"]
-                    self.assertEqual(len(parsed), len(steps), job)
-                    for step, got in zip(steps, parsed):
-                        self.assertEqual("run" in got, bool(step["runs"]), (job, step["line"]))
-                        for run in step["runs"]:
-                            written = (
-                                [line.strip() for line in run["body"] if line.strip()]
-                                if run["header"] == "|"
-                                else [run["header"]]
-                            )
-                            self.assertEqual(
-                                written,
-                                [line.strip() for line in str(got["run"]).splitlines() if line.strip()],
-                                (job, run["line"]),
-                            )
+                self.agrees_with_yaml(path.read_text())
+
+    def test_the_auditors_step_at_five_and_seven_is_refused_by_its_dash_line(self) -> None:
+        # Audit of 81fa7256: a step list whose dashes are at five spaces and keys at seven is YAML the runner
+        # executes, and the reader returns no step for it; the round 3 census, fixed at six and eight, skipped it the
+        # same way. The census now reads it (as PyYAML does) and names each step; the step check then names the apt
+        # step it holds, and a step that only sleeps is named by the census alone.
+        for dash, keys in ((5, 7), (7, 9)):
+            for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
+                with self.subTest(dash=dash, keys=keys, command=command.split()[0]):
+                    path, at = self.added_job_at(dash, keys, command)
+                    text = path.read_text()
+                    (step,) = text_steps(text)["added"]
+                    self.assertEqual([], parsed_steps(path)["added"])  # the hole: the reader's silent skip
+                    self.assertEqual((at, dash, keys), (step["line"], step["dash"], step["keys"]))
+                    self.assertEqual([command], [line.strip() for line in step["runs"][0]["body"]])
+                    self.agrees_with_yaml(text)
+                    expected = [
+                        f"test.yaml:{at}: a step with its dash at {dash} spaces and its keys at {keys} ({READER_SHAPE})"
+                    ]
+                    if command != "sleep 7200":
+                        expected.append(f"test.yaml:{at}: added: step 0 'step 0' runs apt with no STEP_REST_BUDGET row")
+                    self.assertEqual(expected, workflow_problems([path]))
+                    violations = apt_violations("test.yaml", text)
+                    if command == "sudo apt-get update":
+                        self.assertEqual(
+                            [f"test.yaml:{at + 2}: {command} (1 apt call(s), 0 in the bound form)"], violations
+                        )
+                    else:
+                        self.assertEqual([], violations)
+        # Written at six and eight, the same job is read by both and fails only the step check, on the step's line.
+        path, at = self.added_job_at(6, 8, self.FORM)
+        self.assertEqual(
+            [f"test.yaml:{at}: added: step 0 'Added' runs apt with no STEP_REST_BUDGET row"], workflow_problems([path])
+        )
+
+    def test_a_run_inside_a_value_is_not_a_key(self) -> None:
+        # A `run:` indented past the step's keys is the value of the key above it: a block body line, or an entry of
+        # a nested mapping. It is one run or none, never a second key, at the reader's shape and at any other.
+        inner = "run: sudo apt-get update"
+        for case, step, runs, problems in (
+            ("a block body line", f"      - run: |\n          echo a\n          {inner}\n", [["echo a", inner]], []),
+            ("a with: mapping", f"      - uses: x/y@v1\n        with:\n          {inner}\n", [], []),
+            ("an env: mapping after a plain run", f"      - run: echo a\n        env:\n          {inner}\n", [[]], []),
+            (
+                "a block body line at five and seven",
+                f"     - run: |\n         echo a\n         {inner}\n",
+                [["echo a", inner]],
+                [f"x.yaml:7: a step with its dash at 5 spaces and its keys at 7 ({READER_SHAPE})"],
+            ),
+        ):
+            with self.subTest(case=case):
+                text = self.BASE + step
+                found = census(text)
+                self.assertEqual([], found.refused)
+                (only,) = found.steps["test"]
+                self.assertEqual(runs, [[line.strip() for line in run["body"]] for run in only["runs"]])
+                self.assertEqual(problems, census_problems("x.yaml", text, parsed_steps(self.written(text))))
+                self.agrees_with_yaml(text)
+
+    def test_the_census_reads_steps_at_any_shape_and_the_reader_only_its_own(self) -> None:
+        # The three bounded steps written at other indents: the census reads each whole and agrees with PyYAML where
+        # present; the reader returns the steps at its own shape, skips those at five and seven (named by the census
+        # on each dash line) and raises on the rest.
+        for shape, reader in (
+            ((2, 4, 6, 8), "returns"),
+            ((2, 4, 5, 7), "skips"),
+            ((2, 4, 7, 9), "skips"),
+            ((2, 4, 4, 6), "raises"),
+            ((2, 4, 6, 10), "raises"),
+            ((1, 2, 3, 5), "raises"),
+            ((4, 8, 12, 14), "raises"),
+        ):
+            with self.subTest(shape=shape):
+                text = render({"test": bounded_steps()}, shape)
+                path = self.written(text)
+                found = census(text)
+                self.assertEqual([], found.refused)
+                steps = found.steps["test"]
+                self.assertEqual(dash_lines(text, shape[2]), [step["line"] for step in steps])
+                self.assertEqual([shape[2:]] * 3, [(step["dash"], step["keys"]) for step in steps])
+                self.assertEqual(
+                    [step["run"].splitlines() for step in bounded_steps()],
+                    [[line.strip() for line in step["runs"][0]["body"]] for step in steps],
+                )
+                self.agrees_with_yaml(text)
+                if reader == "returns":
+                    self.assertEqual([], census_problems("x.yaml", text, parsed_steps(path)))
+                elif reader == "skips":
+                    parsed = parsed_steps(path)
+                    self.assertEqual([], parsed["test"])
+                    self.assertEqual(
+                        [
+                            f"x.yaml:{step['line']}: a step with its dash at {shape[2]} spaces and its keys at {shape[3]} "
+                            f"({READER_SHAPE})"
+                            for step in steps
+                        ],
+                        census_problems("x.yaml", text, parsed),
+                    )
+                else:
+                    with self.assertRaises(ValueError):
+                        parsed_steps(path)
+
+    def test_a_line_off_the_shape_is_refused_by_line(self) -> None:
+        # A line inside `jobs:` at none of the derived indents and not past the key above it is named, never skipped.
+        at_step = "a job at 2, a job key at 4, a step's dash at 6, a step key at 8"
+        no_dash = "a job at 2, a job key at 4, a step's dash at or past 4"
+        for case, step, expected, yaml_raises, reader_raises in (
+            (
+                "between the keys and the dash",
+                "      - run: echo a\n     odd: 1\n",
+                [(8, "odd: 1", 5, at_step)],
+                True,
+                False,
+            ),
+            (
+                "between the dash and the keys",
+                "      - run: echo a\n       odd: 1\n",
+                [(8, "odd: 1", 7, at_step)],
+                True,
+                False,
+            ),
+            ("before the job's keys", "      - run: echo a\n   odd: 1\n", [(8, "odd: 1", 3, at_step)], True, False),
+            (
+                "a dash off the list's indent",
+                "      - run: echo a\n     - run: echo b\n",
+                [(8, "- run: echo b", 5, at_step)],
+                True,
+                False,
+            ),
+            ("under steps:, no dash", "        name: no dash\n", [(7, "name: no dash", 8, no_dash)], False, True),
+            (
+                "a bare dash",
+                "      -\n        run: echo a\n",
+                [(7, "-", 6, no_dash), (8, "run: echo a", 8, no_dash)],
+                False,
+                True,
+            ),
+            (
+                "a body line after a comment ended the block",
+                "      - run: |\n          echo a\n      # c\n          echo b\n",
+                [(10, "echo b", 10, at_step)],
+                True,
+                False,
+            ),
+        ):
+            with self.subTest(case=case):
+                text = self.BASE + step
+                refused = [
+                    (number, f"{line} (indented {indent}, where the shape has {levels})")
+                    for number, line, indent, levels in expected
+                ]
+                self.assertEqual(refused, census(text).refused)
+                path = self.written(text)
+                if reader_raises:  # the reader is loud there on its own; the census refuses the same lines
+                    with self.assertRaises(ValueError):
+                        parsed_steps(path)
+                else:
+                    problems = census_problems("x.yaml", text, parsed_steps(path))
+                    self.assertEqual([f"x.yaml:{number}: {why}" for number, why in refused], problems[: len(refused)])
+                if yaml_raises:
+                    try:
+                        import yaml
+                    except ImportError:
+                        continue
+                    with self.assertRaises(yaml.YAMLError):
+                        yaml.safe_load(text)
 
 
 if __name__ == "__main__":

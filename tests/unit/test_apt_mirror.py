@@ -156,6 +156,32 @@ RUN_COMMENT = "a comment after a one-line run:, which the reader returns inside 
 # other top-level key is its value. No line of the file is unread.
 TOP_KEYS = frozenset("name run-name on permissions env defaults concurrency jobs".split())
 TOP_STOP = "both readers stop at the first unindented line"
+# Round 7 (audit of 8c1d334a): the census split the text at LF alone and took Python's notion of a blank, while
+# PyYAML (YAML 1.1) also breaks a line at U+0085, U+2028 and U+2029, so a comment line that went on after one of
+# them held a second job and its apt step that the census and the reader read as comment text. Before any line is
+# read, every character of the file is held to the printable set YAML 1.2 (5.1) gives a document, less the three
+# YAML 1.1 line breaks and the byte order mark: a tab, LF and the printable characters (U+0020 to U+007E, U+00A0 to
+# U+D7FF, U+E000 to U+FFFD and the supplementary planes). Every other character is refused by line and column with
+# its class named (REFUSED_CHARACTERS, a closed table; a byte that is not UTF-8 arrives as the lone surrogate
+# `surrogateescape` gives it), and a file with a refused character has no lines: nothing after the scan reads it.
+# The lexer's blank is YAML's (6.1: a space or a tab), never Python's, so no printable character is stripped.
+WHITE = " \t"
+REFUSED_CHARACTERS = {
+    "a carriage return": "\r",
+    "a C0 control character": "\x00-\x08\x0b\x0c\x0e-\x1f",
+    "a delete character": "\x7f",
+    "a next line, a line break to a YAML 1.1 reader": "\x85",
+    "a C1 control character": "\x80-\x84\x86-\x9f",
+    "a line separator, a line break to a YAML 1.1 reader": "\u2028",
+    "a paragraph separator, a line break to a YAML 1.1 reader": "\u2029",
+    "a byte that is not UTF-8": "\udc80-\udcff",
+    "a surrogate code point": "\ud800-\udc7f\udd00-\udfff",
+    "a byte order mark": "\ufeff",
+    "a noncharacter": "\ufffe\uffff",
+}
+REFUSED_CHARACTER = re.compile(f"[{''.join(REFUSED_CHARACTERS.values())}]")
+CHARACTER_CLASS = {name: re.compile(f"[{body}]") for name, body in REFUSED_CHARACTERS.items()}
+CHARACTER_SET = "the file is held to a tab, LF and the printable characters before any line is read"
 
 
 def step_text(step: dict) -> str:
@@ -199,7 +225,7 @@ def apt_violations(relative: str, text: str, exempt: dict[tuple[str, str], str] 
     """The lines of one workflow that name apt outside the bound form, as `file:line: text (why)`."""
     exempt = APT_EXEMPT if exempt is None else exempt
     bad = []
-    for number, raw in enumerate(text.splitlines(), 1):
+    for number, raw in enumerate(text.split("\n"), 1):
         line = raw.strip()
         calls = len(APT_CALL.findall(line))
         if not calls or (relative, line) in exempt:
@@ -251,6 +277,33 @@ class Lexed(NamedTuple):
     fault: str | None
 
 
+def workflow_text(path: Path) -> str:
+    """A workflow's text as the census reads it: UTF-8, with a byte that is not UTF-8 kept as the lone surrogate
+    `surrogateescape` gives it (U+DC80 to U+DCFF), so the character scan refuses it by line and column where a
+    strict decoder would raise with neither."""
+    return path.read_bytes().decode("utf-8", "surrogateescape")
+
+
+def character_class(char: str) -> str:
+    """The REFUSED_CHARACTERS class of a refused character, with its code point (a byte that is not UTF-8: the byte)."""
+    name = next(name for name, pattern in CHARACTER_CLASS.items() if pattern.fullmatch(char))
+    if name == "a byte that is not UTF-8":
+        return f"{name} (0x{ord(char) - 0xDC00:02X})"
+    return f"{name} (U+{ord(char):04X})"
+
+
+def refused_characters(text: str) -> list[tuple[int, str]]:
+    """Every character of `text` outside the census's character set, in file order, as `(line, why)` with the
+    column named; the line is counted at LF alone and both count from 1."""
+    faults = []
+    for match in REFUSED_CHARACTER.finditer(text):
+        start = match.start()
+        line = text.count("\n", 0, start) + 1
+        column = start - text.rfind("\n", 0, start)
+        faults.append((line, f"{character_class(match.group())} at column {column}; {CHARACTER_SET}"))
+    return faults
+
+
 def node_end(header: str) -> int | None:
     """The index after the close of the quoted scalar or flow collection that opens `header`, or None when the line
     ends first. A `"` scalar escapes with a backslash and a `'` scalar doubles its quote; inside a flow collection a
@@ -299,17 +352,17 @@ def split_header(header: str) -> tuple[str, str]:
     comment = COMMENT.search(header, start)
     if comment is None:
         return header, ""
-    return header[: comment.start()].rstrip(), header[comment.start() :].strip()
+    return header[: comment.start()].rstrip(WHITE), header[comment.start() :].strip(WHITE)
 
 
 def lex(line: str) -> Lexed:
-    text = line.strip()
+    text = line.strip(WHITE)
     indent = len(line) - len(line.lstrip(" "))
-    fault = "a tab in the indentation" if text and "\t" in line[: len(line) - len(line.lstrip())] else None
+    fault = "a tab in the indentation" if text and "\t" in line[: len(line) - len(line.lstrip(WHITE))] else None
     dash = text.startswith("- ")
     entry = text[2:].lstrip(" ") if dash else text
     match = KEY_LINE.fullmatch(entry)
-    header = (match.group(2) or "").strip() if match else ""
+    header = (match.group(2) or "").strip(WHITE) if match else ""
     value, note = split_header(header)
     return Lexed(indent, dash, match.group(1) if match else None, value, note, header, text, fault)
 
@@ -326,7 +379,7 @@ def value_form(value: str) -> str:
         end = node_end(value)
         if end is None:
             return f"{form} that does not close on its line"
-        if value[end:].strip():
+        if value[end:].strip(WHITE):
             return f"text after {form}"
         return form
     if first in "-?:" and (len(value) == 1 or value[1] in " \t"):
@@ -363,7 +416,12 @@ def census(text: str) -> Census:
     mapping; a `run:` there is not a key) and is refused by line otherwise. Every line the shape places is lexed and
     held to the grammar (KEY_LINE, JOB_KEYS, STEP_KEYS, the value forms) or refused by line with its construct named.
     A `run:` key's body is every following line indented past the step's keys, blank lines included, up to the first
-    that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
+    that is not; so the body is collected in any scalar form, whatever the reader makes of the form. Before any of
+    this, every character is held to the census's character set: a file with one outside it (REFUSED_CHARACTERS)
+    is refused by line and column, and no line of it is read."""
+    faults = refused_characters(text)
+    if faults:
+        return Census({}, faults)
     steps_by_job: dict[str, list[dict]] = {}
     refused: list[tuple[int, str]] = []
     steps: list[dict] = []
@@ -374,8 +432,6 @@ def census(text: str) -> Census:
     in_steps = inside = False  # `inside`: between the `jobs:` line and the next line at the margin
     for number, line in enumerate(text.split("\n"), 1):
         lexed = lex(line)
-        if "\r" in line:
-            refused.append((number, f"{lexed.text} (a carriage return; the workflows are LF-only)"))
         if inside and value_at is not None and (not lexed.text or lexed.indent > value_at):
             if body is not None:
                 body.append(line)
@@ -477,7 +533,7 @@ def census(text: str) -> Census:
         refused.append((1, f"no `jobs:` line in the file ({JOBS_LINE})"))
     for steps in steps_by_job.values():
         for run in (run for step in steps for run in step["runs"]):
-            while run["body"] and not run["body"][-1].strip():
+            while run["body"] and not run["body"][-1].strip(WHITE):
                 run["body"].pop()  # the blank lines after a body belong to no key
     return Census(steps_by_job, refused)
 
@@ -508,6 +564,8 @@ def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list
     form is refused, since the reader returns nothing for it or returns it undecoded."""
     found = census(text)
     problems = [f"{name}:{number}: {why}" for number, why in found.refused]
+    if refused_characters(text):
+        return problems  # the file has no lines, so the reader is held to nothing of it
     by_job = found.steps
     if list(by_job) != list(parsed):
         problems.append(f"{name}: the text holds jobs {list(by_job)}, the reader returned {list(parsed)}")
@@ -606,11 +664,14 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
     others). Steps are keyed by (workflow, job, index), the name carried for the message, so no step replaces
     another; a name used twice in one job is refused on its own, since STEP_REST_BUDGET refers to steps by name.
     Then every apt step has a budget row and the timeout-minutes the formula gives, and every budget row has its
-    step."""
-    problems, found = [], {}
+    step. A file with a refused character has no lines: the census names the characters and nothing else of the
+    file is read, and the budget rows are held against the steps of the set only once every file in it was read."""
+    problems, found, unread = [], {}, []
     for workflow, text in texts.items():
         by_job = parsed.get(workflow, {})
         problems.extend(census_problems(workflow, text, by_job))
+        if refused_characters(text):
+            unread.append(workflow)
         for job, steps in text_steps(text).items():
             read = iter(by_job.get(job, []))
             seen: dict[str, int] = {}
@@ -628,7 +689,10 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
                     bounds = [int(n) for n in APT_BOUND.findall(commands)]
                     found[where] = (name, sum(n + KILL_AFTER for n in bounds), got)
     names = {name for name, _, _ in found.values()}
-    problems.extend(f"budget row {name!r} has no step that runs apt" for name in STEP_REST_BUDGET if name not in names)
+    if not unread:
+        problems.extend(
+            f"budget row {name!r} has no step that runs apt" for name in STEP_REST_BUDGET if name not in names
+        )
     for where, (name, apt_seconds, step) in found.items():
         if name not in STEP_REST_BUDGET:
             problems.append(f"{where} runs apt with no STEP_REST_BUDGET row")
@@ -642,12 +706,15 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
 
 
 def workflow_problems(paths: list[Path]) -> list[str]:
-    """The census and step problems of whole workflow files, as the tests see the real ones."""
-    return apt_step_problems({p.name: p.read_text() for p in paths}, {p.name: parsed_steps(p) for p in paths})
+    """The census and step problems of whole workflow files, as the tests see the real ones. The reader is asked
+    about a file only once the character scan passed it: a file with no lines has nothing it could read."""
+    texts = {path.name: workflow_text(path) for path in paths}
+    parsed = {path.name: parsed_steps(path) for path in paths if not refused_characters(texts[path.name])}
+    return apt_step_problems(texts, parsed)
 
 
 def workflow_texts() -> dict[str, str]:
-    return {path.name: path.read_text() for path in sorted(WORKFLOWS.glob("*.y*ml"))}
+    return {path.name: workflow_text(path) for path in sorted(WORKFLOWS.glob("*.y*ml"))}
 
 
 class MirrorScriptTest(unittest.TestCase):
@@ -1008,7 +1075,8 @@ class ReaderCensusTest(unittest.TestCase):
     only the reader's indentation, so a step at five and seven spaces passed both. Audit of f4486ead: the census
     compared the literal `steps:`, so `steps: # comment` hid a list at five and seven from both. Audit of 56e41f9b:
     the grammar began at `jobs:`, so a quoted top-level `name` that ran on across a `jobs:` line hid the real
-    `"jobs":` mapping from both."""
+    `"jobs":` mapping from both. Audit of 8c1d334a: the census split the text at LF alone, so a comment line that
+    went on after U+0085, U+2028 or U+2029 (line breaks to PyYAML) hid a whole job from both."""
 
     FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
@@ -1022,7 +1090,7 @@ class ReaderCensusTest(unittest.TestCase):
 
     def written(self, text: str, name: str = "x.yaml") -> Path:
         path = self.temp / name
-        path.write_text(text)
+        path.write_bytes(text.encode("utf-8", "surrogateescape"))  # a bad byte in a fixture, as its surrogate
         return path
 
     def added_step(self, form: str, command: str) -> tuple[Path, int, int]:
@@ -1041,7 +1109,7 @@ class ReaderCensusTest(unittest.TestCase):
         runs = 0
         for path in sorted(WORKFLOWS.glob("*.y*ml")):
             with self.subTest(workflow=path.name):
-                text = path.read_text()
+                text = workflow_text(path)
                 self.assertEqual([], census_problems(path.name, text, parsed_steps(path)))
                 runs += sum(len(step["runs"]) for steps in text_steps(text).values() for step in steps)
         # test.yaml alone writes 14 `run: |` blocks and 4 one-line scalars; a census that found fewer saw nothing.
@@ -1533,6 +1601,149 @@ class ReaderCensusTest(unittest.TestCase):
         self.assertEqual('"a #b"', jobs(path)["test"]["steps"][0]["name"])
         self.agrees_with_yaml(text)
 
+    def hidden_job(self, separator: str, command: str) -> tuple[Path, int, list[int]]:
+        """The audit's test.yaml: a job `added` appended after a comment, the whole job on one LF line with its lines
+        joined by `separator` (a line break to PyYAML; to the census and the reader, text inside the comment), its
+        one step a `run: |` holding `command` at the reader's shape. Returns (path, that line, the columns of the
+        separators on it)."""
+        text = (WORKFLOWS / "test.yaml").read_text()
+        self.assertTrue(text.endswith("\n"))
+        pieces = (
+            "  # a note",
+            "  added:",
+            "    runs-on: ubuntu-24.04",
+            "    steps:",
+            "      - name: Added",
+            "        run: |",
+            f"          {command}",
+        )
+        columns, column = [], 0
+        for piece in pieces[:-1]:
+            column += len(piece) + 1
+            columns.append(column)
+        return self.written(text + separator.join(pieces) + "\n", "test.yaml"), text.count("\n") + 1, columns
+
+    def test_the_auditors_job_after_a_yaml_1_1_line_break_is_refused_by_line_and_column(self) -> None:
+        # Audit of 8c1d334a: the census split the text at LF alone, as the reader does, while PyYAML (YAML 1.1) also
+        # breaks a line at U+0085, U+2028 and U+2029. A comment line that went on after one of them held a whole
+        # job, read as comment text by both readers and as the job `added` by PyYAML, so its bounded apt step passed
+        # every check without timeout-minutes or a budget row. Each separator is now refused by line and column
+        # before any line is read; the same job on its own lines is read by both and named by the step check.
+        breaks = (("\x85", "a next line"), ("\u2028", "a line separator"), ("\u2029", "a paragraph separator"))
+        for separator, name in breaks:
+            for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
+                with self.subTest(separator=f"U+{ord(separator):04X}", command=command.split()[0]):
+                    path, line, columns = self.hidden_job(separator, command)
+                    text = workflow_text(path)
+                    why = f"{name}, a line break to a YAML 1.1 reader (U+{ord(separator):04X})"
+                    expected = [(line, f"{why} at column {column}; {CHARACTER_SET}") for column in columns]
+                    found = census(text)
+                    self.assertEqual((expected, {}), (found.refused, found.steps))
+                    self.assertEqual(["test"], list(jobs(path)))  # the hole: the reader reads the line as a comment
+                    self.assertEqual(
+                        [f"test.yaml:{line}: {message}" for _, message in expected], workflow_problems([path])
+                    )
+                    violations = apt_violations("test.yaml", text)
+                    if command.startswith("sudo"):
+                        self.assertEqual(1, len(violations), violations)
+                        self.assertTrue(violations[0].startswith(f"test.yaml:{line}: "), violations[0])
+                        self.assertTrue(violations[0].endswith("(1 apt call(s), 0 in the bound form)"), violations[0])
+                    else:
+                        self.assertEqual([], violations)
+                    self.yaml_reads_the_added_job(text, command, quoted_name=False)
+        # On its own lines the job is read by both readers, and the step check names its apt step.
+        for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
+            with self.subTest(separator="LF", command=command.split()[0]):
+                path, line, _ = self.hidden_job("\n", command)
+                text = workflow_text(path)
+                (step,) = text_steps(text)["added"]
+                self.assertEqual(
+                    (line + 4, [command]), (step["line"], [body.strip() for body in step["runs"][0]["body"]])
+                )
+                (read,) = jobs(path)["added"]["steps"]
+                self.assertEqual(("Added", "|", command), (read["name"], read["run"], read["script"].strip()))
+                expected = (
+                    []
+                    if command.startswith("sleep")
+                    else [f"test.yaml:{line + 4}: added: step 0 'Added' runs apt with no STEP_REST_BUDGET row"]
+                )
+                self.assertEqual(expected, workflow_problems([path]))
+                self.agrees_with_yaml(text)
+
+    # Round 7: one character of each refused class (REFUSED_CHARACTERS), spelled as the census names it; the last two
+    # are bytes that are not UTF-8 as `surrogateescape` decodes them, the first of those a UTF-8 sequence cut short.
+    CHARACTERS = (
+        ("\x00", ["a C0 control character (U+0000)"]),
+        ("\x07", ["a C0 control character (U+0007)"]),
+        ("\x0b", ["a C0 control character (U+000B)"]),
+        ("\x0c", ["a C0 control character (U+000C)"]),
+        ("\r", ["a carriage return (U+000D)"]),
+        ("\x1b", ["a C0 control character (U+001B)"]),
+        ("\x1f", ["a C0 control character (U+001F)"]),
+        ("\x7f", ["a delete character (U+007F)"]),
+        ("\x80", ["a C1 control character (U+0080)"]),
+        ("\x85", ["a next line, a line break to a YAML 1.1 reader (U+0085)"]),
+        ("\x9f", ["a C1 control character (U+009F)"]),
+        ("\u2028", ["a line separator, a line break to a YAML 1.1 reader (U+2028)"]),
+        ("\u2029", ["a paragraph separator, a line break to a YAML 1.1 reader (U+2029)"]),
+        ("\ufeff", ["a byte order mark (U+FEFF)"]),
+        ("\ufffe", ["a noncharacter (U+FFFE)"]),
+        ("\uffff", ["a noncharacter (U+FFFF)"]),
+        ("\udce2\udc80", ["a byte that is not UTF-8 (0xE2)", "a byte that is not UTF-8 (0x80)"]),
+        ("\udcff", ["a byte that is not UTF-8 (0xFF)"]),
+    )
+    # Characters the set keeps: a tab in content, a no-break space, a box-drawing character (two real workflows hold
+    # them in comments), a supplementary-plane character and the replacement character.
+    KEPT = ("\t", "\xa0", "\u2502", "\U0001f600", "\ufffd")
+
+    def offsets(self, text: str) -> dict[str, int]:
+        """Seven places in test.yaml to plant a character: by name, the offset at which it goes in."""
+        comment = re.search(r"^ *# .*$", text, re.MULTILINE)
+        body = re.search(r"^ {10}(?!.*apt)\S.*$", text, re.MULTILINE)  # a run body line that holds no apt call
+        self.assertTrue(comment and body)
+        return {
+            "the first character of the file": 0,
+            "the end of the name: line": text.index("\n"),
+            "after the jobs: key": text.index("\njobs:\n") + 6,
+            "the end of a comment": comment.end(),
+            "a step's indentation": text.index(self.MARKER) + 3,
+            "the end of a run body line": body.end(),
+            "after the last line break": len(text),
+        }
+
+    def test_every_refused_character_is_named_by_line_and_column_wherever_planted(self) -> None:
+        # One character of each class at each of seven places in the real test.yaml: the census refuses the file on
+        # that character's line and column and reads no step, the step check names that and nothing else (the reader
+        # is not asked about a file with no lines), and the line rule is unchanged (no place holds an apt call). The
+        # kept characters pass the scan, and the census and PyYAML read the file as before.
+        text = (WORKFLOWS / "test.yaml").read_text()
+        self.assertEqual([], refused_characters(text))
+        for char, names in self.CHARACTERS:
+            for place, offset in self.offsets(text).items():
+                with self.subTest(char=f"U+{ord(char[0]):04X}", place=place):
+                    planted = text[:offset] + char + text[offset:]
+                    line = text.count("\n", 0, offset) + 1
+                    column = offset - text.rfind("\n", 0, offset)
+                    expected = [
+                        (line, f"{name} at column {column + index}; {CHARACTER_SET}")
+                        for index, name in enumerate(names)
+                    ]
+                    path = self.written(planted, "test.yaml")
+                    self.assertEqual(planted, workflow_text(path))  # the bytes round-trip, a bad byte as its surrogate
+                    found = census(planted)
+                    self.assertEqual((expected, {}), (found.refused, found.steps))
+                    self.assertEqual(
+                        [f"test.yaml:{number}: {why}" for number, why in expected], workflow_problems([path])
+                    )
+                    self.assertEqual([], apt_violations("test.yaml", planted))
+        offset = self.offsets(text)["the end of a comment"]
+        for char in self.KEPT:
+            with self.subTest(char=f"U+{ord(char):04X}"):
+                planted = text[:offset] + char + text[offset:]
+                self.assertEqual([], refused_characters(planted))
+                self.assertEqual([], workflow_problems([self.written(planted, "test.yaml")]))
+                self.agrees_with_yaml(planted)
+
     def test_every_construct_outside_the_grammar_is_refused_by_line(self) -> None:
         # The closed grammar, construct by construct: each row is a workflow holding one construct outside it, the
         # refusals the census must name (line, text and why) and what PyYAML makes of the document where it is
@@ -1550,6 +1761,13 @@ class ReaderCensusTest(unittest.TestCase):
         complex_value = f"{{test: {{runs-on: ubuntu-24.04, steps: [{{run: {update}}}]}}}}"
         step_keys, job_keys = ", ".join(sorted(STEP_KEYS)), ", ".join(sorted(JOB_KEYS))
         top_keys = ", ".join(sorted(TOP_KEYS))
+        nel = "a next line, a line break to a YAML 1.1 reader (U+0085)"
+        ls = "a line separator, a line break to a YAML 1.1 reader (U+2028)"
+        ps = "a paragraph separator, a line break to a YAML 1.1 reader (U+2029)"
+
+        def at(line: int, column: int, name: str) -> tuple[int, str]:
+            return (line, f"{name} at column {column}; {CHARACTER_SET}")
+
         rows = (
             # the value of steps:
             (
@@ -1781,7 +1999,7 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "a carriage return",
                 base + f"      - run: {update}\r\n",
-                [(7, f"- run: {update} (a carriage return; the workflows are LF-only)")],
+                [at(7, 33, "a carriage return (U+000D)")],
                 "reads",
             ),
             (
@@ -1900,7 +2118,7 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "a carriage return at the top",
                 f"name: x\r\non: push\njobs:\n{test_job}",
-                [(1, "name: x (a carriage return; the workflows are LF-only)")],
+                [at(1, 8, "a carriage return (U+000D)")],
                 "reads",
             ),
             (
@@ -1927,6 +2145,87 @@ class ReaderCensusTest(unittest.TestCase):
                 job + "    env: {A: 1,\n      B: 2}\n    steps:\n      - run: echo a\n",
                 [(6, f"env: {{A: 1, (env: holds {unclosed_flow}; {READ_VALUES})")],
                 "reads",
+            ),
+            # the characters (round 7)
+            (
+                "a next line after a comment",
+                base + f"      - run: echo a\n  # c\x85  added:\x85    steps:\x85      - run: {update}\n",
+                [at(8, 6, nel), at(8, 15, nel), at(8, 26, nel)],
+                "reads",
+            ),
+            (
+                "a line separator after a comment",
+                base + f"      - run: echo a\n  # c\u2028  added:\u2028    steps:\u2028      - run: {update}\n",
+                [at(8, 6, ls), at(8, 15, ls), at(8, 26, ls)],
+                "reads",
+            ),
+            (
+                "a paragraph separator after a comment",
+                base + f"      - run: echo a\n  # c\u2029  added:\u2029    steps:\u2029      - run: {update}\n",
+                [at(8, 6, ps), at(8, 15, ps), at(8, 26, ps)],
+                "reads",
+            ),
+            (
+                "a line separator in a run body",
+                base + f"      - run: |\n          echo a\u2028  added:\n    steps:\n      - run: {update}\n",
+                [at(8, 17, ls)],
+                "reads",
+            ),
+            ("a NUL", base + "      - run: echo a\x00\n", [at(7, 20, "a C0 control character (U+0000)")], "raises"),
+            (
+                "an escape in a comment",
+                base + "      - run: echo a # \x1b\n",
+                [at(7, 23, "a C0 control character (U+001B)")],
+                "raises",
+            ),
+            (
+                "a form feed in the indentation",
+                base + "     \x0c- run: echo a\n",
+                [at(7, 6, "a C0 control character (U+000C)")],
+                "raises",
+            ),
+            (
+                "a delete character",
+                base + "      - run: echo a\x7f\n",
+                [at(7, 20, "a delete character (U+007F)")],
+                "raises",
+            ),
+            (
+                "a C1 control character",
+                base + "      - run: echo a\x9f\n",
+                [at(7, 20, "a C1 control character (U+009F)")],
+                "raises",
+            ),
+            (
+                "a byte order mark at the start",
+                "\ufeff" + base + "      - run: echo a\n",
+                [at(1, 1, "a byte order mark (U+FEFF)")],
+                "reads",
+            ),
+            (
+                "a byte order mark in a comment",
+                base + "      - run: echo a # \ufeff\n",
+                [at(7, 23, "a byte order mark (U+FEFF)")],
+                "reads",
+            ),
+            ("a noncharacter", base + "      - run: echo a\ufffe\n", [at(7, 20, "a noncharacter (U+FFFE)")], "raises"),
+            (
+                "a byte that is not UTF-8",
+                base + "      - run: echo a\udcff\n",
+                [at(7, 20, "a byte that is not UTF-8 (0xFF)")],
+                "raises",
+            ),
+            (
+                "a no-break space before a job name",
+                base + f"      - run: echo a\n  \xa0added:\n    steps:\n      - run: {update}\n",
+                [(8, f"\xa0added: ({not_key})")],
+                "reads",
+            ),
+            (
+                "a no-break space after the jobs colon",
+                f"name: x\non: push\njobs:\xa0\n{test_job}",
+                [(3, f"jobs:\xa0 ({not_key})"), no_jobs],
+                "raises",
             ),
         )
         self.assertEqual(len(rows), len({case for case, _, _, _ in rows}))

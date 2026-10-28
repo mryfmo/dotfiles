@@ -159,6 +159,15 @@ jobs:
           before_checksum="$(checksum "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
           before_mode="$(mode "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
 
+          # Ubuntu 24.04's AppArmor denies an unconfined program a new user namespace (actions/runner-images#10443),
+          # which would leave setup.sh's externals cache check unguarded on the two Linux rows; the runner is disposable,
+          # so the restriction is lifted for this job. An image without the sysctl says so here, and the check then
+          # says it ran unguarded.
+          if [ "${RUNNER_OS}" = Linux ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+              || echo "kernel.apparmor_restrict_unprivileged_userns could not be lifted; the externals cache check runs unguarded"
+          fi
+
           # setup.sh's output is kept so this row can require the externals cache check's verdict (U111): the line
           # names the chezmoi version and the network-denial guard it ran under, or that it ran unguarded. pipefail
           # keeps a failed setup.sh failing through the tee.

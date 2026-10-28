@@ -1022,6 +1022,8 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
         self.assertIn(f"printf '{verdict} (%s)\\n'", LIB.read_text())
         setup = step.index('bash "${GITHUB_WORKSPACE}/setup.sh" | tee "${RUNNER_TEMP}/setup.log"')
         self.assertLess(step.index("set -euo pipefail"), setup)
+        # The Linux rows lift Ubuntu 24.04's user-namespace restriction first, so their check runs under unshare.
+        self.assertLess(step.index("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"), setup)
         self.assertLess(setup, step.index(f"grep -F '{verdict}' \"${{RUNNER_TEMP}}/setup.log\""))
 
 

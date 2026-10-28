@@ -8,7 +8,9 @@ in a scratch repository, fails on an SC2312 finding or a masked dirname in eithe
 no file, no bash script, or (the installer group) a file that is not a bash script.
 
 The target first refuses a shellcheck or shfmt that is not the version home/dot_mise/config.toml pins (U97);
-tests/unit/test_pinned_lint_tools.py checks that guard and every consumer of the pins.
+tests/unit/test_pinned_lint_tools.py checks that guard and every consumer of the pins. masked-dirname-check runs
+scripts/ci/shfmt_json_contract.py before its walk (U105), so the scratch repository also holds that module and the
+fixtures under tests/fixtures/shfmt-json it parses; tests/unit/test_shfmt_json_contract.py checks the contract itself.
 """
 
 from __future__ import annotations
@@ -47,7 +49,8 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAM
 MASKED_RETURN = '#!/usr/bin/env bash\nprintf "%s\\n" "$(false)"\n'
 # The U31 shape SC2312 exempts; only masked-dirname-check.sh reports it.
 MASKED_DIRNAME = '#!/usr/bin/env bash\ndir=$(cd "$(dirname "$0")" && pwd -P) || exit 1\necho "${dir}"\n'
-CLEAN = '#!/usr/bin/env bash\nprintf "%s\\n" "${1:-}"\n'
+# One substitution whose status is read: a run that sees none is refused (U105), and the default checks pass it.
+CLEAN = '#!/usr/bin/env bash\nhere=$(pwd -P) || exit 1\nprintf "%s\\n" "${1:-${here}}"\n'
 
 
 def run_steps(workflow: str) -> list[tuple[str, str]]:
@@ -103,11 +106,13 @@ class ShellCheckStepTest(unittest.TestCase):
     "needs shellcheck and shfmt off the CI runner",
 )
 class ShellCheckTargetBehaviourTest(unittest.TestCase):
-    """The target runs in a scratch repository holding the Makefile's two inputs and the files under test."""
+    """The target runs in a scratch repository holding the Makefile's inputs, the contract's, and the files it lints."""
 
     def setUp(self):
         self.repo = Path(tempfile.mkdtemp(prefix="shellcheck-target-test-"))
         (self.repo / "scripts/ci").mkdir(parents=True)
+        shutil.copy2(ROOT / "scripts/ci/shfmt_json_contract.py", self.repo / "scripts/ci/shfmt_json_contract.py")
+        shutil.copytree(ROOT / "tests/fixtures/shfmt-json", self.repo / "tests/fixtures/shfmt-json")
         shutil.copy2(ROOT / "scripts/ci/masked-dirname-check.sh", self.repo / "scripts/ci/masked-dirname-check.sh")
         shutil.copy2(GUARD, self.repo / "scripts/ci/pinned-tool-version.sh")
         (self.repo / "home/dot_mise").mkdir(parents=True)

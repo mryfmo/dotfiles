@@ -511,7 +511,7 @@ body=${scratch}/body.md
 # refused), so every records sync gets an orchestrator verdict. Only the program name is interpolated.
 # shellcheck disable=SC2016 # the backticks are Markdown code spans
 contract=(
-    "The changed paths are exactly the files of \`.orchestration/orchestrate/${program}/\` on disk, tracked or untracked and not ignored, that differ from origin/main by content: added, changed, or deleted when origin/main holds a path the store lacks. Its \`redact-words.txt\` is never copied, deleted or published."
+    "The changed paths are the store's files (\`.orchestration/orchestrate/${program}/\`, tracked or untracked and not git-ignored, \`redact-words.txt\` excluded) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set."
     'No path lies outside that directory.'
     'Every copy was masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program'"'"'s `redact-words.txt` when present.'
     'The commit was built in a repository with no user, system or checkout configuration, and pushed over https with no user configuration.'

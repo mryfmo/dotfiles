@@ -1215,7 +1215,7 @@ class RecordsSyncTest(PrLeverTestCase):
         for bullet, phrase in zip(
             bullets,
             (
-                "exactly the files of `.orchestration/orchestrate/prog/` on disk, tracked or untracked and not ignored, that differ from origin/main by content: added, changed, or deleted when origin/main holds a path the store lacks. Its `redact-words.txt` is never copied, deleted or published",
+                "the store's files (`.orchestration/orchestrate/prog/`, tracked or untracked and not git-ignored, `redact-words.txt` excluded) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set",
                 "No path lies outside that directory",
                 "masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program's `redact-words.txt` when present",
                 "no user, system or checkout configuration, and pushed over https with no user configuration",
@@ -1223,6 +1223,48 @@ class RecordsSyncTest(PrLeverTestCase):
             ),
         ):
             self.assertIn(phrase, bullet)
+
+    def test_a_mode_only_change_is_synced_with_the_new_mode(self):
+        """U108 round 3 (audit of acd87c5a): the comparison is of `<mode> blob <oid>`, so a store file whose bytes equal
+        origin/main but whose executable bit differs is one changed path, published with the new mode."""
+        self.github()
+        units = self.records / "units.tsv"
+        units.chmod(units.stat().st_mode | 0o111)
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, "synced branch=records/sync-7 files=1 pr=https://github.com/acme/widgets/pull/600\n"
+        )
+        path = ".orchestration/orchestrate/prog/units.tsv"
+        changed = self.git("diff", "--name-only", "main", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertEqual(changed, [path])
+        entry = self.git("ls-tree", "records/sync-7", "--", path, cwd=self.origin)
+        self.assertTrue(entry.startswith("100755 blob "), entry)
+        self.assertEqual(
+            self.git("show", f"records/sync-7:{path}", cwd=self.origin),
+            self.git("show", f"main:{path}", cwd=self.origin),
+            "the bytes are main's",
+        )
+
+    def test_a_copy_the_masker_changes_is_synced_though_its_source_equals_origin_main(self):
+        """U108 round 3 (audit of acd87c5a): the comparison is of the masked copy, so a store file whose bytes equal
+        origin/main is one changed path when masking changes the copy; origin/main keeps the token, the sync does not."""
+        self.github()
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        (self.records / "notes.md").write_text(f"token {planted}\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "a token on main")
+        self.git("push", "-q", "origin", "main")
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, "synced branch=records/sync-7 files=1 pr=https://github.com/acme/widgets/pull/600\n"
+        )
+        path = ".orchestration/orchestrate/prog/notes.md"
+        changed = self.git("diff", "--name-only", "main", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertEqual(changed, [path])
+        self.assertIn(planted, self.git("show", f"main:{path}", cwd=self.origin), "the source equals origin/main")
+        self.assertNotIn(planted, self.git("show", f"records/sync-7:{path}", cwd=self.origin), "the copy is masked")
 
     def test_refusals_create_and_push_nothing(self):
         self.github()

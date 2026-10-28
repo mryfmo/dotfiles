@@ -14,6 +14,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -69,9 +70,20 @@ APT_BOUND = re.compile(
 )
 KILL_AFTER = 10
 MIN_APT_BOUND = 120
-# What would reopen a bounded call if it stood on the same line outside the form: another option or configuration file
-# (`-o`, `-c`, their long spellings, any Acquire:: key in any case, APT_CONFIG) or a second timeout.
-APT_REOPENS = re.compile(r"(?i)acquire::|apt_config|\btimeout\b|(?<![\w-])-[oc](?![\w-])|--option\b|--config-file\b")
+# A shell word left on the line once the form is removed reopens the call when it starts with one of these, whether
+# the value is attached (`-cfoo.conf`), separate, after `=` or quoted (apt reads them all) ...
+APT_REOPEN_PREFIXES = {
+    "-o": "an option",
+    "-c": "a configuration file",
+    "--option": "an option",
+    "--config-file": "a configuration file",
+}
+# ... or holds one of these anywhere, in any case (`APT_CONFIG=` at the front, a second `timeout` after `;`).
+APT_REOPEN_PARTS = {
+    "acquire::": "an Acquire key",
+    "apt_config": "the APT_CONFIG variable",
+    "timeout": "a second timeout",
+}
 # (workflow file name, the whole stripped line, exactly) -> why the line may name apt without the form. Empty on this
 # head: the three workflows that bootstrap through setup.sh run apt only inside the installers, whose downloads U99
 # bounded, and no workflow comment names apt-get. A row must still match a line (test_no_apt_exemption_is_stale).
@@ -99,6 +111,27 @@ def default_bound() -> int:
     return int(re.search(r"^DEFAULT_BOUND = ([0-9]+)$", WRAPPER.read_text(), re.MULTILINE).group(1))
 
 
+def reopening_word(rest: str) -> str | None:
+    """Why the first shell word of `rest` (a line with its bound forms removed) that reopens the call does so, or None.
+
+    Audit of 9058072b: a token regex saw `-o` and `-c` only as separate words, so `-cfoo.conf` and
+    `-oDebug::NoLocking=true` passed. Every word is read whole; a quote that never closes refuses the line, since
+    its words cannot be told apart."""
+    try:
+        words = shlex.split(rest)
+    except ValueError as error:
+        return f"cannot be split into shell words: {error}"
+    for word in words:
+        lower = word.lower()
+        for prefix, why in APT_REOPEN_PREFIXES.items():
+            if lower.startswith(prefix):
+                return f"{word!r} starts with {prefix!r}: {why}"
+        for part, why in APT_REOPEN_PARTS.items():
+            if part in lower:
+                return f"{word!r} holds {part!r}: {why}"
+    return None
+
+
 def apt_violations(relative: str, text: str, exempt: dict[tuple[str, str], str] | None = None) -> list[str]:
     """The lines of one workflow that name apt outside the bound form, as `file:line: text (why)`."""
     exempt = APT_EXEMPT if exempt is None else exempt
@@ -118,9 +151,9 @@ def apt_violations(relative: str, text: str, exempt: dict[tuple[str, str], str] 
             bad.append(f"{where} (a bound under {MIN_APT_BOUND} s: {low})")
         if line.endswith("\\"):
             bad.append(f"{where} (continues onto the next line, where an option could reopen the call)")
-        reopens = APT_REOPENS.search(APT_BOUND.sub(" ", line))
+        reopens = reopening_word(APT_BOUND.sub(" ", line.removesuffix("\\")))
         if reopens:
-            bad.append(f"{where} (carries {reopens.group(0)!r} outside the form)")
+            bad.append(f"{where} (outside the form, {reopens})")
     return bad
 
 
@@ -129,6 +162,61 @@ def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None =
     exempt = APT_EXEMPT if exempt is None else exempt
     lines = {name: {line.strip() for line in text.splitlines()} for name, text in files.items()}
     return [f"{name}: {line}" for name, line in exempt if line not in lines.get(name, set())]
+
+
+def bounded_steps() -> list[dict]:
+    """Three steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
+    form = "timeout --kill-after=10 {} sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
+    return [
+        {
+            "name": "Install tools",
+            "timeout-minutes": "10",
+            "run": f"{form.format(180, 'update')}\n{form.format(180, 'install -y bats curl')}",
+        },
+        {
+            "name": "Run Python unit tests",
+            "timeout-minutes": "29",
+            "run": f"{form.format(150, 'update')}\n{form.format(150, 'install -y jq zsh')}",
+        },
+        {"name": "Setup for Codecov", "timeout-minutes": "5", "run": form.format(150, "install -y jq curl")},
+    ]
+
+
+def apt_step_problems(workflows: dict[str, dict[str, list[dict]]]) -> list[str]:
+    """What would let a stalled apt call outlive its step's name, for `{workflow: {job: steps}}`.
+
+    Steps are keyed by (workflow, job, index), the name carried for the message, so no step replaces another. A
+    name used twice in one job is refused on its own: STEP_REST_BUDGET and the exemption table refer to steps by
+    name. Then every step with a bounded call has a budget row and the timeout-minutes the formula gives, and
+    every budget row has its step."""
+    problems, found = [], {}
+    for workflow, by_job in workflows.items():
+        for job, steps in by_job.items():
+            seen: dict[str, int] = {}
+            for index, step in enumerate(steps):
+                name = step.get("name")
+                if name is not None and name in seen:
+                    problems.append(f"{workflow}: {job}: step {index} {name!r} repeats the name of step {seen[name]}")
+                elif name is not None:
+                    seen[name] = index
+                bounds = [int(n) for n in APT_BOUND.findall(step_text(step))]
+                if bounds:
+                    found[(workflow, job, index)] = (name or f"step {index}", sum(n + KILL_AFTER for n in bounds), step)
+    names = {name for name, _, _ in found.values()}
+    problems.extend(
+        f"budget row {name!r} has no step with a bounded apt call" for name in STEP_REST_BUDGET if name not in names
+    )
+    for (workflow, job, index), (name, apt_seconds, step) in found.items():
+        where = f"{workflow}: {job}: step {index} {name!r}"
+        if name not in STEP_REST_BUDGET:
+            problems.append(f"{where} runs a bounded apt call with no STEP_REST_BUDGET row")
+        elif "timeout-minutes" not in step:
+            problems.append(f"{where} has no timeout-minutes")
+        else:
+            expected = math.ceil((apt_seconds + STEP_REST_BUDGET[name]) / 60) + 1
+            if int(step["timeout-minutes"]) != expected:
+                problems.append(f"{where} has timeout-minutes {step['timeout-minutes']}, the formula gives {expected}")
+    return problems
 
 
 def workflow_texts() -> dict[str, str]:
@@ -363,6 +451,34 @@ class AptBoundRuleTest(unittest.TestCase):
             apt_stale({"x.yaml": "# apt-get runs inside setup.sh now\n"}, table),
         )
 
+    def test_a_reopening_word_fails_attached_separate_after_equals_or_quoted(self) -> None:
+        # Audit of 9058072b: `-cfoo.conf` and `-oDebug::NoLocking=true` passed a regex that saw `-c` and `-o` only
+        # as separate words. Each table entry is shown failing in every spelling apt reads, with its cause named.
+        for prefix, why in APT_REOPEN_PREFIXES.items():
+            value = "Debug::NoLocking=true" if prefix in ("-o", "--option") else "foo.conf"
+            for tail in (
+                f"{prefix}{value}",
+                f"{prefix} {value}",
+                f"{prefix}={value}",
+                f'"{prefix}{value}"',
+                f"'{prefix}' {value}",
+                f"{prefix.upper()}{value}",
+            ):
+                with self.subTest(tail=tail):
+                    bad = apt_violations("x.yaml", f"{self.FORM} install -y jq {tail}\n", {})
+                    self.assertEqual(1, len(bad), bad)
+                    self.assertIn(f"starts with {prefix!r}: {why}", bad[0])
+        for part, why in APT_REOPEN_PARTS.items():
+            for tail in (part, f"{part.upper()}=0", f"x{part}y", f'"{part} 5"', f"'{part}'"):
+                with self.subTest(tail=tail):
+                    bad = apt_violations("x.yaml", f"{self.FORM} install -y jq {tail}\n", {})
+                    self.assertEqual(1, len(bad), bad)
+                    self.assertIn(f"holds {part!r}: {why}", bad[0])
+        with self.subTest(tail="an unclosed quote"):
+            bad = apt_violations("x.yaml", f'{self.FORM} install -y "jq\n', {})
+            self.assertEqual(1, len(bad), bad)
+            self.assertIn("cannot be split into shell words: No closing quotation", bad[0])
+
 
 class BoundOrderTest(unittest.TestCase):
     """A stalled test is named, and its diagnosis printed, before any step or job timeout stops it."""
@@ -398,19 +514,60 @@ class BoundOrderTest(unittest.TestCase):
     def test_every_step_that_runs_apt_ends_a_stall_inside_its_own_bound(self) -> None:
         # The step's timeout-minutes is the ceiling of its apt bounds (each N plus the kill delay) plus the measured
         # rest of the step, plus one minute: a stall ends under the step's name, never at the job's timeout.
-        found = {}
-        for path in sorted(WORKFLOWS.glob("*.y*ml")):
-            for job in jobs(path).values():
-                for step in job["steps"]:
-                    bounds = [int(n) for n in APT_BOUND.findall(step_text(step))]
-                    if bounds:
-                        found[step["name"]] = (sum(n + KILL_AFTER for n in bounds), step)
-        self.assertEqual(set(STEP_REST_BUDGET), set(found))
-        for name, (apt_seconds, step) in found.items():
-            with self.subTest(step=name):
-                self.assertIn("timeout-minutes", step)
-                expected = math.ceil((apt_seconds + STEP_REST_BUDGET[name]) / 60) + 1
-                self.assertEqual(expected, int(step["timeout-minutes"]))
+        parsed = {
+            path.name: {job: body["steps"] for job, body in jobs(path).items()}
+            for path in sorted(WORKFLOWS.glob("*.y*ml"))
+        }
+        self.assertEqual([], apt_step_problems(parsed))
+
+    def test_a_step_without_its_bound_cannot_hide_behind_a_later_step_of_the_same_name(self) -> None:
+        # Audit of 9058072b: the registry was keyed by step name, so a later "Setup for Codecov" that carried
+        # timeout-minutes replaced the earlier one that ran apt without it. Steps are keyed by (job, index) now, and
+        # a name used twice in one job is refused on its own, since the budget table refers to steps by name.
+        steps = bounded_steps()
+        self.assertEqual([], apt_step_problems({"x.yaml": {"test": steps}}))
+        del steps[2]["timeout-minutes"]
+        later = {**bounded_steps()[2], "run": "echo later\n" + bounded_steps()[2]["run"]}
+        problems = apt_step_problems({"x.yaml": {"test": [*steps, later]}})
+        self.assertEqual(
+            [
+                "x.yaml: test: step 3 'Setup for Codecov' repeats the name of step 2",
+                "x.yaml: test: step 2 'Setup for Codecov' has no timeout-minutes",
+            ],
+            problems,
+        )
+        # The same name in another job is another step; unnamed steps have no name to collide.
+        unnamed = {"run": "echo unnamed"}
+        self.assertEqual(
+            [],
+            apt_step_problems({"x.yaml": {"test": [*bounded_steps(), unnamed, unnamed], "other": [later]}}),
+        )
+
+    def test_a_bounded_step_off_the_formula_or_outside_the_budget_table_is_named(self) -> None:
+        steps = bounded_steps()
+        steps[0]["timeout-minutes"] = "9"
+        self.assertEqual(
+            ["x.yaml: test: step 0 'Install tools' has timeout-minutes 9, the formula gives 10"],
+            apt_step_problems({"x.yaml": {"test": steps}}),
+        )
+        steps = bounded_steps()
+        steps[2]["name"] = "Upload coverage"
+        self.assertEqual(
+            [
+                "budget row 'Setup for Codecov' has no step with a bounded apt call",
+                "x.yaml: test: step 2 'Upload coverage' runs a bounded apt call with no STEP_REST_BUDGET row",
+            ],
+            apt_step_problems({"x.yaml": {"test": steps}}),
+        )
+        steps = bounded_steps()
+        del steps[1]["name"]
+        self.assertEqual(
+            [
+                "budget row 'Run Python unit tests' has no step with a bounded apt call",
+                "x.yaml: test: step 1 'step 1' runs a bounded apt call with no STEP_REST_BUDGET row",
+            ],
+            apt_step_problems({"x.yaml": {"test": steps}}),
+        )
 
 
 if __name__ == "__main__":

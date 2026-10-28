@@ -51,8 +51,10 @@ class SecretRule(NamedTuple):
 
     `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
     whole match). `entropy` is the least Shannon entropy, in bits per character, the secret must reach, or None
-    for a provider rule whose prefix alone is the evidence. The rule runs over a text only when one of `keywords`
-    (lower case) occurs in the lower-cased text, a cheap filter before the regex.
+    for a provider rule whose prefix alone is the evidence; it is measured with every SECRET_MASK removed from the
+    secret (`reaches_entropy`), so the masker's own output passes the scan and a value beside a marker is judged on
+    its own. The rule runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a
+    cheap filter before the regex.
     """
 
     id: str
@@ -61,6 +63,15 @@ class SecretRule(NamedTuple):
     secret_group: int
     entropy: float | None
     keywords: tuple[str, ...]
+
+    def reaches_entropy(self, secret: str) -> bool:
+        """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the entropy of
+        the secret with every SECRET_MASK removed reaches the threshold. `"prefix <redacted:secret-pattern>"`, the
+        masker's output for a quoted assignment that held a provider token, is 3.77 bits with the marker and `prefix `
+        2.81 without it; a real value beside the marker keeps its own entropy."""
+        if self.entropy is None:
+            return True
+        return shannon_entropy(secret.replace(SECRET_MASK, "")) >= self.entropy
 
 
 # A key prefix starts after a non-word character or the start, or right after an escape sequence (a backslash
@@ -73,6 +84,8 @@ KEY_PREFIX_BOUNDARY = (
 # gitleaks' documented example threshold for a generic rule: a quoted value below it is a word or a name
 # (`real-secret` is 2.85, `password123` 3.28), a key or a random token is above it (a ghp_ token is about 4.8).
 GENERIC_SECRET_ENTROPY = 3.5
+# What --mask-secrets writes over a finding; SecretRule.reaches_entropy removes it before measuring a value.
+SECRET_MASK = "<redacted:secret-pattern>"
 
 
 def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
@@ -1865,16 +1878,23 @@ def validate_no_removed_claude_skill() -> None:
         fail("removed Claude skill references remain: " + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10]))
 
 
+class EvidenceNotText(ValueError):
+    """`.orchestration` evidence that is not UTF-8 text: a NUL byte or a UTF-16 encoding there would hide it from the
+    scan, so the file is one finding of the scan, reported with the others, never an exit at the first such file."""
+
+
 def read_scannable_text(path: Path) -> str | None:
+    """PATH's text, or None for a binary or undecodable file the scan skips; raises EvidenceNotText, before any
+    decode, for orchestration evidence that holds a NUL byte or is UTF-16."""
     data = path.read_bytes()
     offset = data.find(b"\0")
-    # Orchestration evidence is UTF-8 text; a NUL or a UTF-16 encoding there
-    # would hide it from the scan, so both fail before any decode.
     if path.relative_to(ROOT).parts[:1] == (".orchestration",):
         if offset != -1:
-            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text")
+            raise EvidenceNotText(
+                f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text"
+            )
         if data.startswith((b"\xff\xfe", b"\xfe\xff")):
-            fail(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
+            raise EvidenceNotText(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         try:
             return data.decode("utf-16")
@@ -1888,7 +1908,6 @@ def read_scannable_text(path: Path) -> str | None:
         return None
 
 
-SECRET_MASK = "<redacted:secret-pattern>"
 HOME_MASK = "~"
 
 
@@ -1985,7 +2004,7 @@ def secret_findings(text: str) -> list[SecretFinding]:
             continue
         for match in rule.regex.finditer(text):
             secret = match.group(rule.secret_group)
-            if rule.entropy is not None and shannon_entropy(secret) < rule.entropy:
+            if not rule.reaches_entropy(secret):
                 continue
             if secret_allowance(rule.id, secret) is None:
                 findings.append(SecretFinding(rule, match.start(), match.end(), secret))
@@ -2270,9 +2289,10 @@ def finding_line(text: str, finding: SecretFinding, literal: JsonString | None) 
 
 
 def validate_no_obvious_secrets() -> None:
-    """The committed-secret scan: every SECRET_RULES finding in every file, and a home directory path in
-    `.orchestration` evidence, collected over the whole tree and reported in one failure. A finding is suppressed
-    only by a SECRET_ALLOWLIST row; the report names each as the fingerprint such a row may carry."""
+    """The committed-secret scan: every SECRET_RULES finding in every file, a home directory path in `.orchestration`
+    evidence and an evidence file that is not UTF-8 text, collected over the whole tree and reported in one failure.
+    A finding is suppressed only by a SECRET_ALLOWLIST row; the report names each as the fingerprint such a row may
+    carry."""
     problems: list[str] = []
     for path in ROOT.rglob("*"):
         if not path.is_file():
@@ -2281,7 +2301,11 @@ def validate_no_obvious_secrets() -> None:
             continue
         if is_nested_git_tree(path.parent) or is_gitignored(path):
             continue
-        text = read_scannable_text(path)
+        try:
+            text = read_scannable_text(path)
+        except EvidenceNotText as error:
+            problems.append(str(error))
+            continue
         if text is None:
             continue
         relative_path = path.relative_to(ROOT)

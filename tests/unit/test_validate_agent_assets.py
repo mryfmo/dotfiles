@@ -2072,6 +2072,71 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_no_obvious_secrets()
                 self.assertIn(f"docs/notes.md:{rule}:1 ", stderr.getvalue())
 
+    def test_a_masked_quoted_assignment_is_clean_and_a_value_beside_the_marker_is_reported(self) -> None:
+        """The masker's own marker is not evidence: a generic rule measures a quoted value's entropy with every
+        SECRET_MASK removed, so the masker's output passes the scan, while a value beside the marker is judged on its
+        own and a provider token beside it is a finding (round 3 verdict on ce36a3a5: the masked assignment crossed the
+        threshold and --scan-identifiers refused cleaned evidence)."""
+        module = self.module
+        mask = module.SECRET_MASK
+        planted = "ghp_" + "a" * 25
+        masked, count = module.mask_secret_matches(f'{FIELD} = "prefix {planted}"\n')
+        self.assertEqual((masked, count), (f'{FIELD} = "prefix {mask}"\n', 1))
+        self.assertEqual(module.secret_findings(masked), [])
+        path = self.write_text_file(".orchestration/validation/t-a01.md", "")
+        for text in (
+            masked,
+            f'{FIELD} = "{mask}"\n',
+            f'{FIELD} = "{mask}{mask}"\n',
+            f'{SECRET_KEY}: "{mask} and {mask}"\n',
+            f'{PASSWORD_KEY} = "{mask} {LOW_ENTROPY_VALUE}"\n',
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                module.validate_no_obvious_secrets()
+        for text, rule in (
+            (f'{FIELD} = "{mask} {HIGH_ENTROPY_VALUE}"\n', "generic-token"),
+            (f'{PASSWORD_KEY} = "{HIGH_ENTROPY_VALUE}{mask}"\n', "generic-password"),
+            (f'{API_KEY}: "{mask}{HIGH_ENTROPY_VALUE}{mask}"\n', "generic-api-key"),
+            (f'{FIELD} = "{mask} {planted}"\n', "github-pat"),
+        ):
+            with self.subTest(text=text):
+                path.write_text(text)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    module.validate_no_obvious_secrets()
+                self.assertIn(f".orchestration/validation/t-a01.md:{rule}:1 ", stderr.getvalue())
+
+    def test_a_nul_orchestration_file_and_a_later_token_are_both_reported_in_one_run(self) -> None:
+        """Round 3 verdict on ce36a3a5: read_scannable_text() exited at the first NUL orchestration file, dropping the
+        findings collected before it and skipping every file after it. A NUL or UTF-16 evidence file is now one
+        finding of the scan, reported in the one failure with every token elsewhere in the tree."""
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        self.write_text_file("docs/a.md", f"{planted}\n")
+        nul = self.temp_dir / ".orchestration/validation/t-a01.md"
+        nul.parent.mkdir(parents=True)
+        nul.write_bytes(b"heading\x00" + planted.encode())
+        (nul.parent / "t-utf16.md").write_bytes("\u3042\u3044".encode("utf-16"))
+        self.write_text_file(".orchestration/validation/t-z99.md", f"{planted}\n")
+        self.write_text_file("scripts/z.sh", f"\n{planted}\n")
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as raised:
+            self.module.validate_no_obvious_secrets()
+
+        self.assertEqual(raised.exception.code, 1)
+        report = stderr.getvalue()
+        self.assertIn("5 finding(s) in the committed-secret scan", report)
+        for line in (
+            "  .orchestration/validation/t-a01.md holds a NUL byte at offset 7; evidence must be UTF-8 text",
+            "  .orchestration/validation/t-utf16.md is UTF-16; evidence must be UTF-8 text",
+            "  possible committed secret .orchestration/validation/t-z99.md:github-pat:1 ghp_...",
+            "  possible committed secret docs/a.md:github-pat:1 ghp_...",
+            "  possible committed secret scripts/z.sh:github-pat:2 ghp_...",
+        ):
+            self.assertIn(line, report)
+        self.assertNotIn(planted[4:], report, "the report shows a secret's first four characters only")
+
     def test_an_allowlist_row_suppresses_by_path_or_by_one_fingerprint(self) -> None:
         planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         self.write_text_file("fixtures/planted.md", f"{planted}\n\n{planted}\n")
@@ -2722,6 +2787,29 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         self.assertEqual(self.scan().returncode, 2)
         self.words.unlink()
         self.assertEqual(self.scan(present).returncode, 2)
+
+    def test_masked_evidence_passes_and_a_value_beside_the_marker_is_refused(self) -> None:
+        """Round 3 verdict on ce36a3a5: the masker's output for a quoted assignment holding a provider token crossed
+        the generic entropy threshold, so records-sync.sh refused cleaned evidence. The masked file exits 0; a real
+        value beside the marker still exits 1."""
+        module = load_validator()
+        evidence = self.temp_dir / "audit.md"
+        planted = "ghp_" + "a" * 25
+        evidence.write_text(f'{FIELD} = "prefix {planted}"\nVerdict: correct\n')
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(evidence)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        self.assertEqual(evidence.read_text(), f'{FIELD} = "prefix {module.SECRET_MASK}"\nVerdict: correct\n')
+
+        result = self.scan(evidence)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+        evidence.write_text(f'{FIELD} = "{module.SECRET_MASK} {HIGH_ENTROPY_VALUE}"\n')
+        result = self.scan(evidence)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"file 1 ({evidence}): a secret pattern", result.stderr)
 
 
 if __name__ == "__main__":

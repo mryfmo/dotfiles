@@ -9,6 +9,15 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
+# No pull request ever runs this workflow. A weekly and a dispatched run carry the same commit as the push that made it,
+# so the group is the commit: runs of one commit queue behind each other and never bootstrap side by side. GitHub's
+# default queue holds one pending run and a third arrival cancels the pending one whatever cancel-in-progress says;
+# queue: max holds every pending run, so none is cancelled. GitHub refuses queue: max next to cancel-in-progress: true.
+concurrency:
+  group: private-bootstrap-${{ github.sha }}
+  cancel-in-progress: false
+  queue: max
+
 permissions:
   contents: read
 

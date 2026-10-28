@@ -10,8 +10,11 @@ config and writing only the `write` ones and TMPDIR (`:tmpdir`); FAKE_CODEX_PROB
 tool call so, the positive controls included, and `failrun` exits 1 after a passing run. The network probe is
 answered: curl exit 6 by default, `curl<n>` (curl exits n, e.g. `curl0` for a reachable network or `curl127` for a
 curl that could not run) or `nocurl`. `exec`
-reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
-`Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
+reads the prompt from stdin into `prompt` of the record, reads the `--output-schema` file into `schema` of the record
+(null when it cannot be read), and writes the verdict FAKE_CODEX_VERDICT_MODE names to its `-o` file: `conforming`
+(the default: a finding-free `correct` object of the lever's schema), `contradiction` (`verdict: correct` with one P2
+finding), `invalid-json` (the old free-text last line), `unknown-enum` (a verdict outside the enum) or `none` (no file
+at all). FAKE_CODEX_VERDICT, when set, is written verbatim instead. It then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
 codex-cli 0.163.0 saves the login) with that value. With FAKE_CODEX_HANG naming a marker path, `exec` plays the
 launcher whose native child outlives it: it starts a child that touches the marker after 3 seconds, records the call,
@@ -136,11 +139,32 @@ elif argv[:1] == ["exec"]:
     if refreshed is not None:
         with open(auth, "w", encoding="utf-8") as handle:
             handle.write(refreshed)
-    out = argv[argv.index("-o") + 1]
-    with open(out, "w", encoding="utf-8") as handle:
-        handle.write(
-            os.environ.get("FAKE_CODEX_VERDICT", "No findings; the head meets its contract.\n\nVerdict: correct\n")
-        )
+    if "--output-schema" in argv:
+        try:
+            with open(argv[argv.index("--output-schema") + 1], encoding="utf-8") as handle:
+                record["schema"] = handle.read()
+        except OSError:
+            record["schema"] = None
+    finding = {
+        "priority": "P2",
+        "confidence": "high",
+        "path": "change.txt",
+        "line": 1,
+        "rationale": "A gating finding.",
+    }
+    verdicts = {
+        "conforming": json.dumps(
+            {"verdict": "correct", "findings": [], "reproduced": ["python3 -m unittest: passed"], "notes": None}
+        ),
+        "contradiction": json.dumps({"verdict": "correct", "findings": [finding], "reproduced": [], "notes": None}),
+        "invalid-json": "No findings; the head meets its contract.\n\nVerdict: correct\n",
+        "unknown-enum": json.dumps({"verdict": "maybe", "findings": [], "reproduced": [], "notes": None}),
+        "none": None,
+    }
+    text = os.environ.get("FAKE_CODEX_VERDICT", verdicts[os.environ.get("FAKE_CODEX_VERDICT_MODE", "conforming")])
+    if text is not None:
+        with open(argv[argv.index("-o") + 1], "w", encoding="utf-8") as handle:
+            handle.write(text)
     status = int(os.environ.get("FAKE_CODEX_EXEC_EXIT", "0"))
 else:
     status = 9

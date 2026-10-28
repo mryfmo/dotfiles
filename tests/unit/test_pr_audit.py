@@ -808,6 +808,35 @@ class PrAuditTest(unittest.TestCase):
                 (rundir,) = self.tmp.iterdir()
                 self.assertFalse((rundir / "verdict.md").exists())
 
+    def test_a_line_with_a_zero_fraction_is_an_integer_and_one_with_a_fraction_is_not(self):
+        """JSON Schema's `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1), and Python's json
+        reads `1.0` as a float: a final message with `"line": 1.0` names line 1 and is written as `path:1`; `1.5` and a
+        bool are not of type integer or null, exit 1 naming verdict.json, no stdout line, no verdict.md."""
+
+        def document(line):
+            finding = {"priority": "P3", "confidence": "high", "path": "change.txt", "line": line, "rationale": "Why."}
+            return json.dumps({"verdict": "correct", "findings": [finding], "reproduced": [], "notes": None})
+
+        run = self.run_lever("7", FAKE_CODEX_VERDICT=document(1.0))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (rundir,) = self.tmp.iterdir()
+        self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: correct\n")
+        self.assertIn('"line": 1.0', (rundir / "verdict.json").read_text(), "the file codex wrote is kept as is")
+        text = (rundir / "verdict.md").read_text()
+        self.assertIn("- P3 (high) change.txt:1: Why.\n", text)
+        self.assertNotIn("1.0", text)
+        for line in (1.5, True):
+            with self.subTest(line=line):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_VERDICT=document(line))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, "")
+                (rundir,) = self.tmp.iterdir()
+                self.assertIn(str(rundir / "verdict.json"), run.stderr)
+                self.assertIn("findings[0].line is not of type integer or null", run.stderr)
+                self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
+
     def test_the_timeout_stops_every_process_codex_started(self):
         """PR_AUDIT_TIMEOUT ends the audit, not just the launcher: a child codex left behind would keep running on the
         login after the lever reported the run failed."""

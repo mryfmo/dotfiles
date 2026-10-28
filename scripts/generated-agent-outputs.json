@@ -368,7 +368,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "7cc7550384d077755ab73ae1993cd40f8d50c787634d35383c127e14154dd853"
+      "sha256": "bd91bf799e9e4600745b5c42bf413688b181804e4e62164d6ff57c68ee078eaa"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",

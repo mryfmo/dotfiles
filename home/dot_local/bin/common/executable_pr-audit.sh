@@ -77,8 +77,9 @@
 #   The verdict is structured data, never a free-text last line (regime-cutover U106, plan P-24): the lever writes
 #   the JSON Schema `verdict.schema.json` into the run directory and passes it with `--output-schema`, so the final
 #   message codex writes to `verdict.json` is an object with `verdict` (`correct`, `incorrect` or `blocked`),
-#   `findings` (each with `priority` P0 to P3, `confidence` high, medium or low, `path`, `line` as an integer or
-#   null, and `rationale`), `reproduced` (strings) and `notes` (a string or null); no other key. A reader
+#   `findings` (each with `priority` P0 to P3, `confidence` high, medium or low, `path`, `line` as an integer (a
+#   number with a zero fraction, as JSON Schema defines the type, `1.0` included; `1.5` is refused) or null, and
+#   `rationale`), `reproduced` (strings) and `notes` (a string or null); no other key. A reader
 #   (`python3 -I -S`, status checked) validates that file against the same schema file and refuses, exit 1 naming
 #   the file, on invalid JSON, a missing or unknown key, a value outside its enum or type, or a finding without its
 #   keys. The decision rule is applied from the data, never trusted from the model: any P0, P1 or P2 finding means
@@ -1139,11 +1140,15 @@ GATING = ("P0", "P1", "P2")
 # Each verdict and the outcome the findings must derive for it: `incorrect` needs a gating finding, `correct` and
 # `blocked` need none. A pair outside this table is a contradiction and is refused, never corrected.
 ACCEPTED_WITH = {"correct": "correct", "incorrect": "incorrect", "blocked": "correct"}
+# The JSON Schema type `integer` is a number with a zero fraction (draft 2020-12, section 6.1.1: a JSON number without
+# a fractional or exponent part, or whose fractional part is zero), so `1.0` is an integer and `1.5` is not. The json
+# module reads `1.0` as a float; the check asks the value, never the type the parser chose. A bool is never a number.
 IS_TYPE = {
     "object": lambda value: isinstance(value, dict),
     "array": lambda value: isinstance(value, list),
     "string": lambda value: isinstance(value, str),
-    "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
+    "integer": lambda value: (isinstance(value, int) and not isinstance(value, bool))
+    or (isinstance(value, float) and value.is_integer()),
     "null": lambda value: value is None,
 }
 
@@ -1210,7 +1215,7 @@ def main():
     lines = ["## Findings", ""]
     for finding in document["findings"]:
         priority, confidence, path, line = (finding[key] for key in ("priority", "confidence", "path", "line"))
-        at = path if line is None else f"{path}:{line}"
+        at = path if line is None else f"{path}:{int(line)}"
         rationale = one_line(finding["rationale"])
         lines.append(f"- {priority} ({confidence}) {one_line(at)}: {rationale}")
     if not document["findings"]:

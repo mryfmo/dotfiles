@@ -9,10 +9,17 @@ beside them are the parser's own output, regenerated with
 
 and are what the negative cases here alter. The decision rows need shfmt on PATH: the mise config installs it on the
 hosts and CI puts the pinned version there.
+
+The table is held to the walkers by extraction, not by a hand-written list: every field a walker reads from the tree
+and every literal it compares against a field is collected from the walker's source (Python by its syntax tree, the
+hook's jq programs by their paths), bound to the node kinds the walker's own Type tests establish for the variable
+it reads, and must be in TABLE for each of those kinds (round 4).
 """
 
 from __future__ import annotations
 
+import ast
+import itertools
 import json
 import os
 import re
@@ -23,6 +30,7 @@ import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from typing import Iterator, NamedTuple
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,25 +54,17 @@ MESSAGE = "a command substitution inside another one loses its status; capture i
 # A file node whose statements carry no Cmd: the shape a renamed field leaves, which every walk must refuse to read as
 # "no findings".
 UNREADABLE_TREE = {"Type": "File", "Stmts": [{"Command": {"Type": "CallExpr"}}]}
-# Each walker's source region and the shapes a field name or Type string takes in it: a subscript, a .get(), a key
-# test, a Type comparison, a tuple of names, or a jq path. Every name found must be a kind or a field of TABLE.
-PYTHON_ACCESSORS = (
-    r'\[\s*"([A-Z]\w+)"\s*\]',
-    r'\.get\(\s*"([A-Z]\w+)"',
-    r'"([A-Z]\w+)"\s+(?:not\s+)?in\s+\w',
-    r'Type"\]?\)?\s*(?:==|!=)\s*"([A-Z]\w+)"',
-    r'\(\s*"([A-Z]\w+)"(?:\s*,\s*"[A-Z]\w+")*\s*,?\s*\)',
-    r'\(\s*"[A-Z]\w+"(?:\s*,\s*"([A-Z]\w+)")+\s*,?\s*\)',
-)
+# The walkers over shfmt's JSON, each with the language of its walk and the region of its source that holds it (None:
+# the whole file). The extractor below reads them.
 WALKERS = {
-    CHECK: (re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL), PYTHON_ACCESSORS),
-    HOOK: (re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL), (r"\.([A-Z]\w+)",)),
-    LINT: (re.compile(r"^def shfmt_tree\(.*?^def python_hits\(", re.DOTALL | re.MULTILINE), PYTHON_ACCESSORS),
-    ROOT / "tests/unit/test_sandbox_portability.py": (
-        re.compile(r"^def shell_tree\(.*?^def dotted\(", re.DOTALL | re.MULTILINE),
-        PYTHON_ACCESSORS,
-    ),
+    CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
+    HOOK: ("jq", re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL)),
+    LINT: ("python", None),
+    ROOT / "tests/unit/test_sandbox_portability.py": ("python", None),
 }
+# Reads the extractor finds that TABLE need not hold, each with its reason: the list may shrink, never grow, and the
+# test asserts its exact contents. Empty: every read of every walker is in the table for its kind.
+EXCEPTIONS: dict[str, str] = {}
 
 
 def on_ci_runner() -> bool:
@@ -96,13 +96,382 @@ def hidden_tree(text: str) -> str:
     return json.dumps({"Type": "File", "Stmts": [stmt]})
 
 
-def table_names() -> set[str]:
-    """Every kind and every field name (each step of a dotted path) TABLE writes down, and Type, the discriminator."""
-    names = set(contract.TABLE) | {"Type"}
-    for row in contract.TABLE.values():
-        names.update(step for path in row.fields for step in path.split("."))
-        names.update(step for path in row.values for step in path.split("."))
-    return names
+# --- The extractor: what each walker reads from the tree, from its source -------------------------------------------
+
+MISSING = object()  # a Read with no literal
+FIELD = re.compile(r"[A-Z]\w*")  # every field of shfmt's JSON is spelled so; a lower-case key is some other dict's
+SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+TESTS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
+JQ_PROGRAM = re.compile(r"jq -r '([^']*)'")
+JQ_HAS = re.compile(r'has\("([A-Z]\w*)"\)')
+JQ_PATH = re.compile(r'\.([A-Z]\w*(?:\.[A-Z]\w*)*)\??(?:\s*(?:==|!=)\s*"([^"]*)")?')
+
+
+class Read(NamedTuple):
+    """One read of shfmt's tree in a walker's source.
+
+    kinds: the node kinds the walker's own Type and marker tests bind the variable to where the read happens; None
+    when no test reaches it, so the table as a whole must hold the path.
+    path: the dotted field path. strict: a subscript, which every bound kind must carry; else a tolerant read (.get, a
+    key test, a jq path), which at least one bound kind must carry, since a read of a field none of them has reads
+    nothing. literal: the value compared against the field, else MISSING."""
+
+    kinds: frozenset[str] | None
+    path: str
+    strict: bool
+    literal: object = MISSING
+
+
+class Chain(NamedTuple):
+    """A field access `base["A"]["B"]`, `base.get("A")`, `(base.get("A") or {}).get("B")`: the steps (each a set of
+    alternatives, for `cmd["Y" if last else "X"]`), whether every step is a subscript, and the index and default
+    expressions passed over, which may hold reads of their own."""
+
+    base: ast.expr
+    steps: list[frozenset[str]]
+    strict: bool
+    extras: list[ast.expr]
+
+
+def string_set(expr: ast.expr, consts: dict[str, frozenset[str]]) -> frozenset[str] | None:
+    """The strings of a string constant, a tuple, set or list of them, a name bound to one (the lint's LITS), or an
+    if-expression between two of those; None for anything else."""
+    if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+        return frozenset({expr.value})
+    if isinstance(expr, (ast.Tuple, ast.Set, ast.List)):
+        parts = [string_set(elt, consts) for elt in expr.elts]
+        return frozenset().union(*parts) if parts and all(part is not None for part in parts) else None
+    if isinstance(expr, ast.IfExp):
+        yes, no = string_set(expr.body, consts), string_set(expr.orelse, consts)
+        return yes | no if yes is not None and no is not None else None
+    return consts.get(expr.id) if isinstance(expr, ast.Name) else None
+
+
+def strip(expr: ast.expr) -> tuple[ast.expr, list[ast.expr]]:
+    """expr without its `or {}` / `or []` defaults and its list indexes (`[-1]`, `[0]`, `[i]`), with those indexes."""
+    extras: list[ast.expr] = []
+    while True:
+        if (
+            isinstance(expr, ast.BoolOp)
+            and isinstance(expr.op, ast.Or)
+            and len(expr.values) == 2
+            and isinstance(expr.values[1], (ast.Dict, ast.List, ast.Constant))
+        ):
+            expr = expr.values[0]
+        elif isinstance(expr, ast.Subscript) and not fields(expr.slice):
+            extras.append(expr.slice)
+            expr = expr.value
+        else:
+            return expr, extras
+
+
+def fields(expr: ast.expr) -> frozenset[str] | None:
+    """The field names a subscript or .get key spells: a string constant or an if-expression between two, each a
+    field spelling; None for a list index, a slice or a variable key."""
+    keys = string_set(expr, {})
+    return keys if keys and all(FIELD.fullmatch(key) for key in keys) else None
+
+
+def chain(expr: ast.expr) -> Chain | None:
+    """The field access chain expr is, else None."""
+    steps: list[frozenset[str]] = []
+    strict, extras = True, []
+    while True:
+        expr, passed = strip(expr)
+        extras += passed
+        if isinstance(expr, ast.Subscript) and (keys := fields(expr.slice)):
+            steps.append(keys)
+            expr = expr.value
+        elif (
+            isinstance(expr, ast.Call)
+            and isinstance(expr.func, ast.Attribute)
+            and expr.func.attr == "get"
+            and expr.args
+            and (keys := fields(expr.args[0]))
+        ):
+            steps.append(keys)
+            strict = False
+            extras += expr.args[1:]
+            expr = expr.func.value
+        else:
+            break
+    return Chain(expr, steps[::-1], strict, extras) if steps else None
+
+
+def names(target: ast.expr, value: ast.expr) -> Iterator[tuple[str, ast.expr]]:
+    """(name, expression) per name an assignment binds: `a = e`, `a, b = e1, e2`, `(a := e)`."""
+    if isinstance(target, ast.Name):
+        yield target.id, value
+    elif isinstance(target, ast.Tuple) and isinstance(value, ast.Tuple) and len(target.elts) == len(value.elts):
+        for inner, expr in zip(target.elts, value.elts):
+            yield from names(inner, expr)
+
+
+class Scope:
+    """One Python function (or the module body) of a walker: the names it binds to tree nodes, the kinds it tests them
+    for, and every read it makes, bound to the kinds the tests establish where the read happens.
+
+    A test narrows the variable for what it guards: the later operands of an `and`, the body of an `if` or of a
+    conditional expression and the later clauses of a comprehension take the tested kinds; an `else` takes the rest of
+    the kinds the scope tests the variable for, or no kind at all once they are exhausted. A read no test guards takes
+    every kind the scope tests the variable for, since the walker reads it on each of them."""
+
+    def __init__(self, root: ast.AST, consts: dict[str, frozenset[str]]) -> None:
+        self.root = root
+        self.consts = dict(consts)
+        self.type_alias: dict[str, str] = {}  # `kind = part["Type"]`: kind -> part
+        self.sub_alias: dict[str, tuple[str, str]] = {}  # `param = part.get("Param") or {}`: param -> (part, "Param")
+        self.key_alias: dict[str, str] = {}  # `for key, value in node.items()`: key -> node
+        self.kinds: dict[str, set[str]] = {}  # variable -> every kind the scope tests it for
+        self.named: set[str] = set()  # every kind a Type test in the scope spells
+        self.reads: list[Read] = []
+        self.gather()
+        self.visit(root, {})
+
+    def own(self) -> Iterator[ast.AST]:
+        """The scope's own nodes: a nested function is its own scope."""
+        todo = [self.root]
+        while todo:
+            node = todo.pop()
+            yield node
+            todo.extend(c for c in ast.iter_child_nodes(node) if not isinstance(c, (*SCOPES, ast.ClassDef)))
+
+    @staticmethod
+    def var(expr: ast.expr) -> str | None:
+        """The variable expr reads (its defaults and list indexes aside), else None."""
+        expr, _ = strip(expr)
+        return expr.id if isinstance(expr, ast.Name) else None
+
+    def gather(self) -> None:
+        for node in self.own():
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets:
+                    for name, value in names(target, node.value):
+                        if (strings := string_set(value, self.consts)) is not None:
+                            self.consts[name] = strings
+                        if (c := chain(value)) and (var := self.var(c.base)) and all(len(s) == 1 for s in c.steps):
+                            path = [next(iter(s)) for s in c.steps]
+                            if path == ["Type"]:
+                                self.type_alias[name] = var
+                            elif path[-1] != "Type":
+                                self.sub_alias[name] = (var, ".".join(path))
+            generators = (
+                node.generators if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)) else []
+            )
+            for target, source in [(g.target, g.iter) for g in generators] + (
+                [(node.target, node.iter)] if isinstance(node, ast.For) else []
+            ):
+                if (
+                    isinstance(source, ast.Call)
+                    and isinstance(source.func, ast.Attribute)
+                    and source.func.attr in ("items", "keys")
+                ):
+                    source = source.func.value
+                first = target.elts[0] if isinstance(target, ast.Tuple) and target.elts else target
+                if isinstance(first, ast.Name) and (var := self.var(source)):
+                    self.key_alias[first.id] = var
+        for node in self.own():
+            for var, kinds, _ in self.kind_tests(node):
+                self.kinds.setdefault(var, set()).update(kinds)
+                self.named.update(kinds)
+        for name in [name for name in self.sub_alias if name in self.kinds]:  # a node of its own, not a sub-record
+            del self.sub_alias[name]
+
+    def type_var(self, expr: ast.expr) -> str | None:
+        """The variable whose Type expr reads: `v["Type"]`, `v.get("Type")` or a name assigned from one."""
+        if isinstance(expr, ast.Name):
+            return self.type_alias.get(expr.id)
+        c = chain(expr)
+        return self.var(c.base) if c and c.steps == [frozenset({"Type"})] else None
+
+    def kind_tests(self, expr: ast.expr) -> list[tuple[str, frozenset[str], bool]]:
+        """(variable, kinds, positive) for the kind test expr is: a comparison of the variable's Type with kind
+        spellings, a marker key test (`"Cmd" in n`), or `not` of one."""
+        if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.Not):
+            return [(var, kinds, not positive) for var, kinds, positive in self.kind_tests(expr.operand)]
+        if not isinstance(expr, ast.Compare) or len(expr.ops) != 1 or not isinstance(expr.ops[0], TESTS):
+            return []
+        positive = isinstance(expr.ops[0], (ast.Eq, ast.In))
+        left, right = expr.left, expr.comparators[0]
+        if (
+            isinstance(expr.ops[0], (ast.In, ast.NotIn))
+            and isinstance(left, ast.Constant)
+            and left.value in contract.UNTYPED
+        ):
+            var = self.var(right)
+            return [(var, frozenset({contract.UNTYPED[left.value]}), positive)] if var else []
+        var, kinds = self.type_var(left), string_set(right, self.consts)
+        return [(var, kinds, positive)] if var and kinds is not None else []
+
+    def bound(self, var: str, ctx: dict[str, frozenset[str] | None]) -> frozenset[str] | None:
+        if var in ctx:
+            return ctx[var]
+        kinds = self.kinds.get(var)
+        return frozenset(kinds) if kinds else None
+
+    def narrow(self, ctx: dict, test: ast.expr, positive: bool) -> dict:
+        """ctx for what test guards when it holds (positive) or fails."""
+        tests = self.kind_tests(test)
+        if not tests and isinstance(test, ast.BoolOp):
+            if isinstance(test.op, ast.And) is positive:  # every operand of a true `and`, of a false `or`
+                for value in test.values:
+                    ctx = self.narrow(ctx, value, positive)
+            return ctx
+        ctx = dict(ctx)
+        for var, kinds, holds in tests:
+            if holds is positive:
+                ctx[var] = kinds
+            else:
+                current = self.bound(var, ctx)
+                ctx[var] = (current - kinds or None) if current is not None else None
+        return ctx
+
+    def emit(self, c: Chain, ctx: dict, literal: object = MISSING) -> None:
+        var = self.var(c.base)
+        if var is None:  # a dict some call returned, not a node
+            return
+        prefix: list[str] = []
+        if var in self.sub_alias:
+            var, path = self.sub_alias[var]
+            prefix = path.split(".")
+        kinds = self.bound(var, ctx)
+        for steps in itertools.product(*c.steps):
+            path = prefix + list(steps)
+            if path[-1] == "Type":  # the discriminator, read to test a kind; its holder is the read
+                path = path[:-1]
+            if path:
+                self.reads.append(Read(kinds, ".".join(path), c.strict, literal))
+
+    def compare(self, node: ast.Compare, ctx: dict) -> None:
+        """The literals node compares against a field, and the marker a marker test reads."""
+        tests = self.kind_tests(node)
+        if tests:
+            if isinstance(node.left, ast.Constant) and node.left.value in contract.UNTYPED:
+                self.reads.append(Read(self.bound(tests[0][0], ctx), node.left.value, False))
+            return
+        if len(node.ops) != 1 or not isinstance(node.ops[0], TESTS):
+            return
+        left, right = node.left, node.comparators[0]
+        if (c := chain(left)) and (strings := string_set(right, self.consts)) is not None:
+            for literal in sorted(strings):
+                self.emit(c, ctx, literal)
+        elif isinstance(left, ast.Constant) and isinstance(left.value, str):
+            if isinstance(right, (ast.List, ast.Tuple, ast.Set)):
+                elts = right.elts
+            else:  # `"\\" in part["Value"]` asks whether the text holds a backslash, not what the field spells
+                elts = [right] if isinstance(node.ops[0], (ast.Eq, ast.NotEq)) else []
+            for elt in elts:
+                if (c := chain(elt)) is not None:
+                    self.emit(c, ctx, left.value)
+        elif isinstance(left, ast.Name) and left.id in self.key_alias and (strings := string_set(right, self.consts)):
+            kinds = self.bound(self.key_alias[left.id], ctx)
+            self.reads.extend(Read(kinds, key, False) for key in sorted(strings) if FIELD.fullmatch(key))
+
+    def visit(self, node: ast.AST, ctx: dict) -> None:
+        if node is not self.root and isinstance(node, (*SCOPES, ast.ClassDef)):
+            return
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
+            for value in node.values:
+                self.visit(value, ctx)
+                ctx = self.narrow(ctx, value, True)
+            return
+        if isinstance(node, (ast.If, ast.IfExp, ast.While)):
+            self.visit(node.test, ctx)
+            yes, no = self.narrow(ctx, node.test, True), self.narrow(ctx, node.test, False)
+            for child in node.body if isinstance(node.body, list) else [node.body]:
+                self.visit(child, yes)
+            for child in node.orelse if isinstance(node.orelse, list) else [node.orelse]:
+                self.visit(child, no)
+            return
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+            for generator in node.generators:
+                self.visit(generator.iter, ctx)
+                for cond in generator.ifs:
+                    self.visit(cond, ctx)
+                    ctx = self.narrow(ctx, cond, True)
+            for elt in [node.key, node.value] if isinstance(node, ast.DictComp) else [node.elt]:
+                self.visit(elt, ctx)
+            return
+        if isinstance(node, ast.Compare):
+            self.compare(node, ctx)
+        elif (c := chain(node)) is not None:
+            self.emit(c, ctx)
+            for extra in c.extras:
+                self.visit(extra, ctx)
+            return
+        for child in ast.iter_child_nodes(node):
+            self.visit(child, ctx)
+
+
+def python_reads(source: str) -> tuple[set[str], list[Read]]:
+    """(the kinds the source spells in Type tests, its reads) for a Python walker."""
+    module = ast.parse(source)
+    consts: dict[str, frozenset[str]] = {}
+    for node in module.body:
+        names_bound = [t.id for t in node.targets if isinstance(t, ast.Name)] if isinstance(node, ast.Assign) else []
+        if len(names_bound) == 1 and (strings := string_set(node.value, consts)) is not None:
+            consts[names_bound[0]] = strings
+    scopes = [Scope(module, consts)] + [Scope(node, consts) for node in ast.walk(module) if isinstance(node, SCOPES)]
+    return set().union(*(scope.named for scope in scopes)), [read for scope in scopes for read in scope.reads]
+
+
+def jq_reads(source: str) -> tuple[set[str], list[Read]]:
+    """(the kinds the jq programs compare a Type with, their reads) for the hook: each `jq -r '...'` program is one
+    scope, its object bound to the untyped kind a marker it tests or reads names."""
+    named: set[str] = set()
+    reads: list[Read] = []
+    for program in JQ_PROGRAM.findall(source):
+        kinds: set[str] = set()
+        found: list[tuple[str, bool, object]] = []
+        for marker in JQ_HAS.findall(program):
+            kinds.update([contract.UNTYPED[marker]] if marker in contract.UNTYPED else [])
+            found.append((marker, False, MISSING))
+        for match in JQ_PATH.finditer(program):
+            steps, literal = match[1].split("."), match[2]
+            if steps[0] in contract.UNTYPED:
+                kinds.add(contract.UNTYPED[steps[0]])
+            if steps[-1] == "Type":
+                named.update([literal] if literal is not None else [])
+                steps, literal = steps[:-1], None
+            if steps:
+                found.append((".".join(steps), True, MISSING if literal is None else literal))
+        reads += [Read(frozenset(kinds) or None, path, strict, literal) for path, strict, literal in found]
+    return named, reads
+
+
+def walker_reads(path: Path) -> tuple[set[str], list[Read]]:
+    language, region = WALKERS[path]
+    text = path.read_text()
+    if region is not None:
+        match = region.search(text)
+        assert match is not None, f"{path.name}: the walker's source region was not found"
+        text = match.group(1)
+    return (python_reads if language == "python" else jq_reads)(text)
+
+
+def holds(kind: str, read: Read) -> bool:
+    """Whether TABLE's row for kind carries the read's path (or a path below it), and its literal if it has one."""
+    row = contract.TABLE[kind]
+    if read.literal is MISSING:
+        return any(field == read.path or field.startswith(read.path + ".") for field in row.fields)
+    return read.literal in row.values.get(read.path, ())
+
+
+def misses(walker: str, named: set[str], reads: list[Read]) -> set[str]:
+    """Each kind, field or literal the walker reads that TABLE lacks for the kind it is bound to, named."""
+    out = {f"{walker}: kind {name}" for name in named - set(contract.TABLE)}
+    for read in reads:
+        suffix = "" if read.literal is MISSING else f" = {read.literal!r}"
+        kinds = sorted(kind for kind in read.kinds or () if kind in contract.TABLE)
+        if not kinds:
+            if not any(holds(kind, read) for kind in contract.TABLE):
+                out.add(f"{walker}: {read.path}{suffix}")
+        elif read.strict:
+            out.update(f"{walker}: {kind}.{read.path}{suffix}" for kind in kinds if not holds(kind, read))
+        elif not any(holds(kind, read) for kind in kinds):
+            out.add(f"{walker}: {'|'.join(kinds)}.{read.path}{suffix}")
+    return out
 
 
 def module_check(*trees: str) -> subprocess.CompletedProcess[str]:
@@ -148,6 +517,7 @@ class ContractTableTest(unittest.TestCase):
         cases = {
             ('"Backquotes"', '"Backquote"'): f"no CmdSubst node of {where} has the field Backquotes",
             ('"Op": "|"', '"Op": "pipe"'): f"no BinaryCmd node of {where} has Op = '|'",
+            ('"Op": "!="', '"Op": "!=="'): f"no BinaryTest node of {where} has Op = '!='",
             ('"Type": "CmdSubst"', '"Type": "CommandSubstitution"'): f"{where} holds no CmdSubst node",
             ('"Hdoc"', '"Heredoc"'): f"no Redirect node of {where} has the field Hdoc",
             ('"Cmd"', '"Command"'): f"{where} holds no Stmt node",
@@ -166,16 +536,97 @@ class ContractTableTest(unittest.TestCase):
                 self.assertTrue(result.stderr.startswith("shfmt-json-contract: "), result.stderr)
                 self.assertEqual("", result.stdout)
 
-    def test_every_field_name_a_walker_reads_is_in_the_table(self) -> None:
-        known = table_names()
-        for path, (region, accessors) in WALKERS.items():
-            with self.subTest(walker=path.relative_to(ROOT).as_posix()):
-                match = region.search(path.read_text())
-                self.assertIsNotNone(match, "the walker's source region was not found")
-                source = match.group(0)
-                found = {name for pattern in accessors for name in re.findall(pattern, source) if name}
-                self.assertTrue(found, "the walker reads no field by name")
-                self.assertEqual(set(), found - known, f"names outside TABLE: {sorted(found - known)}")
+    def test_the_extractor_binds_each_read_to_the_kinds_the_walker_tests(self) -> None:
+        # Every shape the walkers use: an alias of Type, an `and` guard, an if/elif whose else exhausts the tested
+        # kinds, a sub-record alias, an unguarded strict read (every kind the function tests), a comprehension
+        # guard with literals, a key alias over a tuple of names, a marker test and an if-expression key.
+        sample = """
+LITS = ("Lit", "SglQuoted")
+
+
+def walk(node, part):
+    kind = node["Type"]
+    if kind == "CmdSubst":
+        return node["Pos"]["Line"]
+    elif node.get("Hdoc"):
+        return node["Word"]
+    param = part.get("Param") or {}
+    line = part["Pos"]["Line"]
+    return part["Type"] in LITS and param.get("Value") == "TMPDIR" or part.get("Type") == "ParamExp" and line
+
+
+def tests(cmd):
+    at = cmd["Pos"]["Line"]
+    found = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=")]
+    keep = ("X", "Y") if cmd.get("Type") == "BinaryCmd" else ("Cmd",)
+    return at, [v for k, v in cmd.items() if k in keep], found, "Cmd" in cmd, cmd["Y" if at else "X"]
+"""
+        named, reads = python_reads(sample)
+        self.assertEqual({"CmdSubst", "Lit", "SglQuoted", "ParamExp", "BinaryTest", "BinaryCmd", "Stmt"}, named)
+        parts, stmts = frozenset({"Lit", "SglQuoted", "ParamExp"}), frozenset({"BinaryCmd", "Stmt"})
+        expected = {
+            Read(frozenset({"CmdSubst"}), "Pos.Line", True),
+            Read(None, "Hdoc", False),
+            Read(None, "Word", True),
+            Read(parts, "Param", False),
+            Read(parts, "Pos.Line", True),
+            Read(frozenset({"Lit", "SglQuoted"}), "Param.Value", False),
+            Read(frozenset({"Lit", "SglQuoted"}), "Param.Value", False, "TMPDIR"),
+            Read(stmts, "Pos.Line", True),
+            Read(frozenset({"BinaryTest"}), "Op", True),
+            Read(frozenset({"BinaryTest"}), "Op", True, "=="),
+            Read(frozenset({"BinaryTest"}), "Op", True, "!="),
+            Read(stmts, "Cmd", False),
+            Read(stmts, "X", False),
+            Read(stmts, "Y", False),
+            Read(stmts, "X", True),
+            Read(stmts, "Y", True),
+        }
+        self.assertEqual(expected, set(reads))
+        # A strict read is named per kind that lacks it, a tolerant one once, for the kinds none of which has it.
+        self.assertEqual(
+            {
+                "sample: Stmt.X",
+                "sample: Stmt.Y",
+                "sample: Lit|SglQuoted.Param.Value",
+                "sample: Lit|SglQuoted.Param.Value = 'TMPDIR'",
+            },
+            misses("sample", named, reads),
+        )
+        hook = """
+    listed=$(jq -r '.Stmts // [] | length' <<< "$tree") || return 1
+    spans=$(jq -r '.. | objects | select(.Cmd.Type? == "CallExpr") | "\\(.Pos.Offset) \\(.End.Offset)"' <<< "$tree")
+"""
+        stmt = frozenset({"Stmt"})
+        self.assertEqual(
+            (
+                {"CallExpr"},
+                [
+                    Read(None, "Stmts", True),
+                    Read(stmt, "Cmd", True),
+                    Read(stmt, "Pos.Offset", True),
+                    Read(stmt, "End.Offset", True),
+                ],
+            ),
+            jq_reads(hook),
+        )
+
+    def test_every_field_and_literal_a_walker_reads_is_in_the_table_for_its_kind(self) -> None:
+        found: set[str] = set()
+        for path in WALKERS:
+            named, reads = walker_reads(path)
+            self.assertTrue(reads, f"{path.name}: the extractor found no read")
+            found |= misses(path.relative_to(ROOT).as_posix(), named, reads)
+        # The two omissions the round-3 audit found by hand are among the reads, so the binding is not vacuous.
+        _, lint = walker_reads(LINT)
+        self.assertIn(Read(frozenset({"BinaryTest"}), "Op", True, "!="), lint)
+        self.assertIn(Read(frozenset({"Lit", "SglQuoted", "ExtGlob"}), "Pos.Line", True), lint)
+        self.assertEqual(
+            sorted(EXCEPTIONS),
+            sorted(found),
+            f"outside TABLE: {sorted(found - set(EXCEPTIONS))}; exceptions no walker needs: "
+            f"{sorted(set(EXCEPTIONS) - found)}",
+        )
 
 
 @unittest.skipUnless(shutil.which("shfmt") or on_ci_runner(), "needs shfmt off the CI runner (CI puts the pin on PATH)")

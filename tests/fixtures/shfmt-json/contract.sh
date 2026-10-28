@@ -21,6 +21,8 @@ f() {
 total=$((count + 1))
 diff <(sort a) <(sort b)
 [[ $name == x ]] && echo "$total"
+[[ $name != y || $name = z ]] || exit 0
+: "${TMPDIR:-}" "${jq:-}"
 case $name in
 @(a|b)) ;;
 esac

@@ -10,9 +10,9 @@ their trees must hold, for every row of TABLE, a node of that kind carrying each
 least once. The first difference is named and the exit status is 2: "could not judge", never "clean".
 
 TABLE is the one place the node kinds, field names and the operator spellings the walkers read are written down;
-tests/unit/test_shfmt_json_contract.py holds every walker's source to it. The fixtures are contract.sh, which the
-formatting gate keeps formatted, and contract-backquotes, which holds the backquoted substitution that gate would
-rewrite.
+tests/unit/test_shfmt_json_contract.py extracts every field and literal each walker reads from its source and holds
+TABLE to them, kind by kind. The fixtures are contract.sh, which the formatting gate keeps formatted, and
+contract-backquotes, which holds the backquoted substitution that gate would rewrite.
 
     python3 -I scripts/ci/shfmt_json_contract.py                        # the pinned shfmt on PATH, the fixtures
     python3 -I scripts/ci/shfmt_json_contract.py --tree A.json --tree B.json  # captured trees instead (the tests)
@@ -53,24 +53,29 @@ TABLE: dict[str, Kind] = {
     "File": Kind(None, ("Stmts",)),
     "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs")),
     # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling.
-    "Redirect": Kind("Op", ("Op", "N", "Word", "Hdoc", "Pos.Offset", "End.Offset"), {"Op": (">", "<<")}),
-    "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Offset", "End.Offset")),
+    "Redirect": Kind("Op", ("Op", "N", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"), {"Op": (">", "<<")}),
+    "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),
+    # Every command kind carries Pos.Line: the lint reads it on each statement's Cmd, whatever the kind.
     "CallExpr": Kind(None, ("Args", "Assigns", "Pos.Line")),
     "CmdSubst": Kind(None, ("Stmts", "Backquotes", "Pos.Line"), {"Backquotes": (True,)}),
     "ProcSubst": Kind(None, ("Stmts", "Op"), {"Op": ("<(",)}),
     "DblQuoted": Kind(None, ("Parts", "Pos.Line")),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "Lit": Kind(None, ("Value", "Pos.Line", "Pos.Offset", "End.Offset"), {"Value": ("a\\ b",)}),
-    "ParamExp": Kind(None, ("Param.Value", "Length", "Index"), {"Length": (True,)}),
-    "ExtGlob": Kind(None, ("Pattern.Value",)),
-    "BinaryCmd": Kind(None, ("Op", "X", "Y"), {"Op": ("|", "&&")}),
-    "TestClause": Kind(None, ("X",)),
-    "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==",)}),
-    "CaseClause": Kind(None, ("Word", "In", "Items")),
-    "FuncDecl": Kind(None, ("Name", "Body")),
-    "Block": Kind(None, ("Stmts",)),
-    "Subshell": Kind(None, ("Stmts",)),
+    # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that
+    # spelling, so the fixture expands both.
+    "ParamExp": Kind(
+        None, ("Param.Value", "Length", "Index", "Pos.Line"), {"Length": (True,), "Param.Value": ("TMPDIR", "jq")}
+    ),
+    "ExtGlob": Kind(None, ("Pattern.Value", "Pos.Line")),
+    "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&")}),
+    "TestClause": Kind(None, ("X", "Pos.Line")),
+    "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
+    "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
+    "FuncDecl": Kind(None, ("Name", "Body", "Pos.Line")),
+    "Block": Kind(None, ("Stmts", "Pos.Line")),
+    "Subshell": Kind(None, ("Stmts", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),
 }
 UNTYPED = {row.marker: kind for kind, row in TABLE.items() if row.marker}

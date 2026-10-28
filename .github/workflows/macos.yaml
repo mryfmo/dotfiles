@@ -64,17 +64,19 @@ jobs:
     needs: secrets
     if: ${{ needs.secrets.outputs.available == 'true' }}
     # One matrix row per macOS image; one at a time, because every row pushes to the same benchmark repository.
-    # max-parallel serialises the rows of one run; the job-level `macos-benchmark` group below serialises the runs.
+    # max-parallel serialises the rows of one run; the job-level `macos-benchmark` group below serialises the main runs.
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
         os: [macos-15]
     # The run-level MacOS-main-<sha> group keeps every main commit's run, so two of them can still push to the same
-    # benchmark repository at once; this fixed group queues the later run instead. Never cancelled: a cancelled push
+    # benchmark repository at once; the fixed group queues the later main run instead. Only a main push joins it: a
+    # group holds one running and one pending run, so a pull request's build job (it never pushes) in the same group
+    # would cancel a pending main run; each pull request run gets a group of its own. Never cancelled: a cancelled push
     # leaves the benchmark repository half written.
     concurrency:
-      group: macos-benchmark
+      group: ${{ github.event_name == 'push' && 'macos-benchmark' || format('macos-benchmark-run-{0}', github.run_id) }}
       cancel-in-progress: false
     runs-on: ${{ matrix.os }} # Apple silicon
     # Two full setup.sh runs, the benchmark and the file tests; a hung install cancels the job instead of running 6 h.

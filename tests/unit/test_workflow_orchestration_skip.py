@@ -25,18 +25,25 @@ CONCURRENCY = (
     "github.event.pull_request.number) || format('main-{0}', github.sha) }}\n"
     "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n"
 )
-# Plan P-32: every workflow's run-level concurrency block. private-bootstrap never runs on a pull request, so its
-# runs are grouped by commit and none is cancelled; the others cancel a superseded pull request run only.
+# Plan P-32: every workflow's run-level concurrency block. private-bootstrap never runs on a pull request, and its weekly
+# and dispatched runs share main's sha, so each of its runs is its own group and none is cancelled; the others cancel a
+# superseded pull request run only.
 RUN_CONCURRENCY = {
     TEST: CONCURRENCY,
     REMOTE: CONCURRENCY,
     AGENT_ASSETS: CONCURRENCY,
     MACOS: CONCURRENCY,
     UBUNTU: CONCURRENCY,
-    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.sha }}\n  cancel-in-progress: false\n",
+    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.run_id }}\n  cancel-in-progress: false\n",
 }
-# Plan P-32: the benchmark push serialises across runs, since the run-level group keeps every main commit's run.
-BENCHMARK_CONCURRENCY = "\n    concurrency:\n      group: macos-benchmark\n      cancel-in-progress: false"
+# Plan P-32: the benchmark push serialises across main runs, since the run-level group keeps every main commit's run;
+# a pull request's build job never pushes and gets its own group, so it cannot displace a pending main run.
+BENCHMARK_CONCURRENCY = (
+    "\n    concurrency:\n"
+    "      group: ${{ github.event_name == 'push' && 'macos-benchmark' || format('macos-benchmark-run-{0}', "
+    "github.run_id) }}\n"
+    "      cancel-in-progress: false"
+)
 # A copy of the ruleset's required status checks (a unit test cannot read the
 # ruleset); this is what changes when the ruleset changes.
 REQUIRED_CONTEXTS = frozenset(
@@ -167,6 +174,104 @@ def jobs(path: Path) -> dict[str, dict]:
                 raise ValueError(f"unsupported step form inside jobs: {line!r}")
             block_key, step[block_key] = plain_key(stripped, line)
     return result
+
+
+def concurrency(text: str, indent: str = "") -> tuple[str, str]:
+    """The one `concurrency:` block at this indentation as its raw (group, cancel-in-progress) values."""
+    pattern = rf"\n{indent}concurrency:\n{indent}  group: (.*)\n{indent}  cancel-in-progress: (.*)(?:\n|\Z)"
+    pairs = re.findall(pattern, text)
+    assert len(pairs) == 1, pairs
+    return pairs[0]
+
+
+EXPRESSION_TOKEN = re.compile(r"\s*('(?:[^']|'')*'|&&|\|\||==|[(),]|[A-Za-z_][\w.]*)")
+
+
+def rendered(template: str, context: dict[str, str]) -> str:
+    """The template with each `${{ }}` evaluated for one run's `github` context.
+
+    Evaluates the forms the workflows' groups use: a `github.*` reference, a quoted literal, `format()`, `==`, and
+    `&&`/`||` (the ternary form). Any other form raises, so an expression this reader does not evaluate never reads
+    as a fixed or a distinct group.
+    """
+
+    def evaluate(expression: str) -> str | bool:
+        tokens: list[str] = []
+        position = 0
+        while position < len(expression.rstrip()):
+            match = EXPRESSION_TOKEN.match(expression, position)
+            if not match:
+                raise ValueError(f"unsupported expression: {expression!r}")
+            tokens.append(match.group(1))
+            position = match.end()
+        tokens.reverse()  # pop() yields the next token
+
+        def primary() -> str | bool:
+            token = tokens.pop()
+            if token.startswith("'"):
+                return token[1:-1].replace("''", "'")
+            if token == "(":
+                value = disjunction()
+                if tokens.pop() != ")":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                return value
+            if token == "format":
+                if tokens.pop() != "(":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                parts = [disjunction()]
+                while (separator := tokens.pop()) == ",":
+                    parts.append(disjunction())
+                if separator != ")":
+                    raise ValueError(f"unsupported expression: {expression!r}")
+                return str(parts[0]).format(*parts[1:])
+            if token.startswith("github."):
+                return context[token[len("github.") :]]
+            raise ValueError(f"unsupported token {token!r} in {expression!r}")
+
+        def equality() -> str | bool:
+            value = primary()
+            if tokens and tokens[-1] == "==":
+                tokens.pop()
+                return value == primary()
+            return value
+
+        def conjunction() -> str | bool:
+            value = equality()
+            while tokens and tokens[-1] == "&&":
+                tokens.pop()
+                right = equality()
+                value = right if value else value
+            return value
+
+        def disjunction() -> str | bool:
+            value = conjunction()
+            while tokens and tokens[-1] == "||":
+                tokens.pop()
+                right = conjunction()
+                value = value if value else right
+            return value
+
+        value = disjunction()
+        if tokens:
+            raise ValueError(f"unsupported expression: {expression!r}")
+        return value
+
+    def substitute(match: re.Match[str]) -> str:
+        value = evaluate(match.group(1))
+        return value if isinstance(value, str) else str(value).lower()
+
+    return re.sub(r"\$\{\{(.*?)\}\}", substitute, template)
+
+
+def run(event_name: str, run_id: str, sha: str | None = None, number: str = "7") -> dict[str, str]:
+    """One run's `github` context: its event, its id, its commit (distinct per run unless given) and a pull request number."""
+    return {
+        "workflow": "W",
+        "event_name": event_name,
+        "run_id": run_id,
+        "sha": sha or run_id.rjust(40, "0"),
+        "event.pull_request.number": number,
+    }
 
 
 def step_name(step: dict) -> str:
@@ -768,6 +873,36 @@ class WorkflowTriggerTest(unittest.TestCase):
         build = MACOS.read_text().split("\n  build:\n", 1)[1].split("\n    runs-on:", 1)[0]
         self.assertIn(BENCHMARK_CONCURRENCY, build)
         self.assertEqual("", jobs(MACOS)["build"]["keys"]["concurrency"])
+
+    def test_a_private_bootstrap_run_never_waits_for_or_displaces_another(self) -> None:
+        # A group holds one running and one pending run; a third arrival cancels the pending one whatever
+        # cancel-in-progress says. A weekly and a dispatched run carry main's commit, the same sha as the push that made
+        # it, so a group keyed on the sha could hold all three and lose one. Every run gets a group of its own, so
+        # every main push, weekly and dispatched run completes (the Contract's promise).
+        group, cancel = concurrency(PRIVATE.read_text().split("\njobs:\n", 1)[0])
+        self.assertEqual("false", cancel)
+        sha = "a" * 40
+        groups = [
+            rendered(group, run(event_name, run_id, sha))
+            for run_id, event_name in (("1", "push"), ("2", "schedule"), ("3", "workflow_dispatch"))
+        ]
+        self.assertEqual(3, len(set(groups)), groups)
+        # Per run, not per event: a second dispatch of the same commit is a fourth, distinct group.
+        self.assertNotIn(rendered(group, run("workflow_dispatch", "4", sha)), groups)
+
+    def test_a_pull_request_build_never_displaces_a_pending_main_benchmark_run(self) -> None:
+        # The fixed group queues main pushes behind each other, but a group holds one running and one pending run, so
+        # a pull request's build job in the same group (it never pushes the benchmark) would cancel a pending main run.
+        # Main pushes share the group; every pull request run gets its own.
+        build = MACOS.read_text().split("\n  build:\n", 1)[1].split("\n    runs-on:", 1)[0]
+        group, cancel = concurrency(build, "    ")
+        self.assertEqual("false", cancel)
+        first, second = (rendered(group, run("push", run_id)) for run_id in ("1", "2"))
+        self.assertEqual("macos-benchmark", first)
+        self.assertEqual(first, second)
+        pull_requests = {rendered(group, run("pull_request", run_id)) for run_id in ("3", "4")}
+        self.assertNotIn(first, pull_requests)
+        self.assertEqual(2, len(pull_requests), pull_requests)
 
     def test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script(
         self,

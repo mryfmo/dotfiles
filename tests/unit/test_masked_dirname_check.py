@@ -304,7 +304,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
 
     def test_a_shfmt_variable_cannot_select_another_binary(self) -> None:
         # Round-2 audit of 473b63a1: the guard checks PATH's shfmt, so SHFMT pointing elsewhere must change nothing.
-        clean = self.script("clean", "true\n")
+        clean = self.script("clean", "x=$(true)\n")  # one substitution: a run that sees none is refused (U105)
         other = self.temp_dir / "other-shfmt"
         other.write_text(f'#!/bin/sh\ntouch "{self.temp_dir}/other-ran"\nexit 0\n')
         other.chmod(0o755)

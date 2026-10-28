@@ -7,7 +7,10 @@
 #   other input exits successfully without output. Contract verified 2026-10-05.
 #   Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config)
 #   into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot
-#   parse the line, the hook decides nothing and exits 0 (fail open).
+#   parse the line, the hook decides nothing and exits 0 (fail open). When shfmt is present, its JSON must match
+#   the pinned node table of scripts/ci/shfmt_json_contract.py (regime-cutover U105): a parser that no longer
+#   produces the nodes this hook reads, or a tree whose statements the walk cannot see, is a blocking error
+#   (exit 2, the reason on stderr), never a silent "no decision".
 # @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control
 
 # @description Encode the denial reason from stdin using the current hook contract.
@@ -189,20 +192,56 @@ function handle_python_run() {
     exit 0
 }
 
+# @description Print the path of scripts/ci/shfmt_json_contract.py: relative to this file in the dotfiles checkout
+#   (home/dot_claude/hooks/), else under the chezmoi source directory the deployed copy came from.
+# @stdout The module path.
+# @exitcode 1 No module found there.
+function contract_module() {
+    local here candidate source
+    case ${BASH_SOURCE[0]} in
+    */*) here=${BASH_SOURCE[0]%/*} ;;
+    *) here=. ;;
+    esac
+    candidate="${here}/../../../scripts/ci/shfmt_json_contract.py"
+    if [[ -f ${candidate} ]]; then
+        printf '%s\n' "${candidate}"
+        return 0
+    fi
+    source=$(chezmoi source-path 2> /dev/null) || return 1
+    candidate="${source}/../scripts/ci/shfmt_json_contract.py"
+    [[ -f ${candidate} ]] || return 1
+    printf '%s\n' "${candidate}"
+}
+
 # @description Collect the simple commands of a Bash line from shfmt's syntax tree (`shfmt -ln bash --to-json`):
 #   every statement whose command is a call (`CallExpr`), in tree order, nested ones (in a pipeline, a list, a
 #   subshell, `$(...)`) included, each as its source text from the statement's start to its end offset, so the
 #   suggestion keeps its quotes and redirections. Comments and here-document bodies are no statements, and quoting,
-#   escapes and line continuations are shfmt's, not this script's.
+#   escapes and line continuations are shfmt's, not this script's. Before the walk, the contract module proves the
+#   parser still produces these nodes; a line whose tree lists statements the walk then cannot see is refused too.
 # @arg $1 string The command line.
 # @set SEGMENTS array The simple commands, in order.
 # @exitcode 0 The line parsed.
-# @exitcode 1 shfmt or jq is absent, or the line does not parse.
+# @exitcode 1 shfmt or jq is absent, the contract module is not installed, or the line does not parse.
+# @exitcode 2 Exits the hook: shfmt's JSON does not match the pinned node table, or the walk saw no statement.
 function split_segments() {
-    local line="$1" tree spans start end
+    local line="$1" tree spans start end module listed visited
     SEGMENTS=()
     command -v shfmt > /dev/null 2>&1 || return 1
     tree=$(printf '%s' "$line" | shfmt -ln bash --to-json 2> /dev/null) || return 1
+    module=$(contract_module) || return 1
+    if ! python3 -I "$module"; then
+        echo "enforce-uv: shfmt's JSON does not match the pinned node table; no Bash line can be judged" >&2
+        exit 2
+    fi
+    # The statements the tree lists against the statement nodes the walk can see: a renamed field would leave the
+    # walk empty and the line silently undecided.
+    listed=$(jq -r '.Stmts // [] | length' <<< "$tree") || return 1
+    visited=$(jq -r '[.. | objects | select(has("Cmd"))] | length' <<< "$tree") || return 1
+    if ((listed > 0 && visited == 0)); then
+        echo "enforce-uv: shfmt's tree lists ${listed} statement(s) but the walk saw none; the line cannot be judged" >&2
+        exit 2
+    fi
     spans=$(jq -r '.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"' <<< "$tree") || return 1
     # shfmt's offsets count bytes, so slice the line byte-wise.
     local LC_ALL=C

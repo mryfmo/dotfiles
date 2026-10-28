@@ -12,18 +12,24 @@
 #   `exec -a x dirname`, `/usr/bin/dirname`), and SC2312 already refuses the other commands in this
 #   shape, so the linted groups held no nested substitution when the rule was set (regime-cutover
 #   U38b). A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as
-#   bash reads it (shfmt expands the body of a partly quoted delimiter such as `<<'E'OF`).
+#   bash reads it (shfmt expands the body of a partly quoted delimiter such as `<<'E'OF`;
+#   tests/fixtures/shfmt-json/heredoc-partly-quoted-delimiter holds that case).
 #   The files are parsed as bash: `make shellcheck` passes only bash scripts, and bash also parses
 #   the repository's POSIX scripts. A file shfmt cannot parse is refused, never read as clean; that
 #   includes a heredoc delimiter with ANSI-C escapes (`<<$'\x45OF'`), which shfmt 3.14.1 and
-#   ShellCheck 0.11.0 both fail to terminate.
+#   ShellCheck 0.11.0 both fail to terminate (tests/fixtures/shfmt-json/heredoc-ansi-c-delimiter).
+#   Before any file is read, scripts/ci/shfmt_json_contract.py proves that the pinned shfmt still
+#   produces the node kinds and fields this walk reads (regime-cutover U105); and a run that visited
+#   no command substitution at all, while the contract fixture holds some, is refused rather than
+#   read as clean, so "no findings" is never "saw nothing".
 # @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).
 # @description The shfmt is PATH's, the one scripts/ci/pinned-tool-version.sh checks before `make shellcheck`
 #   runs this ([tools."http:shfmt"], U97); no variable selects another.
 # @exitcode 0 No command substitution nested inside another.
 # @exitcode 1 At least one finding, each printed as `file:line: …`.
-# @exitcode 2 No file given, a listed file cannot be read or parsed, or shfmt or python3 is missing:
-#   the list is refused, never read as clean.
+# @exitcode 2 No file given, a listed file cannot be read or parsed, shfmt or python3 is missing, shfmt's JSON
+#   does not match the pinned node table, or the walk visited no command substitution: the list is
+#   refused, never read as clean.
 # @example
 #   scripts/ci/masked-dirname-check.sh scripts/orchestrator/hcom-seat
 set -euo pipefail
@@ -47,13 +53,30 @@ for file in "$@"; do
     fi
 done
 
-# Reads shfmt's typed JSON on stdin; argv[1] names the file. Exits 1 when it prints a finding.
+# The directory of this script, where scripts/ci/shfmt_json_contract.py lives: a parameter expansion, so no
+# producer's status is at stake.
+case ${BASH_SOURCE[0]} in
+*/*) here=${BASH_SOURCE[0]%/*} ;;
+*) here=. ;;
+esac
+
+# Runs the contract, then parses each file with shfmt and walks its typed JSON. argv[1] is the directory of
+# shfmt_json_contract.py, the rest are the files. Exits 1 when it prints a finding, 2 when the list is refused.
 walk=$(
     cat << 'PY'
 import json
+import subprocess
 import sys
 
+sys.path.insert(0, sys.argv[1])
+import shfmt_json_contract as contract  # noqa: E402
+
 MESSAGE = "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
+
+
+def refuse(reason):
+    print(f"masked-dirname-check: {reason}; the list is refused", file=sys.stderr)
+    sys.exit(2)
 
 
 def quoted(word):
@@ -64,10 +87,17 @@ def quoted(word):
     )
 
 
+try:
+    contract.verify()
+except contract.ContractError as error:
+    refuse(f"shfmt's JSON does not match the pinned node table ({error})")
+
 findings = set()
+substitutions = 0
 
 
 def walk(node, depth):
+    global substitutions
     if isinstance(node, list):
         for item in node:
             walk(item, depth)
@@ -75,6 +105,7 @@ def walk(node, depth):
     if not isinstance(node, dict):
         return
     if node.get("Type") == "CmdSubst":
+        substitutions += 1
         if depth:
             findings.add(node["Pos"]["Line"])
         depth += 1
@@ -86,26 +117,32 @@ def walk(node, depth):
         walk(value, depth)
 
 
-walk(json.load(sys.stdin), 0)
-for line in sorted(findings):
-    print(f"{sys.argv[1]}:{line}: {MESSAGE}")
-sys.exit(1 if findings else 0)
+status = 0
+for file in sys.argv[2:]:
+    try:
+        with open(file, "rb") as handle:
+            run = subprocess.run(["shfmt", "-ln", "bash", "--to-json"], stdin=handle, capture_output=True, check=False)
+    except OSError as error:
+        refuse(f"cannot read {file} ({error})")
+    sys.stderr.write(run.stderr.decode(errors="replace"))
+    if run.returncode != 0:
+        refuse(f"shfmt cannot parse {file}")
+    try:
+        tree = json.loads(run.stdout)
+    except ValueError:
+        refuse(f"shfmt gave no JSON tree for {file}")
+    findings.clear()
+    try:
+        walk(tree, 0)
+    except Exception as error:  # any failure to read the tree is "could not judge", never a clean file
+        refuse(f"cannot walk the syntax tree of {file} ({error!r})")
+    for line in sorted(findings):
+        print(f"{file}:{line}: {MESSAGE}")
+    status = 1 if findings else status
+if substitutions == 0:
+    refuse("the walk visited no command substitution in the listed files, while the contract fixture holds some")
+sys.exit(status)
 PY
 )
 
-status=0
-for file in "$@"; do
-    if ! tree=$(shfmt -ln bash --to-json < "${file}"); then
-        echo "masked-dirname-check: shfmt cannot parse ${file}; the list is refused" >&2
-        exit 2
-    fi
-    python3 -c "${walk}" "${file}" <<< "${tree}" || {
-        code=$?
-        if ((code != 1)); then
-            echo "masked-dirname-check: cannot walk the syntax tree of ${file} (python3 exit ${code}); the list is refused" >&2
-            exit 2
-        fi
-        status=1
-    }
-done
-exit "${status}"
+python3 -I -c "${walk}" "${here}" "$@"

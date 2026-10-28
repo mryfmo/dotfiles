@@ -18,6 +18,11 @@ The whole document must equal DOCUMENT, key for key and value for value down to 
 scripts left to the tree reader: a key no table names (`container`, `services`, a second job, a step's `if`) is
 refused by its path (the round-5 audit ran a container image taken from the pull request's title), and `false` is
 never `0` (PyYAML reads them as different inputs and Actions passes them as different strings; `==` has them equal).
+
+The YAML is read by a loader whose booleans are YAML 1.2's (`true` and `false` in their three spellings, nothing
+else), so the key `on` is the string `on`: PyYAML's own YAML 1.1 resolver reads `on`, `yes` and `true` as one boolean
+key, and a workflow whose trigger key was `true:` or `yes:` read as this one while GitHub found no trigger (the
+round-6 audit renamed `on:` to `true:` past every check).
 """
 
 from __future__ import annotations
@@ -63,6 +68,29 @@ CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
 SETUP_UV_ACTION = "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7"
 EVENT_TYPES = ["opened", "edited", "synchronize", "reopened", "ready_for_review"]
 MISSING = object()
+# The reader's booleans are YAML 1.2's: these six spellings and nothing else. PyYAML's own YAML 1.1 resolver also reads
+# yes, no, on and off as booleans (DROPPED_FORMS), so `on:`, `true:` and `yes:` were one key here and the round-6
+# audit renamed `on:` to `true:` past every check while GitHub found no trigger. Each form is now its own string.
+BOOLEANS = "true|True|TRUE|false|False|FALSE"
+DROPPED_FORMS = ["yes", "Yes", "YES", "no", "No", "NO", "on", "On", "ON", "off", "Off", "OFF"]
+# Run by the uv interpreter that has PyYAML (the test interpreter has none): the document as JSON on stdout.
+READER = f"""
+import json, re, sys, yaml
+
+
+class Loader(yaml.SafeLoader):
+    pass
+
+
+BOOL = "tag:yaml.org,2002:bool"
+Loader.yaml_implicit_resolvers = {{
+    first: [(tag, regexp) for tag, regexp in found if tag != BOOL]
+    for first, found in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}}
+Loader.add_implicit_resolver(BOOL, re.compile(r"^(?:{BOOLEANS})$"), list("tTfF"))
+with open(sys.argv[1]) as handle:
+    print(json.dumps(yaml.load(handle, Loader=Loader), default=str))
+"""
 
 # A shape is a run script with every position dropped and four kinds of part admitted, each pinned in full:
 #   ("lit", text)              a literal fragment of a word
@@ -170,14 +198,14 @@ class RunScript:
 
 SCRIPT = RunScript()
 
-# The table of the whole document, as PyYAML reads it: every key at every level, with the env: and with: mappings
-# taken from INPUTS and the run texts left to SCRIPTS. A key no table holds (`container`, `services`, a second job,
-# a `strategy`, a step's `if` or `working-directory`) runs code or moves the step in a way no other check sees: the
-# round-5 audit ran a container image taken from the pull request's title past every check. PyYAML reads `on` as
-# the boolean true, which the JSON the reader hands over spells "true".
+# The table of the whole document, as the reader hands it over: every key at every level, with the env: and with:
+# mappings taken from INPUTS and the run texts left to SCRIPTS. A key no table holds (`container`, `services`, a
+# second job, a `strategy`, a step's `if` or `working-directory`) runs code or moves the step in a way no other check
+# sees: the round-5 audit ran a container image taken from the pull request's title past every check. The trigger
+# key is the string `on`, as the file spells it; `true` or `yes` in its place is another key.
 DOCUMENT = {
     "name": "regime",
-    "true": {"pull_request_target": {"types": EVENT_TYPES, "branches": ["main"]}},
+    "on": {"pull_request_target": {"types": EVENT_TYPES, "branches": ["main"]}},
     "concurrency": {"group": f"regime-pr-{NUMBER_EXPRESSION}", "cancel-in-progress": True},
     "permissions": READ_ONLY,
     "jobs": {
@@ -196,10 +224,9 @@ DOCUMENT = {
 
 
 def load(path: Path) -> dict:
-    """The workflow parsed by PyYAML under uv (as test_regime_ci.py reads it): the test interpreter has no YAML parser."""
-    read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
+    """The workflow parsed by PyYAML under uv (as test_regime_ci.py reads it, but with READER's YAML 1.2 booleans)."""
     uv = [shutil.which("uv") or "uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I"]
-    result = subprocess.run([*uv, "-c", read, str(path)], capture_output=True, text=True, check=True)
+    result = subprocess.run([*uv, "-c", READER, str(path)], capture_output=True, text=True, check=True)
     doc = json.loads(result.stdout)
     if not isinstance(doc, dict):
         raise AssertionError(f"{path} is not a mapping: {doc!r}")
@@ -383,8 +410,10 @@ def render_part(part: Part) -> str:
 
 
 def check_trigger(doc: dict) -> None:
-    # PyYAML reads the key `on` as the boolean true, which JSON spells "true".
-    on = mapping(doc.get("true", doc.get("on")), "pull_request_target:")
+    # `on` is the string `on` here (the reader's booleans are YAML 1.2's): a trigger key spelled true: or yes:, which
+    # PyYAML's own resolver would fold into `on`, is a missing key, as it is for GitHub.
+    require("on" in doc, "on:", f"the workflow has no on: key; the keys are {list(doc)!r}")
+    on = mapping(doc["on"], "pull_request_target:")
     require(list(on) == ["pull_request_target"], "pull_request_target:", f"the triggers are {list(on)!r}")
     event = mapping(on["pull_request_target"], "pull_request_target:")
     require(
@@ -463,7 +492,8 @@ def differences(found: object, held: object, path: str = "") -> list[str]:
         return [f"{path}: found {describe(found)}, the table holds {describe(held)}"]
     lines: list[str] = []
     if isinstance(held, dict):
-        for key in sorted(set(found) | set(held)):
+        # the table's keys first: a message points at the line of the key the file holds (`on:` for a renamed `ON:`)
+        for key in sorted(set(found) | set(held), key=lambda name: (name not in held, name)):
             at = f"{path}.{key}" if path else key
             if key not in held:
                 lines.append(f"{at}: found {describe(found[key])}, the table holds no such key")
@@ -489,7 +519,7 @@ def key_line(path: str) -> str:
     """`regime.yml:<n>` of the deepest key of the path the file still holds, so a message points at the mapping an
     added key sits in (`jobs.regime.container` points at `regime:`) or at the key whose value changed."""
     for component in reversed([part.split("[")[0] for part in path.split(".")]):
-        key = "on:" if component == "true" else f"{component}:"
+        key = f"{component}:"
         for number, content in enumerate(WORKFLOW.read_text().splitlines(), 1):
             if content.strip().removeprefix("- ").startswith(key):
                 return f"regime.yml:{number} ({key})"
@@ -574,7 +604,7 @@ def body_env(doc: dict) -> dict:
 
 
 def triggers(doc: dict) -> dict:
-    return doc.get("true", doc.get("on"))
+    return doc["on"]
 
 
 def set_in(getter: Callable[[dict], dict], key: str, value: object) -> Callable[[dict], None]:
@@ -587,6 +617,17 @@ def set_in(getter: Callable[[dict], dict], key: str, value: object) -> Callable[
 def delete_in(getter: Callable[[dict], dict], key: str) -> Callable[[dict], None]:
     def mutate(doc: dict) -> None:
         del getter(doc)[key]
+
+    return mutate
+
+
+def spell_trigger(spelling: str) -> Callable[[dict], None]:
+    """The trigger key written another way in its place: what PyYAML's own resolver reads as `on` (true, yes, On)."""
+
+    def mutate(doc: dict) -> None:
+        items = [(spelling if key == "on" else key, value) for key, value in doc.items()]
+        doc.clear()
+        doc.update(items)
 
     return mutate
 
@@ -637,6 +678,10 @@ TRIGGER = Invariant(
             set_in(lambda d: triggers(d)["pull_request_target"], "branches", ["main", "release"]), "'release'"
         ),
         "no branch filter": Mutation(delete_in(lambda d: triggers(d)["pull_request_target"], "branches"), "None"),
+        # the round-6 audit's edit: PyYAML's own resolver read `true:` as the key `on` and every check passed
+        "the trigger key spelled true": Mutation(spell_trigger("true"), "no on: key; the keys are ['name', 'true'"),
+        "the trigger key spelled yes": Mutation(spell_trigger("yes"), "no on: key; the keys are ['name', 'yes'"),
+        "the trigger key spelled On": Mutation(spell_trigger("On"), "no on: key; the keys are ['name', 'On'"),
     },
 )
 PERMISSIONS = Invariant(
@@ -792,6 +837,10 @@ CANCEL_IN_PROGRESS = Invariant(
             set_in(lambda d: d["concurrency"], "cancel-in-progress", False), "'cancel-in-progress': False"
         ),
         "no concurrency group": Mutation(delete_in(lambda d: d, "concurrency"), "found None"),
+        # what the reader hands over for `cancel-in-progress: yes`: the string, not PyYAML's own True
+        "cancel-in-progress: yes": Mutation(
+            set_in(lambda d: d["concurrency"], "cancel-in-progress", "yes"), "'cancel-in-progress': 'yes'"
+        ),
     },
 )
 # the round-5 audit's edit: a container whose image the pull request names runs every step inside code of the pull
@@ -830,11 +879,14 @@ DOCUMENT_SHAPE = Invariant(
         "a run-name from the pull request's title": Mutation(
             set_in(lambda d: d, "run-name", TITLE_EXPRESSION), "run-name: found"
         ),
-        "a manual trigger": Mutation(set_in(triggers, "workflow_dispatch", {}), "true.workflow_dispatch"),
+        "a manual trigger": Mutation(set_in(triggers, "workflow_dispatch", {}), "on.workflow_dispatch"),
         "a shorter types list": Mutation(
             set_in(lambda d: triggers(d)["pull_request_target"], "types", ["opened"]),
-            "true.pull_request_target.types[1]: found no such item",
+            "on.pull_request_target.types[1]: found no such item",
         ),
+        # the round-6 audit's edit, as the reader now hands it over: another key where the table holds `on`
+        "the trigger key spelled true": Mutation(spell_trigger("true"), "on: found no such key"),
+        "the trigger key spelled yes": Mutation(spell_trigger("yes"), "on: found no such key"),
         # a key of a step no table holds, or an action other than the pinned one
         "another checkout action": Mutation(
             set_in(checkout_step, "uses", "actions/checkout@v4"), "jobs.regime.steps[0].uses"
@@ -878,6 +930,19 @@ DOCUMENT_SHAPE = Invariant(
         "cancel-in-progress as a number": Mutation(
             set_in(lambda d: d["concurrency"], "cancel-in-progress", 1),
             "concurrency.cancel-in-progress: found 1 (int), the table holds True (bool)",
+        ),
+        # the YAML 1.1 forms the reader no longer reads as booleans: each is a string where the table holds a bool
+        "cancel-in-progress as the word yes": Mutation(
+            set_in(lambda d: d["concurrency"], "cancel-in-progress", "yes"),
+            "concurrency.cancel-in-progress: found 'yes' (str), the table holds True (bool)",
+        ),
+        "persist-credentials as the word off": Mutation(
+            set_in(checkout_options, "persist-credentials", "off"),
+            "jobs.regime.steps[0].with.persist-credentials: found 'off' (str), the table holds False (bool)",
+        ),
+        "enable-cache as the word no": Mutation(
+            set_in(setup_options, "enable-cache", "no"),
+            "jobs.regime.steps[1].with.enable-cache: found 'no' (str), the table holds False (bool)",
         ),
     },
 )
@@ -970,6 +1035,38 @@ class RedCopyTest(unittest.TestCase):
             broken.write_text("- a list\n")
             with self.assertRaises(AssertionError):
                 load(broken)
+
+
+class LoaderTest(unittest.TestCase):
+    """The reader's booleans are YAML 1.2's: `on` is the key `on`, and a trigger key spelled another way is refused."""
+
+    def test_the_dropped_forms_read_as_strings_and_true_and_false_as_booleans(self) -> None:
+        # PyYAML's own resolver reads every DROPPED_FORMS entry as a boolean, as a key and as a value; this reader
+        # hands each over as the string the file spells, and keeps the six spellings of true and false.
+        with tempfile.TemporaryDirectory() as temp:
+            forms = Path(temp) / "forms.yml"
+            forms.write_text("".join(f"{form}: {form}\n" for form in DROPPED_FORMS))
+            self.assertEqual(load(forms), {form: form for form in DROPPED_FORMS})
+            forms.write_text("".join(f"key{index}: {form}\n" for index, form in enumerate(BOOLEANS.split("|"))))
+            self.assertEqual(list(load(forms).values()), [True, True, True, False, False, False])
+
+    def test_a_trigger_key_spelled_true_or_yes_is_refused_naming_on(self) -> None:
+        # The round-6 audit's edit, as text: `on:` renamed to `true:` in the file read as the key `on` and every
+        # check passed, while GitHub found no trigger. Each spelling is now a missing `on`, named by both checks.
+        text = WORKFLOW.read_text()
+        self.assertEqual(text.count("\non:\n"), 1)
+        with tempfile.TemporaryDirectory() as temp:
+            edited = Path(temp) / "regime.yml"
+            for spelling in ("true", "yes", "True", "ON"):
+                with self.subTest(spelling):
+                    edited.write_text(text.replace("\non:\n", f"\n{spelling}:\n"))
+                    doc = load(edited)
+                    self.assertNotIn("on", doc)
+                    for check, names in ((check_trigger, "no on: key"), (check_document, "on: found no such key")):
+                        with self.assertRaises(AssertionError) as caught:
+                            check(doc)
+                        self.assertIn(line("on:"), str(caught.exception))
+                        self.assertIn(names, str(caught.exception))
 
 
 class PinnedParserTest(unittest.TestCase):

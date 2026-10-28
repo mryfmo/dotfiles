@@ -93,6 +93,15 @@ APT_EXEMPT: dict[tuple[str, str], str] = {}
 # Python unit tests" at most 664 s (macos-15 client, run 40610790312), 189 to 388 s on the Ubuntu rows; "Setup for
 # Codecov" under 1 s. Twice the maximum each, so a step bound ends a stall, never a slow passing run.
 STEP_REST_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330, "Setup for Codecov": 60}
+# U109 round 3 (audit of 0a9fa727): the step check attaches names and timeout-minutes through the hand-written
+# reader `jobs()` (CI's interpreter has no YAML parser), which returns a `run: |` body and a one-line plain scalar
+# and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):
+# every `run:` key the raw text holds is counted, and the reader must have returned exactly it, so a step in any
+# other form (`|-`, `|+`, `>`, `|2`, a quoted scalar, a plain scalar that continues) is refused by file and line.
+RUN_KEY = re.compile(r"run:(?:[ \t]+(.*))?")
+# The first character of a plain scalar: no block header, quote, flow bracket or other YAML indicator.
+PLAIN_SCALAR = re.compile(r"""[^|>"'{}\[\],#&*!%@`\s]""")
+READ_FORMS = "the reader returns `run: |` and a one-line plain scalar, nothing else"
 
 
 def step_text(step: dict) -> str:
@@ -164,6 +173,95 @@ def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None =
     return [f"{name}: {line}" for name, line in exempt if line not in lines.get(name, set())]
 
 
+def text_steps(text: str) -> dict[str, list[dict]]:
+    """Every step of every job, from the raw text alone: `{job: [{"line", "runs": [{"line", "header", "body"}]}]}`.
+
+    The reader's own indentation rule: a job at two spaces, `steps:` at four, a step's dash at six, its keys at
+    eight. A `run:` key's body is every following line indented past eight spaces, blank lines included, up to the
+    first that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
+    head, _, rest = text.partition("\njobs:\n")
+    result: dict[str, list[dict]] = {}
+    steps: list[dict] = []
+    step = body = None
+    in_steps = False
+    for number, line in enumerate(rest.split("\n"), head.count("\n") + 3):
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+        if body is not None and (not stripped or indent > 8):
+            body.append(line)
+            continue
+        body = key = None
+        if not stripped or stripped.startswith("#"):
+            continue
+        if indent == 0:
+            break
+        if indent == 2:
+            result[stripped.split(":", 1)[0]] = steps = []
+            in_steps, step = False, None
+        elif indent == 4:
+            in_steps, step = stripped == "steps:", None
+        elif in_steps and indent == 6 and stripped.startswith("- "):
+            step = {"line": number, "runs": []}
+            steps.append(step)
+            key = stripped[2:]
+        elif in_steps and indent == 8 and step is not None:
+            key = stripped
+        match = RUN_KEY.fullmatch(key) if key is not None else None
+        if match:
+            body = []
+            step["runs"].append({"line": number, "header": (match.group(1) or "").strip(), "body": body})
+    return result
+
+
+def run_text(step: dict) -> str:
+    """A text step's commands as written (the `run:` key's value and the lines under it), comment lines left out."""
+    lines = [line for run in step["runs"] for line in (run["header"], *run["body"])]
+    return "\n".join(line for line in lines if line.strip() and not line.lstrip().startswith("#"))
+
+
+def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list[str]:
+    """Every `run:` key in the raw text of one workflow that the reader did not return whole, by `file:line`.
+
+    The text is the census and the reader must agree with it job by job and step by step: the same steps, and for
+    each `run:` the same body (`run: |`) or the same one-line value (a plain scalar). Any other form is refused,
+    since the reader returns nothing for it or returns it undecoded."""
+    problems = []
+    by_job = text_steps(text)
+    if list(by_job) != list(parsed):
+        problems.append(f"{name}: the text holds jobs {list(by_job)}, the reader returned {list(parsed)}")
+    for job, steps in by_job.items():
+        read = parsed.get(job)
+        if read is None:
+            continue  # named above
+        if len(read) != len(steps):
+            problems.append(f"{name}: {job}: {len(steps)} steps in the text, {len(read)} from the reader")
+            continue
+        for step, got in zip(steps, read):
+            if not step["runs"]:
+                if "run" in got:
+                    problems.append(f"{name}:{step['line']}: the reader returned a run: the text does not hold")
+                continue
+            if len(step["runs"]) > 1:
+                problems.append(f"{name}:{step['runs'][1]['line']}: a second run: key in one step")
+                continue
+            (run,) = step["runs"]
+            where = f"{name}:{run['line']}: run: {run['header']}".rstrip()
+            lines = [line.strip() for line in run["body"] if line.strip()]
+            if run["header"] == "|":
+                script = [line.strip() for line in got.get("script", "").splitlines() if line.strip()]
+                if got.get("run") != "|" or script != lines:
+                    problems.append(
+                        f"{where} (the reader's body is not the text's: {len(script)} line(s) read, {len(lines)} written)"
+                    )
+            elif not PLAIN_SCALAR.match(run["header"]):
+                problems.append(f"{where} ({READ_FORMS})")
+            elif lines:
+                problems.append(f"{where} (continues onto {len(lines)} more line(s); {READ_FORMS})")
+            elif got.get("run") != run["header"]:
+                problems.append(f"{where} (the reader returned {got.get('run')!r})")
+    return problems
+
+
 def bounded_steps() -> list[dict]:
     """Three steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
     form = "timeout --kill-after=10 {} sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
@@ -182,34 +280,65 @@ def bounded_steps() -> list[dict]:
     ]
 
 
-def apt_step_problems(workflows: dict[str, dict[str, list[dict]]]) -> list[str]:
-    """What would let a stalled apt call outlive its step's name, for `{workflow: {job: steps}}`.
+def render(steps_by_job: dict[str, list[dict]]) -> str:
+    """Workflow text for in-memory steps: every `run` as a `run: |` block, the other keys plain, in the step's order."""
+    lines = ["name: x", "on: push", "jobs:"]
+    for job, steps in steps_by_job.items():
+        lines += [f"  {job}:", "    runs-on: ubuntu-24.04", "    steps:"]
+        for step in steps:
+            for position, (key, value) in enumerate(step.items()):
+                lead = "      - " if position == 0 else "        "
+                if key == "run":
+                    lines.append(f"{lead}run: |")
+                    lines += [f"          {line}" for line in value.splitlines()]
+                else:
+                    lines.append(f"{lead}{key}: {value}")
+    return "\n".join(lines) + "\n"
 
-    Steps are keyed by (workflow, job, index), the name carried for the message, so no step replaces another. A
-    name used twice in one job is refused on its own: STEP_REST_BUDGET and the exemption table refer to steps by
-    name. Then every step with a bounded call has a budget row and the timeout-minutes the formula gives, and
-    every budget row has its step."""
+
+def dash_lines(text: str) -> list[int]:
+    """The line of each step's dash, in step order."""
+    return [number for number, line in enumerate(text.splitlines(), 1) if line.startswith("      - ")]
+
+
+def parsed_steps(path: Path) -> dict[str, list[dict]]:
+    return {job: body["steps"] for job, body in jobs(path).items()}
+
+
+def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[dict]]]) -> list[str]:
+    """What would let a stalled apt call outlive its step's name, for `{workflow: text}` and the reader's steps.
+
+    The steps that run apt are found in the raw text (the `run:` key and the lines under it, comment lines left
+    out), once the census has shown the reader returned every `run:`; the reader's structure only attaches the name
+    and timeout-minutes. Steps are keyed by (workflow, job, index), the name carried for the message, so no step
+    replaces another; a name used twice in one job is refused on its own, since STEP_REST_BUDGET refers to steps by
+    name. Then every apt step has a budget row and the timeout-minutes the formula gives, and every budget row has
+    its step."""
     problems, found = [], {}
-    for workflow, by_job in workflows.items():
-        for job, steps in by_job.items():
+    for workflow, text in texts.items():
+        by_job = parsed.get(workflow, {})
+        problems.extend(census_problems(workflow, text, by_job))
+        for job, steps in text_steps(text).items():
+            read = by_job.get(job, [])
             seen: dict[str, int] = {}
             for index, step in enumerate(steps):
-                name = step.get("name")
+                got = read[index] if index < len(read) else {}
+                name = got.get("name")
+                label = name or f"step {index}"
+                where = f"{workflow}:{step['line']}: {job}: step {index} {label!r}"
                 if name is not None and name in seen:
-                    problems.append(f"{workflow}: {job}: step {index} {name!r} repeats the name of step {seen[name]}")
+                    problems.append(f"{where} repeats the name of step {seen[name]}")
                 elif name is not None:
                     seen[name] = index
-                bounds = [int(n) for n in APT_BOUND.findall(step_text(step))]
-                if bounds:
-                    found[(workflow, job, index)] = (name or f"step {index}", sum(n + KILL_AFTER for n in bounds), step)
+                commands = run_text(step)
+                if APT_CALL.search(commands):
+                    bounds = [int(n) for n in APT_BOUND.findall(commands)]
+                    found[where] = (name, sum(n + KILL_AFTER for n in bounds), got)
     names = {name for name, _, _ in found.values()}
-    problems.extend(
-        f"budget row {name!r} has no step with a bounded apt call" for name in STEP_REST_BUDGET if name not in names
-    )
-    for (workflow, job, index), (name, apt_seconds, step) in found.items():
-        where = f"{workflow}: {job}: step {index} {name!r}"
+    problems.extend(f"budget row {name!r} has no step that runs apt" for name in STEP_REST_BUDGET if name not in names)
+    for where, (name, apt_seconds, step) in found.items():
         if name not in STEP_REST_BUDGET:
-            problems.append(f"{where} runs a bounded apt call with no STEP_REST_BUDGET row")
+            problems.append(f"{where} runs apt with no STEP_REST_BUDGET row")
         elif "timeout-minutes" not in step:
             problems.append(f"{where} has no timeout-minutes")
         else:
@@ -217,6 +346,11 @@ def apt_step_problems(workflows: dict[str, dict[str, list[dict]]]) -> list[str]:
             if int(step["timeout-minutes"]) != expected:
                 problems.append(f"{where} has timeout-minutes {step['timeout-minutes']}, the formula gives {expected}")
     return problems
+
+
+def workflow_problems(paths: list[Path]) -> list[str]:
+    """The census and step problems of whole workflow files, as the tests see the real ones."""
+    return apt_step_problems({p.name: p.read_text() for p in paths}, {p.name: parsed_steps(p) for p in paths})
 
 
 def workflow_texts() -> dict[str, str]:
@@ -514,60 +648,240 @@ class BoundOrderTest(unittest.TestCase):
     def test_every_step_that_runs_apt_ends_a_stall_inside_its_own_bound(self) -> None:
         # The step's timeout-minutes is the ceiling of its apt bounds (each N plus the kill delay) plus the measured
         # rest of the step, plus one minute: a stall ends under the step's name, never at the job's timeout.
-        parsed = {
-            path.name: {job: body["steps"] for job, body in jobs(path).items()}
-            for path in sorted(WORKFLOWS.glob("*.y*ml"))
-        }
-        self.assertEqual([], apt_step_problems(parsed))
+        self.assertEqual([], workflow_problems(sorted(WORKFLOWS.glob("*.y*ml"))))
+
+    def problems(self, steps_by_job: dict[str, list[dict]]) -> tuple[list[str], list[int]]:
+        """The step problems of in-memory steps, written and read back through the reader, and their dash lines."""
+        text = render(steps_by_job)
+        path = Path(tempfile.mkdtemp(prefix="apt-steps-")) / "x.yaml"
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(path.parent)], check=False))
+        path.write_text(text)
+        return apt_step_problems({"x.yaml": text}, {"x.yaml": parsed_steps(path)}), dash_lines(text)
 
     def test_a_step_without_its_bound_cannot_hide_behind_a_later_step_of_the_same_name(self) -> None:
         # Audit of 9058072b: the registry was keyed by step name, so a later "Setup for Codecov" that carried
         # timeout-minutes replaced the earlier one that ran apt without it. Steps are keyed by (job, index) now, and
         # a name used twice in one job is refused on its own, since the budget table refers to steps by name.
         steps = bounded_steps()
-        self.assertEqual([], apt_step_problems({"x.yaml": {"test": steps}}))
+        self.assertEqual(([], [7, 12, 17]), self.problems({"test": steps}))
         del steps[2]["timeout-minutes"]
         later = {**bounded_steps()[2], "run": "echo later\n" + bounded_steps()[2]["run"]}
-        problems = apt_step_problems({"x.yaml": {"test": [*steps, later]}})
+        problems, at = self.problems({"test": [*steps, later]})
         self.assertEqual(
             [
-                "x.yaml: test: step 3 'Setup for Codecov' repeats the name of step 2",
-                "x.yaml: test: step 2 'Setup for Codecov' has no timeout-minutes",
+                f"x.yaml:{at[3]}: test: step 3 'Setup for Codecov' repeats the name of step 2",
+                f"x.yaml:{at[2]}: test: step 2 'Setup for Codecov' has no timeout-minutes",
             ],
             problems,
         )
         # The same name in another job is another step; unnamed steps have no name to collide.
         unnamed = {"run": "echo unnamed"}
-        self.assertEqual(
-            [],
-            apt_step_problems({"x.yaml": {"test": [*bounded_steps(), unnamed, unnamed], "other": [later]}}),
-        )
+        problems, _ = self.problems({"test": [*bounded_steps(), unnamed, unnamed], "other": [later]})
+        self.assertEqual([], problems)
 
     def test_a_bounded_step_off_the_formula_or_outside_the_budget_table_is_named(self) -> None:
         steps = bounded_steps()
         steps[0]["timeout-minutes"] = "9"
+        problems, at = self.problems({"test": steps})
         self.assertEqual(
-            ["x.yaml: test: step 0 'Install tools' has timeout-minutes 9, the formula gives 10"],
-            apt_step_problems({"x.yaml": {"test": steps}}),
+            [f"x.yaml:{at[0]}: test: step 0 'Install tools' has timeout-minutes 9, the formula gives 10"], problems
         )
         steps = bounded_steps()
         steps[2]["name"] = "Upload coverage"
+        problems, at = self.problems({"test": steps})
         self.assertEqual(
             [
-                "budget row 'Setup for Codecov' has no step with a bounded apt call",
-                "x.yaml: test: step 2 'Upload coverage' runs a bounded apt call with no STEP_REST_BUDGET row",
+                "budget row 'Setup for Codecov' has no step that runs apt",
+                f"x.yaml:{at[2]}: test: step 2 'Upload coverage' runs apt with no STEP_REST_BUDGET row",
             ],
-            apt_step_problems({"x.yaml": {"test": steps}}),
+            problems,
         )
         steps = bounded_steps()
         del steps[1]["name"]
+        problems, at = self.problems({"test": steps})
         self.assertEqual(
             [
-                "budget row 'Run Python unit tests' has no step with a bounded apt call",
-                "x.yaml: test: step 1 'step 1' runs a bounded apt call with no STEP_REST_BUDGET row",
+                "budget row 'Run Python unit tests' has no step that runs apt",
+                f"x.yaml:{at[1]}: test: step 1 'step 1' runs apt with no STEP_REST_BUDGET row",
             ],
-            apt_step_problems({"x.yaml": {"test": steps}}),
+            problems,
         )
+
+
+class ReaderCensusTest(unittest.TestCase):
+    """Standing order 21 on the workflow reader: every `run:` the text holds is one the reader returned whole, or the
+    step is named by file and line. Audit of 0a9fa727: `jobs()` returned no body for `run: |-` and `run: >`, so an
+    apt step added in that form passed the step check without timeout-minutes."""
+
+    FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
+    MARKER = "      - name: Upload coverage to Codecov\n"
+    # Each form the reader does not return, as the value of an added step's `run:` key, with `{}` for the command.
+    FORMS = (("|-", "|-\n          {}"), (">", ">\n          {}"), ("|2", "|2\n          {}"), ('"..."', '"{}"'))
+    BASE = "name: x\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n"
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="apt-census-"))
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.temp)], check=False))
+
+    def written(self, text: str, name: str = "x.yaml") -> Path:
+        path = self.temp / name
+        path.write_text(text)
+        return path
+
+    def added_step(self, form: str, command: str) -> tuple[Path, int, int]:
+        """test.yaml with a step `Added` in `form` holding `command` before the Codecov upload: (path, dash line, index)."""
+        text = (WORKFLOWS / "test.yaml").read_text()
+        self.assertEqual(1, text.count(self.MARKER))
+        before = text[: text.index(self.MARKER)]
+        added = f"      - name: Added\n        run: {dict(self.FORMS)[form].format(command)}\n\n"
+        return (
+            self.written(before + added + self.MARKER + text[len(before) + len(self.MARKER) :], "test.yaml"),
+            before.count("\n") + 1,
+            len(dash_lines(before)),
+        )
+
+    def test_every_run_key_in_the_text_is_one_the_reader_returned(self) -> None:
+        runs = 0
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            with self.subTest(workflow=path.name):
+                text = path.read_text()
+                self.assertEqual([], census_problems(path.name, text, parsed_steps(path)))
+                runs += sum(len(step["runs"]) for steps in text_steps(text).values() for step in steps)
+        # test.yaml alone writes 14 `run: |` blocks and 4 one-line scalars; a census that found fewer saw nothing.
+        self.assertGreaterEqual(runs, 18)
+
+    def test_an_apt_step_in_a_form_the_reader_does_not_return_is_refused_by_line(self) -> None:
+        # The auditor's step, in each of the four forms, with the unbounded call and with the exact bound form: the
+        # census names the `run:` line, the step check names the step's line, and the apt rule names the call.
+        for form, header in (("|-", "|-"), (">", ">"), ("|2", "|2"), ('"..."', '"sudo apt-get update"')):
+            for command in ("sudo apt-get update", self.FORM):
+                with self.subTest(form=form, command=command.split()[0]):
+                    path, dash, index = self.added_step(form, command)
+                    problems = workflow_problems([path])
+                    expected_header = (
+                        header if command == "sudo apt-get update" else header.replace("sudo apt-get update", self.FORM)
+                    )
+                    self.assertIn(f"test.yaml:{dash + 1}: run: {expected_header} ({READ_FORMS})", problems)
+                    self.assertIn(
+                        f"test.yaml:{dash}: test: step {index} 'Added' runs apt with no STEP_REST_BUDGET row", problems
+                    )
+                    self.assertEqual(2, len(problems), problems)
+                    violations = apt_violations("test.yaml", path.read_text())
+                    if command == self.FORM and form != '"..."':
+                        self.assertEqual(
+                            [], violations
+                        )  # the bound form itself passes the line rule: the step check is the stop
+                    else:
+                        call_line = dash + 1 if form == '"..."' else dash + 2
+                        self.assertEqual(1, len(violations), violations)
+                        self.assertTrue(violations[0].startswith(f"test.yaml:{call_line}: "), violations[0])
+        # The same step as `run: |` is read, and fails only the step check, on its line.
+        path, dash, index = self.added_step("|-", self.FORM)
+        path.write_text(path.read_text().replace("run: |-\n          timeout", "run: |\n          timeout"))
+        self.assertEqual(
+            [f"test.yaml:{dash}: test: step {index} 'Added' runs apt with no STEP_REST_BUDGET row"],
+            workflow_problems([path]),
+        )
+
+    def test_a_reader_that_returns_less_than_the_text_holds_is_named(self) -> None:
+        text = render({"test": bounded_steps()})
+        good = parsed_steps(self.written(text))
+        self.assertEqual([], census_problems("x.yaml", text, good))
+        at = dash_lines(text)
+        one_line = {**good["test"][1], "script": good["test"][1]["script"].splitlines()[0] + "\n"}
+        for case, parsed, expected in (
+            ("a job", {}, "x.yaml: the text holds jobs ['test'], the reader returned []"),
+            ("a step", {"test": good["test"][:2]}, "x.yaml: test: 3 steps in the text, 2 from the reader"),
+            (
+                "a body line",
+                {"test": [good["test"][0], one_line, good["test"][2]]},
+                f"x.yaml:{at[1] + 2}: run: | (the reader's body is not the text's: 1 line(s) read, 2 written)",
+            ),
+            (
+                "a plain value",
+                {"test": [good["test"][0], good["test"][1], {**good["test"][2], "run": "echo", "script": ""}]},
+                f"x.yaml:{at[2] + 2}: run: | (the reader's body is not the text's: 0 line(s) read, 1 written)",
+            ),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual([expected], census_problems("x.yaml", text, parsed))
+        with self.subTest(case="a run the text does not hold"):
+            only_name = self.BASE + "      - name: Only a name\n"
+            self.assertEqual([], census_problems("x.yaml", only_name, {"test": [{"name": "Only a name"}]}))
+            self.assertEqual(
+                ["x.yaml:7: the reader returned a run: the text does not hold"],
+                census_problems("x.yaml", only_name, {"test": [{"name": "Only a name", "run": "echo"}]}),
+            )
+
+    def test_a_run_the_reader_misreads_is_named_by_line(self) -> None:
+        # Through the real reader: the forms it returns in part or not at all, each refused with its line.
+        for case, step, expected in (
+            (
+                "a second run: key",
+                "      - name: Two\n        run: echo one\n        run: echo two\n",
+                "x.yaml:9: a second run: key in one step",
+            ),
+            (
+                "a block line indented nine spaces",
+                "      - run: |\n          echo ten\n         echo nine\n",
+                "x.yaml:7: run: | (the reader's body is not the text's: 1 line(s) read, 2 written)",
+            ),
+            (
+                "a plain scalar that continues",
+                "      - run: echo a\n          echo b\n",
+                f"x.yaml:7: run: echo a (continues onto 1 more line(s); {READ_FORMS})",
+            ),
+            ("an empty run:", "      - run:\n", f"x.yaml:7: run: ({READ_FORMS})"),
+            ("a single-quoted scalar", "      - run: 'echo a'\n", f"x.yaml:7: run: 'echo a' ({READ_FORMS})"),
+            ("a keep block", "      - run: |+\n          echo a\n", f"x.yaml:7: run: |+ ({READ_FORMS})"),
+            ("a folded strip block", "      - run: >-\n          echo a\n", f"x.yaml:7: run: >- ({READ_FORMS})"),
+            (
+                "a block with a comment after the header",
+                "      - run: | # why\n          echo a\n",
+                f"x.yaml:7: run: | # why ({READ_FORMS})",
+            ),
+        ):
+            with self.subTest(case=case):
+                path = self.written(self.BASE + step)
+                self.assertEqual([expected], census_problems("x.yaml", path.read_text(), parsed_steps(path)))
+        # And the two forms the reader returns pass, on the dash line as under it.
+        for step in (
+            "      - run: echo a\n",
+            "      - run: |\n          echo a\n\n          echo b\n",
+            "      - name: A\n        run: echo a\n",
+        ):
+            with self.subTest(step=step):
+                path = self.written(self.BASE + step)
+                self.assertEqual([], census_problems("x.yaml", path.read_text(), parsed_steps(path)))
+
+    def test_the_text_census_agrees_with_a_yaml_parser_when_one_is_present(self) -> None:
+        # Not a dependency: CI's interpreter has none. Where PyYAML is installed, it is a second reader of the same
+        # files, and the census must see every step and every run body it sees.
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("no PyYAML in this interpreter (the CI form)")
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            with self.subTest(workflow=path.name):
+                document = yaml.safe_load(path.read_text())
+                census = text_steps(path.read_text())
+                self.assertEqual(list(document["jobs"]), list(census))
+                for job, steps in census.items():
+                    parsed = document["jobs"][job]["steps"]
+                    self.assertEqual(len(parsed), len(steps), job)
+                    for step, got in zip(steps, parsed):
+                        self.assertEqual("run" in got, bool(step["runs"]), (job, step["line"]))
+                        for run in step["runs"]:
+                            written = (
+                                [line.strip() for line in run["body"] if line.strip()]
+                                if run["header"] == "|"
+                                else [run["header"]]
+                            )
+                            self.assertEqual(
+                                written,
+                                [line.strip() for line in str(got["run"]).splitlines() if line.strip()],
+                                (job, run["line"]),
+                            )
 
 
 if __name__ == "__main__":

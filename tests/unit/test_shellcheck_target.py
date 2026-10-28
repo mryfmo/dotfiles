@@ -49,8 +49,8 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAM
 MASKED_RETURN = '#!/usr/bin/env bash\nprintf "%s\\n" "$(false)"\n'
 # The U31 shape SC2312 exempts; only masked-dirname-check.sh reports it.
 MASKED_DIRNAME = '#!/usr/bin/env bash\ndir=$(cd "$(dirname "$0")" && pwd -P) || exit 1\necho "${dir}"\n'
-# One substitution whose status is read: a run that sees none is refused (U105), and the default checks pass it.
-CLEAN = '#!/usr/bin/env bash\nhere=$(pwd -P) || exit 1\nprintf "%s\\n" "${1:-${here}}"\n'
+# No substitution at all: a group of such files is clean (U105), and the default checks pass it.
+CLEAN = '#!/usr/bin/env bash\nprintf "%s\\n" "${1:-}"\n'
 
 
 def run_steps(workflow: str) -> list[tuple[str, str]]:

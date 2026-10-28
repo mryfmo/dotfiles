@@ -19,17 +19,17 @@
 #   includes a heredoc delimiter with ANSI-C escapes (`<<$'\x45OF'`), which shfmt 3.14.1 and
 #   ShellCheck 0.11.0 both fail to terminate (tests/fixtures/shfmt-json/heredoc-ansi-c-delimiter).
 #   Before any file is read, scripts/ci/shfmt_json_contract.py proves that the pinned shfmt still
-#   produces the node kinds and fields this walk reads (regime-cutover U105); and a run that visited
-#   no command substitution at all, while the contract fixture holds some, is refused rather than
-#   read as clean, so "no findings" is never "saw nothing".
+#   produces the node kinds and fields this walk reads, and this walk then visits the contract fixtures
+#   itself and is refused if it sees no command substitution there (regime-cutover U105): "no findings"
+#   on the listed files is never "saw nothing", and a group whose files hold no substitution is clean.
 # @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).
 # @description The shfmt is PATH's, the one scripts/ci/pinned-tool-version.sh checks before `make shellcheck`
 #   runs this ([tools."http:shfmt"], U97); no variable selects another.
 # @exitcode 0 No command substitution nested inside another.
 # @exitcode 1 At least one finding, each printed as `file:line: …`.
 # @exitcode 2 No file given, a listed file cannot be read or parsed, shfmt or python3 is missing, shfmt's JSON
-#   does not match the pinned node table, or the walk visited no command substitution: the list is
-#   refused, never read as clean.
+#   does not match the pinned node table, or this walk visited no command substitution in the contract
+#   fixtures: the list is refused, never read as clean.
 # @example
 #   scripts/ci/masked-dirname-check.sh scripts/orchestrator/hcom-seat
 set -euo pipefail
@@ -88,7 +88,7 @@ def quoted(word):
 
 
 try:
-    contract.verify()
+    fixtures = contract.verified_trees()
 except contract.ContractError as error:
     refuse(f"shfmt's JSON does not match the pinned node table ({error})")
 
@@ -117,6 +117,16 @@ def walk(node, depth):
         walk(value, depth)
 
 
+# The contract proved the parser names the kinds; this proves the walk above still visits them, with its own
+# traversal and type test, before a listed file is read. The fixtures' own findings are not reported.
+for source, tree in fixtures.items():
+    try:
+        walk(tree, 0)
+    except Exception as error:  # a fixture the walk cannot read is "could not judge" for every listed file
+        refuse(f"cannot walk the syntax tree of {source} ({error!r})")
+if substitutions == 0:
+    refuse("the walk visited no command substitution in the contract fixtures, which hold some")
+
 status = 0
 for file in sys.argv[2:]:
     try:
@@ -139,8 +149,6 @@ for file in sys.argv[2:]:
     for line in sorted(findings):
         print(f"{file}:{line}: {MESSAGE}")
     status = 1 if findings else status
-if substitutions == 0:
-    refuse("the walk visited no command substitution in the listed files, while the contract fixture holds some")
 sys.exit(status)
 PY
 )

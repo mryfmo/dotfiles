@@ -84,6 +84,18 @@ def captures() -> dict[str, str]:
     return {fixture.name: capture.read_text() for fixture, capture in CAPTURES.items()}
 
 
+def hidden_tree(text: str) -> str:
+    """The captured tree as the literal body of a quoted heredoc: every node is still there for the contract's reader,
+    none for masked-dirname-check's walk, which skips such a body (the one place the two traversals differ)."""
+    heredoc = {
+        "Op": "<<",
+        "Word": {"Parts": [{"Type": "SglQuoted", "Value": "EOF", "Pos": {"Line": 1}}]},
+        "Hdoc": {"Parts": [json.loads(text)]},
+    }
+    stmt = {"Cmd": {"Type": "CallExpr", "Args": [], "Pos": {"Line": 1}}, "Pos": {"Line": 1}, "Redirs": [heredoc]}
+    return json.dumps({"Type": "File", "Stmts": [stmt]})
+
+
 def table_names() -> set[str]:
     """Every kind and every field name (each step of a dotted path) TABLE writes down, and Type, the discriminator."""
     names = set(contract.TABLE) | {"Type"}
@@ -178,6 +190,13 @@ class ContractRunTest(unittest.TestCase):
         result = subprocess.run([sys.executable, "-I", str(MODULE)], capture_output=True, text=True, check=False)
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
+    def test_verified_trees_are_the_fixtures_trees_by_repository_path(self) -> None:
+        trees = contract.verified_trees()
+        self.assertEqual({str(fixture.relative_to(ROOT)) for fixture in CAPTURES}, set(trees))
+        for fixture, capture in CAPTURES.items():
+            self.assertEqual(json.loads(capture.read_text()), trees[str(fixture.relative_to(ROOT))])
+        self.assertEqual(sum((contract.count(tree) for tree in trees.values()), contract.Counter()), contract.verify())
+
     def test_the_captured_trees_are_the_pinned_parsers_output(self) -> None:
         for fixture, capture in CAPTURES.items():
             with self.subTest(fixture=fixture.name):
@@ -269,18 +288,37 @@ class ContractRunTest(unittest.TestCase):
 
     def test_each_walker_refuses_a_run_that_saw_no_node_the_fixture_holds(self) -> None:
         # The parser satisfies the contract, then hands every real file a tree whose statements the walk cannot
-        # read: "no findings" would be "saw nothing", so each walker exits 2 naming what it did not see.
+        # read: "no findings" would be "saw nothing", so the hook and the lint exit 2 naming what they did not see.
+        # masked-dirname-check's self-check rests on the fixtures instead (the test below): a listed file with no
+        # command substitution is a clean file, so this tree is clean to it.
         results = self.walkers(self.path_with_fake_shfmt(captures(), json.dumps(UNREADABLE_TREE)))
         expected = {
-            "masked-dirname-check": "the walk visited no command substitution",
             "enforce-uv": "lists 1 statement(s) but the walk saw none",
             "lint-comparisons": "saw no statement in 1 shell file(s)",
         }
-        for name, result in results.items():
+        for name, message in expected.items():
             with self.subTest(walker=name):
+                result = results[name]
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-                self.assertIn(expected[name], result.stderr)
+                self.assertIn(message, result.stderr)
                 self.assertEqual("", result.stdout)
+        check = results["masked-dirname-check"]
+        self.assertEqual((0, "", ""), (check.returncode, check.stdout, check.stderr))
+
+    def test_masked_dirname_check_refuses_fixtures_in_which_its_walk_sees_no_substitution(self) -> None:
+        # The contract holds (every node is still in each tree), but the walk skips a quoted heredoc's body, so its
+        # own visit of the fixtures counts no command substitution: refused before the listed file is read, whose
+        # nested substitution therefore yields no finding line.
+        hidden = {name: hidden_tree(text) for name, text in captures().items()}
+        lever = self.temp / "lever.sh"
+        lever.write_text('#!/usr/bin/env bash\ndir=$(cd "$(dirname "$0")" && pwd -P)\n')
+        env = self.path_with_fake_shfmt(hidden, captures()[FIXTURE.name])
+
+        result = subprocess.run(["bash", str(CHECK), str(lever)], capture_output=True, text=True, check=False, env=env)
+
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("the walk visited no command substitution in the contract fixtures", result.stderr)
+        self.assertEqual("", result.stdout)
 
     def test_the_walkers_judge_a_conforming_tree_as_before(self) -> None:
         results = self.walkers({**os.environ})

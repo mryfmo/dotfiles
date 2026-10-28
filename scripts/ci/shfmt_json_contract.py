@@ -170,11 +170,12 @@ def parse(text: bytes, source: str) -> dict:
     return tree
 
 
-def verify() -> Counter[str]:
-    """Run the contract: the pinned shfmt parses the fixtures and their trees match TABLE. Returns the node counts
-    the fixtures produced; raises ContractError naming the first difference."""
+def verified_trees() -> dict[str, dict]:
+    """Run the contract: the pinned shfmt parses the fixtures and their trees match TABLE. Returns the trees by the
+    fixture's repository path, so a walker can prove its own visitor still sees the nodes in them before it reads a
+    real file; raises ContractError naming the first difference."""
     pinned_shfmt()
-    trees: dict[str, object] = {}
+    trees: dict[str, dict] = {}
     for fixture in FIXTURES:
         source = str(fixture.relative_to(ROOT))
         try:
@@ -184,7 +185,13 @@ def verify() -> Counter[str]:
         trees[source] = parse(text, source)
     if (difference := check(trees)) is not None:
         raise ContractError(difference)
-    return sum((count(tree) for tree in trees.values()), Counter())
+    return trees
+
+
+def verify() -> Counter[str]:
+    """Run the contract (verified_trees) and return the node counts the fixtures produced; raises ContractError naming
+    the first difference."""
+    return sum((count(tree) for tree in verified_trees().values()), Counter())
 
 
 def main(argv: Iterable[str] | None = None) -> int:

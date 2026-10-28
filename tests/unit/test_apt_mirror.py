@@ -147,6 +147,15 @@ READ_VALUE_FORMS = ("empty", "a plain scalar", "a quoted scalar", "a flow collec
 READ_VALUES = "the readers read a value that is empty, a plain scalar, a quoted scalar or a flow collection"
 STEPS_VALUE = "the list follows on its own lines"
 RUN_COMMENT = "a comment after a one-line run:, which the reader returns inside the command"
+# Round 6 (audit of 56e41f9b): the round 5 grammar began at the `jobs:` line and read nothing before it, so a
+# top-level `name: "x` whose quoted value continued onto a `jobs:` line at the margin handed both readers a jobs key
+# inside the string, and the real `"jobs":` mapping under a quoted key (YAML the runner executes) was never read: an
+# apt step there passed. The grammar now covers the whole document: every line at the margin is a plain key the
+# workflow schema allows (TOP_KEYS) whose value is a read form and complete on its line (a quoted scalar closes, a
+# flow collection balances; a `#` inside either is content), `jobs:` is bare and once, and a line indented under any
+# other top-level key is its value. No line of the file is unread.
+TOP_KEYS = frozenset("name run-name on permissions env defaults concurrency jobs".split())
+TOP_STOP = "both readers stop at the first unindented line"
 
 
 def step_text(step: dict) -> str:
@@ -220,7 +229,7 @@ def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None =
 
 class Census(NamedTuple):
     """Every job's steps from the raw text, `{job: [{"line", "dash", "keys", "runs": [{"line", "header", "body"}]}]}`
-    ("dash" and "keys" the step's indents), and the lines inside `jobs:` the census could not place, `(line, why)`."""
+    ("dash" and "keys" the step's indents), and the lines of the file the census could not place, `(line, why)`."""
 
     steps: dict[str, list[dict]]
     refused: list[tuple[int, str]]
@@ -228,9 +237,9 @@ class Census(NamedTuple):
 
 class Lexed(NamedTuple):
     """One line taken apart: its indent in spaces, whether it opens a list entry (`- `), the plain key it holds (None
-    when it holds none), that key's value with its trailing comment removed, the comment, the key's header as written
-    (a `run:` header is compared whole), the stripped text, and the fault that stops the lexing (a tab in the
-    indentation)."""
+    when it holds none), that key's value with its trailing comment removed (a `#` inside a quoted scalar or a flow
+    collection's quoted string is content), the comment, the key's header as written (a `run:` header is compared
+    whole), the stripped text, and the fault that stops the lexing (a tab in the indentation)."""
 
     indent: int
     dash: bool
@@ -242,6 +251,57 @@ class Lexed(NamedTuple):
     fault: str | None
 
 
+def node_end(header: str) -> int | None:
+    """The index after the close of the quoted scalar or flow collection that opens `header`, or None when the line
+    ends first. A `"` scalar escapes with a backslash and a `'` scalar doubles its quote; inside a flow collection a
+    quote opens a string after an opener, a `,`, a `:` or a blank, and a `#` after a blank opens a comment that runs
+    to the line's end (YAML 7.3, 7.4)."""
+    quote: str | None = None
+    depth = 0
+    index = 0
+    while index < len(header):
+        char = header[index]
+        if quote:
+            if quote == '"' and char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                if quote == "'" and header[index + 1 : index + 2] == "'":
+                    index += 2
+                    continue
+                quote = None
+                if depth == 0:
+                    return index + 1
+        elif char in "\"'" and (index == 0 or header[index - 1] in " \t,[{:"):
+            quote = char
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        elif char == "#" and header[index - 1] in " \t":
+            return None
+        index += 1
+    return None
+
+
+def split_header(header: str) -> tuple[str, str]:
+    """A key's header as its value and its trailing comment. A `#` that opens the header or follows a blank starts
+    the comment, except inside the quoted scalar or flow collection the header opens, where it is content; when that
+    node never closes on the line the whole header is the value, and value_form names it."""
+    start = 0
+    if header and header[0] in "\"'[{":
+        end = node_end(header)
+        if end is None:
+            return header, ""
+        start = end
+    comment = COMMENT.search(header, start)
+    if comment is None:
+        return header, ""
+    return header[: comment.start()].rstrip(), header[comment.start() :].strip()
+
+
 def lex(line: str) -> Lexed:
     text = line.strip()
     indent = len(line) - len(line.lstrip(" "))
@@ -250,20 +310,25 @@ def lex(line: str) -> Lexed:
     entry = text[2:].lstrip(" ") if dash else text
     match = KEY_LINE.fullmatch(entry)
     header = (match.group(2) or "").strip() if match else ""
-    comment = COMMENT.search(header)
-    value, note = (header[: comment.start()].rstrip(), header[comment.start() :].strip()) if comment else (header, "")
+    value, note = split_header(header)
     return Lexed(indent, dash, match.group(1) if match else None, value, note, header, text, fault)
 
 
 def value_form(value: str) -> str:
-    """The form a value's first character gives it: one of READ_VALUE_FORMS, or the name of a refused indicator."""
+    """The form a value's first character gives it: one of READ_VALUE_FORMS, the name of a refused indicator, or a
+    quoted scalar or flow collection the line does not complete (it never closes, or text follows its close): YAML
+    reads the lines after such a value as the rest of it, the readers as the next keys."""
     if not value:
         return "empty"
     first = value[0]
-    if first in "\"'":
-        return "a quoted scalar"
-    if first in "[{":
-        return "a flow collection"
+    if first in "\"'[{":
+        form = "a quoted scalar" if first in "\"'" else "a flow collection"
+        end = node_end(value)
+        if end is None:
+            return f"{form} that does not close on its line"
+        if value[end:].strip():
+            return f"text after {form}"
+        return form
     if first in "-?:" and (len(value) == 1 or value[1] in " \t"):
         return {"-": "a sequence entry", "?": "a complex key", ":": "a mapping value"}[first]
     return VALUE_INDICATORS.get(first, "a plain scalar")
@@ -289,37 +354,29 @@ def key_problem(lexed: Lexed, allowed: frozenset[str], seen: set[str], level: st
 def census(text: str) -> Census:
     """Every step of every job, from the raw text alone, at whatever indentation the file uses.
 
-    The shape is derived, never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a
-    job its keys', the first dash under `steps:` the dashes', and each dash line its own keys' (the column after
-    `- `). Any other line inside `jobs:` is the value of the key above it when it is indented past that key (a
-    `run: |` body, a nested `with:` mapping; a `run:` there is not a key) and is refused by line otherwise. Every
-    line the shape places is lexed and held to the grammar (KEY_LINE, JOB_KEYS, STEP_KEYS, the value forms) or
-    refused by line with its construct named. A `run:` key's body is every following line indented past the step's
-    keys, blank lines included, up to the first that is not; so the body is collected in any scalar form, whatever
-    the reader makes of the form."""
+    The whole document is read. A line at the margin is a plain key the workflow schema allows (TOP_KEYS), its value
+    in a read form and complete on its line; `jobs:` is bare and appears once; a line indented under any other
+    top-level key is that key's value (a nested block, a list, a continuation). Inside `jobs:` the shape is derived,
+    never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a job its keys', the first
+    dash under `steps:` the dashes', and each dash line its own keys' (the column after `- `). Any other line inside
+    `jobs:` is the value of the key above it when it is indented past that key (a `run: |` body, a nested `with:`
+    mapping; a `run:` there is not a key) and is refused by line otherwise. Every line the shape places is lexed and
+    held to the grammar (KEY_LINE, JOB_KEYS, STEP_KEYS, the value forms) or refused by line with its construct named.
+    A `run:` key's body is every following line indented past the step's keys, blank lines included, up to the first
+    that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
     steps_by_job: dict[str, list[dict]] = {}
     refused: list[tuple[int, str]] = []
     steps: list[dict] = []
+    top_keys: set[str] = set()
     job_keys: set[str] = set()
     step_keys: set[str] = set()
     jobs_at = keys_at = dash_at = value_at = step = body = body_at = None
-    in_steps = False
-    state = "before"
+    in_steps = inside = False  # `inside`: between the `jobs:` line and the next line at the margin
     for number, line in enumerate(text.split("\n"), 1):
         lexed = lex(line)
-        if state == "before":
-            if lexed.indent == 0 and lexed.key == "jobs":
-                state = "jobs"
-                if line != "jobs:":
-                    refused.append((number, f"{lexed.text} ({JOBS_LINE})"))
-            continue
-        if state == "after":
-            if lexed.indent == 0 and lexed.key == "jobs":
-                refused.append((number, f"{lexed.text} (a second jobs: key)"))
-            continue
         if "\r" in line:
             refused.append((number, f"{lexed.text} (a carriage return; the workflows are LF-only)"))
-        if value_at is not None and (not lexed.text or lexed.indent > value_at):
+        if inside and value_at is not None and (not lexed.text or lexed.indent > value_at):
             if body is not None:
                 body.append(line)
                 if lexed.text and body_at is None:
@@ -340,14 +397,28 @@ def census(text: str) -> Census:
             refused.append((number, f"{lexed.text} ({lexed.fault})"))
             continue
         if lexed.indent == 0:
-            state = "after"
             if lexed.key is None or lexed.dash:
-                refused.append(
-                    (number, f"{lexed.text} (not {KEY_FORM}; both readers stop at the first unindented line)")
-                )
-            elif lexed.key == "jobs":
+                stop = f"; {TOP_STOP}" if inside else ""
+                refused.append((number, f"{lexed.text} (not {KEY_FORM}{stop})"))
+            elif lexed.key != "jobs":
+                problem = key_problem(lexed, TOP_KEYS, top_keys, "workflow")
+                if problem:
+                    refused.append((number, f"{lexed.text} ({problem})"))
+            elif "jobs" in top_keys:
                 refused.append((number, f"{lexed.text} (a second jobs: key)"))
+            else:
+                top_keys.add("jobs")
+                if line != "jobs:":
+                    refused.append((number, f"{lexed.text} ({JOBS_LINE})"))
+                inside = True
+                continue
+            inside = False
+            value_at = None
             continue
+        if not inside:
+            if not top_keys:
+                refused.append((number, f"{lexed.text} (indented {lexed.indent} before any top-level key)"))
+            continue  # the value of the top-level key above it
         if jobs_at is None:
             jobs_at = lexed.indent
         dash = in_steps and lexed.dash and dash_at in (None, lexed.indent) and lexed.indent >= keys_at
@@ -402,7 +473,7 @@ def census(text: str) -> Census:
         if step_key and lexed.key == "run":
             body, body_at = [], None
             step["runs"].append({"line": number, "header": lexed.header, "body": body})
-    if state == "before":
+    if "jobs" not in top_keys:
         refused.append((1, f"no `jobs:` line in the file ({JOBS_LINE})"))
     for steps in steps_by_job.values():
         for run in (run for step in steps for run in step["runs"]):
@@ -935,7 +1006,9 @@ class ReaderCensusTest(unittest.TestCase):
     step is named by file and line. Audit of 0a9fa727: `jobs()` returned no body for `run: |-` and `run: >`, so an
     apt step added in that form passed the step check without timeout-minutes. Audit of 81fa7256: the census read
     only the reader's indentation, so a step at five and seven spaces passed both. Audit of f4486ead: the census
-    compared the literal `steps:`, so `steps: # comment` hid a list at five and seven from both."""
+    compared the literal `steps:`, so `steps: # comment` hid a list at five and seven from both. Audit of 56e41f9b:
+    the grammar began at `jobs:`, so a quoted top-level `name` that ran on across a `jobs:` line hid the real
+    `"jobs":` mapping from both."""
 
     FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
@@ -1329,6 +1402,137 @@ class ReaderCensusTest(unittest.TestCase):
         self.assertEqual([], workflow_problems([self.written(commented, "test.yaml")]))
         self.agrees_with_yaml(commented)
 
+    def auditors_document(
+        self, command: str, quoted_name: bool = True, quoted_jobs: bool = True
+    ) -> tuple[Path, int, int]:
+        """The audit's test.yaml, in whole or in part: the `name:` value opened with a double quote and continued,
+        across a `jobs:` line at the margin and a copy of the real `test` job (its backslashes and double quotes
+        escaped, as the scalar needs), to a closing quote on an added last step; the real header after it; then the
+        real jobs block with a job `added` appended (its one step a `run: |` holding `command` at the reader's shape)
+        under `"jobs":`. With `quoted_name` or `quoted_jobs` false that half is as written. Returns (path, the line
+        of the real jobs key, the added step's dash line)."""
+        text = (WORKFLOWS / "test.yaml").read_text()
+        head, block = text.split("\njobs:\n", 1)
+        title, header = head.split("\n", 1)
+        self.assertEqual("name: Unit test", title)
+        copy = block.replace("\\", "\\\\").replace('"', '\\"')
+        name = f'name: "Unit test\njobs:\n{copy}      - run: echo hi"' if quoted_name else title
+        key = '"jobs":' if quoted_jobs else "jobs:"
+        added = f"  added:\n    runs-on: ubuntu-24.04\n    steps:\n      - name: Added\n        run: |\n          {command}\n"
+        before = f"{name}\n{header}"
+        jobs_line = before.count("\n") + 2
+        return (
+            self.written(f"{before}\n{key}\n{block}{added}", "test.yaml"),
+            jobs_line,
+            jobs_line + block.count("\n") + 4,
+        )
+
+    def yaml_reads_the_added_job(self, text: str, command: str, quoted_name: bool) -> None:
+        """Where PyYAML is present: the document's jobs are the real ones and `added`, whose step holds `command`;
+        with the quoted name, the copy of the test job is inside the name. Elsewhere nothing."""
+        try:
+            import yaml
+        except ImportError:
+            return
+        document = yaml.safe_load(text)
+        self.assertEqual([*text_steps((WORKFLOWS / "test.yaml").read_text()), "added"], list(document["jobs"]))
+        self.assertEqual(command, document["jobs"]["added"]["steps"][0]["run"].strip())
+        self.assertEqual(quoted_name, document["name"].startswith("Unit test jobs: test:"))
+
+    def test_the_auditors_quoted_name_and_quoted_jobs_key_are_refused_by_line(self) -> None:
+        # Audit of 56e41f9b: the round 5 grammar began at `jobs:`. A `name: "Unit test` that ran on, across a `jobs:`
+        # line at the margin and a copy of the test job, to a closing quote gave both readers that copy, and the real
+        # `"jobs":` mapping (a quoted key, YAML the runner executes) was never read, so an apt step added there
+        # passed every check. Each half is now refused on its own line, and the real job is counted when neither is
+        # written.
+        name_refused = f'name: "Unit test (name: holds a quoted scalar that does not close on its line; {READ_VALUES})'
+        quoted_key = f'"jobs": (not {KEY_FORM})'
+        for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
+            short = command.split()[0]
+            unbounded = [f"test.yaml:{{}}: {command} (1 apt call(s), 0 in the bound form)"] if short == "sudo" else []
+            with self.subTest(command=short, written="both"):
+                path, jobs_line, at = self.auditors_document(command)
+                text = path.read_text()
+                found = census(text)
+                self.assertEqual([(1, name_refused), (jobs_line, quoted_key)], found.refused)
+                self.assertEqual(["test"], list(found.steps))  # the copy inside the name, closed by its last step
+                self.assertEqual(['echo hi"'], [run["header"] for run in found.steps["test"][-1]["runs"]])
+                read = jobs(path)  # the reader reads the same copy: the hole on 56e41f9b
+                self.assertEqual(["test"], list(read))
+                self.assertEqual({"run": 'echo hi"'}, read["test"]["steps"][-1])
+                self.assertEqual(
+                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: {quoted_key}"], workflow_problems([path])
+                )
+                self.assertEqual([line.format(at + 2) for line in unbounded], apt_violations("test.yaml", text))
+                self.yaml_reads_the_added_job(text, command, quoted_name=True)
+            with self.subTest(command=short, written="the quoted name alone"):
+                path, jobs_line, at = self.auditors_document(command, quoted_jobs=False)
+                found = census(path.read_text())
+                self.assertEqual([(1, name_refused), (jobs_line, "jobs: (a second jobs: key)")], found.refused)
+                self.assertEqual(["test"], list(found.steps))
+                self.assertEqual(["test"], list(jobs(path)))
+                self.assertEqual(
+                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: jobs: (a second jobs: key)"],
+                    workflow_problems([path]),
+                )
+                self.yaml_reads_the_added_job(path.read_text(), command, quoted_name=True)
+            with self.subTest(command=short, written="the quoted jobs key alone"):
+                path, jobs_line, at = self.auditors_document(command, quoted_name=False)
+                found = census(path.read_text())
+                self.assertEqual(
+                    [(jobs_line, quoted_key), (1, f"no `jobs:` line in the file ({JOBS_LINE})")], found.refused
+                )
+                self.assertEqual({}, found.steps)
+                with self.assertRaises(IndexError):  # the reader finds no `jobs:` line and is loud on its own
+                    jobs(path)
+                self.yaml_reads_the_added_job(path.read_text(), command, quoted_name=False)
+            with self.subTest(command=short, written="neither"):
+                path, jobs_line, at = self.auditors_document(command, quoted_name=False, quoted_jobs=False)
+                text = path.read_text()
+                (step,) = text_steps(text)["added"]
+                self.assertEqual((at, [command]), (step["line"], [line.strip() for line in step["runs"][0]["body"]]))
+                expected = (
+                    []
+                    if short == "sleep"
+                    else [f"test.yaml:{at}: added: step 0 'Added' runs apt with no STEP_REST_BUDGET row"]
+                )
+                self.assertEqual(expected, workflow_problems([path]))
+                self.assertEqual([line.format(at + 2) for line in unbounded], apt_violations("test.yaml", text))
+                self.agrees_with_yaml(text)
+
+    def test_a_hash_inside_a_quoted_value_or_a_flow_string_is_content(self) -> None:
+        # YAML 7.3: a `#` inside a quoted scalar, or inside a quoted string of a flow collection, is content; a `#`
+        # after a blank anywhere else opens a comment. The census reads both as PyYAML does (a comment rule that
+        # stopped at the first blank `#` would read `name: "a #b"` as an unclosed quote and refuse a value the
+        # readers return whole), and the reader takes a step key's quoted value whole.
+        for case, text, value, comment in (
+            ("a quoted name", 'name: "a #b"', '"a #b"', ""),
+            ("a quoted name with a comment", 'name: "a #b" # c', '"a #b"', "# c"),
+            (
+                "a flow collection with a quoted string",
+                "on: {push: {branches: ['a #b']}}",
+                "{push: {branches: ['a #b']}}",
+                "",
+            ),
+            ("a doubled single quote", "name: 'it''s #1'", "'it''s #1'", ""),
+            ("an escaped double quote", 'name: "a \\" #b"', '"a \\" #b"', ""),
+            ("a plain scalar", "name: a #b", "a", "#b"),
+            ("a flow collection with a comment", "on: [push] # c", "[push]", "# c"),
+        ):
+            with self.subTest(case=case):
+                lexed = lex(text)
+                self.assertEqual((value, comment), (lexed.value, lexed.comment))
+                self.assertIn(value_form(value), READ_VALUE_FORMS)
+        text = (
+            'name: "Unit #1"\non: {push: {branches: ["a #b"]}}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n'
+            '    steps:\n      - name: "a #b"\n        run: echo a\n'
+        )
+        path = self.written(text)
+        self.assertEqual([], census(text).refused)
+        self.assertEqual([], census_problems("x.yaml", text, parsed_steps(path)))
+        self.assertEqual('"a #b"', jobs(path)["test"]["steps"][0]["name"])
+        self.agrees_with_yaml(text)
+
     def test_every_construct_outside_the_grammar_is_refused_by_line(self) -> None:
         # The closed grammar, construct by construct: each row is a workflow holding one construct outside it, the
         # refusals the census must name (line, text and why) and what PyYAML makes of the document where it is
@@ -1339,7 +1543,13 @@ class ReaderCensusTest(unittest.TestCase):
         base = job + "    steps:\n"
         update = "sudo apt-get update"
         not_key = f"not {KEY_FORM}"
+        unclosed_quote = "a quoted scalar that does not close on its line"
+        unclosed_flow = "a flow collection that does not close on its line"
+        no_jobs = (1, f"no `jobs:` line in the file ({JOBS_LINE})")
+        test_job = f"  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: {update}\n"
+        complex_value = f"{{test: {{runs-on: ubuntu-24.04, steps: [{{run: {update}}}]}}}}"
         step_keys, job_keys = ", ".join(sorted(STEP_KEYS)), ", ".join(sorted(JOB_KEYS))
+        top_keys = ", ".join(sorted(TOP_KEYS))
         rows = (
             # the value of steps:
             (
@@ -1351,7 +1561,10 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "an alias on steps:",
                 "name: x\non: &s push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps: *s\n",
-                [(6, f"steps: *s (steps: holds an alias; {STEPS_VALUE})")],
+                [
+                    (2, f"on: &s push (on: holds an anchor; {READ_VALUES})"),
+                    (6, f"steps: *s (steps: holds an alias; {STEPS_VALUE})"),
+                ],
                 "reads",
             ),
             (
@@ -1394,7 +1607,7 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "a merge key",
                 f"name: x\non: &base\n  steps:\n    - run: {update}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    <<: *base\n",
-                [(8, f"<<: *base ({not_key})")],
+                [(2, f"on: &base (on: holds an anchor; {READ_VALUES})"), (8, f"<<: *base ({not_key})")],
                 "reads",
             ),
             (
@@ -1451,7 +1664,7 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "an alias step",
                 f"name: x\non: &s {{run: {update}}}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - *s\n",
-                [(7, f"- *s ({not_key})")],
+                [(2, f"on: &s {{run: {update}}} (on: holds an anchor; {READ_VALUES})"), (7, f"- *s ({not_key})")],
                 "reads",
             ),
             (
@@ -1494,7 +1707,10 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "an alias on a step key",
                 "name: x\non: &u push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - uses: *u\n",
-                [(7, f"- uses: *u (uses: holds an alias; {READ_VALUES})")],
+                [
+                    (2, f"on: &u push (on: holds an anchor; {READ_VALUES})"),
+                    (7, f"- uses: *u (uses: holds an alias; {READ_VALUES})"),
+                ],
                 "reads",
             ),
             (
@@ -1537,7 +1753,10 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "an alias on a job key",
                 "name: x\non: &e {}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    env: *e\n    steps:\n      - run: echo a\n",
-                [(6, f"env: *e (env: holds an alias; {READ_VALUES})")],
+                [
+                    (2, f"on: &e {{}} (on: holds an anchor; {READ_VALUES})"),
+                    (6, f"env: *e (env: holds an alias; {READ_VALUES})"),
+                ],
                 "reads",
             ),
             (
@@ -1589,6 +1808,125 @@ class ReaderCensusTest(unittest.TestCase):
                 base + "      - run: |\n          echo ten\n         echo nine\n",
                 [(9, "echo nine (indented 9 inside a block whose first line is at 10)")],
                 "raises",
+            ),
+            # the top level (round 6)
+            (
+                "a quoted jobs key",
+                f'name: x\non: push\n"jobs":\n{test_job}',
+                [(3, f'"jobs": ({not_key})'), no_jobs],
+                "reads",
+            ),
+            (
+                "a quoted name that continues onto a jobs: line",
+                f'name: "x\njobs:\n  fake:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi"\non: push\n'
+                f'"jobs":\n{test_job}',
+                [(1, f'name: "x (name: holds {unclosed_quote}; {READ_VALUES})'), (8, f'"jobs": ({not_key})')],
+                "reads",
+            ),
+            (
+                "a single-quoted name that continues",
+                f"name: 'x\njobs:\n{test_job[:-1]}'\non: push\n",
+                [(1, f"name: 'x (name: holds {unclosed_quote}; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a flow collection that continues onto a jobs: line",
+                "name: x\non: {push: 1,\njobs: 2}\n",
+                [(2, f"on: {{push: 1, (on: holds {unclosed_flow}; {READ_VALUES})"), (3, f"jobs: 2}} ({JOBS_LINE})")],
+                "reads",
+            ),
+            (
+                "text after a quoted scalar",
+                f'name: "x" y\non: push\njobs:\n{test_job}',
+                [(1, f'name: "x" y (name: holds text after a quoted scalar; {READ_VALUES})')],
+                "raises",
+            ),
+            (
+                "a key the schema gives no workflow",
+                f"name: x\nfoo: 1\non: push\njobs:\n{test_job}",
+                [(2, f"foo: 1 (foo: is not a workflow key; the workflow keys are {top_keys})")],
+                "reads",
+            ),
+            (
+                "a second name: key",
+                f"name: x\nname: y\non: push\njobs:\n{test_job}",
+                [(2, "name: y (a second name: key in one workflow)")],
+                "reads",
+            ),
+            (
+                "a complex jobs key",
+                f"name: x\non: push\n? jobs\n: {complex_value}\n",
+                [(3, f"? jobs ({not_key})"), (4, f": {complex_value} ({not_key})"), no_jobs],
+                "reads",
+            ),
+            (
+                "a merge key at the top",
+                f"name: x\non: &b\n  jobs:\n    test:\n      runs-on: ubuntu-24.04\n      steps:\n        - run: {update}\n"
+                "<<: *b\n",
+                [(2, f"on: &b (on: holds an anchor; {READ_VALUES})"), (8, f"<<: *b ({not_key})"), no_jobs],
+                "reads",
+            ),
+            (
+                "an alias on jobs:",
+                f"name: x\non: &j\n{test_job}jobs: *j\n",
+                [(2, f"on: &j (on: holds an anchor; {READ_VALUES})"), (7, f"jobs: *j ({JOBS_LINE})")],
+                "reads",
+            ),
+            (
+                "a tag on jobs:",
+                f"name: x\non: push\njobs: !!map\n{test_job}",
+                [(3, f"jobs: !!map ({JOBS_LINE})")],
+                "reads",
+            ),
+            (
+                "a blank before the jobs colon",
+                f"name: x\non: push\njobs :\n{test_job}",
+                [(3, f"jobs : ({not_key})"), no_jobs],
+                "reads",
+            ),
+            ("a document start marker", f"---\n{head}{test_job}", [(1, f"--- ({not_key})")], "reads"),
+            (
+                "an indented first line",
+                f"  name: x\non: push\njobs:\n{test_job}",
+                [(1, "name: x (indented 2 before any top-level key)")],
+                "raises",
+            ),
+            (
+                "a block scalar on name:",
+                f"name: |\n  x\non: push\njobs:\n{test_job}",
+                [(1, f"name: | (name: holds a block header; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a carriage return at the top",
+                f"name: x\r\non: push\njobs:\n{test_job}",
+                [(1, "name: x (a carriage return; the workflows are LF-only)")],
+                "reads",
+            ),
+            (
+                "a tab before a top-level key",
+                f"\tname: x\non: push\njobs:\n{test_job}",
+                [(1, "name: x (a tab in the indentation)")],
+                "raises",
+            ),
+            # a value that continues inside jobs (round 6)
+            (
+                "a quoted step value that continues",
+                base + f'      - name: "a\n        run: {update}"\n',
+                [(7, f'- name: "a (name: holds {unclosed_quote}; {READ_VALUES})')],
+                "reads",
+            ),
+            (
+                "a flow collection that continues on a step key",
+                base + "      - uses: x/y@v1\n        with: {a: 1,\n          b: 2}\n",
+                [(8, f"with: {{a: 1, (with: holds {unclosed_flow}; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a flow collection that continues on a job key",
+                job + "    env: {A: 1,\n      B: 2}\n    steps:\n      - run: echo a\n",
+                [(6, f"env: {{A: 1, (env: holds {unclosed_flow}; {READ_VALUES})")],
+                "reads",
             ),
         )
         self.assertEqual(len(rows), len({case for case, _, _, _ in rows}))

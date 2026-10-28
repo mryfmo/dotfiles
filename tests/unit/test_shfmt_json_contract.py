@@ -14,11 +14,19 @@ The table is held to the walkers by extraction, not by a hand-written list: ever
 and every literal it compares against a field is collected from the walker's source (Python by its syntax tree, the
 hook's jq programs by their paths), bound to the node kinds the walker's own Type tests establish for the variable
 it reads, and must be in TABLE for each of those kinds (round 4).
+
+The module's own reads are held the same way (round 7): STATUS_READS lists every status read of
+scripts/ci/shfmt_json_contract.py (the pin check's status, shfmt's status and output, the JSON decode, each OSError
+of a run or a file read) with the test that injects its failure; the list is checked against the module's source, so
+a read added without an injection test fails the suite. The injections put a fake shfmt on PATH whose `--version`
+satisfies the pin check, so they need no real shfmt.
 """
 
 from __future__ import annotations
 
 import ast
+import contextlib
+import io
 import itertools
 import json
 import os
@@ -485,6 +493,79 @@ def module_check(*trees: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, "-I", str(MODULE), *args], capture_output=True, text=True, check=False)
 
 
+# --- The module's own reads: every status read, and the test that injects its failure -------------------------------
+
+# One row per status read in scripts/ci/shfmt_json_contract.py, as status_reads() extracts them from its source: the
+# function that reads, what it reads (`status`: a returncode test; `output`: the bytes a run printed; `json`: a JSON
+# decode; `OSError`: a run or a file read that raised), and the test (`Class.method` in this module) that injects the
+# failure. A read with no row, a row no read needs, or a named test that does not exist fails the suite.
+STATUS_READS: dict[tuple[str, str], str] = {
+    (
+        "pinned_shfmt",
+        "OSError",
+    ): "ContractReadTest.test_a_pin_check_that_cannot_run_or_exits_without_a_diagnostic_is_refused",
+    (
+        "pinned_shfmt",
+        "status",
+    ): "ContractReadTest.test_a_shfmt_that_is_not_the_pin_is_refused_before_any_fixture_is_parsed",
+    (
+        "parse",
+        "OSError",
+    ): "ContractReadTest.test_a_shfmt_that_cannot_be_run_or_a_fixture_that_cannot_be_read_is_refused",
+    ("parse", "status"): "ContractReadTest.test_a_fixture_parse_that_exits_nonzero_is_refused_naming_the_status",
+    ("parse", "output"): "ContractReadTest.test_a_fixture_parse_that_prints_no_tree_or_no_json_object_is_refused",
+    ("parse", "json"): "ContractReadTest.test_a_fixture_parse_that_prints_no_tree_or_no_json_object_is_refused",
+    ("verified_trees", "OSError"): (
+        "ContractReadTest.test_a_shfmt_that_cannot_be_run_or_a_fixture_that_cannot_be_read_is_refused"
+    ),
+    ("main", "OSError"): "ContractReadTest.test_a_tree_file_that_cannot_be_read_is_refused_naming_it",
+    ("main", "json"): "ContractTableTest.test_a_tree_that_is_no_json_object_is_refused",
+}
+# A shfmt on a test's PATH: `--version` runs the version answer (the pin check reads it), any other call the answer.
+FAKE_SHFMT = """#!/bin/sh
+[ "$1" = --version ] && {{ {version}; }}
+{answer}
+"""
+
+
+def status_reads(source: str) -> set[tuple[str, str]]:
+    """(function, read) per status read in a Python source: a `returncode` test, a `stdout` read, a `.loads` call and
+    an `except` clause that catches OSError, each in the function whose body makes it."""
+    out: set[tuple[str, str]] = set()
+    for function in ast.walk(ast.parse(source)):
+        if not isinstance(function, ast.FunctionDef):
+            continue
+        for node in ast.walk(function):
+            if isinstance(node, ast.Attribute) and node.attr in ("returncode", "stdout"):
+                out.add((function.name, "status" if node.attr == "returncode" else "output"))
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "loads":
+                out.add((function.name, "json"))
+            elif isinstance(node, ast.ExceptHandler) and node.type is not None:
+                caught = node.type.elts if isinstance(node.type, ast.Tuple) else [node.type]
+                if any(isinstance(name, ast.Name) and name.id == "OSError" for name in caught):
+                    out.add((function.name, "OSError"))
+    return out
+
+
+def fake_shfmt_env(temp: Path, answer: str, version: str | None = None) -> dict[str, str]:
+    """An environment whose PATH holds the pin check's tools (bash, awk) and a shfmt whose `--version` runs version
+    (by default it prints the pin and exits 0) and whose every other call runs answer; a fresh directory under temp."""
+    bin_dir = Path(tempfile.mkdtemp(dir=temp))
+    for tool in ("bash", "awk"):
+        (bin_dir / tool).symlink_to(shutil.which(tool))
+    fake = bin_dir / "shfmt"
+    fake.write_text(FAKE_SHFMT.format(version=version or f"echo v{pinned_version()}; exit 0", answer=answer))
+    fake.chmod(0o755)
+    return {"PATH": str(bin_dir), "HOME": str(temp)}
+
+
+def module_run(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
+    """The module's CLI under env (the parser is whatever shfmt env's PATH holds)."""
+    return subprocess.run(
+        [sys.executable, "-I", str(MODULE), *args], capture_output=True, text=True, check=False, env=env
+    )
+
+
 class ContractTableTest(unittest.TestCase):
     """The table against the captured trees: no shfmt needed."""
 
@@ -529,11 +610,18 @@ class ContractTableTest(unittest.TestCase):
                 self.assertEqual(expected, contract.check(self.loaded(**altered)))
 
     def test_a_tree_that_is_no_json_object_is_refused(self) -> None:
-        for tree in ("not-json", "null", "[]", '{"Type": "Word"}'):
+        where = r"\S+/tree-0\.json"
+        cases = {
+            "not-json": rf"cannot read a JSON tree from {where}: Expecting value: line 1 column 1 \(char 0\)",
+            "null": rf"the root of {where} is no node with Type File",
+            "[]": rf"the root of {where} is no node with Type File",
+            '{"Type": "Word"}': rf"the root of {where} is no node with Type File",
+        }
+        for tree, cause in cases.items():
             with self.subTest(tree=tree):
                 result = module_check(tree, captures()[BACKQUOTES.name])
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-                self.assertTrue(result.stderr.startswith("shfmt-json-contract: "), result.stderr)
+                self.assertRegex(result.stderr, rf"^shfmt-json-contract: {cause}\n$")
                 self.assertEqual("", result.stdout)
 
     def test_the_extractor_binds_each_read_to_the_kinds_the_walker_tests(self) -> None:
@@ -796,6 +884,142 @@ class ContractRunTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "saw no statement in 1 shell file"):
                     sandbox.guard(ROOT)
             self.assertEqual([], sandbox.guard(ROOT))
+
+
+class ContractReadTest(unittest.TestCase):
+    """Every status read of the module with its failure injected: a fake shfmt on PATH (its `--version` satisfies the
+    pin check), or an unrunnable path in process. No real shfmt is needed. Each refusal is exit 2, nothing on stdout
+    and the cause on stderr: the fixture, the status, the tool's own diagnostic or the text it printed."""
+
+    def setUp(self) -> None:
+        self.temp = Path(tempfile.mkdtemp(prefix="shfmt-json-contract-reads-"))
+        self.addCleanup(shutil.rmtree, self.temp)
+
+    def refusal(self, answer: str, version: str | None = None) -> str:
+        """The stderr of the module run over the fixtures with a shfmt that answers so, once it has exited 2 with
+        nothing on stdout."""
+        result = module_run(fake_shfmt_env(self.temp, answer, version))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout, "no clean verdict stands in for the refusal")
+        return result.stderr
+
+    def test_every_status_read_of_the_module_has_an_injection_test(self) -> None:
+        sample = (
+            "def f(p):\n"
+            "    try:\n"
+            "        r, t = run(), json.loads(p.read_text())\n"
+            "    except (OSError, ValueError):\n"
+            "        pass\n"
+            "    return r.returncode, r.stdout\n"
+            "def g(r):\n"
+            "    return r.stderr\n"
+        )
+        self.assertEqual({("f", "OSError"), ("f", "json"), ("f", "status"), ("f", "output")}, status_reads(sample))
+        reads = status_reads(MODULE.read_text())
+        self.assertEqual(
+            set(STATUS_READS),
+            reads,
+            f"reads without a row: {sorted(reads - set(STATUS_READS))}; rows no read needs: "
+            f"{sorted(set(STATUS_READS) - reads)}",
+        )
+        for test in sorted(set(STATUS_READS.values())):
+            cls, _, method = test.partition(".")
+            self.assertTrue(callable(getattr(globals()[cls], method, None)), f"{test} does not exist")
+
+    def test_a_fake_shfmt_that_answers_the_captures_passes_the_contract(self) -> None:
+        """The control: the module reads the shfmt on this PATH and nothing else, so each refusal below comes from
+        the injected answer, not from the PATH idiom."""
+        answer = "input=$(/bin/cat)\n"
+        for fixture, capture in CAPTURES.items():
+            answer += f'[ "$input" = "$(/bin/cat "{fixture}")" ] && exec /bin/cat "{capture}"\n'
+        result = module_run(fake_shfmt_env(self.temp, answer + "exit 1\n"))
+        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+
+    def test_a_fixture_parse_that_exits_nonzero_is_refused_naming_the_status(self) -> None:
+        """The status is what counts, not the presence of a tree: a full tree printed and then exit 3 is a failed read
+        with shfmt's own diagnostic kept, and a bare exit 1 names the absence of one."""
+        source = FIXTURE.relative_to(ROOT)
+        cases = {
+            f'/bin/cat "{CAPTURES[FIXTURE]}"\necho "shfmt: injected failure" >&2\nexit 3': (
+                "(exited 3): shfmt: injected failure"
+            ),
+            "exit 1": "(exited 1): no diagnostic",
+        }
+        for answer, cause in cases.items():
+            with self.subTest(cause=cause):
+                self.assertEqual(f"shfmt-json-contract: shfmt cannot parse {source} {cause}\n", self.refusal(answer))
+
+    def test_a_fixture_parse_that_prints_no_tree_or_no_json_object_is_refused(self) -> None:
+        """Exit 0 with nothing (or only whitespace) printed, text that is no JSON, and JSON that is no object each name
+        the fixture and what was printed; none is read as an empty tree or as the fixture's tree."""
+        source = FIXTURE.relative_to(ROOT)
+        cases = {
+            "exit 0": f"shfmt printed no tree for {source} (exited 0)",
+            "echo; echo '  '": f"shfmt printed no tree for {source} (exited 0)",
+            "echo not json": f"shfmt gave no JSON for {source}: Expecting value: line 1 column 1 (char 0)",
+            "echo null": f"shfmt gave no JSON object for {source}: null",
+            "echo '[]'": f"shfmt gave no JSON object for {source}: []",
+            "echo '\"File\"'": f'shfmt gave no JSON object for {source}: "File"',
+        }
+        for answer, cause in cases.items():
+            with self.subTest(answer=answer):
+                self.assertEqual(f"shfmt-json-contract: {cause}\n", self.refusal(answer))
+
+    def test_a_shfmt_that_is_not_the_pin_is_refused_before_any_fixture_is_parsed(self) -> None:
+        """The pin check's status: another version, and a `--version` that fails, each refuse with the check's own
+        line, and no fixture reaches the parser (the parse answer would leave a mark)."""
+        mark = self.temp / "parsed"
+        answer = f'touch "{mark}"\nexit 0'
+        pin, config = pinned_version(), contract.PIN_CONFIG
+        cases = {
+            "echo v3.13.0; exit 0": (
+                f"pinned-tool-version: the shfmt on PATH is version 3.13.0, but {config} pins shfmt {pin};"
+            ),
+            "exit 9": f'pinned-tool-version: "shfmt --version" failed; {config} pins shfmt {pin}',
+        }
+        for version, cause in cases.items():
+            with self.subTest(version=version):
+                stderr = self.refusal(answer, version)
+                self.assertTrue(stderr.startswith(f"shfmt-json-contract: {cause}"), stderr)
+                self.assertFalse(mark.exists(), "the pin check refused before a fixture was parsed")
+
+    def test_a_pin_check_that_cannot_run_or_exits_without_a_diagnostic_is_refused(self) -> None:
+        """In process: a check that exits nonzero with nothing on stderr is named by its status (and main maps it to
+        exit 2 as any difference), and a check that cannot be run is named too; neither is "the pin holds"."""
+        silent = self.temp / "pin-check.sh"
+        silent.write_text("exit 7\n")
+        with mock.patch.object(contract, "PIN_CHECK", silent):
+            with self.assertRaisesRegex(contract.ContractError, r"^pin-check\.sh exited 7$"):
+                contract.pinned_shfmt()
+            with contextlib.redirect_stderr(io.StringIO()) as stderr:
+                self.assertEqual(2, contract.main([]))
+            self.assertEqual("shfmt-json-contract: pin-check.sh exited 7\n", stderr.getvalue())
+        with mock.patch.object(contract.subprocess, "run", side_effect=OSError("injected")):
+            with self.assertRaisesRegex(contract.ContractError, r"^cannot run pinned-tool-version\.sh: injected$"):
+                contract.pinned_shfmt()
+
+    def test_a_shfmt_that_cannot_be_run_or_a_fixture_that_cannot_be_read_is_refused(self) -> None:
+        """In process, the pin check satisfied: a shfmt that is not there to run, and a fixture that cannot be read,
+        are each named with the system's error; neither is an empty tree."""
+        with mock.patch.object(contract, "pinned_shfmt"):
+            with mock.patch.object(contract, "SHFMT", (str(self.temp / "no-shfmt"), *contract.SHFMT[1:])):
+                with self.assertRaisesRegex(contract.ContractError, r"^cannot run shfmt: \[Errno 2\] .*no-shfmt"):
+                    contract.verified_trees()
+            absent = ROOT / "tests/fixtures/shfmt-json/absent"
+            with mock.patch.object(contract, "FIXTURES", (absent,)):
+                cause = r"^cannot read tests/fixtures/shfmt-json/absent: \[Errno 2\] .*absent"
+                with self.assertRaisesRegex(contract.ContractError, cause):
+                    contract.verified_trees()
+
+    def test_a_tree_file_that_cannot_be_read_is_refused_naming_it(self) -> None:
+        absent = self.temp / "absent.json"
+        result = module_run({**os.environ}, "--tree", str(absent))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertRegex(
+            result.stderr,
+            rf"^shfmt-json-contract: cannot read a JSON tree from {re.escape(str(absent))}: \[Errno 2\] .*\n$",
+        )
 
 
 if __name__ == "__main__":

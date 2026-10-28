@@ -159,19 +159,25 @@ def pinned_shfmt() -> None:
 
 
 def parse(text: bytes, source: str) -> dict:
-    """The pinned shfmt's JSON tree of text, or a ContractError naming what failed."""
+    """The pinned shfmt's JSON tree of text, or a ContractError naming what failed. The read has four outcomes
+    besides the tree: shfmt cannot be run; it exits nonzero (a tree printed or not, the status is what counts); it
+    exits 0 and prints nothing; it prints something that is no JSON object. Each is named with its cause."""
     try:
         run = subprocess.run(SHFMT, input=text, capture_output=True, check=False)
     except OSError as error:
         raise ContractError(f"cannot run shfmt: {error}") from None
+    diagnostic = run.stderr.decode(errors="replace").strip() or "no diagnostic"
     if run.returncode != 0:
-        raise ContractError(f"shfmt cannot parse {source}: {run.stderr.decode(errors='replace').strip()}")
+        raise ContractError(f"shfmt cannot parse {source} (exited {run.returncode}): {diagnostic}")
+    if not run.stdout.strip():
+        raise ContractError(f"shfmt printed no tree for {source} (exited 0)")
     try:
         tree = json.loads(run.stdout)
     except ValueError as error:
         raise ContractError(f"shfmt gave no JSON for {source}: {error}") from None
     if not isinstance(tree, dict):
-        raise ContractError(f"shfmt gave no JSON object for {source}")
+        printed = run.stdout.decode(errors="replace").strip()
+        raise ContractError(f"shfmt gave no JSON object for {source}: {printed[:60]}")
     return tree
 
 

@@ -164,7 +164,8 @@ def shfmt_tree(script: str, protects: str) -> dict:
     require(accepted.returncode == 0, protects, f"no pinned shfmt reads the run scripts: {accepted.stderr.strip()}")
     parse = ["shfmt", "-ln", "bash", "--to-json"]
     parsed = subprocess.run(parse, input=script, capture_output=True, text=True, check=False)
-    require(parsed.returncode == 0, protects, f"shfmt cannot parse the run script: {parsed.stderr.strip()}")
+    status = f"shfmt exited {parsed.returncode} on the run script: {parsed.stderr.strip() or 'no message on stderr'}"
+    require(parsed.returncode == 0, protects, status)
     try:
         tree = json.loads(parsed.stdout)
     except ValueError:
@@ -199,7 +200,8 @@ class Reader:
             self.refuse(node[key][0], "a comment")
 
     def fields(self, node: dict, kind: str, *known: str) -> None:
-        """Every field of the node beyond the known ones must be empty, false or a position; a set one is refused."""
+        """Every field of the node beyond the known ones must be empty, false or a position; a set one is refused.
+        Semicolon, the one position that is syntax, is read by statement() before this skip."""
         for key, value in node.items():
             if key == "Type" or key in known or value in (None, False, 0, "", []):
                 continue
@@ -215,6 +217,10 @@ class Reader:
     def statement(self, node: dict) -> Statement:
         self.comments(node, "Comments")
         self.fields(node, "statement", "Cmd", "Comments")  # Negated, Background, Coprocess and Redirs are refused
+        # shfmt sets Semicolon for `;` (and for `&`, refused above as Background) and leaves it out at a newline. A `;`
+        # between two pinned statements is another text than the table's: refused, not skipped as a position.
+        if node.get("Semicolon"):
+            self.refuse(node, "a semicolon")
         command = node.get("Cmd")
         if not isinstance(command, dict) or command.get("Type") != "CallExpr":
             kind = command.get("Type", "untyped") if isinstance(command, dict) else "empty"
@@ -317,6 +323,13 @@ def check_no_unsafe_checkout(doc: dict) -> None:
 
 def check_run_scripts(doc: dict) -> None:
     """Every run step is a row of SCRIPTS, in order, down to the last part of its tree; nothing else runs."""
+    # A defaults: mapping of the workflow or a job gives every run step a shell (`bash -c '...; bash {0}'` runs its
+    # own text before the script) or a directory other than the checkout. It is refused whatever it holds, as a
+    # step's own shell: key is, so the tree reads what the runner's bash runs in the base's checkout.
+    scopes = {"the workflow": doc, **{f"the job {name}": job for name, job in jobs(doc).items()}}
+    for owner, scope in scopes.items():
+        detail = f"{owner} sets defaults: {scope.get('defaults')!r}; the tree reads the runner's bash in the checkout"
+        require("defaults" not in scope, "run:", detail)
     found = [step for step in steps(doc) if "run" in step]
     require(len(found) == len(SCRIPTS), "steps:", f"{len(found)} run steps; the table holds {len(SCRIPTS)}")
     for step, row in zip(found, SCRIPTS):
@@ -438,6 +451,8 @@ class Invariant(NamedTuple):
 
 HEAD_EXPRESSION = "${{ github.event.pull_request.head.sha }}"
 REFMAP = "--no-tags --update-head-ok --refmap=+refs/pull/${PR_NUMBER}/head:refs/heads/main"
+# the defaults.run.shell the round-3 audit ran: the runner's bash checks the head out, then runs the step's script
+INHERITED_SHELL = {"run": {"shell": f"bash -c 'git checkout {HEAD_REF}; bash {{0}}'"}}
 TRIGGER = Invariant(
     check_trigger,
     {
@@ -505,8 +520,12 @@ RUN_SCRIPTS = Invariant(
             replace_run(fetch_step, "\ntest", f" && git checkout {HEAD_REF}\ntest"), "BinaryCmd"
         ),
         "a checkout after a semicolon": Mutation(
-            replace_run(fetch_step, "\ntest", f"; git checkout {HEAD_REF}\ntest"), f"git checkout {HEAD_REF}"
+            replace_run(fetch_step, "\ntest", f"; git checkout {HEAD_REF}\ntest"), "a semicolon"
         ),
+        "a semicolon between the pinned statements": Mutation(
+            replace_run(fetch_step, "\ntest", "; test"), "a semicolon"
+        ),
+        "a semicolon ending the fetch": Mutation(replace_run(fetch_step, "\ntest", ";\ntest"), "a semicolon"),
         "a checkout in a substitution": Mutation(
             replace_run(fetch_step, f"rev-parse {HEAD_REF}", f"checkout {HEAD_REF}"), f"git checkout {HEAD_REF}"
         ),
@@ -523,6 +542,12 @@ RUN_SCRIPTS = Invariant(
         "the head sha inlined into run": Mutation(replace_run(verify_step, "${HEAD_SHA}", HEAD_EXPRESSION), EXPRESSION),
         "the body inlined into run": Mutation(append_run(verify_step, f' --body "{BODY_CARRIER}"'), EXPRESSION),
         "another shell": Mutation(set_in(verify_step, "shell", "python"), "shell"),
+        # a shell or directory every run step inherits: the workflow's or the job's defaults: mapping
+        "a default shell for the workflow": Mutation(set_in(lambda d: d, "defaults", INHERITED_SHELL), "bash {0}"),
+        "a default shell for the job": Mutation(set_in(regime_job, "defaults", INHERITED_SHELL), "bash {0}"),
+        "a default directory for the job": Mutation(
+            set_in(regime_job, "defaults", {"run": {"working-directory": "/other"}}), "working-directory"
+        ),
         "a third run step": Mutation(add_step(f"git checkout {HEAD_REF}\n"), "3 run steps"),
     },
 )
@@ -635,7 +660,7 @@ class RedCopyTest(unittest.TestCase):
 
 
 class PinnedParserTest(unittest.TestCase):
-    """The run scripts are read by the pinned shfmt alone: none, another version, or no tree fails instead of passing."""
+    """Read by the pinned shfmt alone: no shfmt, another version, a nonzero status or no tree fails instead of passing."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -674,6 +699,15 @@ class PinnedParserTest(unittest.TestCase):
         # The pinned version, answering with no JSON tree: refused, never read as a script with nothing in it.
         fake = f'#!/bin/sh\n[ "$1" = --version ] && {{ echo v{self.pin}; exit 0; }}\necho "[]"\n'
         self.assertIn("shfmt gave no JSON syntax tree", self.refusal(self.path_with(fake)))
+
+    def test_a_shfmt_that_exits_nonzero_with_a_tree_fails_the_check_naming_the_status(self) -> None:
+        # Standing order 21: the status is read before the output. The pinned version printing the real tree and
+        # exiting 3 is refused with the status named, never read as a tree that happens to match the table.
+        real = shutil.which("shfmt")
+        self.assertIsNotNone(real, "shfmt")
+        fake = f'#!/bin/sh\n[ "$1" = --version ] && {{ echo v{self.pin}; exit 0; }}\n"{real}" "$@"\nexit 3\n'
+        message = self.refusal(self.path_with(fake))
+        self.assertIn("shfmt exited 3 on the run script", message)
 
 
 if __name__ == "__main__":

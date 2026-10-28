@@ -26,17 +26,15 @@ CONCURRENCY = (
     "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n"
 )
 # Plan P-32: every workflow's run-level concurrency block. private-bootstrap never runs on a pull request, and its weekly
-# and dispatched runs share main's sha, so each of its runs is its own group and none is cancelled; the others cancel a
-# superseded pull request run only.
+# and dispatched runs share main's sha, so its runs of one commit share a group that queues every pending run and
+# cancels none; the others cancel a superseded pull request run only.
 RUN_CONCURRENCY = {
     TEST: CONCURRENCY,
     REMOTE: CONCURRENCY,
     AGENT_ASSETS: CONCURRENCY,
     MACOS: CONCURRENCY,
     UBUNTU: CONCURRENCY,
-    PRIVATE: (
-        "\nconcurrency:\n  group: private-bootstrap-${{ github.run_id }}\n  cancel-in-progress: false\n  queue: max\n"
-    ),
+    PRIVATE: "\nconcurrency:\n  group: private-bootstrap-${{ github.sha }}\n  cancel-in-progress: false\n  queue: max\n",
 }
 # Plan P-32: the benchmark push serialises across main runs, since the run-level group keeps every main commit's run;
 # a pull request's build job never pushes and gets its own group, so it cannot displace a pending main run.
@@ -47,7 +45,7 @@ BENCHMARK_CONCURRENCY = (
     "      cancel-in-progress: false\n"
     "      queue: max"
 )
-# The groups whose every run completes (the Contract): the private bootstrap's run-level group and the MacOS build
+# The groups whose every run completes (the Contract): the private bootstrap's per-commit group and the MacOS build
 # job's, as (workflow, job or None for the run level). GitHub's default queue holds one pending run and a third arrival
 # replaces it whatever cancel-in-progress says; queue: max holds up to 100, and GitHub rejects it next to
 # cancel-in-progress: true, so a completion group carries queue: max and cancel-in-progress: false.
@@ -896,21 +894,26 @@ class WorkflowTriggerTest(unittest.TestCase):
         self.assertIn(BENCHMARK_CONCURRENCY, build)
         self.assertEqual("", jobs(MACOS)["build"]["keys"]["concurrency"])
 
-    def test_a_private_bootstrap_run_never_waits_for_or_displaces_another(self) -> None:
-        # A group holds one running and one pending run; a third arrival cancels the pending one whatever
-        # cancel-in-progress says. A weekly and a dispatched run carry main's commit, the same sha as the push that made
-        # it, so a group keyed on the sha could hold all three and lose one. Every run gets a group of its own, so
-        # every main push, weekly and dispatched run completes (the Contract's promise).
+    def test_same_commit_private_bootstrap_runs_share_one_queued_group(self) -> None:
+        # A weekly and a dispatched run carry main's commit, the same sha as the push that made it. The three share one
+        # group, so two bootstraps of one commit never run side by side; the group queues every pending run and cancels
+        # none (test_every_completion_group_keeps_every_pending_run), so every main push, weekly and dispatched run
+        # completes (the Contract's promise). A group per run would queue nothing.
         group, cancel, _ = concurrency(PRIVATE.read_text().split("\njobs:\n", 1)[0])
         self.assertEqual("false", cancel)
         sha = "a" * 40
-        groups = [
+        groups = {
             rendered(group, run(event_name, run_id, sha))
-            for run_id, event_name in (("1", "push"), ("2", "schedule"), ("3", "workflow_dispatch"))
-        ]
-        self.assertEqual(3, len(set(groups)), groups)
-        # Per run, not per event: a second dispatch of the same commit is a fourth, distinct group.
-        self.assertNotIn(rendered(group, run("workflow_dispatch", "4", sha)), groups)
+            for run_id, event_name in (
+                ("1", "push"),
+                ("2", "schedule"),
+                ("3", "workflow_dispatch"),
+                ("4", "workflow_dispatch"),
+            )
+        }
+        self.assertEqual(1, len(groups), groups)
+        # Per commit, not fixed: another commit's push is a second group and does not wait for this one.
+        self.assertNotIn(rendered(group, run("push", "5", "b" * 40)), groups)
 
     def test_a_pull_request_build_never_displaces_a_pending_main_benchmark_run(self) -> None:
         # The fixed group queues main pushes behind each other, but a group holds one running and one pending run, so

@@ -9,13 +9,12 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
-# No pull request ever runs this workflow. GitHub's default queue holds one pending run, and a third arrival cancels
-# the pending one whatever cancel-in-progress says; a weekly and a dispatched run carry the same commit as the push that
-# made it, so a group keyed on the sha could lose one of them. Each run is its own group, and queue: max keeps every
-# pending run should two ever share one: none waits, none is cancelled. GitHub refuses queue: max next to
-# cancel-in-progress: true.
+# No pull request ever runs this workflow. A weekly and a dispatched run carry the same commit as the push that made it,
+# so the group is the commit: runs of one commit queue behind each other and never bootstrap side by side. GitHub's
+# default queue holds one pending run and a third arrival cancels the pending one whatever cancel-in-progress says;
+# queue: max holds every pending run, so none is cancelled. GitHub refuses queue: max next to cancel-in-progress: true.
 concurrency:
-  group: private-bootstrap-${{ github.run_id }}
+  group: private-bootstrap-${{ github.sha }}
   cancel-in-progress: false
   queue: max
 

@@ -310,12 +310,12 @@ ${prefix:+${prefix}/}${fields}
 }
 
 #
-# @description Whether the prefetch runs on this host: it downloads with curl. Without curl it leaves the externals to
-#   chezmoi, which fetches them itself as before, and the cache check that follows has nothing to prove: run anyway,
-#   it would deny the network to the very download nothing replaced (a wget-only bootstrap stopped before status with
-#   `dial tcp`) or, unguarded, call that download a cache read. The prefetch and the check read this one predicate,
-#   so neither runs without the other.
-# @exitcode 0 curl is on PATH.
+# @description Whether the prefetch runs on this host: curl, its downloader, is on PATH. Without it the prefetch leaves
+#   the externals to chezmoi, which fetches them itself as before, and the cache check that follows has nothing to
+#   prove: run anyway, it would deny the network to the very download nothing replaced (a bootstrap without it
+#   stopped before status with `dial tcp`) or, unguarded, call that download a cache read. The prefetch and the check
+#   read this one predicate, so neither runs without the other.
+# @exitcode 0 It is.
 # @exitcode 1 It is not.
 #
 function chezmoi_externals_prefetch_runs() {
@@ -420,10 +420,10 @@ function prefetch_chezmoi_externals() {
 #   for CHEZMOI_EXTERNAL_NETWORK_ERRORS, are read; the status lines are not. The entry filter narrows what status
 #   compares, not what chezmoi reads: every external is read with the source state, so an external the prefetch
 #   leaves to chezmoi (fallback urls, a url that is not http(s)) has to be cached already or the guarded check
-#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Without curl nothing was
-#   prefetched (chezmoi_externals_prefetch_runs): the check says so and does not run. Runs no command but chezmoi
-#   and the guard: setup.sh carries it into a bootstrap whose tools are the bare minimum (the wget-only Bats case
-#   pins them, with no grep or tail), so the scan and the last-line read are shell expansions.
+#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Without the prefetch's
+#   downloader (chezmoi_externals_prefetch_runs) nothing was prefetched: the check says so and does not run. Runs no
+#   command but chezmoi and the guard: setup.sh carries it into a bootstrap whose tools are the bare minimum (the
+#   leanest Bats bootstrap pins them, with no grep or tail), so the scan and the last-line read are shell expansions.
 # @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).
 # @stdout The chezmoi version and the guard the check ran under, then its verdict.
 # @stderr The one-line reason when it fails.

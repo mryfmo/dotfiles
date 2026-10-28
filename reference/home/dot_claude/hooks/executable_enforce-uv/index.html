@@ -5053,7 +5053,7 @@
 
 
 <h1 id="homedot_claudehooksexecutable_enforce-uvsh">home/dot_claude/hooks/executable_enforce-uv.sh<a class="headerlink" href="#homedot_claudehooksexecutable_enforce-uvsh" title="Permanent link">&para;</a></h1>
-<p>Emit PreToolUse permissionDecision deny for direct <code>pip</code> or <code>python</code> usage; other input exits successfully without output. Contract verified 2026-10-05. Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config) into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot parse the line, the hook decides nothing and exits 0 (fail open).</p>
+<p>Emit PreToolUse permissionDecision deny for direct <code>pip</code> or <code>python</code> usage; other input exits successfully without output. Contract verified 2026-10-05. Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config) into its syntax tree, and every simple command in it is judged on its own text. shfmt's JSON must match the pinned node table of scripts/ci/shfmt_json_contract.py (regime-cutover U105). Every read of a producer keeps its three outcomes apart (standing order 21): what it found is judged; an empty result (a line with no simple command) is no decision, exit 0 without output; a failed read is a blocking error, exit 2 with the probe and the status on stderr, never a silent "no decision". Failed reads: no shfmt on PATH, shfmt exiting nonzero (a line it cannot parse included), a JSON that does not match the table, jq exiting nonzero or printing another shape or another number of lines than the probe has, a tree whose statements the walk cannot see, a <code>chezmoi source-path</code> that exits nonzero or names no directory. The one fail-open left is a deployed copy that finds no contract module (contract_module): no chezmoi on PATH, or none under the source directory it names; it decides nothing, exit 0.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_claude/hooks/executable_enforce-uv.sh</code></li>
@@ -5063,6 +5063,7 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>classify_segment</code></li>
+<li><code>contract_module</code></li>
 <li><code>deny_command</code></li>
 <li><code>handle_pip_install</code></li>
 <li><code>handle_pip_list</code></li>
@@ -5072,6 +5073,7 @@
 <li><code>handle_python_m_pip</code></li>
 <li><code>handle_python_run</code></li>
 <li><code>main</code></li>
+<li><code>read_or_refuse</code></li>
 <li><code>split_segments</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -5083,8 +5085,16 @@
 <span class="c1">#   Emit PreToolUse permissionDecision deny for direct `pip` or `python` usage;</span>
 <span class="c1">#   other input exits successfully without output. Contract verified 2026-10-05.</span>
 <span class="c1">#   Advisory, not a boundary: it nudges toward uv. A Bash line is parsed by shfmt (on PATH from the mise config)</span>
-<span class="c1">#   into its syntax tree, and every simple command in it is judged on its own text; when shfmt is absent or cannot</span>
-<span class="c1">#   parse the line, the hook decides nothing and exits 0 (fail open).</span>
+<span class="c1">#   into its syntax tree, and every simple command in it is judged on its own text. shfmt's JSON must match the</span>
+<span class="c1">#   pinned node table of scripts/ci/shfmt_json_contract.py (regime-cutover U105). Every read of a producer keeps</span>
+<span class="c1">#   its three outcomes apart (standing order 21): what it found is judged; an empty result (a line with no simple</span>
+<span class="c1">#   command) is no decision, exit 0 without output; a failed read is a blocking error, exit 2 with the probe and</span>
+<span class="c1">#   the status on stderr, never a silent "no decision". Failed reads: no shfmt on PATH, shfmt exiting nonzero (a</span>
+<span class="c1">#   line it cannot parse included), a JSON that does not match the table, jq exiting nonzero or printing another</span>
+<span class="c1">#   shape or another number of lines than the probe has, a tree whose statements the walk cannot see, a `chezmoi</span>
+<span class="c1">#   source-path` that exits nonzero or names no directory. The one fail-open left is a deployed copy that finds no</span>
+<span class="c1">#   contract module (contract_module): no chezmoi on PATH, or none under the source directory it names; it decides</span>
+<span class="c1">#   nothing, exit 0.</span>
 <span class="c1"># @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control</span>
 
 <span class="c1"># @description Encode the denial reason from stdin using the current hook contract.</span>
@@ -5266,21 +5276,138 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Find scripts/ci/shfmt_json_contract.py: relative to this file in the dotfiles checkout</span>
+<span class="c1">#   (home/dot_claude/hooks/), else under the chezmoi source directory the deployed copy came from. The source-path</span>
+<span class="c1">#   read keeps its three outcomes (regime-cutover U105 round 6): no chezmoi on PATH is an absence, a directory it</span>
+<span class="c1">#   names is searched (the module there is found, or absent), and a nonzero status, no path, several lines, a</span>
+<span class="c1">#   relative path or a path that is no directory is a failed read, named in REFUSAL for main to report (exit 2).</span>
+<span class="c1"># @set MODULE string On return 0, the module path; empty otherwise.</span>
+<span class="c1"># @set REFUSAL string On return 2, why the line cannot be judged.</span>
+<span class="c1"># @exitcode 0 Found.</span>
+<span class="c1"># @exitcode 1 No module beside this file, and no chezmoi on PATH or no module under the directory it names: the fail-open.</span>
+<span class="c1"># @exitcode 2 chezmoi source-path exited nonzero or printed no directory.</span>
+<span class="k">function</span><span class="w"> </span>contract_module<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>here<span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*/*<span class="o">)</span><span class="w"> </span><span class="nv">here</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">here</span><span class="o">=</span>.<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="nv">MODULE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/../../../scripts/ci/shfmt_json_contract.py"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">MODULE</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">MODULE</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>chezmoi<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">source</span><span class="o">=</span><span class="k">$(</span>chezmoi<span class="w"> </span>source-path<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span>read_or_refuse<span class="w"> </span><span class="s2">"chezmoi source-path naming the source directory"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$status</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$source</span><span class="s2">"</span><span class="w"> </span><span class="s1">'^/'</span><span class="w"> </span><span class="s2">"an absolute path"</span><span class="w"> </span>one<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"chezmoi source-path named '</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">', which is no directory; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">MODULE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">/../scripts/ci/shfmt_json_contract.py"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">MODULE</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">MODULE</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Judge one probe's read of a producer. The status, the shape of every non-empty output line and the</span>
+<span class="c1">#   number of such lines are checked: a status 0 with lines of the given shape, as many as the probe has, is a found</span>
+<span class="c1">#   result; a status 0 without output is an empty one where the probe allows it; anything else is a failed read,</span>
+<span class="c1">#   named in REFUSAL for main to report (exit 2).</span>
+<span class="c1"># @arg $1 string The probe, as the refusal names it ("jq counting the statements the tree lists").</span>
+<span class="c1"># @arg $2 int The tool's exit status.</span>
+<span class="c1"># @arg $3 string The tool's output.</span>
+<span class="c1"># @arg $4 string An extended regular expression every non-empty output line must match.</span>
+<span class="c1"># @arg $5 string What a line of that shape is called ("a count").</span>
+<span class="c1"># @arg $6 string The cardinality of a found result: `one` (exactly one line, as a count or a path is printed: none</span>
+<span class="c1">#   or several is a failed read, never an empty result) or `any` (zero or more lines, as offset pairs are; none is</span>
+<span class="c1">#   the empty result).</span>
+<span class="c1"># @set REFUSAL string On return 2, why the line cannot be judged.</span>
+<span class="c1"># @exitcode 0 Found or empty.</span>
+<span class="c1"># @exitcode 2 A failed read.</span>
+<span class="k">function</span><span class="w"> </span>read_or_refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">probe</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="nv">shape</span><span class="o">=</span><span class="s2">"</span><span class="nv">$4</span><span class="s2">"</span><span class="w"> </span><span class="nv">called</span><span class="o">=</span><span class="s2">"</span><span class="nv">$5</span><span class="s2">"</span><span class="w"> </span><span class="nv">cardinality</span><span class="o">=</span><span class="s2">"</span><span class="nv">$6</span><span class="s2">"</span><span class="w"> </span>row<span class="w"> </span><span class="nv">lines</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>status<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">probe</span><span class="si">}</span><span class="s2"> exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>row<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="nv">$row</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="s2">"</span><span class="nv">$row</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="nv">$shape</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">probe</span><span class="si">}</span><span class="s2"> printed '</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">', not </span><span class="si">${</span><span class="nv">called</span><span class="si">}</span><span class="s2">; the line cannot be judged"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">lines</span><span class="o">=</span><span class="k">$((</span><span class="nv">lines</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$output</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">cardinality</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>one<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">((</span><span class="nv">lines</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">probe</span><span class="si">}</span><span class="s2"> printed nothing, not </span><span class="si">${</span><span class="nv">called</span><span class="si">}</span><span class="s2">; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">cardinality</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>one<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">((</span>lines<span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">probe</span><span class="si">}</span><span class="s2"> printed </span><span class="si">${</span><span class="nv">lines</span><span class="si">}</span><span class="s2"> lines, not </span><span class="si">${</span><span class="nv">called</span><span class="si">}</span><span class="s2">; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Collect the simple commands of a Bash line from shfmt's syntax tree (`shfmt -ln bash --to-json`):</span>
 <span class="c1">#   every statement whose command is a call (`CallExpr`), in tree order, nested ones (in a pipeline, a list, a</span>
 <span class="c1">#   subshell, `$(...)`) included, each as its source text from the statement's start to its end offset, so the</span>
 <span class="c1">#   suggestion keeps its quotes and redirections. Comments and here-document bodies are no statements, and quoting,</span>
-<span class="c1">#   escapes and line continuations are shfmt's, not this script's.</span>
+<span class="c1">#   escapes and line continuations are shfmt's, not this script's. Before the walk, the contract module proves the</span>
+<span class="c1">#   parser still produces these nodes; a line whose tree lists statements the walk then cannot see is refused too.</span>
+<span class="c1">#   Each probe's three outcomes (regime-cutover U105 rounds 5 and 6); a failed read is named by read_or_refuse,</span>
+<span class="c1">#   contract_module or here:</span>
+<span class="c1">#   | probe                                | found           | empty                           | failed read (return 2)                     |</span>
+<span class="c1">#   | command -v shfmt                     | a path          |                                 | no shfmt on PATH                           |</span>
+<span class="c1">#   | shfmt -ln bash --to-json on the line | the tree        |                                 | nonzero status (a parse error too), no tree |</span>
+<span class="c1">#   | contract_module: beside this file    | the module path | none: chezmoi is asked          |                                            |</span>
+<span class="c1">#   | contract_module: chezmoi source-path | one directory   | no chezmoi on PATH: return 1    | nonzero status, no path, several lines, a  |</span>
+<span class="c1">#   |                                      |                 | (open); a directory without the | relative path, a path that is no directory |</span>
+<span class="c1">#   |                                      |                 | module: return 1 (open)         |                                            |</span>
+<span class="c1">#   | python3 -I on the module (contract)  | status 0        |                                 | 2: the JSON does not match; other: named   |</span>
+<span class="c1">#   | jq: statements the tree lists        | one count       | 0                               | nonzero status, no count, several, no digit|</span>
+<span class="c1">#   | jq: statement nodes the walk sees    | one count       | 0 (refused when any was listed) | nonzero status, no count, several, no digit|</span>
+<span class="c1">#   | jq: the call statements' offsets     | start-end lines | none: no segment, no decision   | nonzero status, or a line of another shape |</span>
 <span class="c1"># @arg $1 string The command line.</span>
 <span class="c1"># @set SEGMENTS array The simple commands, in order.</span>
-<span class="c1"># @exitcode 0 The line parsed.</span>
-<span class="c1"># @exitcode 1 shfmt or jq is absent, or the line does not parse.</span>
+<span class="c1"># @set REFUSAL string On return 2, why the line cannot be judged.</span>
+<span class="c1"># @exitcode 0 The line parsed; SEGMENTS holds its simple commands, possibly none.</span>
+<span class="c1"># @exitcode 1 No contract module beside this file, and no chezmoi on PATH or none under its source directory: the fail-open.</span>
+<span class="c1"># @exitcode 2 A failed read (chezmoi source-path included), a contract mismatch, or a tree whose statements the walk cannot see: main exits 2.</span>
 <span class="k">function</span><span class="w"> </span>split_segments<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">line</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>tree<span class="w"> </span>spans<span class="w"> </span>start<span class="w"> </span>end
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">line</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>tree<span class="w"> </span>spans<span class="w"> </span>start<span class="w"> </span>end<span class="w"> </span>listed<span class="w"> </span>visited<span class="w"> </span>status<span class="w"> </span><span class="nv">found</span><span class="o">=</span><span class="m">0</span>
 <span class="w">    </span><span class="nv">SEGMENTS</span><span class="o">=()</span>
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>shfmt<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>shfmt<span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">spans</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>shfmt<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"shfmt is not on PATH, so no Bash line can be judged; home/dot_mise/config.toml installs the pinned one"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$line</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>shfmt<span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="k">)</span>
+<span class="w">    </span>read_or_refuse<span class="w"> </span><span class="s2">"shfmt parsing the line"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span><span class="s2">""</span><span class="w"> </span>any<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"shfmt printed no tree for the line; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>contract_module<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">found</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="o">((</span><span class="nv">found</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="nv">$found</span><span class="s2">"</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span><span class="s2">"</span><span class="nv">$MODULE</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"shfmt's JSON does not match the pinned node table; no Bash line can be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">((</span>status<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"python3 -I </span><span class="si">${</span><span class="nv">MODULE</span><span class="si">}</span><span class="s2"> exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2"> proving the contract; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># The statements the tree lists against the statement nodes the walk can see: a renamed field would leave the</span>
+<span class="w">    </span><span class="c1"># walk empty and the line silently undecided.</span>
+<span class="w">    </span><span class="nv">listed</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.Stmts // [] | length'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="k">)</span>
+<span class="w">    </span>read_or_refuse<span class="w"> </span><span class="s2">"jq counting the statements the tree lists"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$listed</span><span class="s2">"</span><span class="w"> </span><span class="s1">'^[0-9]+$'</span><span class="w"> </span><span class="s2">"a count"</span><span class="w"> </span>one<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="nv">visited</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'[.. | objects | select(has("Cmd"))] | length'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="k">)</span>
+<span class="w">    </span>read_or_refuse<span class="w"> </span><span class="s2">"jq counting the statement nodes the walk sees"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$visited</span><span class="s2">"</span><span class="w"> </span><span class="s1">'^[0-9]+$'</span><span class="w"> </span><span class="s2">"a count"</span><span class="w"> </span>one<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>listed<span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">visited</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">REFUSAL</span><span class="o">=</span><span class="s2">"shfmt's tree lists </span><span class="si">${</span><span class="nv">listed</span><span class="si">}</span><span class="s2"> statement(s) but the walk saw none; the line cannot be judged"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">spans</span><span class="o">=</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.. | objects | select(.Cmd.Type? == "CallExpr") | "\(.Pos.Offset) \(.End.Offset)"'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tree</span><span class="s2">"</span><span class="k">)</span>
+<span class="w">    </span>read_or_refuse<span class="w"> </span><span class="s2">"jq reading the call statements' offsets"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$spans</span><span class="s2">"</span><span class="w"> </span><span class="s1">'^[0-9]+ [0-9]+$'</span><span class="w"> </span><span class="s2">"an offset pair"</span><span class="w"> </span>any<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="c1"># shfmt's offsets count bytes, so slice the line byte-wise.</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>start<span class="w"> </span>end<span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -5361,9 +5488,16 @@
 <span class="w">    </span><span class="nv">command</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$input</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.tool_input.command // ""'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">""</span><span class="k">)</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$tool_name</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span>segment
-<span class="w">        </span><span class="c1"># Advisory: a line shfmt cannot parse (or no shfmt) gets no decision.</span>
-<span class="w">        </span>split_segments<span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>segment<span class="w"> </span><span class="nv">parsed</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span>split_segments<span class="w"> </span><span class="s2">"</span><span class="nv">$command</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">parsed</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="c1"># 1 is the one fail-open: no contract module on this host, so no decision. Any other failure is a refusal,</span>
+<span class="w">        </span><span class="c1"># reported the way a contract mismatch is: the tool call is blocked and the reason reaches the caller.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">parsed</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">((</span>parsed<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"enforce-uv: </span><span class="si">${</span><span class="nv">REFUSAL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>segment<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SEGMENTS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">            </span>classify_segment<span class="w"> </span><span class="s2">"</span><span class="nv">$segment</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">done</span>

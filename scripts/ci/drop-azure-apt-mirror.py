@@ -16,6 +16,14 @@ The list is read with open(), filtered and counted in Python, written (directly 
 `sudo -n tee`, its status checked and its time bounded) and read back and compared byte for byte. A list that would be
 left with no mirror is refused. Exit 0: the Azure line is gone, was never there, or there is no list (not such a
 runner). Exit 1, with a one-line reason: any read, write or comparison failure, or no mirror left.
+
+Re-check (regime-cutover U109): GitHub staff declared #14823 mirror-side and healthy on 2026-10-27, and the image did
+not change. The drop is retired by a measurement, not a date: when actions/runner-images#14823 is closed, measure
+three `test (ubuntu-24.04, client)` runs with the drop disabled (its step removed on a branch) and compare their apt
+step times ("Install tools", "Run Python unit tests", "Setup for Codecov") with three runs that keep it; retire the
+drop only if the times without it are within 20 percent of the times with it. Until then every apt call also runs
+under its own `timeout` (tests/unit/test_apt_mirror.py AptBoundRuleTest), so a silent archive.ubuntu.com
+(runner-images#15040) ends inside its step.
 """
 
 import os

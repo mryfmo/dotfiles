@@ -1,14 +1,17 @@
-"""The Azure apt mirror is dropped before every CI apt use, and the Bats bounds name a stall before the step stops
-(regime-cutover U102).
+"""The Azure apt mirror is dropped before every CI apt use, every apt call a workflow runs ends inside its step, and
+the Bats bounds name a stall before the step stops (regime-cutover U102, U109).
 
 actions/runner-images#14823: a slow azure.archive.ubuntu.com node keeps sending data, so apt's 15 s timeout never
 fires and apt never moves to the next mirror. scripts/ci/drop-azure-apt-mirror.py removes that entry; every job that
-runs apt on a Ubuntu runner calls it first. The measured budgets below come from passing `test (ubuntu-*, client)`
-jobs of October 2026.
+runs apt on a Ubuntu runner calls it first. After the drop every call goes to archive.ubuntu.com, which can print
+nothing for 15 minutes during `apt-get update` (runner-images#15040), so each call runs under GNU timeout with apt's
+own silence timeout and retries set, in one exact form, and the steps that hold them carry their own timeout-minutes.
+The measured budgets below come from passing `test` jobs of October 2026.
 """
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import subprocess
@@ -55,6 +58,29 @@ MIRRORS = (
     "https://archive.ubuntu.com/ubuntu/\tpriority:2\n"
     "https://security.ubuntu.com/ubuntu/\tpriority:3\n"
 )
+# U109: every apt call a workflow runs carries its own bound, in one exact form. `timeout` ends a call that keeps
+# printing nothing at N seconds and kills it KILL_AFTER seconds later; apt's own options give up a connection or read
+# silent for 15 s and move to the next mirror, three times. N is measured per step (the comment next to each call in
+# the workflow) with twice the measured time and at least 120 s of margin, so never under MIN_APT_BOUND.
+APT_CALL = re.compile(r"\bapt-get\b|\bapt\s+(?:install|update|upgrade|full-upgrade|dist-upgrade)\b")
+APT_BOUND = re.compile(
+    r"timeout --kill-after=10 ([0-9]+) sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 "
+    r"(?:update|install)(?=\s|$)"
+)
+KILL_AFTER = 10
+MIN_APT_BOUND = 120
+# What would reopen a bounded call if it stood on the same line outside the form: another option or configuration file
+# (`-o`, `-c`, their long spellings, any Acquire:: key in any case, APT_CONFIG) or a second timeout.
+APT_REOPENS = re.compile(r"(?i)acquire::|apt_config|\btimeout\b|(?<![\w-])-[oc](?![\w-])|--option\b|--config-file\b")
+# (workflow file name, the whole stripped line, exactly) -> why the line may name apt without the form. Empty on this
+# head: the three workflows that bootstrap through setup.sh run apt only inside the installers, whose downloads U99
+# bounded, and no workflow comment names apt-get. A row must still match a line (test_no_apt_exemption_is_stale).
+APT_EXEMPT: dict[tuple[str, str], str] = {}
+# Measured, in seconds, outside the apt calls (passing `test` jobs, every matrix row, runs 40314863147 to
+# 40610790312): "Install tools" at most 73 s (ubuntu-24.04 server, run 40338292845), 14 to 46 s elsewhere; "Run
+# Python unit tests" at most 664 s (macos-15 client, run 40610790312), 189 to 388 s on the Ubuntu rows; "Setup for
+# Codecov" under 1 s. Twice the maximum each, so a step bound ends a stall, never a slow passing run.
+STEP_REST_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330, "Setup for Codecov": 60}
 
 
 def step_text(step: dict) -> str:
@@ -71,6 +97,42 @@ def job_text(path: Path, name: str) -> str:
 
 def default_bound() -> int:
     return int(re.search(r"^DEFAULT_BOUND = ([0-9]+)$", WRAPPER.read_text(), re.MULTILINE).group(1))
+
+
+def apt_violations(relative: str, text: str, exempt: dict[tuple[str, str], str] | None = None) -> list[str]:
+    """The lines of one workflow that name apt outside the bound form, as `file:line: text (why)`."""
+    exempt = APT_EXEMPT if exempt is None else exempt
+    bad = []
+    for number, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        calls = len(APT_CALL.findall(line))
+        if not calls or (relative, line) in exempt:
+            continue
+        where = f"{relative}:{number}: {line}"
+        bounds = APT_BOUND.findall(line)
+        if len(bounds) != calls:
+            bad.append(f"{where} ({calls} apt call(s), {len(bounds)} in the bound form)")
+            continue
+        low = [n for n in bounds if int(n) < MIN_APT_BOUND]
+        if low:
+            bad.append(f"{where} (a bound under {MIN_APT_BOUND} s: {low})")
+        if line.endswith("\\"):
+            bad.append(f"{where} (continues onto the next line, where an option could reopen the call)")
+        reopens = APT_REOPENS.search(APT_BOUND.sub(" ", line))
+        if reopens:
+            bad.append(f"{where} (carries {reopens.group(0)!r} outside the form)")
+    return bad
+
+
+def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None = None) -> list[str]:
+    """The exemptions whose workflow no longer holds their whole line, exactly."""
+    exempt = APT_EXEMPT if exempt is None else exempt
+    lines = {name: {line.strip() for line in text.splitlines()} for name, text in files.items()}
+    return [f"{name}: {line}" for name, line in exempt if line not in lines.get(name, set())]
+
+
+def workflow_texts() -> dict[str, str]:
+    return {path.name: path.read_text() for path in sorted(WORKFLOWS.glob("*.y*ml"))}
 
 
 class MirrorScriptTest(unittest.TestCase):
@@ -203,6 +265,13 @@ class MirrorScriptTest(unittest.TestCase):
         self.assertIn('DEFAULT = "/etc/apt/apt-mirrors.txt"', SCRIPT.read_text())
         self.assertIn("actions/runner-images#14823", SCRIPT.read_text())
 
+    def test_the_drop_names_its_re_check(self) -> None:
+        # The drop has an exit condition, not an expiry: #14823 was declared mirror-side and healthy on 2026-10-27.
+        text = SCRIPT.read_text()
+        self.assertIn("when actions/runner-images#14823 is closed", text)
+        self.assertIn("three `test (ubuntu-24.04, client)` runs with the drop disabled", text)
+        self.assertIn("within 20 percent", text)
+
 
 class AptJobTest(unittest.TestCase):
     def test_every_job_that_runs_apt_on_ubuntu_drops_the_mirror_first(self) -> None:
@@ -228,6 +297,71 @@ class AptJobTest(unittest.TestCase):
             with self.subTest(workflow=path.name):
                 self.assertNotIn("apt-mirrors.txt", path.read_text())
                 self.assertNotIn("azure.archive", path.read_text().replace("azure\\.archive", ""))
+
+
+class AptBoundRuleTest(unittest.TestCase):
+    """Every apt call a workflow runs ends inside its step: the exact bound form on its own line, or an exemption row
+    with a reason. Closed-world, as U99's download rule (decisions.tsv `treadmill-u99-scanner`): the text is matched,
+    never parsed."""
+
+    FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+
+    def test_every_apt_call_in_a_workflow_carries_the_bound_or_is_exempted(self) -> None:
+        bad = [hit for name, text in workflow_texts().items() for hit in apt_violations(name, text)]
+        self.assertEqual([], bad)
+
+    def test_no_apt_exemption_is_stale(self) -> None:
+        texts = workflow_texts()
+        self.assertEqual([], apt_stale(texts))
+        # The table is the only way out, so a scan that saw fewer calls than test.yaml's two updates and three
+        # installs would be a broken scan.
+        bounded = sum(len(APT_BOUND.findall(line)) for text in texts.values() for line in text.splitlines())
+        self.assertGreaterEqual(bounded, 5)
+
+    def test_the_bypasses_fail(self) -> None:
+        for snippet in (
+            "sudo apt-get update",
+            "sudo apt install -y jq",
+            f"{self.FORM} update && sudo apt-get install -y jq",
+            "timeout 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "timeout --kill-after=0 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "timeout --kill-after=10 0 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "timeout --kill-after=10 60 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=0 -o Acquire::Retries=3 update",
+            "timeout --kill-after=10 180 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update",
+            f"{self.FORM} -o acquire::http::timeout=0 update",
+            f"{self.FORM} install -y -o Acquire::Retries=0 jq",
+            f"{self.FORM} install -y jq -c /tmp/apt.conf",
+            f"{self.FORM} install -y jq --config-file=/tmp/apt.conf",
+            f"APT_CONFIG=/tmp/apt.conf {self.FORM} update",
+            f"{self.FORM} update \\",
+            f"{self.FORM} update; timeout 5 true",
+            f"{self.FORM} upgrade -y",
+            "# sudo apt-get update",
+            'echo "apt-get update"',
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertEqual(1, len(apt_violations("x.yaml", snippet + "\n", {})), snippet)
+
+    def test_the_bound_form_passes(self) -> None:
+        for snippet in (
+            f"{self.FORM} update",
+            f"{self.FORM} install -y bats curl iproute2 parallel ruby",
+            f"{self.FORM} update && {self.FORM} install -y jq zsh",
+            "apt-mirrors.txt and drop-azure-apt-mirror.py are other words",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertEqual([], apt_violations("x.yaml", snippet + "\n", {}), snippet)
+
+    def test_an_exemption_needs_its_exact_line(self) -> None:
+        table = {("x.yaml", "# apt-get runs inside setup.sh"): "comment; names the tool without running it"}
+        self.assertEqual([], apt_violations("x.yaml", "  # apt-get runs inside setup.sh\n", table))
+        self.assertEqual(1, len(apt_violations("x.yaml", "# apt-get runs inside setup.sh now\n", table)))
+        self.assertEqual([], apt_stale({"x.yaml": "  # apt-get runs inside setup.sh\n"}, table))
+        self.assertEqual(
+            ["x.yaml: # apt-get runs inside setup.sh"],
+            apt_stale({"x.yaml": "# apt-get runs inside setup.sh now\n"}, table),
+        )
 
 
 class BoundOrderTest(unittest.TestCase):
@@ -260,6 +394,23 @@ class BoundOrderTest(unittest.TestCase):
             with self.subTest(workflow=path.name):
                 self.assertNotIn("BATS_PER_TEST_TIMEOUT:", path.read_text())
                 self.assertNotIn("BATS_PER_TEST_TIMEOUT=", path.read_text())
+
+    def test_every_step_that_runs_apt_ends_a_stall_inside_its_own_bound(self) -> None:
+        # The step's timeout-minutes is the ceiling of its apt bounds (each N plus the kill delay) plus the measured
+        # rest of the step, plus one minute: a stall ends under the step's name, never at the job's timeout.
+        found = {}
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            for job in jobs(path).values():
+                for step in job["steps"]:
+                    bounds = [int(n) for n in APT_BOUND.findall(step_text(step))]
+                    if bounds:
+                        found[step["name"]] = (sum(n + KILL_AFTER for n in bounds), step)
+        self.assertEqual(set(STEP_REST_BUDGET), set(found))
+        for name, (apt_seconds, step) in found.items():
+            with self.subTest(step=name):
+                self.assertIn("timeout-minutes", step)
+                expected = math.ceil((apt_seconds + STEP_REST_BUDGET[name]) / 60) + 1
+                self.assertEqual(expected, int(step["timeout-minutes"]))
 
 
 if __name__ == "__main__":

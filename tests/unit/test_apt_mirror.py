@@ -11,10 +11,13 @@ The measured budgets below come from passing `test` jobs of October 2026.
 
 from __future__ import annotations
 
+import atexit
+import json
 import math
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -182,6 +185,33 @@ REFUSED_CHARACTERS = {
 REFUSED_CHARACTER = re.compile(f"[{''.join(REFUSED_CHARACTERS.values())}]")
 CHARACTER_CLASS = {name: re.compile(f"[{body}]") for name, body in REFUSED_CHARACTERS.items()}
 CHARACTER_SET = "the file is held to a tab, LF and the printable characters before any line is read"
+# Round 8 (audit of 046aebb1): node_end saw no quote right after the `?` indicator, so `env: {?"x}` was a flow
+# collection complete on its line to the census and the reader, while to PyYAML `"x}` opens a double-quoted key that
+# runs across the lines that follow to the next `"`: a phantom step and its timeout-minutes, which both hand-written
+# readers counted and the step check attached to the real apt step, were text inside the key, and the real step had
+# no timeout-minutes. Rounds 5 to 7 completed the lexer corner by corner; the gate is now a real parser: every
+# workflow the step check reads must agree with PyYAML, run in a child the uv idiom starts (CI's interpreter has no
+# YAML parser; regime.yml's tests read their workflow the same way), on the job set, each job's step count, each
+# step's run body, name and timeout-minutes, any difference a failure named by job and step. The closed grammar stays
+# as the explanation layer: it names the line and the construct where it can, the parser decides. The child reads one
+# JSON line per document and answers with PyYAML's document or its refusal; a child that dies is reported with its
+# stderr, never read as an absence (standing order 21).
+UV_PYYAML = [shutil.which("uv") or "uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I"]
+PARSER = """\
+import json, sys, yaml
+
+
+def reply(line):
+    try:
+        return json.dumps({"document": yaml.safe_load(json.loads(line))}, default=str)
+    except Exception as error:  # PyYAML refuses the document, or JSON cannot carry it (a key that is not a scalar)
+        return json.dumps({"error": f"{type(error).__name__}: {' '.join(str(error).split())}"})
+
+
+for line in sys.stdin:
+    print(reply(line), flush=True)
+"""
+PARSER_GATE = "the step check reads a workflow only where PyYAML reads the same jobs, steps and run bodies"
 
 
 def step_text(step: dict) -> str:
@@ -307,8 +337,9 @@ def refused_characters(text: str) -> list[tuple[int, str]]:
 def node_end(header: str) -> int | None:
     """The index after the close of the quoted scalar or flow collection that opens `header`, or None when the line
     ends first. A `"` scalar escapes with a backslash and a `'` scalar doubles its quote; inside a flow collection a
-    quote opens a string after an opener, a `,`, a `:` or a blank, and a `#` after a blank opens a comment that runs
-    to the line's end (YAML 7.3, 7.4)."""
+    quote opens a string after an opener, a `,`, a `:`, a `?` (round 8: the key indicator, which PyYAML takes in a
+    flow collection whatever follows it) or a blank, and a `#` after a blank opens a comment that runs to the line's
+    end (YAML 7.3, 7.4)."""
     quote: str | None = None
     depth = 0
     index = 0
@@ -325,7 +356,7 @@ def node_end(header: str) -> int | None:
                 quote = None
                 if depth == 0:
                     return index + 1
-        elif char in "\"'" and (index == 0 or header[index - 1] in " \t,[{:"):
+        elif char in "\"'" and (index == 0 or header[index - 1] in " \t,[{:?"):
             quote = char
         elif char in "[{":
             depth += 1
@@ -610,6 +641,130 @@ def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list
     return problems
 
 
+class Parser:
+    """PyYAML in a child the uv idiom starts, one for the test process (CI's interpreter has no YAML parser, and uv is
+    set up before the unit tests run, as regime.yml's tests rely on). One JSON line in per document, one out: the
+    document PyYAML read, or its refusal. A child that dies is reported with its exit status and stderr, never read
+    as an absence; the next call starts another."""
+
+    process: subprocess.Popen[str] | None = None
+    stderr = None
+
+    @classmethod
+    def read(cls, text: str) -> tuple[object, str | None]:
+        """PyYAML's reading of `text`: (document, None), or (None, why) when PyYAML refuses the document or JSON
+        cannot carry it (a key that is not a scalar)."""
+        if cls.process is None or cls.process.poll() is not None:
+            if cls.process is None:
+                atexit.register(cls.stop)
+            else:
+                cls.stop()  # the child died: close its files before starting another
+            cls.stderr = tempfile.TemporaryFile("w+", encoding="utf-8")  # a pipe could fill and stall the child
+            cls.process = subprocess.Popen(
+                [*UV_PYYAML, "-c", PARSER],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=cls.stderr,
+                text=True,
+                encoding="utf-8",
+            )
+        assert cls.process.stdin is not None and cls.process.stdout is not None
+        cls.process.stdin.write(json.dumps(text) + "\n")
+        cls.process.stdin.flush()
+        line = cls.process.stdout.readline()
+        if not line:
+            status = cls.process.wait(timeout=30)
+            cls.stderr.seek(0)
+            raise RuntimeError(f"the PyYAML child exited with status {status} before answering: {cls.stderr.read()}")
+        reply = json.loads(line)
+        return reply.get("document"), reply.get("error")
+
+    @classmethod
+    def stop(cls) -> None:
+        if cls.process is None:
+            return
+        cls.process.stdin.close()
+        if cls.process.poll() is None:
+            cls.process.wait(timeout=30)
+        cls.process.stdout.close()
+        cls.stderr.close()
+
+
+def census_run(step: dict) -> list[str] | None:
+    """A text step's `run:` as PyYAML would hold it, by stripped non-blank line: a one-line value is the line as
+    written (PyYAML unquotes a quoted one, so the two part there), a block header is not content, the body lines
+    are; None when the step has no `run:` key."""
+    if not step["runs"]:
+        return None
+    lines = []
+    for run in step["runs"]:
+        if run["header"][:1] not in ("|", ">"):
+            lines.append(run["header"])
+        lines += run["body"]
+    return [line.strip() for line in lines if line.strip()]
+
+
+def summary(lines: list[str] | None) -> str:
+    """A run body for a message: its line count and first line, or `no run:`."""
+    if lines is None:
+        return "no run:"
+    if not lines:
+        return "an empty run:"
+    return f"{len(lines)} line(s) from {lines[0][:60]!r}"
+
+
+def parser_problems(name: str, text: str, parsed: dict[str, list[dict]] | None = None) -> list[str]:
+    """Where PyYAML's reading of one workflow differs from the census and the reader, by `file:line`, job and step.
+
+    The job set and order, each job's step count, and each step's `run:` body (as the census holds it) are PyYAML's
+    or named; where the reader's steps are given, each step the reader reaches has PyYAML's name and timeout-minutes
+    too, since the step check attaches both from the reader. A job whose step count differs is named with the first
+    step where the two readings part. A document PyYAML refuses, or one whose `jobs:` is not a mapping of jobs with
+    step lists, is named as a whole."""
+    document, error = Parser.read(text)
+    if error is not None:
+        return [f"{name}: PyYAML refuses the file ({error}); {PARSER_GATE}"]
+    found = text_steps(text)
+    read_jobs = document.get("jobs") if isinstance(document, dict) else None
+    if not isinstance(read_jobs, dict):
+        return [f"{name}: the text holds jobs {list(found)}, PyYAML reads no jobs mapping; {PARSER_GATE}"]
+    problems = []
+    if list(read_jobs) != list(found):
+        problems.append(f"{name}: the text holds jobs {list(found)}, PyYAML reads {list(read_jobs)}; {PARSER_GATE}")
+    for job, steps in found.items():
+        if job not in read_jobs:
+            continue  # named above
+        read = read_jobs[job].get("steps") if isinstance(read_jobs[job], dict) else None
+        if not isinstance(read, list):
+            problems.append(f"{name}: {job}: PyYAML reads no step list; {PARSER_GATE}")
+            continue
+        reader = iter(parsed.get(job, [])) if parsed is not None else None
+        differing: list[tuple[str, str]] = []  # (the step, what differs)
+        for index, (step, got) in enumerate(zip(steps, read)):
+            where = f"{name}:{step['line']}: {job}: step {index}"
+            mine = next(reader, {}) if reader is not None and reader_reaches(step) else {}
+            if not isinstance(got, dict):
+                differing.append((where, f"is not a mapping to PyYAML ({got!r})"))
+                continue
+            written = census_run(step)
+            parsed_run = (
+                [line.strip() for line in str(got["run"]).splitlines() if line.strip()] if "run" in got else None
+            )
+            if written != parsed_run:
+                differing.append((where, f"runs {summary(written)} in the text, {summary(parsed_run)} to PyYAML"))
+            for key in ("name", "timeout-minutes"):
+                if mine and mine.get(key) != (str(got[key]) if key in got else None):
+                    differing.append((where, f"has {key} {mine.get(key)!r} to the reader, {got.get(key)!r} to PyYAML"))
+        if len(read) != len(steps):
+            part = f", parting at {differing[0][0]}" if differing else ""
+            problems.append(
+                f"{name}: {job}: {len(steps)} steps in the text, {len(read)} to PyYAML{part}; {PARSER_GATE}"
+            )
+        else:
+            problems.extend(f"{where} {what}; {PARSER_GATE}" for where, what in differing)
+    return problems
+
+
 def bounded_steps() -> list[dict]:
     """Three steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
     form = "timeout --kill-after=10 {} sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
@@ -659,8 +814,9 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
     """What would let a stalled apt call outlive its step's name, for `{workflow: text}` and the reader's steps.
 
     The steps that run apt are found in the raw text (the `run:` key and the lines under it, comment lines left
-    out), once the census has shown the reader returned every `run:`; the reader's structure only attaches the name
-    and timeout-minutes, its steps matched in order to the text steps its rule reaches (the census has named the
+    out), once the census has shown the reader returned every `run:` and PyYAML (round 8, parser_problems) read the
+    same jobs, steps, run bodies, names and timeout-minutes; the reader's structure only attaches the name and
+    timeout-minutes, its steps matched in order to the text steps its rule reaches (the census has named the
     others). Steps are keyed by (workflow, job, index), the name carried for the message, so no step replaces
     another; a name used twice in one job is refused on its own, since STEP_REST_BUDGET refers to steps by name.
     Then every apt step has a budget row and the timeout-minutes the formula gives, and every budget row has its
@@ -672,6 +828,8 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
         problems.extend(census_problems(workflow, text, by_job))
         if refused_characters(text):
             unread.append(workflow)
+            continue  # the file has no lines: PyYAML is not asked about it either
+        problems.extend(parser_problems(workflow, text, by_job))
         for job, steps in text_steps(text).items():
             read = iter(by_job.get(job, []))
             seen: dict[str, int] = {}
@@ -1016,7 +1174,7 @@ class BoundOrderTest(unittest.TestCase):
         path = Path(tempfile.mkdtemp(prefix="apt-steps-")) / "x.yaml"
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(path.parent)], check=False))
         path.write_text(text)
-        return apt_step_problems({"x.yaml": text}, {"x.yaml": parsed_steps(path)}), dash_lines(text)
+        return workflow_problems([path]), dash_lines(text)
 
     def test_a_step_without_its_bound_cannot_hide_behind_a_later_step_of_the_same_name(self) -> None:
         # Audit of 9058072b: the registry was keyed by step name, so a later "Setup for Codecov" that carried
@@ -1076,7 +1234,10 @@ class ReaderCensusTest(unittest.TestCase):
     compared the literal `steps:`, so `steps: # comment` hid a list at five and seven from both. Audit of 56e41f9b:
     the grammar began at `jobs:`, so a quoted top-level `name` that ran on across a `jobs:` line hid the real
     `"jobs":` mapping from both. Audit of 8c1d334a: the census split the text at LF alone, so a comment line that
-    went on after U+0085, U+2028 or U+2029 (line breaks to PyYAML) hid a whole job from both."""
+    went on after U+0085, U+2028 or U+2029 (line breaks to PyYAML) hid a whole job from both. Audit of 046aebb1:
+    node_end saw no quote right after `?`, so `env: {?"x}` closed on its line for both while PyYAML read a key that
+    swallowed the next step and its timeout-minutes. Round 8 gates every workflow on agreement with PyYAML itself,
+    run in a child the uv idiom starts (Parser), so the grammar explains and the parser decides."""
 
     FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
@@ -1130,7 +1291,13 @@ class ReaderCensusTest(unittest.TestCase):
                     self.assertIn(
                         f"test.yaml:{dash}: test: step {index} 'Added' runs apt with no STEP_REST_BUDGET row", problems
                     )
-                    self.assertEqual(2, len(problems), problems)
+                    if form == '"..."':  # round 8: PyYAML unquotes the value, the census holds it as written
+                        self.assertIn(
+                            f"test.yaml:{dash}: test: step {index} runs 1 line(s) from {expected_header[:60]!r} in the "
+                            f"text, 1 line(s) from {command[:60]!r} to PyYAML; {PARSER_GATE}",
+                            problems,
+                        )
+                    self.assertEqual(3 if form == '"..."' else 2, len(problems), problems)
                     violations = apt_violations("test.yaml", path.read_text())
                     if command == self.FORM and form != '"..."':
                         self.assertEqual(
@@ -1232,41 +1399,101 @@ class ReaderCensusTest(unittest.TestCase):
         return self.written(text + job, "test.yaml"), len(text.splitlines()) + 5
 
     def agrees_with_yaml(self, text: str) -> None:
-        """Where PyYAML is installed, it reads the same jobs, steps and run bodies as the census; elsewhere nothing."""
-        try:
-            import yaml
-        except ImportError:
-            return
-        document = yaml.safe_load(text)
-        found = text_steps(text)
-        self.assertEqual(list(document["jobs"]), list(found))
-        for job, steps in found.items():
-            parsed = document["jobs"][job]["steps"]
-            self.assertEqual(len(parsed), len(steps), job)
-            for step, got in zip(steps, parsed):
-                self.assertEqual("run" in got, bool(step["runs"]), (job, step["line"]))
-                for run in step["runs"]:
-                    written = (
-                        [line.strip() for line in run["body"] if line.strip()]
-                        if run["header"] == "|"
-                        else [run["header"]]
-                    )
-                    self.assertEqual(
-                        written,
-                        [line.strip() for line in str(got["run"]).splitlines() if line.strip()],
-                        (job, run["line"]),
-                    )
+        """PyYAML, in the child, reads the same jobs, steps and run bodies as the census."""
+        self.assertEqual([], parser_problems("x.yaml", text))
 
-    def test_the_text_census_agrees_with_a_yaml_parser_when_one_is_present(self) -> None:
-        # Not a dependency: CI's interpreter has none. Where PyYAML is installed, it is a second reader of the same
-        # files, and the census must see every step and every run body it sees.
-        try:
-            import yaml  # noqa: F401
-        except ImportError:
-            self.skipTest("no PyYAML in this interpreter (the CI form)")
+    def test_the_text_census_agrees_with_pyyaml_on_every_workflow(self) -> None:
+        # Round 8: the gate. PyYAML runs in a child the uv idiom starts, as regime.yml's tests read their workflow,
+        # so the agreement holds in CI's interpreter too, which has no YAML parser of its own; it is never skipped.
+        # Every workflow's jobs, steps, run bodies, names and timeout-minutes are PyYAML's, and PyYAML saw them: a
+        # parser that returned nothing would differ from the census, which counts test.yaml's 18 runs on its own.
+        steps = 0
         for path in sorted(WORKFLOWS.glob("*.y*ml")):
             with self.subTest(workflow=path.name):
-                self.agrees_with_yaml(path.read_text())
+                text = workflow_text(path)
+                self.assertEqual([], parser_problems(path.name, text, parsed_steps(path)))
+                document, _ = Parser.read(text)
+                steps += sum(len(job["steps"]) for job in document["jobs"].values())
+        self.assertGreaterEqual(steps, 23)  # test.yaml's one job alone
+
+    def test_the_parser_gate_names_a_document_the_hand_written_readers_misread(self) -> None:
+        # Each difference the gate can see, named by file, line, job and step: the job set, a step list, a step that
+        # is not a mapping, a run body, a name or timeout-minutes the reader holds otherwise, and a document PyYAML
+        # refuses. The round 6 and round 8 documents are in their own tests.
+        folded = self.BASE + "      - run: >\n          echo a\n          echo b\n"
+        for case, text, parsed, expected in (
+            (
+                "a folded run",
+                folded,
+                None,
+                [
+                    f"x.yaml:7: test: step 0 runs 2 line(s) from 'echo a' in the text, 1 line(s) from 'echo a echo b' "
+                    f"to PyYAML; {PARSER_GATE}"
+                ],
+            ),
+            (
+                "a step that is not a mapping",
+                self.BASE + "      - echo a\n",
+                None,
+                [f"x.yaml:7: test: step 0 is not a mapping to PyYAML ('echo a'); {PARSER_GATE}"],
+            ),
+            (
+                "a quoted name, which the reader returns quoted",
+                self.BASE + '      - name: "A"\n        run: echo a\n',
+                {"test": [{"name": '"A"', "run": "echo a"}]},
+                [f"""x.yaml:7: test: step 0 has name '"A"' to the reader, 'A' to PyYAML; {PARSER_GATE}"""],
+            ),
+            (
+                "timeout-minutes the reader holds and PyYAML does not",
+                self.BASE + "      - run: echo a\n",
+                {"test": [{"run": "echo a", "timeout-minutes": "5"}]},
+                [f"x.yaml:7: test: step 0 has timeout-minutes '5' to the reader, None to PyYAML; {PARSER_GATE}"],
+            ),
+            (
+                "jobs: that is not a mapping",
+                "name: x\non: push\njobs: 1\n",
+                None,
+                [f"x.yaml: the text holds jobs [], PyYAML reads no jobs mapping; {PARSER_GATE}"],
+            ),
+            (
+                "a job without a step list",
+                "name: x\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n",
+                None,
+                [f"x.yaml: test: PyYAML reads no step list; {PARSER_GATE}"],
+            ),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual(expected, parser_problems("x.yaml", text, parsed))
+        with self.subTest(case="a document PyYAML refuses"):
+            (problem,) = parser_problems("x.yaml", self.BASE + "      - run: echo a\n     odd: 1\n")
+            self.assertTrue(problem.startswith("x.yaml: PyYAML refuses the file (ParserError: "), problem)
+            self.assertTrue(problem.endswith(f"; {PARSER_GATE}"), problem)
+        with self.subTest(case="the same step to every reader"):
+            text = self.BASE + "      - name: A\n        timeout-minutes: 5\n        run: |\n          echo a\n"
+            self.assertEqual([], parser_problems("x.yaml", text, parsed_steps(self.written(text))))
+
+    def test_a_parser_child_that_dies_is_a_failure_not_an_absence(self) -> None:
+        # Standing order 21: a child that exits before answering is reported with its status and stderr, never read
+        # as a document with no jobs; the next call starts a child again and reads.
+        self.assertIsNone(Parser.read("a: 1")[1])
+        live, live_stderr = Parser.process, Parser.stderr
+        Parser.stderr = tempfile.TemporaryFile("w+", encoding="utf-8")
+        Parser.process = subprocess.Popen(
+            [sys.executable, "-I", "-c", "import sys; sys.stdin.readline(); print('boom', file=sys.stderr); exit(3)"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=Parser.stderr,
+            text=True,
+        )
+        try:
+            with self.assertRaises(RuntimeError) as caught:
+                Parser.read("a: 1")
+            self.assertIn("exited with status 3 before answering", str(caught.exception))
+            self.assertIn("boom", str(caught.exception))
+            self.assertEqual(({"a": 1}, None), Parser.read("a: 1"))  # a fresh child
+        finally:
+            Parser.stop()
+            Parser.process, Parser.stderr = live, live_stderr
 
     def test_the_auditors_step_at_five_and_seven_is_refused_by_its_dash_line(self) -> None:
         # Audit of 81fa7256: a step list whose dashes are at five spaces and keys at seven is YAML the runner
@@ -1427,12 +1654,7 @@ class ReaderCensusTest(unittest.TestCase):
                     problems = census_problems("x.yaml", text, parsed_steps(path))
                     self.assertEqual([f"x.yaml:{number}: {why}" for number, why in refused], problems[: len(refused)])
                 if yaml_raises:
-                    try:
-                        import yaml
-                    except ImportError:
-                        continue
-                    with self.assertRaises(yaml.YAMLError):
-                        yaml.safe_load(text)
+                    self.assertIsNotNone(Parser.read(text)[1])
 
     def test_steps_with_a_comment_after_it_is_the_steps_key(self) -> None:
         # Audit of f4486ead: the round 4 census compared the literal `steps:`, so `steps: # comment` was an opaque
@@ -1496,13 +1718,10 @@ class ReaderCensusTest(unittest.TestCase):
         )
 
     def yaml_reads_the_added_job(self, text: str, command: str, quoted_name: bool) -> None:
-        """Where PyYAML is present: the document's jobs are the real ones and `added`, whose step holds `command`;
-        with the quoted name, the copy of the test job is inside the name. Elsewhere nothing."""
-        try:
-            import yaml
-        except ImportError:
-            return
-        document = yaml.safe_load(text)
+        """PyYAML's document holds the real jobs and `added`, whose step holds `command`; with the quoted name, the
+        copy of the test job is inside the name."""
+        document, error = Parser.read(text)
+        self.assertIsNone(error)
         self.assertEqual([*text_steps((WORKFLOWS / "test.yaml").read_text()), "added"], list(document["jobs"]))
         self.assertEqual(command, document["jobs"]["added"]["steps"][0]["run"].strip())
         self.assertEqual(quoted_name, document["name"].startswith("Unit test jobs: test:"))
@@ -1515,6 +1734,14 @@ class ReaderCensusTest(unittest.TestCase):
         # written.
         name_refused = f'name: "Unit test (name: holds a quoted scalar that does not close on its line; {READ_VALUES})'
         quoted_key = f'"jobs": (not {KEY_FORM})'
+        # Round 8: the parser gate alone sees the real jobs and one step fewer in `test` (the copy inside the name
+        # ends on the added `echo hi"` step), parting at the first step whose escaped body differs from the real one.
+        real = text_steps((WORKFLOWS / "test.yaml").read_text())
+        jobs_differ = f"test.yaml: the text holds jobs ['test'], PyYAML reads {[*real, 'added']}; {PARSER_GATE}"
+        parting = re.compile(
+            rf"test\.yaml: test: {len(real['test']) + 1} steps in the text, {len(real['test'])} to PyYAML, parting at "
+            rf"test\.yaml:[0-9]+: test: step [0-9]+; {re.escape(PARSER_GATE)}"
+        )
         for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
             short = command.split()[0]
             unbounded = [f"test.yaml:{{}}: {command} (1 apt call(s), 0 in the bound form)"] if short == "sudo" else []
@@ -1528,9 +1755,11 @@ class ReaderCensusTest(unittest.TestCase):
                 read = jobs(path)  # the reader reads the same copy: the hole on 56e41f9b
                 self.assertEqual(["test"], list(read))
                 self.assertEqual({"run": 'echo hi"'}, read["test"]["steps"][-1])
+                problems = workflow_problems([path])
                 self.assertEqual(
-                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: {quoted_key}"], workflow_problems([path])
+                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: {quoted_key}", jobs_differ], problems[:3]
                 )
+                self.assertEqual([True], [parting.match(problem) is not None for problem in problems[3:]])
                 self.assertEqual([line.format(at + 2) for line in unbounded], apt_violations("test.yaml", text))
                 self.yaml_reads_the_added_job(text, command, quoted_name=True)
             with self.subTest(command=short, written="the quoted name alone"):
@@ -1539,10 +1768,12 @@ class ReaderCensusTest(unittest.TestCase):
                 self.assertEqual([(1, name_refused), (jobs_line, "jobs: (a second jobs: key)")], found.refused)
                 self.assertEqual(["test"], list(found.steps))
                 self.assertEqual(["test"], list(jobs(path)))
+                problems = workflow_problems([path])
                 self.assertEqual(
-                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: jobs: (a second jobs: key)"],
-                    workflow_problems([path]),
+                    [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: jobs: (a second jobs: key)", jobs_differ],
+                    problems[:3],
                 )
+                self.assertEqual([True], [parting.match(problem) is not None for problem in problems[3:]])
                 self.yaml_reads_the_added_job(path.read_text(), command, quoted_name=True)
             with self.subTest(command=short, written="the quoted jobs key alone"):
                 path, jobs_line, at = self.auditors_document(command, quoted_name=False)
@@ -1743,6 +1974,93 @@ class ReaderCensusTest(unittest.TestCase):
                 self.assertEqual([], refused_characters(planted))
                 self.assertEqual([], workflow_problems([self.written(planted, "test.yaml")]))
                 self.agrees_with_yaml(planted)
+
+    INSTALL = (
+        "timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl"
+    )
+
+    def complex_key_document(self, command: str, key: str = '{?"x}') -> tuple[Path, int, int]:
+        """The audit's test.yaml: the "Setup for Codecov" step rewritten with its `run: |` holding `command` first,
+        then `env: {key}` and its timeout-minutes, then a step `Phantom` whose one body line `CLOSE: end": value}`
+        closes a quote. With the auditor's `{?"x}`, PyYAML takes `"x}` after the `?` indicator as a double-quoted key
+        that runs to `end"`: the timeout-minutes and the Phantom step are text inside it, and the real step has `run`
+        and `env` and no timeout-minutes. With a plain `{x: y}` the mapping closes on its line and every reader
+        agrees. Returns (path, the Codecov step's dash line, the Phantom step's dash line)."""
+        text = (WORKFLOWS / "test.yaml").read_text()
+        start = text.index("      - name: Setup for Codecov\n")
+        end = text.index(self.MARKER)
+        (condition,) = [line for line in text[start:end].splitlines() if line.startswith("        if:")]
+        rewritten = (
+            f"      - name: Setup for Codecov\n{condition}\n        run: |\n          {command}\n"
+            f"        env: {key}\n        timeout-minutes: 5\n"
+            '      - name: Phantom\n        run: |\n          CLOSE: end": value}\n\n'
+        )
+        dash = text[:start].count("\n") + 1
+        return self.written(text[:start] + rewritten + text[end:], "test.yaml"), dash, dash + 6
+
+    def test_the_auditors_quoted_complex_key_fails_the_parser_agreement(self) -> None:
+        # Audit of 046aebb1: node_end saw no quote right after `?`, so `env: {?"x}` was a flow collection complete on
+        # its line to the census and the reader; both counted the Phantom step and attached the timeout-minutes to
+        # the Codecov step, while to PyYAML the quote opens a key that swallows both and the real apt step has no
+        # timeout-minutes. The parser is the gate: PyYAML's reading must match the census step for step, and the
+        # step where they part is named; the grammar names the line as the explanation.
+        env_refused = f'env: {{?"x}} (env: holds a flow collection that does not close on its line; {READ_VALUES})'
+        for command in ("sudo apt-get update", self.INSTALL, "sleep 7200"):
+            with self.subTest(command=command.split()[0]):
+                path, dash, phantom = self.complex_key_document(command)
+                text = workflow_text(path)
+                found = census(text)
+                self.assertEqual([(dash + 4, env_refused)], found.refused)  # the explanation layer
+                read = jobs(path)["test"]["steps"]
+                # The hole: both hand-written readers count the Phantom step and give the Codecov step its timeout.
+                self.assertEqual(len(read), len(found.steps["test"]))
+                codecov, swallowed = read[-3], read[-2]
+                self.assertEqual(("Setup for Codecov", "5"), (codecov["name"], codecov["timeout-minutes"]))
+                self.assertEqual(("Phantom", phantom), (swallowed["name"], found.steps["test"][-2]["line"]))
+                self.assertEqual(
+                    [f"test.yaml:{dash + 4}: {env_refused}"], census_problems("test.yaml", text, parsed_steps(path))
+                )
+                # PyYAML: one step fewer, the Codecov step with the command and the env key holding the rest.
+                document, error = Parser.read(text)
+                self.assertIsNone(error)
+                steps = document["jobs"]["test"]["steps"]
+                self.assertEqual(len(read) - 1, len(steps))
+                (parsed,) = [step for step in steps if step.get("name") == "Setup for Codecov"]
+                self.assertNotIn("timeout-minutes", parsed)
+                self.assertEqual(command, parsed["run"].strip())
+                (key,) = parsed["env"]
+                self.assertTrue(key.startswith("x} timeout-minutes: 5 - name: Phantom run: | CLOSE: end"), key)
+                parting = f"test.yaml:{dash}: test: step {len(read) - 3}"
+                extra = {
+                    # an unbounded call: the step holds timeout-minutes 5 to the reader, and the formula gives 2
+                    "sudo": [f"{parting} 'Setup for Codecov' has timeout-minutes 5, the formula gives 2"],
+                    "timeout": [],
+                    "sleep": ["budget row 'Setup for Codecov' has no step that runs apt"],
+                }[command.split()[0]]
+                self.assertEqual(
+                    [
+                        f"test.yaml:{dash + 4}: {env_refused}",
+                        f"test.yaml: test: {len(read)} steps in the text, {len(steps)} to PyYAML, parting at {parting}; "
+                        f"{PARSER_GATE}",
+                        *extra,
+                    ],
+                    workflow_problems([path]),
+                )
+                violations = apt_violations("test.yaml", text)
+                if command.startswith("sudo"):
+                    self.assertEqual(
+                        [f"test.yaml:{dash + 3}: {command} (1 apt call(s), 0 in the bound form)"], violations
+                    )
+                else:
+                    self.assertEqual([], violations)
+        # With a plain flow mapping in the key's place every reader agrees: the Phantom step is a step to all three,
+        # the Codecov step keeps its timeout-minutes, and the file passes.
+        path, dash, phantom = self.complex_key_document(self.INSTALL, key="{x: y}")
+        text = workflow_text(path)
+        self.assertEqual([], census(text).refused)
+        self.assertEqual(phantom, text_steps(text)["test"][-2]["line"])
+        self.assertEqual([], workflow_problems([path]))
+        self.agrees_with_yaml(text)
 
     def test_every_construct_outside_the_grammar_is_refused_by_line(self) -> None:
         # The closed grammar, construct by construct: each row is a workflow holding one construct outside it, the
@@ -2146,6 +2464,19 @@ class ReaderCensusTest(unittest.TestCase):
                 [(6, f"env: {{A: 1, (env: holds {unclosed_flow}; {READ_VALUES})")],
                 "reads",
             ),
+            # the quote after the ? indicator (round 8)
+            (
+                "a quoted key opened after ? in a flow mapping",
+                base + '      - run: echo a\n        env: {?"x}\n      - run: |\n          end": v}\n',
+                [(8, f'env: {{?"x}} (env: holds {unclosed_flow}; {READ_VALUES})')],
+                "reads",
+            ),
+            (
+                "a quoted key opened after ? in a flow sequence",
+                base + "      - run: echo a\n        with: [?'x]\n      - run: |\n          end': v]\n",
+                [(8, f"with: [?'x] (with: holds {unclosed_flow}; {READ_VALUES})")],
+                "reads",
+            ),
             # the characters (round 7)
             (
                 "a next line after a comment",
@@ -2241,15 +2572,11 @@ class ReaderCensusTest(unittest.TestCase):
                     self.assertEqual([f"x.yaml:{number}: {why}" for number, why in refused], problems[: len(refused)])
                 if yaml_reads is None:
                     continue
-                try:
-                    import yaml
-                except ImportError:
-                    continue
+                _, error = Parser.read(text)
                 if yaml_reads == "reads":
-                    yaml.safe_load(text)
+                    self.assertIsNone(error)
                 else:
-                    with self.assertRaises(yaml.YAMLError):
-                        yaml.safe_load(text)
+                    self.assertIsNotNone(error)
 
 
 if __name__ == "__main__":

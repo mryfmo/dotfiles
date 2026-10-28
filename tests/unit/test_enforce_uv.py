@@ -3,6 +3,8 @@
 
 The hook parses a Bash line with shfmt's syntax tree (U76 round 8), so the decision rows need shfmt on PATH: the mise
 config installs it on the hosts and CI puts the pinned 3.14.1 there (as for scripts/ci/masked-dirname-check.sh).
+Every probe the hook makes over that tree has three outcomes (U105 round 5): found, empty, and a failed read, which
+is exit 2 naming the probe and the status. The injection tests below stub one tool on PATH at a time.
 """
 
 from __future__ import annotations
@@ -17,6 +19,30 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / "home/dot_claude/hooks/executable_enforce-uv.sh"
+PAYLOAD = json.dumps({"tool_name": "Bash", "tool_input": {"command": "python script.py"}})
+# The tools the hook and the contract module run; a stub replaces one of them on a test's PATH.
+TOOLS = ("bash", "sh", "awk", "python3", "jq", "sed", "xargs", "cat", "shfmt")
+# A jq that fails only the probe whose program holds STUB_PROBE; the hook's input reads and the deny encoding pass
+# through to the real jq, so the failure lands inside split_segments and nowhere else.
+JQ_STUB = """#!/bin/sh
+case "$*" in
+*"${STUB_PROBE}"*) ;;
+*) exec {real} "$@" ;;
+esac
+{failure}
+"""
+# A shfmt that prints its tree and then fails: the hook must read the status, not the presence of a tree.
+SHFMT_STUB = """#!/bin/sh
+{real} "$@"
+[ "$1" = --version ] && exit 0
+exit 3
+"""
+# The three probes over the tree, by a fragment of their jq program, with the name the refusal gives each.
+PROBES = (
+    ("Stmts", "jq counting the statements the tree lists"),
+    ('has("Cmd")', "jq counting the statement nodes the walk sees"),
+    ("CallExpr", "jq reading the call statements' offsets"),
+)
 
 
 def on_ci_runner() -> bool:
@@ -129,16 +155,87 @@ class EnforceUvTest(unittest.TestCase):
                 self.assertEqual("", result.stdout)
                 self.assertEqual("", result.stderr)
 
-    def test_without_shfmt_or_on_a_line_it_cannot_parse_the_hook_decides_nothing(self) -> None:
-        """Advisory, fail open: no shfmt on PATH, or a line shfmt rejects, gets no decision and exit 0."""
-        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "python script.py"}})
+    def tool_path(self, stubs: dict[str, str] | None = None) -> Path:
+        """A PATH directory holding the real tools, each stub script in place of the tool it is named after."""
+        bin_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, bin_dir)
+        for tool in TOOLS:
+            (bin_dir / tool).symlink_to(shutil.which(tool))
+        for tool, script in (stubs or {}).items():
+            (bin_dir / tool).unlink()
+            (bin_dir / tool).write_text(script.replace("{real}", shutil.which(tool) or tool))
+            (bin_dir / tool).chmod(0o755)
+        return bin_dir
+
+    def test_a_probe_that_finds_nothing_is_no_decision_and_the_stub_free_path_keeps_the_deny(self) -> None:
+        """The control for the injection tests: the empty result keeps its behaviour, and the PATH idiom alone
+        changes nothing (the deny still comes out under it)."""
+        env = {"PATH": str(self.tool_path()), "HOME": os.environ.get("HOME", "")}
+        for command in ("# python x.py", "(( 1 + 1 ))", ""):
+            with self.subTest(command=command):
+                payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+                result = self.hook(payload, env=env)
+                self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+        result = self.hook(PAYLOAD, env=env)
+        self.assertEqual((0, ""), (result.returncode, result.stderr))
+        self.assertIn('"permissionDecision":"deny"', result.stdout)
+
+    def test_a_jq_probe_that_fails_is_a_refusal_naming_the_probe_and_the_status(self) -> None:
+        """Standing order 21: a failed read is never an empty result. Each of the three probes, failed alone."""
+        failure = 'echo "jq: injected failure" >&2\nexit 5'
+        bin_dir = self.tool_path({"jq": JQ_STUB.replace("{failure}", failure)})
+        for fragment, probe in PROBES:
+            with self.subTest(probe=probe):
+                result = self.hook(PAYLOAD, env={"PATH": str(bin_dir), "STUB_PROBE": fragment})
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout, "no decision stands in for the refusal")
+                self.assertIn(f"enforce-uv: {probe} exited 5; the line cannot be judged", result.stderr)
+                self.assertIn("jq: injected failure", result.stderr, "the tool's own diagnostic reaches the caller")
+
+    def test_a_jq_probe_that_prints_another_shape_is_a_refusal_naming_the_probe(self) -> None:
+        bin_dir = self.tool_path({"jq": JQ_STUB.replace("{failure}", 'echo "not json"')})
+        for (fragment, probe), called in zip(PROBES, ("a count", "a count", "an offset pair"), strict=True):
+            with self.subTest(probe=probe):
+                result = self.hook(PAYLOAD, env={"PATH": str(bin_dir), "STUB_PROBE": fragment})
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertIn(f"enforce-uv: {probe} printed 'not json', not {called}; the line", result.stderr)
+
+    def test_a_shfmt_that_exits_nonzero_is_a_refusal_even_with_a_tree_printed(self) -> None:
+        bin_dir = self.tool_path({"shfmt": SHFMT_STUB})
+        result = self.hook(PAYLOAD, env={"PATH": str(bin_dir)})
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertIn("enforce-uv: shfmt parsing the line exited 3; the line cannot be judged", result.stderr)
+
+    def test_without_shfmt_or_on_a_line_it_cannot_parse_the_hook_refuses(self) -> None:
+        """No parser, or a parse error, is "could not judge" (exit 2 naming it), never a silent no decision."""
         with tempfile.TemporaryDirectory() as bin_dir:
             for tool in ("jq", "sed", "xargs", "cat"):
                 os.symlink(shutil.which(tool), Path(bin_dir) / tool)
-            result = self.hook(payload, env={"PATH": bin_dir})
-        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+            result = self.hook(PAYLOAD, env={"PATH": bin_dir})
+        self.assertEqual((2, ""), (result.returncode, result.stdout))
+        self.assertIn("enforce-uv: shfmt is not on PATH, so no Bash line can be judged", result.stderr)
         broken = json.dumps({"tool_name": "Bash", "tool_input": {"command": "python x.py; if then"}})
         result = self.hook(broken)
+        self.assertEqual((2, ""), (result.returncode, result.stdout))
+        self.assertIn("must be followed by a statement list", result.stderr, "shfmt's diagnostic is kept")
+        self.assertIn("enforce-uv: shfmt parsing the line exited 1; the line cannot be judged", result.stderr)
+
+    def test_a_deployed_copy_that_finds_no_contract_module_decides_nothing(self) -> None:
+        """The one fail-open left: a copy outside the checkout, with no chezmoi on PATH to name the source directory."""
+        with tempfile.TemporaryDirectory() as deployed:
+            copy = Path(deployed) / "hooks" / "enforce-uv.sh"
+            copy.parent.mkdir()
+            shutil.copy(HOOK, copy)
+            result = subprocess.run(
+                ["bash", str(copy)],
+                input=PAYLOAD,
+                capture_output=True,
+                text=True,
+                check=False,
+                env={"PATH": str(self.tool_path()), "HOME": deployed},
+            )
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
 

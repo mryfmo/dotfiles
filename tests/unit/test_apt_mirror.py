@@ -99,7 +99,6 @@ STEP_REST_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330, "Setup 
 # and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):
 # every `run:` key the raw text holds is counted, and the reader must have returned exactly it, so a step in any
 # other form (`|-`, `|+`, `>`, `|2`, a quoted scalar, a plain scalar that continues) is refused by file and line.
-RUN_KEY = re.compile(r"run:(?:[ \t]+(.*))?")
 # The first character of a plain scalar: no block header, quote, flow bracket or other YAML indicator.
 PLAIN_SCALAR = re.compile(r"""[^|>"'{}\[\],#&*!%@`\s]""")
 READ_FORMS = "the reader returns `run: |` and a one-line plain scalar, nothing else"
@@ -110,6 +109,44 @@ READ_FORMS = "the reader returns `run: |` and a one-line plain scalar, nothing e
 # reader's rule does not reach.
 READER_STEP_SHAPE = (6, 8)
 READER_SHAPE = "the reader reads a step's dash at six spaces and its keys at eight, nothing else"
+# Round 5 (audit of f4486ead): the round 4 census compared the literal `steps:`, so `steps: # comment` was an opaque
+# value and a list at five and seven under it was skipped by both readers. The census now lexes every line inside
+# `jobs:` (indent, dash, plain key, value, trailing comment) and places it by a closed grammar: at each level the
+# keys the workflow schema allows and the value forms both readers read. Every other construct is refused by line,
+# so no line the census cannot name becomes a silent value.
+KEY_LINE = re.compile(r"([a-z0-9_-]+):(?:[ \t]+(.*))?")  # the reader's plain form: the colon right after the key
+COMMENT = re.compile(r"(?:^|[ \t])#")  # a comment starts at a `#` that opens the value or follows a blank
+KEY_FORM = "a plain `key:` line (lower-case letters, digits, `_` and `-`, the colon right after, then a blank or the line's end)"
+JOBS_LINE = "the readers find the bare `jobs:` line, with nothing else on it"
+# The keys the workflow schema allows on a job and on a step (docs.github.com, workflow syntax); any other key is
+# refused, as the runner refuses it.
+JOB_KEYS = frozenset(
+    "name permissions needs if runs-on environment concurrency outputs env defaults steps timeout-minutes strategy "
+    "continue-on-error container services uses with secrets".split()
+)
+STEP_KEYS = frozenset("id if name uses run working-directory shell with env continue-on-error timeout-minutes".split())
+# A value's first character names its form. Both readers read a value that is empty (a nested block, a list or
+# nothing follows), a plain scalar, a quoted scalar or a flow collection, since none of these moves a step or a `run:`
+# body; `steps:` takes the empty form alone, and a `run:` value is compared with the reader's (READ_FORMS). The other
+# forms are refused: an anchor or alias carries content from elsewhere in the file, a tag or a block header changes
+# how the value is read, and the rest YAML reserves.
+VALUE_INDICATORS = {
+    "&": "an anchor",
+    "*": "an alias",
+    "!": "a tag",
+    "|": "a block header",
+    ">": "a block header",
+    "%": "a reserved indicator",
+    "@": "a reserved indicator",
+    "`": "a reserved indicator",
+    ",": "a flow indicator",
+    "]": "a flow indicator",
+    "}": "a flow indicator",
+}
+READ_VALUE_FORMS = ("empty", "a plain scalar", "a quoted scalar", "a flow collection")
+READ_VALUES = "the readers read a value that is empty, a plain scalar, a quoted scalar or a flow collection"
+STEPS_VALUE = "the list follows on its own lines"
+RUN_COMMENT = "a comment after a one-line run:, which the reader returns inside the command"
 
 
 def step_text(step: dict) -> str:
@@ -189,56 +226,164 @@ class Census(NamedTuple):
     refused: list[tuple[int, str]]
 
 
+class Lexed(NamedTuple):
+    """One line taken apart: its indent in spaces, whether it opens a list entry (`- `), the plain key it holds (None
+    when it holds none), that key's value with its trailing comment removed, the comment, the key's header as written
+    (a `run:` header is compared whole), the stripped text, and the fault that stops the lexing (a tab in the
+    indentation)."""
+
+    indent: int
+    dash: bool
+    key: str | None
+    value: str
+    comment: str
+    header: str
+    text: str
+    fault: str | None
+
+
+def lex(line: str) -> Lexed:
+    text = line.strip()
+    indent = len(line) - len(line.lstrip(" "))
+    fault = "a tab in the indentation" if text and "\t" in line[: len(line) - len(line.lstrip())] else None
+    dash = text.startswith("- ")
+    entry = text[2:].lstrip(" ") if dash else text
+    match = KEY_LINE.fullmatch(entry)
+    header = (match.group(2) or "").strip() if match else ""
+    comment = COMMENT.search(header)
+    value, note = (header[: comment.start()].rstrip(), header[comment.start() :].strip()) if comment else (header, "")
+    return Lexed(indent, dash, match.group(1) if match else None, value, note, header, text, fault)
+
+
+def value_form(value: str) -> str:
+    """The form a value's first character gives it: one of READ_VALUE_FORMS, or the name of a refused indicator."""
+    if not value:
+        return "empty"
+    first = value[0]
+    if first in "\"'":
+        return "a quoted scalar"
+    if first in "[{":
+        return "a flow collection"
+    if first in "-?:" and (len(value) == 1 or value[1] in " \t"):
+        return {"-": "a sequence entry", "?": "a complex key", ":": "a mapping value"}[first]
+    return VALUE_INDICATORS.get(first, "a plain scalar")
+
+
+def key_problem(lexed: Lexed, allowed: frozenset[str], seen: set[str], level: str, entry: bool = False) -> str | None:
+    """Why a job key or step key line (`entry`: the key on a step's dash line) is outside the grammar, or None."""
+    if lexed.key is None or (lexed.dash and not entry):
+        return f"not {KEY_FORM}"
+    if lexed.key not in allowed:
+        return f"{lexed.key}: is not a {level} key; the {level} keys are {', '.join(sorted(allowed))}"
+    if lexed.key in seen:
+        return f"a second {lexed.key}: key in one {level}"
+    seen.add(lexed.key)
+    form = value_form(lexed.value)
+    if lexed.key == "run":
+        return RUN_COMMENT if lexed.comment and form == "a plain scalar" else None
+    if lexed.key == "steps":
+        return None if form == "empty" else f"steps: holds {form}; {STEPS_VALUE}"
+    return None if form in READ_VALUE_FORMS else f"{lexed.key}: holds {form}; {READ_VALUES}"
+
+
 def census(text: str) -> Census:
     """Every step of every job, from the raw text alone, at whatever indentation the file uses.
 
     The shape is derived, never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a
     job its keys', the first dash under `steps:` the dashes', and each dash line its own keys' (the column after
     `- `). Any other line inside `jobs:` is the value of the key above it when it is indented past that key (a
-    `run: |` body, a nested `with:` mapping; a `run:` there is not a key) and is refused by line otherwise. A
-    `run:` key's body is every following line indented past the step's keys, blank lines included, up to the first
-    that is not; so the body is collected in any scalar form, whatever the reader makes of the form."""
-    head, _, rest = text.partition("\njobs:\n")
+    `run: |` body, a nested `with:` mapping; a `run:` there is not a key) and is refused by line otherwise. Every
+    line the shape places is lexed and held to the grammar (KEY_LINE, JOB_KEYS, STEP_KEYS, the value forms) or
+    refused by line with its construct named. A `run:` key's body is every following line indented past the step's
+    keys, blank lines included, up to the first that is not; so the body is collected in any scalar form, whatever
+    the reader makes of the form."""
     steps_by_job: dict[str, list[dict]] = {}
     refused: list[tuple[int, str]] = []
     steps: list[dict] = []
-    jobs_at = keys_at = dash_at = value_at = step = body = None
+    job_keys: set[str] = set()
+    step_keys: set[str] = set()
+    jobs_at = keys_at = dash_at = value_at = step = body = body_at = None
     in_steps = False
-    for number, line in enumerate(rest.split("\n"), head.count("\n") + 3):
-        stripped = line.strip()
-        indent = len(line) - len(line.lstrip(" "))
-        if value_at is not None and (not stripped or indent > value_at):
+    state = "before"
+    for number, line in enumerate(text.split("\n"), 1):
+        lexed = lex(line)
+        if state == "before":
+            if lexed.indent == 0 and lexed.key == "jobs":
+                state = "jobs"
+                if line != "jobs:":
+                    refused.append((number, f"{lexed.text} ({JOBS_LINE})"))
+            continue
+        if state == "after":
+            if lexed.indent == 0 and lexed.key == "jobs":
+                refused.append((number, f"{lexed.text} (a second jobs: key)"))
+            continue
+        if "\r" in line:
+            refused.append((number, f"{lexed.text} (a carriage return; the workflows are LF-only)"))
+        if value_at is not None and (not lexed.text or lexed.indent > value_at):
             if body is not None:
                 body.append(line)
+                if lexed.text and body_at is None:
+                    body_at = lexed.indent
+                elif lexed.text and lexed.indent < body_at:
+                    refused.append(
+                        (
+                            number,
+                            f"{lexed.text} (indented {lexed.indent} inside a block whose first line is at {body_at})",
+                        )
+                    )
             continue
         if body is not None:
-            body = value_at = None  # a less indented line, a comment too, ends a block body for good (YAML 8.1.1)
-        if not stripped or stripped.startswith("#"):
+            body = body_at = value_at = None  # a less indented line, a comment too, ends a block body (YAML 8.1.1)
+        if not lexed.text or lexed.text.startswith("#"):
             continue
-        if indent == 0:
-            break
-        key = None
+        if lexed.fault:
+            refused.append((number, f"{lexed.text} ({lexed.fault})"))
+            continue
+        if lexed.indent == 0:
+            state = "after"
+            if lexed.key is None or lexed.dash:
+                refused.append(
+                    (number, f"{lexed.text} (not {KEY_FORM}; both readers stop at the first unindented line)")
+                )
+            elif lexed.key == "jobs":
+                refused.append((number, f"{lexed.text} (a second jobs: key)"))
+            continue
         if jobs_at is None:
-            jobs_at = indent
-        dash = in_steps and stripped.startswith("- ") and dash_at in (None, indent) and indent >= keys_at
-        if indent == jobs_at:
-            steps_by_job[stripped.split(":", 1)[0]] = steps = []
+            jobs_at = lexed.indent
+        dash = in_steps and lexed.dash and dash_at in (None, lexed.indent) and lexed.indent >= keys_at
+        problem = None
+        step_key = False
+        if lexed.indent == jobs_at:
+            name = lexed.key or lexed.text
+            if lexed.key is None or lexed.dash:
+                problem = f"not {KEY_FORM}"
+            elif lexed.value:
+                problem = "a job line with a value; the job's keys follow on their own lines"
+            elif name in steps_by_job:
+                problem = f"a second job named {name}"
+            steps_by_job[name] = steps = []
+            job_keys = set()
             keys_at = dash_at = step = value_at = None
             in_steps = False
         elif dash:
-            dash_at = indent
-            key = stripped[1:].lstrip(" ")
-            step = {"line": number, "dash": indent, "keys": indent + len(stripped) - len(key), "runs": []}
+            dash_at = lexed.indent
+            keys = lexed.indent + len(lexed.text) - len(lexed.text[2:].lstrip(" "))
+            step = {"line": number, "dash": lexed.indent, "keys": keys, "runs": []}
             steps.append(step)
-            value_at = step["keys"]
-        elif indent > jobs_at and (keys_at is None or indent == keys_at):
-            keys_at = indent
-            in_steps = stripped == "steps:"
+            step_keys = set()
+            problem = key_problem(lexed, STEP_KEYS, step_keys, "step", entry=True)
+            step_key = True
+            value_at = keys
+        elif lexed.indent > jobs_at and (keys_at is None or lexed.indent == keys_at):
+            keys_at = lexed.indent
+            problem = key_problem(lexed, JOB_KEYS, job_keys, "job")
+            in_steps = lexed.key == "steps" and not lexed.dash
             dash_at = step = None
-            value_at = None if in_steps else indent
-        elif in_steps and step is not None and indent == step["keys"]:
-            key = stripped
-            value_at = indent
+            value_at = None if in_steps else lexed.indent
+        elif in_steps and step is not None and lexed.indent == step["keys"]:
+            problem = key_problem(lexed, STEP_KEYS, step_keys, "step")
+            step_key = True
+            value_at = lexed.indent
         else:
             levels = [f"a job at {jobs_at}"]
             if keys_at is not None:
@@ -251,11 +396,14 @@ def census(text: str) -> Census:
                 levels.append(f"a step key at {step['keys']}")
             if value_at is not None:
                 levels.append(f"a value past {value_at}")
-            refused.append((number, f"{stripped} (indented {indent}, where the shape has {', '.join(levels)})"))
-        match = RUN_KEY.fullmatch(key) if key is not None else None
-        if match:
-            body = []
-            step["runs"].append({"line": number, "header": (match.group(1) or "").strip(), "body": body})
+            problem = f"indented {lexed.indent}, where the shape has {', '.join(levels)}"
+        if problem:
+            refused.append((number, f"{lexed.text} ({problem})"))
+        if step_key and lexed.key == "run":
+            body, body_at = [], None
+            step["runs"].append({"line": number, "header": lexed.header, "body": body})
+    if state == "before":
+        refused.append((1, f"no `jobs:` line in the file ({JOBS_LINE})"))
     for steps in steps_by_job.values():
         for run in (run for step in steps for run in step["runs"]):
             while run["body"] and not run["body"][-1].strip():
@@ -314,8 +462,7 @@ def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list
                     problems.append(f"{name}:{step['line']}: the reader returned a run: the text does not hold")
                 continue
             if len(step["runs"]) > 1:
-                problems.append(f"{name}:{step['runs'][1]['line']}: a second run: key in one step")
-                continue
+                continue  # the census refused the second run: key by line
             (run,) = step["runs"]
             where = f"{name}:{run['line']}: run: {run['header']}".rstrip()
             lines = [line.strip() for line in run["body"] if line.strip()]
@@ -787,7 +934,8 @@ class ReaderCensusTest(unittest.TestCase):
     """Standing order 21 on the workflow reader: every `run:` the text holds is one the reader returned whole, or the
     step is named by file and line. Audit of 0a9fa727: `jobs()` returned no body for `run: |-` and `run: >`, so an
     apt step added in that form passed the step check without timeout-minutes. Audit of 81fa7256: the census read
-    only the reader's indentation, so a step at five and seven spaces passed both."""
+    only the reader's indentation, so a step at five and seven spaces passed both. Audit of f4486ead: the census
+    compared the literal `steps:`, so `steps: # comment` hid a list at five and seven from both."""
 
     FORM = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
@@ -895,31 +1043,34 @@ class ReaderCensusTest(unittest.TestCase):
             (
                 "a second run: key",
                 "      - name: Two\n        run: echo one\n        run: echo two\n",
-                "x.yaml:9: a second run: key in one step",
+                ["x.yaml:9: run: echo two (a second run: key in one step)"],
             ),
             (
                 "a block line indented nine spaces",
                 "      - run: |\n          echo ten\n         echo nine\n",
-                "x.yaml:7: run: | (the reader's body is not the text's: 1 line(s) read, 2 written)",
+                [
+                    "x.yaml:9: echo nine (indented 9 inside a block whose first line is at 10)",
+                    "x.yaml:7: run: | (the reader's body is not the text's: 1 line(s) read, 2 written)",
+                ],
             ),
             (
                 "a plain scalar that continues",
                 "      - run: echo a\n          echo b\n",
-                f"x.yaml:7: run: echo a (continues onto 1 more line(s); {READ_FORMS})",
+                [f"x.yaml:7: run: echo a (continues onto 1 more line(s); {READ_FORMS})"],
             ),
-            ("an empty run:", "      - run:\n", f"x.yaml:7: run: ({READ_FORMS})"),
-            ("a single-quoted scalar", "      - run: 'echo a'\n", f"x.yaml:7: run: 'echo a' ({READ_FORMS})"),
-            ("a keep block", "      - run: |+\n          echo a\n", f"x.yaml:7: run: |+ ({READ_FORMS})"),
-            ("a folded strip block", "      - run: >-\n          echo a\n", f"x.yaml:7: run: >- ({READ_FORMS})"),
+            ("an empty run:", "      - run:\n", [f"x.yaml:7: run: ({READ_FORMS})"]),
+            ("a single-quoted scalar", "      - run: 'echo a'\n", [f"x.yaml:7: run: 'echo a' ({READ_FORMS})"]),
+            ("a keep block", "      - run: |+\n          echo a\n", [f"x.yaml:7: run: |+ ({READ_FORMS})"]),
+            ("a folded strip block", "      - run: >-\n          echo a\n", [f"x.yaml:7: run: >- ({READ_FORMS})"]),
             (
                 "a block with a comment after the header",
                 "      - run: | # why\n          echo a\n",
-                f"x.yaml:7: run: | # why ({READ_FORMS})",
+                [f"x.yaml:7: run: | # why ({READ_FORMS})"],
             ),
         ):
             with self.subTest(case=case):
                 path = self.written(self.BASE + step)
-                self.assertEqual([expected], census_problems("x.yaml", path.read_text(), parsed_steps(path)))
+                self.assertEqual(expected, census_problems("x.yaml", path.read_text(), parsed_steps(path)))
         # And the two forms the reader returns pass, on the dash line as under it.
         for step in (
             "      - run: echo a\n",
@@ -930,13 +1081,13 @@ class ReaderCensusTest(unittest.TestCase):
                 path = self.written(self.BASE + step)
                 self.assertEqual([], census_problems("x.yaml", path.read_text(), parsed_steps(path)))
 
-    def added_job_at(self, dash: int, keys: int, command: str) -> tuple[Path, int]:
+    def added_job_at(self, dash: int, keys: int, command: str, steps_key: str = "steps:") -> tuple[Path, int]:
         """test.yaml with a job `added` after `test`, its one step `Added` a `run: |` holding `command`, the step list
         with its dash at `dash` spaces and its keys at `keys` (a list's dashes share one indent, so the shape is the
-        list's, not one step's): (path, dash line)."""
+        list's, not one step's), under `steps_key` as the key line: (path, dash line)."""
         text = (WORKFLOWS / "test.yaml").read_text()
         lead = " " * dash + "-" + " " * (keys - dash - 1)
-        job = f"\n  added:\n    runs-on: ubuntu-24.04\n    steps:\n{lead}name: Added\n{' ' * keys}run: |\n{' ' * (keys + 2)}{command}\n"
+        job = f"\n  added:\n    runs-on: ubuntu-24.04\n    {steps_key}\n{lead}name: Added\n{' ' * keys}run: |\n{' ' * (keys + 2)}{command}\n"
         return self.written(text + job, "test.yaml"), len(text.splitlines()) + 5
 
     def agrees_with_yaml(self, text: str) -> None:
@@ -1139,6 +1290,327 @@ class ReaderCensusTest(unittest.TestCase):
                         import yaml
                     except ImportError:
                         continue
+                    with self.assertRaises(yaml.YAMLError):
+                        yaml.safe_load(text)
+
+    def test_steps_with_a_comment_after_it_is_the_steps_key(self) -> None:
+        # Audit of f4486ead: the round 4 census compared the literal `steps:`, so `steps: # comment` was an opaque
+        # value whose list at five and seven was skipped by both readers (the reader takes the key with its comment
+        # and skips the shape). The lexer takes the key the same way: the list is counted at every shape, refused on
+        # its dash line where the reader does not reach it, and bounded or named where it does.
+        for dash, keys in ((5, 7), (6, 8)):
+            for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
+                with self.subTest(dash=dash, keys=keys, command=command.split()[0]):
+                    path, at = self.added_job_at(dash, keys, command, "steps: # comment")
+                    text = path.read_text()
+                    (step,) = text_steps(text)["added"]
+                    self.assertEqual((at, dash, keys), (step["line"], step["dash"], step["keys"]))
+                    self.assertEqual([command], [line.strip() for line in step["runs"][0]["body"]])
+                    self.agrees_with_yaml(text)
+                    expected = []
+                    if (dash, keys) == (5, 7):
+                        self.assertEqual([], parsed_steps(path)["added"])  # the hole: the reader's silent skip
+                        expected.append(
+                            f"test.yaml:{at}: a step with its dash at 5 spaces and its keys at 7 ({READER_SHAPE})"
+                        )
+                        label = "'step 0'"
+                    else:
+                        (read,) = parsed_steps(path)["added"]
+                        self.assertEqual(("Added", "|", command), (read["name"], read["run"], read["script"].strip()))
+                        label = "'Added'"
+                    if command != "sleep 7200":
+                        expected.append(f"test.yaml:{at}: added: step 0 {label} runs apt with no STEP_REST_BUDGET row")
+                    self.assertEqual(expected, workflow_problems([path]))
+        # The real file with a comment after its own steps: key reads the same, step for step.
+        text = (WORKFLOWS / "test.yaml").read_text()
+        self.assertEqual(1, text.count("\n    steps:\n"))
+        commented = text.replace("\n    steps:\n", "\n    steps: # the steps\n")
+        self.assertEqual(text_steps(text), text_steps(commented))
+        self.assertEqual([], workflow_problems([self.written(commented, "test.yaml")]))
+        self.agrees_with_yaml(commented)
+
+    def test_every_construct_outside_the_grammar_is_refused_by_line(self) -> None:
+        # The closed grammar, construct by construct: each row is a workflow holding one construct outside it, the
+        # refusals the census must name (line, text and why) and what PyYAML makes of the document where it is
+        # present ("reads": YAML the runner could execute, the rows that matter; "raises"; None: not asserted). The
+        # reader, where it does not raise on its own, is cross-checked and names the same lines first.
+        head = "name: x\non: push\njobs:\n"
+        job = head + "  test:\n    runs-on: ubuntu-24.04\n"
+        base = job + "    steps:\n"
+        update = "sudo apt-get update"
+        not_key = f"not {KEY_FORM}"
+        step_keys, job_keys = ", ".join(sorted(STEP_KEYS)), ", ".join(sorted(JOB_KEYS))
+        rows = (
+            # the value of steps:
+            (
+                "a flow list on steps:",
+                job + f"    steps: [{{run: {update}}}]\n",
+                [(6, f"steps: [{{run: {update}}}] (steps: holds a flow collection; {STEPS_VALUE})")],
+                "reads",
+            ),
+            (
+                "an alias on steps:",
+                "name: x\non: &s push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps: *s\n",
+                [(6, f"steps: *s (steps: holds an alias; {STEPS_VALUE})")],
+                "reads",
+            ),
+            (
+                "an anchor on steps:",
+                job + f"    steps: &s\n      - run: {update}\n",
+                [(6, f"steps: &s (steps: holds an anchor; {STEPS_VALUE})")],
+                "reads",
+            ),
+            (
+                "a tag on steps:",
+                job + f"    steps: !!seq\n      - run: {update}\n",
+                [(6, f"steps: !!seq (steps: holds a tag; {STEPS_VALUE})")],
+                "reads",
+            ),
+            (
+                "a block header on steps:",
+                job + f"    steps: |\n      - run: {update}\n",
+                [(6, f"steps: | (steps: holds a block header; {STEPS_VALUE})")],
+                "reads",
+            ),
+            (
+                "a plain value on steps:",
+                job + "    steps: none\n",
+                [(6, f"steps: none (steps: holds a plain scalar; {STEPS_VALUE})")],
+                "reads",
+            ),
+            # the key itself
+            (
+                "a quoted steps key",
+                job + f'    "steps":\n      - run: {update}\n',
+                [(6, f'"steps": ({not_key})')],
+                "reads",
+            ),
+            (
+                "a complex steps key",
+                job + f"    ? steps\n    : - run: {update}\n",
+                [(6, f"? steps ({not_key})"), (7, f": - run: {update} ({not_key})")],
+                "reads",
+            ),
+            (
+                "a merge key",
+                f"name: x\non: &base\n  steps:\n    - run: {update}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    <<: *base\n",
+                [(8, f"<<: *base ({not_key})")],
+                "reads",
+            ),
+            (
+                "an upper-case steps key",
+                job + f"    Steps:\n      - run: {update}\n",
+                [(6, f"Steps: ({not_key})")],
+                "reads",
+            ),
+            (
+                "no blank after the colon",
+                job + f"    steps:- run: {update}\n",
+                [(6, f"steps:- run: {update} ({not_key})")],
+                None,
+            ),
+            # a job line
+            (
+                "a job line with an anchor",
+                head + f"  test: &job\n    runs-on: ubuntu-24.04\n    steps:\n      - run: {update}\n",
+                [(4, "test: &job (a job line with a value; the job's keys follow on their own lines)")],
+                "reads",
+            ),
+            (
+                "a quoted job key",
+                head + f'  "test":\n    runs-on: ubuntu-24.04\n    steps:\n      - run: {update}\n',
+                [(4, f'"test": ({not_key})')],
+                "reads",
+            ),
+            (
+                "a second job of one name",
+                base + f"      - run: echo a\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: {update}\n",
+                [(8, "test: (a second job named test)")],
+                "reads",
+            ),
+            (
+                "a list at the jobs' indent",
+                head + "  - test:\n      runs-on: ubuntu-24.04\n",
+                [(4, f"- test: ({not_key})")],
+                "reads",
+            ),
+            # a step entry
+            ("a scalar step", base + "      - echo\n", [(7, f"- echo ({not_key})")], "reads"),
+            (
+                "a flow-mapping step",
+                base + f"      - {{run: {update}}}\n",
+                [(7, f"- {{run: {update}}} ({not_key})")],
+                "reads",
+            ),
+            (
+                "a nested list step",
+                base + f"      - - run: {update}\n",
+                [(7, f"- - run: {update} ({not_key})")],
+                "reads",
+            ),
+            (
+                "an alias step",
+                f"name: x\non: &s {{run: {update}}}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - *s\n",
+                [(7, f"- *s ({not_key})")],
+                "reads",
+            ),
+            (
+                "an anchored step",
+                base + f"      - &s run: {update}\n",
+                [(7, f"- &s run: {update} ({not_key})")],
+                "reads",
+            ),
+            (
+                "a quoted step key",
+                base + f'      - "run": {update}\n',
+                [(7, f'- "run": {update} ({not_key})')],
+                "reads",
+            ),
+            # a step key
+            (
+                "a key the schema gives no step",
+                base + "      - run: echo a\n        foo: 1\n",
+                [(8, f"foo: 1 (foo: is not a step key; the step keys are {step_keys})")],
+                "reads",
+            ),
+            (
+                "a second name: key in one step",
+                base + "      - name: a\n        name: b\n",
+                [(8, "name: b (a second name: key in one step)")],
+                "reads",
+            ),
+            (
+                "a comment after a one-line run:",
+                base + "      - run: echo a # c\n",
+                [(7, f"- run: echo a # c ({RUN_COMMENT})")],
+                "reads",
+            ),
+            (
+                "an anchor on a step key",
+                base + "      - name: &n x\n",
+                [(7, f"- name: &n x (name: holds an anchor; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "an alias on a step key",
+                "name: x\non: &u push\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - uses: *u\n",
+                [(7, f"- uses: *u (uses: holds an alias; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a block scalar on if:",
+                base + "      - run: echo a\n        if: |\n          true\n",
+                [(8, f"if: | (if: holds a block header; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a tag on a step key",
+                base + "      - name: !!str x\n",
+                [(7, f"- name: !!str x (name: holds a tag; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a sequence entry as a value",
+                base + "      - name: - x\n",
+                [(7, f"- name: - x (name: holds a sequence entry; {READ_VALUES})")],
+                "raises",
+            ),
+            (
+                "a reserved indicator as a value",
+                base + "      - name: @x\n",
+                [(7, f"- name: @x (name: holds a reserved indicator; {READ_VALUES})")],
+                "raises",
+            ),
+            # a job key
+            (
+                "a key the schema gives no job",
+                job + "    foo: 1\n    steps:\n      - run: echo a\n",
+                [(6, f"foo: 1 (foo: is not a job key; the job keys are {job_keys})")],
+                "reads",
+            ),
+            (
+                "a second steps: key in one job",
+                base + f"      - run: echo a\n    steps:\n      - run: {update}\n",
+                [(8, "steps: (a second steps: key in one job)")],
+                "reads",
+            ),
+            (
+                "an alias on a job key",
+                "name: x\non: &e {}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    env: *e\n    steps:\n      - run: echo a\n",
+                [(6, f"env: *e (env: holds an alias; {READ_VALUES})")],
+                "reads",
+            ),
+            (
+                "a block scalar on runs-on:",
+                head + "  test:\n    runs-on: |\n      ubuntu-24.04\n    steps:\n      - run: echo a\n",
+                [(5, f"runs-on: | (runs-on: holds a block header; {READ_VALUES})")],
+                "reads",
+            ),
+            # the file
+            (
+                "a tab as the indentation",
+                base + f"\t- run: {update}\n",
+                [(7, f"- run: {update} (a tab in the indentation)")],
+                "raises",
+            ),
+            (
+                "a tab after the spaces",
+                base + f"      \t- run: {update}\n",
+                [(7, f"- run: {update} (a tab in the indentation)")],
+                "raises",
+            ),
+            (
+                "a carriage return",
+                base + f"      - run: {update}\r\n",
+                [(7, f"- run: {update} (a carriage return; the workflows are LF-only)")],
+                "reads",
+            ),
+            (
+                "a document marker",
+                base + f"      - run: echo a\n---\n  other:\n    steps:\n      - run: {update}\n",
+                [(8, f"--- (not {KEY_FORM}; both readers stop at the first unindented line)")],
+                "raises",
+            ),
+            (
+                "a second jobs: key",
+                f"name: x\non: push\njobs:\n  a:\n    runs-on: ubuntu-24.04\njobs:\n  test:\n    steps:\n      - run: {update}\n",
+                [(6, "jobs: (a second jobs: key)")],
+                "reads",
+            ),
+            (
+                "jobs: with a comment",
+                f"name: x\non: push\njobs: # c\n  test:\n    steps:\n      - run: {update}\n",
+                [(3, f"jobs: # c ({JOBS_LINE})")],
+                "reads",
+            ),
+            ("no jobs: line", "name: x\non: push\n", [(1, f"no `jobs:` line in the file ({JOBS_LINE})")], "reads"),
+            (
+                "a block line indented less than its first",
+                base + "      - run: |\n          echo ten\n         echo nine\n",
+                [(9, "echo nine (indented 9 inside a block whose first line is at 10)")],
+                "raises",
+            ),
+        )
+        self.assertEqual(len(rows), len({case for case, _, _, _ in rows}))
+        for case, text, refused, yaml_reads in rows:
+            with self.subTest(case=case):
+                self.assertEqual(refused, census(text).refused)
+                try:
+                    parsed = parsed_steps(self.written(text))
+                except (ValueError, IndexError):
+                    parsed = None  # the reader is loud there on its own
+                if parsed is not None:
+                    problems = census_problems("x.yaml", text, parsed)
+                    self.assertEqual([f"x.yaml:{number}: {why}" for number, why in refused], problems[: len(refused)])
+                if yaml_reads is None:
+                    continue
+                try:
+                    import yaml
+                except ImportError:
+                    continue
+                if yaml_reads == "reads":
+                    yaml.safe_load(text)
+                else:
                     with self.assertRaises(yaml.YAMLError):
                         yaml.safe_load(text)
 

@@ -1176,28 +1176,95 @@ class RecordsSyncTest(PrLeverTestCase):
             self.git("ls-remote", "--heads", str(self.origin)).count("refs/heads/"), 2, "main and the sync only"
         )
 
-    def test_the_body_names_the_units_and_decisions(self):
+    def synced_body(self, *args):
+        """Run the lever with the GitHub fake keeping the body file, and return the body text."""
         bodies = self.root / "bodies"
-        self.github()
-        entries = json.loads(self.responses.read_text())
-        entries[2] = {**entries[2], "stdout": "https://github.com/acme/widgets/pull/600\n"}
-        self.responses.write_text(json.dumps(entries))
-        with (self.records / "units.tsv").open("a") as units:
-            units.write("U2\tseats\n")
-        (self.records / "decisions.tsv").write_text("ts\tphase\n2026-10-24T13:00:00Z\tseats\n")
         fake = self.root / "bin/gh"
         fake.unlink()
         fake.write_text(
             f'#!/bin/sh\nfor a; do case $a in */body.md) mkdir -p {bodies} && cp "$a" {bodies}/;; esac; done\nexec {FAKE_GH} "$@"\n'
         )
         fake.chmod(0o755)
-        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        run = self.run_lever("records-sync.sh", *args)
         self.assertEqual(run.returncode, 0, run.stderr)
-        body = (bodies / "body.md").read_text()
+        return (bodies / "body.md").read_text()
+
+    def test_the_body_names_the_units_and_decisions(self):
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        (self.records / "decisions.tsv").write_text("ts\tphase\n2026-10-24T13:00:00Z\tseats\n")
+        body = self.synced_body("--unit", "U20")
         self.assertIn("- units.tsv rows added or changed: U2\n", body)
         self.assertIn("- decisions.tsv rows added or changed: 2026-10-24T13:00:00Z\n", body)
         self.assertIn("Program-Unit: prog/U20\n", body)
         self.assertTrue(body.endswith(FOOTER + "\n"))
+
+    def test_the_body_carries_the_sync_contract(self):
+        """U108: pr-audit.sh refuses a body without `## Contract`, so the sync writes the section it is judged by."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        body = self.synced_body("--unit", "U20")
+        self.assertEqual(body.count("## Contract\n"), 1)
+        self.assertLess(body.index("## Summary\n"), body.index("## Contract\n"))
+        self.assertLess(body.index("## Contract\n"), body.index("Program-Unit: prog/U20\n"))
+        contract = body[body.index("## Contract\n") : body.index("Program-Unit: prog/U20\n")]
+        bullets = [line for line in contract.splitlines() if line.startswith("- ")]
+        self.assertEqual(len(bullets), 5, contract)
+        for bullet, phrase in zip(
+            bullets,
+            (
+                "the store's files (`.orchestration/orchestrate/prog/`, tracked or untracked and not git-ignored, `redact-words.txt` excluded) whose masked copy or executable mode differs from origin/main, plus every path origin/main holds under that directory that the listing does not hold as a regular file; the new tree's change set against origin/main is checked to equal exactly that set",
+                "No path lies outside that directory",
+                "masked with `validate-agent-assets.py --mask-secrets` and passed its `--scan-identifiers`, with the program's `redact-words.txt` when present",
+                "no user, system or checkout configuration, and pushed over https with no user configuration",
+                "not reviewed for truth, only by the identifier scan",
+            ),
+        ):
+            self.assertIn(phrase, bullet)
+
+    def test_a_mode_only_change_is_synced_with_the_new_mode(self):
+        """U108 round 3 (audit of acd87c5a): the comparison is of `<mode> blob <oid>`, so a store file whose bytes equal
+        origin/main but whose executable bit differs is one changed path, published with the new mode."""
+        self.github()
+        units = self.records / "units.tsv"
+        units.chmod(units.stat().st_mode | 0o111)
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, "synced branch=records/sync-7 files=1 pr=https://github.com/acme/widgets/pull/600\n"
+        )
+        path = ".orchestration/orchestrate/prog/units.tsv"
+        changed = self.git("diff", "--name-only", "main", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertEqual(changed, [path])
+        entry = self.git("ls-tree", "records/sync-7", "--", path, cwd=self.origin)
+        self.assertTrue(entry.startswith("100755 blob "), entry)
+        self.assertEqual(
+            self.git("show", f"records/sync-7:{path}", cwd=self.origin),
+            self.git("show", f"main:{path}", cwd=self.origin),
+            "the bytes are main's",
+        )
+
+    def test_a_copy_the_masker_changes_is_synced_though_its_source_equals_origin_main(self):
+        """U108 round 3 (audit of acd87c5a): the comparison is of the masked copy, so a store file whose bytes equal
+        origin/main is one changed path when masking changes the copy; origin/main keeps the token, the sync does not."""
+        self.github()
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        (self.records / "notes.md").write_text(f"token {planted}\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "a token on main")
+        self.git("push", "-q", "origin", "main")
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            run.stdout, "synced branch=records/sync-7 files=1 pr=https://github.com/acme/widgets/pull/600\n"
+        )
+        path = ".orchestration/orchestrate/prog/notes.md"
+        changed = self.git("diff", "--name-only", "main", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertEqual(changed, [path])
+        self.assertIn(planted, self.git("show", f"main:{path}", cwd=self.origin), "the source equals origin/main")
+        self.assertNotIn(planted, self.git("show", f"records/sync-7:{path}", cwd=self.origin), "the copy is masked")
 
     def test_refusals_create_and_push_nothing(self):
         self.github()
@@ -1346,19 +1413,10 @@ class RecordsSyncTest(PrLeverTestCase):
 
     def test_a_bare_run_names_the_records_unit(self):
         """U28c F2: with no --unit the body still carries the `Program-Unit:` line the regime check requires."""
-        bodies = self.root / "bodies"
         self.github()
-        fake = self.root / "bin/gh"
-        fake.unlink()
-        fake.write_text(
-            f'#!/bin/sh\nfor a; do case $a in */body.md) mkdir -p {bodies} && cp "$a" {bodies}/;; esac; done\nexec {FAKE_GH} "$@"\n'
-        )
-        fake.chmod(0o755)
         with (self.records / "units.tsv").open("a") as units:
             units.write("U2\tseats\n")
-        run = self.run_lever("records-sync.sh")
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn("Program-Unit: prog/U20\n", (bodies / "body.md").read_text())
+        self.assertIn("Program-Unit: prog/U20\n", self.synced_body())
 
     def test_a_local_branch_takes_its_number(self):
         """U28b F6: a local records branch, whatever left it, is never reused."""

@@ -73,7 +73,7 @@ TABLE: dict[str, Kind] = {
     "TestClause": Kind(None, ("X", "Pos.Line")),
     "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
     "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
-    "FuncDecl": Kind(None, ("Name", "Body", "Pos.Line")),
+    "FuncDecl": Kind(None, ("Name", "Name.Value", "Body", "Pos.Line")),
     "Block": Kind(None, ("Stmts", "Pos.Line")),
     "Subshell": Kind(None, ("Stmts", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),

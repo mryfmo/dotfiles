@@ -413,7 +413,7 @@ class PinnedLintToolsTest(unittest.TestCase):
         install = steps["Install tools"]["run"]
         self.assertIn("brew install bash bats-core gawk parallel\n", install)
         self.assertIn(
-            "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+            "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
             " install -y bats curl iproute2 parallel ruby\n",
             install,
         )

@@ -69,6 +69,7 @@ WALKERS = {
     HOOK: ("jq", re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL)),
     LINT: ("python", None),
     ROOT / "tests/unit/test_sandbox_portability.py": ("python", None),
+    ROOT / "tests/unit/test_apt_mirror.py": ("python", None),
 }
 # Reads the extractor finds that TABLE need not hold, each with its reason: the list may shrink, never grow, and the
 # test asserts its exact contents. Empty: every read of every walker is in the table for its kind.
@@ -814,6 +815,13 @@ class ContractRunTest(unittest.TestCase):
                 check=False,
                 env=env,
             ),
+            "apt-bound-tree": subprocess.run(
+                [sys.executable, "-I", str(ROOT / "tests/unit/test_apt_mirror.py"), "--script", str(script)],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            ),
         }
 
     def test_each_walker_refuses_a_parser_whose_output_does_not_match(self) -> None:
@@ -834,6 +842,7 @@ class ContractRunTest(unittest.TestCase):
         expected = {
             "enforce-uv": "lists 1 statement(s) but the walk saw none",
             "lint-comparisons": "saw no statement in 1 shell file(s)",
+            "apt-bound-tree": "lists 1 statement(s) but the walk saw none",
         }
         for name, message in expected.items():
             with self.subTest(walker=name):
@@ -868,6 +877,10 @@ class ContractRunTest(unittest.TestCase):
         self.assertIn('"permissionDecision":"deny"', hook.stdout)
         lint = results["lint-comparisons"]
         self.assertEqual((0, "", ""), (lint.returncode, lint.stdout, lint.stderr))
+        self.assertEqual(
+            (0, "", ""),
+            (results["apt-bound-tree"].returncode, results["apt-bound-tree"].stdout, results["apt-bound-tree"].stderr),
+        )
 
     def test_the_sandbox_guard_refuses_what_the_other_walkers_refuse(self) -> None:
         # tests/unit/test_sandbox_portability.py walks the same JSON in process: a contract mismatch and a run whose

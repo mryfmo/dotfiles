@@ -2403,6 +2403,123 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         f"{after / before:.1f}x per 4x step",
                     )
 
+    def test_a_finding_is_placed_on_its_line_by_the_file_index(self) -> None:
+        """A finding's line comes from line_starts, the per-file index of line starts, bisected at the finding's
+        offset (or its JSON literal's): the same line the count of line feeds before the offset named, on line 1, on
+        the last line, with and without a final line feed, and after a blank line, in text and through the scan."""
+        module = self.module
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        lines = [f"first {planted}", "plain", "", f"after a blank line {planted}", "plain", f"last {planted}"]
+        for text in ("\n".join(lines) + "\n", "\n".join(lines)):
+            with self.subTest(final_line_feed=text.endswith("\n")):
+                starts = module.line_starts(text)
+                self.assertEqual(starts[0], 0)
+                self.assertEqual(starts[1:], [i + 1 for i, char in enumerate(text) if char == "\n"])
+                findings = module.secret_findings(text)
+                placed = [module.finding_line(starts, finding, None) for finding in findings]
+                self.assertEqual(placed, [1, 4, 6])
+                self.assertEqual(placed, [text.count("\n", 0, finding.start) + 1 for finding in findings])
+                # A finding's offset is 1-based line N wherever it sits on the line: the key, the token or the line feed.
+                for offset, line in ((0, 1), (len(lines[0]), 1), (len(lines[0]) + 1, 2), (len(text) - 1, 6)):
+                    probe = findings[0]._replace(start=offset)
+                    self.assertEqual(module.finding_line(starts, probe, None), line, offset)
+        # A finding in a decoded JSON string is placed on its literal's line, from the same index of the document.
+        escaped = "\\u0067hp\\u005f" + planted[4:]
+        document = "\n".join(
+            (
+                "{",
+                '  "items": [',
+                "    {",
+                '      "url": "https://x/1",',
+                f'      "body": "{escaped}"',
+                "    }",
+                "  ]",
+                "}",
+                "",
+            )
+        )
+        starts = module.line_starts(document)
+        literals = module.json_strings(document)
+        placed = [
+            (module.finding_line(starts, finding, literal), document.count("\n", 0, literal.offset) + 1)
+            for literal in literals
+            for finding in module.secret_findings(literal.text)
+        ]
+        self.assertEqual(placed, [(5, 5)])
+        self.write_text_file("fixtures/planted.md", "\n".join(lines) + "\n")
+        self.write_text_file("fixtures/planted.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn("4 finding(s)", stderr.getvalue())
+        for fingerprint in (
+            "planted.md:github-pat:1",
+            "planted.md:github-pat:4",
+            "planted.md:github-pat:6",
+            "planted.json:github-pat:5",
+        ):
+            self.assertIn(f"possible committed secret fixtures/{fingerprint} ghp_...", stderr.getvalue())
+
+    def test_the_report_of_many_findings_in_one_file_is_linear_in_the_findings(self) -> None:
+        """Round 10 verdict on cd56bd93: finding_line counted the line feeds from the start of the text for every
+        finding, so a file with N findings cost N scans of its text: a tree scan over 32,000, 64,000 and 128,000
+        planted provider tokens took 1.85, 7.23 and 28.71 s (0.96, 1.92 and 3.84 MB), and PR-controlled text could
+        stall validation. The line starts are indexed once per file and each finding bisects the index.
+
+        The rule, in the shape of the padded-line test: a file of 8,000 and then 32,000 planted provider tokens, one
+        per line, is scanned by the tree scan in this process (secret_findings, the line placement and the allowlist
+        of every finding, the least of three runs each); the 8,000-to-32,000 step may grow the time by less than 8x
+        (linear is about 4x; the count grew 14.7x on cd56bd93 on this host, 0.513 to 7.524 s, against 0.029 to
+        0.120 s on this head) and one loose cap of 2 s on any run still fails a hang. Every finding is reported on
+        its own line, the first on line 1 and the last on line N."""
+        module = self.module
+        planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
+        counts = (8_000, 32_000)
+        growth_bound = 8
+        hang_bound = 2.0
+        path = self.write_text_file("fixtures/planted.md", "")
+
+        def least_of_three(scan) -> float:
+            times = []
+            for _ in range(3):
+                started = time.perf_counter()
+                scan()
+                times.append(time.perf_counter() - started)
+            return min(times)
+
+        times = []
+        for count in counts:
+            text = "".join(f"line {number} holds {planted}\n" for number in range(1, count + 1))
+            path.write_text(text)
+            report = io.StringIO()
+
+            def scan() -> None:
+                report.seek(0)
+                report.truncate()
+                with contextlib.redirect_stderr(report), self.assertRaises(SystemExit):
+                    module.validate_no_obvious_secrets()
+
+            with self.subTest(count=count):
+                elapsed = least_of_three(scan)
+                # Recorded before any assertion, so the step below is judged even when a run fails the cap.
+                times.append(elapsed)
+                self.assertLess(elapsed, hang_bound, f"{count:,} findings reported in {elapsed:.3f} s")
+                self.assertEqual(len(module.secret_findings(text)), count)
+                self.assertIn(f"{count} finding(s)", report.getvalue())
+                self.assertIn(f"possible committed secret fixtures/planted.md:github-pat:1 ghp_...", report.getvalue())
+                self.assertIn(
+                    f"possible committed secret fixtures/planted.md:github-pat:{count} ghp_...", report.getvalue()
+                )
+                self.assertEqual(report.getvalue().count("possible committed secret "), count)
+        shorter, longer = counts
+        before, after = times
+        with self.subTest(step=f"{shorter:,} to {longer:,}"):
+            self.assertLess(
+                after / before,
+                growth_bound,
+                f"{before:.4f} s at {shorter:,} findings to {after:.4f} s at {longer:,}, {after / before:.1f}x per 4x step",
+            )
+
     def test_a_key_spelled_with_a_letter_the_regex_folds_is_reported_and_masked(self) -> None:
         """Round 8 verdict on 1bd17d87: the keyword filter looked for a keyword in the lower-cased text while the
         rules' `(?i)` regexes fold by Unicode simple case folding, and str.lower keeps U+017F LATIN SMALL LETTER LONG

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import bisect
 import importlib.util
 import json
 import math
@@ -2392,12 +2393,20 @@ def scan_identifiers(args: list[str]) -> int:
     return 1 if findings else 0
 
 
-def finding_line(text: str, finding: SecretFinding, literal: JsonString | None) -> int:
-    """The 1-based line of FINDING in a file's TEXT. A finding in a decoded JSON string is placed on the line of
-    LITERAL, the string it was found in: a strict JSON literal holds no raw newline, so it sits on one line, whatever
-    escapes the writer used. Elsewhere the finding's own offset in TEXT names the line."""
+def line_starts(text: str) -> list[int]:
+    """The offset of the first character of every line of TEXT, in order: 0, then one past each line feed. Built
+    once per file, so placing a finding on its line is a bisection of this list and the report stays linear in the
+    number of findings (round 10 verdict on cd56bd93: counting the line feeds before each finding was quadratic)."""
+    return [0, *(match.end() for match in re.finditer("\n", text))]
+
+
+def finding_line(starts: list[int], finding: SecretFinding, literal: JsonString | None) -> int:
+    """The 1-based line of FINDING in a file whose line starts are STARTS (line_starts of its text). A finding in a
+    decoded JSON string is placed on the line of LITERAL, the string it was found in: a strict JSON literal holds no
+    raw newline, so it sits on one line, whatever escapes the writer used. Elsewhere the finding's own offset names
+    the line."""
     offset = finding.start if literal is None else literal.offset
-    return text.count("\n", 0, offset) + 1
+    return bisect.bisect_right(starts, offset)
 
 
 def validate_no_obvious_secrets() -> None:
@@ -2430,9 +2439,12 @@ def validate_no_obvious_secrets() -> None:
             problems.append(f"{relative} cannot be scanned per JSON string: {error}")
             continue
         scanned = literals if literals is not None else [None]
+        starts: list[int] | None = None  # indexed at the first finding; a clean file never pays for it
         for literal in scanned:
             for finding in secret_findings(text if literal is None else literal.text):
-                fingerprint = f"{relative}:{finding.rule.id}:{finding_line(text, finding, literal)}"
+                if starts is None:
+                    starts = line_starts(text)
+                fingerprint = f"{relative}:{finding.rule.id}:{finding_line(starts, finding, literal)}"
                 if secret_allowance(finding.rule.id, finding.secret, relative, fingerprint) is None:
                     problems.append(
                         f"possible committed secret {fingerprint} {finding.masked()} ({finding.rule.description})"

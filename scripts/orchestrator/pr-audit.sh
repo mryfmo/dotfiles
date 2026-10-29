@@ -179,6 +179,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -214,6 +216,14 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The readers (read-lib.sh, U112) are sourced here, after the scrub above and the self-check: the library's own
+# self-check runs sed and a hash tool, which no caller's PERL* may reach, and under `-p` it inherits no function.
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "pr-audit.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 # The caller's cwd, against which a relative store path the caller's environment names is resolved (U71b audit round
 # 8), the way the tool that reads the variable resolves it.
@@ -601,7 +611,8 @@ codex_scratch() {
     report_survivors
     # A failed supervisor marks its reason; a status of 125 without the mark is codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
-        reason=$(cat -- "${mark}") || fail "cannot read ${mark}"
+        reason=''
+        read_file "${mark}" reason || fail "cannot read ${mark}"
         refuse "codex's supervisor failed (${reason}); no verdict was taken from this run"
     fi
     return "${status}"
@@ -623,7 +634,7 @@ signal_pending_number=''
 report_survivors() {
     local file=${work}/group-mark.survivors survivors
     [[ -s ${file} ]] || return 0
-    survivors=$(cat -- "${file}") || survivors="cannot read ${file}"
+    read_file "${file}" survivors || survivors="cannot read ${file}"
     echo "${lever}: warning: processes started under codex's supervisor are still running after it stopped" \
         "(best-effort detection; they keep the audit sandbox they inherited):" >&2
     printf '%s\n' "${survivors}" >&2
@@ -782,7 +793,15 @@ login_real=$(physical "${login}") ||
 template=${LEVER_MANIFEST%/*}/codex-audit/config.toml
 [[ -f ${template} && ! -L ${template} && -r ${template} ]] ||
     refuse "no readable audit config ${template} (run scripts/generate-agent-configs.py and chezmoi apply)"
-template_text=$(cat -- "${template}") || fail "cannot read ${template}"
+template_status=0
+read_file "${template}" template_text || template_status=$?
+case ${template_status} in
+0) ;;
+1) refuse "${template} is empty" ;;
+*) fail "cannot read ${template}" ;;
+esac
+# read_file keeps the final newline the command substitution dropped; the line loop below sees the same lines as before.
+template_text=${template_text%$'\n'}
 selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] ||
     fail "cannot search ${template}"
 [[ ${selected} == 1 ]] || refuse "${template} does not make the permission profile audit the default"
@@ -905,14 +924,17 @@ while IFS= read -r line; do
             config+=${line}$'\n'
             continue
             ;;
-        \$AUDIT_TREE) paths=$(spellings "${clone}") ;;
-        \$AUDIT_CWD) paths=$(spellings "${work}/cwd") ;;
-        \$CODEX_HOME) paths=$(spellings "${codex_home}") ;;
-        \$CODEX_LOGIN_HOME) paths=$(spellings "${login_home}") && paths+=$'\n'${login_real} ;;
-        \~/*) paths=$(spellings "${home_dir}/${key#\~/}") ;;
-        /*) paths=$(spellings "${key}") ;;
+        \$AUDIT_TREE) paths=$(spellings "${clone}") || exit 2 ;;
+        \$AUDIT_CWD) paths=$(spellings "${work}/cwd") || exit 2 ;;
+        \$CODEX_HOME) paths=$(spellings "${codex_home}") || exit 2 ;;
+        \$CODEX_LOGIN_HOME)
+            paths=$(spellings "${login_home}") || exit 2
+            paths+=$'\n'${login_real}
+            ;;
+        \~/*) paths=$(spellings "${home_dir}/${key#\~/}") || exit 2 ;;
+        /*) paths=$(spellings "${key}") || exit 2 ;;
         *) refuse "${template} names ${key}, which is not ~/<path>, /<path>, a \$ token of the lever or a Codex :name" ;;
-        esac || exit 2
+        esac
         while IFS= read -r path; do
             [[ ${seen} != *$'\n'"${access} ${path}"$'\n'* ]] || continue # lint-comparisons: allow set membership of spellings
             for other in read write deny; do

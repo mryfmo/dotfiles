@@ -1068,6 +1068,11 @@ import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
+# FAKE_GIT_WARN=<word>: the shape of `git config -f <mode-000 file>` on git 2.56.0 (research 01 section 1.2), a warning
+# on stderr and exit 1, the status of an unset key.
+if os.environ.get("FAKE_GIT_WARN") and os.environ["FAKE_GIT_WARN"] in sys.argv[1:]:
+    print("warning: unable to access 'config': Permission denied", file=sys.stderr)
+    sys.exit(1)
 # The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
 # repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push.
 https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
@@ -1354,8 +1359,16 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertNotIn("unset", run.stderr)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+        self.env["FAKE_GIT_WARN"] = "config"
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_WARN"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config user.name (git config exited 1); it wrote to its stderr", run.stderr)
+        self.assertNotIn("unset", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
         self.git("config", "user.email", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is unset or empty")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
         self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
@@ -1365,7 +1378,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("cannot read git config remote.origin.url (git config exited 3)", run.stderr)
         self.git("config", "remote.origin.url", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is unset or empty")
         self.git("config", "remote.origin.url", self.url)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])

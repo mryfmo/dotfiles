@@ -109,6 +109,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -144,6 +146,12 @@ lever_self_check() {
     }
 }
 lever_self_check
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "records-sync.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 lever='records-sync.sh'
 usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
@@ -298,40 +306,41 @@ words=${records}/redact-words.txt
 if [[ -e ${words} || -L ${words} ]]; then
     check_path "${words}"
     [[ -f ${words} ]] || refuse "${words} is not a regular file"
-    words_real=$(cd "${records}" && pwd -P)/redact-words.txt || refuse "cannot resolve ${words}"
+    words_real=$(cd "${records}" && pwd -P) || refuse "cannot resolve ${words}"
+    words_real=${words_real}/redact-words.txt
 else
     words_real=''
 fi
-# The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.
-# `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read:
-# measured on git 2.56.0 (2026-10-28), 128 for an unparsable file, where the manual says 3. Any status other than 0
-# and 1 is a failure here, so the reader is right under both. An empty value is refused here, before any branch
-# exists, where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).
+# @description Read one configuration key the sync needs through read_config (read-lib.sh, U112) and map its three
+#   outcomes: unset or empty is refused and a failed read fails, both before any branch, worktree or commit exists
+#   (a configured empty identity would otherwise be refused by commit-tree after the branch existed).
 # @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).
 # @arg $2 string The configuration key.
 # @arg $3 string The variable that receives the value.
-read_config() {
-    local value status=0
-    value=$("$1" config --get "$2") || status=$?
+required_config() {
+    local status=0
+    read_config "$1" "$2" "$3" "${scratch}/config.err" || status=$?
     case ${status} in
-    0) [[ -n ${value} ]] || refuse "git config $2 is empty" ;;
-    1) refuse "git config $2 is unset" ;;
-    *) fail "cannot read git config $2 (git config exited ${status})" ;;
+    0) ;;
+    1) refuse "git config $2 is unset or empty" ;;
+    *) fail "cannot read git config $2" ;;
     esac
-    printf -v "$3" '%s' "${value}"
 }
+
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
+trap cleanup EXIT
+# The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*;
+# git's stderr goes to a file in the scratch directory, which is why the reads follow mktemp. The same reader serves
+# origin's URL (audit of 0c7bf092).
 author_name='' author_email='' push_url=''
-read_config git user.name author_name
-read_config git user.email author_email
+required_config git user.name author_name
+required_config git user.email author_email
 # U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.
-read_config git_plain remote.origin.url push_url
+required_config git_plain remote.origin.url push_url
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself
 https://?*) ;;
 *) refuse "the push needs an https origin URL, not ${push_url}" ;;
 esac
-
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp failed'
-trap cleanup EXIT
 # U101: the whole commit is built in a new repository in the scratch directory, which has no config, includes,
 # hooks or attributes of the checkout's: origin's main is fetched into it from the https URL, the copies are hashed
 # into it with --no-filters, and the tree, the commit and the push are made there. The checkout is only read: its
@@ -350,9 +359,9 @@ listing=${scratch}/listing
 # Audit of 0c7bf092: `git ls-files` warns and exits 0 for a directory it cannot open, and a file it then leaves out
 # of the listing is absent from the store as far as this lever can see, which is a deletion. So the store is walked
 # first (find exits non-zero for a directory it cannot read, and each directory is checked readable and
-# searchable), and any warning of the listing refuses the run as well; neither output is shown (a store path may
-# hold a redact word).
-find "${records}" -type d -print0 > "${scratch}/dirs" 2> "${scratch}/walk.err" ||
+# searchable), and any warning of either producer refuses the run as well (read_listing, U112); neither output is
+# shown (a store path may hold a redact word).
+read_listing "${scratch}/dirs" "${scratch}/walk.err" find "${records}" -type d -print0 ||
     refuse "a directory under ${records}/ cannot be read or entered; nothing was created"
 dir=''
 while IFS= read -r -d '' dir; do
@@ -362,10 +371,18 @@ done < "${scratch}/dirs"
 # Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any
 # configuration the checkout reads would run inside it (and could write into the store before the copy). The
 # command line turns it off, with the hooks path; the user's ignore rules (core.excludesFile) still apply.
-git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files -z --cached --others --exclude-standard -- "${records}/" \
-    > "${listing}" 2> "${scratch}/listing.err" || fail 'git ls-files failed'
-[[ ! -s ${scratch}/listing.err ]] ||
-    refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
+status=0
+read_listing "${listing}" "${scratch}/listing.err" \
+    git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files -z --cached --others --exclude-standard -- "${records}/" ||
+    status=$?
+case ${status} in
+0 | 1) ;;
+*)
+    [[ ! -s ${scratch}/listing.err ]] ||
+        refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
+    fail 'git ls-files failed'
+    ;;
+esac
 files=()
 present=$'\n'
 path=''

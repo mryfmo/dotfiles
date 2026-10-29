@@ -29,3 +29,15 @@ esac
 (
     true
 )
+# producer-status-check (U112): the tested positions of an assignment, `[[ ! -s file ]]`, and a `read` from a file.
+if ! first=$(pwd -P); then
+    exit 1
+elif first=$(printf y); then
+    :
+fi
+while first=$(printf x); do
+    break
+done
+[[ ! -s "$dir/err" ]] || exit 1
+read -r first < "$dir/file"
+echo "$first"

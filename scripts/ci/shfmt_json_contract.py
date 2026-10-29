@@ -52,12 +52,21 @@ class Kind(NamedTuple):
 TABLE: dict[str, Kind] = {
     "File": Kind(None, ("Stmts",)),
     "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs")),
-    # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling.
-    "Redirect": Kind("Op", ("Op", "N", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"), {"Op": (">", "<<")}),
+    # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, and its `read < f` the `<`.
+    "Redirect": Kind(
+        "Op",
+        ("Op", "N", "N.Value", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"),
+        {"Op": (">", "<<", "<"), "N.Value": ("2",)},
+    ),
     "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),
+    # An assignment (`x=$(…)`, a `local x=…` argument) is untyped and named by its Name; its Value is the word.
+    "Assign": Kind("Name", ("Name.Value", "Value", "Pos.Line")),
     # Every command kind carries Pos.Line: the lint reads it on each statement's Cmd, whatever the kind.
     "CallExpr": Kind(None, ("Args", "Assigns", "Pos.Line")),
+    # An `elif` is an IfClause with no Type key (shfmt types interface fields only), so Cond marks the untyped one.
+    "IfClause": Kind("Cond", ("Cond", "Pos.Line")),
+    "WhileClause": Kind(None, ("Cond", "Pos.Line")),
     "CmdSubst": Kind(None, ("Stmts", "Backquotes", "Pos.Line"), {"Backquotes": (True,)}),
     "ProcSubst": Kind(None, ("Stmts", "Op"), {"Op": ("<(",)}),
     "DblQuoted": Kind(None, ("Parts", "Pos.Line")),
@@ -69,8 +78,9 @@ TABLE: dict[str, Kind] = {
         None, ("Param.Value", "Length", "Index", "Pos.Line"), {"Length": (True,), "Param.Value": ("TMPDIR", "jq")}
     ),
     "ExtGlob": Kind(None, ("Pattern.Value", "Pos.Line")),
-    "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&")}),
+    "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&", "||")}),
     "TestClause": Kind(None, ("X", "Pos.Line")),
+    "UnaryTest": Kind(None, ("Op", "X"), {"Op": ("!", "-s")}),
     "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
     "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
     "FuncDecl": Kind(None, ("Name", "Body", "Pos.Line")),

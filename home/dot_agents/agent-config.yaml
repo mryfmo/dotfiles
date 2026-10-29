@@ -854,12 +854,13 @@ claude:
       pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
-      pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
-      records-sync.sh: d7cff85921ce06b58222763858db7d3c11069ca4c4ec6e62b88fac3f1a8914d7
-      pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
+      pr-body-edit.sh: 85ee67f24b85a05292d88c840c0aa710aa1a39c4cba4ba1d9ccfb7e845331937
+      pr-threads-check.sh: 57dbc196879c4dd579934b126eca67680b3ac5694a7645a2108b91484f55d199
+      records-sync.sh: f90e6807174253cd4b0cdd4d1c2e1e42bc8c0cf7acc9300513b7fe326e20eb3a
+      pr-merge.sh: 48de51d2393c12d716c6b2dce23e9eb58c6204d69bfc25722b83f03f6ea0f847
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419
+      pr-audit.sh: d3fab28ee56e127b7dfad2bc92d4d2f827d02b257adb77d1ec4210c6ab843f59
+      read-lib.sh: a7d13d89b182445f72fa18b2bb1c9e073e295c6ef9b1cf4a5bc13efc6e6cf77b
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

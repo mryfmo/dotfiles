@@ -50,13 +50,14 @@ class SecretRule(NamedTuple):
     because records-sync.sh runs this file alone from a tools tree).
 
     `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
-    whole match). `entropy` is the least Shannon entropy, in bits per character, the secret must reach, or None
-    for a provider rule whose prefix alone is the evidence; it is measured over measured_text(secret), the secret
-    with every SECRET_MASK and every quoting character removed, as the greatest entropy of any window of
-    GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's own output passes the scan, a value
-    beside a marker is judged on its own, no quoting changes the measure, and nothing else on the line can dilute
-    it. The rule runs over a text only when one of `keywords` (lower case) occurs in the lower-cased text, a cheap
-    filter before the regex.
+    whole match); `secret_in` trims the group's trailing whitespace in code, so no rule's regex needs a lazy
+    quantifier or a lookahead to end its capture. `entropy` is the least Shannon entropy, in bits per character,
+    the secret must reach, or None for a provider rule whose prefix alone is the evidence; it is measured over
+    measured_text(secret), the secret with every SECRET_MASK, quoting character and carriage return removed, as
+    the greatest entropy of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's
+    own output passes the scan, a value beside a marker is judged on its own, no quoting changes the measure, and
+    nothing else on the line can dilute it. The rule runs over a text only when one of `keywords` (lower case)
+    occurs in the lower-cased text, a cheap filter before the regex.
     """
 
     id: str
@@ -65,6 +66,21 @@ class SecretRule(NamedTuple):
     secret_group: int
     entropy: float | None
     keywords: tuple[str, ...]
+
+    def secret_in(self, match: re.Match[str]) -> tuple[str, int]:
+        """The secret MATCH holds and where its finding ends: the secret group with its trailing whitespace removed
+        (str.rstrip, linear), and the match's end moved back by what was removed when the group ends the match, so
+        the mask leaves a line's trailing whitespace and its line ending in place. The trim is code, never regex:
+        round 7 ended a generic capture with a lazy quantifier and a lookahead for the trailing whitespace, which
+        rescanned the rest of the line at every step (2,000, 8,000 and 32,000 spaces inside the quotes took 0.018,
+        0.264 and 4.191 s) and failed at every position when a bare CR stood before text on the line, so that line
+        matched nothing (round 7 verdict on 1632d807)."""
+        secret = match.group(self.secret_group)
+        trimmed = secret.rstrip()
+        end = match.end()
+        if match.end(self.secret_group) == end:
+            end -= len(secret) - len(trimmed)
+        return trimmed, end
 
     def reaches_entropy(self, secret: str) -> bool:
         """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the densest
@@ -93,15 +109,18 @@ GENERIC_SECRET_ENTROPY = 3.5
 GENERIC_SECRET_MIN_LENGTH = 20
 # What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
 SECRET_MASK = "<redacted:secret-pattern>"
-# The quoting characters, removed before a value is measured: they are the writer's syntax, not the value. Rounds 4
-# and 5 each let them decide where the value ended and each fell to the next quoting corner (an apostrophe inside a
-# double-quoted value, then an escaped quote); now nothing written on the line decides what is measured.
-QUOTING_CHARACTERS = str.maketrans("", "", "\"'\\")
+# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value,
+# and a carriage return is a line's content only because the line feed alone ends the capture (assignment_rule).
+# Rounds 4 and 5 each let the quotes decide where the value ended and each fell to the next quoting corner (an
+# apostrophe inside a double-quoted value, then an escaped quote); now nothing written on the line decides what is
+# measured.
+UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\\r")
 
 
 def measured_text(secret: str) -> str:
-    """What a generic rule measures: SECRET with every SECRET_MASK and every quote and backslash removed."""
-    return secret.replace(SECRET_MASK, "").translate(QUOTING_CHARACTERS)
+    """What a generic rule measures: SECRET with every SECRET_MASK and every quote, backslash and carriage return
+    removed."""
+    return secret.replace(SECRET_MASK, "").translate(UNMEASURED_CHARACTERS)
 
 
 def densest_window_entropy(text: str) -> float:
@@ -129,18 +148,26 @@ def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str,
     where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
     an apostrophe inside a double-quoted value, then an escaped quote, each measured as its first character. A
     value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
-    with the quotes and backslashes removed, and the finding's span is the whole line from the key: the masker
-    writes one marker over all of it, so its output has no remainder to measure. What follows the value on its line
-    (a trailing comment, a second literal, a second assignment) is captured, measured and masked with it: the measure
-    is the densest window, so what is captured with a secret cannot dilute it (round 7 finding on 38a83e45: 160
-    characters of padding before a second assignment brought the whole line to 1.43 bits), and over-capture errs on
-    the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
-    shorter capture or a looser measure. The capture ends before the line's trailing whitespace and before `\\r`.
+    with the quotes, backslashes and carriage returns removed, and the finding's span is the whole line from the
+    key: the masker writes one marker over all of it, so its output has no remainder to measure. What follows the
+    value on its line (a trailing comment, a second literal, a second assignment) is captured, measured and masked
+    with it: the measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding
+    on 38a83e45: 160 characters of padding before a second assignment brought the whole line to 1.43 bits), and
+    over-capture errs on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a
+    reason, never a shorter capture or a looser measure.
+
+    The capture is one greedy class to the line feed, linear in the line, and only the line feed ends it: a carriage
+    return before text is content of the line, captured, measured and masked with the value; a trailing one (a CRLF
+    line) is trimmed with the trailing whitespace, in code (SecretRule.secret_in), never by the regex. Round 7's
+    capture stopped at a CR and ended with a lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed
+    by a CR and text matched nothing and passed the tree scan and both CLIs in text and in JSON, and the lookahead
+    rescanned the rest of the line at every step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s
+    (round 7 verdict on 1632d807).
 
     The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
     unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
     prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
-    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\r\n]*?)(?=[^\S\n]*(?:\n|\Z))""")
+    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\n]*)""")
     return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 1, GENERIC_SECRET_ENTROPY, keywords)
 
 
@@ -2056,11 +2083,11 @@ def secret_findings(text: str) -> list[SecretFinding]:
         if not any(keyword in lowered for keyword in rule.keywords):
             continue
         for match in rule.regex.finditer(text):
-            secret = match.group(rule.secret_group)
+            secret, end = rule.secret_in(match)
             if not rule.reaches_entropy(secret):
                 continue
             if secret_allowance(rule.id, secret) is None:
-                findings.append(SecretFinding(rule, match.start(), match.end(), secret))
+                findings.append(SecretFinding(rule, match.start(), end, secret))
     return sorted(findings, key=lambda finding: (finding.start, finding.end))
 
 

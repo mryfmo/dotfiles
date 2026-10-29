@@ -2280,6 +2280,90 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertEqual(module.mask_secret_matches(text), (text, 0))
                 module.validate_no_obvious_secrets()
 
+    def test_a_carriage_return_before_text_is_content_of_the_assignment_line(self) -> None:
+        """Round 7 verdict on 1632d807: the capture stopped at a CR and ended with a lookahead for whitespace before the
+        LF, so `<key> = "Qz7v..."` followed by a bare CR and text matched nothing and a 4.32-bit value passed the tree
+        scan and both CLIs in text and in JSON while origin/main reported it. Only the line feed ends the line: a CR
+        before text is content, reported and masked with the value; a trailing CR is trimmed as whitespace."""
+        module = self.module
+        mask = module.SECRET_MASK
+        tail = "\rprogress complete"
+        text = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{tail}\n'
+        secret = f'"{HIGH_ENTROPY_VALUE}"{tail}'
+        self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], [("generic-token", secret)])
+        # The CR is content of the span and the mask, not of the measure: what is measured is the value and the text.
+        self.assertEqual(module.measured_text(secret), f"{HIGH_ENTROPY_VALUE}progress complete")
+        self.assertEqual(module.mask_secret_matches(text), (f"{mask}\n", 1))
+        # A CR between the operator and the quote is whitespace before the value; one before the LF is trimmed, and
+        # the mask leaves the CRLF line ending in place.
+        crlf = f'{FIELD} =\r"{HIGH_ENTROPY_VALUE}"\r\n'
+        self.assertEqual([f.secret for f in module.secret_findings(crlf)], [f'"{HIGH_ENTROPY_VALUE}"'])
+        self.assertEqual(module.mask_secret_matches(crlf), (f"{mask}\r\n", 1))
+        path = self.write_text_file("docs/notes.md", text)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('docs/notes.md:generic-token:1 "Qz7...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        path.write_text(f"{mask}\n")
+        module.validate_no_obvious_secrets()
+        # The same line inside a JSON string, where the CR is the escape `\r`: reported on its literal's line (line 4
+        # of the document) and masked.
+        document = json.dumps({"items": [{"note": text.rstrip("\n")}]}, indent=2) + "\n"
+        self.assertIn("\\r", document)
+        path = self.write_text_file("fixtures/evidence.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('fixtures/evidence.json:generic-token:4 "Qz7...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        masked, count = module.mask_json_strings(json.loads(document))
+        self.assertEqual((masked, count), ({"items": [{"note": mask}]}, 1))
+        path.write_text(json.dumps(masked, indent=2) + "\n")
+        module.validate_no_obvious_secrets()
+        # The threshold's other side: a word before a CR and a short word has no window over it (passes on 1632d807
+        # too, where the line matched nothing).
+        low = f'{FIELD} = "{LOW_ENTROPY_VALUE}"\rok\n'
+        self.write_text_file("docs/notes.md", low)
+        self.assertEqual(module.secret_findings(low), [])
+        self.assertEqual(module.mask_secret_matches(low), (low, 0))
+        module.validate_no_obvious_secrets()
+
+    def test_a_generic_rule_scans_a_padded_line_in_linear_time(self) -> None:
+        """Round 7 verdict on 1632d807: the lazy capture's lookahead rescanned the rest of the line at every step, so a
+        quoted value behind 2,000, 8,000 and 32,000 spaces took 0.018, 0.264 and 4.191 s against 0.0001 s on
+        origin/main, and a small padded file could stall validation. The capture is one greedy class to the LF and
+        the trailing whitespace is trimmed in code, so a line padded with 32,000 spaces or 32,000 low-entropy
+        characters is scanned and masked under half a second (0.02 and 0.03 s measured; the lookahead took 4.2 s for
+        the spaces), and the value behind the padding is still reported, with the whole rest of the line as the
+        secret."""
+        module = self.module
+        mask = module.SECRET_MASK
+        bound = 0.5
+        for length in (2_000, 8_000, 32_000):
+            for padding_kind, padding in (("spaces", " " * length), ("low-entropy characters", "low-" * (length // 4))):
+                for kind, text in (
+                    ("inside the quotes", f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n'),
+                    ("after the value", f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n'),
+                ):
+                    with self.subTest(length=length, padding=padding_kind, kind=kind):
+                        started = time.perf_counter()
+                        findings = module.secret_findings(text)
+                        masked = module.mask_secret_matches(text)
+                        elapsed = time.perf_counter() - started
+                        self.assertLess(elapsed, bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
+                        secret = text.split(" = ", 1)[1].rstrip()
+                        self.assertEqual([(f.rule.id, f.secret) for f in findings], [("generic-token", secret)])
+                        self.assertEqual(masked, (f"{mask}{text[len(text.rstrip()) :]}", 1))
+                # The same padded line as a JSON member, masked per decoded string as the JSON masker does.
+                with self.subTest(length=length, padding=padding_kind, kind="in a JSON string"):
+                    document = {"note": f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"'}
+                    started = time.perf_counter()
+                    masked_document = module.mask_json_strings(document)
+                    elapsed = time.perf_counter() - started
+                    self.assertLess(elapsed, bound, f"{length:,} {padding_kind} in a JSON string took {elapsed:.3f} s")
+                    self.assertEqual(masked_document, ({"note": mask}, 1))
+
     def test_masking_repeats_until_the_text_passes_the_scan(self) -> None:
         """Round 4 verdict on 43fe25f3: for a quoted assignment whose value is a word and a provider token, the masker
         removed the token and left a remainder above the generic threshold, so --mask-secrets exited 0 and
@@ -3128,6 +3212,48 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         result = self.scan(evidence)
         self.assertEqual((result.returncode, result.stderr), (0, ""))
         self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_line_with_a_carriage_return_before_text_is_refused_and_masked_whole(self) -> None:
+        """Round 7 verdict on 1632d807, through the two CLIs records-sync.sh runs: a quoted 4.32-bit value followed on
+        its line by a bare CR and text exited 0 from --scan-identifiers and --mask-secrets reported zero masks and
+        kept it, in text and in a JSON string. The line is refused and the masker writes one marker over all of it;
+        the CRLF evidence the masker already handles keeps its line endings."""
+        module = load_validator()
+        line = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\rprogress complete'
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_bytes(f"{line}\nVerdict: correct\n".encode())
+        member = self.temp_dir / "member.json"
+        member.write_bytes((json.dumps({"items": [{"note": line}]}, indent=2) + "\n").encode())
+        self.assertIn(b"\\r", member.read_bytes())
+        for path, masked_text in (
+            (evidence, f"{module.SECRET_MASK}\nVerdict: correct\n"),
+            (member, json.dumps({"items": [{"note": module.SECRET_MASK}]}, indent=2) + "\n"),
+        ):
+            with self.subTest(path=path.name):
+                result = self.scan(path)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): a secret pattern\n")
+                self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+
+                masked = subprocess.run(
+                    [sys.executable, str(VALIDATOR), "--mask-secrets", str(path)], text=True, capture_output=True
+                )
+                self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+                self.assertEqual(masked.stdout, f"masked 1 match(es) in {path}\n")
+                self.assertEqual(path.read_bytes().decode(), masked_text)
+                result = self.scan(path)
+                self.assertEqual((result.returncode, result.stderr), (0, ""))
+                self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+        crlf = self.temp_dir / "crlf.md"
+        crlf.write_bytes(f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\r\nVerdict: correct\r\n'.encode())
+        self.assertEqual(self.scan(crlf).returncode, 1)
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(crlf)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.stdout, f"masked 1 match(es) in {crlf}\n")
+        self.assertEqual(crlf.read_bytes(), f"{module.SECRET_MASK}\r\nVerdict: correct\r\n".encode())
+        self.assertEqual(self.scan(crlf).returncode, 0)
 
 
 if __name__ == "__main__":

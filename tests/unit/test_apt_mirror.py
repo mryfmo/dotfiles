@@ -1146,6 +1146,25 @@ JOB_DEFAULTS = (
     "a job's `defaults.run.shell` is the shell of every step of the job that names none; no job holds a `defaults` key"
 )
 STEP_SHELL = "a step with `run:` holds no `shell:` key or `shell: bash` exactly; the tree reads the runner's bash"
+# Round 16 (audit of 60b17bd4): the rule read `shell:` and `defaults` and no `env:`, while an `env:` block at the
+# workflow, the job or the step level can set `BASH_ENV` (bash reads the file it names before the body, under
+# `bash -e {0}` as under `shell: bash`), `ENV`, `SHELLOPTS`, `LD_PRELOAD` or `PATH`, and so run code or give
+# `/usr/bin/timeout` another meaning before the exact-form body. The names in scope of an apt step (the union of its
+# workflow's, its job's and its own `env:` keys) are held to APT_ENV_NAMES, an exact tuple of the names measured
+# before the rule was written: test.yaml's `test` job sets `CODECOV_FLAGS`, `CODECOV_NAME`, `OS` and `SYSTEM`; no
+# file holds a workflow-level `env:`; none of the three apt steps holds an `env:`. Any other name is a problem naming
+# the level, the step and the name, compared exactly (case-sensitive, no prefix: `os` and `SYSTEMD` are refused as
+# `BASH_ENV` is, and so is a benign `FOO`, since a new name is an edit here); an `env:` on an apt step is a problem
+# whatever its names (the steps hold nothing but the form); an `env:` value that is not a mapping is a problem naming
+# the value. The residual this rule does not read: a step before the apt step can write any name to `GITHUB_ENV`
+# (test.yaml writes FILES_TEST_CHEZMOI and CLAUDE_DOCTOR_BIN so, each from a checked literal); the PR body's Contract
+# bullet "The environment of every apt step (round 16)" names that write as the residual.
+APT_ENV_NAMES = ("CODECOV_FLAGS", "CODECOV_NAME", "OS", "SYSTEM")
+APT_ENV = (
+    f"an environment name in scope of an apt step is one of the {len(APT_ENV_NAMES)} APT_ENV_NAMES, exactly; bash reads "
+    "`BASH_ENV` and the like before the body"
+)
+APT_STEP_ENV = "an apt step holds no `env:` key, whatever its names; the names in its scope are its job's"
 
 
 class Walked(NamedTuple):
@@ -1534,9 +1553,9 @@ def script_line(script: str, line: object) -> str:
     return lines[line - 1].strip() if isinstance(line, int) and 0 < line <= len(lines) else ""
 
 
-def defaults_line(text: str, job: str | None = None) -> object:
-    """The line of the `defaults:` key at the workflow level (`job` None) or among `job`'s keys, placed as the census
-    places a line (the first key after `jobs:` sets the jobs' indent, the first key under a job its keys'), or `?`."""
+def key_line(text: str, key: str, job: str | None = None) -> object:
+    """The line of `key` at the workflow level (`job` None) or among `job`'s keys, placed as the census places a
+    line (the first key after `jobs:` sets the jobs' indent, the first key under a job its keys'), or `?`."""
     jobs_at = keys_at = None
     inside = in_job = False
     for number, line in enumerate(text.split("\n"), 1):
@@ -1544,7 +1563,7 @@ def defaults_line(text: str, job: str | None = None) -> object:
         if not lexed.text or lexed.text.startswith("#") or lexed.fault:
             continue
         if lexed.indent == 0:
-            if job is None and lexed.key == "defaults":
+            if job is None and lexed.key == key:
                 return number
             inside, in_job = lexed.key == "jobs", False
             continue
@@ -1556,9 +1575,33 @@ def defaults_line(text: str, job: str | None = None) -> object:
             in_job, keys_at = lexed.key == job, None
         elif in_job and lexed.indent > jobs_at and keys_at in (None, lexed.indent):
             keys_at = lexed.indent
-            if lexed.key == "defaults":
+            if lexed.key == key:
                 return number
     return "?"
+
+
+def env_problems(document: dict, job: str, body: dict, step: dict, text: str, where: str, dash: object) -> list[str]:
+    """The round 16 refusals for one apt step: its own `env:` key, whatever it holds, and at the workflow level and
+    on its job each `env:` name outside APT_ENV_NAMES (compared exactly) or an `env:` value that is not a mapping,
+    each naming the level, the step and the name or value, at the key's line."""
+    problems = []
+    if "env" in step:
+        problems.append(f"{where.format(dash)}: env: {step['env']!r}: {APT_STEP_ENV}")
+    for level, holder, line in (
+        ("workflow", document, key_line(text, "env")),
+        ("job", body, key_line(text, "env", job)),
+    ):
+        if "env" not in holder:
+            continue
+        names = holder["env"]
+        if not isinstance(names, dict):
+            problems.append(f"{where.format(line)}: {level} env: {names!r}: {APT_ENV}")
+            continue
+        # Exact: case-sensitive, no prefix match. A set difference, not `name not in APT_ENV_NAMES`: the contract
+        # extractor (tests/unit/test_shfmt_json_contract.py) reads a key compared with a module tuple as a tree field.
+        outside = set(names).difference(APT_ENV_NAMES)
+        problems.extend(f"{where.format(line)}: {level} env: {name!r}: {APT_ENV}" for name in names if name in outside)
+    return problems
 
 
 def tree_problems(name: str, text: str) -> list[str]:
@@ -1568,7 +1611,8 @@ def tree_problems(name: str, text: str) -> list[str]:
     `${{` in a run body (GitHub expands it before bash reads the text), a body shfmt refuses,
     each statement of an apt step that is not the form, each bare literal bash expands among a call's words, each
     comment that hides a line, each command word with no known text in any step unless UNKNOWN_COMMAND_EXEMPT names
-    its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS whole, and a step whose tree
+    its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS whole, an apt step's `env:` key
+    and each name the workflow's or its job's `env:` holds outside APT_ENV_NAMES (round 16), and a step whose tree
     holds another number of form statements than the text holds bound forms. The bodies and the keys are PyYAML's
     (Parser), the lines the census's; a file the census or the parser gate refuses is named there and not read
     here."""
@@ -1578,10 +1622,12 @@ def tree_problems(name: str, text: str) -> list[str]:
     found = text_steps(text)
     problems = []
     if "defaults" in document:
-        problems.append(f"{name}:{defaults_line(text)}: defaults: {document['defaults']!r}: {WORKFLOW_DEFAULTS}")
+        problems.append(f"{name}:{key_line(text, 'defaults')}: defaults: {document['defaults']!r}: {WORKFLOW_DEFAULTS}")
     for job, body in document["jobs"].items():
         if "defaults" in body:
-            problems.append(f"{name}:{defaults_line(text, job)}: {job}: defaults: {body['defaults']!r}: {JOB_DEFAULTS}")
+            problems.append(
+                f"{name}:{key_line(text, 'defaults', job)}: {job}: defaults: {body['defaults']!r}: {JOB_DEFAULTS}"
+            )
         for index, step in enumerate(body["steps"]):
             if "run" not in step:
                 continue
@@ -1611,8 +1657,10 @@ def tree_problems(name: str, text: str) -> list[str]:
                 for at, what in walked.unknown
                 if (name, label, script_line(script, at)) not in UNKNOWN_COMMAND_EXEMPT
             )
-            if (walked.tokens or names_apt(script)) and str(step.get("if") or "").strip() not in APT_STEP_IFS:
-                problems.append(f"{where.format(text_step['line'])}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
+            if walked.tokens or names_apt(script):
+                if str(step.get("if") or "").strip() not in APT_STEP_IFS:
+                    problems.append(f"{where.format(text_step['line'])}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
+                problems.extend(env_problems(document, job, body, step, text, where, text_step["line"]))
             bounds = len(APT_BOUND.findall("\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))))
             if walked.apt_calls != bounds:
                 problems.append(
@@ -2074,6 +2122,35 @@ class AptBoundRuleTest(unittest.TestCase):
                         elif "shell" in step:
                             self.assertEqual("bash", step["shell"], (job, index, step.get("name")))
 
+    def test_the_environment_in_scope_of_every_apt_step_is_the_pinned_set(self) -> None:
+        # Round 16 (audit of 60b17bd4): tree_problems (run over the real files above) holds the names in scope of an
+        # apt step to APT_ENV_NAMES; this pins the state the tuple was measured from, so a new name at either level
+        # is a reviewed change here: no workflow-level `env:` in a file holding an apt step, the job's `env:` keys
+        # exactly the tuple, no `env:` on an apt step, and the three apt steps all in test.yaml's `test` job.
+        self.assertEqual(tuple(sorted(set(APT_ENV_NAMES))), APT_ENV_NAMES)
+        found: list[tuple[str, str, object, dict, dict, dict]] = []
+        for name, text in workflow_texts().items():
+            with self.subTest(workflow=name):
+                self.assertEqual([], parser_problems(name, text))
+                document, _ = Parser.read(text)
+                for job, body in document["jobs"].items():
+                    for step in body["steps"]:
+                        script = str(step.get("run", ""))
+                        if names_apt(script) or TIMEOUT_PATH in script:
+                            found.append((name, job, step.get("name"), document, body, step))
+        self.assertEqual(
+            [
+                ("test.yaml", "test", "Install apt packages"),
+                ("test.yaml", "test", "Install apt packages for the unit tests"),
+                ("test.yaml", "test", "Install apt packages for Codecov"),
+            ],
+            [(name, job, label) for name, job, label, _, _, _ in found],
+        )
+        for name, job, label, document, body, step in found:
+            self.assertNotIn("env", document, (name, job, label))
+            self.assertEqual(set(APT_ENV_NAMES), set(body.get("env") or {}), (name, job, label))
+            self.assertNotIn("env", step, (name, job, label))
+
     def test_an_exemption_needs_its_exact_line(self) -> None:
         table = {("x.yaml", "# apt-get runs inside setup.sh"): "comment; names the tool without running it"}
         self.assertEqual([], apt_violations("x.yaml", "  # apt-get runs inside setup.sh\n", table))
@@ -2114,7 +2191,7 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 15: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 16: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
@@ -2126,7 +2203,10 @@ class TreeRuleTest(unittest.TestCase):
     bare `[` and `]` parts stand among quoted parts, is refused the same three ways. Round 15 (audit of 8ce0efda):
     a `defaults` key at the workflow level or on a job, whatever it holds, and a step's `shell:` other than the
     string `bash` are refused with their values, so the auditor's `defaults.run.shell` that defines a split-spelled
-    `/usr/bin/timeout` function and sources the script is named at either level."""
+    `/usr/bin/timeout` function and sources the script is named at either level. Round 16 (audit of 60b17bd4): an
+    `env:` name in scope of an apt step outside APT_ENV_NAMES, at the workflow or the job level, and an `env:` on
+    an apt step at all, are refused naming the level, the step and the name, so the auditor's `BASH_ENV` is named
+    at each of the three levels."""
 
     FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     NAME = "Install apt packages"
@@ -2873,6 +2953,100 @@ class TreeRuleTest(unittest.TestCase):
             text, _, _ = self.step(f"{form} update | cat\n")
             self.assertEqual([], tree_problems("x.yaml", text.replace("name: x\n", 'name: "x\n')))
             self.assertEqual([], tree_problems("x.yaml", text.replace("runs-on", "runs-on" + chr(0x2028))))
+
+    def test_an_environment_name_in_scope_of_an_apt_step_is_held_to_the_pinned_set(self) -> None:
+        # Round 16 (audit of 60b17bd4): the auditor's `BASH_ENV` at each of the three levels, the other startup
+        # names, a benign new name, a lower-case and a prefixed spelling of a pinned name, a key PyYAML reads as a
+        # number, and a value that is not a mapping, each refused naming the level, the step and the name; the
+        # measured set on the job is accepted; a pinned name on the step is refused; an `env:` on a step that runs
+        # no apt is not in an apt step's scope.
+        form = self.FORM
+        top = "on: push\n"
+        job = "    runs-on: ubuntu-24.04\n"
+        guard = f"        if: {self.GUARD}\n"
+        startup = "${{ github.workspace }}/scripts/ci/startup.sh"
+
+        def block(indent: int, names: tuple[tuple[str, str], ...]) -> str:
+            return " " * indent + "env:\n" + "".join(f"{' ' * (indent + 2)}{name}: {value}\n" for name, value in names)
+
+        def at_top(text: str, *names: tuple[str, str]) -> str:
+            return text.replace(top, top + block(0, names))
+
+        def in_job(text: str, *names: tuple[str, str]) -> str:
+            return text.replace(job, job + block(4, names))
+
+        def on_step(text: str, *names: tuple[str, str]) -> str:
+            return text.replace(guard, guard + block(8, names))
+
+        pinned = tuple((name, "x") for name in APT_ENV_NAMES)
+        with self.subTest(case="the auditor's BASH_ENV at the workflow level (audit of 60b17bd4)"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(3) + f"workflow env: 'BASH_ENV': {APT_ENV}"],
+                tree_problems("x.yaml", at_top(text, ("BASH_ENV", startup))),
+            )
+        with self.subTest(case="the auditor's BASH_ENV on the job, among the pinned names"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(6) + f"job env: 'BASH_ENV': {APT_ENV}"],
+                tree_problems("x.yaml", in_job(text, *pinned, ("BASH_ENV", startup))),
+            )
+        with self.subTest(case="the auditor's BASH_ENV on the apt step"):
+            text, _, dash = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(dash) + f"env: {{'BASH_ENV': {startup!r}}}: {APT_STEP_ENV}"],
+                tree_problems("x.yaml", on_step(text, ("BASH_ENV", startup))),
+            )
+        with self.subTest(case="a pinned name on the apt step is refused too: the step holds no env: key"):
+            text, _, dash = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(dash) + f"env: {{'OS': 'x'}}: {APT_STEP_ENV}"],
+                tree_problems("x.yaml", on_step(text, ("OS", "x"))),
+            )
+        for name in ("ENV", "SHELLOPTS", "LD_PRELOAD", "PATH", "FOO", "os", "SYSTEMD", "CODECOV"):
+            with self.subTest(case=f"{name} on the job"):
+                text, _, _ = self.step(f"{form} update\n")
+                self.assertEqual(
+                    [self.STEP.format(6) + f"job env: {name!r}: {APT_ENV}"],
+                    tree_problems("x.yaml", in_job(text, (name, "x"))),
+                )
+        with self.subTest(case="a key PyYAML reads as a number or a boolean reaches the rule as JSON's string"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(6) + f"job env: '1': {APT_ENV}"], tree_problems("x.yaml", in_job(text, ("1", "x")))
+            )
+            self.assertEqual(
+                [self.STEP.format(6) + f"job env: 'true': {APT_ENV}"],
+                tree_problems("x.yaml", in_job(text, ("on", "x"))),
+            )
+        with self.subTest(case="an env: that is not a mapping, at either level"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(3) + f"workflow env: 'startup': {APT_ENV}"],
+                tree_problems("x.yaml", text.replace(top, top + "env: startup\n")),
+            )
+            self.assertEqual(
+                [self.STEP.format(6) + f"job env: 'startup': {APT_ENV}"],
+                tree_problems("x.yaml", text.replace(job, job + "    env: startup\n")),
+            )
+        with self.subTest(case="the measured set on the job, exactly"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual([], tree_problems("x.yaml", in_job(text, *pinned)))
+            self.assertEqual([], tree_problems("x.yaml", in_job(text, *pinned[:2])))
+        with self.subTest(case="an env: on a step that runs no apt is outside the apt step's scope"):
+            text = render(
+                {
+                    "test": [
+                        {"name": self.NAME, "timeout-minutes": "8", "if": self.GUARD, "run": f"{form} update\n"},
+                        {"name": "Tools", "run": "true\n"},
+                    ]
+                }
+            )
+            text = text.replace("      - name: Tools\n", "      - name: Tools\n" + block(8, (("BASH_ENV", startup),)))
+            self.assertEqual([], tree_problems("x.yaml", text))
+        with self.subTest(case="a step that is no apt step takes no env: refusal from its job"):
+            text = render({"test": [{"name": "Tools", "run": "true\n"}]})
+            self.assertEqual([], tree_problems("x.yaml", in_job(text, ("BASH_ENV", startup))))
 
     def test_a_contract_or_parser_that_cannot_be_read_is_a_failure_not_an_absence(self) -> None:
         # Standing order 21: the contract refusing the pinned shfmt, and a tree whose statements the walk cannot read

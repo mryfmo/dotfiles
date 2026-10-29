@@ -20,9 +20,12 @@
 #      (i) a plain command whose known first word is `exit` or `return`, as the whole branch, with no argument (the
 #      status of the failed substitution propagates), with one argument whose known text is a decimal from 1 to 255,
 #      or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0`
-#      are findings: a zero turns the failed read into success); (ii) a plain command whose known first word names a
-#      function this file defines exactly once, at the top level, in the foreground and not negated, before the tested
-#      statement in file order, by a name that is no bash builtin or reserved word, whose body is the refusal grammar:
+#      are findings: a zero turns the failed read into success); (ii) a plain command whose known first word is one of
+#      REFUSAL_NAMES below (`refuse`, `fail`: the two refusal functions the adopted levers define, a closed allowlist;
+#      a denylist of bash builtins and reserved words cannot be complete, and `fc` was the one the tuple this lint
+#      carried missed, so `fc() { exit 2; }; unset -f fc; x=$(false) || fc -l` ran the builtin and the script went
+#      on) and names a function this file defines exactly once, at the top level, in the foreground and not negated,
+#      before the tested statement in file order, whose body is the refusal grammar:
 #      zero or more statements, each a plain command whose known first word is `echo` or `printf` with a redirect that
 #      sends fd 1 to fd 2 (`>&2` or `1>&2`), then exactly one last statement, a plain command `exit` with one argument
 #      whose known text is a decimal from 1 to 255, every statement in the foreground and not negated, and nothing
@@ -30,20 +33,19 @@
 #      function, no command substitution anywhere in the body. Every definition of the name counts, at any depth: a
 #      second one inside an `if`, a loop, a block, a subshell or another function (`refuse() { exit 2; }; if true;
 #      then refuse() { return 0; }; fi`) or a second spelling (`function refuse { …; }`) is a finding naming both
-#      lines, since bash runs whichever ran last; a definition run in the background (`true() { exit 2; } &`) exists
-#      in a child shell only; one after the tested statement has not run when the read fails; a name of a builtin or
-#      reserved word (`true`, `:`, `false`, `exit`, `return`, `test`, `set`, `echo`, …, the BUILTINS tuple below) is
-#      the one bash runs when the function is absent, so no function of such a name is accepted; each is a finding
-#      naming the duplicate's line, the flag or the builtin. The body is matched, not analysed: `f() { echo failed
-#      >&2; return $?; }`, `f() { return 0; exit 1; }`, `f() { echo x; exit 2; }` and `f() { local m=$1; echo "$m"
-#      >&2; exit 2; }` are each a finding naming the function and the first statement outside the grammar, by line,
-#      whatever they would do when run (a name no function defines is a plain command; a function that cleans up
-#      before it exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow comment
-#      naming the cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2; exit 1;
-#      }`), so a bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a bare
-#      plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`; `status+=$?` adds the status to the value, 25
-#      and 6 making 256, and is a finding naming the append). A branch statement run in the background (`exit 2 &`)
-#      or negated (`! exit 1`, `! (exit 1)`) handles nothing.
+#      lines, since bash runs whichever ran last; a definition run in the background (`fail() { exit 2; } &`) exists
+#      in a child shell only; one after the tested statement has not run when the read fails; a call of any other
+#      defined name (`die`, `true`, `fc`, …) is a finding saying the name is not a refusal name, whatever its body;
+#      each is a finding naming the duplicate's line, the flag or the name. The body is matched, not analysed: `f()
+#      { echo failed >&2; return $?; }`, `f() { return 0; exit 1; }`, `f() { echo x; exit 2; }` and `f() { local
+#      m=$1; echo "$m" >&2; exit 2; }` are each a finding naming the function and the first statement outside the
+#      grammar, by line, whatever they would do when run (a name no function defines is a plain command; a function that
+#      cleans up before it exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow
+#      comment naming the cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2;
+#      exit 1; }`), so a bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a
+#      bare plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`; `status+=$?` adds the status to the value, 25
+#      and 6 making 256, and is a finding naming the append). A branch statement run in the background (`exit 2 &`) or
+#      negated (`! exit 1`, `! (exit 1)`) handles nothing.
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
 #      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell outside the
 #      grammar, an assignment of anything else, a first word with no known text. A later line that handles an
@@ -89,7 +91,9 @@
 #      and d; an allow comment with no reason is itself a finding and exempts nothing. The enforced file set is
 #      tests/unit/test_producer_status_check.py (the library and the five levers), not a Makefile target.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
-#   expands the body of a partly quoted delimiter such as `<<'E'OF`). The files are parsed as bash. A file shfmt
+#   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
+#   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
+#   such a body defines and exempts nothing. The files are parsed as bash. A file shfmt
 #   cannot parse is refused, never read as clean. Before any listed file is read, scripts/ci/shfmt_json_contract.py
 #   proves that the pinned shfmt still produces the node kinds and fields this walk reads, and this walk then visits
 #   the contract fixtures itself and is refused if it sees no statement, no assignment or no command substitution
@@ -165,16 +169,10 @@ MESSAGES = {
 ALLOW_WORDS = ["producer-status:", "allow"]
 TERMINATORS = ("exit", "return")  # the plain commands that end the read when the tested substitution fails (form i)
 FAILURE_STATUSES = range(1, 256)  # the one argument of a terminator, when its text is known, is a decimal in this range
-# The names bash runs as a builtin or a reserved word when no function of that name is defined in the running shell:
-# a `||` branch calling one is never accepted as a refusal function (form ii), since `true() { exit 2; } &` defines
-# the function in a child shell and the parent runs the builtin `true`, turning the failed read into success.
-BUILTINS = (
-    "true", ":", "false", "exit", "return", "test", "[", "set", "eval", "exec", "source", ".", "command", "builtin",
-    "enable", "unset", "trap", "shift", "read", "echo", "printf", "cd", "pwd", "type", "hash", "alias", "unalias",
-    "declare", "local", "export", "readonly", "typeset", "let", "wait", "kill", "jobs", "fg", "bg", "times", "ulimit",
-    "umask", "getopts", "caller", "compgen", "complete", "compopt", "dirs", "pushd", "popd", "disown", "help",
-    "history", "logout", "mapfile", "readarray", "suspend", "bind", "shopt", "break", "continue",
-)
+# The names form (ii) accepts, a closed allowlist: the two refusal functions the adopted levers define. A denylist of
+# bash builtins and reserved words cannot be complete (bash adds and loads them); the one this lint carried missed
+# `fc`, so `fc() { exit 2; }; unset -f fc; x=$(false) || fc -l` ran the builtin and the script went on.
+REFUSAL_NAMES = ("refuse", "fail")
 # A bare literal is a known text only over this set: a glob character, a brace, a tilde, `$`, a backquote, a backslash
 # or whitespace is expanded or read by bash and is not decoded here. Inside double quotes bash expands none of them,
 # so the set does not apply there.
@@ -255,13 +253,14 @@ def producers():
 
 
 def every(tree):
-    """Every JSON object at or below tree, iteratively: a long && chain nests deeper than Python recurses."""
+    """Every JSON object at or below tree, iteratively (a long && chain nests deeper than Python recurses), by
+    children: the one traversal definitions, Walk.comments and refusal_break scan with."""
     todo = [tree]
     while todo:
         node = todo.pop()
         if isinstance(node, dict):
             yield node
-            todo.extend(node.values())
+            todo.extend(children(node))
         elif isinstance(node, list):
             todo.extend(node)
 
@@ -281,6 +280,13 @@ def without_literal_body(redirect):
     if redirect.get("Hdoc") and quoted(redirect["Word"]):
         return {key: value for key, value in redirect.items() if key != "Hdoc"}
     return redirect
+
+
+def children(node):
+    """The values of a node this walk descends into: every value, less the body of a heredoc whose delimiter is quoted
+    or escaped (without_literal_body). The one descent: every and Walk.visit step by it, and no other function reads
+    a node's values, so no scan of this walk reads a literal body as code."""
+    return without_literal_body(node).values()
 
 
 def command_of(stmt):
@@ -463,7 +469,7 @@ def top_level_functions(tree):
 def definitions(tree):
     """Every function definition the file holds, at any depth, name -> the lines of its FuncDecl nodes in file order:
     one inside an `if`, a loop, a block, a subshell, another function or a background job counts (every visits them
-    all), since bash runs whichever definition ran last."""
+    all, less a literal heredoc body), since bash runs whichever definition ran last."""
     lines = {}
     for node in every(tree):
         if node.get("Type") == "FuncDecl":
@@ -473,17 +479,15 @@ def definitions(tree):
 
 def refusal_function(text, tested, functions, defined):
     """Why a `||` branch calling text is not shown to run one refusal function of this file when the tested statement
-    fails, else None: the name is a bash builtin or reserved word (BUILTINS), which bash runs when the function is
-    absent from the running shell; the file defines the name more than once, at any depth (defined), and bash runs
-    whichever ran last; the one definition sits inside another statement (not in functions, the top-level ones), runs
-    in the background or is negated (flagged_path), or comes after the tested statement in file order, so it has not
-    run when the read fails."""
+    fails, else None: the name is not one of REFUSAL_NAMES (a closed allowlist; any other name, a builtin's among
+    them, is refused whatever its body); the file defines the name more than once, at any depth (defined), and bash
+    runs whichever ran last; the one definition sits inside another statement (not in functions, the top-level ones),
+    runs in the background or is negated (flagged_path), or comes after the tested statement in file order, so it
+    has not run when the read fails."""
     lines = defined[text]
-    if text in BUILTINS:
-        return (
-            f"a call of `{text}`, the name of a bash builtin or reserved word, which bash runs instead when the "
-            f"function (defined at line {lines[0]}) is absent from the running shell"
-        )
+    if text not in REFUSAL_NAMES:
+        names = ", ".join(f"`{name}`" for name in REFUSAL_NAMES)
+        return f"a call of `{text}`, defined at line {lines[0]}, a name that is not a refusal name ({names})"
     if len(lines) > 1:
         return (
             f"a call of `{text}`, defined {len(lines)} times (lines {', '.join(map(str, lines))}), where bash runs "
@@ -736,12 +740,11 @@ def branch_shape(stmt, tested, functions, defined, terminators):
     """None when the `||` branch (stmt) handles the status of the tested statement, else the name of its shape. The
     branches that handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a
     function of that name anywhere in the file takes the name away) with no argument, one known decimal from 1 to 255
-    or one bare `$?` (terminator_shape); (ii) a plain command whose known first word names a function this file
-    defines once, at top level, unflagged and before the tested statement (refusal_function), whose body is the
-    refusal grammar (refusal_break; a name no function has is a plain command); (iii) a block or subshell whose
-    statements are that grammar; (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the value). A
-    statement run in the background or negated handles nothing (the script goes on, or the failure reads as
-    success)."""
+    or one bare `$?` (terminator_shape); (ii) a plain command whose known first word is one of REFUSAL_NAMES and names a
+    function this file defines once, at top level, unflagged and before the tested statement (refusal_function), whose
+    body is the refusal grammar (refusal_break; a name no function has is a plain command); (iii) a block or subshell
+    whose statements are that grammar; (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the value). A
+    statement run in the background or negated handles nothing (the script goes on, or the failure reads as success)."""
     flag = flagged_path((stmt,))
     if flag is not None:
         return BRANCH_FLAGS[flag[0]]
@@ -936,8 +939,7 @@ class Walk:
             if id(node) not in self.accepted:
                 message = self.reasons.get(id(node), MESSAGES[SUBSTITUTION])
                 self.report(stack[0] if stack else None, node["Pos"]["Line"], SUBSTITUTION, message)
-        node = without_literal_body(node)
-        for value in node.values():
+        for value in children(node):
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
                 for index, item in enumerate(value):
                     self.visit(item, stack, (value, index, stack))

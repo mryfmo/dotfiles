@@ -27,14 +27,20 @@ branch is an accepted form, or a bare top-level statement after the prologue, on
 10 reads the flags of the producer's own path too (`git ls-files > l 2> e &` let the next statement test `e` before
 the listing had finished), so a producer run in the background, negated or in a coprocess is a finding whatever
 follows it, and round 11 counts every function definition of the file at any depth: a `||` branch may call only a
-name defined exactly once, at the top level, in the foreground and not negated, before the tested statement, that
-is no bash builtin or reserved word (`refuse() { exit 2; }` redefined inside an `if`, and `true() { exit 2; } &`, had
-passed), and form (iv) is a plain `=` of `$?` (`status+=$?` had passed).
+name defined exactly once, at the top level, in the foreground and not negated, before the tested statement
+(`refuse() { exit 2; }` redefined inside an `if`, and `true() { exit 2; } &`, had passed), and form (iv) is a plain
+`=` of `$?` (`status+=$?` had passed), and round 12 closes the name: form (ii) accepts only `refuse` and `fail`, the
+closed allowlist REFUSAL_NAMES (the builtin denylist of round 11 missed `fc`, so `fc() { exit 2; }; unset -f fc;
+x=$(false) || fc -l` had passed), and every scan of the walk (the definitions, the allow comments, the body scan)
+descends by the one traversal that skips a literal heredoc body (a `$(refuse() { return 0; })` in a `<< 'E'OF` body
+had made the file's real `refuse` a duplicate).
 """
 
 from __future__ import annotations
 
+import ast
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -413,7 +419,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
         brace or a tilde in a bare literal is no file name, while the same characters in double quotes are."""
         body = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'  # lines 3 to 6
-            'fail_later() {\n    status=$?\n    echo "failed ${status}"\n}\n'  # 7 to 10
+            'fail() {\n    status=$?\n    echo "failed ${status}"\n}\n'  # 7 to 10
             "x=$(false) || true | cat\n"  # 11
             "x=$(a) || { true; }\n"  # 12
             "x=$(a) || (true)\n"  # 13
@@ -423,7 +429,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(a) || { echo x >&2; exit 2; }\n"  # 17
             "x=$(a) || refuse 'x'\n"  # 18
             "x=$(a) || undefined_refuse 'x'\n"  # 19
-            "x=$(a) || fail_later\n"  # 20
+            "x=$(a) || fail\n"  # 20
             "git ls-files 2> err* || exit 1\n[[ ! -s err* ]] || exit 1\n"  # 21, 22
             "git ls-files 2> err? || exit 1\n[[ ! -s err? ]] || exit 1\n"  # 23, 24
             "git ls-files 2> err[1] || exit 1\n[[ ! -s err[1] ]] || exit 1\n"  # 25, 26
@@ -450,7 +456,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (19, "the command `undefined_refuse`"),
             (
                 20,
-                "a call of `fail_later`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with an assignment",
+                "a call of `fail`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with an assignment",
             ),
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
@@ -462,11 +468,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
         1 to 255 or the bare `$?` end the read; a zero, a 256, an argument with no known text (`"$code"`, `$(cmd)`,
         `"$?"`), a non-decimal or two arguments are findings naming the shape."""
         body = (
-            "zero_fn() {\n    exit 0\n}\n"  # lines 3 to 5
+            "refuse() {\n    exit 0\n}\n"  # lines 3 to 5
             "x=$(false) || exit 0\n"  # 6
             "x=$(a) || (exit 0)\n"  # 7
             "x=$(a) || { echo x >&2; exit 0; }\n"  # 8
-            "x=$(a) || zero_fn\n"  # 9
+            "x=$(a) || refuse\n"  # 9
             "f() {\n    x=$(a) || return 0\n}\n"  # 10 to 12
             'x=$(a) || exit "$code"\n'  # 13
             "x=$(a) || exit $?\n"  # 14
@@ -497,7 +503,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 9,
-                "a call of `zero_fn`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with `exit 0`, which turns the failed read into success",
+                "a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with `exit 0`, which turns the failed read into success",
             ),
             (11, "`return 0`, which turns the failed read into success"),
             (13, "an `exit` whose argument has no known text"),
@@ -530,8 +536,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(a) || { echo x >&2; exit; }\n"  # 12
             "x=$(a) || { echo x >&2; exit 2; }\n"  # 13
             "x=$(a) || exit\n"  # 14
-            'ok() {\n    echo "$1" >&2\n    exit 2\n}\n'  # 15 to 18
-            "x=$(a) || ok y\n"  # 19
+            'fail() {\n    echo "$1" >&2\n    exit 2\n}\n'  # 15 to 18
+            "x=$(a) || fail y\n"  # 19
             "x=$(a) || (exit)\n"  # 20
             "x=$(a) || { exit; }\n"  # 21
             "bare() {\n    exit\n}\n"  # 22 to 24
@@ -571,7 +577,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 25,
-                f"the `||` branch is a call of `bare`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 23 with {bare}",
+                "the `||` branch is a call of `bare`, defined at line 22, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (26, background),
             (27, background),
@@ -611,11 +617,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "does not end the read",
             ),
             (
-                "f() {\n    '{y}'\n    return\n}\n"  # 3 to 6
-                "x=$(false) || f\n",  # 7
+                "refuse() {\n    '{y}'\n    return\n}\n"  # 3 to 6
+                "x=$(false) || refuse\n",  # 7
                 7,
                 "substitution",
-                "the `||` branch is a call of `f`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with the command "
+                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with the command "
                 "`{y}` and does not end the read",
             ),
             (
@@ -732,7 +738,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
         exactly one `exit` whose argument is a known decimal from 1 to 255, nothing else of any kind), each finding
         naming the first statement outside it by line; and rule b's test must be an `if` condition, the left side of
         a `||` whose branch is an accepted form, or a bare top-level statement after the prologue, with no `!` or `&`
-        on its path, each finding naming the test's line and why."""
+        on its path, each finding naming the test's line and why. Round 12 closed form (ii) to the names `refuse` and
+        `fail`: the two accepted functions carry those names, every other call here is a finding naming the name, and
+        the round-12 test pins the body-break messages of the function path."""
         body = (
             "f1() {\n    echo failed >&2\n    return $?\n}\n"  # lines 3 to 6: the auditor's first probe
             "x=$(false) || f1\n"  # 7
@@ -748,10 +756,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(false) || f4\n"  # 27
             'f5() {\n    local m=$1\n    echo "$m" >&2\n    exit 2\n}\n'  # 28 to 32
             "x=$(false) || f5 m\n"  # 33
-            "f6() {\n    printf '%s\\n' \"$@\" >&2\n    exit 2\n}\n"  # 34 to 37: accepted
-            "x=$(false) || f6 a b\n"  # 38
-            'f7() {\n    echo "$1" 1>&2\n    exit 255\n}\n'  # 39 to 42: accepted
-            "x=$(false) || f7 y\n"  # 43
+            "fail() {\n    printf '%s\\n' \"$@\" >&2\n    exit 2\n}\n"  # 34 to 37: accepted
+            "x=$(false) || fail a b\n"  # 38
+            'refuse() {\n    echo "$1" 1>&2\n    exit 255\n}\n'  # 39 to 42: accepted
+            "x=$(false) || refuse y\n"  # 43
             "git ls-files > list 2> err3 || exit 1\n"  # 44: accepted, the test as an `if` condition
             "if [[ ! -s err3 ]]; then\n    :\nelse\n    exit 1\nfi\n"  # 45 to 49
             "git ls-files > list 2> err4 || exit 1\n"  # 50: accepted, a bare test at top level after the prologue
@@ -766,7 +774,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "git ls-files > list 2> err9 || exit 1\n"  # 62
             "if ! [[ ! -s err9 ]]; then\n    exit 1\nfi\n"  # 63 to 65: the negated condition at 63
             "git ls-files > list 2> err10 || exit 1\n"  # 66: accepted, the test closed by a refusal function
-            "[[ ! -s err10 ]] || f7 stderr\n"  # 67
+            "[[ ! -s err10 ]] || refuse stderr\n"  # 67
             "f8() {\n    echo x >&2\n    exit $?\n}\n"  # 68 to 71
             "x=$(false) || f8\n"  # 72
             'f9() {\n    echo x >&2\n    rm -rf "$dir"\n    exit 1\n}\n'  # 73 to 77: a cleanup is not a refusal
@@ -781,48 +789,47 @@ class ProducerStatusCheckTest(unittest.TestCase):
         expected = [(line, "substitution") for line in (7, 12, 22, 27, 33, 72, 78, 80, 83, 88, 93)]
         expected += [(line, "producer") for line in (13, 15, 52, 54, 57, 60, 62)]
         result = self.assert_findings(body, expected)
-        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
         for line, message in (
             (
                 7,
-                f"the `||` branch is a call of `f1`, whose body breaks the refusal grammar ({grammar}) at line 5 with the command `return`",
+                "the `||` branch is a call of `f1`, defined at line 3, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 12,
-                f"the `||` branch is a call of `f2`, whose body breaks the refusal grammar ({grammar}) at line 9 with the command `return`",
+                "the `||` branch is a call of `f2`, defined at line 8, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 22,
-                f"the `||` branch is a call of `f3`, whose body breaks the refusal grammar ({grammar}) at line 19 with an `exit` before the last statement",
+                "the `||` branch is a call of `f3`, defined at line 17, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 27,
-                f"the `||` branch is a call of `f4`, whose body breaks the refusal grammar ({grammar}) at line 24 with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+                "the `||` branch is a call of `f4`, defined at line 23, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 33,
-                f"the `||` branch is a call of `f5`, whose body breaks the refusal grammar ({grammar}) at line 29 with a declaration",
+                "the `||` branch is a call of `f5`, defined at line 28, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 72,
-                f"the `||` branch is a call of `f8`, whose body breaks the refusal grammar ({grammar}) at line 70 with `exit $?`, whose status is the statement's before it",
+                "the `||` branch is a call of `f8`, defined at line 68, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 78,
-                f"the `||` branch is a call of `f9`, whose body breaks the refusal grammar ({grammar}) at line 75 with the command `rm`",
+                "the `||` branch is a call of `f9`, defined at line 73, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (80, "a command substitution here loses its status"),
             (
                 83,
-                f"the `||` branch is a call of `f10`, whose body breaks the refusal grammar ({grammar}) at line 80 with a command substitution",
+                "the `||` branch is a call of `f10`, defined at line 79, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 88,
-                f"the `||` branch is a call of `f11`, whose body breaks the refusal grammar ({grammar}) at line 86 with a command run in the background (`&`), which lets the script go on",
+                "the `||` branch is a call of `f11`, defined at line 84, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 93,
-                f"the `||` branch is a call of `f12`, whose body breaks the refusal grammar ({grammar}) at line 91 with a negated command (`!`), whose failure status is read as success",
+                "the `||` branch is a call of `f12`, defined at line 89, a name that is not a refusal name (`refuse`, `fail`)",
             ),
         ):
             self.assertIn(f":{line}: substitution: {message}", result.stdout)
@@ -916,13 +923,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
         builtin `true`; and form (iv) accepted `status+=$?`, which adds the status to the value (25 and 6 making 256,
         which a later `exit "$status"` turns into success). Round 11 counts every FuncDecl of the file at any depth,
         accepts a call only of a name defined exactly once, at the top level, in the foreground and not negated, before
-        the tested statement in file order, and never of a bash builtin's or reserved word's name, each finding naming
-        the duplicate's line, the flag or the builtin; form (iv) is a plain `=` of `$?` and the append is named."""
+        the tested statement in file order, and never of a bash builtin's or reserved word's name (round 12 closes that
+        to the allowlist `refuse`, `fail`, so every other name here is named as no refusal name), each finding naming
+        the duplicate's line, the flag or the name; form (iv) is a plain `=` of `$?` and the append is named."""
         body = (
             "refuse() {\n    exit 2\n}\n"  # 3 to 5
             "if true; then\n    refuse() {\n        return 0\n    }\nfi\n"  # 6 to 10: the nested redefinition, at 7
             "x=$(false) || refuse\n"  # 11
-            "true() {\n    exit 2\n} &\n"  # 12 to 14: the background definition of a builtin's name
+            "true() {\n    exit 2\n} &\n"  # 12 to 14: the background definition of a builtin's name, outside the allowlist
             "x=$(false) || true\n"  # 15
             "x=$(false) || late\n"  # 16: the definition comes after the read
             "late() {\n    exit 2\n}\n"  # 17 to 19
@@ -934,10 +942,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(false) || status+=$?\n"  # 33: the append
             "! flagged() {\n    exit 2\n}\n"  # 34 to 36: a negated definition
             "x=$(false) || flagged\n"  # 37
-            "ok() {\n    echo no >&2\n    exit 2\n}\n"  # 38 to 41: the single top-level definition before the read
-            "x=$(false) || ok\n"  # 42: accepted
+            "fail() {\n    echo no >&2\n    exit 2\n}\n"  # 38 to 41: the single top-level definition before the read
+            "x=$(false) || fail\n"  # 42: accepted
             "x=$(false) || status=$?\n"  # 43: accepted
-            "job() {\n    exit 2\n} &\n"  # 44 to 46: a background definition of a name no builtin takes
+            "job() {\n    exit 2\n} &\n"  # 44 to 46: a background definition of a name outside the allowlist
             "x=$(false) || job\n"  # 47
         )
         expected = [(line, "substitution") for line in (11, 15, 16, 26, 32, 33, 37, 47)]
@@ -946,19 +954,19 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (11, "a call of `refuse`, defined 2 times (lines 3, 7), where bash runs whichever definition ran last"),
             (
                 15,
-                "a call of `true`, the name of a bash builtin or reserved word, which bash runs instead when the function (defined at line 12) is absent from the running shell",
+                "a call of `true`, defined at line 12, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 16,
-                "a call of `late`, defined at line 17, after the tested statement at line 16, so the function has not been defined when the read fails",
+                "a call of `late`, defined at line 17, a name that is not a refusal name (`refuse`, `fail`)",
             ),
-            (26, "a call of `twice`, defined 2 times (lines 20, 23), where bash runs whichever definition ran last"),
-            (32, "a call of `inner`, defined at line 28 inside another statement, not at the top level"),
+            (26, "a call of `twice`, defined at line 20, a name that is not a refusal name (`refuse`, `fail`)"),
+            (32, "a call of `inner`, defined at line 28, a name that is not a refusal name (`refuse`, `fail`)"),
             (33, "an append (`+=`) of the status to the value, not a capture of `$?`"),
-            (37, "a call of `flagged`, whose definition at line 34 is negated (`!`), a flagged statement"),
+            (37, "a call of `flagged`, defined at line 34, a name that is not a refusal name (`refuse`, `fail`)"),
             (
                 47,
-                "a call of `job`, whose definition at line 44 runs in the background (`&`), so the function exists in a child shell only",
+                "a call of `job`, defined at line 44, a name that is not a refusal name (`refuse`, `fail`)",
             ),
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
@@ -970,11 +978,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
         `exit <1-255>`; a function ending in a call of another, a name defined inside another statement, a name
         defined twice and a bare `exit` or `return` in a body are not accepted); a block or subshell whose statements
         are that grammar; and `name=$?` or `name=${?}`. Everything else is a finding that names the shape (a body or
-        block outside the grammar names its first statement outside it, by line), and a function named `exit` is
-        the builtin's name, which bash runs when the function is absent, so the call is never accepted."""
+        block outside the grammar names its first statement outside it, by line), and a function named `exit`, like
+        every name outside the allowlist `refuse`, `fail` (round 12), is a finding naming the name, whatever its body."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
-            "refuse_plain() exit 2\n"
+            "fail() exit 2\n"
             'fail_later() {\n    echo "failed"\n}\n'
             "if true; then\n    nested_refuse() {\n        exit 2\n    }\nfi\n"
             "twice() {\n    exit 2\n}\n"
@@ -990,7 +998,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ('x=$(a) || "return" 1', None),
             ("x=$(a) || status=${?}", None),
             ("x=$(a) || refuse 'x'", None),
-            ("x=$(a) || refuse_plain", None),
+            ("x=$(a) || fail", None),
             ("x=$(a) || (echo no >&2; exit 1)", None),
             ("x=$(a) || { printf '%s\\n' \"$@\" >&2; exit 1; }", None),
             ("x=$(a) || { echo no 1>&2; exit 255; }", None),
@@ -1097,7 +1105,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 "x=$(a) || zero",
-                "a call of `zero`, whose body breaks the refusal grammar (GRAMMAR) at line 26 with `exit 0`, which turns",
+                "a call of `zero`, defined at line 25, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             ('x=$(a) || status="$?"', "an assignment of something other than `$?`"),
             ("x=$(a) || status=${?:-0}", "an assignment of something other than `$?`"),
@@ -1133,20 +1141,19 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || refuse_undefined", "the command `refuse_undefined`"),
             (
                 "x=$(a) || fail_later",
-                "a call of `fail_later`, whose body breaks the refusal grammar (GRAMMAR) at line 9 with the command "
-                "`echo` as the last statement, where the `exit` must be",
+                "a call of `fail_later`, defined at line 8, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || nested_refuse",
-                "a call of `nested_refuse`, defined at line 12 inside another statement, not at the top level",
+                "a call of `nested_refuse`, defined at line 12, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || twice",
-                "a call of `twice`, defined 2 times (lines 16, 19), where bash runs whichever definition ran last",
+                "a call of `twice`, defined at line 16, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || deep",
-                "a call of `deep`, whose body breaks the refusal grammar (GRAMMAR) at line 23 with a call of `refuse`",
+                "a call of `deep`, defined at line 22, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || { echo no >&2; exit; }",
@@ -1158,11 +1165,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 "x=$(a) || bare_refuse",
-                "a call of `bare_refuse`, whose body breaks the refusal grammar (GRAMMAR) at line 30 with the command `return`",
+                "a call of `bare_refuse`, defined at line 28, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || bare_only",
-                "a call of `bare_only`, whose body breaks the refusal grammar (GRAMMAR) at line 33 with a bare `exit`, whose status",
+                "a call of `bare_only`, defined at line 32, a name that is not a refusal name (`refuse`, `fail`)",
             ),
             (
                 "x=$(a) || { exit 2 & }",
@@ -1184,15 +1191,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
         shadowed = "exit() {\n    echo no\n}\nx=$(a) || exit 1\n"
         result = self.assert_findings(shadowed, [(6, "substitution")])
         self.assertIn(
-            "a call of `exit`, the name of a bash builtin or reserved word, which bash runs instead when the function "
-            "(defined at line 3) is absent from the running shell",
+            "a call of `exit`, defined at line 3, a name that is not a refusal name (`refuse`, `fail`)",
             result.stdout,
         )
         # A top-level function named `echo` takes that name from the grammar too: `echo x >&2` in a body is then a call.
-        shadowed = "echo() {\n    :\n}\nf() {\n    echo no >&2\n    exit 1\n}\nx=$(a) || f\n"
+        shadowed = "echo() {\n    :\n}\nfail() {\n    echo no >&2\n    exit 1\n}\nx=$(a) || fail\n"
         result = self.assert_findings(shadowed, [(10, "substitution")])
         self.assertIn(
-            f"a call of `f`, whose body breaks the refusal grammar ({grammar}) at line 7 with a call of `echo`",
+            f"a call of `fail`, whose body breaks the refusal grammar ({grammar}) at line 7 with a call of `echo`",
             result.stdout,
         )
 
@@ -1306,6 +1312,111 @@ class ProducerStatusCheckTest(unittest.TestCase):
         result = subprocess.run(["bash", str(copy), str(clean)], capture_output=True, text=True, check=False)
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
         self.assertIn("cannot read the producer table", result.stderr)
+
+    def test_the_round_12_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the 3fed043e audit, which that head read as clean: the builtin denylist of round 11 omitted
+        `fc`, so `fc() { exit 2; }; unset -f fc; x=$(false) || fc -l` passed while bash ran the builtin and went on;
+        and the definitions and allow-comment scans walked the literal body of a partly quoted heredoc that the main
+        walk skips, so `$(refuse() { return 0; })` in a `<< 'E'OF` body made the file's one `refuse` a duplicate and a
+        `# producer-status: allow` there was a malformed-allow finding. Round 12 replaces the denylist by the closed
+        allowlist REFUSAL_NAMES (`refuse`, `fail`): a call of any other defined name is a finding naming the name,
+        whatever the body, and the round-11 definition rule and the body grammar judge those two names; every scan
+        descends by the one traversal, so a literal heredoc body defines, exempts and breaks nothing."""
+        body = (
+            "fc() {\n    exit 2\n}\n"  # 3 to 5: the auditor's probe
+            "unset -f fc\n"  # 6
+            "x=$(false) || fc -l\n"  # 7
+            "die() {\n    echo x >&2\n    exit 2\n}\n"  # 8 to 11: the grammar, under a name outside the allowlist
+            "x=$(false) || die\n"  # 12
+            "refuse() {\n    echo no >&2\n    exit 2\n}\n"  # 13 to 16
+            'fail() {\n    echo "$1" >&2\n    exit 1\n}\n'  # 17 to 20
+            "cat << 'E'OF\n$(refuse() { return 0; })\n$(true # producer-status: allow\n)\nEOF\n"  # 21 to 25: literal
+            "x=$(false) || refuse\n"  # 26: accepted, the one definition is at 13
+            "x=$(false) || fail y\n"  # 27: accepted
+            "y=$(cat << 'E'OF\n$(true # producer-status: allow the text is literal\n)\nEOF\n)\n"  # 28 to 32: a plain read
+        )
+        expected = [(line, "substitution") for line in (7, 12, 28)]
+        result = self.assert_findings(body, expected)
+        for line, shape in (
+            (7, "a call of `fc`, defined at line 3, a name that is not a refusal name (`refuse`, `fail`)"),
+            (12, "a call of `die`, defined at line 8, a name that is not a refusal name (`refuse`, `fail`)"),
+        ):
+            self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
+        self.assertIn(":28: substitution: a command substitution here loses its status", result.stdout)
+        # The round-11 definition rule and the body grammar still judge the two allowed names, one script each.
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
+        for name, body, line, shape in (
+            (
+                "after the read",
+                "x=$(false) || refuse\nrefuse() {\n    exit 2\n}\n",
+                3,
+                "a call of `refuse`, defined at line 4, after the tested statement at line 3, so the function has not been defined when the read fails",
+            ),
+            (
+                "inside another statement",
+                "if true; then\n    fail() {\n        exit 2\n    }\nfi\nx=$(false) || fail\n",
+                8,
+                "a call of `fail`, defined at line 4 inside another statement, not at the top level",
+            ),
+            (
+                "negated",
+                "! refuse() {\n    exit 2\n}\nx=$(false) || refuse\n",
+                6,
+                "a call of `refuse`, whose definition at line 3 is negated (`!`), a flagged statement",
+            ),
+            (
+                "in the background",
+                "fail() {\n    exit 2\n} &\nx=$(false) || fail\n",
+                6,
+                "a call of `fail`, whose definition at line 3 runs in the background (`&`), so the function exists in a child shell only",
+            ),
+            (
+                "twice",
+                "refuse() {\n    exit 2\n}\nfunction refuse {\n    exit 2\n}\nx=$(false) || refuse\n",
+                9,
+                "a call of `refuse`, defined 2 times (lines 3, 6), where bash runs whichever definition ran last",
+            ),
+            (
+                "a body outside the grammar",
+                "fail() {\n    echo failed >&2\n    return $?\n}\nx=$(false) || fail\n",
+                7,
+                f"a call of `fail`, whose body breaks the refusal grammar ({grammar}) at line 5 with the command `return`",
+            ),
+        ):
+            with self.subTest(name):
+                result = self.assert_findings(body, [(line, "substitution")])
+                self.assertIn(
+                    f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout
+                )
+
+    def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
+        """One function of the embedded walk, children, reads a node's values, through without_literal_body; every
+        (which definitions, comments and refusal_break iterate) and Walk.visit descend by children alone. A second
+        traversal would read a literal heredoc body as code, as definitions and the allow-comment scan did before
+        round 12 (without_positions copies a word's parts for an equality test and finds nothing)."""
+        source = re.search(r"cat << 'PY'\n(.*?)\nPY\n", CHECK.read_text(), re.DOTALL)
+        assert source is not None
+        functions = {
+            node.name: node for node in ast.walk(ast.parse(source.group(1))) if isinstance(node, ast.FunctionDef)
+        }
+
+        def calls(function: ast.FunctionDef) -> set[str]:
+            """The names called in the function: `name` for name(...), `.attr` for x.attr(...)."""
+            names = set()
+            for node in ast.walk(function):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                    names.add(node.func.id)
+                elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                    names.add("." + node.func.attr)
+            return names
+
+        called = {name: calls(function) for name, function in functions.items()}
+        self.assertEqual(["children"], [name for name, names in called.items() if ".values" in names])
+        self.assertEqual(["children"], [name for name, names in called.items() if "without_literal_body" in names])
+        self.assertEqual({"every", "visit"}, {name for name, names in called.items() if "children" in names})
+        self.assertEqual(
+            {"definitions", "comments", "refusal_break"}, {name for name, names in called.items() if "every" in names}
+        )
 
     def test_the_walk_refuses_fixtures_in_which_it_sees_none_of_its_kinds(self) -> None:
         """The contract holds (every node is still in each tree), but each tree is the literal body of a quoted

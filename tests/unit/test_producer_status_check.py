@@ -11,8 +11,10 @@ findings. Rounds 2 to 5 of the audit each have a test naming their probe lines b
 two readings (a word has a known text only in three quoting forms; stderr is captured only by three operators), round
 4 names the `||` branches that handle a tested read's status (exit, return, a top-level function ending in one, a
 block or subshell ending so, `name=$?`) and the characters of a known bare literal, so a form the lint does not know
-is a finding naming its shape, never decoded, and round 5 reads the argument of that `exit` or `return` (none, a known
-decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a failed read into success.
+is a finding naming its shape, never decoded, round 5 reads the argument of that `exit` or `return` (none, a known
+decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a failed read into success, and round 6
+reads the tested statement's flags (`!`, `&`, `coproc`) and accepts the bare `exit` or `return` only as the whole
+branch or as the only statement of its block or subshell, since after an earlier command `$?` is that command's.
 """
 
 from __future__ import annotations
@@ -455,13 +457,82 @@ class ProducerStatusCheckTest(unittest.TestCase):
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
 
+    def test_the_round_6_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two lines of the aa32e0b3 audit and the next members of both lists, which that head read as clean: a
+        tested read that is negated or runs in the background (the statement's flags were not read, so `! x=$(false)
+        || exit 1` read the failure as success and `x=$(false) || exit 1 &` ended only the job), and a bare `exit` or
+        `return` after an earlier command or anywhere in a function body (`$?` is by then that command's, so
+        `refuse() { echo failed >&2; return; }` returned 0 and the script went on with an empty x). Round 6 reads the
+        flags of the tested statement and of the branch and the `coproc` clause, and accepts the bare form only as
+        the whole branch or as the only statement of its block or subshell; the finding names the command before it."""
+        body = (
+            "! x=$(false) || exit 1\n"  # 3
+            "x=$(false) || exit 1 &\n"  # 4
+            "coproc x=$(true)\n"  # 5: shfmt reads `x=$(true)` as the coprocess's command word, so the plain finding
+            "coproc { x=$(true); } || exit 1\n"  # 6
+            "refuse() {\n    echo failed >&2\n    return\n}\n"  # 7 to 10
+            "x=$(false) || refuse\n"  # 11
+            "x=$(a) || { echo x >&2; exit; }\n"  # 12
+            "x=$(a) || { echo x >&2; exit 2; }\n"  # 13
+            "x=$(a) || exit\n"  # 14
+            'ok() {\n    echo "$1" >&2\n    exit 2\n}\n'  # 15 to 18
+            "x=$(a) || ok y\n"  # 19
+            "x=$(a) || (exit)\n"  # 20
+            "x=$(a) || { exit; }\n"  # 21
+            "bare() {\n    exit\n}\n"  # 22 to 24
+            "x=$(a) || bare\n"  # 25
+            "x=$(a) || exit 2 &\n"  # 26
+            "if x=$(a) & then :; fi\n"  # 27
+            "x=$(a) || { y=1; exit; }\n"  # 28
+            "x=$(a) || { y=1; exit $?; }\n"  # 29
+            "x=$(a) || { echo x; refuse; }\n"  # 30
+            "x=$(a) || { exit 2 & }\n"  # 31
+            "if ! x=$(a); then exit 1; fi\n"  # 32: a negated condition is accepted, as before
+        )
+        expected = [(line, "substitution") for line in (3, 4, 5, 6, 11, 12, 25, 26, 27, 28, 30, 31)]
+        result = self.assert_findings(body, expected)
+        background = "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job"
+        for line, message in (
+            (3, "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run"),
+            (4, background),
+            (5, "a command substitution here loses its status"),
+            (6, "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"),
+            (
+                11,
+                "the `||` branch is a call of `refuse`, whose body ends in a bare `return` after the command `echo`, "
+                "which passes on that command's status, not the failed read's",
+            ),
+            (12, "the `||` branch is a block whose last statement is a bare `exit` after the command `echo`"),
+            (
+                25,
+                "the `||` branch is a call of `bare`, whose body ends in a bare `exit` in a function body, which must "
+                "name its status (1 to 255 or `$?`)",
+            ),
+            (26, background),
+            (27, background),
+            (28, "the `||` branch is a block whose last statement is a bare `exit` after an assignment"),
+            (
+                30,
+                "the `||` branch is a block whose last statement is a call of `refuse`, whose body ends in a bare "
+                "`return` after the command `echo`",
+            ),
+            (
+                31,
+                "the `||` branch is a block whose last statement is a command run in the background (`&`), which lets "
+                "the script go on",
+            ),
+        ):
+            self.assertIn(f":{line}: substitution: {message}", result.stdout)
+
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
-        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument, one
-        known decimal from 1 to 255 or one bare `$?`, a top-level function of this file whose body's last statement is
-        one of those (one level: a function ending in a call of another is not accepted, nor a name defined inside
-        another statement, nor a name whose second definition ends otherwise), a block or subshell whose last statement
-        is one of those, and `name=$?` or `name=${?}`. Everything else is a finding that names the shape, and a
-        top-level function named `exit` takes the name away."""
+        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument (as
+        the whole branch or the only statement of its block or subshell), one known decimal from 1 to 255 or one bare
+        `$?`, a top-level function of this file whose body's last statement is one of those with an explicit argument
+        (one level: a function ending in a call of another is not accepted, nor a name defined inside another
+        statement, nor a name whose second definition ends otherwise), a block or subshell whose last statement is one
+        of those, and `name=$?` or `name=${?}`. Everything else is a finding that names the shape (a bare `exit` or
+        `return` after an earlier statement names that statement), and a top-level function named `exit` takes the
+        name away."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
             "refuse_plain() exit 2\n"
@@ -471,6 +542,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
             'twice() {\n    echo "no"\n}\n'
             "deep() {\n    refuse 'x'\n}\n"
             "zero() {\n    exit 0\n}\n"
+            "bare_refuse() {\n    echo failed >&2\n    return\n}\n"
+            "bare_only() {\n    exit\n}\n"
         )
         cases: list[tuple[str, str | None]] = [  # (the line, the shape the finding names, or None when accepted)
             ("x=$(a) || exit", None),
@@ -485,6 +558,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || exit $?", None),
             ("x=$(a) || return ${?}", None),
             ("x=$(a) || exit '255'", None),
+            ("x=$(a) || (exit)", None),
+            ("x=$(a) || { exit; }", None),
+            ("x=$(a) || { echo no >&2; exit 2; }", None),
             ("x=$(a) || exit 0", "`exit 0`, which turns the failed read into success"),
             ("x=$(a) || return 0", "`return 0`, which turns the failed read into success"),
             ("x=$(a) || exit 256", "`exit 256`, which turns the failed read into success"),
@@ -517,6 +593,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || nested_refuse", "the command `nested_refuse`"),
             ("x=$(a) || twice", "a call of `twice`, whose body ends in the command `echo`"),
             ("x=$(a) || deep", "a call of `deep`, whose body ends in the command `refuse`"),
+            (
+                "x=$(a) || { echo no >&2; exit; }",
+                "a block whose last statement is a bare `exit` after the command `echo`",
+            ),
+            ("x=$(a) || { y=1; return; }", "a block whose last statement is a bare `return` after an assignment"),
+            ("x=$(a) || bare_refuse", "a call of `bare_refuse`, whose body ends in a bare `return` after the command"),
+            ("x=$(a) || bare_only", "a call of `bare_only`, whose body ends in a bare `exit` in a function body"),
+            ("x=$(a) || { exit 2 & }", "a block whose last statement is a command run in the background (`&`)"),
         ]
         first = 3 + preamble.count("\n")
         expected = [(first + index, "substitution") for index, (_, shape) in enumerate(cases) if shape]

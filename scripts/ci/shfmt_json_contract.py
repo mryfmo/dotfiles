@@ -51,7 +51,9 @@ class Kind(NamedTuple):
 
 TABLE: dict[str, Kind] = {
     "File": Kind(None, ("Stmts",)),
-    "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs")),
+    # A statement's `!` and `&` are flags shfmt writes only when true: the lint refuses a tested read that carries
+    # one (`! x=$(…) || exit 1`, `x=$(…) || exit 1 &`), so the fixture has one statement of each (U112 round 6).
+    "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs", "Negated", "Background")),
     # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, its `read < f` the `<`, and its
     # producer line the other ways stderr moves (`2>>`, `2>|`, `2>&1`, `&>`, `&>>`, `>&`) that the lint reads.
     "Redirect": Kind(
@@ -90,6 +92,9 @@ TABLE: dict[str, Kind] = {
     "FuncDecl": Kind(None, ("Name", "Name.Value", "Body", "Pos.Line")),
     "Block": Kind(None, ("Stmts", "Pos.Line")),
     "Subshell": Kind(None, ("Stmts", "Pos.Line")),
+    # `coproc` is a clause around one statement (shfmt 3.14.1 writes no Coprocess flag on the statement): the lint
+    # reads the statement a tested coprocess runs (U112 round 6).
+    "CoprocClause": Kind(None, ("Stmt", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),
     # An assignment is untyped, named by its Name; its array literal and the elements are untyped too and are read
     # through it (`Array.Elems`, each element's `Value` a word), so they have no row of their own (U113).

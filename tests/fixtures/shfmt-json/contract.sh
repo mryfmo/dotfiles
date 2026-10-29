@@ -53,3 +53,8 @@ refuse() {
 first=$(printf z) || refuse 'no z'
 first=$(printf z) || status=$?
 first=$(printf z) || { exit 1; }
+# producer-status-check (U112 round 6): a negated, a background and a coprocess read, so the statement flags and the
+# coprocess clause the lint reads are in the tree.
+! first=$(printf n) || exit 1
+first=$(printf b) || exit 1 &
+coproc { first=$(printf c); } || exit 1

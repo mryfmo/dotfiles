@@ -9,14 +9,20 @@
 #   printed as `file:line: <rule>: <message>`:
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
-#      condition (negated or not) or the left side of a `||` whose branch handles the status. The branches that
-#      handle it are a closed list: (i) a plain command whose known first word is `exit` or `return`, with no
-#      argument (the status of the failed substitution propagates), with one argument whose known text is a decimal
-#      from 1 to 255, or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2`
-#      and `return 0` are findings: a zero turns the failed read into success); (ii) a plain command whose known
-#      first word names a function this file defines at top level and whose body's last statement is form (i) (one
-#      level, no recursion; a name no top-level function defines is not accepted); (iii) a block or subshell whose
-#      last statement is (i) or (ii); (iv) a bare assignment of exactly `$?` (`status=$?`).
+#      condition (negated or not) or the left side of a `||` whose branch handles the status, and the tested
+#      statement itself runs in the foreground and, under `||`, is not negated: `! x=$(…) || exit 1` reads the
+#      failure as success, `x=$(…) || exit 1 &` ends only the background job, `coproc x=$(…) || exit 1` tests the
+#      coprocess's start, and each is a finding naming that. The branches that handle the status are a closed list:
+#      (i) a plain command whose known first word is `exit` or `return`, with no argument (the status of the failed
+#      substitution propagates, so only as the whole branch or as the only statement of its block or subshell), with
+#      one argument whose known text is a decimal from 1 to 255, or with one argument that is the bare `$?` (`exit
+#      0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0` are findings: a zero turns the failed read into
+#      success); (ii) a plain command whose known first word names a function this file defines at top level and
+#      whose body's last statement is form (i) with an explicit argument (one level, no recursion; a name no
+#      top-level function defines is not accepted; a bare `exit` or `return` there passes on the status of the
+#      body's earlier command, and the finding names that command); (iii) a block or subshell whose last statement is
+#      (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?` (`status=$?`).
+#      A branch statement run in the background (`exit 2 &`) handles nothing.
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
 #      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell ending
 #      otherwise, an assignment of anything else, a first word with no known text. A later line that handles an
@@ -138,6 +144,16 @@ BRANCH = (
     "the `||` branch is {shape} and does not end the read with a failure status: exit or return with no argument, "
     "a decimal from 1 to 255 or `$?`, a refusal function of this file ending so, or `name=$?`"
 )
+# A tested read whose statement does not run in the foreground, or is negated under `||`: its failure stops nothing.
+FLAGS = {
+    "Negated": "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run",
+    "Background": "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job",
+}
+COPROCESS = "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"
+BACKGROUND_BRANCH = "a command run in the background (`&`), which lets the script go on"
+# Why a bare `exit` or `return` is refused where `$?` is no longer the failed read's status (forms ii and iii).
+BARE_AFTER = "a bare `{text}` after {before}, which passes on that command's status, not the failed read's"
+BARE_IN_FUNCTION = "a bare `{text}` in a function body, which must name its status (1 to 255 or `$?`)"
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
     "Subshell": "a subshell",
@@ -396,14 +412,40 @@ def top_level_functions(tree):
     return functions
 
 
-def last_statement(stmt):
-    """The statement a function body or a `||` branch runs last: the last of a block's or subshell's statements (None
-    when it holds none), else the statement itself (`f() exit 2`, a plain command)."""
+def body_statements(stmt):
+    """The statements a function body or a `||` branch runs: a block's or subshell's list, else the statement itself
+    (`f() exit 2`, a plain command)."""
     cmd = command_of(stmt)
     if isinstance(cmd, dict) and cmd.get("Type") in ("Block", "Subshell"):
-        stmts = cmd.get("Stmts") or []
-        return stmts[-1] if stmts else None
-    return stmt
+        return cmd.get("Stmts") or []
+    return [stmt]
+
+
+def statement_name(stmt):
+    """How a finding names the statement before a bare `exit` or `return`: the command's known first word, else its
+    shape (an assignment, a list, a block, an `if`, a command whose first word has no known text)."""
+    cmd = command_of(stmt)
+    kind = cmd.get("Type") if isinstance(cmd, dict) else None
+    if kind == "CallExpr":
+        args = cmd.get("Args") or []
+        if not args:
+            return "an assignment" if cmd.get("Assigns") else "an empty command"
+        text = word_text(args[0])
+        return f"the command `{text}`" if text is not None else "a command whose first word has no known text"
+    if kind == "BinaryCmd":
+        return LIST_SHAPES.get(cmd.get("Op"), f"a `{cmd.get('Op')}` list")
+    return SHAPES.get(kind, f"a {kind}")
+
+
+def flagged(stmt, negation=True):
+    """The flag that takes a tested statement out of the accepted positions, else None: it runs in the background
+    (`&`, so its failure stops nothing), or, under `||` (negation), it is negated (`!`, so its failure is read as
+    success); an `if` or `while` condition may be negated."""
+    if stmt.get("Background"):
+        return FLAGS["Background"]
+    if negation and stmt.get("Negated"):
+        return FLAGS["Negated"]
+    return None
 
 
 def status_parameter(word):
@@ -412,14 +454,15 @@ def status_parameter(word):
     return len(parts) == 1 and parts[0].get("Type") == "ParamExp" and without_positions(parts[0]) in STATUS_PARAMETERS
 
 
-def terminator_shape(text, args):
+def terminator_shape(text, args, bare=None):
     """None when `exit` or `return` (text) ends the read with the failed status: no argument (the status of the
-    failed substitution propagates), one argument whose known text is a decimal from 1 to 255, or one bare `$?` or
-    `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument with no known
-    text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments are an error
-    bash reports before it exits."""
+    failed substitution propagates; refused with the given reason where an earlier command or a function body sits
+    between, since `$?` is then that command's), one argument whose known text is a decimal from 1 to 255, or one bare
+    `$?` or `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument with no
+    known text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments are an
+    error bash reports before it exits."""
     if not args:
-        return None
+        return None if bare is None else bare.format(text=text)
     if len(args) != 1:
         return f"an `{text}` with {len(args)} arguments"
     if status_parameter(args[0]):
@@ -434,14 +477,18 @@ def terminator_shape(text, args):
     return f"`{text} {value}`, whose argument is not a decimal from 1 to 255"
 
 
-def branch_shape(stmt, functions, terminators, inner=False):
+def branch_shape(stmt, functions, terminators, inner=False, bare=None):
     """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
     handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
     function of that name takes the name away) with no argument, one known decimal from 1 to 255 or one bare `$?`
-    (terminator_shape); (ii) a plain command whose known first word names a top-level function of this file whose
-    every body ends in a form (i) statement; (iii) a block or subshell whose last statement is (i) or (ii); (iv) a
-    bare assignment of exactly `$?`. As the last statement of a block or a function body (inner), only (i) and (ii)
-    count: no recursion, no nested block, no `$?` that the enclosing read never tests."""
+    (terminator_shape; bare is the reason a bare one is refused here, None where it is accepted); (ii) a plain
+    command whose known first word names a top-level function of this file whose every body ends in a form (i)
+    statement with an explicit argument; (iii) a block or subshell whose last statement is (i) or (ii), the bare form
+    only as its only statement; (iv) a bare assignment of exactly `$?`. As the last statement of a block or a function
+    body (inner), only (i) and (ii) count: no recursion, no nested block, no `$?` that the enclosing read never tests.
+    A statement run in the background handles nothing: the script goes on while it runs."""
+    if stmt.get("Background"):
+        return BACKGROUND_BRANCH
     cmd = command_of(stmt)
     kind = cmd.get("Type") if isinstance(cmd, dict) else None
     if kind == "CallExpr":
@@ -455,21 +502,28 @@ def branch_shape(stmt, functions, terminators, inner=False):
         if text is None:
             return "a command whose first word has no known text"
         if text in terminators:
-            return terminator_shape(text, args[1:])
+            return terminator_shape(text, args[1:], bare)
         if text in functions:
             for body in functions[text]:
-                last = last_statement(body)
-                shape = "nothing" if last is None else branch_shape(last, {}, terminators, True)
+                stmts = body_statements(body)
+                if not stmts:
+                    return f"a call of `{text}`, whose body ends in nothing"
+                before = BARE_AFTER.replace("{before}", statement_name(stmts[-2])) if len(stmts) > 1 else BARE_IN_FUNCTION
+                shape = branch_shape(stmts[-1], {}, terminators, True, before)
                 if shape is not None:
                     return f"a call of `{text}`, whose body ends in {shape}"
             return None
         return f"the command `{text}`"
     if kind in ("Block", "Subshell") and not inner:
-        last = last_statement(stmt)
-        shape = "nothing" if last is None else branch_shape(last, functions, terminators, True)
+        stmts = body_statements(stmt)
+        noun = "block" if kind == "Block" else "subshell"
+        if not stmts:
+            return f"a {noun} whose last statement is nothing"
+        before = BARE_AFTER.replace("{before}", statement_name(stmts[-2])) if len(stmts) > 1 else None
+        shape = branch_shape(stmts[-1], functions, terminators, True, before)
         if shape is None:
             return None
-        return f"a {'block' if kind == 'Block' else 'subshell'} whose last statement is {shape}"
+        return f"a {noun} whose last statement is {shape}"
     if kind == "BinaryCmd":
         op = cmd.get("Op")
         return LIST_SHAPES.get(op, f"a `{op}` list")
@@ -541,29 +595,41 @@ class Walk:
 
     def accept(self, tree):
         """Mark the substitutions in the two accepted positions: the last statement of an `if` or `while` condition,
-        and the left side of a `||` whose branch handles the status (branch_shape); any other branch leaves the left
-        side's substitution a finding that names the branch's shape."""
+        and the left side of a `||` whose branch handles the status (branch_shape), when the tested statement runs in
+        the foreground and, under `||`, is not negated (flagged) or a coprocess; any other branch or flag leaves the
+        left side's substitution a finding that names the branch's shape or the flag."""
         for node in every(tree):
             kind = node.get("Type")
-            reason = None
             # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it.
             if kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
-                candidates = (node.get("Cond") or [])[-1:]
-            elif kind == "BinaryCmd" and node.get("Op") == "||":
-                shape = branch_shape(node["Y"], self.functions, self.terminators)
-                if shape is not None:
-                    reason = BRANCH.format(shape=shape)
-                candidates = [node["X"]]
-            else:
-                continue
-            for stmt in candidates:
-                substitution = tested_assignment(stmt)
-                if substitution is None:
+                for stmt in (node.get("Cond") or [])[-1:]:
+                    self.candidate(stmt, flagged(stmt, False))
+            elif kind is None and "Cmd" in node:
+                binary = node["Cmd"]
+                if not isinstance(binary, dict) or binary.get("Type") != "BinaryCmd" or binary.get("Op") != "||":
                     continue
-                if reason is None:
-                    self.accepted.add(id(substitution))
-                else:
-                    self.reasons[id(substitution)] = reason
+                # The `&` of `x=$(…) || exit 1 &` is on the whole statement; a `!` is on the tested side.
+                tested = binary["X"]
+                reason = flagged(node, False) or flagged(tested)
+                run = command_of(tested)
+                if reason is None and isinstance(run, dict) and run.get("Type") == "CoprocClause":
+                    inner = body_statements(run["Stmt"])
+                    tested, reason = (inner[0] if len(inner) == 1 else run["Stmt"]), COPROCESS
+                elif reason is None:
+                    shape = branch_shape(binary["Y"], self.functions, self.terminators)
+                    if shape is not None:
+                        reason = BRANCH.format(shape=shape)
+                self.candidate(tested, reason)
+
+    def candidate(self, stmt, reason):
+        """Accept the substitution a tested statement captures, or record why it is still a finding."""
+        substitution = tested_assignment(stmt)
+        if substitution is None:
+            return
+        if reason is None:
+            self.accepted.add(id(substitution))
+        else:
+            self.reasons[id(substitution)] = reason
 
     def report(self, stmt, line, rule, message):
         if stmt is not None and stmt["Pos"]["Line"] in self.allowed:

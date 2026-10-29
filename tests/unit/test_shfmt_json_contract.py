@@ -54,6 +54,7 @@ FIXTURE = FIXTURES / "contract.sh"
 BACKQUOTES = FIXTURES / "contract-backquotes"
 CAPTURES = {FIXTURE: FIXTURES / "contract.json", BACKQUOTES: FIXTURES / "contract-backquotes.json"}
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
+GIT_CHECK = ROOT / "scripts/ci/git-invocation-check.sh"
 HOOK = ROOT / "home/dot_claude/hooks/executable_enforce-uv.sh"
 LINT = ROOT / "scripts/lint-comparisons.py"
 NESTED_LINE = 7  # contract.sh: the one command substitution that opens inside another
@@ -66,6 +67,7 @@ UNREADABLE_TREE = {"Type": "File", "Stmts": [{"Command": {"Type": "CallExpr"}}]}
 # the whole file). The extractor below reads them.
 WALKERS = {
     CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
+    GIT_CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
     HOOK: ("jq", re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL)),
     LINT: ("python", None),
     ROOT / "tests/unit/test_sandbox_portability.py": ("python", None),
@@ -804,6 +806,9 @@ class ContractRunTest(unittest.TestCase):
             "masked-dirname-check": subprocess.run(
                 ["bash", str(CHECK), str(script)], capture_output=True, text=True, check=False, env=env
             ),
+            "git-invocation-check": subprocess.run(
+                ["bash", str(GIT_CHECK), str(script)], capture_output=True, text=True, check=False, env=env
+            ),
             "enforce-uv": subprocess.run(
                 ["bash", str(HOOK)], input=payload, capture_output=True, text=True, check=False, env=env
             ),
@@ -852,6 +857,8 @@ class ContractRunTest(unittest.TestCase):
                 self.assertEqual("", result.stdout)
         check = results["masked-dirname-check"]
         self.assertEqual((0, "", ""), (check.returncode, check.stdout, check.stderr))
+        invocation = results["git-invocation-check"]  # the same self-check on the fixtures, so the same clean verdict
+        self.assertEqual((0, "", ""), (invocation.returncode, invocation.stdout, invocation.stderr))
 
     def test_masked_dirname_check_refuses_fixtures_in_which_its_walk_sees_no_substitution(self) -> None:
         # The contract holds (every node is still in each tree), but the walk skips a quoted heredoc's body, so its
@@ -881,6 +888,8 @@ class ContractRunTest(unittest.TestCase):
             (0, "", ""),
             (results["apt-bound-tree"].returncode, results["apt-bound-tree"].stdout, results["apt-bound-tree"].stderr),
         )
+        invocation = results["git-invocation-check"]
+        self.assertEqual((0, "", ""), (invocation.returncode, invocation.stdout, invocation.stderr))
 
     def test_the_sandbox_guard_refuses_what_the_other_walkers_refuse(self) -> None:
         # tests/unit/test_sandbox_portability.py walks the same JSON in process: a contract mismatch and a run whose

@@ -1,0 +1,2 @@
+refuse 'git ls-files failed'
+echo "git $x"

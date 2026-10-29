@@ -1,5 +1,6 @@
 """Verify scripts/lib/chezmoi-externals.sh: the bootstrap's and make update's retried, verified fetch of chezmoi's
-archive externals into its cache, against a local server that truncates, fails or serves wrong bytes (U96)."""
+archive externals into its cache, against a local server that truncates, fails or serves wrong bytes (U96), and the
+check that follows it, which proves chezmoi reads that cache with the network denied (U111)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,9 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LIB = ROOT / "scripts/lib/chezmoi-externals.sh"
@@ -139,6 +143,51 @@ AGE_CASES = (
         KEEP_HASH + 'chezmoi_external_sha256() { [ "${1:-}" != "$ENTRY" ] || return 1; '
         'orig_chezmoi_external_sha256 "$@"; }; ',
         True,
+    ),
+)
+
+# The chezmoi stub for the cache check: it records every call with the guard's mark, answers --version, and for
+# anything else prints STUB_OUTPUT and exits STUB_EXIT.
+STUB_CHEZMOI = """#!/bin/sh
+printf '%s|%s\\n' "${GUARDED:-}" "$*" >> "$CALLS"
+if [ "$1" = --version ]; then
+    [ -z "${FAIL_VERSION:-}" ] || exit 7
+    printf 'chezmoi version v9.9.9-stub\\n'
+    exit 0
+fi
+printf '%s' "$STUB_OUTPUT"
+exit "$STUB_EXIT"
+"""
+# What the stub prints and exits, and what the check must conclude: (name, output, exit, passes, reason fragment).
+# The listed strings fail the check whatever the exit status; another failure is reported by chezmoi's last line.
+VERDICT_CASES = (
+    ("exits 0 and prints nothing", "", 0, True, ""),
+    ("exits 0 with status lines", " A .ext\n A .ext/blob\n", 0, True, ""),
+    ("prints unexpected EOF and exits 1", "chezmoi: unexpected EOF\n", 1, False, "chezmoi: unexpected EOF"),
+    *(
+        (f"exits 0 but prints {text}", f" A .ext\nchezmoi: {text} x\n", 0, False, f"chezmoi: {text} x")
+        for text in ("unexpected EOF", "dial tcp", 'Get "http', "no such host")
+    ),
+    ("exits 1 with another message", "chezmoi: config: parse error\n", 1, False, "chezmoi: config: parse error"),
+    ("exits 1 and prints nothing", "", 1, False, "no output"),
+)
+# Producers of the cache check made to fail: (name, shell definitions, environment, the reason). The guard table is
+# read entry by entry; a read that fails, or an entry read to no words (it would run bare `true` and call the check
+# guarded), stops the check naming the entry instead of falling through to the next one or to the unguarded run.
+# chezmoi's output is read and scanned with shell expansions, so the check has no other producer to fail.
+CHECK_PRODUCER_CASES = (
+    ("chezmoi --version fails", "", {"FAIL_VERSION": "1"}, "cannot read chezmoi's version"),
+    (
+        "the guard table cannot be read",
+        "read() { return 1; }; ",
+        {},
+        "cannot read a command from the guard table entry 'unshare --net'",
+    ),
+    (
+        "a guard table entry holds no command",
+        "CHEZMOI_EXTERNAL_NETWORK_GUARDS=('false' ''); ",
+        {},
+        "cannot read a command from the guard table entry ''",
     ),
 )
 
@@ -801,6 +850,236 @@ class ChezmoiSourceExternalsTest(ServerFixture):
         self.assertEqual(1, self.requests())
         self.assertNotIn(".repo", result.stdout + result.stderr)
 
+    def test_after_the_prefetch_chezmoi_reads_the_externals_from_its_cache_and_fetches_nothing(self) -> None:
+        url = self.serve("cached.tar.gz", "ok")
+        chezmoi = self.source(url)
+        for name, options, *_ in both_ways((("cache check", ""),)):
+            with self.subTest(name):
+                self.log.unlink(missing_ok=True)
+                shutil.rmtree(self.cache, ignore_errors=True)
+                result = self.bash(
+                    options + 'prefetch_chezmoi_externals "$1" && assert_chezmoi_externals_cached "$1"', str(chezmoi)
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("chezmoi externals: cache check ", result.stdout)
+                self.assertIn(" with chezmoi version v", result.stdout)
+                self.assertIn("chezmoi externals: chezmoi read the externals from its cache (", result.stdout)
+                self.assertEqual(1, self.requests())  # the prefetch's download; chezmoi's read fetched nothing
+
+    def test_a_cache_chezmoi_does_not_find_fails_the_check_naming_the_url(self) -> None:
+        # The failure U111 closes: the prefetch wrote the entry, but chezmoi looks elsewhere (a release that moved or
+        # re-keyed its cache), so its read is a download. With the network denied it fails here, before any apply.
+        url = self.serve("moved.tar.gz", "ok")
+        chezmoi = self.source(url)
+        prefetch = self.bash('prefetch_chezmoi_externals "$1"', str(chezmoi))
+        self.assertEqual(0, prefetch.returncode, prefetch.stderr)
+        shutil.rmtree(self.cache)
+
+        result = self.bash('assert_chezmoi_externals_cached "$1"', str(chezmoi))
+
+        if "the check runs unguarded" in result.stdout:
+            self.skipTest("no network-denial tool runs on this host; the check cannot deny chezmoi the download")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("chezmoi externals: chezmoi did not read the externals from its cache (under ", result.stderr)
+        self.assertIn(url, result.stderr)
+        self.assertIn(" with chezmoi version v", result.stdout)
+        self.assertEqual(1, self.requests())  # the prefetch's; the denied read reached no server
+
+    def test_without_curl_nothing_is_prefetched_and_the_check_denies_chezmoi_nothing(self) -> None:
+        # The wget-only bootstrap against the real chezmoi: with curl off PATH the prefetch declines and the check
+        # does not run, so the apply that follows fetches the externals itself as before U96. On e2129b1c the guarded
+        # check ran and failed with `dial tcp … operation not permitted` before any apply: a bootstrap stopped for a
+        # download nothing had replaced. Nothing reaches the server and nothing is cached.
+        url = self.serve("nocurl.tar.gz", "ok")
+        chezmoi = self.source(url)
+        bare = self.case / "bare-bin"
+        bare.mkdir()
+        for name, options, *_ in both_ways((("no curl", ""),)):
+            with self.subTest(name):
+                result = self.bash(
+                    f'{options}PATH="{bare}"; prefetch_chezmoi_externals "$1" && assert_chezmoi_externals_cached "$1"',
+                    str(chezmoi),
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    "chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n", result.stderr
+                )
+                self.assertEqual(
+                    "chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove"
+                    " and does not run\n",
+                    result.stdout,
+                )
+                self.assertEqual(0, self.requests())
+                self.assertEqual([], self.cached())
+
+
+class ChezmoiCacheCheckTest(unittest.TestCase):
+    """assert_chezmoi_externals_cached against a chezmoi stub: the verdict table, each producer's failure, the
+    guards."""
+
+    def setUp(self) -> None:
+        self.case = Path(tempfile.mkdtemp(prefix="chezmoi-cache-check-")).resolve()
+        self.addCleanup(shutil.rmtree, self.case, True)
+        self.calls = self.case / "calls"
+        self.chezmoi = self.case / "chezmoi"
+        self.chezmoi.write_text(STUB_CHEZMOI)
+        self.chezmoi.chmod(0o755)
+
+    def check(self, inject: str = "", **extra: str) -> subprocess.CompletedProcess[str]:
+        # The stub is found on PATH under chezmoi's own name, the way make update names it.
+        env = {**os.environ, "HOME": str(self.case), "TMPDIR": str(self.case), "CALLS": str(self.calls)}
+        env.update({"PATH": f"{self.case}{os.pathsep}{env['PATH']}", "STUB_OUTPUT": "", "STUB_EXIT": "0", **extra})
+        self.calls.unlink(missing_ok=True)
+        return subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'source "$1"; shift; {inject}assert_chezmoi_externals_cached "$1"',
+                "_",
+                str(LIB),
+                "chezmoi",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+
+    def recorded(self) -> list[str]:
+        return self.calls.read_text().splitlines() if self.calls.exists() else []
+
+    def test_the_verdict_follows_chezmoi_s_exit_status_and_the_listed_strings(self) -> None:
+        cases = (
+            (f"{case[0]} [{label}]", options, *case[1:]) for label, options in SHELL_MODES for case in VERDICT_CASES
+        )
+        for name, options, output, code, passes, reason in cases:
+            with self.subTest(name):
+                result = self.check(options, STUB_OUTPUT=output, STUB_EXIT=str(code))
+                self.assertEqual(0 if passes else 1, result.returncode, result.stdout + result.stderr)
+                # The version is named in both outcomes, so the log says which release a layout change arrived with.
+                self.assertIn(" with chezmoi version v9.9.9-stub\n", result.stdout)
+                if passes:
+                    self.assertIn("chezmoi externals: chezmoi read the externals from its cache (", result.stdout)
+                    self.assertEqual("", result.stderr)
+                else:
+                    self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+                    self.assertIn(
+                        "chezmoi externals: chezmoi did not read the externals from its cache (", result.stderr
+                    )
+                    self.assertIn(f"status exited {code}): {reason}", result.stderr)
+                    self.assertNotIn("read the externals from its cache (", result.stdout)
+                # chezmoi is asked for its version, then for the status of the externals without refreshing them.
+                version, status = (line.split("|", 1)[1] for line in self.recorded())
+                self.assertEqual("--version", version)
+                self.assertEqual("--refresh-externals=never status --include=externals", status)
+
+    def test_every_producer_that_fails_stops_the_check_naming_it(self) -> None:
+        for name, inject, env, reason in both_ways(CHECK_PRODUCER_CASES):
+            with self.subTest(name):
+                result = self.check(inject, **env)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"chezmoi externals: {reason}", result.stderr)
+                self.assertNotIn("read the externals from its cache (", result.stdout)
+
+    def test_the_check_runs_with_the_bootstrap_s_bare_tools_on_path(self) -> None:
+        # setup.sh's wget-only Bats case (tests/install/common/setup.bats) runs the bootstrap with exactly these tools
+        # on PATH and no grep or tail; on 3aabd8e8 the check's grep was not found and every mode of that case failed
+        # with "cannot scan chezmoi's output". The whole verdict table holds with that PATH and the stub: the scan
+        # and the last-line read are the shell's own. curl stands beside them as the one tool whose presence makes
+        # the prefetch, and so the check, run at all; the case itself has none, and the check then declines
+        # (test_without_curl_nothing_was_prefetched_and_the_check_does_not_run).
+        tools = self.case / "bats-bin"
+        tools.mkdir()
+        for tool in (
+            "sh",
+            "find",
+            "rm",
+            "mkdir",
+            "chmod",
+            "cat",
+            "cp",
+            "tar",
+            "gzip",
+            "install",
+            "mv",
+            "mktemp",
+            "awk",
+            "shasum",
+            "date",
+            "curl",
+        ):
+            found = shutil.which(tool)
+            self.assertIsNotNone(found, tool)
+            (tools / tool).symlink_to(found)
+        narrow = f'PATH="{tools}:{self.case}"; '
+        cases = (
+            (f"{case[0]} [{label}]", options, *case[1:]) for label, options in SHELL_MODES for case in VERDICT_CASES
+        )
+        for name, options, output, code, passes, reason in cases:
+            with self.subTest(name):
+                result = self.check(options + narrow, STUB_OUTPUT=output, STUB_EXIT=str(code))
+                self.assertEqual(0 if passes else 1, result.returncode, result.stdout + result.stderr)
+                if passes:
+                    self.assertIn("chezmoi externals: chezmoi read the externals from its cache (", result.stdout)
+                    self.assertEqual("", result.stderr)
+                else:
+                    self.assertEqual(1, len(result.stderr.splitlines()), result.stderr)
+                    self.assertIn(f"status exited {code}): {reason}", result.stderr)
+
+    def test_without_curl_nothing_was_prefetched_and_the_check_does_not_run(self) -> None:
+        # The wget-only bootstrap: prefetch_chezmoi_externals declines without curl and chezmoi fetches the externals
+        # itself, so the check has nothing to prove. Run anyway, as on e2129b1c, it denied the network to that very
+        # download under a working guard, or called the download a cache read unguarded. It says so and never calls
+        # chezmoi.
+        narrow = f'PATH="{self.case}"; '
+        for name, options, *_ in both_ways((("no curl", ""),)):
+            with self.subTest(name):
+                result = self.check(options + narrow)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    "chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove"
+                    " and does not run\n",
+                    result.stdout,
+                )
+                self.assertEqual("", result.stderr)
+                self.assertEqual([], self.recorded())
+
+    def test_the_first_guard_whose_probe_runs_wraps_the_chezmoi_call(self) -> None:
+        # The table is probed in order with `true`; the chosen guard runs chezmoi, not only the probe.
+        table = "CHEZMOI_EXTERNAL_NETWORK_GUARDS=('false' $'env\\tGUARDED=1' $'env\\tGUARDED=2'); "
+        for name, options, *_ in both_ways((("guard table", ""),)):
+            with self.subTest(name):
+                result = self.check(options + table)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("chezmoi externals: cache check under env GUARDED=1 with chezmoi version", result.stdout)
+                self.assertIn(
+                    "chezmoi externals: chezmoi read the externals from its cache (under env GUARDED=1)", result.stdout
+                )
+                self.assertNotIn("unguarded", result.stdout)
+                self.assertEqual(
+                    ["|--version", "1|--refresh-externals=never status --include=externals"], self.recorded()
+                )
+
+    def test_without_a_working_guard_the_check_runs_unguarded_and_says_so(self) -> None:
+        # The named limitation: no network-denial tool, so the check runs anyway and the log says it proves less.
+        table = "CHEZMOI_EXTERNAL_NETWORK_GUARDS=('false'); "
+        for name, options, *_ in both_ways((("no guard", ""),)):
+            with self.subTest(name):
+                result = self.check(options + table)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(
+                    "chezmoi externals: cache check unguarded with chezmoi version v9.9.9-stub", result.stdout
+                )
+                self.assertIn("the check runs unguarded and cannot tell a download from a cache read", result.stdout)
+                self.assertIn("chezmoi externals: chezmoi read the externals from its cache (unguarded)", result.stdout)
+                self.assertEqual(
+                    ["|--version", "|--refresh-externals=never status --include=externals"], self.recorded()
+                )
+                failed = self.check(options + table, STUB_OUTPUT="chezmoi: unexpected EOF\n", STUB_EXIT="1")
+                self.assertEqual(1, failed.returncode)
+                self.assertIn("(unguarded, status exited 1): chezmoi: unexpected EOF", failed.stderr)
+
 
 class ChezmoiExternalsWiringTest(unittest.TestCase):
     def test_setup_sh_carries_an_exact_copy_of_the_helper(self) -> None:
@@ -813,18 +1092,205 @@ class ChezmoiExternalsWiringTest(unittest.TestCase):
             body, setup[setup.index(begin) + len(begin) : setup.index("# --- chezmoi-externals.sh end ---\n")]
         )
 
-    def test_the_bootstrap_and_make_update_prefetch_before_chezmoi_reads_the_target_state(self) -> None:
+    def test_the_bootstrap_and_make_update_prefetch_then_check_the_cache_before_chezmoi_reads_the_target_state(
+        self,
+    ) -> None:
         setup = (ROOT / "setup.sh").read_text()
         run = setup[setup.index("function run_chezmoi()") :]
         prefetch = run.index('prefetch_chezmoi_externals "${chezmoi_cmd}"')
+        check = run.index('assert_chezmoi_externals_cached "${chezmoi_cmd}"')
+        self.assertLess(prefetch, check)
         for read in ('"${chezmoi_cmd}" status', '"${chezmoi_cmd}" diff', '"${chezmoi_cmd}" apply'):
-            self.assertLess(prefetch, run.index(read), read)
+            self.assertLess(check, run.index(read), read)
         makefile = (ROOT / "Makefile").read_text()
         tree = makefile[makefile.index("\nupdate-tree:\n") :]
         self.assertLess(
-            tree.index("source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi"),
+            tree.index(
+                "source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi"
+                " && assert_chezmoi_externals_cached chezmoi"
+            ),
             tree.index("chezmoi apply --verbose"),
         )
+
+    def bootstrap(self, check_exit: int) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+        """Run setup.sh's run_chezmoi with every step before the externals stubbed and the cache check replaced by an
+        injected function that records its call and exits check_exit. The chezmoi it installs is a stub that records
+        every call, so the calls after the check are read from the record, not from the text of setup.sh."""
+        case = Path(tempfile.mkdtemp(prefix="chezmoi-bootstrap-abort-")).resolve()
+        self.addCleanup(shutil.rmtree, case, True)
+        (case / "home").mkdir()
+        calls = case / "calls"
+        stub = case / "chezmoi"
+        stub.write_text(
+            "#!/bin/sh\n"
+            'printf "%s\\n" "$*" >> "$CALLS"\n'
+            '[ "$1" = source-path ] && { mkdir -p "$HOME/source"; printf "%s\\n" "$HOME/source"; }\n'
+            "exit 0\n"
+        )
+        stub.chmod(0o755)
+        inject = (
+            # The release steps: no gh, so the reviewed fallback; its downloads and digests are not the subject here.
+            "github_attestation_ready() { return 1; }; "
+            "get_os_type() { printf 'Linux\\n'; }; uname() { printf 'x86_64\\n'; }; "
+            "fetch_file() { :; }; verify_checksum_manifest() { :; }; verify_sha256() { :; }; "
+            'tar() { cp "$STUB" "$4/chezmoi"; }; '
+            # The externals step: a prefetch that records and succeeds, a check that records and exits as told.
+            'prefetch_chezmoi_externals() { printf \'prefetch %s\\n\' "$1" >> "$CALLS"; }; '
+            'assert_chezmoi_externals_cached() { printf \'cache-check %s\\n\' "$1" >> "$CALLS"; '
+            "printf 'chezmoi externals: chezmoi did not read the externals from its cache (injected)\\n' >&2; "
+            'return "$CHECK_EXIT"; }; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; {inject}run_chezmoi', "_", str(ROOT / "setup.sh")],
+            env={
+                "PATH": os.environ["PATH"],
+                "HOME": str(case / "home"),
+                "TMPDIR": str(case),
+                "CALLS": str(calls),
+                "STUB": str(stub),
+                "CHECK_EXIT": str(check_exit),
+            },
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+        return result, calls.read_text().splitlines() if calls.exists() else []
+
+    def test_a_failed_cache_check_stops_the_bootstrap_before_chezmoi_reads_the_target_state(self) -> None:
+        # The abort itself, not its text: the check is replaced by a function that fails, and the chezmoi stub's
+        # record shows what ran after it. Removing the `return 1` lets the apply run; removing the call leaves the
+        # record without the check. Both fail here, so this is the pin on setup.sh:1109-1112.
+        result, calls = self.bootstrap(check_exit=1)
+
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("chezmoi externals: chezmoi did not read the externals from its cache (injected)", result.stderr)
+        self.assertIn(
+            "chezmoi did not read the prefetched externals from its cache; no destination targets were changed.",
+            result.stderr,
+        )
+        self.assertIn("prefetch ", calls[-2])
+        self.assertIn("cache-check ", calls[-1])
+        self.assertEqual([], [call for call in calls if call.split()[0] in ("status", "diff", "apply")], calls)
+
+        # The control: the same bootstrap with a check that passes reaches the apply, so the record above is the
+        # abort's doing and not a harness that never got that far.
+        result, calls = self.bootstrap(check_exit=0)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("no destination targets were changed", result.stderr)
+        after = calls[calls.index(next(call for call in calls if call.startswith("cache-check "))) + 1 :]
+        self.assertEqual(["status", "diff", "apply"], [call.split()[0] for call in after], calls)
+
+    def test_the_public_bootstrap_row_requires_the_cache_check_s_verdict_line(self) -> None:
+        # The CI row is the live proof: it fails unless setup.sh printed the verdict, which names the chezmoi version
+        # and the guard. The literal it requires is the library's own, so a reworded verdict fails here first.
+        workflow = (ROOT / ".github/workflows/remote.yaml").read_text()
+        step = workflow[workflow.index("- name: Bootstrap the checked-out public source") :]
+        step = step[: step.index("\n      - name: ")]
+        verdict = "chezmoi externals: chezmoi read the externals from its cache"
+        self.assertIn(f"printf '{verdict} (%s)\\n'", LIB.read_text())
+        setup = step.index('bash "${GITHUB_WORKSPACE}/setup.sh" | tee "${RUNNER_TEMP}/setup.log"')
+        self.assertLess(step.index("set -euo pipefail"), setup)
+        # The Linux rows lift Ubuntu 24.04's user-namespace restriction first, so their check runs under unshare.
+        self.assertLess(step.index("sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"), setup)
+        self.assertLess(setup, step.index(f"grep -F '{verdict}' \"${{RUNNER_TEMP}}/setup.log\""))
+
+    def public_bootstrap_step(self) -> str:
+        """The run text of the public-bootstrap row's bootstrap step, dedented and cut after the line that requires
+        the verdict: the step's own shell options, the sentinels, the setup.sh pipeline through tee and the grep."""
+        workflow = (ROOT / ".github/workflows/remote.yaml").read_text()
+        step = workflow[workflow.index("- name: Bootstrap the checked-out public source") :]
+        step = step[: step.index("\n      - name: ")]
+        run = step[step.index("run: |\n") + len("run: |\n") :]
+        lines = [line.removeprefix(" " * 10) for line in run.splitlines()]
+        verdict = "chezmoi externals: chezmoi read the externals from its cache"
+        found = [index for index, line in enumerate(lines) if line.startswith(f"grep -F '{verdict}'")]
+        self.assertEqual(1, len(found), "the step requires the verdict line once")
+        return "\n".join(lines[: found[0] + 1]) + "\n"
+
+    def run_public_bootstrap_step(
+        self, setup_exit: int, setup_output: str
+    ) -> tuple[subprocess.CompletedProcess[str], str, str]:
+        """Run the step's text as the runner does (a script file under bash, no profile, no rc) in a scratch
+        checkout whose setup.sh is a stub that records its stdin and environment, prints setup_output and exits
+        setup_exit. Returns the run, the stub's record and the setup.log the step kept. The runner's `shell: bash`
+        adds `-eo pipefail` of its own; this run leaves that out, so the options the step sets are the ones in force."""
+        case = Path(tempfile.mkdtemp(prefix="public-bootstrap-step-")).resolve()
+        self.addCleanup(shutil.rmtree, case, True)
+        workspace, home, runner_temp = case / "workspace", case / "home", case / "runner-temp"
+        for directory in (workspace, home, runner_temp):
+            directory.mkdir()
+        git = ["git", "-C", str(workspace), "-c", "user.name=step", "-c", "user.email=step@example.invalid"]
+        git_init(workspace)  # scratch_git: the checkout's commit starts no background maintenance (U100)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "checkout"], check=True, timeout=COMMAND_SECONDS)
+        stub = workspace / "setup.sh"
+        stub.write_text(
+            "#!/bin/sh\n"
+            'cat > "$RECORD"\n'
+            'printf "DOTFILES_REPO_URL=%s BRANCH_NAME=%s\\n" "$DOTFILES_REPO_URL" "$BRANCH_NAME" >> "$RECORD"\n'
+            'printf "%s" "$SETUP_OUTPUT"\n'
+            'exit "$SETUP_EXIT"\n'
+        )
+        script = case / "step.sh"
+        script.write_text(self.public_bootstrap_step())
+        record = case / "record"
+        result = subprocess.run(
+            ["bash", "--noprofile", "--norc", str(script)],
+            cwd=workspace,
+            env={
+                "PATH": os.environ["PATH"],
+                "HOME": str(home),
+                "GITHUB_WORKSPACE": str(workspace),
+                "RUNNER_TEMP": str(runner_temp),
+                "RUNNER_OS": "macOS",
+                "SYSTEM": "client",
+                "RECORD": str(record),
+                "SETUP_OUTPUT": setup_output,
+                "SETUP_EXIT": str(setup_exit),
+            },
+            capture_output=True,
+            text=True,
+            timeout=COMMAND_SECONDS,
+            check=False,
+        )
+        log = runner_temp / "setup.log"
+        return result, record.read_text() if record.exists() else "", log.read_text() if log.exists() else ""
+
+    def test_the_public_bootstrap_step_fails_on_a_failed_setup_sh_and_on_a_missing_verdict_line(self) -> None:
+        # The step itself, run: setup.sh is a stub, so what the step does with its exit status and its output is
+        # read from the step's own exit, not from the text of the pipeline. Without `pipefail` the tee masks the
+        # failed setup.sh and case (b) exits 0; without the grep, case (c) does.
+        verdict = (
+            "chezmoi externals: chezmoi read the externals from its cache"
+            " (under /usr/bin/sandbox-exec -p (version 1)(allow default)(deny network*))"
+        )
+        output = (
+            f"chezmoi externals: cache check under sandbox-exec with chezmoi version v9.9.9-stub\n{verdict}\nApplied.\n"
+        )
+
+        with self.subTest("(a) setup.sh prints the verdict and exits 0"):
+            result, record, log = self.run_public_bootstrap_step(setup_exit=0, setup_output=output)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(output, log)  # tee kept the whole output
+            self.assertEqual(2, result.stdout.count(verdict), result.stdout)  # once from tee, once from the grep
+            # The stub got the answers the live bootstrap gets and the source the row points it at.
+            self.assertEqual("ci@example.invalid\nclient\n", record[: record.index("DOTFILES_REPO_URL=")])
+            self.assertIn("DOTFILES_REPO_URL=", record)
+            self.assertTrue(record.endswith(" BRANCH_NAME=bootstrap-under-test\n"), record)
+
+        with self.subTest("(b) setup.sh prints the verdict and exits 1"):
+            result, record, log = self.run_public_bootstrap_step(setup_exit=1, setup_output=output)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(verdict, log)  # the verdict was there: the failure is setup.sh's status through the tee
+
+        with self.subTest("(c) setup.sh exits 0 without the verdict"):
+            result, record, log = self.run_public_bootstrap_step(
+                setup_exit=0, setup_output="chezmoi externals: cache check under sandbox-exec with chezmoi version v9\n"
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertNotIn(verdict, log)
+            self.assertTrue(log, "setup.sh ran and tee kept its output")
 
 
 if __name__ == "__main__":

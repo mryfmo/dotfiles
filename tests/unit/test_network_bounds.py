@@ -216,7 +216,8 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "/usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl",
     ): Exempt("an apt-get install package name"),
     # U96's chezmoi externals prefetch (scripts/lib/chezmoi-externals.sh and its copy in setup.sh): its own allowlisted
-    # retry loop, so curl's --retry stays off; --max-time 900 caps one attempt on the checked continuation.
+    # retry loop, so curl's --retry stays off; --max-time 900 caps one attempt on the checked continuation. U111's
+    # cache check shares the prefetch's curl predicate and says in one message why it did not run without it.
     **{
         (relative, line): entry
         for relative in ("setup.sh", "scripts/lib/chezmoi-externals.sh")
@@ -250,9 +251,17 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
                 "#   before it is cached. Without curl the step only says so, and chezmoi fetches the externals itself as before.",
                 Exempt(f"shdoc; {MENTION}"),
             ),
-            ("if ! command -v curl > /dev/null 2>&1; then", Exempt(f"presence check; {MENTION}")),
+            (
+                "# @description Whether the prefetch runs on this host: curl, its downloader, is on PATH. Without it the prefetch leaves",
+                Exempt(f"shdoc; {MENTION}"),
+            ),
+            ("command -v curl > /dev/null 2>&1", Exempt(f"presence check; {MENTION}")),
             (
                 "printf 'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\\n' >&2",
+                Exempt(f"message; {MENTION}"),
+            ),
+            (
+                "printf 'chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove and does not run\\n'",
                 Exempt(f"message; {MENTION}"),
             ),
         )

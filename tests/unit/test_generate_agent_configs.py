@@ -240,6 +240,7 @@ MANAGED_ALLOW = [
 ]
 LEVERS = (
     "bus-history.sh",
+    "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",
     "omp-run.sh",

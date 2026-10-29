@@ -221,14 +221,16 @@ jobs:
           esac
           artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
           base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
-          sha256_check=(shasum -a 256 --check --strict)
-          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
+          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64). The tool's name
+          # is kept, and each command below is spelled out: tests/unit/test_apt_mirror.py reads this step from shfmt's
+          # tree and refuses a command word it cannot read, an array or a variable included (regime-cutover U109).
+          sha256_tool=shasum
+          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_tool=sha256sum
           # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, as the installers' downloads (U99).
           curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
           curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \
-            | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
+            | (cd "${RUNNER_TEMP}" && if [[ "${sha256_tool}" == sha256sum ]]; then sha256sum --check --strict; else shasum -a 256 --check --strict; fi)
           # The checksum file comes from the same release; the attestation is the publisher's
           # check, verified before chezmoi runs with the runner's authenticated gh (GITHUB_TOKEN).
           if ! github_release_attestation twpayne/chezmoi "v${chezmoi_version}" "${RUNNER_TEMP}/${artifact}"; then
@@ -251,8 +253,9 @@ jobs:
               ;;
           esac
           test -x "${files_test_chezmoi}"
-          # A runner-provided chezmoi earlier on PATH must not shadow this release.
-          "${files_test_chezmoi}" --version | grep -F "v${chezmoi_version}"
+          # A runner-provided chezmoi earlier on PATH must not shadow this release: `chezmoi` here resolves as
+          # `command -v chezmoi` did above, so the version checked is the one FILES_TEST_CHEZMOI names.
+          chezmoi --version | grep -F "v${chezmoi_version}"
           printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
 
           # Install coverage tooling as user gems and expose gem bin dir on PATH

@@ -6,7 +6,7 @@
 		"Col": 1
 	},
 	"End": {
-		"Offset": 1027,
+		"Offset": 1037,
 		"Line": 31,
 		"Col": 2
 	},
@@ -1064,9 +1064,9 @@
 				"Col": 1
 			},
 			"End": {
-				"Offset": 678,
+				"Offset": 688,
 				"Line": 9,
-				"Col": 55
+				"Col": 65
 			},
 			"Cmd": {
 				"Type": "CallExpr",
@@ -1076,9 +1076,9 @@
 					"Col": 1
 				},
 				"End": {
-					"Offset": 678,
+					"Offset": 688,
 					"Line": 9,
-					"Col": 55
+					"Col": 65
 				},
 				"Args": [
 					{
@@ -1346,32 +1346,96 @@
 							"Col": 51
 						},
 						"End": {
-							"Offset": 678,
+							"Offset": 683,
 							"Line": 9,
-							"Col": 55
+							"Col": 60
 						},
 						"Parts": [
 							{
-								"Type": "Lit",
+								"Type": "DblQuoted",
 								"Pos": {
 									"Offset": 674,
 									"Line": 9,
 									"Col": 51
 								},
 								"End": {
-									"Offset": 678,
+									"Offset": 683,
 									"Line": 9,
-									"Col": 55
+									"Col": 60
 								},
-								"ValuePos": {
+								"Left": {
 									"Offset": 674,
 									"Line": 9,
 									"Col": 51
 								},
-								"ValueEnd": {
-									"Offset": 678,
+								"Right": {
+									"Offset": 682,
 									"Line": 9,
-									"Col": 55
+									"Col": 59
+								},
+								"Dollar": true,
+								"Parts": [
+									{
+										"Type": "Lit",
+										"Pos": {
+											"Offset": 676,
+											"Line": 9,
+											"Col": 53
+										},
+										"End": {
+											"Offset": 682,
+											"Line": 9,
+											"Col": 59
+										},
+										"ValuePos": {
+											"Offset": 676,
+											"Line": 9,
+											"Col": 53
+										},
+										"ValueEnd": {
+											"Offset": 682,
+											"Line": 9,
+											"Col": 59
+										},
+										"Value": "locale"
+									}
+								]
+							}
+						]
+					},
+					{
+						"Pos": {
+							"Offset": 684,
+							"Line": 9,
+							"Col": 61
+						},
+						"End": {
+							"Offset": 688,
+							"Line": 9,
+							"Col": 65
+						},
+						"Parts": [
+							{
+								"Type": "Lit",
+								"Pos": {
+									"Offset": 684,
+									"Line": 9,
+									"Col": 61
+								},
+								"End": {
+									"Offset": 688,
+									"Line": 9,
+									"Col": 65
+								},
+								"ValuePos": {
+									"Offset": 684,
+									"Line": 9,
+									"Col": 61
+								},
+								"ValueEnd": {
+									"Offset": 688,
+									"Line": 9,
+									"Col": 65
 								},
 								"Value": "a\\ b"
 							}
@@ -1387,57 +1451,57 @@
 		},
 		{
 			"Pos": {
-				"Offset": 679,
+				"Offset": 689,
 				"Line": 10,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 693,
+				"Offset": 703,
 				"Line": 10,
 				"Col": 15
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 679,
+					"Offset": 689,
 					"Line": 10,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 693,
+					"Offset": 703,
 					"Line": 10,
 					"Col": 15
 				},
 				"Assigns": [
 					{
 						"Pos": {
-							"Offset": 679,
+							"Offset": 689,
 							"Line": 10,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 693,
+							"Offset": 703,
 							"Line": 10,
 							"Col": 15
 						},
 						"Name": {
 							"Pos": {
-								"Offset": 679,
+								"Offset": 689,
 								"Line": 10,
 								"Col": 1
 							},
 							"End": {
-								"Offset": 684,
+								"Offset": 694,
 								"Line": 10,
 								"Col": 6
 							},
 							"ValuePos": {
-								"Offset": 679,
+								"Offset": 689,
 								"Line": 10,
 								"Col": 1
 							},
 							"ValueEnd": {
-								"Offset": 684,
+								"Offset": 694,
 								"Line": 10,
 								"Col": 6
 							},
@@ -1445,12 +1509,12 @@
 						},
 						"Value": {
 							"Pos": {
-								"Offset": 685,
+								"Offset": 695,
 								"Line": 10,
 								"Col": 7
 							},
 							"End": {
-								"Offset": 693,
+								"Offset": 703,
 								"Line": 10,
 								"Col": 15
 							},
@@ -1458,44 +1522,44 @@
 								{
 									"Type": "ParamExp",
 									"Pos": {
-										"Offset": 685,
+										"Offset": 695,
 										"Line": 10,
 										"Col": 7
 									},
 									"End": {
-										"Offset": 693,
+										"Offset": 703,
 										"Line": 10,
 										"Col": 15
 									},
 									"Dollar": {
-										"Offset": 685,
+										"Offset": 695,
 										"Line": 10,
 										"Col": 7
 									},
 									"Rbrace": {
-										"Offset": 692,
+										"Offset": 702,
 										"Line": 10,
 										"Col": 14
 									},
 									"Length": true,
 									"Param": {
 										"Pos": {
-											"Offset": 688,
+											"Offset": 698,
 											"Line": 10,
 											"Col": 10
 										},
 										"End": {
-											"Offset": 692,
+											"Offset": 702,
 											"Line": 10,
 											"Col": 14
 										},
 										"ValuePos": {
-											"Offset": 688,
+											"Offset": 698,
 											"Line": 10,
 											"Col": 10
 										},
 										"ValueEnd": {
-											"Offset": 692,
+											"Offset": 702,
 											"Line": 10,
 											"Col": 14
 										},
@@ -1508,64 +1572,64 @@
 				]
 			},
 			"Position": {
-				"Offset": 679,
+				"Offset": 689,
 				"Line": 10,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 694,
+				"Offset": 704,
 				"Line": 11,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 713,
+				"Offset": 723,
 				"Line": 11,
 				"Col": 20
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 694,
+					"Offset": 704,
 					"Line": 11,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 713,
+					"Offset": 723,
 					"Line": 11,
 					"Col": 20
 				},
 				"Assigns": [
 					{
 						"Pos": {
-							"Offset": 694,
+							"Offset": 704,
 							"Line": 11,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 713,
+							"Offset": 723,
 							"Line": 11,
 							"Col": 20
 						},
 						"Name": {
 							"Pos": {
-								"Offset": 694,
+								"Offset": 704,
 								"Line": 11,
 								"Col": 1
 							},
 							"End": {
-								"Offset": 698,
+								"Offset": 708,
 								"Line": 11,
 								"Col": 5
 							},
 							"ValuePos": {
-								"Offset": 694,
+								"Offset": 704,
 								"Line": 11,
 								"Col": 1
 							},
 							"ValueEnd": {
-								"Offset": 698,
+								"Offset": 708,
 								"Line": 11,
 								"Col": 5
 							},
@@ -1573,12 +1637,12 @@
 						},
 						"Value": {
 							"Pos": {
-								"Offset": 699,
+								"Offset": 709,
 								"Line": 11,
 								"Col": 6
 							},
 							"End": {
-								"Offset": 713,
+								"Offset": 723,
 								"Line": 11,
 								"Col": 20
 							},
@@ -1586,43 +1650,43 @@
 								{
 									"Type": "ParamExp",
 									"Pos": {
-										"Offset": 699,
+										"Offset": 709,
 										"Line": 11,
 										"Col": 6
 									},
 									"End": {
-										"Offset": 713,
+										"Offset": 723,
 										"Line": 11,
 										"Col": 20
 									},
 									"Dollar": {
-										"Offset": 699,
+										"Offset": 709,
 										"Line": 11,
 										"Col": 6
 									},
 									"Rbrace": {
-										"Offset": 712,
+										"Offset": 722,
 										"Line": 11,
 										"Col": 19
 									},
 									"Param": {
 										"Pos": {
-											"Offset": 701,
+											"Offset": 711,
 											"Line": 11,
 											"Col": 8
 										},
 										"End": {
-											"Offset": 705,
+											"Offset": 715,
 											"Line": 11,
 											"Col": 12
 										},
 										"ValuePos": {
-											"Offset": 701,
+											"Offset": 711,
 											"Line": 11,
 											"Col": 8
 										},
 										"ValueEnd": {
-											"Offset": 705,
+											"Offset": 715,
 											"Line": 11,
 											"Col": 12
 										},
@@ -1631,12 +1695,12 @@
 									"Index": {
 										"Type": "Word",
 										"Pos": {
-											"Offset": 706,
+											"Offset": 716,
 											"Line": 11,
 											"Col": 13
 										},
 										"End": {
-											"Offset": 711,
+											"Offset": 721,
 											"Line": 11,
 											"Col": 18
 										},
@@ -1644,22 +1708,22 @@
 											{
 												"Type": "Lit",
 												"Pos": {
-													"Offset": 706,
+													"Offset": 716,
 													"Line": 11,
 													"Col": 13
 												},
 												"End": {
-													"Offset": 711,
+													"Offset": 721,
 													"Line": 11,
 													"Col": 18
 												},
 												"ValuePos": {
-													"Offset": 706,
+													"Offset": 716,
 													"Line": 11,
 													"Col": 13
 												},
 												"ValueEnd": {
-													"Offset": 711,
+													"Offset": 721,
 													"Line": 11,
 													"Col": 18
 												},
@@ -1674,43 +1738,43 @@
 				]
 			},
 			"Position": {
-				"Offset": 694,
+				"Offset": 704,
 				"Line": 11,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 714,
+				"Offset": 724,
 				"Line": 12,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 745,
+				"Offset": 755,
 				"Line": 14,
 				"Col": 4
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 714,
+					"Offset": 724,
 					"Line": 12,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 717,
+					"Offset": 727,
 					"Line": 12,
 					"Col": 4
 				},
 				"Args": [
 					{
 						"Pos": {
-							"Offset": 714,
+							"Offset": 724,
 							"Line": 12,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 717,
+							"Offset": 727,
 							"Line": 12,
 							"Col": 4
 						},
@@ -1718,22 +1782,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 714,
+									"Offset": 724,
 									"Line": 12,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 717,
+									"Offset": 727,
 									"Line": 12,
 									"Col": 4
 								},
 								"ValuePos": {
-									"Offset": 714,
+									"Offset": 724,
 									"Line": 12,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 717,
+									"Offset": 727,
 									"Line": 12,
 									"Col": 4
 								},
@@ -1744,36 +1808,36 @@
 				]
 			},
 			"Position": {
-				"Offset": 714,
+				"Offset": 724,
 				"Line": 12,
 				"Col": 1
 			},
 			"Redirs": [
 				{
 					"Pos": {
-						"Offset": 718,
+						"Offset": 728,
 						"Line": 12,
 						"Col": 5
 					},
 					"End": {
-						"Offset": 745,
+						"Offset": 755,
 						"Line": 14,
 						"Col": 4
 					},
 					"OpPos": {
-						"Offset": 718,
+						"Offset": 728,
 						"Line": 12,
 						"Col": 5
 					},
 					"Op": "<<",
 					"Word": {
 						"Pos": {
-							"Offset": 721,
+							"Offset": 731,
 							"Line": 12,
 							"Col": 8
 						},
 						"End": {
-							"Offset": 726,
+							"Offset": 736,
 							"Line": 12,
 							"Col": 13
 						},
@@ -1781,22 +1845,22 @@
 							{
 								"Type": "SglQuoted",
 								"Pos": {
-									"Offset": 721,
+									"Offset": 731,
 									"Line": 12,
 									"Col": 8
 								},
 								"End": {
-									"Offset": 726,
+									"Offset": 736,
 									"Line": 12,
 									"Col": 13
 								},
 								"Left": {
-									"Offset": 721,
+									"Offset": 731,
 									"Line": 12,
 									"Col": 8
 								},
 								"Right": {
-									"Offset": 725,
+									"Offset": 735,
 									"Line": 12,
 									"Col": 12
 								},
@@ -1806,12 +1870,12 @@
 					},
 					"Hdoc": {
 						"Pos": {
-							"Offset": 727,
+							"Offset": 737,
 							"Line": 13,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 745,
+							"Offset": 755,
 							"Line": 14,
 							"Col": 4
 						},
@@ -1819,22 +1883,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 727,
+									"Offset": 737,
 									"Line": 13,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 745,
+									"Offset": 755,
 									"Line": 14,
 									"Col": 4
 								},
 								"ValuePos": {
-									"Offset": 727,
+									"Offset": 737,
 									"Line": 13,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 745,
+									"Offset": 755,
 									"Line": 14,
 									"Col": 4
 								},
@@ -1847,36 +1911,36 @@
 		},
 		{
 			"Pos": {
-				"Offset": 746,
+				"Offset": 756,
 				"Line": 15,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 769,
+				"Offset": 779,
 				"Line": 15,
 				"Col": 24
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 746,
+					"Offset": 756,
 					"Line": 15,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 749,
+					"Offset": 759,
 					"Line": 15,
 					"Col": 4
 				},
 				"Args": [
 					{
 						"Pos": {
-							"Offset": 746,
+							"Offset": 756,
 							"Line": 15,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 749,
+							"Offset": 759,
 							"Line": 15,
 							"Col": 4
 						},
@@ -1884,22 +1948,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 746,
+									"Offset": 756,
 									"Line": 15,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 749,
+									"Offset": 759,
 									"Line": 15,
 									"Col": 4
 								},
 								"ValuePos": {
-									"Offset": 746,
+									"Offset": 756,
 									"Line": 15,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 749,
+									"Offset": 759,
 									"Line": 15,
 									"Col": 4
 								},
@@ -1910,36 +1974,36 @@
 				]
 			},
 			"Position": {
-				"Offset": 746,
+				"Offset": 756,
 				"Line": 15,
 				"Col": 1
 			},
 			"Redirs": [
 				{
 					"Pos": {
-						"Offset": 750,
+						"Offset": 760,
 						"Line": 15,
 						"Col": 5
 					},
 					"End": {
-						"Offset": 804,
+						"Offset": 814,
 						"Line": 17,
 						"Col": 4
 					},
 					"OpPos": {
-						"Offset": 750,
+						"Offset": 760,
 						"Line": 15,
 						"Col": 5
 					},
 					"Op": "<<",
 					"Word": {
 						"Pos": {
-							"Offset": 753,
+							"Offset": 763,
 							"Line": 15,
 							"Col": 8
 						},
 						"End": {
-							"Offset": 756,
+							"Offset": 766,
 							"Line": 15,
 							"Col": 11
 						},
@@ -1947,22 +2011,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 753,
+									"Offset": 763,
 									"Line": 15,
 									"Col": 8
 								},
 								"End": {
-									"Offset": 756,
+									"Offset": 766,
 									"Line": 15,
 									"Col": 11
 								},
 								"ValuePos": {
-									"Offset": 753,
+									"Offset": 763,
 									"Line": 15,
 									"Col": 8
 								},
 								"ValueEnd": {
-									"Offset": 756,
+									"Offset": 766,
 									"Line": 15,
 									"Col": 11
 								},
@@ -1972,12 +2036,12 @@
 					},
 					"Hdoc": {
 						"Pos": {
-							"Offset": 770,
+							"Offset": 780,
 							"Line": 16,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 804,
+							"Offset": 814,
 							"Line": 17,
 							"Col": 4
 						},
@@ -1985,22 +2049,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 770,
+									"Offset": 780,
 									"Line": 16,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 779,
+									"Offset": 789,
 									"Line": 16,
 									"Col": 10
 								},
 								"ValuePos": {
-									"Offset": 770,
+									"Offset": 780,
 									"Line": 16,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 779,
+									"Offset": 789,
 									"Line": 16,
 									"Col": 10
 								},
@@ -2009,58 +2073,58 @@
 							{
 								"Type": "CmdSubst",
 								"Pos": {
-									"Offset": 779,
+									"Offset": 789,
 									"Line": 16,
 									"Col": 10
 								},
 								"End": {
-									"Offset": 795,
+									"Offset": 805,
 									"Line": 16,
 									"Col": 26
 								},
 								"Left": {
-									"Offset": 779,
+									"Offset": 789,
 									"Line": 16,
 									"Col": 10
 								},
 								"Right": {
-									"Offset": 794,
+									"Offset": 804,
 									"Line": 16,
 									"Col": 25
 								},
 								"Stmts": [
 									{
 										"Pos": {
-											"Offset": 781,
+											"Offset": 791,
 											"Line": 16,
 											"Col": 12
 										},
 										"End": {
-											"Offset": 794,
+											"Offset": 804,
 											"Line": 16,
 											"Col": 25
 										},
 										"Cmd": {
 											"Type": "CallExpr",
 											"Pos": {
-												"Offset": 781,
+												"Offset": 791,
 												"Line": 16,
 												"Col": 12
 											},
 											"End": {
-												"Offset": 794,
+												"Offset": 804,
 												"Line": 16,
 												"Col": 25
 											},
 											"Args": [
 												{
 													"Pos": {
-														"Offset": 781,
+														"Offset": 791,
 														"Line": 16,
 														"Col": 12
 													},
 													"End": {
-														"Offset": 789,
+														"Offset": 799,
 														"Line": 16,
 														"Col": 20
 													},
@@ -2068,22 +2132,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 781,
+																"Offset": 791,
 																"Line": 16,
 																"Col": 12
 															},
 															"End": {
-																"Offset": 789,
+																"Offset": 799,
 																"Line": 16,
 																"Col": 20
 															},
 															"ValuePos": {
-																"Offset": 781,
+																"Offset": 791,
 																"Line": 16,
 																"Col": 12
 															},
 															"ValueEnd": {
-																"Offset": 789,
+																"Offset": 799,
 																"Line": 16,
 																"Col": 20
 															},
@@ -2093,12 +2157,12 @@
 												},
 												{
 													"Pos": {
-														"Offset": 790,
+														"Offset": 800,
 														"Line": 16,
 														"Col": 21
 													},
 													"End": {
-														"Offset": 794,
+														"Offset": 804,
 														"Line": 16,
 														"Col": 25
 													},
@@ -2106,22 +2170,22 @@
 														{
 															"Type": "DblQuoted",
 															"Pos": {
-																"Offset": 790,
+																"Offset": 800,
 																"Line": 16,
 																"Col": 21
 															},
 															"End": {
-																"Offset": 794,
+																"Offset": 804,
 																"Line": 16,
 																"Col": 25
 															},
 															"Left": {
-																"Offset": 790,
+																"Offset": 800,
 																"Line": 16,
 																"Col": 21
 															},
 															"Right": {
-																"Offset": 793,
+																"Offset": 803,
 																"Line": 16,
 																"Col": 24
 															},
@@ -2129,39 +2193,39 @@
 																{
 																	"Type": "ParamExp",
 																	"Pos": {
-																		"Offset": 791,
+																		"Offset": 801,
 																		"Line": 16,
 																		"Col": 22
 																	},
 																	"End": {
-																		"Offset": 793,
+																		"Offset": 803,
 																		"Line": 16,
 																		"Col": 24
 																	},
 																	"Dollar": {
-																		"Offset": 791,
+																		"Offset": 801,
 																		"Line": 16,
 																		"Col": 22
 																	},
 																	"Short": true,
 																	"Param": {
 																		"Pos": {
-																			"Offset": 792,
+																			"Offset": 802,
 																			"Line": 16,
 																			"Col": 23
 																		},
 																		"End": {
-																			"Offset": 793,
+																			"Offset": 803,
 																			"Line": 16,
 																			"Col": 24
 																		},
 																		"ValuePos": {
-																			"Offset": 792,
+																			"Offset": 802,
 																			"Line": 16,
 																			"Col": 23
 																		},
 																		"ValueEnd": {
-																			"Offset": 793,
+																			"Offset": 803,
 																			"Line": 16,
 																			"Col": 24
 																		},
@@ -2175,7 +2239,7 @@
 											]
 										},
 										"Position": {
-											"Offset": 781,
+											"Offset": 791,
 											"Line": 16,
 											"Col": 12
 										}
@@ -2185,22 +2249,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 795,
+									"Offset": 805,
 									"Line": 16,
 									"Col": 26
 								},
 								"End": {
-									"Offset": 804,
+									"Offset": 814,
 									"Line": 17,
 									"Col": 4
 								},
 								"ValuePos": {
-									"Offset": 795,
+									"Offset": 805,
 									"Line": 16,
 									"Col": 26
 								},
 								"ValueEnd": {
-									"Offset": 804,
+									"Offset": 814,
 									"Line": 17,
 									"Col": 4
 								},
@@ -2211,39 +2275,39 @@
 				},
 				{
 					"Pos": {
-						"Offset": 757,
+						"Offset": 767,
 						"Line": 15,
 						"Col": 12
 					},
 					"End": {
-						"Offset": 769,
+						"Offset": 779,
 						"Line": 15,
 						"Col": 24
 					},
 					"OpPos": {
-						"Offset": 758,
+						"Offset": 768,
 						"Line": 15,
 						"Col": 13
 					},
 					"Op": ">",
 					"N": {
 						"Pos": {
-							"Offset": 757,
+							"Offset": 767,
 							"Line": 15,
 							"Col": 12
 						},
 						"End": {
-							"Offset": 758,
+							"Offset": 768,
 							"Line": 15,
 							"Col": 13
 						},
 						"ValuePos": {
-							"Offset": 757,
+							"Offset": 767,
 							"Line": 15,
 							"Col": 12
 						},
 						"ValueEnd": {
-							"Offset": 758,
+							"Offset": 768,
 							"Line": 15,
 							"Col": 13
 						},
@@ -2251,12 +2315,12 @@
 					},
 					"Word": {
 						"Pos": {
-							"Offset": 760,
+							"Offset": 770,
 							"Line": 15,
 							"Col": 15
 						},
 						"End": {
-							"Offset": 769,
+							"Offset": 779,
 							"Line": 15,
 							"Col": 24
 						},
@@ -2264,22 +2328,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 760,
+									"Offset": 770,
 									"Line": 15,
 									"Col": 15
 								},
 								"End": {
-									"Offset": 769,
+									"Offset": 779,
 									"Line": 15,
 									"Col": 24
 								},
 								"ValuePos": {
-									"Offset": 760,
+									"Offset": 770,
 									"Line": 15,
 									"Col": 15
 								},
 								"ValueEnd": {
-									"Offset": 769,
+									"Offset": 779,
 									"Line": 15,
 									"Col": 24
 								},
@@ -2292,51 +2356,51 @@
 		},
 		{
 			"Pos": {
-				"Offset": 805,
+				"Offset": 815,
 				"Line": 18,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 838,
+				"Offset": 848,
 				"Line": 20,
 				"Col": 2
 			},
 			"Cmd": {
 				"Type": "FuncDecl",
 				"Pos": {
-					"Offset": 805,
+					"Offset": 815,
 					"Line": 18,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 838,
+					"Offset": 848,
 					"Line": 20,
 					"Col": 2
 				},
 				"Position": {
-					"Offset": 805,
+					"Offset": 815,
 					"Line": 18,
 					"Col": 1
 				},
 				"Parens": true,
 				"Name": {
 					"Pos": {
-						"Offset": 805,
+						"Offset": 815,
 						"Line": 18,
 						"Col": 1
 					},
 					"End": {
-						"Offset": 806,
+						"Offset": 816,
 						"Line": 18,
 						"Col": 2
 					},
 					"ValuePos": {
-						"Offset": 805,
+						"Offset": 815,
 						"Line": 18,
 						"Col": 1
 					},
 					"ValueEnd": {
-						"Offset": 806,
+						"Offset": 816,
 						"Line": 18,
 						"Col": 2
 					},
@@ -2344,99 +2408,99 @@
 				},
 				"Body": {
 					"Pos": {
-						"Offset": 809,
+						"Offset": 819,
 						"Line": 18,
 						"Col": 5
 					},
 					"End": {
-						"Offset": 838,
+						"Offset": 848,
 						"Line": 20,
 						"Col": 2
 					},
 					"Cmd": {
 						"Type": "Block",
 						"Pos": {
-							"Offset": 809,
+							"Offset": 819,
 							"Line": 18,
 							"Col": 5
 						},
 						"End": {
-							"Offset": 838,
+							"Offset": 848,
 							"Line": 20,
 							"Col": 2
 						},
 						"Lbrace": {
-							"Offset": 809,
+							"Offset": 819,
 							"Line": 18,
 							"Col": 5
 						},
 						"Rbrace": {
-							"Offset": 837,
+							"Offset": 847,
 							"Line": 20,
 							"Col": 1
 						},
 						"Stmts": [
 							{
 								"Pos": {
-									"Offset": 815,
+									"Offset": 825,
 									"Line": 19,
 									"Col": 5
 								},
 								"End": {
-									"Offset": 836,
+									"Offset": 846,
 									"Line": 19,
 									"Col": 26
 								},
 								"Cmd": {
 									"Type": "BinaryCmd",
 									"Pos": {
-										"Offset": 815,
+										"Offset": 825,
 										"Line": 19,
 										"Col": 5
 									},
 									"End": {
-										"Offset": 836,
+										"Offset": 846,
 										"Line": 19,
 										"Col": 26
 									},
 									"OpPos": {
-										"Offset": 827,
+										"Offset": 837,
 										"Line": 19,
 										"Col": 17
 									},
 									"Op": "|",
 									"X": {
 										"Pos": {
-											"Offset": 815,
+											"Offset": 825,
 											"Line": 19,
 											"Col": 5
 										},
 										"End": {
-											"Offset": 826,
+											"Offset": 836,
 											"Line": 19,
 											"Col": 16
 										},
 										"Cmd": {
 											"Type": "CallExpr",
 											"Pos": {
-												"Offset": 815,
+												"Offset": 825,
 												"Line": 19,
 												"Col": 5
 											},
 											"End": {
-												"Offset": 826,
+												"Offset": 836,
 												"Line": 19,
 												"Col": 16
 											},
 											"Args": [
 												{
 													"Pos": {
-														"Offset": 815,
+														"Offset": 825,
 														"Line": 19,
 														"Col": 5
 													},
 													"End": {
-														"Offset": 819,
+														"Offset": 829,
 														"Line": 19,
 														"Col": 9
 													},
@@ -2444,22 +2508,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 815,
+																"Offset": 825,
 																"Line": 19,
 																"Col": 5
 															},
 															"End": {
-																"Offset": 819,
+																"Offset": 829,
 																"Line": 19,
 																"Col": 9
 															},
 															"ValuePos": {
-																"Offset": 815,
+																"Offset": 825,
 																"Line": 19,
 																"Col": 5
 															},
 															"ValueEnd": {
-																"Offset": 819,
+																"Offset": 829,
 																"Line": 19,
 																"Col": 9
 															},
@@ -2469,12 +2533,12 @@
 												},
 												{
 													"Pos": {
-														"Offset": 820,
+														"Offset": 830,
 														"Line": 19,
 														"Col": 10
 													},
 													"End": {
-														"Offset": 826,
+														"Offset": 836,
 														"Line": 19,
 														"Col": 16
 													},
@@ -2482,22 +2546,22 @@
 														{
 															"Type": "DblQuoted",
 															"Pos": {
-																"Offset": 820,
+																"Offset": 830,
 																"Line": 19,
 																"Col": 10
 															},
 															"End": {
-																"Offset": 826,
+																"Offset": 836,
 																"Line": 19,
 																"Col": 16
 															},
 															"Left": {
-																"Offset": 820,
+																"Offset": 830,
 																"Line": 19,
 																"Col": 10
 															},
 															"Right": {
-																"Offset": 825,
+																"Offset": 835,
 																"Line": 19,
 																"Col": 15
 															},
@@ -2505,39 +2569,39 @@
 																{
 																	"Type": "ParamExp",
 																	"Pos": {
-																		"Offset": 821,
+																		"Offset": 831,
 																		"Line": 19,
 																		"Col": 11
 																	},
 																	"End": {
-																		"Offset": 825,
+																		"Offset": 835,
 																		"Line": 19,
 																		"Col": 15
 																	},
 																	"Dollar": {
-																		"Offset": 821,
+																		"Offset": 831,
 																		"Line": 19,
 																		"Col": 11
 																	},
 																	"Short": true,
 																	"Param": {
 																		"Pos": {
-																			"Offset": 822,
+																			"Offset": 832,
 																			"Line": 19,
 																			"Col": 12
 																		},
 																		"End": {
-																			"Offset": 825,
+																			"Offset": 835,
 																			"Line": 19,
 																			"Col": 15
 																		},
 																		"ValuePos": {
-																			"Offset": 822,
+																			"Offset": 832,
 																			"Line": 19,
 																			"Col": 12
 																		},
 																		"ValueEnd": {
-																			"Offset": 825,
+																			"Offset": 835,
 																			"Line": 19,
 																			"Col": 15
 																		},
@@ -2551,43 +2615,43 @@
 											]
 										},
 										"Position": {
-											"Offset": 815,
+											"Offset": 825,
 											"Line": 19,
 											"Col": 5
 										}
 									},
 									"Y": {
 										"Pos": {
-											"Offset": 829,
+											"Offset": 839,
 											"Line": 19,
 											"Col": 19
 										},
 										"End": {
-											"Offset": 836,
+											"Offset": 846,
 											"Line": 19,
 											"Col": 26
 										},
 										"Cmd": {
 											"Type": "CallExpr",
 											"Pos": {
-												"Offset": 829,
+												"Offset": 839,
 												"Line": 19,
 												"Col": 19
 											},
 											"End": {
-												"Offset": 836,
+												"Offset": 846,
 												"Line": 19,
 												"Col": 26
 											},
 											"Args": [
 												{
 													"Pos": {
-														"Offset": 829,
+														"Offset": 839,
 														"Line": 19,
 														"Col": 19
 													},
 													"End": {
-														"Offset": 833,
+														"Offset": 843,
 														"Line": 19,
 														"Col": 23
 													},
@@ -2595,22 +2659,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 829,
+																"Offset": 839,
 																"Line": 19,
 																"Col": 19
 															},
 															"End": {
-																"Offset": 833,
+																"Offset": 843,
 																"Line": 19,
 																"Col": 23
 															},
 															"ValuePos": {
-																"Offset": 829,
+																"Offset": 839,
 																"Line": 19,
 																"Col": 19
 															},
 															"ValueEnd": {
-																"Offset": 833,
+																"Offset": 843,
 																"Line": 19,
 																"Col": 23
 															},
@@ -2620,12 +2684,12 @@
 												},
 												{
 													"Pos": {
-														"Offset": 834,
+														"Offset": 844,
 														"Line": 19,
 														"Col": 24
 													},
 													"End": {
-														"Offset": 836,
+														"Offset": 846,
 														"Line": 19,
 														"Col": 26
 													},
@@ -2633,22 +2697,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 834,
+																"Offset": 844,
 																"Line": 19,
 																"Col": 24
 															},
 															"End": {
-																"Offset": 836,
+																"Offset": 846,
 																"Line": 19,
 																"Col": 26
 															},
 															"ValuePos": {
-																"Offset": 834,
+																"Offset": 844,
 																"Line": 19,
 																"Col": 24
 															},
 															"ValueEnd": {
-																"Offset": 836,
+																"Offset": 846,
 																"Line": 19,
 																"Col": 26
 															},
@@ -2659,14 +2723,14 @@
 											]
 										},
 										"Position": {
-											"Offset": 829,
+											"Offset": 839,
 											"Line": 19,
 											"Col": 19
 										}
 									}
 								},
 								"Position": {
-									"Offset": 815,
+									"Offset": 825,
 									"Line": 19,
 									"Col": 5
 								}
@@ -2674,71 +2738,71 @@
 						]
 					},
 					"Position": {
-						"Offset": 809,
+						"Offset": 819,
 						"Line": 18,
 						"Col": 5
 					}
 				}
 			},
 			"Position": {
-				"Offset": 805,
+				"Offset": 815,
 				"Line": 18,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 839,
+				"Offset": 849,
 				"Line": 21,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 859,
+				"Offset": 869,
 				"Line": 21,
 				"Col": 21
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 839,
+					"Offset": 849,
 					"Line": 21,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 859,
+					"Offset": 869,
 					"Line": 21,
 					"Col": 21
 				},
 				"Assigns": [
 					{
 						"Pos": {
-							"Offset": 839,
+							"Offset": 849,
 							"Line": 21,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 859,
+							"Offset": 869,
 							"Line": 21,
 							"Col": 21
 						},
 						"Name": {
 							"Pos": {
-								"Offset": 839,
+								"Offset": 849,
 								"Line": 21,
 								"Col": 1
 							},
 							"End": {
-								"Offset": 844,
+								"Offset": 854,
 								"Line": 21,
 								"Col": 6
 							},
 							"ValuePos": {
-								"Offset": 839,
+								"Offset": 849,
 								"Line": 21,
 								"Col": 1
 							},
 							"ValueEnd": {
-								"Offset": 844,
+								"Offset": 854,
 								"Line": 21,
 								"Col": 6
 							},
@@ -2746,12 +2810,12 @@
 						},
 						"Value": {
 							"Pos": {
-								"Offset": 845,
+								"Offset": 855,
 								"Line": 21,
 								"Col": 7
 							},
 							"End": {
-								"Offset": 859,
+								"Offset": 869,
 								"Line": 21,
 								"Col": 21
 							},
@@ -2759,39 +2823,39 @@
 								{
 									"Type": "ArithmExp",
 									"Pos": {
-										"Offset": 845,
+										"Offset": 855,
 										"Line": 21,
 										"Col": 7
 									},
 									"End": {
-										"Offset": 859,
+										"Offset": 869,
 										"Line": 21,
 										"Col": 21
 									},
 									"Left": {
-										"Offset": 845,
+										"Offset": 855,
 										"Line": 21,
 										"Col": 7
 									},
 									"Right": {
-										"Offset": 857,
+										"Offset": 867,
 										"Line": 21,
 										"Col": 19
 									},
 									"X": {
 										"Type": "BinaryArithm",
 										"Pos": {
-											"Offset": 848,
+											"Offset": 858,
 											"Line": 21,
 											"Col": 10
 										},
 										"End": {
-											"Offset": 857,
+											"Offset": 867,
 											"Line": 21,
 											"Col": 19
 										},
 										"OpPos": {
-											"Offset": 854,
+											"Offset": 864,
 											"Line": 21,
 											"Col": 16
 										},
@@ -2799,12 +2863,12 @@
 										"X": {
 											"Type": "Word",
 											"Pos": {
-												"Offset": 848,
+												"Offset": 858,
 												"Line": 21,
 												"Col": 10
 											},
 											"End": {
-												"Offset": 853,
+												"Offset": 863,
 												"Line": 21,
 												"Col": 15
 											},
@@ -2812,22 +2876,22 @@
 												{
 													"Type": "Lit",
 													"Pos": {
-														"Offset": 848,
+														"Offset": 858,
 														"Line": 21,
 														"Col": 10
 													},
 													"End": {
-														"Offset": 853,
+														"Offset": 863,
 														"Line": 21,
 														"Col": 15
 													},
 													"ValuePos": {
-														"Offset": 848,
+														"Offset": 858,
 														"Line": 21,
 														"Col": 10
 													},
 													"ValueEnd": {
-														"Offset": 853,
+														"Offset": 863,
 														"Line": 21,
 														"Col": 15
 													},
@@ -2838,12 +2902,12 @@
 										"Y": {
 											"Type": "Word",
 											"Pos": {
-												"Offset": 856,
+												"Offset": 866,
 												"Line": 21,
 												"Col": 18
 											},
 											"End": {
-												"Offset": 857,
+												"Offset": 867,
 												"Line": 21,
 												"Col": 19
 											},
@@ -2851,22 +2915,22 @@
 												{
 													"Type": "Lit",
 													"Pos": {
-														"Offset": 856,
+														"Offset": 866,
 														"Line": 21,
 														"Col": 18
 													},
 													"End": {
-														"Offset": 857,
+														"Offset": 867,
 														"Line": 21,
 														"Col": 19
 													},
 													"ValuePos": {
-														"Offset": 856,
+														"Offset": 866,
 														"Line": 21,
 														"Col": 18
 													},
 													"ValueEnd": {
-														"Offset": 857,
+														"Offset": 867,
 														"Line": 21,
 														"Col": 19
 													},
@@ -2882,43 +2946,43 @@
 				]
 			},
 			"Position": {
-				"Offset": 839,
+				"Offset": 849,
 				"Line": 21,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 860,
+				"Offset": 870,
 				"Line": 22,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 884,
+				"Offset": 894,
 				"Line": 22,
 				"Col": 25
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 860,
+					"Offset": 870,
 					"Line": 22,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 884,
+					"Offset": 894,
 					"Line": 22,
 					"Col": 25
 				},
 				"Args": [
 					{
 						"Pos": {
-							"Offset": 860,
+							"Offset": 870,
 							"Line": 22,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 864,
+							"Offset": 874,
 							"Line": 22,
 							"Col": 5
 						},
@@ -2926,22 +2990,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 860,
+									"Offset": 870,
 									"Line": 22,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 864,
+									"Offset": 874,
 									"Line": 22,
 									"Col": 5
 								},
 								"ValuePos": {
-									"Offset": 860,
+									"Offset": 870,
 									"Line": 22,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 864,
+									"Offset": 874,
 									"Line": 22,
 									"Col": 5
 								},
@@ -2951,12 +3015,12 @@
 					},
 					{
 						"Pos": {
-							"Offset": 865,
+							"Offset": 875,
 							"Line": 22,
 							"Col": 6
 						},
 						"End": {
-							"Offset": 874,
+							"Offset": 884,
 							"Line": 22,
 							"Col": 15
 						},
@@ -2964,22 +3028,22 @@
 							{
 								"Type": "ProcSubst",
 								"Pos": {
-									"Offset": 865,
+									"Offset": 875,
 									"Line": 22,
 									"Col": 6
 								},
 								"End": {
-									"Offset": 874,
+									"Offset": 884,
 									"Line": 22,
 									"Col": 15
 								},
 								"OpPos": {
-									"Offset": 865,
+									"Offset": 875,
 									"Line": 22,
 									"Col": 6
 								},
 								"Rparen": {
-									"Offset": 873,
+									"Offset": 883,
 									"Line": 22,
 									"Col": 14
 								},
@@ -2987,36 +3051,36 @@
 								"Stmts": [
 									{
 										"Pos": {
-											"Offset": 867,
+											"Offset": 877,
 											"Line": 22,
 											"Col": 8
 										},
 										"End": {
-											"Offset": 873,
+											"Offset": 883,
 											"Line": 22,
 											"Col": 14
 										},
 										"Cmd": {
 											"Type": "CallExpr",
 											"Pos": {
-												"Offset": 867,
+												"Offset": 877,
 												"Line": 22,
 												"Col": 8
 											},
 											"End": {
-												"Offset": 873,
+												"Offset": 883,
 												"Line": 22,
 												"Col": 14
 											},
 											"Args": [
 												{
 													"Pos": {
-														"Offset": 867,
+														"Offset": 877,
 														"Line": 22,
 														"Col": 8
 													},
 													"End": {
-														"Offset": 871,
+														"Offset": 881,
 														"Line": 22,
 														"Col": 12
 													},
@@ -3024,22 +3088,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 867,
+																"Offset": 877,
 																"Line": 22,
 																"Col": 8
 															},
 															"End": {
-																"Offset": 871,
+																"Offset": 881,
 																"Line": 22,
 																"Col": 12
 															},
 															"ValuePos": {
-																"Offset": 867,
+																"Offset": 877,
 																"Line": 22,
 																"Col": 8
 															},
 															"ValueEnd": {
-																"Offset": 871,
+																"Offset": 881,
 																"Line": 22,
 																"Col": 12
 															},
@@ -3049,12 +3113,12 @@
 												},
 												{
 													"Pos": {
-														"Offset": 872,
+														"Offset": 882,
 														"Line": 22,
 														"Col": 13
 													},
 													"End": {
-														"Offset": 873,
+														"Offset": 883,
 														"Line": 22,
 														"Col": 14
 													},
@@ -3062,22 +3126,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 872,
+																"Offset": 882,
 																"Line": 22,
 																"Col": 13
 															},
 															"End": {
-																"Offset": 873,
+																"Offset": 883,
 																"Line": 22,
 																"Col": 14
 															},
 															"ValuePos": {
-																"Offset": 872,
+																"Offset": 882,
 																"Line": 22,
 																"Col": 13
 															},
 															"ValueEnd": {
-																"Offset": 873,
+																"Offset": 883,
 																"Line": 22,
 																"Col": 14
 															},
@@ -3088,7 +3152,7 @@
 											]
 										},
 										"Position": {
-											"Offset": 867,
+											"Offset": 877,
 											"Line": 22,
 											"Col": 8
 										}
@@ -3099,12 +3163,12 @@
 					},
 					{
 						"Pos": {
-							"Offset": 875,
+							"Offset": 885,
 							"Line": 22,
 							"Col": 16
 						},
 						"End": {
-							"Offset": 884,
+							"Offset": 894,
 							"Line": 22,
 							"Col": 25
 						},
@@ -3112,22 +3176,22 @@
 							{
 								"Type": "ProcSubst",
 								"Pos": {
-									"Offset": 875,
+									"Offset": 885,
 									"Line": 22,
 									"Col": 16
 								},
 								"End": {
-									"Offset": 884,
+									"Offset": 894,
 									"Line": 22,
 									"Col": 25
 								},
 								"OpPos": {
-									"Offset": 875,
+									"Offset": 885,
 									"Line": 22,
 									"Col": 16
 								},
 								"Rparen": {
-									"Offset": 883,
+									"Offset": 893,
 									"Line": 22,
 									"Col": 24
 								},
@@ -3135,36 +3199,36 @@
 								"Stmts": [
 									{
 										"Pos": {
-											"Offset": 877,
+											"Offset": 887,
 											"Line": 22,
 											"Col": 18
 										},
 										"End": {
-											"Offset": 883,
+											"Offset": 893,
 											"Line": 22,
 											"Col": 24
 										},
 										"Cmd": {
 											"Type": "CallExpr",
 											"Pos": {
-												"Offset": 877,
+												"Offset": 887,
 												"Line": 22,
 												"Col": 18
 											},
 											"End": {
-												"Offset": 883,
+												"Offset": 893,
 												"Line": 22,
 												"Col": 24
 											},
 											"Args": [
 												{
 													"Pos": {
-														"Offset": 877,
+														"Offset": 887,
 														"Line": 22,
 														"Col": 18
 													},
 													"End": {
-														"Offset": 881,
+														"Offset": 891,
 														"Line": 22,
 														"Col": 22
 													},
@@ -3172,22 +3236,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 877,
+																"Offset": 887,
 																"Line": 22,
 																"Col": 18
 															},
 															"End": {
-																"Offset": 881,
+																"Offset": 891,
 																"Line": 22,
 																"Col": 22
 															},
 															"ValuePos": {
-																"Offset": 877,
+																"Offset": 887,
 																"Line": 22,
 																"Col": 18
 															},
 															"ValueEnd": {
-																"Offset": 881,
+																"Offset": 891,
 																"Line": 22,
 																"Col": 22
 															},
@@ -3197,12 +3261,12 @@
 												},
 												{
 													"Pos": {
-														"Offset": 882,
+														"Offset": 892,
 														"Line": 22,
 														"Col": 23
 													},
 													"End": {
-														"Offset": 883,
+														"Offset": 893,
 														"Line": 22,
 														"Col": 24
 													},
@@ -3210,22 +3274,22 @@
 														{
 															"Type": "Lit",
 															"Pos": {
-																"Offset": 882,
+																"Offset": 892,
 																"Line": 22,
 																"Col": 23
 															},
 															"End": {
-																"Offset": 883,
+																"Offset": 893,
 																"Line": 22,
 																"Col": 24
 															},
 															"ValuePos": {
-																"Offset": 882,
+																"Offset": 892,
 																"Line": 22,
 																"Col": 23
 															},
 															"ValueEnd": {
-																"Offset": 883,
+																"Offset": 893,
 																"Line": 22,
 																"Col": 24
 															},
@@ -3236,7 +3300,7 @@
 											]
 										},
 										"Position": {
-											"Offset": 877,
+											"Offset": 887,
 											"Line": 22,
 											"Col": 18
 										}
@@ -3248,87 +3312,87 @@
 				]
 			},
 			"Position": {
-				"Offset": 860,
+				"Offset": 870,
 				"Line": 22,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 885,
+				"Offset": 895,
 				"Line": 23,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 918,
+				"Offset": 928,
 				"Line": 23,
 				"Col": 34
 			},
 			"Cmd": {
 				"Type": "BinaryCmd",
 				"Pos": {
-					"Offset": 885,
+					"Offset": 895,
 					"Line": 23,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 918,
+					"Offset": 928,
 					"Line": 23,
 					"Col": 34
 				},
 				"OpPos": {
-					"Offset": 902,
+					"Offset": 912,
 					"Line": 23,
 					"Col": 18
 				},
 				"Op": "&&",
 				"X": {
 					"Pos": {
-						"Offset": 885,
+						"Offset": 895,
 						"Line": 23,
 						"Col": 1
 					},
 					"End": {
-						"Offset": 901,
+						"Offset": 911,
 						"Line": 23,
 						"Col": 17
 					},
 					"Cmd": {
 						"Type": "TestClause",
 						"Pos": {
-							"Offset": 885,
+							"Offset": 895,
 							"Line": 23,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 901,
+							"Offset": 911,
 							"Line": 23,
 							"Col": 17
 						},
 						"Left": {
-							"Offset": 885,
+							"Offset": 895,
 							"Line": 23,
 							"Col": 1
 						},
 						"Right": {
-							"Offset": 899,
+							"Offset": 909,
 							"Line": 23,
 							"Col": 15
 						},
 						"X": {
 							"Type": "BinaryTest",
 							"Pos": {
-								"Offset": 888,
+								"Offset": 898,
 								"Line": 23,
 								"Col": 4
 							},
 							"End": {
-								"Offset": 898,
+								"Offset": 908,
 								"Line": 23,
 								"Col": 14
 							},
 							"OpPos": {
-								"Offset": 894,
+								"Offset": 904,
 								"Line": 23,
 								"Col": 10
 							},
@@ -3336,12 +3400,12 @@
 							"X": {
 								"Type": "Word",
 								"Pos": {
-									"Offset": 888,
+									"Offset": 898,
 									"Line": 23,
 									"Col": 4
 								},
 								"End": {
-									"Offset": 893,
+									"Offset": 903,
 									"Line": 23,
 									"Col": 9
 								},
@@ -3349,39 +3413,39 @@
 									{
 										"Type": "ParamExp",
 										"Pos": {
-											"Offset": 888,
+											"Offset": 898,
 											"Line": 23,
 											"Col": 4
 										},
 										"End": {
-											"Offset": 893,
+											"Offset": 903,
 											"Line": 23,
 											"Col": 9
 										},
 										"Dollar": {
-											"Offset": 888,
+											"Offset": 898,
 											"Line": 23,
 											"Col": 4
 										},
 										"Short": true,
 										"Param": {
 											"Pos": {
-												"Offset": 889,
+												"Offset": 899,
 												"Line": 23,
 												"Col": 5
 											},
 											"End": {
-												"Offset": 893,
+												"Offset": 903,
 												"Line": 23,
 												"Col": 9
 											},
 											"ValuePos": {
-												"Offset": 889,
+												"Offset": 899,
 												"Line": 23,
 												"Col": 5
 											},
 											"ValueEnd": {
-												"Offset": 893,
+												"Offset": 903,
 												"Line": 23,
 												"Col": 9
 											},
@@ -3393,12 +3457,12 @@
 							"Y": {
 								"Type": "Word",
 								"Pos": {
-									"Offset": 897,
+									"Offset": 907,
 									"Line": 23,
 									"Col": 13
 								},
 								"End": {
-									"Offset": 898,
+									"Offset": 908,
 									"Line": 23,
 									"Col": 14
 								},
@@ -3406,22 +3470,22 @@
 									{
 										"Type": "Lit",
 										"Pos": {
-											"Offset": 897,
+											"Offset": 907,
 											"Line": 23,
 											"Col": 13
 										},
 										"End": {
-											"Offset": 898,
+											"Offset": 908,
 											"Line": 23,
 											"Col": 14
 										},
 										"ValuePos": {
-											"Offset": 897,
+											"Offset": 907,
 											"Line": 23,
 											"Col": 13
 										},
 										"ValueEnd": {
-											"Offset": 898,
+											"Offset": 908,
 											"Line": 23,
 											"Col": 14
 										},
@@ -3432,43 +3496,43 @@
 						}
 					},
 					"Position": {
-						"Offset": 885,
+						"Offset": 895,
 						"Line": 23,
 						"Col": 1
 					}
 				},
 				"Y": {
 					"Pos": {
-						"Offset": 905,
+						"Offset": 915,
 						"Line": 23,
 						"Col": 21
 					},
 					"End": {
-						"Offset": 918,
+						"Offset": 928,
 						"Line": 23,
 						"Col": 34
 					},
 					"Cmd": {
 						"Type": "CallExpr",
 						"Pos": {
-							"Offset": 905,
+							"Offset": 915,
 							"Line": 23,
 							"Col": 21
 						},
 						"End": {
-							"Offset": 918,
+							"Offset": 928,
 							"Line": 23,
 							"Col": 34
 						},
 						"Args": [
 							{
 								"Pos": {
-									"Offset": 905,
+									"Offset": 915,
 									"Line": 23,
 									"Col": 21
 								},
 								"End": {
-									"Offset": 909,
+									"Offset": 919,
 									"Line": 23,
 									"Col": 25
 								},
@@ -3476,22 +3540,22 @@
 									{
 										"Type": "Lit",
 										"Pos": {
-											"Offset": 905,
+											"Offset": 915,
 											"Line": 23,
 											"Col": 21
 										},
 										"End": {
-											"Offset": 909,
+											"Offset": 919,
 											"Line": 23,
 											"Col": 25
 										},
 										"ValuePos": {
-											"Offset": 905,
+											"Offset": 915,
 											"Line": 23,
 											"Col": 21
 										},
 										"ValueEnd": {
-											"Offset": 909,
+											"Offset": 919,
 											"Line": 23,
 											"Col": 25
 										},
@@ -3501,12 +3565,12 @@
 							},
 							{
 								"Pos": {
-									"Offset": 910,
+									"Offset": 920,
 									"Line": 23,
 									"Col": 26
 								},
 								"End": {
-									"Offset": 918,
+									"Offset": 928,
 									"Line": 23,
 									"Col": 34
 								},
@@ -3514,22 +3578,22 @@
 									{
 										"Type": "DblQuoted",
 										"Pos": {
-											"Offset": 910,
+											"Offset": 920,
 											"Line": 23,
 											"Col": 26
 										},
 										"End": {
-											"Offset": 918,
+											"Offset": 928,
 											"Line": 23,
 											"Col": 34
 										},
 										"Left": {
-											"Offset": 910,
+											"Offset": 920,
 											"Line": 23,
 											"Col": 26
 										},
 										"Right": {
-											"Offset": 917,
+											"Offset": 927,
 											"Line": 23,
 											"Col": 33
 										},
@@ -3537,39 +3601,39 @@
 											{
 												"Type": "ParamExp",
 												"Pos": {
-													"Offset": 911,
+													"Offset": 921,
 													"Line": 23,
 													"Col": 27
 												},
 												"End": {
-													"Offset": 917,
+													"Offset": 927,
 													"Line": 23,
 													"Col": 33
 												},
 												"Dollar": {
-													"Offset": 911,
+													"Offset": 921,
 													"Line": 23,
 													"Col": 27
 												},
 												"Short": true,
 												"Param": {
 													"Pos": {
-														"Offset": 912,
+														"Offset": 922,
 														"Line": 23,
 														"Col": 28
 													},
 													"End": {
-														"Offset": 917,
+														"Offset": 927,
 														"Line": 23,
 														"Col": 33
 													},
 													"ValuePos": {
-														"Offset": 912,
+														"Offset": 922,
 														"Line": 23,
 														"Col": 28
 													},
 													"ValueEnd": {
-														"Offset": 917,
+														"Offset": 927,
 														"Line": 23,
 														"Col": 33
 													},
@@ -3583,94 +3647,94 @@
 						]
 					},
 					"Position": {
-						"Offset": 905,
+						"Offset": 915,
 						"Line": 23,
 						"Col": 21
 					}
 				}
 			},
 			"Position": {
-				"Offset": 885,
+				"Offset": 895,
 				"Line": 23,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 919,
+				"Offset": 929,
 				"Line": 24,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 958,
+				"Offset": 968,
 				"Line": 24,
 				"Col": 40
 			},
 			"Cmd": {
 				"Type": "BinaryCmd",
 				"Pos": {
-					"Offset": 919,
+					"Offset": 929,
 					"Line": 24,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 958,
+					"Offset": 968,
 					"Line": 24,
 					"Col": 40
 				},
 				"OpPos": {
-					"Offset": 949,
+					"Offset": 959,
 					"Line": 24,
 					"Col": 31
 				},
 				"Op": "||",
 				"X": {
 					"Pos": {
-						"Offset": 919,
+						"Offset": 929,
 						"Line": 24,
 						"Col": 1
 					},
 					"End": {
-						"Offset": 948,
+						"Offset": 958,
 						"Line": 24,
 						"Col": 30
 					},
 					"Cmd": {
 						"Type": "TestClause",
 						"Pos": {
-							"Offset": 919,
+							"Offset": 929,
 							"Line": 24,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 948,
+							"Offset": 958,
 							"Line": 24,
 							"Col": 30
 						},
 						"Left": {
-							"Offset": 919,
+							"Offset": 929,
 							"Line": 24,
 							"Col": 1
 						},
 						"Right": {
-							"Offset": 946,
+							"Offset": 956,
 							"Line": 24,
 							"Col": 28
 						},
 						"X": {
 							"Type": "BinaryTest",
 							"Pos": {
-								"Offset": 922,
+								"Offset": 932,
 								"Line": 24,
 								"Col": 4
 							},
 							"End": {
-								"Offset": 945,
+								"Offset": 955,
 								"Line": 24,
 								"Col": 27
 							},
 							"OpPos": {
-								"Offset": 933,
+								"Offset": 943,
 								"Line": 24,
 								"Col": 15
 							},
@@ -3678,17 +3742,17 @@
 							"X": {
 								"Type": "BinaryTest",
 								"Pos": {
-									"Offset": 922,
+									"Offset": 932,
 									"Line": 24,
 									"Col": 4
 								},
 								"End": {
-									"Offset": 932,
+									"Offset": 942,
 									"Line": 24,
 									"Col": 14
 								},
 								"OpPos": {
-									"Offset": 928,
+									"Offset": 938,
 									"Line": 24,
 									"Col": 10
 								},
@@ -3696,12 +3760,12 @@
 								"X": {
 									"Type": "Word",
 									"Pos": {
-										"Offset": 922,
+										"Offset": 932,
 										"Line": 24,
 										"Col": 4
 									},
 									"End": {
-										"Offset": 927,
+										"Offset": 937,
 										"Line": 24,
 										"Col": 9
 									},
@@ -3709,39 +3773,39 @@
 										{
 											"Type": "ParamExp",
 											"Pos": {
-												"Offset": 922,
+												"Offset": 932,
 												"Line": 24,
 												"Col": 4
 											},
 											"End": {
-												"Offset": 927,
+												"Offset": 937,
 												"Line": 24,
 												"Col": 9
 											},
 											"Dollar": {
-												"Offset": 922,
+												"Offset": 932,
 												"Line": 24,
 												"Col": 4
 											},
 											"Short": true,
 											"Param": {
 												"Pos": {
-													"Offset": 923,
+													"Offset": 933,
 													"Line": 24,
 													"Col": 5
 												},
 												"End": {
-													"Offset": 927,
+													"Offset": 937,
 													"Line": 24,
 													"Col": 9
 												},
 												"ValuePos": {
-													"Offset": 923,
+													"Offset": 933,
 													"Line": 24,
 													"Col": 5
 												},
 												"ValueEnd": {
-													"Offset": 927,
+													"Offset": 937,
 													"Line": 24,
 													"Col": 9
 												},
@@ -3753,12 +3817,12 @@
 								"Y": {
 									"Type": "Word",
 									"Pos": {
-										"Offset": 931,
+										"Offset": 941,
 										"Line": 24,
 										"Col": 13
 									},
 									"End": {
-										"Offset": 932,
+										"Offset": 942,
 										"Line": 24,
 										"Col": 14
 									},
@@ -3766,22 +3830,22 @@
 										{
 											"Type": "Lit",
 											"Pos": {
-												"Offset": 931,
+												"Offset": 941,
 												"Line": 24,
 												"Col": 13
 											},
 											"End": {
-												"Offset": 932,
+												"Offset": 942,
 												"Line": 24,
 												"Col": 14
 											},
 											"ValuePos": {
-												"Offset": 931,
+												"Offset": 941,
 												"Line": 24,
 												"Col": 13
 											},
 											"ValueEnd": {
-												"Offset": 932,
+												"Offset": 942,
 												"Line": 24,
 												"Col": 14
 											},
@@ -3793,17 +3857,17 @@
 							"Y": {
 								"Type": "BinaryTest",
 								"Pos": {
-									"Offset": 936,
+									"Offset": 946,
 									"Line": 24,
 									"Col": 18
 								},
 								"End": {
-									"Offset": 945,
+									"Offset": 955,
 									"Line": 24,
 									"Col": 27
 								},
 								"OpPos": {
-									"Offset": 942,
+									"Offset": 952,
 									"Line": 24,
 									"Col": 24
 								},
@@ -3811,12 +3875,12 @@
 								"X": {
 									"Type": "Word",
 									"Pos": {
-										"Offset": 936,
+										"Offset": 946,
 										"Line": 24,
 										"Col": 18
 									},
 									"End": {
-										"Offset": 941,
+										"Offset": 951,
 										"Line": 24,
 										"Col": 23
 									},
@@ -3824,39 +3888,39 @@
 										{
 											"Type": "ParamExp",
 											"Pos": {
-												"Offset": 936,
+												"Offset": 946,
 												"Line": 24,
 												"Col": 18
 											},
 											"End": {
-												"Offset": 941,
+												"Offset": 951,
 												"Line": 24,
 												"Col": 23
 											},
 											"Dollar": {
-												"Offset": 936,
+												"Offset": 946,
 												"Line": 24,
 												"Col": 18
 											},
 											"Short": true,
 											"Param": {
 												"Pos": {
-													"Offset": 937,
+													"Offset": 947,
 													"Line": 24,
 													"Col": 19
 												},
 												"End": {
-													"Offset": 941,
+													"Offset": 951,
 													"Line": 24,
 													"Col": 23
 												},
 												"ValuePos": {
-													"Offset": 937,
+													"Offset": 947,
 													"Line": 24,
 													"Col": 19
 												},
 												"ValueEnd": {
-													"Offset": 941,
+													"Offset": 951,
 													"Line": 24,
 													"Col": 23
 												},
@@ -3868,12 +3932,12 @@
 								"Y": {
 									"Type": "Word",
 									"Pos": {
-										"Offset": 944,
+										"Offset": 954,
 										"Line": 24,
 										"Col": 26
 									},
 									"End": {
-										"Offset": 945,
+										"Offset": 955,
 										"Line": 24,
 										"Col": 27
 									},
@@ -3881,22 +3945,22 @@
 										{
 											"Type": "Lit",
 											"Pos": {
-												"Offset": 944,
+												"Offset": 954,
 												"Line": 24,
 												"Col": 26
 											},
 											"End": {
-												"Offset": 945,
+												"Offset": 955,
 												"Line": 24,
 												"Col": 27
 											},
 											"ValuePos": {
-												"Offset": 944,
+												"Offset": 954,
 												"Line": 24,
 												"Col": 26
 											},
 											"ValueEnd": {
-												"Offset": 945,
+												"Offset": 955,
 												"Line": 24,
 												"Col": 27
 											},
@@ -3908,43 +3972,43 @@
 						}
 					},
 					"Position": {
-						"Offset": 919,
+						"Offset": 929,
 						"Line": 24,
 						"Col": 1
 					}
 				},
 				"Y": {
 					"Pos": {
-						"Offset": 952,
+						"Offset": 962,
 						"Line": 24,
 						"Col": 34
 					},
 					"End": {
-						"Offset": 958,
+						"Offset": 968,
 						"Line": 24,
 						"Col": 40
 					},
 					"Cmd": {
 						"Type": "CallExpr",
 						"Pos": {
-							"Offset": 952,
+							"Offset": 962,
 							"Line": 24,
 							"Col": 34
 						},
 						"End": {
-							"Offset": 958,
+							"Offset": 968,
 							"Line": 24,
 							"Col": 40
 						},
 						"Args": [
 							{
 								"Pos": {
-									"Offset": 952,
+									"Offset": 962,
 									"Line": 24,
 									"Col": 34
 								},
 								"End": {
-									"Offset": 956,
+									"Offset": 966,
 									"Line": 24,
 									"Col": 38
 								},
@@ -3952,22 +4016,22 @@
 									{
 										"Type": "Lit",
 										"Pos": {
-											"Offset": 952,
+											"Offset": 962,
 											"Line": 24,
 											"Col": 34
 										},
 										"End": {
-											"Offset": 956,
+											"Offset": 966,
 											"Line": 24,
 											"Col": 38
 										},
 										"ValuePos": {
-											"Offset": 952,
+											"Offset": 962,
 											"Line": 24,
 											"Col": 34
 										},
 										"ValueEnd": {
-											"Offset": 956,
+											"Offset": 966,
 											"Line": 24,
 											"Col": 38
 										},
@@ -3977,12 +4041,12 @@
 							},
 							{
 								"Pos": {
-									"Offset": 957,
+									"Offset": 967,
 									"Line": 24,
 									"Col": 39
 								},
 								"End": {
-									"Offset": 958,
+									"Offset": 968,
 									"Line": 24,
 									"Col": 40
 								},
@@ -3990,22 +4054,22 @@
 									{
 										"Type": "Lit",
 										"Pos": {
-											"Offset": 957,
+											"Offset": 967,
 											"Line": 24,
 											"Col": 39
 										},
 										"End": {
-											"Offset": 958,
+											"Offset": 968,
 											"Line": 24,
 											"Col": 40
 										},
 										"ValuePos": {
-											"Offset": 957,
+											"Offset": 967,
 											"Line": 24,
 											"Col": 39
 										},
 										"ValueEnd": {
-											"Offset": 958,
+											"Offset": 968,
 											"Line": 24,
 											"Col": 40
 										},
@@ -4016,50 +4080,50 @@
 						]
 					},
 					"Position": {
-						"Offset": 952,
+						"Offset": 962,
 						"Line": 24,
 						"Col": 34
 					}
 				}
 			},
 			"Position": {
-				"Offset": 919,
+				"Offset": 929,
 				"Line": 24,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 959,
+				"Offset": 969,
 				"Line": 25,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 984,
+				"Offset": 994,
 				"Line": 25,
 				"Col": 26
 			},
 			"Cmd": {
 				"Type": "CallExpr",
 				"Pos": {
-					"Offset": 959,
+					"Offset": 969,
 					"Line": 25,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 984,
+					"Offset": 994,
 					"Line": 25,
 					"Col": 26
 				},
 				"Args": [
 					{
 						"Pos": {
-							"Offset": 959,
+							"Offset": 969,
 							"Line": 25,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 960,
+							"Offset": 970,
 							"Line": 25,
 							"Col": 2
 						},
@@ -4067,22 +4131,22 @@
 							{
 								"Type": "Lit",
 								"Pos": {
-									"Offset": 959,
+									"Offset": 969,
 									"Line": 25,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 960,
+									"Offset": 970,
 									"Line": 25,
 									"Col": 2
 								},
 								"ValuePos": {
-									"Offset": 959,
+									"Offset": 969,
 									"Line": 25,
 									"Col": 1
 								},
 								"ValueEnd": {
-									"Offset": 960,
+									"Offset": 970,
 									"Line": 25,
 									"Col": 2
 								},
@@ -4092,12 +4156,12 @@
 					},
 					{
 						"Pos": {
-							"Offset": 961,
+							"Offset": 971,
 							"Line": 25,
 							"Col": 3
 						},
 						"End": {
-							"Offset": 974,
+							"Offset": 984,
 							"Line": 25,
 							"Col": 16
 						},
@@ -4105,22 +4169,22 @@
 							{
 								"Type": "DblQuoted",
 								"Pos": {
-									"Offset": 961,
+									"Offset": 971,
 									"Line": 25,
 									"Col": 3
 								},
 								"End": {
-									"Offset": 974,
+									"Offset": 984,
 									"Line": 25,
 									"Col": 16
 								},
 								"Left": {
-									"Offset": 961,
+									"Offset": 971,
 									"Line": 25,
 									"Col": 3
 								},
 								"Right": {
-									"Offset": 973,
+									"Offset": 983,
 									"Line": 25,
 									"Col": 15
 								},
@@ -4128,43 +4192,43 @@
 									{
 										"Type": "ParamExp",
 										"Pos": {
-											"Offset": 962,
+											"Offset": 972,
 											"Line": 25,
 											"Col": 4
 										},
 										"End": {
-											"Offset": 973,
+											"Offset": 983,
 											"Line": 25,
 											"Col": 15
 										},
 										"Dollar": {
-											"Offset": 962,
+											"Offset": 972,
 											"Line": 25,
 											"Col": 4
 										},
 										"Rbrace": {
-											"Offset": 972,
+											"Offset": 982,
 											"Line": 25,
 											"Col": 14
 										},
 										"Param": {
 											"Pos": {
-												"Offset": 964,
+												"Offset": 974,
 												"Line": 25,
 												"Col": 6
 											},
 											"End": {
-												"Offset": 970,
+												"Offset": 980,
 												"Line": 25,
 												"Col": 12
 											},
 											"ValuePos": {
-												"Offset": 964,
+												"Offset": 974,
 												"Line": 25,
 												"Col": 6
 											},
 											"ValueEnd": {
-												"Offset": 970,
+												"Offset": 980,
 												"Line": 25,
 												"Col": 12
 											},
@@ -4180,12 +4244,12 @@
 					},
 					{
 						"Pos": {
-							"Offset": 975,
+							"Offset": 985,
 							"Line": 25,
 							"Col": 17
 						},
 						"End": {
-							"Offset": 984,
+							"Offset": 994,
 							"Line": 25,
 							"Col": 26
 						},
@@ -4193,22 +4257,22 @@
 							{
 								"Type": "DblQuoted",
 								"Pos": {
-									"Offset": 975,
+									"Offset": 985,
 									"Line": 25,
 									"Col": 17
 								},
 								"End": {
-									"Offset": 984,
+									"Offset": 994,
 									"Line": 25,
 									"Col": 26
 								},
 								"Left": {
-									"Offset": 975,
+									"Offset": 985,
 									"Line": 25,
 									"Col": 17
 								},
 								"Right": {
-									"Offset": 983,
+									"Offset": 993,
 									"Line": 25,
 									"Col": 25
 								},
@@ -4216,43 +4280,43 @@
 									{
 										"Type": "ParamExp",
 										"Pos": {
-											"Offset": 976,
+											"Offset": 986,
 											"Line": 25,
 											"Col": 18
 										},
 										"End": {
-											"Offset": 983,
+											"Offset": 993,
 											"Line": 25,
 											"Col": 25
 										},
 										"Dollar": {
-											"Offset": 976,
+											"Offset": 986,
 											"Line": 25,
 											"Col": 18
 										},
 										"Rbrace": {
-											"Offset": 982,
+											"Offset": 992,
 											"Line": 25,
 											"Col": 24
 										},
 										"Param": {
 											"Pos": {
-												"Offset": 978,
+												"Offset": 988,
 												"Line": 25,
 												"Col": 20
 											},
 											"End": {
-												"Offset": 980,
+												"Offset": 990,
 												"Line": 25,
 												"Col": 22
 											},
 											"ValuePos": {
-												"Offset": 978,
+												"Offset": 988,
 												"Line": 25,
 												"Col": 20
 											},
 											"ValueEnd": {
-												"Offset": 980,
+												"Offset": 990,
 												"Line": 25,
 												"Col": 22
 											},
@@ -4269,57 +4333,57 @@
 				]
 			},
 			"Position": {
-				"Offset": 959,
+				"Offset": 969,
 				"Line": 25,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 985,
+				"Offset": 995,
 				"Line": 26,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 1014,
+				"Offset": 1024,
 				"Line": 28,
 				"Col": 5
 			},
 			"Cmd": {
 				"Type": "CaseClause",
 				"Pos": {
-					"Offset": 985,
+					"Offset": 995,
 					"Line": 26,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 1014,
+					"Offset": 1024,
 					"Line": 28,
 					"Col": 5
 				},
 				"Case": {
-					"Offset": 985,
+					"Offset": 995,
 					"Line": 26,
 					"Col": 1
 				},
 				"In": {
-					"Offset": 996,
+					"Offset": 1006,
 					"Line": 26,
 					"Col": 12
 				},
 				"Esac": {
-					"Offset": 1010,
+					"Offset": 1020,
 					"Line": 28,
 					"Col": 1
 				},
 				"Word": {
 					"Pos": {
-						"Offset": 990,
+						"Offset": 1000,
 						"Line": 26,
 						"Col": 6
 					},
 					"End": {
-						"Offset": 995,
+						"Offset": 1005,
 						"Line": 26,
 						"Col": 11
 					},
@@ -4327,39 +4391,39 @@
 						{
 							"Type": "ParamExp",
 							"Pos": {
-								"Offset": 990,
+								"Offset": 1000,
 								"Line": 26,
 								"Col": 6
 							},
 							"End": {
-								"Offset": 995,
+								"Offset": 1005,
 								"Line": 26,
 								"Col": 11
 							},
 							"Dollar": {
-								"Offset": 990,
+								"Offset": 1000,
 								"Line": 26,
 								"Col": 6
 							},
 							"Short": true,
 							"Param": {
 								"Pos": {
-									"Offset": 991,
+									"Offset": 1001,
 									"Line": 26,
 									"Col": 7
 								},
 								"End": {
-									"Offset": 995,
+									"Offset": 1005,
 									"Line": 26,
 									"Col": 11
 								},
 								"ValuePos": {
-									"Offset": 991,
+									"Offset": 1001,
 									"Line": 26,
 									"Col": 7
 								},
 								"ValueEnd": {
-									"Offset": 995,
+									"Offset": 1005,
 									"Line": 26,
 									"Col": 11
 								},
@@ -4371,30 +4435,30 @@
 				"Items": [
 					{
 						"Pos": {
-							"Offset": 999,
+							"Offset": 1009,
 							"Line": 27,
 							"Col": 1
 						},
 						"End": {
-							"Offset": 1009,
+							"Offset": 1019,
 							"Line": 27,
 							"Col": 11
 						},
 						"Op": ";;",
 						"OpPos": {
-							"Offset": 1007,
+							"Offset": 1017,
 							"Line": 27,
 							"Col": 9
 						},
 						"Patterns": [
 							{
 								"Pos": {
-									"Offset": 999,
+									"Offset": 1009,
 									"Line": 27,
 									"Col": 1
 								},
 								"End": {
-									"Offset": 1005,
+									"Offset": 1015,
 									"Line": 27,
 									"Col": 7
 								},
@@ -4402,39 +4466,39 @@
 									{
 										"Type": "ExtGlob",
 										"Pos": {
-											"Offset": 999,
+											"Offset": 1009,
 											"Line": 27,
 											"Col": 1
 										},
 										"End": {
-											"Offset": 1005,
+											"Offset": 1015,
 											"Line": 27,
 											"Col": 7
 										},
 										"OpPos": {
-											"Offset": 999,
+											"Offset": 1009,
 											"Line": 27,
 											"Col": 1
 										},
 										"Op": "@(",
 										"Pattern": {
 											"Pos": {
-												"Offset": 1001,
+												"Offset": 1011,
 												"Line": 27,
 												"Col": 3
 											},
 											"End": {
-												"Offset": 1004,
+												"Offset": 1014,
 												"Line": 27,
 												"Col": 6
 											},
 											"ValuePos": {
-												"Offset": 1001,
+												"Offset": 1011,
 												"Line": 27,
 												"Col": 3
 											},
 											"ValueEnd": {
-												"Offset": 1004,
+												"Offset": 1014,
 												"Line": 27,
 												"Col": 6
 											},
@@ -4448,77 +4512,77 @@
 				]
 			},
 			"Position": {
-				"Offset": 985,
+				"Offset": 995,
 				"Line": 26,
 				"Col": 1
 			}
 		},
 		{
 			"Pos": {
-				"Offset": 1015,
+				"Offset": 1025,
 				"Line": 29,
 				"Col": 1
 			},
 			"End": {
-				"Offset": 1027,
+				"Offset": 1037,
 				"Line": 31,
 				"Col": 2
 			},
 			"Cmd": {
 				"Type": "Subshell",
 				"Pos": {
-					"Offset": 1015,
+					"Offset": 1025,
 					"Line": 29,
 					"Col": 1
 				},
 				"End": {
-					"Offset": 1027,
+					"Offset": 1037,
 					"Line": 31,
 					"Col": 2
 				},
 				"Lparen": {
-					"Offset": 1015,
+					"Offset": 1025,
 					"Line": 29,
 					"Col": 1
 				},
 				"Rparen": {
-					"Offset": 1026,
+					"Offset": 1036,
 					"Line": 31,
 					"Col": 1
 				},
 				"Stmts": [
 					{
 						"Pos": {
-							"Offset": 1021,
+							"Offset": 1031,
 							"Line": 30,
 							"Col": 5
 						},
 						"End": {
-							"Offset": 1025,
+							"Offset": 1035,
 							"Line": 30,
 							"Col": 9
 						},
 						"Cmd": {
 							"Type": "CallExpr",
 							"Pos": {
-								"Offset": 1021,
+								"Offset": 1031,
 								"Line": 30,
 								"Col": 5
 							},
 							"End": {
-								"Offset": 1025,
+								"Offset": 1035,
 								"Line": 30,
 								"Col": 9
 							},
 							"Args": [
 								{
 									"Pos": {
-										"Offset": 1021,
+										"Offset": 1031,
 										"Line": 30,
 										"Col": 5
 									},
 									"End": {
-										"Offset": 1025,
+										"Offset": 1035,
 										"Line": 30,
 										"Col": 9
 									},
@@ -4526,22 +4590,22 @@
 										{
 											"Type": "Lit",
 											"Pos": {
-												"Offset": 1021,
+												"Offset": 1031,
 												"Line": 30,
 												"Col": 5
 											},
 											"End": {
-												"Offset": 1025,
+												"Offset": 1035,
 												"Line": 30,
 												"Col": 9
 											},
 											"ValuePos": {
-												"Offset": 1021,
+												"Offset": 1031,
 												"Line": 30,
 												"Col": 5
 											},
 											"ValueEnd": {
-												"Offset": 1025,
+												"Offset": 1035,
 												"Line": 30,
 												"Col": 9
 											},
@@ -4552,7 +4616,7 @@
 							]
 						},
 						"Position": {
-							"Offset": 1021,
+							"Offset": 1031,
 							"Line": 30,
 							"Col": 5
 						}
@@ -4560,7 +4624,7 @@
 				]
 			},
 			"Position": {
-				"Offset": 1015,
+				"Offset": 1025,
 				"Line": 29,
 				"Col": 1
 			}

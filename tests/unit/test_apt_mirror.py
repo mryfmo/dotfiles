@@ -992,6 +992,20 @@ def workflow_texts() -> dict[str, str]:
 # file is followed and that file walked in turn, under the same table with one difference: it may define functions
 # whose names hold no `/` (scripts/lib/github-release.sh does), since only a path-named one can stand in for the form.
 # tests/unit/test_shfmt_json_contract.py extracts every field and literal this walk reads and holds TABLE to them.
+#
+# Round 11 (audit of 4d09be21): that walk read a word only as one bare `Lit` part, so `'eval'` was not `eval`, `'apt'`
+# was no apt token, a `"$cmd"` in command position was an argument no rule read, and the words after `install` were
+# held to a set, not to the form (`install jq zsh` passed without `-y`). U112's round 3 met the same class (decisions
+# row 2026-10-29T08:13Z) and answers it with an allowlist of quoting forms: word_text() gives a word its text when
+# every part is a bare `Lit`, a plain single-quoted string or double quotes around such parts, with the backslashes
+# bash removes; any other part (an expansion, a substitution, an ANSI-C `$'...'` or a locale `$"..."` string,
+# arithmetic, a process substitution) leaves the word with no known text, and nothing is decoded. Every reading of a
+# word goes through it: the apt-token test, the command word against REFUSED_COMMANDS and WRAPPERS, the form's words,
+# the verb and its suffix (`update` alone; `install -y` and one or more package names, in that order). A word in
+# command position with no known text is refused: the first word of every CallExpr, and the word each wrapper in
+# WRAPPERS hands on as the next command after the options, assignments and plain words its row reads (an option
+# outside the row is refused, so no option's value stands where the rule expects the command). An argument of any
+# other command may hold an expansion: it is a word that command reads, not one the shell runs.
 APT_TOKEN = re.compile(APT_CALL.pattern + r"|(?<=/)apt\Z|\Aapt\Z")
 FORM_WORDS = (
     TIMEOUT_PATH,
@@ -1028,6 +1042,42 @@ ALLOWED_USES = {
     "source": "one literal path to a file of the repository, walked in turn",
     ".": "one literal path to a file of the repository, walked in turn",
     "trap": "a literal action, walked as a script in turn, and literal signals none of which is DEBUG",
+}
+DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # bash 3.1.2.3: the characters a backslash quotes inside double quotes
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # a `NAME=value` word sudo and env take before the command
+UNKNOWN_COMMAND = (
+    "a command word must have a known text: bare, single-quoted or double-quoted literals, nothing bash expands"
+)
+
+
+class Wrapper(NamedTuple):
+    """How one wrapper reaches the command it runs: the options it may carry (a flag takes no value; a valued option
+    takes the next word, or the text after `=` in its long spelling), whether `NAME=value` words may precede the
+    command (sudo, env), and how many plain words do (timeout's duration). Anything else before the command is
+    refused."""
+
+    flags: frozenset[str]
+    valued: frozenset[str]
+    assigns: bool = False
+    positional: int = 0
+
+
+# The commands that run another command named by a later word, closed: the apt steps use `sudo` (the form, `sudo
+# install`), `command -v` and the form's `/usr/bin/timeout`; `env`, `nice` and `nohup` are the other coreutils and
+# builtin wrappers a step could reach for. `exec` is refused before it hands anything on (REFUSED_COMMANDS). A
+# wrapper not in this table is a plain command: its arguments are its own, and a wrapper hidden among them is not
+# read, so the table stays small on purpose and grows only with a row.
+WRAPPERS = {
+    "sudo": Wrapper(frozenset({"-E", "-H", "-n"}), frozenset({"-u", "-g"}), assigns=True),
+    "env": Wrapper(frozenset({"-i"}), frozenset({"-u", "-C"}), assigns=True),
+    "command": Wrapper(frozenset({"-p", "-v", "-V"}), frozenset()),
+    "nice": Wrapper(frozenset(), frozenset({"-n", "--adjustment"})),
+    "nohup": Wrapper(frozenset(), frozenset()),
+    TIMEOUT_PATH: Wrapper(
+        frozenset({"--preserve-status", "--foreground", "-v", "--verbose"}),
+        frozenset({"-k", "--kill-after", "-s", "--signal"}),
+        positional=1,
+    ),
 }
 FUNCTION_IN_STEP = "a function definition in an apt step: bash runs a function in place of the command it names, a path-named one included"
 FUNCTION_BY_PATH = "a function named by a path: bash runs it in place of the binary at that path"
@@ -1082,23 +1132,74 @@ def line_of(node: dict) -> object:
     return pos.get("Line", "?")
 
 
+def unescaped(value: str, escapable: str | None) -> str:
+    """A literal's value without the backslashes bash removes when it reads the word: before any character in a bare
+    literal (`escapable` None), before one of `escapable` inside double quotes. A backslash-newline is already
+    joined by shfmt (the `time\\` and newline case of round 10)."""
+    out: list[str] = []
+    index = 0
+    while index < len(value):
+        if value[index] == "\\" and index + 1 < len(value) and (escapable is None or value[index + 1] in escapable):
+            index += 1
+        out.append(value[index])
+        index += 1
+    return "".join(out)
+
+
+def word_text(word: dict, in_double_quotes: bool = False) -> str | None:
+    """The known text of a word: every part a bare `Lit`, a plain single-quoted string, or double quotes around such
+    parts (`apt-get`, `'apt-get'`, `"apt-get"`, `ap""t-get` and `ap\\t-get` are one text). None for any other word,
+    whose text exists only when it runs: an expansion, a substitution, arithmetic, a process substitution, an
+    ANSI-C `$'...'` or a locale `$"..."` string (shfmt's Dollar). Nothing is decoded."""
+    text = ""
+    for part in word.get("Parts") or []:
+        kind = part.get("Type")
+        if kind == "Lit":
+            text += unescaped(str(part.get("Value") or ""), DOUBLE_QUOTE_ESCAPES if in_double_quotes else None)
+        elif kind == "SglQuoted" and not part.get("Dollar"):
+            text += str(part.get("Value") or "")  # shfmt writes no Value for ''
+        elif kind == "DblQuoted" and not part.get("Dollar"):
+            inner = word_text(part, True)
+            if inner is None:
+                return None
+            text += inner
+        else:
+            return None
+    return text
+
+
 def lits(node: dict) -> list[str]:
-    """Every Lit value at or below node (inside quotes too), as bash reads it once backslash-newlines are joined."""
-    return [str(part["Value"]) for part, _ in tree_nodes(node) if part.get("Type") == "Lit"]
-
-
-def single_lit(word: dict) -> str | None:
-    """The one Lit value a word is, or None when it has other parts (a quote, an expansion, a substitution)."""
-    parts = word.get("Parts") or []
-    if len(parts) == 1 and parts[0].get("Type") == "Lit":
-        return str(parts[0]["Value"])
-    return None
+    """Every text at or below node that could name apt: each `Lit` and `SglQuoted` value as shfmt holds it (inside
+    quotes, expansions and substitutions too, `$'...'` included), and the known text of every word (word_text), so
+    `'apt'`, `"apt-get"`, `ap""t-get` and `ap\\t-get` are read as what they are."""
+    found: list[str] = []
+    for part, _ in tree_nodes(node):
+        if part.get("Type") in ("Lit", "SglQuoted"):
+            found.append(str(part.get("Value") or ""))
+        elif contract.kind(part) == "Word":
+            text = word_text(part)
+            if text is not None:
+                found.append(text)
+    return found
 
 
 def describe(word: dict) -> str:
-    """A word that is not one literal, by the kinds of its parts."""
-    kinds = [str(part.get("Type", "untyped")) for part in word.get("Parts") or []]
+    """A word with no known text, by the kinds of its parts: the parts inside double quotes in parentheses, a
+    `$'...'` or `$"..."` string by its Dollar."""
+    kinds = []
+    for part in word.get("Parts") or []:
+        kind = str(part.get("Type", "untyped"))
+        if kind == "DblQuoted":
+            kind += f"({', '.join(str(inner.get('Type', 'untyped')) for inner in part.get('Parts') or [])})"
+        if part.get("Type") in ("SglQuoted", "DblQuoted") and part.get("Dollar"):
+            kind += " with Dollar"
+        kinds.append(kind)
     return f"a word of {', '.join(kinds)} part(s)" if kinds else "an empty word"
+
+
+def shown(words: list[dict], texts: list[str | None], position: int) -> str:
+    """A word for a message: its known text, or its parts."""
+    return describe(words[position]) if texts[position] is None else repr(texts[position])
 
 
 def set_fields(node: dict, known: tuple[str, ...]) -> list[str]:
@@ -1113,8 +1214,10 @@ def set_fields(node: dict, known: tuple[str, ...]) -> list[str]:
 
 
 def form_fault(words: list[dict]) -> str | None:
-    """Why the words of an apt call are not the exact bound form, by position and text, or None when they are."""
-    texts = [single_lit(word) for word in words]
+    """Why the words of an apt call are not the exact bound form, by position and text, or None when they are: the
+    nine FORM_WORDS, the verb, then nothing after `update`, and after `install` exactly `-y` and one or more package
+    names, in that order."""
+    texts = [word_text(word) for word in words]
     for position, want in enumerate(FORM_WORDS):
         number = position + 1
         if position >= len(words):
@@ -1132,15 +1235,23 @@ def form_fault(words: list[dict]) -> str | None:
         return f"has {len(words)} word(s); word {verb_at + 1} of the form is the verb `update` or `install`"
     verb = texts[verb_at]
     if verb not in VERBS:
-        shown = f"`{verb}`" if verb is not None else describe(words[verb_at])
-        return f"word {verb_at + 1} is {shown}, not the verb `update` or `install`"
-    for position in range(verb_at + 1, len(words)):
+        got = f"`{verb}`" if verb is not None else describe(words[verb_at])
+        return f"word {verb_at + 1} is {got}, not the verb `update` or `install`"
+    rest = list(range(verb_at + 1, len(words)))
+    if verb == "update":
+        if rest:
+            return f"word {rest[0] + 1} {shown(words, texts, rest[0])} follows `update`, which takes none"
+        return None
+    if not rest:
+        return f"has {len(words)} word(s); word {verb_at + 2} of the form is `-y`"
+    if texts[rest[0]] != "-y":
+        return f"word {rest[0] + 1} {shown(words, texts, rest[0])} after `install` is not `-y`"
+    if len(rest) == 1:
+        return f"has {len(words)} word(s); word {verb_at + 3} of the form is a package name"
+    for position in rest[1:]:
         got = texts[position]
-        if verb == "update":
-            return f"word {position + 1} {describe(words[position]) if got is None else repr(got)} follows `update`, which takes none"
-        if got is None or (got != "-y" and not PACKAGE.match(got)):
-            shown = describe(words[position]) if got is None else repr(got)
-            return f"word {position + 1} {shown} after `install` is not `-y` or a package name"
+        if got is None or not PACKAGE.match(got):
+            return f"word {position + 1} {shown(words, texts, position)} after `install -y` is not a package name"
     return None
 
 
@@ -1152,23 +1263,9 @@ def repository_file(path: str) -> Path | None:
     return candidate if candidate.is_file() and candidate.is_relative_to(root) else None
 
 
-def literal_text(word: dict) -> str | None:
-    """The text a word is at parse time: one Lit or one plain single-quoted part; None for anything bash expands."""
-    parts = word.get("Parts") or []
-    if len(parts) != 1:
-        return None
-    part = parts[0]
-    kind = part.get("Type")
-    if kind == "Lit":
-        return str(part["Value"])
-    if kind == "SglQuoted" and not part.get("Dollar"):
-        return str(part["Value"])
-    return None
-
-
 def refused_use(name: str, words: list[dict]) -> str | None:
     """Why a refused command word's use is refused, or None when its ALLOWED_USES row holds."""
-    texts = [single_lit(word) for word in words[1:]]
+    texts = [word_text(word) for word in words[1:]]
     if name in ("source", "."):
         if len(texts) != 1 or texts[0] is None:
             return f"`{name}` with {len(texts)} word(s) after it, not one literal path"
@@ -1178,7 +1275,7 @@ def refused_use(name: str, words: list[dict]) -> str | None:
     if name == "trap":
         if not texts:
             return None  # lists the traps set
-        if literal_text(words[1]) is None:
+        if texts[0] is None:
             return "`trap` with an action that is not literal text"
         if any(text is None for text in texts[1:]):
             return "`trap` with a signal that is not a literal"
@@ -1186,6 +1283,38 @@ def refused_use(name: str, words: list[dict]) -> str | None:
             return "`trap` with the signal DEBUG"
         return None
     return f"`{name}` as a command word"
+
+
+def handed_word(name: str, words: list[dict]) -> tuple[int | None, str | None]:
+    """Where the wrapper `name` (words[0]) finds the command it runs: the index of that word, or None and the reason
+    (a word with no known text where the row reads an option, a value, an assignment or the command; an option
+    outside the row). (None, None) when no command follows: the wrapper alone runs nothing of the step's."""
+    row = WRAPPERS[name]
+    at, plain, options = 1, 0, True
+    while at < len(words):
+        text = word_text(words[at])
+        if text is None:
+            return None, f"`{name}` followed by {describe(words[at])}, which has no known text, before its command word"
+        if options and text.startswith("-") and len(text) > 1:
+            option, attached, _ = text.partition("=") if text.startswith("--") else (text, "", "")
+            if option in row.valued and not attached:
+                at += 1
+                if at < len(words) and word_text(words[at]) is None:
+                    return None, f"`{name} {option}` with a value that is {describe(words[at])}, with no known text"
+            elif not (option in row.valued or (option in row.flags and not attached)):
+                return None, f"`{name}` with the option `{text}`, outside the options the rule reads for it"
+            at += 1
+            continue
+        options = False
+        if row.assigns and ASSIGNMENT.match(text):
+            at += 1
+            continue
+        if plain < row.positional:
+            plain += 1
+            at += 1
+            continue
+        return at, None
+    return None, None
 
 
 def followed_problems(
@@ -1197,11 +1326,11 @@ def followed_problems(
         if len(words) < 2:
             return []
         try:
-            inner = walk(script_tree(literal_text(words[1]), f"{source} trap"), source, library, followed)
+            inner = walk(script_tree(word_text(words[1]), f"{source} trap"), source, library, followed)
         except contract.ContractError as error:
             return [("?", f"a trap action shfmt refuses: {error}")]
         return [("?", f"in the trap's action: {what}") for _, what in inner.problems]
-    path = single_lit(words[1])
+    path = word_text(words[1])
     if path in followed:
         return []
     sourced = repository_file(path)
@@ -1213,29 +1342,56 @@ def followed_problems(
     return [("?", f"sources {relative}:{at}: {what}") for at, what in inner.problems]
 
 
+def command_problems(
+    words: list[dict], line: object, source: str, library: bool, followed: frozenset[str]
+) -> list[tuple[object, str]]:
+    """The refused command words of one call: the first word and every word a WRAPPERS row hands on as the next
+    command must have a known text (word_text), hold no backslash, and be none of REFUSED_COMMANDS unless its
+    ALLOWED_USES row holds, in which case what it leads to is walked."""
+    problems: list[tuple[object, str]] = []
+    at = 0
+    while at < len(words):
+        word = words[at]
+        name = word_text(word)
+        if name is None:
+            problems.append((line, f"{describe(word)} in command position: {UNKNOWN_COMMAND}"))
+            break
+        raw = "".join(str(part.get("Value") or "") for part in word.get("Parts") or [] if part.get("Type") == "Lit")
+        if "\\" in raw:
+            problems.append(
+                (line, f"a command word holding a backslash, {raw!r}: bash reads another text than the line shows")
+            )
+        if name in REFUSED_COMMANDS:
+            why = refused_use(name, words[at:])
+            if why is not None:
+                problems.append((line, f"{why}: {REFUSED_COMMANDS[name]}"))
+            else:
+                problems.extend(
+                    (line, what) for _, what in followed_problems(name, words[at:], source, library, followed)
+                )
+            break
+        if name not in WRAPPERS:
+            break
+        handed, why = handed_word(name, words[at:])
+        if why is not None:
+            problems.append((line, why))
+        if handed is None:
+            break
+        at += handed
+    return problems
+
+
 def call_problems(
     statement: dict, parent: dict | None, source: str, library: bool, followed: frozenset[str]
 ) -> tuple[list[tuple[object, str]], bool]:
-    """The refused nodes of one statement whose command is a call, by line, and whether the call is an apt call: a
-    refused command word (REFUSED_COMMANDS, unless its ALLOWED_USES row holds, in which case what it leads to is
-    walked), a command word holding a backslash, and for an apt call every departure from the form."""
+    """The refused nodes of one statement whose command is a call, by line, and whether the call is an apt call: the
+    command words (command_problems), and for an apt call every departure from the form."""
     call = statement.get("Cmd")
     if not isinstance(call, dict) or call.get("Type") != "CallExpr":
         return [], False
-    problems: list[tuple[object, str]] = []
     words = call.get("Args") or []
-    name = single_lit(words[0]) if words else None
     line = line_of(call)
-    if name is not None and "\\" in name:
-        problems.append(
-            (line, f"a command word holding a backslash, {name!r}: bash reads another text than the line shows")
-        )
-    if name in REFUSED_COMMANDS:
-        why = refused_use(name, words)
-        if why is not None:
-            problems.append((line, f"{why}: {REFUSED_COMMANDS[name]}"))
-        else:
-            problems.extend((line, what) for _, what in followed_problems(name, words, source, library, followed))
+    problems = command_problems(words, line, source, library, followed)
     tokens = sorted({match.group() for value in lits(call) for match in APT_TOKEN.finditer(value)})
     if not tokens:
         return problems, False
@@ -1812,9 +1968,11 @@ class TreeRuleTest(unittest.TestCase):
         # The `ci.run:` function and `ci.run: <form>`: the definition is a FuncDecl, the call is an apt call whose
         # first word is the function, and the text counted no bound form where the tree holds one apt call.
         text, first = self.step(f'ci.run:() {{ shift 3; "$@"; }}\nci.run: {self.FORM} update\n')
+        handed = f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"  # the body's `"$@"`
         self.assertEqual(
             [
                 self.STEP.format(first) + f"a FuncDecl `ci.run:`: {FUNCTION_IN_STEP}",
+                self.STEP.format(first) + handed,
                 self.STEP.format(first + 1)
                 + "a CallExpr holding `apt-get` word 1 is `ci.run:`, not `/usr/bin/timeout`",
                 self.STEP.format(first - 1) + f"1 apt call(s) in the tree, 0 bound form(s) in the text; {TREE_COUNT}",
@@ -1828,7 +1986,10 @@ class TreeRuleTest(unittest.TestCase):
             with self.subTest(name=name):
                 text, first = self.step(f'{name}\\\nout() {{ shift 2; "$@"; }}\n{self.FORM} update\n')
                 self.assertEqual(
-                    [self.STEP.format(first) + f"a FuncDecl `{name}out`: {FUNCTION_IN_STEP}"],
+                    [
+                        self.STEP.format(first) + f"a FuncDecl `{name}out`: {FUNCTION_IN_STEP}",
+                        self.STEP.format(first + 1) + handed,  # the body is on the line after the joined one
+                    ],
                     tree_problems("x.yaml", text),
                 )
 
@@ -1845,7 +2006,10 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "timeout()",
                 f'timeout() {{ shift 2; "$@"; }}\n{form} update\n',
-                [(1, f"a FuncDecl `timeout`: {FUNCTION_IN_STEP}")],
+                [
+                    (1, f"a FuncDecl `timeout`: {FUNCTION_IN_STEP}"),
+                    (1, f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"),
+                ],
             ),
             (
                 "a path-named function",
@@ -1919,7 +2083,10 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "a trap whose action runs apt",
                 "trap 'sudo apt-get update' RETURN\n",
-                [(1, "in the trap's action: a CallExpr holding `apt-get` word 1 is `sudo`, not `/usr/bin/timeout`")],
+                [
+                    (1, f"{apt} word 1 is `trap`, not `/usr/bin/timeout`"),  # the action's text names apt too
+                    (1, "in the trap's action: a CallExpr holding `apt-get` word 1 is `sudo`, not `/usr/bin/timeout`"),
+                ],
             ),
             (
                 "a comment ending in a backslash",
@@ -1963,7 +2130,7 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "an option after install",
                 f"{form} install -y -o Debug::NoLocking=true jq\n",
-                [(1, f"{apt} word 12 '-o' after `install` is not `-y` or a package name")],
+                [(1, f"{apt} word 12 '-o' after `install -y` is not a package name")],
             ),
             (
                 "a word after update",
@@ -1973,23 +2140,29 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "an expansion as a package",
                 f"{form} install -y jq $pkg\n",
-                [(1, f"{apt} word 13 a word of ParamExp part(s) after `install` is not `-y` or a package name")],
+                [(1, f"{apt} word 13 a word of ParamExp part(s) after `install -y` is not a package name")],
             ),
             (
-                "a quoted first word",
+                "the whole form in one quoted word",
                 f'"{form}" update\n',
-                [(1, f"{apt} word 1 is a word of DblQuoted part(s), not the literal `/usr/bin/timeout`")],
+                [(1, f"{apt} word 1 is `{form}`, not `/usr/bin/timeout`")],
             ),
             (
-                "a quoted verb",
-                f"{form} 'update'\n",
-                [(1, f"{apt} word 10 is a word of SglQuoted part(s), not the verb `update` or `install`")],
+                "an ANSI-C verb",
+                f"{form} $'update'\n",
+                [(1, f"{apt} word 10 is a word of SglQuoted with Dollar part(s), not the verb `update` or `install`")],
             ),
             ("a bound under 120", f"{form.replace('180', '60')} update\n", [(1, f"{apt} word 3 `60` is not {FORM_N}")]),
             (
                 "a bound that is not a number",
                 f"{form.replace('180', '$N')} update\n",
-                [(1, f"{apt} word 3 is a word of ParamExp part(s), not the literal `{FORM_N}`")],
+                [
+                    (
+                        1,
+                        f"`/usr/bin/timeout` followed by a word of ParamExp part(s), which has no known text, before its command word",
+                    ),
+                    (1, f"{apt} word 3 is a word of ParamExp part(s), not the literal `{FORM_N}`"),
+                ],
             ),
             (
                 "no verb",
@@ -2023,7 +2196,6 @@ class TreeRuleTest(unittest.TestCase):
                         1,
                         f"a command word holding a backslash, {'/usr/bin/' + slashed!r}: bash reads another text than the line shows",
                     ),
-                    (1, f"{apt} word 1 is `/usr/bin/{slashed}`, not `/usr/bin/timeout`"),
                 ],
             ),
             (
@@ -2073,6 +2245,197 @@ class TreeRuleTest(unittest.TestCase):
                 self.assertEqual([], self.body(script), case)
         self.assertEqual(2, walk(script_tree(f"{form} update\n{form} install -y jq\n", "x"), "x").apt_calls)
         self.assertEqual(0, walk(script_tree("echo apt-mirrors.txt\n", "x"), "x").apt_calls)
+
+    def test_a_word_is_read_in_three_quoting_forms_and_every_other_spelling_fails_closed(self) -> None:
+        # Round 11 (audit of 4d09be21): the auditor's three (`'eval'`, `sudo 'apt' update`, `install jq zsh`) and
+        # the other spellings of a word. A bare, single-quoted, double-quoted or split literal is its text; an
+        # expansion, an ANSI-C `$'...'` or a locale `$"..."` string has none and is refused where a command is read
+        # (the first word, the word a wrapper hands on, a wrapper's option value); the words after the verb are the
+        # form in order.
+        form = self.FORM
+        tail = form[len(TIMEOUT_PATH) + 1 :]
+        apt = "a CallExpr holding `apt-get`"
+        unknown = f"in command position: {UNKNOWN_COMMAND}"
+        off_form = "word 1 is `sudo`, not `/usr/bin/timeout`"
+        for case, script, expected in (
+            (
+                "the auditor's quoted eval",
+                "'eval' '/usr/bin/time''out() { shift 2; \"$@\"; }'\n",
+                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
+            ),
+            ("the auditor's quoted apt", "sudo 'apt' update\n", [(1, f"a CallExpr holding `apt` {off_form}")]),
+            (
+                "the auditor's install without -y",
+                f"{form} install jq zsh\n",
+                [(1, f"{apt} word 11 'jq' after `install` is not `-y`")],
+            ),
+            ("double-quoted apt", 'sudo "apt" update\n', [(1, f"a CallExpr holding `apt` {off_form}")]),
+            (
+                "ANSI-C apt",
+                "sudo $'apt' update\n",
+                [
+                    (
+                        1,
+                        "`sudo` followed by a word of SglQuoted with Dollar part(s), which has no known text, before its command word",
+                    ),
+                    (1, f"a CallExpr holding `apt` {off_form}"),
+                ],
+            ),
+            (
+                "a locale string as the command",
+                '$"apt-get" update\n',
+                [
+                    (1, f"a word of DblQuoted(Lit) with Dollar part(s) {unknown}"),
+                    (
+                        1,
+                        f"{apt} word 1 is a word of DblQuoted(Lit) with Dollar part(s), not the literal `/usr/bin/timeout`",
+                    ),
+                ],
+            ),
+            (
+                "an expansion as the command",
+                '"$cmd" update\n',
+                [(1, f"a word of DblQuoted(ParamExp) part(s) {unknown}")],
+            ),
+            (
+                "an expansion handed on by sudo",
+                'sudo "$cmd" update\n',
+                [
+                    (
+                        1,
+                        "`sudo` followed by a word of DblQuoted(ParamExp) part(s), which has no known text, before its command word",
+                    )
+                ],
+            ),
+            (
+                "an array as the command in a subshell",
+                '(cd "$dir" && "${check[@]}")\n',
+                [(1, f"a word of DblQuoted(ParamExp) part(s) {unknown}")],
+            ),
+            (
+                "an expansion as the value of sudo -u",
+                'sudo -u "$user" apt-get update\n',
+                [
+                    (1, "`sudo -u` with a value that is a word of DblQuoted(ParamExp) part(s), with no known text"),
+                    (1, f"{apt} {off_form}"),
+                ],
+            ),
+            (
+                "an option of sudo outside its row",
+                "sudo -s make x\n",
+                [(1, "`sudo` with the option `-s`, outside the options the rule reads for it")],
+            ),
+            (
+                "an attached value where timeout takes a separate one",
+                f"{TIMEOUT_PATH} -k10 150 make x\n",
+                [(1, "`/usr/bin/timeout` with the option `-k10`, outside the options the rule reads for it")],
+            ),
+            (
+                "a split spelling of apt-get",
+                'ap""t-get update\n',
+                [(1, f"{apt} word 1 is `apt-get`, not `/usr/bin/timeout`")],
+            ),
+            (
+                "a backslash spelling handed on by sudo",
+                "sudo ap\\t-get update\n",
+                [
+                    (1, f"{apt} {off_form}"),
+                    (
+                        1,
+                        "a command word holding a backslash, 'ap\\\\t-get': bash reads another text than the line shows",
+                    ),
+                ],
+            ),
+            (
+                "eval through command",
+                'command eval "$x"\n',
+                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
+            ),
+            (
+                "eval through env, nice and nohup",
+                "env -i FOO=1 nice -n 5 nohup eval x\n",
+                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
+            ),
+            (
+                "the form with -yq",
+                f"{form} install -yq jq\n",
+                [(1, f"{apt} word 11 '-yq' after `install` is not `-y`")],
+            ),
+            (
+                "the form with -y and no package",
+                f"{form} install -y\n",
+                [(1, f"{apt} has 11 word(s); word 12 of the form is a package name")],
+            ),
+            (
+                "the form with an option after the packages",
+                f"{form} install -y jq --fix-missing\n",
+                [(1, f"{apt} word 13 '--fix-missing' after `install -y` is not a package name")],
+            ),
+            (
+                "the form with -y twice",
+                f"{form} install -y -y jq\n",
+                [(1, f"{apt} word 12 '-y' after `install -y` is not a package name")],
+            ),
+            (
+                "a trap with an expansion in a double-quoted action",
+                'trap "rm -f $x" EXIT\n',
+                [(1, f"`trap` with an action that is not literal text: {REFUSED_COMMANDS['trap']}")],
+            ),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual(sorted(expected), sorted(self.body(script)), case)
+        # A word in a quoting form with a known text is that text: the form's path quoted is the form, a wrapper
+        # reaches a literal command through its options, and an argument of that command may be anything.
+        for case, script in (
+            ("the path single-quoted", f"'{TIMEOUT_PATH}' {tail} update\n"),
+            ("the path double-quoted", f'"{TIMEOUT_PATH}" {tail} update\n'),
+            ("quoted sudo, verb and packages", f"{form.replace(' sudo ', ' "sudo" ')} 'install' -y 'jq' \"zsh\"\n"),
+            (
+                "sudo handing on a command with expansion arguments",
+                'sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi\n',
+            ),
+            ("command -v", "command -v jq > /dev/null 2>&1 || brew install jq\n"),
+            ("env, nice and nohup", 'env -i FOO=1 nice -n 5 nohup make "$target"\n'),
+            (
+                "timeout with its options spelled out",
+                f"{TIMEOUT_PATH} -k 10 --signal=TERM --preserve-status 150 make x\n",
+            ),
+            ("a wrapper alone", "sudo -n\n"),
+            ("a double-quoted trap action", 'trap "rm -f x" EXIT\n'),
+            ("a quoted source path", "source 'scripts/lib/github-release.sh'\n"),
+            ("an expansion as an argument", 'echo "${OS} is not supported" >&2\n'),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual([], self.body(script), case)
+        self.assertEqual(1, walk(script_tree(f"'{TIMEOUT_PATH}' {tail} update\n", "x"), "x").apt_calls)
+        self.assertEqual("ap t-get", word_text({"Parts": [{"Type": "Lit", "Value": "ap\\ t-get"}]}))
+        self.assertEqual(
+            'a"$b', word_text({"Parts": [{"Type": "DblQuoted", "Parts": [{"Type": "Lit", "Value": 'a\\"\\$b'}]}]})
+        )
+        self.assertEqual("", word_text({"Parts": [{"Type": "SglQuoted"}]}))
+
+    def test_the_auditors_round_11_mutations_are_refused_by_line_in_the_workflow(self) -> None:
+        # `sudo 'apt' update` as a step of its own: the text scan sees no apt token (the quote parts `apt` from
+        # `update`), the tree holds one apt call off the form, and the two counts disagree.
+        text, first = self.step("sudo 'apt' update\n")
+        self.assertEqual(
+            [
+                self.STEP.format(first) + "a CallExpr holding `apt` word 1 is `sudo`, not `/usr/bin/timeout`",
+                self.STEP.format(first - 1) + f"1 apt call(s) in the tree, 0 bound form(s) in the text; {TREE_COUNT}",
+            ],
+            tree_problems("x.yaml", text),
+        )
+        # `'eval'` defining a path-named `timeout` function above the form, and the install call without `-y`.
+        text, first = self.step(
+            f"'eval' '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{self.FORM} update\n{self.FORM} install jq zsh\n"
+        )
+        self.assertEqual(
+            [
+                self.STEP.format(first) + f"`eval` as a command word: {REFUSED_COMMANDS['eval']}",
+                self.STEP.format(first + 2) + "a CallExpr holding `apt-get` word 11 'jq' after `install` is not `-y`",
+            ],
+            tree_problems("x.yaml", text),
+        )
 
     def test_a_sourced_repository_file_is_walked_under_the_library_grammar(self) -> None:
         # The library may define functions named without a `/` (github-release.sh does) and set EXIT traps; a

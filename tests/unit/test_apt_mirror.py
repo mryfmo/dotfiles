@@ -1131,10 +1131,18 @@ NODE_TABLE = "the pinned shfmt's JSON does not match the pinned node table"
 TREE_COUNT = "every apt call the tree holds is one the text counted as the form, and the reverse"
 # (workflow file, step name, the whole stripped line, exactly) -> why its command word, a quoted path, may have no
 # known text. In test.yaml each path comes from a variable the workflow set from a literal tool name (`mise which
-# bun`, `command -v chezmoi`) and checked, and a test outside this unit pins the line's text, so the line is not
-# rewritten; the other three lines are in workflows this unit does not own (brief SCOPE), each a path the step built
-# from a literal. A row must match a line (test_an_unknown_command_exemption_needs_its_exact_step_and_line).
+# bun`, `mise which claude`, `command -v chezmoi`) and checked; a test outside this unit pins the bun and chezmoi
+# lines' text, and the Claude step's line is the one this module's round 20 test holds (CI run 40936139847 on
+# e4c1fbd6: `mise exec -- claude --version` installed the copied config's whole toolset on the ubuntu-24.04 rows,
+# whose shfmt then failed the ShellCheck step's version probe, so the step runs the checked path itself); the other
+# three lines are in workflows this unit does not own (brief SCOPE), each a path the step built from a literal. A
+# row must match a line (test_an_unknown_command_exemption_needs_its_exact_step_and_line).
 UNKNOWN_COMMAND_EXEMPT: dict[tuple[str, str, str], str] = {
+    ("test.yaml", "Install Claude Code for the Linux doctor check", '"${claude_bin}" --version'): (
+        "claude_bin is `mise which claude` from the copied config in this step, tested executable on the line before; "
+        "`mise exec` was measured to install the config's whole toolset (30 tools, actions run 40936139847), whose "
+        "shfmt failed the ShellCheck step's version probe on the ubuntu-24.04 rows"
+    ),
     ("test.yaml", "Run the omp TypeScript tests", '"${bun_bin}" --version'): (
         "bun_bin is `mise which bun` from the copied config; tests/unit/test_ci_workflows.py pins the step's bun lines"
     ),
@@ -2358,7 +2366,7 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 18: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 20: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
@@ -2377,7 +2385,11 @@ class TreeRuleTest(unittest.TestCase):
     any workflow, job or step, is refused naming the level and the key, so the auditor's `container:` on the job is
     named by its absence from JOB_KEYS, as every key no workflow holds is. Round 18 (audit of 29e2f10f): `sudo` is
     the form's first word, so the old order `/usr/bin/timeout ... sudo apt-get`, an option or a path on sudo and
-    the bare name after it are refused naming word 1 or word 2."""
+    the bare name after it are refused naming word 1 or word 2. Round 20 (CI run 40936139847 on e4c1fbd6): the
+    Claude step runs `"${claude_bin}" --version`, the path `mise which` answered and `test -x` checked, under an
+    UNKNOWN_COMMAND_EXEMPT row of its own, refused without it; the round 19 `mise exec` line is still accepted with
+    no row, its command word being the literal `mise`, and is gone because `mise exec` installed the config's whole
+    toolset on the ubuntu-24.04 rows."""
 
     FORM = "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     OLD = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
@@ -2836,6 +2848,12 @@ class TreeRuleTest(unittest.TestCase):
             ("an expansion run inside a function", 'f() {\n  "$@"\n}\n', [(2, f"{param} {unknown}")]),
             ("an expansion run inside a substitution", 'x="$("$cmd" -v)"\n', [(1, f"{param} {unknown}")]),
             (
+                # Round 20: the Claude step's line, refused here with no table; the real step holds it by its row.
+                "the Claude step's version check by its expanded path",
+                '"${claude_bin}" --version\n',
+                [(1, f"{param} {unknown}")],
+            ),
+            (
                 "a comment ending in a backslash",
                 "echo x # c \\\necho y\n",
                 [(1, f"a comment ending in a backslash: {COMMENT_JOIN}")],
@@ -2861,12 +2879,6 @@ class TreeRuleTest(unittest.TestCase):
                 'skippable() {\n  case "$1" in\n    *) return 1 ;;\n  esac\n}\nskippable "${path}" || exit 1\n',
             ),
             ("a PATH set on the line before a literal command", 'PATH="${bin_dir}:${PATH}" claude --version\n'),
-            (
-                # Round 19: the Claude step's line. The command word is the literal `mise`; `exec` is mise's subcommand,
-                # an argument of mise, not a word the shell runs (the shell builtin would be a command word).
-                "mise exec, the command word being mise",
-                'mise -C "${RUNNER_TEMP}/statusline-mise" exec -- claude --version\n',
-            ),
             ("a trap and a source", "trap 'rm -f x' EXIT\nsource scripts/lib/github-release.sh\n"),
             ("an expansion as an argument", 'echo "${OS} is not supported" >&2\n'),
             (
@@ -2934,8 +2946,48 @@ class TreeRuleTest(unittest.TestCase):
             self.assertEqual([refused], tree_problems("x.yaml", longer))
         with mock.patch.object(sys.modules[__name__], "UNKNOWN_COMMAND_EXEMPT", {}):
             self.assertEqual([refused], tree_problems("x.yaml", text))
-        # The real table: seven rows, each the line of a real step, and the real workflows pass with it alone.
-        self.assertEqual(7, len(UNKNOWN_COMMAND_EXEMPT))
+        # The real table: eight rows, each the line of a real step, and the real workflows pass with it alone.
+        self.assertEqual(8, len(UNKNOWN_COMMAND_EXEMPT))
+        self.assertEqual([], unknown_exemption_stale(workflow_texts()))
+
+    def test_the_claude_steps_version_line_is_exempt_by_its_row_and_the_mise_exec_line_needs_none(self) -> None:
+        # Round 20 (CI run 40936139847 on e4c1fbd6, the two ubuntu-24.04 rows red): the step's version check is
+        # `"${claude_bin}" --version`, a path `mise which` answered in the step and `test -x` checked on the line
+        # before; its command word is an expansion, so the step passes by its UNKNOWN_COMMAND_EXEMPT row alone and
+        # is refused naming the line without it. The round 19 line `mise -C ... exec -- claude --version` is still
+        # accepted by the rule with no row (its command word is the literal `mise`; `exec` is mise's subcommand); it
+        # left the workflow because `mise exec` installed the copied config's whole toolset, not because of the rule.
+        name = "Install Claude Code for the Linux doctor check"
+        line = '"${claude_bin}" --version'
+        exec_line = 'mise -C "${RUNNER_TEMP}/statusline-mise" exec -- claude --version'
+        key = ("test.yaml", name, line)
+        self.assertIn(key, UNKNOWN_COMMAND_EXEMPT)
+        for words in ("mise which claude", "tested executable on the line before", "mise exec", "40936139847"):
+            self.assertIn(words, UNKNOWN_COMMAND_EXEMPT[key], words)
+        body = f'claude_bin="$(mise -C "${{RUNNER_TEMP}}/statusline-mise" which claude)"\ntest -x "${{claude_bin}}"\n{line}\n'
+        text = render({"test": [{"name": name, "run": body}]})
+        at = text_steps(text)["test"][0]["runs"][0]["line"] + 3
+        refused = (
+            f"test.yaml:{at}: test: step 0 {name!r}: a word of DblQuoted(ParamExp) part(s) in command position: "
+            f"{UNKNOWN_COMMAND}"
+        )
+        self.assertEqual([], tree_problems("test.yaml", text))
+        without = {row: why for row, why in UNKNOWN_COMMAND_EXEMPT.items() if row != key}
+        with mock.patch.object(sys.modules[__name__], "UNKNOWN_COMMAND_EXEMPT", without):
+            self.assertEqual([refused], tree_problems("test.yaml", text))
+        with mock.patch.object(sys.modules[__name__], "UNKNOWN_COMMAND_EXEMPT", {}):
+            self.assertEqual([refused], tree_problems("test.yaml", text))
+            self.assertEqual([], tree_problems("test.yaml", text.replace(line, exec_line)))
+            self.assertEqual([], self.body(f"{exec_line}\n"))
+        # The real step, as PyYAML returns it: the assignment, the check and the exempt line in that order, no
+        # `mise exec`, and the row is not stale against the real workflows.
+        document, _ = Parser.read(workflow_text(WORKFLOWS / "test.yaml"))
+        steps = {step.get("name"): step for step in document["jobs"]["test"]["steps"]}
+        statements = [
+            l.strip() for l in str(steps[name]["run"]).splitlines() if l.strip() and not l.lstrip().startswith("#")
+        ]
+        self.assertEqual(body.splitlines(), statements[-4:-1])
+        self.assertNotIn(exec_line, statements)
         self.assertEqual([], unknown_exemption_stale(workflow_texts()))
 
     def test_the_auditors_mutations_are_refused_by_line_in_the_workflow(self) -> None:

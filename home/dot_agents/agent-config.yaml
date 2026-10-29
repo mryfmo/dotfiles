@@ -859,7 +859,7 @@ claude:
       records-sync.sh: f90e6807174253cd4b0cdd4d1c2e1e42bc8c0cf7acc9300513b7fe326e20eb3a
       pr-merge.sh: 48de51d2393c12d716c6b2dce23e9eb58c6204d69bfc25722b83f03f6ea0f847
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: d3fab28ee56e127b7dfad2bc92d4d2f827d02b257adb77d1ec4210c6ab843f59
+      pr-audit.sh: e129c00148e46e0d9279c3da3d225c20b5848ed7bc3404dbc7a16fc3272f6578
       read-lib.sh: a7d13d89b182445f72fa18b2bb1c9e073e295c6ef9b1cf4a5bc13efc6e6cf77b
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the

@@ -613,6 +613,7 @@ codex_scratch() {
     if ((status == 125)) && [[ -s ${mark} ]]; then
         reason=''
         read_file "${mark}" reason || fail "cannot read ${mark}"
+        reason=${reason%$'\n'}
         refuse "codex's supervisor failed (${reason}); no verdict was taken from this run"
     fi
     return "${status}"
@@ -635,6 +636,7 @@ report_survivors() {
     local file=${work}/group-mark.survivors survivors
     [[ -s ${file} ]] || return 0
     read_file "${file}" survivors || survivors="cannot read ${file}"
+    survivors=${survivors%$'\n'}
     echo "${lever}: warning: processes started under codex's supervisor are still running after it stopped" \
         "(best-effort detection; they keep the audit sandbox they inherited):" >&2
     printf '%s\n' "${survivors}" >&2

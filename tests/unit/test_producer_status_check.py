@@ -44,7 +44,10 @@ assignment to PATH, BASH_ALIASES or BASH_CMDS) and validates every redirect the 
 passed off a producer), and round 15 reads a rebinder's options per word (SKIPS_OPTIONS: `source`, `.` and `eval` skip
 none, so `source +payload.sh`, which the option loop had taken for an option with no file after it, is the file bash
 reads; the other rebinders read `-` words only, a `+` word is an argument; a call left with no argument to judge is a
-finding).
+finding), and round 16 closes the protected set over the rebinders themselves (`alias command=eval` then `command
+'refuse() { return 0; }'` had redefined the refusal function through a word rule f read as its own) and reads `alias`
+and `unalias` in any form, and `shopt` with `expand_aliases` among its arguments, as findings: no lever defines an
+alias, and non-interactive bash expands none unless that option is set.
 """
 
 from __future__ import annotations
@@ -73,6 +76,18 @@ LEVERS = tuple(
 ANSI_C_HEREDOC = ROOT / "tests/fixtures/shfmt-json/heredoc-ansi-c-delimiter"
 PROLOGUE = "set -euo pipefail\n"
 PRODUCERS = ("git ls-files", "git config -f", "git config --file", "find", "ls")
+# The words rule f protects, as a finding lists them (sorted): the builtins the rules read, the producers, the refusal
+# names and the lint's own rebinders.
+NAMES = (
+    "`.`, `alias`, `builtin`, `command`, `echo`, `enable`, `eval`, `exit`, `fail`, `find`, `git`, `hash`, `ls`, "
+    "`mapfile`, `printf`, `readarray`, `refuse`, `return`, `set`, `shopt`, `source`, `trap`, `unalias`, `unset`"
+)
+# How a finding ends on an `alias` or `unalias` call (round 16: any form), and what a rebinding of a rebinder shadows.
+ALIAS = (
+    "which no lever does; non-interactive bash expands none unless `shopt -s expand_aliases` is set, and an alias of "
+    "a rebinder (`alias command=eval`) runs text this walk has not read"
+)
+REBINDER = "a rebinder of the lint's own rebinders, the words rule f reads a rebinding by (rule f)"
 # The files a copy of the lint needs beside it: the contract module with its pin check and fixtures, and the pin.
 COPIED = (
     "scripts/ci/producer-status-check.sh",
@@ -1453,17 +1468,17 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "return() { :; }\n"  # 10
             "find() { :; }\n"  # 11
             "ls() { :; }\n"  # 12
-            "alias set='true' # producer-status: allow nothing exempts rule f\n"  # 13
+            "alias set='true' # producer-status: allow nothing exempts rule f\n"  # 13: any alias since round 16
             "enable -n set\n"  # 14
             "hash -p /tmp/git git\n"  # 15
             'alias "$name"\n'  # 16: an argument with no known text
             "if true; then function set { :; }; fi\n"  # 17: at any depth, in any spelling
             "other() { :; }\n"  # 18: accepted
-            "alias ll='ls -l'\n"  # 19: accepted, `ll` is no word the rules read
+            "alias ll='ls -l'\n"  # 19: a finding since round 16: no lever defines an alias, so none is accepted
             "hash -r\n"  # 20: accepted
             "unset -f set\n"  # 21: a finding since round 14, like the definition at 3
         )
-        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18), 8, 8, 21)])
+        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18), 8, 8, 19, 21)])
         producers = (
             "the producers `git ls-files`, `git config -f`, `git config --file` rule b holds to a stderr capture"
         )
@@ -1479,14 +1494,12 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (8, f"a function named `git` shadows {producers}; bash runs it instead"),
             (11, "a function named `find` shadows the producer `find` rule b holds to a stderr capture"),
-            (13, "`alias` names `set` and shadows the builtin the prologue `set -euo pipefail` relies on (rule c)"),
+            (13, f"`alias` defines or prints an alias, {ALIAS}"),
             (14, "`enable` names `set` and shadows the builtin the prologue"),
             (15, f"`hash` names `git` and shadows {producers}"),
-            (
-                16,
-                "`alias` has an argument with no known text, which may name one of `echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`",
-            ),
+            (16, f"`alias` defines or prints an alias, {ALIAS}"),
             (17, "a function named `set` shadows the builtin the prologue"),
+            (19, f"`alias` defines or prints an alias, {ALIAS}"),
         ):
             self.assertIn(f":{line}: shadow: {message}", result.stdout)
 
@@ -1525,7 +1538,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             '. "$dir/read-lib.sh"\n'  # 26: not LEVER_DIR
             'eval "$code"\n'  # 27
             'command "$@"\n'  # 28
-            "unset x\n"  # 29: accepted from here on
+            "unset x\n"  # 29: accepted from here on, `alias -p` at 42 aside (a finding since round 16)
             "export PATH\n"  # 30: no value
             "declare -r y=1\n"  # 31
             "hash -r\n"  # 32
@@ -1538,7 +1551,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "trap '' INT TERM HUP\n"  # 39
             "trap 'rm -f \"${file}\"' EXIT\n"  # 40
             "trap - EXIT\n"  # 41
-            "alias -p\n"  # 42
+            "alias -p\n"  # 42: any alias call is a finding since round 16
             "mapfile -t lines\n"  # 43
             "export GIT_INDEX_FILE=${scratch}/index\n"  # 44
             'export "${GIT_ISOLATED_ENV[@]}"\n'  # 45
@@ -1547,15 +1560,15 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "unset -f other\n"  # 48: no word the rules read
         )
         twice = (5, 13, 14)
-        expected = [(line, "shadow") for line in (*range(5, 7), *range(8, 29), *twice)]
+        expected = [(line, "shadow") for line in (*range(5, 7), *range(8, 29), *twice, 42)]
         result = self.assert_findings(rebinders, expected)
-        names = "`echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`"
+        names = NAMES
         refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
         unread = f"this walk has not read, which may define or rebind one of {names}"
         for line, message in (
             (5, f"`unset` names `refuse` {refusal}"),
             (5, f"`hash` names `refuse` {refusal}"),
-            (6, f"`alias` names `fail` {refusal}"),
+            (6, f"`alias` defines or prints an alias, {ALIAS}"),
             (8, "`enable` names `echo` and shadows the builtin the refusal grammar writes to stderr with"),
             (9, f"`eval` runs text {unread}: `refuse() {{ :; }}`"),
             (10, f"`source` reads a file {unread}: `./lib.sh`"),
@@ -1637,12 +1650,12 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "hash -- refuse\n"  # 19
             "enable -n -- echo\n"  # 20: disables the builtin (measured)
             "unset -- refuse\n"  # 21
-            "alias +fail=true fail=true\n"  # 22: the `+` word is an argument naming `+fail`; the second names `fail`
-            "hash -p /usr/bin/true +refuse\n"  # 23: accepted from here on: binds the word `+refuse` (measured), not refuse
+            "alias +fail=true fail=true\n"  # 22: any alias call is a finding since round 16, one per call
+            "hash -p /usr/bin/true +refuse\n"  # 23: accepted from here on, 27 aside: binds `+refuse` (measured), not refuse
             'source "${LEVER_DIR}/read-lib.sh"\n'  # 24: the one accepted shape
             'source "${LEVER_DIR}/git-isolated.sh"\n'  # 25
             "hash -r\n"  # 26: the option is the whole job
-            "alias -p\n"  # 27
+            "alias -p\n"  # 27: a finding since round 16
             "unset -v x\n"  # 28
             "unset -v\n"  # 29: inert before the count
             'hash -p "$path" other\n'  # 30: the path is the option's argument; `other` is no word the rules read
@@ -1653,9 +1666,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "trap -- cleanup EXIT\n"  # 35
         )
         twice = (17, 18)
-        expected = [(line, "shadow") for line in (4, *range(6, 23), *twice)]
+        expected = [(line, "shadow") for line in (4, *range(6, 23), *twice, 27)]
         result = self.assert_findings(rebinders, expected)
-        names = "`echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`"
+        names = NAMES
         refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
         unread = f"this walk has not read, which may define or rebind one of {names}"
         for line, message in (
@@ -1678,10 +1691,90 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (19, f"`hash` names `refuse` {refusal}"),
             (20, "`enable` names `echo` and shadows the builtin the refusal grammar writes to stderr with"),
             (21, f"`unset` names `refuse` {refusal}"),
-            (22, f"`alias` names `fail` {refusal}"),
+            (22, f"`alias` defines or prints an alias, {ALIAS}"),
         ):
             self.assertIn(f":{line}: shadow: {message}", result.stdout)
         self.assertNotIn(":23:", result.stdout)
+
+    def test_the_round_16_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The P2 of the b858f491 audit, which that head read as clean: rule f protected the words the rules interpret
+        and the refusal names, not its own rebinders, so `alias command=eval` passed and `command 'refuse() { return
+        0; }'` redefined the refusal function through a word the rule read as its own; /bin/bash 3.2 then ran `x=$(false)
+        || refuse` on with exit 0 under `shopt -s expand_aliases` (measured below; without that option non-interactive
+        bash expands no alias and the line exits 127). Round 16 closes the set over itself (interpreted holds every
+        REBINDER, so a function, `enable`, `hash`, `unset` or forwarder naming one is a finding) and reads `alias` and
+        `unalias` in any form, and `shopt` with `expand_aliases` among its arguments or an argument with no known text,
+        as findings: no lever defines an alias, so the rule has none to accept."""
+        bypass = "refuse() { exit 2; }\nalias command=eval\ncommand 'refuse() { return 0; }'\nx=$(false) || refuse\necho ran\n"
+        plain = self.script("plain.sh", bypass)
+        expanded = self.script("expanded.sh", "shopt -s expand_aliases\n" + bypass)
+        ran = subprocess.run(["/bin/bash", str(plain)], cwd=self.temp, capture_output=True, text=True, check=False)
+        self.assertEqual((127, ""), (ran.returncode, ran.stdout), ran.stderr)  # measured: the alias is inert
+        ran = subprocess.run(["/bin/bash", str(expanded)], cwd=self.temp, capture_output=True, text=True, check=False)
+        self.assertEqual((0, "ran\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured: the refusal returns 0
+        rebinders = (
+            "refuse() { exit 2; }\n"  # 3
+            "alias command=eval\n"  # 4: the auditor's alias
+            "command 'refuse() { return 0; }'\n"  # 5: accepted on its own: without the alias bash finds no such command
+            "x=$(false) || refuse\n"  # 6: accepted; the alias is the finding
+            "shopt -s expand_aliases; alias refuse=true\n"  # 7: twice
+            "hash -p /usr/bin/true command\n"  # 8: a rebinder of a rebinder
+            "enable -n command\n"  # 9
+            "eval() { :; }\n"  # 10
+            "unalias command\n"  # 11: any form
+            "unalias -a\n"  # 12
+            "alias -p\n"  # 13
+            "alias ll='ls -l'\n"  # 14
+            "shopt -qs expand_aliases\n"  # 15: any spelling
+            "shopt -u expand_aliases\n"  # 16
+            'shopt -s "$option"\n'  # 17: no known text
+            "command alias x=y\n"  # 18: the forwarded `alias` is the finding, not `command` naming it
+            "builtin shopt -s expand_aliases\n"  # 19: the forwarded `shopt`
+            "unset -f command\n"  # 20
+            "trap 'alias refuse=true' DEBUG\n"  # 21: the action's first word is a rebinder
+            'command() { eval "$@"; }\n'  # 22: the function the `enable -n command` bypass needs, and its eval (twice)
+            "hash -p /usr/bin/true shopt\n"  # 23
+            "enable -f ./x.so unalias\n"  # 24
+            "shopt -s -- expand_aliases\n"  # 25: bash reads the option after `--` (measured)
+            "shopt -s inherit_errexit\n"  # 26: accepted from here on
+            "command -v git > /dev/null\n"  # 27
+            "shopt\n"  # 28: prints the options
+            "shopt -q nullglob\n"  # 29
+            "hash -p /usr/bin/true other\n"  # 30
+            "hash -r\n"  # 31
+            "unset -v x\n"  # 32
+        )
+        twice = (7, 22)
+        expected = [(line, "shadow") for line in (4, *range(7, 26), *twice)]
+        result = self.assert_findings(rebinders, expected)
+        option = "`shopt` names `expand_aliases`, under which a script expands aliases and an alias rebinds any word; no lever sets it"
+        for line, message in (
+            (4, f"`alias` defines or prints an alias, {ALIAS}"),
+            (7, f"`alias` defines or prints an alias, {ALIAS}"),
+            (7, option),
+            (8, f"`hash` names `command` and shadows {REBINDER}"),
+            (9, f"`enable` names `command` and shadows {REBINDER}"),
+            (10, f"a function named `eval` shadows {REBINDER}; bash runs it instead"),
+            (11, f"`unalias` removes an alias, {ALIAS}"),
+            (12, f"`unalias` removes an alias, {ALIAS}"),
+            (13, f"`alias` defines or prints an alias, {ALIAS}"),
+            (15, option),
+            (16, option),
+            (17, "`shopt` has an argument with no known text, which may name `expand_aliases`"),
+            (18, f"`alias` defines or prints an alias, {ALIAS}"),
+            (19, option),
+            (
+                21,
+                f"`trap` runs an action this walk has not read whole, which may define or rebind one of {NAMES}: `alias refuse=true`",
+            ),
+            (22, f"a function named `command` shadows {REBINDER}; bash runs it instead"),
+            (22, f"`eval` runs text with no known text, which may define or rebind one of {NAMES}"),
+            (23, f"`hash` names `shopt` and shadows {REBINDER}"),
+            (24, f"`enable` names `unalias` and shadows {REBINDER}"),
+            (25, option),
+        ):
+            self.assertIn(f":{line}: shadow: {message}", result.stdout)
+        self.assertNotIn(":5:", result.stdout)
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every

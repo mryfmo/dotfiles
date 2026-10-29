@@ -128,6 +128,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("f() { x=$(a) || return 1; }", None),
             ("g() { local y; y=$(a) || return 1; }", None),
             ("x=$(a) || true", "substitution"),
+            ('x=$(a) || "true"', "substitution"),
+            ("x=$(a) || 'true'", "substitution"),
+            ("x=$(a) || tr\\ue", "substitution"),
+            ('x=$(a) || "$(true)"', "substitution"),  # the `||` shape passes; the inner substitution is the finding
+            ('x=$(a) || "${on_failure}"', None),
             ("x=$(a) || :", "substitution"),
             ("x=$(a) || false", "substitution"),
             ("x=$(a) && echo ok", "substitution"),
@@ -169,9 +174,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
 
     def test_shape_3_a_bare_git_ls_files_without_its_stderr_capture_is_a_finding_under_rule_b(self) -> None:
         """`git ls-files` warns and exits 0 for a directory it cannot open (research 01 section 1.1). The bare call,
-        `2> /dev/null`, `2>&1`, a capture no later `[[ ! -s ]]` tests, a test of another file, a test in another
-        statement list or before the call are findings; the capture with its test, in either quoting, the other rows
-        with theirs, and the call through read_listing are not."""
+        `2> /dev/null` in any quoting, `2>&1`, a later redirect that moves stderr away from the captured file, a capture
+        no later `[[ ! -s ]]` tests, a test of another file or of an earlier target, a test in another statement list
+        or before the call are findings; the capture with its test, in any quoting, by `2>>` or `2>|`, the last of two
+        fd-2 redirects, the other rows with theirs, and the call through read_listing are not."""
         capture = "git ls-files -z > list 2> err || exit 1\n"
         test = "[[ ! -s err ]] || exit 1\n"
         clean = {
@@ -195,6 +201,13 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "jq -r .x f > o || exit 1\ngit status > s || exit 1\ngit config --get k > v || exit 1\n"
             ),
             "leading words that are not a row": "git -c core.fsmonitor=false ls-files > l || exit 1\n",
+            "appended": "git ls-files -z > list 2>> err || exit 1\n" + test,
+            "clobbered": "git ls-files -z > list 2>| err || exit 1\n" + test,
+            "single-quoted in the redirect, double-quoted in the test": (
+                "git ls-files -z > list 2> 'err' || exit 1\n[[ ! -s \"err\" ]] || exit 1\n"
+            ),
+            "the last fd-2 redirect decides": "git ls-files -z > list 2> a 2> b || exit 1\n[[ ! -s b ]] || exit 1\n",
+            "stdout duplicated onto fd 2 leaves stderr's file alone": "git ls-files -z 2> err >&2 || exit 1\n" + test,
         }
         for name, body in clean.items():
             with self.subTest(clean=name):
@@ -214,6 +227,31 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "git config -f f --get k || exit 1\ngit config --file f --get k || exit 1\n",
                 [(3, "producer"), (4, "producer")],
             ),
+            "a quoted producer word": ('"git" ls-files -z > list || exit 1\n', [(3, "producer")]),
+            "a double-quoted /dev/null": (
+                'git ls-files -z > list 2> "/dev/null" || exit 1\n[[ ! -s /dev/null ]] || exit 1\n',
+                [(3, "producer")],
+            ),
+            "a single-quoted /dev/null": (
+                "git ls-files -z > list 2> '/dev/null' || exit 1\n[[ ! -s '/dev/null' ]] || exit 1\n",
+                [(3, "producer")],
+            ),
+            "stderr merged into stdout after the capture": (
+                "git ls-files -z > list 2> err 2>&1 || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "stderr to the old stdout": ("git ls-files -z 2> err 2>&1 > out || exit 1\n" + test, [(3, "producer")]),
+            "stderr appended elsewhere after the capture": (
+                "git ls-files -z > list 2> err 2>> other || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "both streams to one file by &>": ("git ls-files -z 2> err &> out || exit 1\n" + test, [(3, "producer")]),
+            "both streams to one file by >&": ("git ls-files -z 2> err >& out || exit 1\n" + test, [(3, "producer")]),
+            "stderr closed after the capture": ("git ls-files -z 2> err 2>&- || exit 1\n" + test, [(3, "producer")]),
+            "the test names the earlier target": (
+                "git ls-files -z > list 2> a 2> b || exit 1\n[[ ! -s a ]] || exit 1\n",
+                [(3, "producer")],
+            ),
         }
         for name, (body, expected) in found.items():
             with self.subTest(finding=name):
@@ -222,8 +260,34 @@ class ProducerStatusCheckTest(unittest.TestCase):
         result = self.assert_findings("git ls-files -z > list || exit 1\n", [(3, "producer")])
         self.assertIn("`git ls-files`", result.stdout, "the finding names the row")
 
+    def test_the_round_2_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The three lines of the c7be7ede audit and their neighbours, which that head read as clean: a trivial right
+        side in quotes (rule a), a later redirect that moves stderr off the tested file, and /dev/null in quotes
+        (rule b). `|| "$(true)"` is not trivial, so its `||` shape passes and the inner substitution is the finding."""
+        body = (
+            'x=$(false) || "true"\n'
+            "x=$(a) || 'true'\n"
+            'x=$(a) || "$(true)"\n'
+            "git ls-files > list 2> err 2>&1 || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            'git ls-files > list 2> "/dev/null" || exit 1\n'
+            "[[ ! -s /dev/null ]] || exit 1\n"
+            "git ls-files > list 2> err 2>> other || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files > list 2> err &> out || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files 2> err 2>&1 > out || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files > list 2> '/dev/null' || exit 1\n"
+            "[[ ! -s '/dev/null' ]] || exit 1\n"
+        )
+        expected = [(3, "substitution"), (4, "substitution"), (5, "substitution")]
+        expected += [(line, "producer") for line in (6, 8, 10, 12, 14, 16)]
+        self.assert_findings(body, expected)
+
     def test_shape_4_a_read_from_a_file_is_a_finding_naming_read_file(self) -> None:
         result = self.assert_findings("IFS= read -r x < unreadable || exit 1\n", [(3, "read")])
+        self.assert_findings("'read' -r x < unreadable || exit 1\n", [(3, "read")])
         self.assertIn("read_file", result.stdout)
         clean = 'while IFS= read -r l; do :; done < file\nread -r a b <<< "${v}"\nread -r -p "x" answer || exit 1\n'
         self.assert_findings(clean, [])

@@ -41,3 +41,5 @@ done
 [[ ! -s "$dir/err" ]] || exit 1
 read -r first < "$dir/file"
 echo "$first"
+# producer-status-check (U112 round 2): every way stderr moves, so the redirect spellings the lint reads are in the tree.
+git ls-files > "$dir/list" 2>> "$dir/err" 2>| "$dir/err" 2>&1 &> "$dir/out" &>> "$dir/out" >&"$dir/out" || exit 1

@@ -52,11 +52,12 @@ class Kind(NamedTuple):
 TABLE: dict[str, Kind] = {
     "File": Kind(None, ("Stmts",)),
     "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs")),
-    # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, and its `read < f` the `<`.
+    # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, its `read < f` the `<`, and its
+    # producer line the other ways stderr moves (`2>>`, `2>|`, `2>&1`, `&>`, `&>>`, `>&`) that the lint reads.
     "Redirect": Kind(
         "Op",
         ("Op", "N", "N.Value", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"),
-        {"Op": (">", "<<", "<"), "N.Value": ("2",)},
+        {"Op": (">", "<<", "<", ">>", ">|", ">&", "&>", "&>>"), "N.Value": ("2",)},
     ),
     "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),

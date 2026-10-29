@@ -19,7 +19,11 @@ builds every message that quotes a word of the tree by an f-string, so a word sp
 as a format field that makes the walk raise and the lint refuse the file, and round 8 reads the flags of every
 statement on the path from the tested read to the top level (`{ x=$(false) || exit 1; } &` ended only the job), of
 the `||` branch and every statement inside it (`|| ! (exit 1)` read the refusal as success) and of the prologue
-(`set -euo pipefail &` set the options of a child shell only).
+(`set -euo pipefail &` set the options of a child shell only), and round 9 stops analysing a refusal function's body:
+a function called from a `||` branch, and a block or subshell branch, are accepted only when their statements match
+one closed grammar (zero or more `echo`/`printf` commands sending fd 1 to fd 2, then exactly one `exit <1-255>`,
+nothing else of any kind), and rule b's `[[ ! -s file ]]` must be an `if` condition, the left side of a `||` whose
+branch is an accepted form, or a bare top-level statement after the prologue, on a path with no `!` or `&`.
 """
 
 from __future__ import annotations
@@ -135,7 +139,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("while x=$(a); do break; done", None),
             ("until x=$(a); do break; done", None),
             ("if true; then :; elif x=$(a); then :; fi", None),
-            ("x=$(a) || { echo no; exit 1; }", None),
+            ("x=$(a) || { echo no >&2; exit 1; }", None),
             ("x=$(a) || x=''", "substitution"),  # an empty value a later line handles is not a branch (allow it)
             ("x=$(a) || exit 2", None),
             ("f() { x=$(a) || return 1; }", None),
@@ -206,7 +210,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "quoted in the redirect, bare in the test": (
                 'd=$(pwd) || exit 1\ngit ls-files -z > list 2> "${d}/err" || exit 1\n[[ ! -s ${d}/err ]] || exit 1\n'
             ),
-            "the test chained with &&": capture + "[[ ! -s err ]] && echo clean\n",
+            "the test as an if condition": capture + "if [[ ! -s err ]]; then :; else exit 1; fi\n",
+            "the bare test at top level after the prologue": capture + "[[ ! -s err ]]\n",
+            "the test closed by a refusal function": (
+                'fail() {\n    echo "$1" >&2\n    exit 1\n}\n' + capture + "[[ ! -s err ]] || fail 'stderr'\n"
+            ),
             "through read_listing": "read_listing list err git ls-files -z || exit 1\n",
             "a glob character inside double quotes in both": (
                 'git ls-files -z > list 2> "err*" || exit 1\n[[ ! -s "err*" ]] || exit 1\n'
@@ -246,6 +254,17 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "a test that is not ! -s": (capture + "[[ -s err ]] && exit 1\n", [(3, "producer")]),
             "a test in another list": (capture + "f() { [[ ! -s err ]] || exit 1; }\n", [(3, "producer")]),
             "a test before the call": (test + capture, [(4, "producer")]),
+            "the test chained with &&": (capture + "[[ ! -s err ]] && echo clean\n", [(3, "producer")]),
+            "the test negated": (capture + "! [[ ! -s err ]] || exit 1\n", [(3, "producer")]),
+            "the test in the background": (capture + "[[ ! -s err ]] &\n", [(3, "producer")]),
+            "the test and its branch in the background": (capture + "[[ ! -s err ]] || exit 1 &\n", [(3, "producer")]),
+            "a branch that does not end the script": (capture + "[[ ! -s err ]] || true\n", [(3, "producer")]),
+            "a negated if condition": (capture + "if ! [[ ! -s err ]]; then exit 1; fi\n", [(3, "producer")]),
+            "the bare test inside a function": (
+                "f() {\n    find . -type d > d 2> e || return 1\n    [[ ! -s e ]]\n}\n",
+                [(4, "producer")],
+            ),
+            "the bare test inside a block": ("{\n" + capture + "[[ ! -s err ]]\n}\n", [(4, "producer")]),
             "inside a substitution": ("x=$(git ls-files -z) || exit 1\n", [(3, "producer")]),
             "ls and find": ("ls > l || exit 1\nfind . -type f > f || exit 1\n", [(3, "producer"), (4, "producer")]),
             "git config -f and --file": (
@@ -317,6 +336,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 self.assertIn("can fail with exit 0 or after printing", result.stdout)
         result = self.assert_findings("git ls-files -z > list || exit 1\n", [(3, "producer")])
         self.assertIn("`git ls-files`", result.stdout, "the finding names the row")
+        # A bare test is accepted only after a top-level `set -euo pipefail`: without one, or before it, nothing reads
+        # its failure (no substitution here, so rule c is silent and the producer finding stands alone).
+        result = self.assert_findings(capture + "[[ ! -s err ]]\n", [(2, "producer")], prologue="")
+        self.assertIn("no `set -euo pipefail` at the top level before it", result.stdout)
+        self.assert_findings(capture + "[[ ! -s err ]]\nset -euo pipefail\n", [(2, "producer")], prologue="")
 
     def test_the_round_2_mutations_are_findings_named_by_line_and_rule(self) -> None:
         """The three lines of the c7be7ede audit and their neighbours, which that head read as clean: a trivial right
@@ -368,7 +392,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "d=$(pwd) || exit 1\n"
             'git ls-files 2> "${d}/err" || exit 1\n'
             "[[ ! -s ${d}/err ]] || exit 1\n"
-            "x=$(a) || { echo no; exit 1; }\n"
+            "x=$(a) || { echo no >&2; exit 1; }\n"
         )
         expected = [(5, "substitution"), (16, "substitution")]
         expected += [(line, "producer") for line in (3, 6, 8, 10, 12, 14)]
@@ -407,12 +431,21 @@ class ProducerStatusCheckTest(unittest.TestCase):
         result = self.assert_findings(body, expected)
         for line, shape in (
             (11, "a pipeline"),
-            (12, "a block whose last statement is the command `true`"),
-            (13, "a subshell whose last statement is the command `true`"),
+            (
+                12,
+                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 12 with the command `true`",
+            ),
+            (
+                13,
+                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 13 with the command `true`",
+            ),
             (14, "the command `echo`"),
             (15, "an assignment of something other than `$?`"),
             (19, "the command `undefined_refuse`"),
-            (20, "a call of `fail_later`, whose body ends in the command `echo`"),
+            (
+                20,
+                "a call of `fail_later`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with an assignment",
+            ),
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
 
@@ -448,9 +481,18 @@ class ProducerStatusCheckTest(unittest.TestCase):
         result = self.assert_findings(body, expected)
         for line, shape in (
             (6, "`exit 0`, which turns the failed read into success"),
-            (7, "a subshell whose last statement is `exit 0`, which turns the failed read into success"),
-            (8, "a block whose last statement is `exit 0`, which turns the failed read into success"),
-            (9, "a call of `zero_fn`, whose body ends in `exit 0`, which turns the failed read into success"),
+            (
+                7,
+                "a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 7 with `exit 0`, which turns the failed read into success",
+            ),
+            (
+                8,
+                "a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with `exit 0`, which turns the failed read into success",
+            ),
+            (
+                9,
+                "a call of `zero_fn`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with `exit 0`, which turns the failed read into success",
+            ),
             (11, "`return 0`, which turns the failed read into success"),
             (13, "an `exit` whose argument has no known text"),
             (20, "an `exit` with 2 arguments"),
@@ -468,8 +510,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
         || exit 1` read the failure as success and `x=$(false) || exit 1 &` ended only the job), and a bare `exit` or
         `return` after an earlier command or anywhere in a function body (`$?` is by then that command's, so
         `refuse() { echo failed >&2; return; }` returned 0 and the script went on with an empty x). Round 6 reads the
-        flags of the tested statement and of the branch and the `coproc` clause, and accepts the bare form only as
-        the whole branch or as the only statement of its block or subshell; the finding names the command before it."""
+        flags of the tested statement and of the branch and the `coproc` clause, and accepted the bare form only as
+        the whole branch or as the only statement of its block or subshell; since round 9 a block, a subshell or a
+        function body is matched against the refusal grammar instead, so `(exit)`, `{ exit; }` and `{ y=1; exit $?; }`
+        (lines 20, 21, 29) are findings too, and each finding names the first statement outside the grammar."""
         body = (
             "! x=$(false) || exit 1\n"  # 3
             "x=$(false) || exit 1 &\n"  # 4
@@ -494,9 +538,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(a) || { exit 2 & }\n"  # 31
             "if ! x=$(a); then exit 1; fi\n"  # 32: a negated condition is accepted, as before
         )
-        expected = [(line, "substitution") for line in (3, 4, 5, 6, 11, 12, 25, 26, 27, 28, 30, 31)]
+        expected = [(line, "substitution") for line in (3, 4, 5, 6, 11, 12, 20, 21, 25, 26, 27, 28, 29, 30, 31)]
         result = self.assert_findings(body, expected)
         background = "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job"
+        bare = "a bare `exit`, whose status is the statement's before it"
         for line, message in (
             (3, "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run"),
             (4, background),
@@ -504,27 +549,42 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (6, "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"),
             (
                 11,
-                "the `||` branch is a call of `refuse`, whose body ends in a bare `return` after the command `echo`, "
-                "which passes on that command's status, not the failed read's",
+                "the `||` branch is a call of `refuse`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 9 with the command `return`",
             ),
-            (12, "the `||` branch is a block whose last statement is a bare `exit` after the command `echo`"),
+            (
+                12,
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 12 with {bare}",
+            ),
+            (
+                20,
+                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 20 with {bare}",
+            ),
+            (
+                21,
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 21 with {bare}",
+            ),
             (
                 25,
-                "the `||` branch is a call of `bare`, whose body ends in a bare `exit` in a function body, which must "
-                "name its status (1 to 255 or `$?`)",
+                f"the `||` branch is a call of `bare`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 23 with {bare}",
             ),
             (26, background),
             (27, background),
-            (28, "the `||` branch is a block whose last statement is a bare `exit` after an assignment"),
+            (
+                28,
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 28 with an assignment",
+            ),
+            (
+                29,
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 29 with an assignment",
+            ),
             (
                 30,
-                "the `||` branch is a block whose last statement is a call of `refuse`, whose body ends in a bare "
-                "`return` after the command `echo`",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 30 with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
             ),
             (
                 31,
-                "the `||` branch is a block whose last statement is a command run in the background (`&`), which lets "
-                "the script go on",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 31 with a command run in the "
+                "background (`&`), which lets the script go on",
             ),
         ):
             self.assertIn(f":{line}: substitution: {message}", result.stdout)
@@ -541,16 +601,16 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "x=$(false) || { '{y}'; exit; }\n",
                 3,
                 "substitution",
-                "the `||` branch is a block whose last statement is a bare `exit` after the command `{y}`, which passes "
-                "on that command's status, not the failed read's and does not end the read",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 3 with the command `{y}` and "
+                "does not end the read",
             ),
             (
                 "f() {\n    '{y}'\n    return\n}\n"  # 3 to 6
                 "x=$(false) || f\n",  # 7
                 7,
                 "substitution",
-                "the `||` branch is a call of `f`, whose body ends in a bare `return` after the command `{y}`, which "
-                "passes on that command's status, not the failed read's and does not end the read",
+                "the `||` branch is a call of `f`, whose body breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 4 with the command "
+                "`{y}` and does not end the read",
             ),
             (
                 "x=$(false) || '{a}' 'b}'\n",
@@ -603,8 +663,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (3, f"{background} started at line 3"),
             (4, f"the `||` branch is {negated_branch} and does not end the read"),
             (5, f"{background} started at line 5"),
-            (8, f"the `||` branch is a block whose last statement is {negated_branch}"),
-            (9, f"the `||` branch is a subshell whose last statement is {negated_branch}"),
+            (
+                8,
+                f"the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 8 with {negated_branch}",
+            ),
+            (
+                9,
+                f"the `||` branch is a subshell that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 9 with {negated_branch}",
+            ),
             (10, f"the `||` branch is {negated_branch}"),
             (11, "the tested read sits in a statement negated (`!`) at line 11, so a failure that ends that statement"),
             (12, "the tested read sits in a statement negated (`!`) at line 12"),
@@ -616,8 +682,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             (
                 17,
-                "the `||` branch is a block that holds, at line 17, a command run in the background (`&`), which "
-                "lets the script go on",
+                "the `||` branch is a block that breaks the refusal grammar (`echo`/`printf` to stderr, then one `exit <1-255>`) at line 17 with a command run in the "
+                "background (`&`), which lets the script go on",
             ),
             (18, f"{background} started at line 18"),
             (19, f"{background} started at line 19"),
@@ -649,15 +715,152 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 self.assertIn("`set -euo pipefail` must run at top level", result.stdout)
                 self.assertIn(why, result.stdout)
 
+    def test_the_round_9_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The three P2 of the 10fbb408 audit and the next members of each list, which that head read as clean: a
+        refusal function was judged by analysing its body (its last statement, that statement's argument, what `$?`
+        held), so `f() { echo failed >&2; return $?; }` returned the echo's 0, `f() { return 0; exit 1; }` was accepted
+        on an unreachable `exit`, and rule b read `[[ ! -s err ]]` without its flags or its shape, so `! [[ ! -s err ]]
+        || exit 1` and `[[ ! -s err ]] &` closed a producer whose warning reached the next statement. Round 9 stops
+        analysing: a function called from a `||` branch, and a block or subshell branch, are accepted only when their
+        statements match one grammar (zero or more `echo`/`printf` commands with a redirect sending fd 1 to fd 2, then
+        exactly one `exit` whose argument is a known decimal from 1 to 255, nothing else of any kind), each finding
+        naming the first statement outside it by line; and rule b's test must be an `if` condition, the left side of
+        a `||` whose branch is an accepted form, or a bare top-level statement after the prologue, with no `!` or `&`
+        on its path, each finding naming the test's line and why."""
+        body = (
+            "f1() {\n    echo failed >&2\n    return $?\n}\n"  # lines 3 to 6: the auditor's first probe
+            "x=$(false) || f1\n"  # 7
+            "f2() {\n    return 0\n    exit 1\n}\n"  # 8 to 11: the second
+            "x=$(false) || f2\n"  # 12
+            "git ls-files > list 2> err || exit 1\n"  # 13: the third
+            "! [[ ! -s err ]] || exit 1\n"  # 14
+            "git ls-files > list 2> err2 || exit 1\n"  # 15: and its twin
+            "[[ ! -s err2 ]] &\n"  # 16
+            "f3() {\n    echo x >&2\n    exit 2\n    exit 3\n}\n"  # 17 to 21
+            "x=$(false) || f3\n"  # 22
+            "f4() {\n    echo x\n    exit 2\n}\n"  # 23 to 26: no stderr redirect
+            "x=$(false) || f4\n"  # 27
+            'f5() {\n    local m=$1\n    echo "$m" >&2\n    exit 2\n}\n'  # 28 to 32
+            "x=$(false) || f5 m\n"  # 33
+            "f6() {\n    printf '%s\\n' \"$@\" >&2\n    exit 2\n}\n"  # 34 to 37: accepted
+            "x=$(false) || f6 a b\n"  # 38
+            'f7() {\n    echo "$1" 1>&2\n    exit 255\n}\n'  # 39 to 42: accepted
+            "x=$(false) || f7 y\n"  # 43
+            "git ls-files > list 2> err3 || exit 1\n"  # 44: accepted, the test as an `if` condition
+            "if [[ ! -s err3 ]]; then\n    :\nelse\n    exit 1\nfi\n"  # 45 to 49
+            "git ls-files > list 2> err4 || exit 1\n"  # 50: accepted, a bare test at top level after the prologue
+            "[[ ! -s err4 ]]\n"  # 51
+            "git ls-files > list 2> err5 || exit 1\n"  # 52
+            "[[ ! -s err5 ]] && echo clean\n"  # 53
+            "git ls-files > list 2> err6 || exit 1\n"  # 54
+            "[[ ! -s err6 ]] || true\n"  # 55
+            "g() {\n    git ls-files > list 2> err7 || return 1\n    [[ ! -s err7 ]]\n}\n"  # 56 to 59
+            "git ls-files > list 2> err8 || exit 1\n"  # 60
+            "[[ ! -s err8 ]] || exit 1 &\n"  # 61
+            "git ls-files > list 2> err9 || exit 1\n"  # 62
+            "if ! [[ ! -s err9 ]]; then\n    exit 1\nfi\n"  # 63 to 65: the negated condition at 63
+            "git ls-files > list 2> err10 || exit 1\n"  # 66: accepted, the test closed by a refusal function
+            "[[ ! -s err10 ]] || f7 stderr\n"  # 67
+            "f8() {\n    echo x >&2\n    exit $?\n}\n"  # 68 to 71
+            "x=$(false) || f8\n"  # 72
+            'f9() {\n    echo x >&2\n    rm -rf "$dir"\n    exit 1\n}\n'  # 73 to 77: a cleanup is not a refusal
+            "x=$(false) || f9\n"  # 78
+            'f10() {\n    echo "$(date) x" >&2\n    exit 1\n}\n'  # 79 to 82: two findings, the inner one and the call
+            "x=$(false) || f10\n"  # 83
+            "f11() {\n    echo x >&2\n    exit 1 &\n}\n"  # 84 to 87
+            "x=$(false) || f11\n"  # 88
+            "f12() {\n    echo x >&2\n    ! exit 1\n}\n"  # 89 to 92
+            "x=$(false) || f12\n"  # 93
+        )
+        expected = [(line, "substitution") for line in (7, 12, 22, 27, 33, 72, 78, 80, 83, 88, 93)]
+        expected += [(line, "producer") for line in (13, 15, 52, 54, 57, 60, 62)]
+        result = self.assert_findings(body, expected)
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
+        for line, message in (
+            (
+                7,
+                f"the `||` branch is a call of `f1`, whose body breaks the refusal grammar ({grammar}) at line 5 with the command `return`",
+            ),
+            (
+                12,
+                f"the `||` branch is a call of `f2`, whose body breaks the refusal grammar ({grammar}) at line 9 with the command `return`",
+            ),
+            (
+                22,
+                f"the `||` branch is a call of `f3`, whose body breaks the refusal grammar ({grammar}) at line 19 with an `exit` before the last statement",
+            ),
+            (
+                27,
+                f"the `||` branch is a call of `f4`, whose body breaks the refusal grammar ({grammar}) at line 24 with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+            ),
+            (
+                33,
+                f"the `||` branch is a call of `f5`, whose body breaks the refusal grammar ({grammar}) at line 29 with a declaration",
+            ),
+            (
+                72,
+                f"the `||` branch is a call of `f8`, whose body breaks the refusal grammar ({grammar}) at line 70 with `exit $?`, whose status is the statement's before it",
+            ),
+            (
+                78,
+                f"the `||` branch is a call of `f9`, whose body breaks the refusal grammar ({grammar}) at line 75 with the command `rm`",
+            ),
+            (80, "a command substitution here loses its status"),
+            (
+                83,
+                f"the `||` branch is a call of `f10`, whose body breaks the refusal grammar ({grammar}) at line 80 with a command substitution",
+            ),
+            (
+                88,
+                f"the `||` branch is a call of `f11`, whose body breaks the refusal grammar ({grammar}) at line 86 with a command run in the background (`&`), which lets the script go on",
+            ),
+            (
+                93,
+                f"the `||` branch is a call of `f12`, whose body breaks the refusal grammar ({grammar}) at line 91 with a negated command (`!`), whose failure status is read as success",
+            ),
+        ):
+            self.assertIn(f":{line}: substitution: {message}", result.stdout)
+        tail = "statement of the same list, as an `if` condition or the left side of a `||` that ends the script, or run it through read_listing of read-lib.sh; the `[[ ! -s ]]` test at line"
+        for line, message in (
+            (13, f"{tail} 14 is negated (`!`), so a non-empty file is read as clean"),
+            (15, f"{tail} 16 runs in the background (`&`, the job started at line 16), so its failure stops nothing"),
+            (
+                52,
+                f"{tail} 53 sits in an `&&` list as neither the left side of a `||` nor the last statement of an `if` condition",
+            ),
+            (
+                54,
+                f"{tail} 55 is the left side of a `||` whose branch is the command `true` and does not end the script",
+            ),
+            (
+                57,
+                f"{tail} 58 is a bare statement inside a function definition at line 56, not at the top level where `set -e` ends the script on its failure",
+            ),
+            (60, f"{tail} 61 runs in the background (`&`, the job started at line 61), so its failure stops nothing"),
+            (62, f"{tail} 63 is negated (`!`), so a non-empty file is read as clean"),
+        ):
+            self.assertIn(f":{line}: producer: `git ls-files` can fail", result.stdout)
+            self.assertIn(
+                f":{line}: producer: `git ls-files` can fail with exit 0 or after printing (status-blind-producers.tsv); send its stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later {message}",
+                result.stdout,
+            )
+        # The grammar is a match, not an analysis: a body the lint would otherwise have to reason about (a cleanup
+        # before the exit) is a finding, and the lever's answer is a trap or an allow comment naming the cleanup line.
+        allowed = (
+            'f9() {\n    echo x >&2\n    rm -rf "$dir"\n    exit 1\n}\n'
+            "x=$(false) || f9 # producer-status: allow f9 removes the run directory at line 5 before it exits\n"
+        )
+        self.assert_findings(allowed, [])
+
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
-        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument (as
-        the whole branch or the only statement of its block or subshell), one known decimal from 1 to 255 or one bare
-        `$?`, a top-level function of this file whose body's last statement is one of those with an explicit argument
-        (one level: a function ending in a call of another is not accepted, nor a name defined inside another
-        statement, nor a name whose second definition ends otherwise), a block or subshell whose last statement is one
-        of those, and `name=$?` or `name=${?}`. Everything else is a finding that names the shape (a bare `exit` or
-        `return` after an earlier statement names that statement), and a top-level function named `exit` takes the
-        name away."""
+        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` as the whole branch
+        with no argument, one known decimal from 1 to 255 or one bare `$?`; a top-level function of this file whose
+        every body is the refusal grammar (`echo`/`printf` sending fd 1 to fd 2, then one `exit <1-255>`; a function
+        ending in a call of another, a name defined inside another statement, a name whose second definition is
+        outside the grammar and a bare `exit` or `return` in a body are not accepted); a block or subshell whose
+        statements are that grammar; and `name=$?` or `name=${?}`. Everything else is a finding that names the shape
+        (a body or block outside the grammar names its first statement outside it, by line), and a top-level function
+        named `exit` takes the name away."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
             "refuse_plain() exit 2\n"
@@ -677,34 +880,137 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || status=${?}", None),
             ("x=$(a) || refuse 'x'", None),
             ("x=$(a) || refuse_plain", None),
-            ("x=$(a) || (refuse 'x')", None),
-            ("x=$(a) || { refuse 'x'; }", None),
-            ("x=$(a) || { echo no >&2; return 1; }", None),
+            ("x=$(a) || (echo no >&2; exit 1)", None),
+            ("x=$(a) || { printf '%s\\n' \"$@\" >&2; exit 1; }", None),
+            ("x=$(a) || { echo no 1>&2; exit 255; }", None),
             ("x=$(a) || exit $?", None),
             ("x=$(a) || return ${?}", None),
             ("x=$(a) || exit '255'", None),
-            ("x=$(a) || (exit)", None),
-            ("x=$(a) || { exit; }", None),
+            ("x=$(a) || { 'echo' no >&2; 'exit' 2; }", None),
+            ("x=$(a) || { exit 1; }", None),
             ("x=$(a) || { echo no >&2; exit 2; }", None),
+            (
+                "x=$(a) || (refuse 'x')",
+                "a subshell that breaks the refusal grammar (GRAMMAR) at line LINE with a call of `refuse`",
+            ),
+            (
+                "x=$(a) || { refuse 'x'; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a call of `refuse`",
+            ),
+            (
+                "x=$(a) || { echo no >&2; return 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with the command `return`",
+            ),
+            (
+                "x=$(a) || (exit)",
+                "a subshell that breaks the refusal grammar (GRAMMAR) at line LINE with a bare `exit`, whose status",
+            ),
+            (
+                "x=$(a) || { exit; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a bare `exit`, whose status",
+            ),
+            (
+                "x=$(a) || { echo no >&2; exit $?; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with `exit $?`, whose status",
+            ),
+            (
+                "x=$(a) || { echo no; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+            ),
+            ("x=$(a) || { echo no >&2 2>&1; exit 1; }", None),
+            (
+                "x=$(a) || { echo no 2>&1; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+            ),
+            (
+                "x=$(a) || { echo no >&3; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+            ),
+            (
+                "x=$(a) || { echo no > err; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `echo` that does not send fd 1 to fd 2 (`>&2`)",
+            ),
+            (
+                "x=$(a) || { echo no >&2; exit 1; exit 2; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `exit` before the last statement",
+            ),
+            (
+                "x=$(a) || { echo no >&2; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with the command `echo` as the last statement, where the `exit` must be",
+            ),
+            (
+                'x=$(a) || { echo "$?" >&2; exit 1; }',
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with `$?`",
+            ),
+            (
+                'x=$(a) || { echo "$(b)" >&2; exit 1; }',
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a command substitution",
+            ),
+            (
+                "x=$(a) || { X=1 echo no >&2; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a command with an assignment before it",
+            ),
+            (
+                "x=$(a) || { local m=1; echo no >&2; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a declaration",
+            ),
+            (
+                "x=$(a) || { if true; then :; fi; exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `if`",
+            ),
+            (
+                "x=$(a) || { echo no >&2; exit 1 2; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `exit` with 2 arguments",
+            ),
+            (
+                'x=$(a) || { echo no >&2; exit "$c"; }',
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `exit` whose argument has no known text",
+            ),
+            (
+                "x=$(a) || { echo no >&2; exit 256; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with `exit 256`, which turns the failed read into success",
+            ),
+            (
+                "x=$(a) || { echo no >&2; exit abc; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with `exit abc`, whose argument is not a decimal from 1 to 255",
+            ),
             ("x=$(a) || exit 0", "`exit 0`, which turns the failed read into success"),
             ("x=$(a) || return 0", "`return 0`, which turns the failed read into success"),
             ("x=$(a) || exit 256", "`exit 256`, which turns the failed read into success"),
             ("x=$(a) || exit abc", "`exit abc`, whose argument is not a decimal from 1 to 255"),
             ('x=$(a) || exit "$?"', "an `exit` whose argument has no known text"),
             ("x=$(a) || exit 1 2", "an `exit` with 2 arguments"),
-            ("x=$(a) || { echo no >&2; exit 0; }", "a block whose last statement is `exit 0`, which turns"),
-            ("x=$(a) || zero", "a call of `zero`, whose body ends in `exit 0`, which turns the failed read"),
+            (
+                "x=$(a) || { echo no >&2; exit 0; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with `exit 0`, which turns",
+            ),
+            (
+                "x=$(a) || zero",
+                "a call of `zero`, whose body breaks the refusal grammar (GRAMMAR) at line 26 with `exit 0`, which turns",
+            ),
             ('x=$(a) || status="$?"', "an assignment of something other than `$?`"),
             ("x=$(a) || status=${?:-0}", "an assignment of something other than `$?`"),
             ("x=$(a) || status=$? other=1", "an assignment of something other than `$?`"),
-            ("x=$(a) || { status=$?; }", "a block whose last statement is an assignment of `$?` that only the block"),
+            (
+                "x=$(a) || { status=$?; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an assignment",
+            ),
             ("x=$(a) || true", "the command `true`"),
             ("x=$(a) || :", "the command `:`"),
             ("x=$(a) || false", "the command `false`"),
             ("x=$(a) || true | cat", "a pipeline"),
-            ("x=$(a) || { echo no && exit 1; }", "a block whose last statement is an `&&` list"),
-            ("x=$(a) || (exit 1 || exit 2)", "a subshell whose last statement is a `||` list"),
-            ("x=$(a) || { { exit 1; }; }", "a block whose last statement is a block"),
+            (
+                "x=$(a) || { echo no && exit 1; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an `&&` list",
+            ),
+            (
+                "x=$(a) || (exit 1 || exit 2)",
+                "a subshell that breaks the refusal grammar (GRAMMAR) at line LINE with a `||` list",
+            ),
+            (
+                "x=$(a) || { { exit 1; }; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a block",
+            ),
             ("x=$(a) || if true; then exit 1; fi", "an `if`"),
             ("x=$(a) || case $x in *) exit 1 ;; esac", "a `case`"),
             ("x=$(a) || [[ $? == 1 ]]", "a `[[ ]]` test"),
@@ -714,29 +1020,68 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || $'exit'", "a command whose first word has no known text"),
             ("x=$(a) || ex\\it", "a command whose first word has no known text"),
             ("x=$(a) || refuse_undefined", "the command `refuse_undefined`"),
-            ("x=$(a) || fail_later", "a call of `fail_later`, whose body ends in the command `echo`"),
+            (
+                "x=$(a) || fail_later",
+                "a call of `fail_later`, whose body breaks the refusal grammar (GRAMMAR) at line 9 with the command "
+                "`echo` as the last statement, where the `exit` must be",
+            ),
             ("x=$(a) || nested_refuse", "the command `nested_refuse`"),
-            ("x=$(a) || twice", "a call of `twice`, whose body ends in the command `echo`"),
-            ("x=$(a) || deep", "a call of `deep`, whose body ends in the command `refuse`"),
+            (
+                "x=$(a) || twice",
+                "a call of `twice`, whose body breaks the refusal grammar (GRAMMAR) at line 20 with the command `echo` "
+                "as the last statement",
+            ),
+            (
+                "x=$(a) || deep",
+                "a call of `deep`, whose body breaks the refusal grammar (GRAMMAR) at line 23 with a call of `refuse`",
+            ),
             (
                 "x=$(a) || { echo no >&2; exit; }",
-                "a block whose last statement is a bare `exit` after the command `echo`",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a bare `exit`, whose status",
             ),
-            ("x=$(a) || { y=1; return; }", "a block whose last statement is a bare `return` after an assignment"),
-            ("x=$(a) || bare_refuse", "a call of `bare_refuse`, whose body ends in a bare `return` after the command"),
-            ("x=$(a) || bare_only", "a call of `bare_only`, whose body ends in a bare `exit` in a function body"),
-            ("x=$(a) || { exit 2 & }", "a block whose last statement is a command run in the background (`&`)"),
+            (
+                "x=$(a) || { y=1; return; }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with an assignment",
+            ),
+            (
+                "x=$(a) || bare_refuse",
+                "a call of `bare_refuse`, whose body breaks the refusal grammar (GRAMMAR) at line 30 with the command `return`",
+            ),
+            (
+                "x=$(a) || bare_only",
+                "a call of `bare_only`, whose body breaks the refusal grammar (GRAMMAR) at line 33 with a bare `exit`, whose status",
+            ),
+            (
+                "x=$(a) || { exit 2 & }",
+                "a block that breaks the refusal grammar (GRAMMAR) at line LINE with a command run in the background (`&`)",
+            ),
         ]
+        grammar = "`echo`/`printf` to stderr, then one `exit <1-255>`"
         first = 3 + preamble.count("\n")
         expected = [(first + index, "substitution") for index, (_, shape) in enumerate(cases) if shape]
+        expected += [
+            (first + index, "substitution") for index, (text, _) in enumerate(cases) if "$(b)" in text
+        ]  # the inner one
         result = self.assert_findings(preamble + "".join(text + "\n" for text, _ in cases), expected)
         for index, (text, shape) in enumerate(cases):
             if shape:
                 with self.subTest(text):
+                    shape = shape.replace("GRAMMAR", grammar).replace("LINE", str(first + index))
                     self.assertIn(f":{first + index}: substitution: the `||` branch is {shape}", result.stdout)
         shadowed = "exit() {\n    echo no\n}\nx=$(a) || exit 1\n"
         result = self.assert_findings(shadowed, [(6, "substitution")])
-        self.assertIn("a call of `exit`, whose body ends in the command `echo`", result.stdout)
+        self.assertIn(
+            f"a call of `exit`, whose body breaks the refusal grammar ({grammar}) at line 4 with the command `echo` as "
+            "the last statement, where the `exit` must be",
+            result.stdout,
+        )
+        # A top-level function named `echo` takes that name from the grammar too: `echo x >&2` in a body is then a call.
+        shadowed = "echo() {\n    :\n}\nf() {\n    echo no >&2\n    exit 1\n}\nx=$(a) || f\n"
+        result = self.assert_findings(shadowed, [(10, "substitution")])
+        self.assertIn(
+            f"a call of `f`, whose body breaks the refusal grammar ({grammar}) at line 7 with a call of `echo`",
+            result.stdout,
+        )
 
     def test_an_empty_or_comment_only_file_is_refused_naming_it(self) -> None:
         """A tree with no top-level statement is never a clean file: the refusal names the file, before and after a

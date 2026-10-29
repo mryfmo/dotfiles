@@ -17,20 +17,27 @@
 #      exit 1` tests the coprocess's start, and each is a finding naming the flagged statement's line. A function
 #      body is not the top level: `f() { x=$(…) || return 1; }` is judged by its own path, whatever `f &` does at
 #      the call. The branches that handle the status are a closed list:
-#      (i) a plain command whose known first word is `exit` or `return`, with no argument (the status of the failed
-#      substitution propagates, so only as the whole branch or as the only statement of its block or subshell), with
-#      one argument whose known text is a decimal from 1 to 255, or with one argument that is the bare `$?` (`exit
-#      0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0` are findings: a zero turns the failed read into
-#      success); (ii) a plain command whose known first word names a function this file defines at top level and
-#      whose body's last statement is form (i) with an explicit argument (one level, no recursion; a name no
-#      top-level function defines is not accepted; a bare `exit` or `return` there passes on the status of the
-#      body's earlier command, and the finding names that command); (iii) a block or subshell whose last statement is
-#      (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?` (`status=$?`).
-#      A branch statement run in the background (`exit 2 &`) or negated (`! exit 1`, `! (exit 1)`) handles nothing,
-#      and a block or subshell branch must hold no such statement at any depth (`{ echo x & exit 1; }`).
+#      (i) a plain command whose known first word is `exit` or `return`, as the whole branch, with no argument (the
+#      status of the failed substitution propagates), with one argument whose known text is a decimal from 1 to 255,
+#      or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0`
+#      are findings: a zero turns the failed read into success); (ii) a plain command whose known first word names a
+#      function this file defines at top level whose every body is the refusal grammar: zero or more statements, each
+#      a plain command whose known first word is `echo` or `printf` with a redirect that sends fd 1 to fd 2 (`>&2` or
+#      `1>&2`), then exactly one last statement, a plain command `exit` with one argument whose known text is a
+#      decimal from 1 to 255, every statement in the foreground and not negated, and nothing else of any kind: no
+#      `return`, no `$?`, no `local`, no `if`, no assignment, no second `exit`, no call of another function, no
+#      command substitution anywhere in the body. The body is matched, not analysed: `f() { echo failed >&2; return
+#      $?; }`, `f() { return 0; exit 1; }`, `f() { echo x; exit 2; }` and `f() { local m=$1; echo "$m" >&2; exit 2; }`
+#      are each a finding naming the function and the first statement outside the grammar, by line, whatever they
+#      would do when run (a name no top-level function defines is not accepted; a function that cleans up before it
+#      exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow comment naming the
+#      cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2; exit 1; }`), so a
+#      bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a bare assignment
+#      of exactly `$?` (`status=$?`). A branch statement run in the background (`exit 2 &`) or negated (`! exit 1`,
+#      `! (exit 1)`) handles nothing.
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
-#      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell ending
-#      otherwise, an assignment of anything else, a first word with no known text. A later line that handles an
+#      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell outside the
+#      grammar, an assignment of anything else, a first word with no known text. A later line that handles an
 #      empty value is not a branch: such a read carries `# producer-status: allow <reason naming that line>` (rule
 #      e). A word has a known text only when every part is a bare literal over the closed character set (letters,
 #      digits and `_ - . / : = + @ % ,`), a plain single-quoted string, or double quotes around literals (any
@@ -42,7 +49,15 @@
 #      assignments in one statement, and a substitution inside another one.
 #   b. `producer`: a command whose leading words (known texts, as above) match a row of status-blind-producers.tsv
 #      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must capture its
-#      stderr to a file, and a later statement of the same list must be `[[ ! -s <that file> ]]`. Stderr is captured
+#      stderr to a file, and a later statement of the same list must test `[[ ! -s <that file> ]]` in a shape whose
+#      failure stops the script: the last statement of an `if` condition, or the left side of a `||` whose branch is
+#      one of the forms of rule a; a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file
+#      whose prologue (rule c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and
+#      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The test statement
+#      and every statement on its path to the top level must be in the foreground and not negated (`! [[ ! -s err ]]
+#      || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the job), and an `&&` list or a
+#      pipeline is not a test; a producer whose only such statement is one of those is a finding naming that
+#      statement's line and why. Stderr is captured
 #      only when the last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known
 #      text is not /dev/null, or whose parts are literals and parameter expansions. A redirect touches fd 2 when its
 #      descriptor is 2 whatever the operator, when it is `&>` or `&>>`, or when it is `>&` to a word that is not a
@@ -156,7 +171,9 @@ BRANCH_FLAGS = {  # how a finding names a flagged statement in a `||` branch
     NEGATED: "a negated command (`!`), whose failure status is read as success",
     COPROCESS: "a `coproc`, whose status is its start, not its command's",
 }
-IN_FUNCTION = object()  # the `before` of a bare `exit` or `return` that is a function body's only statement
+WRITERS = ("echo", "printf")  # the plain commands a refusal body may run before its `exit`, each sending fd 1 to fd 2
+STDOUT = "1"  # the descriptor `1>&2` names; `>&2` names none
+GRAMMAR = "`echo`/`printf` to stderr, then one `exit <1-255>`"  # how a finding names the refusal grammar (forms ii, iii)
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
     "Subshell": "a subshell",
@@ -396,12 +413,13 @@ def captures_to_file(target):
     return name_parts(target) is not None
 
 
-def head(stmt):
-    """The command a statement runs first: the leftmost operand of a `||`, `&&` or `|` chain, else its own command."""
+def leftmost(stmt):
+    """The statement a statement runs first: the leftmost operand of a `||`, `&&` or `|` chain, else itself."""
     cmd = command_of(stmt)
     while isinstance(cmd, dict) and cmd.get("Type") == "BinaryCmd":
-        cmd = command_of(cmd["X"])
-    return cmd
+        stmt = cmd["X"]
+        cmd = command_of(stmt)
+    return stmt
 
 
 def top_level_functions(tree):
@@ -415,6 +433,12 @@ def top_level_functions(tree):
     return functions
 
 
+def function_body(stmt):
+    """The body statement of a function definition, else None."""
+    cmd = command_of(stmt)
+    return cmd.get("Body") if isinstance(cmd, dict) and cmd.get("Type") == "FuncDecl" else None
+
+
 def body_statements(stmt):
     """The statements a function body or a `||` branch runs: a block's or subshell's list, else the statement itself
     (`f() exit 2`, a plain command)."""
@@ -425,8 +449,9 @@ def body_statements(stmt):
 
 
 def statement_name(stmt):
-    """How a finding names the statement before a bare `exit` or `return`: the command's known first word, else its
-    shape (an assignment, a list, a block, an `if`, a command whose first word has no known text)."""
+    """How a finding names the statement a `set -euo pipefail` or a bare `[[ ! -s file ]]` sits inside: the
+    command's known first word, else its shape (an assignment, a list, a block, an `if`, a function definition, a
+    command whose first word has no known text)."""
     cmd = command_of(stmt)
     kind = cmd.get("Type") if isinstance(cmd, dict) else None
     if kind == "CallExpr":
@@ -482,20 +507,16 @@ def read_flag(flag, stmt, depth):
     )
 
 
-def statements_inside(stmt):
-    """Every statement inside a statement, at any depth, in file order; not the statement itself."""
-    inside = [node for node in every(stmt) if node is not stmt and node.get("Type") is None and "Cmd" in node]
-    return sorted(inside, key=lambda node: node["Pos"]["Offset"])
-
-
-def flagged_inside(stmt):
-    """The first flagged statement inside a `||` branch's block or subshell, at any depth, as (flag, statement), else
-    None: the branch is held to flagged_path like the read it handles."""
-    for inner in statements_inside(stmt):
-        flag = flagged_path((inner,))
-        if flag is not None:
-            return flag[0], inner
-    return None
+def test_flag(flag, stmt, depth):
+    """Why a `[[ ! -s file ]]` test whose path holds a flagged statement (stmt, at depth) closes no producer."""
+    line = stmt["Pos"]["Line"]
+    if flag == BACKGROUND:
+        return f"runs in the background (`&`, the job started at line {line}), so its failure stops nothing"
+    if flag == COPROCESS:
+        return f"runs in a coprocess started at line {line}, whose status is its start"
+    if depth:
+        return f"sits in a statement negated (`!`) at line {line}, so a non-empty file is read as success"
+    return "is negated (`!`), so a non-empty file is read as clean"
 
 
 def status_parameter(word):
@@ -510,28 +531,19 @@ def branch_reason(shape):
     text could be read as: a word spelled `{y}` is a word, not a field."""
     return (
         f"the `||` branch is {shape} and does not end the read with a failure status: exit or return with no "
-        "argument, a decimal from 1 to 255 or `$?`, a refusal function of this file ending so, or `name=$?`"
+        f"argument, a decimal from 1 to 255 or `$?`, a refusal function or a block of this file ({GRAMMAR}), or "
+        "`name=$?`"
     )
 
 
-def bare_shape(text, before):
-    """How a finding names a refused bare `exit` or `return` (text) where `$?` is no longer the failed read's status
-    (forms ii and iii): after the statement `before` names, whose status it passes on, or as the only statement of a
-    function body (IN_FUNCTION), which must name its status."""
-    if before is IN_FUNCTION:
-        return f"a bare `{text}` in a function body, which must name its status (1 to 255 or `$?`)"
-    return f"a bare `{text}` after {before}, which passes on that command's status, not the failed read's"
-
-
-def terminator_shape(text, args, before=None):
-    """None when `exit` or `return` (text) ends the read with the failed status: no argument (the status of the
-    failed substitution propagates; refused, naming `before`, where an earlier statement or a function body sits
-    between, since `$?` is then that statement's), one argument whose known text is a decimal from 1 to 255, or one
-    bare `$?` or `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument
-    with no known text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments
-    are an error bash reports before it exits."""
+def terminator_shape(text, args):
+    """None when `exit` or `return` (text), as the whole branch, ends the read with the failed status: no argument
+    (the status of the failed substitution propagates), one argument whose known text is a decimal from 1 to 255, or
+    one bare `$?` or `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an
+    argument with no known text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two
+    arguments are an error bash reports before it exits."""
     if not args:
-        return None if before is None else bare_shape(text, before)
+        return None
     if len(args) != 1:
         return f"an `{text}` with {len(args)} arguments"
     if status_parameter(args[0]):
@@ -546,18 +558,96 @@ def terminator_shape(text, args, before=None):
     return f"`{text} {value}`, whose argument is not a decimal from 1 to 255"
 
 
-def branch_shape(stmt, functions, terminators, inner=False, before=None):
+def exit_shape(args):
+    """None when the `exit` that ends a refusal body names its status: one argument whose known text is a decimal
+    from 1 to 255; else the shape that names why not. A bare `exit` and `exit $?` pass on the status of the statement
+    before them (an `echo`'s), so neither is in the grammar."""
+    if not args:
+        return "a bare `exit`, whose status is the statement's before it"
+    if len(args) == 1 and status_parameter(args[0]):
+        return "`exit $?`, whose status is the statement's before it"
+    return terminator_shape("exit", args)
+
+
+def sends_stdout_to_stderr(redirect):
+    """Whether the redirect is `>&2` or `1>&2`: the `>&` operator with no descriptor or descriptor 1, to a word whose
+    known text is 2."""
+    fd = (redirect.get("N") or {}).get("Value")
+    return redirect.get("Op") == DUP_OP and fd in (None, STDOUT) and word_text(redirect["Word"]) == STDERR
+
+
+def refusal_break(stmts, functions):
+    """What breaks the refusal grammar in the statements of a function body or of a block or subshell branch, as
+    (what, line), else None. The grammar: zero or more plain commands whose known first word is `echo` or `printf`
+    (not a name a top-level function takes) with a redirect that sends fd 1 to fd 2, then exactly one plain command
+    `exit` (not such a name either) with one argument whose known text is a decimal from 1 to 255, every statement in
+    the foreground and not negated, no command substitution and no `$?` anywhere. The body is matched, never
+    analysed: the first statement that is anything else (a `return`, a declaration, an `if`, an assignment, a call,
+    an `exit` before the last statement, an `echo` without `>&2`, an `echo` where the `exit` must be) is named,
+    whatever it would do when run."""
+    for index, stmt in enumerate(stmts):
+        line = stmt["Pos"]["Line"]
+        flag = flagged_path((stmt,))
+        if flag is not None:
+            return BRANCH_FLAGS[flag[0]], line
+        cmd = command_of(stmt)
+        kind = cmd.get("Type") if isinstance(cmd, dict) else None
+        if kind == "BinaryCmd":
+            return LIST_SHAPES.get(cmd.get("Op"), f"a `{cmd.get('Op')}` list"), line
+        if kind != "CallExpr":
+            return SHAPES.get(kind, f"a {kind}"), line
+        args = cmd.get("Args") or []
+        if not args:
+            return ("an assignment" if cmd.get("Assigns") else "an empty command"), line
+        if cmd.get("Assigns"):
+            return "a command with an assignment before it", line
+        text = word_text(args[0])
+        if text is None:
+            return "a command whose first word has no known text", line
+        if text in functions:
+            return f"a call of `{text}`", line
+        last = index == len(stmts) - 1
+        if text in WRITERS:
+            if last:
+                return f"the command `{text}` as the last statement, where the `exit` must be", line
+            if not any(sends_stdout_to_stderr(redirect) for redirect in stmt.get("Redirs") or []):
+                return f"an `{text}` that does not send fd 1 to fd 2 (`>&2`)", line
+        elif text != "exit":
+            return f"the command `{text}`", line
+        elif not last:
+            return "an `exit` before the last statement", line
+        else:
+            shape = exit_shape(args[1:])
+            if shape is not None:
+                return shape, line
+        inner = [
+            node
+            for node in every(stmt)
+            if node.get("Type") == "CmdSubst"
+            or (node.get("Type") == "ParamExp" and without_positions(node) in STATUS_PARAMETERS)
+        ]
+        if inner:
+            node = min(inner, key=lambda node: node["Pos"]["Line"])
+            return ("a command substitution" if node["Type"] == "CmdSubst" else "`$?`"), node["Pos"]["Line"]
+    return None if stmts else ("no statement", None)
+
+
+def grammar_break(noun, broken):
+    """How a finding names a function body (noun: a call of f, whose body) or a block or subshell (noun: a block that)
+    outside the refusal grammar: by the first statement outside it and its line."""
+    what, line = broken
+    where = f"at line {line} with {what}" if line is not None else f"with {what}"
+    return f"{noun} breaks the refusal grammar ({GRAMMAR}) {where}"
+
+
+def branch_shape(stmt, functions, terminators):
     """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
     handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
     function of that name takes the name away) with no argument, one known decimal from 1 to 255 or one bare `$?`
-    (terminator_shape; `before` names the statement a bare one follows, or is IN_FUNCTION, where it is refused, and
-    is None where it is accepted); (ii) a plain command whose known first word names a top-level function of this
-    file whose every body ends in a form (i) statement with an explicit argument; (iii) a block or subshell whose last
-    statement is (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?`. As the
-    last statement of a block or a function body (inner), only (i) and (ii) count: no recursion, no nested block, no
-    `$?` that the enclosing read never tests.
-    A statement run in the background or negated handles nothing (the script goes on, or the failure reads as
-    success), and a block or subshell must hold no such statement at any depth."""
+    (terminator_shape); (ii) a plain command whose known first word names a top-level function of this file whose
+    every body is the refusal grammar (refusal_break; a name no such function has is a plain command); (iii) a block
+    or subshell whose statements are that grammar; (iv) a bare assignment of exactly `$?`. A statement run in the
+    background or negated handles nothing (the script goes on, or the failure reads as success)."""
     flag = flagged_path((stmt,))
     if flag is not None:
         return BRANCH_FLAGS[flag[0]]
@@ -568,37 +658,25 @@ def branch_shape(stmt, functions, terminators, inner=False, before=None):
         if not args:
             assigns = cmd.get("Assigns") or []
             if len(assigns) == 1 and "Name" in assigns[0] and status_parameter(assigns[0].get("Value")):
-                return None if not inner else "an assignment of `$?` that only the block or function body sees"
+                return None
             return "an assignment of something other than `$?`" if assigns else "an empty command"
         text = word_text(args[0])
         if text is None:
             return "a command whose first word has no known text"
         if text in terminators:
-            return terminator_shape(text, args[1:], before)
+            return terminator_shape(text, args[1:])
         if text in functions:
             for body in functions[text]:
-                stmts = body_statements(body)
-                if not stmts:
-                    return f"a call of `{text}`, whose body ends in nothing"
-                before = statement_name(stmts[-2]) if len(stmts) > 1 else IN_FUNCTION
-                shape = branch_shape(stmts[-1], {}, terminators, True, before)
-                if shape is not None:
-                    return f"a call of `{text}`, whose body ends in {shape}"
+                broken = refusal_break(body_statements(body), functions)
+                if broken is not None:
+                    return grammar_break(f"a call of `{text}`, whose body", broken)
             return None
         return f"the command `{text}`"
-    if kind in ("Block", "Subshell") and not inner:
-        stmts = body_statements(stmt)
-        noun = "block" if kind == "Block" else "subshell"
-        if not stmts:
-            return f"a {noun} whose last statement is nothing"
-        before = statement_name(stmts[-2]) if len(stmts) > 1 else None
-        shape = branch_shape(stmts[-1], functions, terminators, True, before)
-        if shape is not None:
-            return f"a {noun} whose last statement is {shape}"
-        flag = flagged_inside(stmt)
-        if flag is not None:
-            return f"a {noun} that holds, at line {flag[1]['Pos']['Line']}, {BRANCH_FLAGS[flag[0]]}"
-        return None
+    if kind in ("Block", "Subshell"):
+        broken = refusal_break(body_statements(stmt), functions)
+        if broken is None:
+            return None
+        return grammar_break("a block that" if kind == "Block" else "a subshell that", broken)
     if kind == "BinaryCmd":
         op = cmd.get("Op")
         return LIST_SHAPES.get(op, f"a `{op}` list")
@@ -641,6 +719,7 @@ class Walk:
         self.prologues = []  # the path (statement stack) of every `set -euo pipefail` the file holds
         self.functions = {}  # the top-level functions of the file, name -> bodies (branch form ii)
         self.terminators = TERMINATORS  # `exit` and `return`, less any name a top-level function takes
+        self.set_e = None  # the offset of the first top-level, unflagged `set -euo pipefail` (a bare test of rule b)
 
     def run(self, tree):
         self.seen.clear()
@@ -654,6 +733,10 @@ class Walk:
         self.first_substitution = None
         self.functions = top_level_functions(tree)
         self.terminators = tuple(name for name in TERMINATORS if name not in self.functions)
+        self.set_e = min(
+            (stmt["Pos"]["Offset"] for stmt in self.top if prologue_statement(stmt) and flagged_path((stmt,)) is None),
+            default=None,
+        )
         self.comments(tree)
         self.visit(tree, (), None)
         self.prologue()
@@ -718,7 +801,8 @@ class Walk:
 
     def visit(self, node, stack, siblings):
         """Depth first; stack is the statements holding node, innermost first (the path flagged_path reads), siblings
-        the statement list it sits in and its index there (the list a later `[[ ! -s file ]]` is searched in). The two
+        the statement list it sits in, its index there and the stack around that list (the list a later `[[ ! -s
+        file ]]` is searched in, and the path it shares with the producer). The two
         accepted positions are marked here, at the statement or clause that tests the read, before its substitution is
         visited."""
         if isinstance(node, list):
@@ -755,12 +839,13 @@ class Walk:
         for value in node.values():
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
                 for index, item in enumerate(value):
-                    self.visit(item, stack, (value, index))
+                    self.visit(item, stack, (value, index, stack))
             else:
                 self.visit(value, stack, siblings)
 
     def statement(self, stmt, siblings):
-        """Rules b and d on one statement's own command."""
+        """Rules b and d on one statement's own command; a later `[[ ! -s file ]]` of the same statement list is judged
+        on that list's path to the top level (siblings[2]), which it shares with the producer."""
         cmd = stmt.get("Cmd")
         if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
             return
@@ -773,12 +858,11 @@ class Walk:
                 continue
             target = stderr_target(redirects)
             later = siblings[0][siblings[1] + 1 :] if siblings is not None else []
-            if (
-                target is None
-                or target is UNCAPTURED
-                or not captures_to_file(target)
-                or not any(self.tests_empty(other, target) for other in later)
-            ):
+            outer = siblings[2] if siblings is not None else ()
+            tests = []
+            if target is not None and target is not UNCAPTURED and captures_to_file(target):
+                tests = [why for why in (self.empty_test(other, target, outer) for other in later) if why is not None]
+            if "" not in tests:
                 self.report(
                     stmt,
                     stmt["Pos"]["Line"],
@@ -786,13 +870,14 @@ class Walk:
                     f"`{' '.join(row)}` can fail with exit 0 or after printing (status-blind-producers.tsv); send its "
                     "stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other "
                     "operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later "
-                    "statement of the same list, or run it through read_listing of read-lib.sh",
+                    "statement of the same list, as an `if` condition or the left side of a `||` that ends the script, "
+                    "or run it through read_listing of read-lib.sh" + (f"; {tests[0]}" if tests else ""),
                 )
             break
 
     def tests_empty(self, stmt, target):
-        """Whether the statement starts with `[[ ! -s <target> ]]`, the two words shown to name one file."""
-        cmd = head(stmt)
+        """Whether the statement's own command is `[[ ! -s <target> ]]`, the two words shown to name one file."""
+        cmd = command_of(stmt)
         if not isinstance(cmd, dict) or cmd.get("Type") != "TestClause":
             return False
         test = cmd.get("X")
@@ -802,6 +887,52 @@ class Walk:
         if not isinstance(inner, dict) or inner.get("Type") != "UnaryTest" or inner.get("Op") != "-s":
             return False
         return same_word(inner["X"], target)
+
+    def empty_test(self, stmt, target, outer):
+        """Whether a later statement of the producer's list tests `[[ ! -s <target> ]]` in a shape whose failure stops
+        the script: None when the statement holds no such test, "" when it closes the producer, else why it does not,
+        naming the test's line. The shapes: the last statement of an `if` condition; the left side of a `||` whose
+        branch is one rule a accepts (branch_shape); a bare statement at the top level of a file whose prologue runs
+        `set -euo pipefail` before it, where `set -e` ends the script on its failure (inside a function body, a block
+        or an `if`, or in a file with no such prologue, nothing reads that failure). The test and every statement on
+        its path to the top level must be in the foreground and not negated (flagged_path): `! [[ ! -s err ]] || exit
+        1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the job. The leftmost statement of an `&&`
+        list or a pipeline is a test in neither shape."""
+        cmd = command_of(stmt)
+        kind = cmd.get("Type") if isinstance(cmd, dict) else None
+        why = None
+        if kind == "IfClause" and (cond := cmd.get("Cond") or []) and self.tests_empty(cond[-1], target):
+            path = (cond[-1], stmt, *outer)
+        elif kind == "BinaryCmd" and cmd.get("Op") == "||" and self.tests_empty(cmd["X"], target):
+            path = (cmd["X"], stmt, *outer)
+            shape = branch_shape(cmd["Y"], self.functions, self.terminators)
+            if shape is not None:
+                why = f"is the left side of a `||` whose branch is {shape} and does not end the script"
+        elif kind == "TestClause" and self.tests_empty(stmt, target):
+            path = (stmt, *outer)
+            if outer:
+                around = outer[1] if len(outer) > 1 and function_body(outer[1]) is outer[0] else outer[0]
+                why = (
+                    f"is a bare statement inside {statement_name(around)} at line {around['Pos']['Line']}, not at the "
+                    "top level where `set -e` ends the script on its failure"
+                )
+            elif self.set_e is None or self.set_e > stmt["Pos"]["Offset"]:
+                why = (
+                    "is a bare statement with no `set -euo pipefail` at the top level before it, so nothing reads its "
+                    "failure"
+                )
+        elif kind == "BinaryCmd" and self.tests_empty(leftmost(stmt), target):
+            path = (leftmost(stmt), stmt, *outer)
+            why = (
+                f"sits in {LIST_SHAPES.get(cmd.get('Op'), 'a list')} as neither the left side of a `||` nor the last "
+                "statement of an `if` condition"
+            )
+        else:
+            return None
+        flag = flagged_path(path)
+        if flag is not None:
+            why = test_flag(flag[0], path[flag[1]], flag[1])
+        return "" if why is None else f"the `[[ ! -s ]]` test at line {path[0]['Pos']['Line']} {why}"
 
     def prologue(self):
         """Rule c: a `set -euo pipefail` at top level, on no flagged path, before the first statement holding a

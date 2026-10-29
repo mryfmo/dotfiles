@@ -55,11 +55,12 @@ TABLE: dict[str, Kind] = {
     # one (`! x=$(…) || exit 1`, `x=$(…) || exit 1 &`), so the fixture has one statement of each (U112 round 6).
     "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs", "Negated", "Background")),
     # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, its `read < f` the `<`, and its
-    # producer line the other ways stderr moves (`2>>`, `2>|`, `2>&1`, `&>`, `&>>`, `>&`) that the lint reads.
+    # producer line the other ways stderr moves (`2>>`, `2>|`, `2>&1`, `&>`, `&>>`, `>&`) that the lint reads; its
+    # refusal function's `1>&2` pins the descriptor 1 the lint reads in a refusal body (U112 round 9).
     "Redirect": Kind(
         "Op",
         ("Op", "N", "N.Value", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"),
-        {"Op": (">", "<<", "<", ">>", ">|", ">&", "&>", "&>>"), "N.Value": ("2",)},
+        {"Op": (">", "<<", "<", ">>", ">|", ">&", "&>", "&>>"), "N.Value": ("1", "2")},
     ),
     "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),

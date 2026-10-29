@@ -58,3 +58,10 @@ first=$(printf z) || { exit 1; }
 ! first=$(printf n) || exit 1
 first=$(printf b) || exit 1 &
 coproc { first=$(printf c); } || exit 1
+# producer-status-check (U112 round 9): a refusal body that writes by `1>&2`, so the descriptor spelling the grammar
+# reads is in the tree.
+fail() {
+    echo "$1" 1>&2
+    exit 1
+}
+first=$(printf w) || fail 'no w'

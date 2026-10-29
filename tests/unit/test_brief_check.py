@@ -115,6 +115,12 @@ class BriefCheckTest(unittest.TestCase):
             self.assertTrue(line.startswith(f"brief-check: {self.dir / 'U0-scratch.md'}: "), line)
             self.assertIn(reason, line)
 
+    def assert_refused_exactly(self, result, *reasons):
+        """Exit 1, nothing on stderr, and stdout exactly these reason lines in this order, nothing more or fewer."""
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        prefix = f"brief-check: {self.dir / 'U0-scratch.md'}: "
+        self.assertEqual([prefix + reason for reason in reasons], result.stdout.splitlines())
+
     def test_each_trigger_term_in_goal_without_closure_or_trust_exits_1_with_one_reason_per_line(self):
         for spelling, term in TRIGGERS:
             with self.subTest(term=spelling):
@@ -174,43 +180,58 @@ class BriefCheckTest(unittest.TestCase):
                     self.assert_passes(self.check_text(closed(closure=body)))
 
     def test_a_closure_naming_two_forms_an_unknown_word_or_nothing_exits_1(self):
-        for body, message in (
-            ("ast\nremove", "CLOSURE names 2 forms (ast, remove), not one"),
-            ("ast: the walk\nallowlist: the forms", "CLOSURE names 2 forms (ast, allowlist), not one"),
-            ("hardening", 'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)'),
-            ("AST", 'CLOSURE line "AST" names no form'),
-            ("- ast", 'CLOSURE line "- ast" names no form'),
-            ("ast\nA second line of prose.", 'CLOSURE line "A second line of prose." names no form'),
-            ("", "CLOSURE is empty"),
-            ("\n   \n", "CLOSURE is empty"),
+        # A line naming no form and a count of forms other than one are two faults of one body, both printed.
+        for body, messages in (
+            ("ast\nremove", ("CLOSURE names 2 forms (ast, remove), not one",)),
+            ("ast: the walk\nallowlist: the forms", ("CLOSURE names 2 forms (ast, allowlist), not one",)),
+            (
+                "hardening",
+                (
+                    'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+                    "CLOSURE names 0 forms, not one",
+                ),
+            ),
+            ("AST", ('CLOSURE line "AST" names no form', "CLOSURE names 0 forms, not one")),
+            ("- ast", ('CLOSURE line "- ast" names no form', "CLOSURE names 0 forms, not one")),
+            ("ast\nA second line of prose.", ('CLOSURE line "A second line of prose." names no form',)),
+            ("", ("CLOSURE is empty",)),
+            ("\n   \n", ("CLOSURE is empty",)),
         ):
             with self.subTest(closure=body):
                 result = self.check_text(closed(closure=body))
-                self.assert_refused(result, 'GOAL holds "shell" (')
-                self.assertIn(message, result.stdout)
+                self.assert_refused(result, 'GOAL holds "shell" (', *('GOAL holds "shell"; ' for _ in messages[1:]))
+                for line, message in zip(result.stdout.splitlines(), messages):
+                    self.assertIn(message, line)
 
     def test_a_malformed_closure_exits_1_even_without_a_trigger_term(self):
         # A section the check owns and cannot read is never read as clean (preferences.md standing order 21).
         result = self.check_text(brief(GOAL=CLEAN_GOAL, CLOSURE="hardening"))
-        self.assert_refused(result, 'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)')
+        self.assert_refused_exactly(
+            result,
+            'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+            "CLOSURE names 0 forms, not one",
+        )
         self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, CLOSURE="remove: the feature leaves")))
 
     def test_a_missing_short_or_unnamed_trust_section_exits_1_beside_a_sound_closure(self):
-        for text, message in (
-            (brief(GOAL="A shell reader.", CLOSURE="ast"), "no TRUST section"),
-            (closed(trust=""), "TRUST is 0 characters, under 40"),
-            (closed(trust="The unit trusts the levers."), "TRUST is 27 characters, under 40"),
+        for text, messages in (
+            (brief(GOAL="A shell reader.", CLOSURE="ast"), ("no TRUST section",)),
+            (
+                closed(trust=""),
+                ("TRUST is 0 characters, under 40", "TRUST names nothing as trusted (no word `trusted` or `trusts`)"),
+            ),
+            (closed(trust="The unit trusts the levers."), ("TRUST is 27 characters, under 40",)),
             (
                 closed(trust="The unit reads the brief alone and never the adopted lever set or an earlier job step."),
-                "TRUST names nothing as trusted (no word `trusted` or `trusts`)",
+                ("TRUST names nothing as trusted (no word `trusted` or `trusts`)",),
             ),
             (
                 closed(trust="A trustworthy image is used; the untrusted bus text is never read by this unit."),
-                "TRUST names",
+                ("TRUST names",),
             ),
         ):
             with self.subTest(text=text[-80:]):
-                self.assert_refused(self.check_text(text), f'GOAL holds "shell"; {message}')
+                self.assert_refused(self.check_text(text), *(f'GOAL holds "shell"; {message}' for message in messages))
         for trust in (
             TRUST,
             "Trusted: the pinned image `ghcr.io/x/y@sha256:...` and the adopted lever set; the bus text is data.",
@@ -257,6 +278,36 @@ class BriefCheckTest(unittest.TestCase):
             'GOAL holds "shell"; no TRUST section',
             'CLOSURE names allowlist and CHANGE holds "denylist": a denylist dressed as a form',
         )
+
+    def test_a_trust_section_both_short_and_without_a_trust_word_prints_both_faults_in_one_run(self):
+        # Round 2 (P2): the length check returned first, so `Nothing here.` printed one reason and the missing word
+        # surfaced only after the section was lengthened; the Contract promises every reason in one run.
+        self.assert_refused_exactly(
+            self.check_text(closed(trust="Nothing here.")),
+            'GOAL holds "shell"; TRUST is 13 characters, under 40',
+            'GOAL holds "shell"; TRUST names nothing as trusted (no word `trusted` or `trusts`)',
+        )
+
+    def test_a_closure_with_a_stray_line_and_two_forms_prints_both_faults_in_one_run(self):
+        # The same shape in CLOSURE: the stray line hid the count fault until the stray line was fixed.
+        self.assert_refused_exactly(
+            self.check_text(closed(closure="ast\nremove\nhardening")),
+            'GOAL holds "shell" (shell text has quoting, expansion and word-splitting forms no hand-written reader '
+            'lists); CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+            'GOAL holds "shell"; CLOSURE names 2 forms (ast, remove), not one',
+        )
+
+    def test_the_check_writes_nothing_and_leaves_the_brief_byte_identical(self):
+        # The Contract: the script reads the one brief and writes nothing, so a run over a store edits no brief.
+        target = self.dir / "U0-scratch.md"
+        text = brief(GOAL="A shell reader.")
+        target.write_text(text)
+        before = (target.read_bytes(), target.stat().st_mtime_ns, sorted(path.name for path in self.dir.iterdir()))
+        self.assertEqual(1, self.check(str(target)).returncode)
+        self.assertEqual(
+            before, (target.read_bytes(), target.stat().st_mtime_ns, sorted(path.name for path in self.dir.iterdir()))
+        )
+        self.assertEqual(text.encode(), before[0])
 
     def test_a_section_line_is_the_exact_upper_case_name(self):
         # `GOAL:` and `## GOAL` are prose, not section lines, so the title and such lines fire nothing.

@@ -220,29 +220,40 @@ def first_trigger(found):
 
 
 def closure(body):
-    """(form, None) when the CLOSURE body is exactly one form line, else (None, why it is not)."""
+    """(form, []) when the CLOSURE body is exactly one form line, else (None, every fault of the body).
+
+    Every fault is collected, not the first: a line naming no form and a wrong count of forms are two faults of one
+    body, and a check that returned on the first hid the second until the next run (round 2 of U121).
+    """
     lines = [line.strip() for line in body.splitlines() if line.strip()]
     if not lines:
-        return None, "CLOSURE is empty"
+        return None, ["CLOSURE is empty"]
+    faults = []
     named = []
     for line in lines:
         name = line.split(":", 1)[0].rstrip()
-        if name not in FORMS:
-            return None, f'CLOSURE line "{line}" names no form ({", ".join(FORMS)})'
-        named.append(name)
+        if name in FORMS:
+            named.append(name)
+        else:
+            faults.append(f'CLOSURE line "{line}" names no form ({", ".join(FORMS)})')
     if len(named) != 1:
-        return None, f"CLOSURE names {len(named)} forms ({', '.join(named)}), not one"
-    return named[0], None
+        listed = f" ({', '.join(named)})" if named else ""
+        faults.append(f"CLOSURE names {len(named)} forms{listed}, not one")
+    return (named[0], []) if not faults else (None, faults)
 
 
 def trust(body):
-    """None when the TRUST body names what the unit trusts, else why it does not."""
+    """Every fault of the TRUST body; empty when it names what the unit trusts.
+
+    A body both under the minimum and without a trust word has two faults, and both are printed in one run.
+    """
     text = " ".join(body.split())
+    faults = []
     if len(text) < TRUST_MINIMUM:
-        return f"TRUST is {len(text)} characters, under {TRUST_MINIMUM}"
+        faults.append(f"TRUST is {len(text)} characters, under {TRUST_MINIMUM}")
     if matched_term(TRUST_WORD, TRUST_WORDS, text) is None:
-        return "TRUST names nothing as trusted (no word `trusted` or `trusts`)"
-    return None
+        faults.append("TRUST names nothing as trusted (no word `trusted` or `trusts`)")
+    return faults
 
 
 def judge(found):
@@ -251,17 +262,19 @@ def judge(found):
         return ["no GOAL, CHANGE or CONTEXT section"]
     reasons = []
     trigger = first_trigger(found)
-    form, fault = closure(found["CLOSURE"]) if "CLOSURE" in found else (None, "no CLOSURE section")
+    form, faults = closure(found["CLOSURE"]) if "CLOSURE" in found else (None, ["no CLOSURE section"])
     if trigger is None:
-        if fault is not None and "CLOSURE" in found:
-            reasons.append(fault)  # a CLOSURE the check cannot read is never read as clean
+        if "CLOSURE" in found:
+            reasons.extend(faults)  # a CLOSURE the check cannot read is never read as clean
     else:
         section, term = trigger
-        if form is None:
-            reasons.append(f'{section} holds "{term}" ({REASONS[term]}); {fault}')
-        trust_fault = trust(found["TRUST"]) if "TRUST" in found else "no TRUST section"
-        if trust_fault is not None:
-            reasons.append(f'{section} holds "{term}"; {trust_fault}')
+        # The term's reason is printed once, on the first CLOSURE fault; every further line names the term alone.
+        why = f" ({REASONS[term]})"
+        for fault in faults:
+            reasons.append(f'{section} holds "{term}"{why}; {fault}')
+            why = ""
+        trust_faults = trust(found["TRUST"]) if "TRUST" in found else ["no TRUST section"]
+        reasons.extend(f'{section} holds "{term}"; {fault}' for fault in trust_faults)
     if form in DRESSED_FORMS:
         phrase = matched_term(DRESSED_WORD, DRESSED_PHRASES, found.get("CHANGE", ""))
         if phrase is not None:

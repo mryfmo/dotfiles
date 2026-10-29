@@ -11,7 +11,6 @@ The measured budgets below come from passing `test` jobs of October 2026.
 
 from __future__ import annotations
 
-import atexit
 import json
 import math
 import os
@@ -68,9 +67,24 @@ MIRRORS = (
 # silent for 15 s and move to the next mirror, three times. N is measured per step (the comment next to each call in
 # the workflow) with twice the measured time and at least 120 s of margin, so never under MIN_APT_BOUND.
 APT_CALL = re.compile(r"\bapt-get\b|\bapt\s+(?:install|update|upgrade|full-upgrade|dist-upgrade)\b")
-APT_BOUND = re.compile(
-    r"timeout --kill-after=10 ([0-9]+) sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 "
+# Round 9 (audit of ecde33b9): the form was matched anywhere on a line, so `ci_timeout --kill-after=10 180 sudo
+# apt-get ...`, with `ci_timeout() { shift 2; "$@"; }` defined on the line above, held the form as the tail of another
+# command's name and ran apt with no GNU timeout past every check. The form counts only where `timeout` is a whole
+# word (TIMEOUT_WORD: no letter, digit, `_`, `.`, `/` or `-` touches it) and the first word of its command: at the
+# start of the line or after one of COMMAND_STARTS, with nothing but whitespace between. A form anywhere else fails
+# the line naming its position: the longer word `timeout` ends, or the text the form follows.
+TIMEOUT_WORD = r"(?<![\w./-])timeout(?![\w./-])"
+APT_FORM = (
+    r" --kill-after=10 ([0-9]+) sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 "
     r"(?:update|install)(?=\s|$)"
+)
+COMMAND_STARTS = ("&&", "||", ";", "|", "(", "run:", "- ")
+COMMAND_START = r"(?:^|&&|\|\||;|\||\(|(?<![\w-])run:(?=\s)|(?<!\S)-(?=\s))\s*"
+APT_BOUND = re.compile(COMMAND_START + TIMEOUT_WORD + APT_FORM, re.MULTILINE)  # `^`: each line of a step's commands
+APT_FORM_ANYWHERE = re.compile("timeout" + APT_FORM)
+COMMAND_WORD = (
+    "the form counts where `timeout` is a whole word and the first word of its command: at the start of the line or "
+    "after `&&`, `||`, `;`, `|`, `(`, a `run:` key or a `- ` dash, with only whitespace between"
 )
 KILL_AFTER = 10
 MIN_APT_BOUND = 120
@@ -88,6 +102,27 @@ APT_REOPEN_PARTS = {
     "apt_config": "the APT_CONFIG variable",
     "timeout": "a second timeout",
 }
+# And no line of any workflow gives `timeout` another meaning in the shell that runs the form: a function or an alias
+# by that name is what the first word of the command runs in place of GNU timeout. APT_REDEFINITIONS is the closed
+# table of those constructs, each a pattern refused by line with its reason. Left out, as the Contract says: a
+# `hash -p`, an `enable -f`, a file written into a PATH directory and a PATH edit (test.yaml prepends gem and bun
+# directories), which bind what the shell finds for the name rather than the name itself.
+APT_REDEFINITIONS = {
+    "a `function timeout` definition": (
+        r"\bfunction[ \t]+timeout(?![\w-])",
+        "bash runs the function in place of GNU timeout",
+    ),
+    "a `timeout()` definition": (
+        rf"(?<!function[ \t]){TIMEOUT_WORD}[ \t]*\([ \t]*\)",  # the `function timeout()` spelling is the row above
+        "bash runs the function in place of GNU timeout",
+    ),
+    "an `alias timeout=`": (
+        r"\balias\b[^\n]*?(?<![\w-])timeout=",
+        "a shell with aliases expanded runs the alias in place of GNU timeout",
+    ),
+}
+REDEFINED = {construct: (re.compile(pattern), why) for construct, (pattern, why) in APT_REDEFINITIONS.items()}
+REDEFINITION = "no workflow line gives `timeout` another meaning"
 # (workflow file name, the whole stripped line, exactly) -> why the line may name apt without the form. Empty on this
 # head: the three workflows that bootstrap through setup.sh run apt only inside the installers, whose downloads U99
 # bounded, and no workflow comment names apt-get. A row must still match a line (test_no_apt_exemption_is_stale).
@@ -193,23 +228,21 @@ CHARACTER_SET = "the file is held to a tab, LF and the printable characters befo
 # workflow the step check reads must agree with PyYAML, run in a child the uv idiom starts (CI's interpreter has no
 # YAML parser; regime.yml's tests read their workflow the same way), on the job set, each job's step count, each
 # step's run body, name and timeout-minutes, any difference a failure named by job and step. The closed grammar stays
-# as the explanation layer: it names the line and the construct where it can, the parser decides. The child reads one
-# JSON line per document and answers with PyYAML's document or its refusal; a child that dies is reported with its
-# stderr, never read as an absence (standing order 21).
+# as the explanation layer: it names the line and the construct where it can, the parser decides. Round 9 (audit of
+# ecde33b9): that child was long-lived and its answer was read before its exit status, which the stop at exit
+# discarded, so a child that answered and then exited nonzero was trusted. The child is now one per document (the
+# answer is cached by text): it reads the document as one JSON string, prints PyYAML's document or its refusal as
+# one JSON line and exits; the status is read first, and a nonzero status, no answer, more than one, or an answer
+# in another shape is a failure naming the status, the output and stderr, never a document (standing order 21).
 UV_PYYAML = [shutil.which("uv") or "uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I"]
 PARSER = """\
 import json, sys, yaml
 
-
-def reply(line):
-    try:
-        return json.dumps({"document": yaml.safe_load(json.loads(line))}, default=str)
-    except Exception as error:  # PyYAML refuses the document, or JSON cannot carry it (a key that is not a scalar)
-        return json.dumps({"error": f"{type(error).__name__}: {' '.join(str(error).split())}"})
-
-
-for line in sys.stdin:
-    print(reply(line), flush=True)
+try:
+    reply = json.dumps({"document": yaml.safe_load(json.loads(sys.stdin.read()))}, default=str)
+except Exception as error:  # PyYAML refuses the document, or JSON cannot carry it (a key that is not a scalar)
+    reply = json.dumps({"error": f"{type(error).__name__}: {' '.join(str(error).split())}"})
+print(reply)
 """
 PARSER_GATE = "the step check reads a workflow only where PyYAML reads the same jobs, steps and run bodies"
 
@@ -251,19 +284,51 @@ def reopening_word(rest: str) -> str | None:
     return None
 
 
+def misplaced_forms(line: str) -> list[str]:
+    """Why each bound form on `line` that is not counted is not, by position: `timeout` is the tail of a longer
+    word, or the form follows text that does not start a command."""
+    counted = {match.end() for match in APT_BOUND.finditer(line)}
+    found = []
+    for match in APT_FORM_ANYWHERE.finditer(line):
+        if match.end() in counted:
+            continue
+        before = line[: match.start()]
+        head = re.search(r"[\w./-]+$", before)  # the characters that make `timeout` the tail of a longer word
+        if head:
+            word = head.group() + "timeout"
+            found.append(f"`timeout` at column {head.start() + 1} is the tail of the word {word!r}; {COMMAND_WORD}")
+        else:
+            found.append(
+                f"the form at column {match.start() + 1} follows {before!r}, not a command start; {COMMAND_WORD}"
+            )
+    return found
+
+
+def redefinitions(line: str) -> list[str]:
+    """Every construct on `line` that gives `timeout` another meaning, with its reason."""
+    return [
+        f"{construct}: {why}; {REDEFINITION}" for construct, (pattern, why) in REDEFINED.items() if pattern.search(line)
+    ]
+
+
 def apt_violations(relative: str, text: str, exempt: dict[tuple[str, str], str] | None = None) -> list[str]:
-    """The lines of one workflow that name apt outside the bound form, as `file:line: text (why)`."""
+    """The lines of one workflow that name apt outside the bound form, or give a name the form runs another meaning,
+    as `file:line: text (why)`."""
     exempt = APT_EXEMPT if exempt is None else exempt
     bad = []
     for number, raw in enumerate(text.split("\n"), 1):
         line = raw.strip()
-        calls = len(APT_CALL.findall(line))
-        if not calls or (relative, line) in exempt:
+        if (relative, line) in exempt:
             continue
         where = f"{relative}:{number}: {line}"
+        bad.extend(f"{where} ({why})" for why in redefinitions(line))
+        calls = len(APT_CALL.findall(line))
+        if not calls:
+            continue
         bounds = APT_BOUND.findall(line)
         if len(bounds) != calls:
-            bad.append(f"{where} ({calls} apt call(s), {len(bounds)} in the bound form)")
+            misplaced = "".join(f"; {why}" for why in misplaced_forms(line))
+            bad.append(f"{where} ({calls} apt call(s), {len(bounds)} in the bound form{misplaced})")
             continue
         low = [n for n in bounds if int(n) < MIN_APT_BOUND]
         if low:
@@ -642,52 +707,45 @@ def census_problems(name: str, text: str, parsed: dict[str, list[dict]]) -> list
 
 
 class Parser:
-    """PyYAML in a child the uv idiom starts, one for the test process (CI's interpreter has no YAML parser, and uv is
-    set up before the unit tests run, as regime.yml's tests rely on). One JSON line in per document, one out: the
-    document PyYAML read, or its refusal. A child that dies is reported with its exit status and stderr, never read
-    as an absence; the next call starts another."""
+    """PyYAML in a child the uv idiom starts, one per document (CI's interpreter has no YAML parser, and uv is set up
+    before the unit tests run, as regime.yml's tests rely on). The document goes in as one JSON string; the child
+    answers with one JSON line, PyYAML's document or its refusal, and exits. The exit status is read before the
+    answer: a child that exits nonzero, answers nothing, answers more than once or answers in another shape is a
+    failure naming the status, the output and stderr, never a document. Answers are cached by document text."""
 
-    process: subprocess.Popen[str] | None = None
-    stderr = None
+    command = [*UV_PYYAML, "-c", PARSER]
+    answers: dict[str, tuple[object, str | None]] = {}
 
     @classmethod
     def read(cls, text: str) -> tuple[object, str | None]:
         """PyYAML's reading of `text`: (document, None), or (None, why) when PyYAML refuses the document or JSON
-        cannot carry it (a key that is not a scalar)."""
-        if cls.process is None or cls.process.poll() is not None:
-            if cls.process is None:
-                atexit.register(cls.stop)
-            else:
-                cls.stop()  # the child died: close its files before starting another
-            cls.stderr = tempfile.TemporaryFile("w+", encoding="utf-8")  # a pipe could fill and stall the child
-            cls.process = subprocess.Popen(
-                [*UV_PYYAML, "-c", PARSER],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=cls.stderr,
-                text=True,
-                encoding="utf-8",
+        cannot carry it (a key that is not a scalar). RuntimeError when the child did not answer in good standing."""
+        if text in cls.answers:
+            return cls.answers[text]
+        run = subprocess.run(
+            cls.command, input=json.dumps(text), capture_output=True, text=True, encoding="utf-8", check=False
+        )
+        if run.returncode != 0:
+            raise RuntimeError(
+                f"the PyYAML child exited with status {run.returncode}; its output {run.stdout!r} is not read; "
+                f"stderr: {run.stderr.strip()}"
             )
-        assert cls.process.stdin is not None and cls.process.stdout is not None
-        cls.process.stdin.write(json.dumps(text) + "\n")
-        cls.process.stdin.flush()
-        line = cls.process.stdout.readline()
-        if not line:
-            status = cls.process.wait(timeout=30)
-            cls.stderr.seek(0)
-            raise RuntimeError(f"the PyYAML child exited with status {status} before answering: {cls.stderr.read()}")
-        reply = json.loads(line)
-        return reply.get("document"), reply.get("error")
-
-    @classmethod
-    def stop(cls) -> None:
-        if cls.process is None:
-            return
-        cls.process.stdin.close()
-        if cls.process.poll() is None:
-            cls.process.wait(timeout=30)
-        cls.process.stdout.close()
-        cls.stderr.close()
+        lines = run.stdout.splitlines()
+        if len(lines) != 1:
+            raise RuntimeError(
+                f"the PyYAML child exited with status 0 and {len(lines)} line(s) of output instead of one answer: "
+                f"{run.stdout!r}; stderr: {run.stderr.strip()}"
+            )
+        try:
+            reply = json.loads(lines[0])
+        except ValueError as error:
+            raise RuntimeError(
+                f"the PyYAML child answered with a line that is not JSON ({error}): {lines[0]!r}"
+            ) from None
+        if not isinstance(reply, dict) or set(reply) not in ({"document"}, {"error"}):
+            raise RuntimeError(f"the PyYAML child answered in another shape than a document or an error: {lines[0]!r}")
+        cls.answers[text] = (reply.get("document"), reply.get("error"))
+        return cls.answers[text]
 
 
 def census_run(step: dict) -> list[str] | None:
@@ -1079,6 +1137,13 @@ class AptBoundRuleTest(unittest.TestCase):
             f"{self.FORM} upgrade -y",
             "# sudo apt-get update",
             'echo "apt-get update"',
+            f"ci_{self.FORM} update",
+            f"my{self.FORM} update",
+            f"./{self.FORM} update",
+            f"sudo {self.FORM} update",
+            'function timeout { shift 2; "$@"; }',
+            'timeout() { shift 2; "$@"; }',
+            "alias timeout='command true'",
         ):
             with self.subTest(snippet=snippet):
                 self.assertEqual(1, len(apt_violations("x.yaml", snippet + "\n", {})), snippet)
@@ -1092,6 +1157,99 @@ class AptBoundRuleTest(unittest.TestCase):
         ):
             with self.subTest(snippet=snippet):
                 self.assertEqual([], apt_violations("x.yaml", snippet + "\n", {}), snippet)
+
+    def test_a_form_that_is_not_the_first_word_of_its_command_is_named_by_position(self) -> None:
+        # Audit of ecde33b9: the form matched anywhere on a line, so `ci_timeout --kill-after=10 180 sudo apt-get
+        # ...` (a function defined on the line above that drops the first two words) held the form as the tail of
+        # another command's name. The form counts only as a whole word that begins its command; every other position
+        # is named: the longer word, or the text the form follows.
+        for snippet, position in (
+            (f"ci_{self.FORM} update", "`timeout` at column 1 is the tail of the word 'ci_timeout'"),
+            (f"my{self.FORM} update", "`timeout` at column 1 is the tail of the word 'mytimeout'"),
+            (f"./{self.FORM} update", "`timeout` at column 1 is the tail of the word './timeout'"),
+            (f"/usr/bin/{self.FORM} update", "`timeout` at column 1 is the tail of the word '/usr/bin/timeout'"),
+            (f"x-{self.FORM} update", "`timeout` at column 1 is the tail of the word 'x-timeout'"),
+            (f"sudo {self.FORM} update", "the form at column 6 follows 'sudo ', not a command start"),
+            (f"env {self.FORM} update", "the form at column 5 follows 'env ', not a command start"),
+            (f"true & {self.FORM} update", "the form at column 8 follows 'true & ', not a command start"),
+            (f"echo {self.FORM} update", "the form at column 6 follows 'echo ', not a command start"),
+            (f"A={self.FORM} update", "the form at column 3 follows 'A=', not a command start"),
+            (f"pre-run: {self.FORM} update", "the form at column 10 follows 'pre-run: ', not a command start"),
+            (f"-{self.FORM} update", "`timeout` at column 1 is the tail of the word '-timeout'"),
+        ):
+            with self.subTest(snippet=snippet):
+                bad = apt_violations("x.yaml", snippet + "\n", {})
+                self.assertEqual(1, len(bad), bad)
+                self.assertIn(f"(1 apt call(s), 0 in the bound form; {position}; {COMMAND_WORD})", bad[0])
+        # The auditor's body: the definition line is not a `timeout` definition and runs no apt, the call line is
+        # refused on its own line.
+        body = f'ci_timeout() {{ shift 2; "$@"; }}\nci_{self.FORM} update\n'
+        (hit,) = apt_violations("x.yaml", body, {})
+        self.assertTrue(hit.startswith(f"x.yaml:2: ci_{self.FORM} update ("), hit)
+        # Each command start in the closed set counts the form, with any whitespace between (a `run:` key and a dash
+        # need a blank after them to be one).
+        for start in COMMAND_STARTS:
+            spaced = start in ("run:", "- ")
+            for snippet in (
+                f"true {start} {self.FORM} update",
+                *([] if spaced else [f"true {start}{self.FORM} update"]),
+            ):
+                with self.subTest(start=start, snippet=snippet):
+                    self.assertEqual([], apt_violations("x.yaml", snippet + "\n", {}), snippet)
+        for snippet in (
+            f"  {self.FORM} update",
+            f"\t{self.FORM} update",
+            f"- run: {self.FORM} update",
+            f"run: |\u2028          {self.FORM} update",  # a YAML 1.1 line break, refused by the character scan
+            f"( {self.FORM} update )",
+            f"cat list | {self.FORM} install -y jq",
+        ):
+            with self.subTest(snippet=snippet):
+                self.assertEqual([], apt_violations("x.yaml", snippet + "\n", {}), snippet)
+
+    def test_a_timeout_redefinition_is_refused_by_line_with_its_reason(self) -> None:
+        # A function or an alias named `timeout` anywhere in a workflow is refused on its line, with the construct
+        # and its reason, whether or not that line runs apt; the names that only contain `timeout` are not.
+        spellings = {
+            "a `function timeout` definition": (
+                'function timeout { shift 2; "$@"; }',
+                'function timeout() { shift 2; "$@"; }',
+                "function\ttimeout {",
+            ),
+            "a `timeout()` definition": (
+                'timeout() { shift 2; "$@"; }',
+                "timeout () {",
+                "timeout ( ) { :; }",
+                "true; timeout(){ :; }",
+            ),
+            "an `alias timeout=`": (
+                "alias timeout='command true'",
+                "alias -- timeout=true",
+                "alias ls=x timeout=y",
+                "shopt -s expand_aliases; alias timeout=true",
+            ),
+        }
+        self.assertEqual(set(APT_REDEFINITIONS), set(spellings))
+        for construct, lines in spellings.items():
+            why = APT_REDEFINITIONS[construct][1]
+            for line in lines:
+                with self.subTest(construct=construct, line=line):
+                    bad = apt_violations("x.yaml", line + "\n", {})
+                    self.assertEqual([f"x.yaml:1: {line} ({construct}: {why}; {REDEFINITION})"], bad)
+                # The definition and the real form in one body: the definition's line alone is refused.
+                body = f"{lines[0]}\n{self.FORM} update\n"
+                (hit,) = apt_violations("x.yaml", body, {})
+                self.assertTrue(hit.startswith(f"x.yaml:1: {lines[0]} ({construct}"), hit)
+        for line in (
+            'ci_timeout() { shift 2; "$@"; }',
+            "function ci_timeout { :; }",
+            "alias ci_timeout=true",
+            "alias x=timeout",
+            "echo timeout=5",
+            "# GNU timeout cuts a call that prints nothing",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual([], apt_violations("x.yaml", line + "\n", {}), line)
 
     def test_an_exemption_needs_its_exact_line(self) -> None:
         table = {("x.yaml", "# apt-get runs inside setup.sh"): "comment; names the tool without running it"}
@@ -1472,28 +1630,57 @@ class ReaderCensusTest(unittest.TestCase):
             text = self.BASE + "      - name: A\n        timeout-minutes: 5\n        run: |\n          echo a\n"
             self.assertEqual([], parser_problems("x.yaml", text, parsed_steps(self.written(text))))
 
-    def test_a_parser_child_that_dies_is_a_failure_not_an_absence(self) -> None:
-        # Standing order 21: a child that exits before answering is reported with its status and stderr, never read
-        # as a document with no jobs; the next call starts a child again and reads.
-        self.assertIsNone(Parser.read("a: 1")[1])
-        live, live_stderr = Parser.process, Parser.stderr
-        Parser.stderr = tempfile.TemporaryFile("w+", encoding="utf-8")
-        Parser.process = subprocess.Popen(
-            [sys.executable, "-I", "-c", "import sys; sys.stdin.readline(); print('boom', file=sys.stderr); exit(3)"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=Parser.stderr,
-            text=True,
+    def test_a_parser_child_that_exits_nonzero_or_answers_nothing_is_a_failure_not_an_absence(self) -> None:
+        # Standing order 21. Audit of ecde33b9 (round 9): the round 8 child was long-lived and its answer was read
+        # before its exit status, which the stop at exit discarded, so a child that printed a valid document and then
+        # exited 3 was trusted and the gate reported no problem. The child is one per document now and its status is
+        # read first: a nonzero status is refused naming the status and stderr with the output unread; status 0 with
+        # no output is refused too. Neither answer is cached, and the real child answers the same text afterwards.
+        text = "round9: injected\n"
+        answer = json.dumps({"document": {"jobs": {"test": {"steps": []}}}})
+        live = Parser.command
+        for case, program, expected in (
+            (
+                "a valid answer, then exit 3",
+                f"import sys; print({answer!r}); print('boom', file=sys.stderr); sys.exit(3)",
+                [f"the PyYAML child exited with status 3; its output {answer + chr(10)!r} is not read; stderr: boom"],
+            ),
+            (
+                "exit 0 with no output",
+                "pass",
+                ["the PyYAML child exited with status 0 and 0 line(s) of output instead of one answer: ''"],
+            ),
+            (
+                "exit 0 with two answers",
+                f"print({answer!r}); print({answer!r})",
+                ["the PyYAML child exited with status 0 and 2 line(s) of output instead of one answer"],
+            ),
+            (
+                "exit 0 with a line that is not JSON",
+                "print('not json')",
+                ["the PyYAML child answered with a line that is not JSON", "'not json'"],
+            ),
+            (
+                "exit 0 with JSON in another shape",
+                "print('{\"jobs\": {}}')",
+                ["the PyYAML child answered in another shape than a document or an error"],
+            ),
+        ):
+            with self.subTest(case=case):
+                Parser.command = [sys.executable, "-I", "-c", program]
+                try:
+                    with self.assertRaises(RuntimeError) as caught:
+                        parser_problems("x.yaml", text)
+                finally:
+                    Parser.command = live
+                for part in expected:
+                    self.assertIn(part, str(caught.exception))
+                self.assertNotIn(text, Parser.answers)
+        self.assertEqual(({"round9": "injected"}, None), Parser.read(text))
+        self.assertEqual(
+            [f"x.yaml: the text holds jobs [], PyYAML reads no jobs mapping; {PARSER_GATE}"],
+            parser_problems("x.yaml", text),
         )
-        try:
-            with self.assertRaises(RuntimeError) as caught:
-                Parser.read("a: 1")
-            self.assertIn("exited with status 3 before answering", str(caught.exception))
-            self.assertIn("boom", str(caught.exception))
-            self.assertEqual(({"a": 1}, None), Parser.read("a: 1"))  # a fresh child
-        finally:
-            Parser.stop()
-            Parser.process, Parser.stderr = live, live_stderr
 
     def test_the_auditors_step_at_five_and_seven_is_refused_by_its_dash_line(self) -> None:
         # Audit of 81fa7256: a step list whose dashes are at five spaces and keys at seven is YAML the runner

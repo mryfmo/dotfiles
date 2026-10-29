@@ -173,14 +173,17 @@ jobs:
         # or PATH entry stands in for it, cuts a call that prints nothing at 180 s, over ten times the measured index
         # fetch (5.8 to 10.7 s in the last five passing main runs; the installs took under 1 s), and apt's own
         # options give up a connection or read silent for 15 s and move to the next mirror, three times
-        # (runner-images#15040). The step holds nothing else: tests/unit/test_apt_mirror.py reads it from shfmt's
-        # syntax tree and accepts only the exact form, one call per statement, so no other command stands in for a
-        # word of it. Its bound is the two calls (180 s each plus the 10 s kill delay), rounded up plus one minute
-        # (BoundOrderTest). Ruby is required for bashcov/simplecov formatters; bats and parallel for the Bats run.
+        # (runner-images#15040). sudo comes first so that timeout and apt share root and the SIGKILL 10 s after
+        # the SIGTERM reaches apt, since an unprivileged timeout cannot signal a root process and sudo relays the
+        # signals it receives but a SIGKILL ends sudo itself and leaves apt running (sudo(8), Signal handling).
+        # The step holds nothing else: tests/unit/test_apt_mirror.py reads it from shfmt's syntax tree and accepts
+        # only the exact form, one call per statement, so no other command stands in for a word of it. Its bound is
+        # the two calls (180 s each plus the 10 s kill delay), rounded up plus one minute (BoundOrderTest). Ruby is
+        # required for bashcov/simplecov formatters; bats and parallel for the Bats run.
         timeout-minutes: 8
         run: |
-          /usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
-          /usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby
+          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
+          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
@@ -470,12 +473,14 @@ jobs:
         if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
         # jq and zsh for the Python unit tests, bounded as in "Install apt packages"; 150 s is over thirty times the
         # measured 1.1 to 1.7 s refresh of the lists that step fetched, and the 1.3 to 3.2 s installs (regime-cutover
-        # U109). The step holds nothing but the two calls; its bound is them (150 s each plus the 10 s kill delay),
-        # rounded up plus one minute (tests/unit/test_apt_mirror.py BoundOrderTest).
+        # U109). sudo comes first so that the SIGKILL 10 s after the SIGTERM reaches the root-owned apt, which
+        # sudo cannot relay (sudo(8), Signal handling). The step holds nothing but the two calls; its bound is them
+        # (150 s each plus the 10 s kill delay), rounded up plus one minute (tests/unit/test_apt_mirror.py
+        # BoundOrderTest).
         timeout-minutes: 7
         run: |
-          /usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
-          /usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq zsh
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq zsh
 
       - name: Run Python unit tests
         if: ${{ steps.decide.outputs.should_test == 'true' }}
@@ -568,11 +573,13 @@ jobs:
         if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
         # codecov-action uses these two tools while preparing and uploading the explicit Cobertura report in this
         # repository setup. Both are on the image already (0.3 to 0.5 s measured); the call is bounded in the one
-        # form every apt call in a workflow carries, in a step that holds nothing else (regime-cutover U109). Its
-        # bound is the call (150 s plus the 10 s kill delay), rounded up plus one minute (BoundOrderTest).
+        # form every apt call in a workflow carries, in a step that holds nothing else (regime-cutover U109), sudo
+        # first so that the SIGKILL 10 s after the SIGTERM reaches the root-owned apt, which sudo cannot relay
+        # (sudo(8), Signal handling). Its bound is the call (150 s plus the 10 s kill delay), rounded up plus one
+        # minute (BoundOrderTest).
         timeout-minutes: 4
         run: |
-          /usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl
 
       - name: Upload coverage to Codecov
         if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}

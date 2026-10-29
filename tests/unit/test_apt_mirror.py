@@ -68,38 +68,46 @@ MIRRORS = (
     "https://archive.ubuntu.com/ubuntu/\tpriority:2\n"
     "https://security.ubuntu.com/ubuntu/\tpriority:3\n"
 )
-# U109: every apt call a workflow runs carries its own bound, in one exact form. `/usr/bin/timeout` ends a call that
-# keeps printing nothing at N seconds and kills it KILL_AFTER seconds later; apt's own options give up a connection or
-# read silent for 15 s and move to the next mirror, three times. N is measured per step (the comment next to each call
-# in the workflow) with twice the measured time and at least 120 s of margin, so never under MIN_APT_BOUND.
+# U109: every apt call a workflow runs carries its own bound, in one exact form. `sudo /usr/bin/timeout` ends a call
+# that keeps printing nothing at N seconds and kills it KILL_AFTER seconds later; apt's own options give up a
+# connection or read silent for 15 s and move to the next mirror, three times. N is measured per step (the comment
+# next to each call in the workflow) with twice the measured time and at least 120 s of margin, so never under
+# MIN_APT_BOUND. Round 18 (audit of 29e2f10f): `sudo` is the form's first word, so timeout runs as root with apt-get
+# and its SIGKILL at N + KILL_AFTER reaches it; with `/usr/bin/timeout ... sudo apt-get` the timer ran unprivileged
+# and could not signal the root-owned apt-get, and sudo relays the signals it receives but a SIGKILL ends sudo
+# itself and leaves apt-get running (sudo(8), Signal handling).
 APT_CALL = re.compile(r"\bapt-get\b|\bapt\s+(?:install|update|upgrade|full-upgrade|dist-upgrade)\b")
 # Round 9 (audit of ecde33b9): the form was matched anywhere on a line, so `ci_timeout --kill-after=10 180 sudo
 # apt-get ...`, with `ci_timeout() { shift 2; "$@"; }` defined on the line above, held the form as the tail of another
 # command's name and ran apt with no GNU timeout past every check. Round 10 (audit of 15c4afa8): the `run:` command
 # start was not anchored, so `ci.run: timeout ...` counted with a function `ci.run:` defined above it, and `time\` at
 # the end of one line with `out() { ... }` on the next is a `timeout` function to bash that a check of physical lines
-# never saw. The first word of the form is now coreutils' path, TIMEOUT_PATH: no alias (an alias name takes no `/`),
-# no `hash -p` and no PATH entry stands in for a path. A function can be named by a path in bash (`/usr/bin/timeout()
-# { ...; }` runs in place of the binary), so the tree rule below refuses every function definition in an apt step. The
-# text rule stays as the superset: the form counts where TIMEOUT_PATH is whole (TIMEOUT_WORD: no letter, digit, `_`,
-# `.`, `/` or `-` touches it) and the first word of its command: at the start of the line (after a `- ` dash or a
-# `run:` key there, LINE_STARTS) or after one of COMMAND_STARTS, with nothing but whitespace between. A form anywhere
-# else fails the line naming its position: the longer word, the bare name, or the text the form follows.
+# never saw. The form's timeout is coreutils' path, TIMEOUT_PATH: no alias (an alias name takes no `/`), no `hash -p`
+# and no PATH entry stands in for a path. A function can be named by a path in bash (`/usr/bin/timeout() { ...; }`
+# runs in place of the binary), so the tree rule below refuses every function definition in an apt step. The text
+# rule stays as the superset: the form counts where `sudo` (SUDO_WORD) is the first word of its command, at the start
+# of the line (after a `- ` dash or a `run:` key there, LINE_STARTS) or after one of COMMAND_STARTS, with nothing but
+# whitespace between, and TIMEOUT_PATH is its second word, whole (TIMEOUT_WORD: no letter, digit, `_`, `.`, `/` or
+# `-` touches it). A form anywhere else fails the line naming its position: the longer word, the bare name, the text
+# before the path that is not `sudo`, the text the form follows, or a `sudo` after the bound (OLD_ORDER, round 18).
 TIMEOUT_PATH = "/usr/bin/timeout"
 TIMEOUT_WORD = r"(?<![\w./-])/usr/bin/timeout(?![\w./-])"
 TIMEOUT_NAME = r"(?<![\w./-])(?:/usr/bin/)?timeout(?![\w./-])"  # the name a definition gives, bare or by the path
+SUDO_WORD = r"sudo[ \t]+"  # the form's first word, bare, and the whitespace before TIMEOUT_PATH
 APT_FORM = (
-    r" --kill-after=10 ([0-9]+) sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 "
+    r" --kill-after=10 ([0-9]+) apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 "
     r"(?:update|install)(?=\s|$)"
 )
 COMMAND_STARTS = ("&&", "||", ";", "|", "(")
 LINE_STARTS = ("", "- ", "run: ", "- run: ")
 COMMAND_START = r"(?:^[ \t]*(?:-[ \t]+)?(?:run:[ \t]+)?|&&|\|\||;|\||\()\s*"
-APT_BOUND = re.compile(COMMAND_START + TIMEOUT_WORD + APT_FORM, re.MULTILINE)  # `^`: each line of a step's commands
+APT_BOUND = re.compile(COMMAND_START + SUDO_WORD + TIMEOUT_WORD + APT_FORM, re.MULTILINE)  # `^`: each line of a step
 APT_FORM_ANYWHERE = re.compile("timeout" + APT_FORM)
+OLD_ORDER = re.compile(r"timeout --kill-after=10 [0-9]+ (sudo) apt-get")  # the form before round 18
 COMMAND_WORD = (
-    "the form counts where `/usr/bin/timeout` is a whole word and the first word of its command: at the start of the "
-    "line (after a `- ` dash or a `run:` key there) or after `&&`, `||`, `;`, `|` or `(`, with only whitespace between"
+    "the form counts where `sudo` is the first word of its command: at the start of the line (after a `- ` dash or a "
+    "`run:` key there) or after `&&`, `||`, `;`, `|` or `(`, with only whitespace between, and `/usr/bin/timeout` "
+    "whole is its second word"
 )
 KILL_AFTER = 10
 MIN_APT_BOUND = 120
@@ -310,8 +318,10 @@ def reopening_word(rest: str) -> str | None:
 
 
 def misplaced_forms(line: str) -> list[str]:
-    """Why each bound form on `line` that is not counted is not, by position: its first word is a longer word that
-    ends in `timeout`, the bare name, or the path after text that does not start a command."""
+    """Why each bound form on `line` that is not counted is not, by position: its timeout is a longer word that ends
+    in `timeout`, the bare name, the path after text that is not `sudo`, or the path after a `sudo` that follows text
+    which does not start a command; and why a `sudo` between the bound and apt-get (the order before round 18) is
+    not the form."""
     counted = {match.end() for match in APT_BOUND.finditer(line)}
     found = []
     for match in APT_FORM_ANYWHERE.finditer(line):
@@ -322,14 +332,26 @@ def misplaced_forms(line: str) -> list[str]:
         word = (head.group() if head else "") + "timeout"
         column = (head.start() if head else match.start()) + 1
         if word == TIMEOUT_PATH:
-            start = before[: head.start()]
-            found.append(f"the form at column {column} follows {start!r}, not a command start; {COMMAND_WORD}")
+            rest = before[: head.start()]
+            sudo = re.search(r"(?<![\w./-])" + SUDO_WORD + "$", rest)
+            if sudo:
+                start = rest[: sudo.start()]
+                found.append(
+                    f"the form at column {sudo.start() + 1} follows {start!r}, not a command start; {COMMAND_WORD}"
+                )
+            else:
+                found.append(f"`{TIMEOUT_PATH}` at column {column} follows {rest!r}, not `sudo`; {COMMAND_WORD}")
         elif head:
             found.append(
                 f"`timeout` at column {column} is the tail of the word {word!r}, not `{TIMEOUT_PATH}`; {COMMAND_WORD}"
             )
         else:
             found.append(f"`timeout` at column {column} is the bare name, not `{TIMEOUT_PATH}`; {COMMAND_WORD}")
+    for match in OLD_ORDER.finditer(line):
+        found.append(
+            f"`sudo` at column {match.start(1) + 1} stands between the bound and apt-get, where the timer runs "
+            f"unprivileged and its SIGKILL cannot reach the root-owned apt-get (sudo(8)); {COMMAND_WORD}"
+        )
     return found
 
 
@@ -400,6 +422,16 @@ def apt_stale(files: dict[str, str], exempt: dict[tuple[str, str], str] | None =
     exempt = APT_EXEMPT if exempt is None else exempt
     lines = {name: {line.strip() for line in text.splitlines()} for name, text in files.items()}
     return [f"{name}: {line}" for name, line in exempt if line not in lines.get(name, set())]
+
+
+def short_name(command: str) -> str:
+    """The census tests add one of three commands to a scratch workflow: the unbounded `sudo apt-get update`, the
+    bound form (since round 18 both begin with `sudo`, so the first word no longer tells them apart) or a sleep."""
+    if command.startswith("sudo apt-get"):
+        return "unbounded"
+    if command.startswith("sudo " + TIMEOUT_PATH):
+        return "form"
+    return command.split()[0]
 
 
 class Census(NamedTuple):
@@ -885,7 +917,7 @@ def step_minutes(apt_seconds: int, rest: int) -> int:
 
 def bounded_steps() -> list[dict]:
     """The three apt steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
-    form = "/usr/bin/timeout --kill-after=10 {} sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
+    form = "sudo /usr/bin/timeout --kill-after=10 {} apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
     return [
         {
             "name": "Install apt packages",
@@ -1009,8 +1041,8 @@ def workflow_texts() -> dict[str, str]:
 # 2026-10-29T12:16Z) writes that premise down as wrong: a rule cannot enumerate what else an apt step may do, so the
 # apt steps do nothing else. The rule over a step's tree:
 #   (a) An apt step is a step whose body holds an apt token (APT_TOKEN on every `Lit` and quoted value and on the
-#       known text of every word, so `'apt'`, `"apt-get"` and `ap""t-get` count) or the form's first word
-#       TIMEOUT_PATH anywhere, or whose text names apt (APT_CALL). Every top-level statement of an apt step is
+#       known text of every word, so `'apt'`, `"apt-get"` and `ap""t-get` count) or the form's timeout TIMEOUT_PATH
+#       anywhere, or whose text names apt (APT_CALL). Every top-level statement of an apt step is
 #       exactly the bound form: a CallExpr with no assignment, in a statement with no redirection, `!`, `&` or
 #       coprocess, whose words are bare literals (one `Lit` part over KNOWN_CHARACTERS) equal to FORM_WORDS, a
 #       decimal N of at least MIN_APT_BOUND, the verb, and after `install` exactly `-y` and one or more package
@@ -1019,8 +1051,9 @@ def workflow_texts() -> dict[str, str]:
 #       accepted.
 #   (b) In every step, apt or not, a command word with no known text is a problem naming the step and line: the
 #       first word of every CallExpr, and the word a `sudo` hands on (sudo is how a step reaches root, which apt
-#       needs to touch the image; SUDO_FLAGS and SUDO_VALUED are the options read before its command, any other
-#       option refused, so no option's value stands where the command is read). A word's text is known (word_text,
+#       needs to touch the image; in the form it is word 1 and hands on TIMEOUT_PATH, a known text, so the form
+#       passes (b) and (a) holds its words; SUDO_FLAGS and SUDO_VALUED are the options read before its command, any
+#       other option refused, so no option's value stands where the command is read). A word's text is known (word_text,
 #       round 13) when every part is a bare `Lit` over KNOWN_CHARACTERS, a plain single-quoted string, or double
 #       quotes around literals (any character there) and such strings, or when the whole word is one bare `Lit` part
 #       spelling one of TEST_BUILTIN_WORDS (test_builtin_word, round 14: the exemption is the word's, never a part's);
@@ -1043,17 +1076,17 @@ def workflow_texts() -> dict[str, str]:
 # tests/unit/test_shfmt_json_contract.py extracts every field and literal this walk reads and holds TABLE to them.
 APT_TOKEN = re.compile(APT_CALL.pattern + r"|(?<=/)apt\Z|\Aapt\Z")
 FORM_WORDS = (
+    "sudo",
     TIMEOUT_PATH,
     "--kill-after=10",
     None,
-    "sudo",
     "apt-get",
     "-o",
     "Acquire::http::Timeout=15",
     "-o",
     "Acquire::Retries=3",
 )
-FORM_N = "a decimal of at least 120"  # the third word, where FORM_WORDS holds None
+FORM_N = "a decimal of at least 120"  # the fourth word, where FORM_WORDS holds None
 VERBS = ("update", "install")
 PACKAGE = re.compile(r"[a-z0-9][a-z0-9.+-]*\Z")  # Debian policy 5.6.1; after `install`, `-y` is the one option allowed
 POSITION = frozenset({"Offset", "Line", "Col"})
@@ -1386,7 +1419,7 @@ def expanded_words(tree: dict) -> list[tuple[object, str, str]]:
 
 def apt_tokens(tree: dict) -> tuple[str, ...]:
     """The tokens that make a step an apt step, sorted: every APT_TOKEN match in the texts lits() finds, TIMEOUT_PATH
-    where one of them holds the form's first word, and every spelled word expanded_words() finds."""
+    where one of them holds the form's timeout, and every spelled word expanded_words() finds."""
     found: set[str] = set()
     for value in lits(tree):
         found.update(match.group() for match in APT_TOKEN.finditer(value))
@@ -1951,8 +1984,10 @@ class AptBoundRuleTest(unittest.TestCase):
     with a reason. Closed-world, as U99's download rule (decisions.tsv `treadmill-u99-scanner`): the text is matched,
     never parsed."""
 
-    FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
-    BARE = "timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+    FORM = "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+    PATHED = FORM.removeprefix("sudo ")  # the form from its path on, with no `sudo` before it
+    BARE = "timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+    OLD = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
 
     def test_every_apt_call_in_a_workflow_carries_the_bound_or_is_exempted(self) -> None:
         bad = [hit for name, text in workflow_texts().items() for hit in apt_violations(name, text)]
@@ -1972,12 +2007,19 @@ class AptBoundRuleTest(unittest.TestCase):
             "sudo apt install -y jq",
             f"{self.FORM} update && sudo apt-get install -y jq",
             f"{self.BARE} update",
-            "/usr/bin/timeout 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
-            "/usr/bin/timeout --kill-after=0 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
-            "/usr/bin/timeout --kill-after=10 0 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
-            "/usr/bin/timeout --kill-after=10 60 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
-            "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=0 -o Acquire::Retries=3 update",
-            "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update",
+            f"{self.OLD} update",
+            f"{self.OLD} install -y jq",
+            f"sudo -E {self.PATHED} update",
+            f"sudo -n {self.PATHED} update",
+            f"/usr/bin/sudo {self.PATHED} update",
+            f"{self.PATHED} update",
+            f"sudo {self.BARE} update",
+            "sudo /usr/bin/timeout 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "sudo /usr/bin/timeout --kill-after=0 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "sudo /usr/bin/timeout --kill-after=10 0 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "sudo /usr/bin/timeout --kill-after=10 60 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update",
+            "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=0 -o Acquire::Retries=3 update",
+            "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update",
             f"{self.FORM} -o acquire::http::timeout=0 update",
             f"{self.FORM} install -y -o Acquire::Retries=0 jq",
             f"{self.FORM} install -y jq -c /tmp/apt.conf",
@@ -2016,8 +2058,9 @@ class AptBoundRuleTest(unittest.TestCase):
         # Audit of ecde33b9: the form matched anywhere on a line, so `ci_timeout --kill-after=10 180 sudo apt-get
         # ...` (a function defined on the line above that drops the first two words) held the form as the tail of
         # another command's name. Audit of 15c4afa8: the `run:` start was not anchored, so `ci.run: timeout ...`
-        # counted. The form counts only as the whole path that begins its command; every other position is named:
-        # the longer word, the bare name, or the text the path follows.
+        # counted. The form counts only as `sudo` then the whole path, `sudo` beginning its command; every other
+        # position is named: the longer word, the bare name, the text before the path, or the text `sudo` follows.
+        # Round 18 (audit of 29e2f10f): a `sudo` after the bound, the order before this round, is named too.
         path = TIMEOUT_PATH
         for snippet, position in (
             (f"ci_{self.BARE} update", f"`timeout` at column 1 is the tail of the word 'ci_timeout', not `{path}`"),
@@ -2031,6 +2074,14 @@ class AptBoundRuleTest(unittest.TestCase):
             (f"-{self.BARE} update", f"`timeout` at column 1 is the tail of the word '-timeout', not `{path}`"),
             (f"{self.BARE} update", f"`timeout` at column 1 is the bare name, not `{path}`"),
             (f"sudo {self.BARE} update", f"`timeout` at column 6 is the bare name, not `{path}`"),
+            (f"{self.PATHED} update", f"`{path}` at column 1 follows '', not `sudo`"),
+            (f"sudo -E {self.PATHED} update", f"`{path}` at column 9 follows 'sudo -E ', not `sudo`"),
+            (f"/usr/bin/sudo {self.PATHED} update", f"`{path}` at column 15 follows '/usr/bin/sudo ', not `sudo`"),
+            (
+                f"{self.OLD} update",
+                "`sudo` at column 38 stands between the bound and apt-get, where the timer runs unprivileged and its "
+                "SIGKILL cannot reach the root-owned apt-get (sudo(8))",
+            ),
             (f"sudo {self.FORM} update", "the form at column 6 follows 'sudo ', not a command start"),
             (f"env {self.FORM} update", "the form at column 5 follows 'env ', not a command start"),
             (f"true & {self.FORM} update", "the form at column 8 follows 'true & ', not a command start"),
@@ -2307,7 +2358,7 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 17: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 18: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
@@ -2324,9 +2375,12 @@ class TreeRuleTest(unittest.TestCase):
     an apt step at all, are refused naming the level, the step and the name, so the auditor's `BASH_ENV` is named
     at each of the three levels. Round 17 (audit of ed447ea8): a key outside the measured tuple of its level, in
     any workflow, job or step, is refused naming the level and the key, so the auditor's `container:` on the job is
-    named by its absence from JOB_KEYS, as every key no workflow holds is."""
+    named by its absence from JOB_KEYS, as every key no workflow holds is. Round 18 (audit of 29e2f10f): `sudo` is
+    the form's first word, so the old order `/usr/bin/timeout ... sudo apt-get`, an option or a path on sudo and
+    the bare name after it are refused naming word 1 or word 2."""
 
-    FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+    FORM = "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+    OLD = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     NAME = "Install apt packages"
     GUARD = APT_STEP_IFS[0]
     STEP = "x.yaml:{}: test: step 0 'Install apt packages': "
@@ -2356,17 +2410,20 @@ class TreeRuleTest(unittest.TestCase):
         # by its line and node; no table of commands is consulted, so `builtin`, `eval`, `source` and `cd` are
         # refused as what they are: statements that are not the form.
         form = self.FORM
-        tail = form[len(TIMEOUT_PATH) + 1 :]
+        pathed = form.removeprefix("sudo ")
+        tail = pathed[len(TIMEOUT_PATH) + 1 :]
         off = f": {APT_STEP}"
-        first = "a CallExpr whose word 1 is `{}`, not `/usr/bin/timeout`" + off
-        quoted = "a CallExpr whose word 1 is a word of {} part(s), not the bare literal `/usr/bin/timeout`" + off
+        first = "a CallExpr whose word 1 is `{}`, not `sudo`" + off
+        quoted = "a CallExpr whose word 1 is a word of {} part(s), not the bare literal `sudo`" + off
+        second = "a CallExpr whose word 2 is `{}`, not `/usr/bin/timeout`" + off
+        second_is = "a CallExpr whose word 2 is {}, not the bare literal `/usr/bin/timeout`" + off
         unknown = f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"
         expanded = "`{}` holds {}: " + EXPANDED_WORD
         handed = "`sudo` followed by {}, which has no known text, before its command word"
         command = "{} in command position: " + UNKNOWN_COMMAND
         expands = (
             "a CallExpr whose word 1 is a word of {} part(s) spelling `{}`, which bash expands ({}), not the bare "
-            "literal `/usr/bin/timeout`" + off
+            "literal `sudo`" + off
         )
         for case, script, expected in (
             (
@@ -2384,7 +2441,13 @@ class TreeRuleTest(unittest.TestCase):
                 f'cd "$RUNNER_TEMP"\nsource scripts/lib/github-release.sh\n{form} update\n',
                 [(1, first.format("cd")), (2, first.format("source"))],
             ),
-            ("the auditor's quoted apt", "sudo 'apt' update\n", [(1, first.format("sudo"))]),
+            ("the auditor's quoted apt", "sudo 'apt' update\n", [(1, second_is.format("a word of SglQuoted part(s)"))]),
+            # Round 18 (audit of 29e2f10f): the order before this round, an option or a path on sudo, the bare name.
+            ("the old order, timeout outside sudo", f"{self.OLD} update\n", [(1, first.format("/usr/bin/timeout"))]),
+            ("an option between sudo and the path", f"sudo -E {pathed} update\n", [(1, second.format("-E"))]),
+            ("sudo by its path", f"/usr/bin/sudo {pathed} update\n", [(1, first.format("/usr/bin/sudo"))]),
+            ("the bare name after sudo", f"sudo timeout {tail} update\n", [(1, second.format("timeout"))]),
+            ("no sudo", f"{pathed} update\n", [(1, first.format("/usr/bin/timeout"))]),
             ("a second statement", f"{form} update\necho ok\n", [(2, first.format("echo"))]),
             ("a statement before the form", f"echo ok\n{form} update\n", [(1, first.format("echo"))]),
             (
@@ -2443,7 +2506,7 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "PATH before a bare timeout",
                 f"PATH=/tmp/x:$PATH\n{form.replace('/usr/bin/', '')} update\n",
-                [(1, f"a CallExpr with Assigns{off}"), (2, first.format("timeout"))],
+                [(1, f"a CallExpr with Assigns{off}"), (2, second.format("timeout"))],
             ),
             (
                 "a comment ending in a backslash",
@@ -2456,12 +2519,12 @@ class TreeRuleTest(unittest.TestCase):
                 [(1, f"a CallExpr in a statement with Redirs{off}")],
             ),
             ("apt in a quoted word", 'echo "apt-get update"\n', [(1, first.format("echo"))]),
-            ("apt by its path", "sudo /usr/bin/apt install x\n", [(1, first.format("sudo"))]),
+            ("apt by its path", "sudo /usr/bin/apt install x\n", [(1, second.format("/usr/bin/apt"))]),
             ("a split spelling of apt-get", 'ap""t-get update\n', [(1, quoted.format("Lit, DblQuoted(), Lit"))]),
             (
                 "the form's path around another command",
-                f"{TIMEOUT_PATH} 5 sleep 1\n",
-                [(1, f"a CallExpr whose word 2 is `5`, not `--kill-after=10`{off}")],
+                f"sudo {TIMEOUT_PATH} 5 sleep 1\n",
+                [(1, f"a CallExpr whose word 3 is `5`, not `--kill-after=10`{off}")],
             ),
             (
                 "a second -o",
@@ -2519,8 +2582,16 @@ class TreeRuleTest(unittest.TestCase):
                 [(1, f"a CallExpr that has 9 word(s); word 10 of the form is the verb `update` or `install`{off}")],
             ),
             ("the whole form in one quoted word", f'"{form}" update\n', [(1, quoted.format("DblQuoted(Lit)"))]),
-            ("the path single-quoted", f"'{TIMEOUT_PATH}' {tail} update\n", [(1, quoted.format("SglQuoted"))]),
-            ("the path double-quoted", f'"{TIMEOUT_PATH}" {tail} update\n', [(1, quoted.format("DblQuoted(Lit)"))]),
+            (
+                "the path single-quoted",
+                f"sudo '{TIMEOUT_PATH}' {tail} update\n",
+                [(1, second_is.format("a word of SglQuoted part(s)"))],
+            ),
+            (
+                "the path double-quoted",
+                f'sudo "{TIMEOUT_PATH}" {tail} update\n',
+                [(1, second_is.format("a word of DblQuoted(Lit) part(s)"))],
+            ),
             (
                 "a quoted verb",
                 f"{form} 'update'\n",
@@ -2545,13 +2616,16 @@ class TreeRuleTest(unittest.TestCase):
                 "a backslash in the path",
                 f"{form.replace('timeout', 'time\\out')} update\n",
                 [
-                    (1, expands.format("Lit", "/usr/bin/time\\out", "`\\`")),
+                    (
+                        1,
+                        second_is.format(
+                            "a word of Lit part(s) spelling `/usr/bin/time\\out`, which bash expands (`\\`)"
+                        ),
+                    ),
                     (1, expanded.format("/usr/bin/time\\out", "`\\`")),
                     (
                         1,
-                        command.format(
-                            "a word of Lit part(s) spelling `/usr/bin/time\\out`, which bash expands (`\\`)"
-                        ),
+                        handed.format("a word of Lit part(s) spelling `/usr/bin/time\\out`, which bash expands (`\\`)"),
                     ),
                 ],
             ),
@@ -2561,7 +2635,12 @@ class TreeRuleTest(unittest.TestCase):
                 "the auditor's glob spelling of apt-get",
                 "sudo /usr/bin/a[p]t-get update\n",
                 [
-                    (1, first.format("sudo")),
+                    (
+                        1,
+                        second_is.format(
+                            "a word of Lit, Lit part(s) spelling `/usr/bin/a[p]t-get`, which bash expands (`[`, `]`)"
+                        ),
+                    ),
                     (1, expanded.format("/usr/bin/a[p]t-get", "`[`, `]`")),
                     (
                         1,
@@ -2575,7 +2654,7 @@ class TreeRuleTest(unittest.TestCase):
                 "a ? in apt-get",
                 "sudo apt-g?t update\n",
                 [
-                    (1, first.format("sudo")),
+                    (1, second_is.format("a word of Lit part(s) spelling `apt-g?t`, which bash expands (`?`)")),
                     (1, expanded.format("apt-g?t", "`?`")),
                     (1, handed.format("a word of Lit part(s) spelling `apt-g?t`, which bash expands (`?`)")),
                 ],
@@ -2584,7 +2663,7 @@ class TreeRuleTest(unittest.TestCase):
                 "a * in apt",
                 "sudo ap*t update\n",
                 [
-                    (1, first.format("sudo")),
+                    (1, second_is.format("a word of Lit part(s) spelling `ap*t`, which bash expands (`*`)")),
                     (1, expanded.format("ap*t", "`*`")),
                     (1, handed.format("a word of Lit part(s) spelling `ap*t`, which bash expands (`*`)")),
                 ],
@@ -2617,7 +2696,13 @@ class TreeRuleTest(unittest.TestCase):
                 "the auditor's bracket glob among quoted parts",
                 'sudo "/usr/bin/"["a"]"pt-get" update\n',
                 [
-                    (1, first.format("sudo")),
+                    (
+                        1,
+                        second_is.format(
+                            "a word of DblQuoted(Lit), Lit, DblQuoted(Lit), Lit, DblQuoted(Lit) part(s) spelling "
+                            "`[]`, which bash expands (`[`, `]`)"
+                        ),
+                    ),
                     (1, expanded.format("[]", "`[`, `]`")),
                     (
                         1,
@@ -2632,7 +2717,13 @@ class TreeRuleTest(unittest.TestCase):
                 "a bracket glob between quoted parts",
                 'sudo "ap"[t]"-get" update\n',
                 [
-                    (1, first.format("sudo")),
+                    (
+                        1,
+                        second_is.format(
+                            "a word of DblQuoted(Lit), Lit, DblQuoted(Lit) part(s) spelling `[t]`, which bash "
+                            "expands (`[`, `]`)"
+                        ),
+                    ),
                     (1, expanded.format("[t]", "`[`, `]`")),
                     (
                         1,
@@ -2647,7 +2738,12 @@ class TreeRuleTest(unittest.TestCase):
                 "a ? after a quoted part",
                 'sudo apt"-"g?t update\n',
                 [
-                    (1, first.format("sudo")),
+                    (
+                        1,
+                        second_is.format(
+                            "a word of Lit, DblQuoted(Lit), Lit part(s) spelling `aptg?t`, which bash expands (`?`)"
+                        ),
+                    ),
                     (1, expanded.format("aptg?t", "`?`")),
                     (
                         1,
@@ -2660,17 +2756,17 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "apt-get fully quoted: a known text that names apt, no glob part",
                 'sudo "/usr/bin/apt-get" update\n',
-                [(1, first.format("sudo"))],
+                [(1, second_is.format("a word of DblQuoted(Lit) part(s)"))],
             ),
             (
                 "a bound under 120",
                 f"{form.replace('180', '60')} update\n",
-                [(1, f"a CallExpr whose word 3 `60` is not {FORM_N}{off}")],
+                [(1, f"a CallExpr whose word 4 `60` is not {FORM_N}{off}")],
             ),
             (
                 "a bound that is not a number",
                 f"{form.replace('180', '$N')} update\n",
-                [(1, f"a CallExpr whose word 3 is a word of ParamExp part(s), not the bare literal `{FORM_N}`{off}")],
+                [(1, f"a CallExpr whose word 4 is a word of ParamExp part(s), not the bare literal `{FORM_N}`{off}")],
             ),
         ):
             with self.subTest(case=case):
@@ -2842,15 +2938,15 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="builtin eval above the calls (audit of 21d53583)"):
             text, first, _ = self.step(f"builtin eval '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{form} update\n")
             self.assertEqual(
-                [self.STEP.format(first) + f"a CallExpr whose word 1 is `builtin`, not `/usr/bin/timeout`{off}"],
+                [self.STEP.format(first) + f"a CallExpr whose word 1 is `builtin`, not `sudo`{off}"],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="cd into RUNNER_TEMP, then source a repository path (audit of 21d53583)"):
             text, first, _ = self.step(f'cd "$RUNNER_TEMP"\nsource scripts/lib/github-release.sh\n{form} update\n')
             self.assertEqual(
                 [
-                    self.STEP.format(first) + f"a CallExpr whose word 1 is `cd`, not `/usr/bin/timeout`{off}",
-                    self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `source`, not `/usr/bin/timeout`{off}",
+                    self.STEP.format(first) + f"a CallExpr whose word 1 is `cd`, not `sudo`{off}",
+                    self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `source`, not `sudo`{off}",
                 ],
                 tree_problems("x.yaml", text),
             )
@@ -2867,7 +2963,7 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="a second statement in an apt step"):
             text, first, _ = self.step(f"{form} update\necho ok\n")
             self.assertEqual(
-                [self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `echo`, not `/usr/bin/timeout`{off}"],
+                [self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `echo`, not `sudo`{off}"],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="an apt step without the if: guard"):
@@ -2903,7 +2999,8 @@ class TreeRuleTest(unittest.TestCase):
             at = "x.yaml:{}: test: step 0 'Added': "
             self.assertEqual(
                 [
-                    at.format(first) + f"a CallExpr whose word 1 is `sudo`, not `/usr/bin/timeout`{off}",
+                    at.format(first) + "a CallExpr whose word 2 is a word of Lit, Lit part(s) spelling "
+                    f"`/usr/bin/a[p]t-get`, which bash expands (`[`, `]`), not the bare literal `/usr/bin/timeout`{off}",
                     at.format(first) + f"`/usr/bin/a[p]t-get` holds `[`, `]`: {EXPANDED_WORD}",
                     at.format(first)
                     + "`sudo` followed by a word of Lit, Lit part(s) spelling `/usr/bin/a[p]t-get`, which bash expands "
@@ -2919,7 +3016,9 @@ class TreeRuleTest(unittest.TestCase):
             at = "x.yaml:{}: test: step 0 'Added': "
             self.assertEqual(
                 [
-                    at.format(first) + f"a CallExpr whose word 1 is `sudo`, not `/usr/bin/timeout`{off}",
+                    at.format(first) + "a CallExpr whose word 2 is a word of DblQuoted(Lit), Lit, DblQuoted(Lit), Lit, "
+                    f"DblQuoted(Lit) part(s) spelling `[]`, which bash expands (`[`, `]`), not the bare literal "
+                    f"`/usr/bin/timeout`{off}",
                     at.format(first) + f"`[]` holds `[`, `]`: {EXPANDED_WORD}",
                     at.format(first)
                     + "`sudo` followed by a word of DblQuoted(Lit), Lit, DblQuoted(Lit), Lit, DblQuoted(Lit) part(s) "
@@ -2943,7 +3042,10 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="sudo 'apt' update as a step (audit of 4d09be21)"):
             text, first, _ = self.step("sudo 'apt' update\n")
             self.assertEqual(
-                [self.STEP.format(first) + f"a CallExpr whose word 1 is `sudo`, not `/usr/bin/timeout`{off}"],
+                [
+                    self.STEP.format(first)
+                    + f"a CallExpr whose word 2 is a word of SglQuoted part(s), not the bare literal `/usr/bin/timeout`{off}"
+                ],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="'eval' above the form and install without -y (audit of 4d09be21)"):
@@ -2953,7 +3055,7 @@ class TreeRuleTest(unittest.TestCase):
             self.assertEqual(
                 [
                     self.STEP.format(first)
-                    + f"a CallExpr whose word 1 is a word of SglQuoted part(s), not the bare literal `/usr/bin/timeout`{off}",
+                    + f"a CallExpr whose word 1 is a word of SglQuoted part(s), not the bare literal `sudo`{off}",
                     self.STEP.format(first + 2) + f"a CallExpr whose word 11 'jq' after `install` is not `-y`{off}",
                     self.STEP.format(first - 1)
                     + f"1 apt call(s) in the tree, 2 bound form(s) in the text; {TREE_COUNT}",
@@ -3479,7 +3581,7 @@ class ReaderCensusTest(unittest.TestCase):
     swallowed the next step and its timeout-minutes. Round 8 gates every workflow on agreement with PyYAML itself,
     run in a child the uv idiom starts (Parser), so the grammar explains and the parser decides."""
 
-    FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
+    FORM = "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update"
     MARKER = "      - name: Upload coverage to Codecov\n"
     # Each form the reader does not return, as the value of an added step's `run:` key, with `{}` for the command.
     FORMS = (("|-", "|-\n          {}"), (">", ">\n          {}"), ("|2", "|2\n          {}"), ('"..."', '"{}"'))
@@ -3521,7 +3623,7 @@ class ReaderCensusTest(unittest.TestCase):
         # census names the `run:` line, the step check names the step's line, and the apt rule names the call.
         for form, header in (("|-", "|-"), (">", ">"), ("|2", "|2"), ('"..."', '"sudo apt-get update"')):
             for command in ("sudo apt-get update", self.FORM):
-                with self.subTest(form=form, command=command.split()[0]):
+                with self.subTest(form=form, command=short_name(command)):
                     path, dash, index = self.added_step(form, command)
                     problems = workflow_problems([path])
                     expected_header = (
@@ -3549,7 +3651,9 @@ class ReaderCensusTest(unittest.TestCase):
                         self.assertTrue(violations[0].startswith(f"test.yaml:{call_line}: "), violations[0])
         # The same step as `run: |` is read, and fails only the step check, on its line.
         path, dash, index = self.added_step("|-", self.FORM)
-        path.write_text(path.read_text().replace("run: |-\n          /usr/bin/", "run: |\n          /usr/bin/"))
+        path.write_text(
+            path.read_text().replace("run: |-\n          sudo /usr/bin/", "run: |\n          sudo /usr/bin/")
+        )
         self.assertEqual(
             [f"test.yaml:{dash}: test: step {index} 'Added' runs apt with no STEP_REST_BUDGET row"],
             workflow_problems([path]),
@@ -3771,7 +3875,7 @@ class ReaderCensusTest(unittest.TestCase):
         # step it holds, and a step that only sleeps is named by the census alone.
         for dash, keys in ((5, 7), (7, 9)):
             for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
-                with self.subTest(dash=dash, keys=keys, command=command.split()[0]):
+                with self.subTest(dash=dash, keys=keys, command=short_name(command)):
                     path, at = self.added_job_at(dash, keys, command)
                     text = path.read_text()
                     (step,) = text_steps(text)["added"]
@@ -3932,7 +4036,7 @@ class ReaderCensusTest(unittest.TestCase):
         # its dash line where the reader does not reach it, and bounded or named where it does.
         for dash, keys in ((5, 7), (6, 8)):
             for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
-                with self.subTest(dash=dash, keys=keys, command=command.split()[0]):
+                with self.subTest(dash=dash, keys=keys, command=short_name(command)):
                     path, at = self.added_job_at(dash, keys, command, "steps: # comment")
                     text = path.read_text()
                     (step,) = text_steps(text)["added"]
@@ -4012,8 +4116,10 @@ class ReaderCensusTest(unittest.TestCase):
             rf"test\.yaml:[0-9]+: test: step [0-9]+; {re.escape(PARSER_GATE)}"
         )
         for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
-            short = command.split()[0]
-            unbounded = [f"test.yaml:{{}}: {command} (1 apt call(s), 0 in the bound form)"] if short == "sudo" else []
+            short = short_name(command)
+            unbounded = (
+                [f"test.yaml:{{}}: {command} (1 apt call(s), 0 in the bound form)"] if short == "unbounded" else []
+            )
             with self.subTest(command=short, written="both"):
                 path, jobs_line, at = self.auditors_document(command)
                 text = path.read_text()
@@ -4132,7 +4238,7 @@ class ReaderCensusTest(unittest.TestCase):
         breaks = (("\x85", "a next line"), ("\u2028", "a line separator"), ("\u2029", "a paragraph separator"))
         for separator, name in breaks:
             for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
-                with self.subTest(separator=f"U+{ord(separator):04X}", command=command.split()[0]):
+                with self.subTest(separator=f"U+{ord(separator):04X}", command=short_name(command)):
                     path, line, columns = self.hidden_job(separator, command)
                     text = workflow_text(path)
                     why = f"{name}, a line break to a YAML 1.1 reader (U+{ord(separator):04X})"
@@ -4144,7 +4250,7 @@ class ReaderCensusTest(unittest.TestCase):
                         [f"test.yaml:{line}: {message}" for _, message in expected], workflow_problems([path])
                     )
                     violations = apt_violations("test.yaml", text)
-                    if command.startswith("sudo"):
+                    if short_name(command) == "unbounded":
                         self.assertEqual(1, len(violations), violations)
                         self.assertTrue(violations[0].startswith(f"test.yaml:{line}: "), violations[0])
                         self.assertTrue(violations[0].endswith("(1 apt call(s), 0 in the bound form)"), violations[0])
@@ -4153,7 +4259,7 @@ class ReaderCensusTest(unittest.TestCase):
                     self.yaml_reads_the_added_job(text, command, quoted_name=False)
         # On its own lines the job is read by both readers, and the step check names its apt step.
         for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
-            with self.subTest(separator="LF", command=command.split()[0]):
+            with self.subTest(separator="LF", command=short_name(command)):
                 path, line, _ = self.hidden_job("\n", command)
                 text = workflow_text(path)
                 (step,) = text_steps(text)["added"]
@@ -4244,7 +4350,7 @@ class ReaderCensusTest(unittest.TestCase):
                 self.assertEqual([], workflow_problems([self.written(planted, "test.yaml")]))
                 self.agrees_with_yaml(planted)
 
-    INSTALL = "/usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl"
+    INSTALL = "sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl"
 
     def complex_key_document(self, command: str, key: str = '{?"x}') -> tuple[Path, int, int]:
         """The audit's test.yaml: the Codecov apt step rewritten with its `run: |` holding `command` first,
@@ -4273,7 +4379,7 @@ class ReaderCensusTest(unittest.TestCase):
         # step where they part is named; the grammar names the line as the explanation.
         env_refused = f'env: {{?"x}} (env: holds a flow collection that does not close on its line; {READ_VALUES})'
         for command in ("sudo apt-get update", self.INSTALL, "sleep 7200"):
-            with self.subTest(command=command.split()[0]):
+            with self.subTest(command=short_name(command)):
                 path, dash, phantom = self.complex_key_document(command)
                 text = workflow_text(path)
                 found = census(text)
@@ -4302,12 +4408,12 @@ class ReaderCensusTest(unittest.TestCase):
                 parting = f"test.yaml:{dash}: test: step {len(read) - 3}"
                 extra = {
                     # an unbounded call: the step holds timeout-minutes 4 to the reader, and the formula gives 1
-                    "sudo": [
+                    "unbounded": [
                         f"{parting} 'Install apt packages for Codecov' has timeout-minutes 4, the formula gives 1"
                     ],
-                    "/usr/bin/timeout": [],
+                    "form": [],
                     "sleep": ["budget row 'Install apt packages for Codecov' has no step that runs apt"],
-                }[command.split()[0]]
+                }[short_name(command)]
                 self.assertEqual(
                     [
                         f"test.yaml:{dash + 4}: {env_refused}",
@@ -4318,7 +4424,7 @@ class ReaderCensusTest(unittest.TestCase):
                     workflow_problems([path]),
                 )
                 violations = apt_violations("test.yaml", text)
-                if command.startswith("sudo"):
+                if short_name(command) == "unbounded":
                     self.assertEqual(
                         [f"test.yaml:{dash + 3}: {command} (1 apt call(s), 0 in the bound form)"], violations
                     )

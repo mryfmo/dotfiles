@@ -340,7 +340,7 @@
       "target": ".local/bin/common/brief-check.py",
       "kind": "file",
       "executable": true,
-      "sha256": "ea3cf5e05131e40e4cccf2d8a06525799150ea85030b7471c9027812c730e69c"
+      "sha256": "f183d0dc347c72da65794b036785b626c50ffc0e833fdac715b30c9c6675db9e"
     },
     {
       "source": "home/dot_local/bin/common/executable_bus-history.sh",

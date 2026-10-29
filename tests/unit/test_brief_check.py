@@ -1,6 +1,7 @@
 """Exercise brief-check.py (regime-cutover U104) on scratch briefs, as a subprocess under `python -I`, and its installed
 copy under a scratch HOME as the hcom-orchestration SKILL spells the command (round 3)."""
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -15,6 +16,8 @@ SCRIPT = ROOT / "scripts/orchestrator/brief-check.py"
 INSTALLED = ROOT / "home/dot_local/bin/common/executable_brief-check.py"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 SKILL = ROOT / "home/dot_agents/skills/hcom-orchestration/SKILL.md"
+# An installation reached through a symlink: `~/.local` a link, or `common` itself (round 5).
+SYMLINKED_INSTALLS = (".local", ".local/bin/common")
 # The trigger table as the brief fixed it; a later unit that adds a row adds it here too.
 TRIGGERS = (
     "shell",
@@ -322,6 +325,25 @@ class InstalledBriefCheckTest(unittest.TestCase):
             check=False,
         )
 
+    @contextlib.contextmanager
+    def install_behind_symlink(self, relative):
+        """Move `<home>/<relative>` to a physical directory outside HOME and leave a symlink in its place.
+
+        Yields the physical install directory; both spellings put it at `<root>/physical/.local/bin/common`, so two
+        levels up from it is `<root>/physical/.local`, where a checkout manifest may or may not be planted.
+        """
+        link = self.home / relative
+        physical = self.root / "physical" / relative
+        physical.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(link, physical)
+        link.symlink_to(physical)
+        try:
+            yield self.root / "physical/.local/bin/common"
+        finally:
+            link.unlink()
+            shutil.move(physical, link)
+            shutil.rmtree(self.root / "physical")
+
     def test_the_skill_command_judges_a_store_brief_from_a_checkout_without_scripts(self):
         # The round-2 audit's integration failure: the skill's own command on a valid brief.
         self.assertFalse((self.checkout / "scripts").exists())
@@ -426,6 +448,31 @@ class InstalledBriefCheckTest(unittest.TestCase):
             with self.subTest(home=name):
                 result = self.run_copy(brief(GOAL=CLEAN_GOAL), env)
                 self.assert_refused(result, f"manifest unreadable: {checkout_manifest}")
+
+    def test_an_install_behind_a_symlink_with_a_zeroed_deployed_pin_refuses_naming_the_deployed_manifest(self):
+        """Round 5 (P2): the comparison resolved HOME but not `.local/bin/common`, so an install reached through a
+        symlinked `.local` (or `common`) compared unequal and the checkout manifest two levels up from the physical
+        directory was read; a correct pin planted there let a copy with a zeroed deployed pin judge the brief."""
+        self.zero_pin()
+        for relative in SYMLINKED_INSTALLS:
+            with self.subTest(symlink=relative), self.install_behind_symlink(relative) as physical:
+                checkout_manifest = physical.parent.parent / "home/dot_agents/agent-config.yaml"
+                checkout_manifest.parent.mkdir(parents=True)
+                shutil.copy2(MANIFEST, checkout_manifest)
+                result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+                self.assert_refused(result, "sha256 ")
+                self.assertIn(f"differs from the pin in {self.manifest}", result.stderr)
+
+    def test_an_install_behind_a_symlink_with_the_correct_deployed_pin_judges_the_brief(self):
+        # No checkout manifest exists above the physical directory, so round 4 refused a sound installation.
+        for relative in SYMLINKED_INSTALLS:
+            with self.subTest(symlink=relative), self.install_behind_symlink(relative) as physical:
+                self.assertFalse((physical.parent.parent / "home").exists())
+                result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+                self.assertEqual(
+                    (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
+                    (result.returncode, result.stdout, result.stderr),
+                )
 
 
 if __name__ == "__main__":

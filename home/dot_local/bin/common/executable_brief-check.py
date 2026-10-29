@@ -47,7 +47,9 @@ def lever_self_check():
 
     The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the
     directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two
-    levels up; an unset or unresolvable HOME means the checkout manifest. The cwd decides nothing: the shebang runs
+    levels up; an unset or unresolvable HOME means the checkout manifest. The whole install path is resolved, not
+    HOME alone, since an install reached through a symlinked `.local`, `bin` or `common` compared unequal and read
+    the checkout manifest two levels up (round 5). The cwd decides nothing: the shebang runs
     `python3 -I` from PATH as the shell levers' `bash` comes from PATH, since `uv run` honoured a `.python-version`
     in the checkout the lever ran from and a planted interpreter answered before this check (round 4), and `-I`
     ignores `PYTHON*` variables, the user site and the script directory. Every read is checked and a failed one is
@@ -56,7 +58,7 @@ def lever_self_check():
     directory = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
     self_path = os.path.join(directory, os.path.basename(__file__))
     home = os.environ.get("HOME", "")
-    if home and os.path.isdir(home) and directory == os.path.join(os.path.realpath(home), ".local/bin/common"):
+    if home and os.path.isdir(home) and directory == os.path.realpath(os.path.join(home, ".local/bin/common")):
         manifest = os.path.join(home, ".agents/agent-config.yaml")
     else:
         manifest = os.path.join(directory, "../../home/dot_agents/agent-config.yaml")

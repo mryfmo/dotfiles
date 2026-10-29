@@ -1,6 +1,6 @@
 # U116 mise.lock evaluation (plan P-36, research V4-9)
 
-Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the runs pasted below are the round-6 re-take of the same date.
+Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the runs pasted below are the round-7 re-take of the same date.
 
 ## Question
 
@@ -10,28 +10,96 @@ The plan row P-36 (`handoff/05-remediation-plan.md:116`) asks for a decisions ro
 
 ## Commands run
 
-Every output below is pasted whole from the file the command wrote under `$TMPDIR/U116-out-4/`, the round-6 re-take of every run (the ROUND 6 AMENDMENT of the brief: the pasted runner is the one that ran). One substitution applies to the three pasted `ls -la` blocks, because the store refuses the login name: the owner column reads `<user>`. Nothing else was edited; no other pasted output holds the login name or the home directory, because the runner writes the real mise paths in `~` form itself. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; mise prints it through its `/private` alias. One block, marked as such, is older: the attempt-1 error of round 1, which round 6 did not repeat.
+Every output below is pasted whole from the file the command wrote under `$TMPDIR/U116-out-5/`, the round-7 re-take of every run (the ROUND 7 AMENDMENT of the brief: the pasted runner is the one that ran, and it launches mise itself). One substitution applies to the three pasted `ls -la` blocks, because the store refuses the login name: the owner column reads `<user>`. Nothing else was edited; no other pasted output holds the login name or the home directory, because the runner writes the real mise paths in `~` form itself. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; mise prints it through its `/private` alias. One block, marked as such, is older: the attempt-1 error of round 1, which round 7 did not repeat.
 
 ### The scratch home and the config copy (CHANGE 1)
 
-Four single commands, each followed by its own `exit=$?` line, in `/tmp/U116-prepare-6.sh`, run as `bash /tmp/U116-prepare-6.sh > /tmp/U116-round6/prepare.txt 2>&1; echo "prepare-exit=$?"` from `/tmp`. Neither `U116-home-4` nor `U116-out-4` existed before this run. The before listing goes to `real-before.txt` and is pasted from it.
+One `python3 -I` script, `/tmp/U116-prepare-7.py`, run from `/tmp` with the invocation below. It refuses when `U116-home-5` or `U116-out-5` exists already (`os.lstat`, `FileNotFoundError` the one acceptable answer; neither existed), makes the four scratch directories and the output directory, copies the config in-process and writes the before listing of the real `~/.config/mise` to `real-before.txt` from one `subprocess.run` of `/bin/ls` whose status it reads and prints. Rounds 1 to 6 ran the four commands of CHANGE 1 under `bash`; this round runs no shell for them, so no wrapper word stands anywhere in the procedure. The script, its invocation and its printed output:
+
+```python
+#!/usr/bin/env python3
+# U116 scratch home and config copy, round 7 (brief CHANGE 1). One
+# python3 -I process, no shell: the four directories are made and the
+# config is copied in this process, and the before listing of the real
+# ~/.config/mise is one subprocess.run of /bin/ls with its status read and
+# its output written to real-before.txt. A scratch home or output
+# directory that exists already is a refusal (this round wants fresh
+# ones), decided by os.lstat raising FileNotFoundError; any other error
+# anywhere is a refusal (exit 2) with its text.
+import os
+import subprocess
+import sys
+
+
+def refuse(message):
+    print(f"prepare REFUSED: {message}")
+    sys.exit(2)
+
+
+def require_env(name):
+    try:
+        return os.environ[name]
+    except KeyError:
+        refuse(f"{name} is unset")
+
+
+TMPDIR = require_env("TMPDIR")
+REAL_HOME = require_env("HOME")
+SCRATCH = os.path.join(TMPDIR, "U116-home-5")
+OUT = os.path.join(TMPDIR, "U116-out-5")
+SOURCE = "/tmp/dotfiles-wt/U116/home/dot_mise/config.toml"
+REAL_MISE_DIR = os.path.join(REAL_HOME, ".config", "mise")
+SUBDIRS = (".config/mise", ".local/share", ".cache", ".local/state")
+
+
+def main():
+    for path in (SCRATCH, OUT):
+        try:
+            os.lstat(path)
+        except FileNotFoundError:
+            continue
+        refuse(f"$TMPDIR/{os.path.basename(path)} exists already")
+    for subdir in SUBDIRS:
+        os.makedirs(os.path.join(SCRATCH, subdir))
+    os.makedirs(OUT)
+    print("mkdir: $TMPDIR/U116-home-5 (.config/mise .local/share .cache .local/state) and $TMPDIR/U116-out-5")
+    with open(SOURCE, "rb") as source:
+        data = source.read()
+    with open(os.path.join(SCRATCH, ".config", "mise", "config.toml"), "wb") as target:
+        target.write(data)
+    print(f"copy: {len(data)} bytes to $TMPDIR/U116-home-5/.config/mise/config.toml")
+    with open(os.path.join(OUT, "real-before.txt"), "wb") as handle:
+        proc = subprocess.run(
+            ["/bin/ls", "-la", REAL_MISE_DIR],
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            check=False,
+            timeout=60,
+        )
+    print(f"ls-before: /bin/ls -la ~/.config/mise exit={proc.returncode} to $TMPDIR/U116-out-5/real-before.txt")
+    sys.exit(1 if proc.returncode else 0)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:  # any raised step is a refusal
+        refuse(f"{type(exc).__name__}: {exc}")
+```
 
 ```sh
-scratch="$TMPDIR/U116-home-4"; echo "exit=$?"
-mkdir -p "$scratch/.config/mise" "$scratch/.local/share" "$scratch/.cache" "$scratch/.local/state" "$TMPDIR/U116-out-4"; echo "exit=$?"
-cp /tmp/dotfiles-wt/U116/home/dot_mise/config.toml "$scratch/.config/mise/config.toml"; echo "exit=$?"
-ls -la ~/.config/mise > "$TMPDIR/U116-out-4/real-before.txt" 2>&1; echo "exit=$?"
+cd /tmp
+python3 -I /tmp/U116-prepare-7.py > /tmp/U116-round7/prepare.txt 2>&1; echo "prepare-exit=$?"
 ```
 
 ```text
 prepare-exit=0
-exit=0
-exit=0
-exit=0
-exit=0
+mkdir: $TMPDIR/U116-home-5 (.config/mise .local/share .cache .local/state) and $TMPDIR/U116-out-5
+copy: 6962 bytes to $TMPDIR/U116-home-5/.config/mise/config.toml
+ls-before: /bin/ls -la ~/.config/mise exit=0 to $TMPDIR/U116-out-5/real-before.txt
 ```
 
-`ls -la ~/.config/mise` before, `real-before.txt`:
+`/bin/ls -la ~/.config/mise` before, `real-before.txt`:
 
 ```text
 total 16
@@ -42,23 +110,26 @@ drwxr-xr-x  24 <user>  staff   768 Oct 16 17:44 ..
 
 ### The runner
 
-Every mise command runs through this `python3 -I` script, `/tmp/U116-run-6.py`. Each call is the brief's `env -i` form, started with `subprocess.run`, so its exit status, its output and a timeout are read in this process; the start and end stamps and the elapsed seconds come from the `datetime` and `time` modules, and the receipt beside each output (`<name>.receipt.txt`) is written, read back and printed from the read-back bytes (an empty receipt is a refusal). Rounds 1 to 4 ran a bash runner whose `timed` function read two `date` and one `cat` through command substitutions without a status (verdict P2 on `fb8118c1`); the round-5 script removed those but decided its none-written check with `os.path.lexists`, which returns False on any `OSError`, so an injected `PermissionError` on the lockfile path read as `none-written` with exit 0 (verdict P2 on `188312bf`). This script holds no command substitution, no process substitution, no pipeline and no predicate that turns a failed read into an absence: every file question is asked of `os.lstat` or `open`, `FileNotFoundError` alone means absence, any other `OSError` is a refusal (exit 2) with its text, `TMPDIR` and `PATH` are read by index with a missing variable a refusal, and the scratch-tree walk passes an `onerror` that raises. Replaced from the round-5 script as committed at `188312bf`: `os.environ.get("TMPDIR")` at its line 65 (`require_env`, an index), `os.path.isfile(CONFIG)` at line 193 (`require_file`, an `open`), `os.path.isdir(OUT)` at line 195 (`require_dir`, `os.lstat` and `stat.S_ISDIR`) and `os.path.lexists(LOCK)` at line 210 (`check_lock`, `os.lstat`). A call that cannot start or outlives its timeout is a refusal before the summary line; a non-zero exit or a lockfile that appears is exit 1 after every receipt is written. Its cwd is the scratch home (the attempt-1 lesson below). The script, its invocation from `/tmp` and its printed output, which is the receipt of every run:
+Every mise command runs through this `python3 -I` script, `/tmp/U116-run-7.py`, which launches mise itself. The binary is resolved once, at the top of the script, by `resolve_mise`: a lookup over the entries of `PATH` that asks `os.lstat` for `<entry>/mise`, moves to the next entry on `FileNotFoundError` alone, refuses on any other `OSError` with its text, and refuses naming mise when no entry holds one. It does not test the executable bit: a mise that cannot be executed is left to the launch, which raises `PermissionError`. Each call is `subprocess.run([mise, ...], env=ENV, timeout=900, check=False, stdout=<the output file>, stderr=subprocess.STDOUT)`, where `ENV` is a dict holding exactly the variables of CHANGE 1 (`HOME`, `PATH`, `TMPDIR`, the four XDG variables and `MISE_TRUSTED_CONFIG_PATHS`) and nothing else, so the deadline and the environment belong to the process that reads the status. A launch that raises, be it `subprocess.TimeoutExpired`, `FileNotFoundError`, `PermissionError` or any other `OSError`, first writes a receipt reading `exit=refused`, then refuses (exit 2) with the error's class and text; a launch that returns writes its return code into the receipt. The start and end stamps and the elapsed seconds come from the `datetime` and `time` modules, and every receipt (`<name>.receipt.txt`) is written, read back and printed from the read-back bytes (an empty receipt is a refusal). Rounds 1 to 6 started every mise call through the brief's `env -i … perl -e 'alarm 900; exec @ARGV' mise …` form; when `exec` fails, because mise is absent or not executable, perl falls through its one-line program and exits 0, so that runner would have recorded a success for a command that never ran (verdict P2 on `a3efa54a`). The wrapper words left the argv list of the round-6 script as committed at `a3efa54a`: `/usr/bin/env` with `-i` at its lines 169 and 170, and `perl` with `-e` and `alarm 900; exec @ARGV` at lines 179 to 181; the first set of injections below shows the three ways the launch now refuses instead. Everything else stands from round 6: no command substitution, no process substitution, no pipeline, no predicate that turns a failed read into an absence (every file question is asked of `os.lstat` or `open`, `FileNotFoundError` alone means absence, any other `OSError` is a refusal with its text, `TMPDIR`, `PATH` and `HOME` are read by index with a missing variable a refusal, and the scratch-tree walk passes an `onerror` that raises); a non-zero exit or a lockfile that appears is exit 1 after every receipt is written. The real home directory is written as `~` wherever a path under it would reach the output (the resolved mise path in the first printed line, and any error text). Its cwd is the scratch home (the attempt-1 lesson below). The script, its invocation from `/tmp` and its printed output, which is the receipt of every run:
 
 ```python
 #!/usr/bin/env python3
-# U116 dry runs under the scratch HOME, round 6 (brief CHANGE 1 and 2; the
-# ROUND 5 and ROUND 6 amendments). One python3 -I process. Every mise call
-# is the brief's env -i form, started with subprocess.run: its exit status,
-# its output and a timeout are read in this process. The start and end
-# stamps and the elapsed seconds come from the datetime and time modules,
-# and the receipt beside each output is written, read back and printed
-# from the read-back bytes, so no command substitution and no shell stands
-# between this script and mise. Every file question is asked of os.lstat
-# or open: FileNotFoundError alone means absence, and any other OSError is
-# a refusal (exit 2) with its text, never a quiet default. A call that
-# cannot start or that outlives its timeout is a refusal before the
-# summary line; a call that exits non-zero or a lockfile that appears is
-# exit 1 after every receipt is written.
+# U116 dry runs under the scratch HOME, round 7 (brief CHANGE 1 and 2; the
+# ROUND 5 to ROUND 7 amendments). One python3 -I process that launches
+# mise itself. The mise binary is resolved once, below, from PATH by a
+# lookup that refuses when no entry holds it; every call is
+# subprocess.run([mise, ...]) with the variable set of CHANGE 1 as its
+# whole environment, timeout=900, check=False and the output file as
+# stdout (stderr merged), so the deadline and the environment belong to
+# this process and no wrapper stands between it and mise. A launch that
+# raises (TimeoutExpired, FileNotFoundError, PermissionError or any other
+# OSError) first gets a receipt reading exit=refused, then is a refusal
+# (exit 2) with the error's text; a launch that returns gets its
+# returncode in the receipt. Every receipt is written, read back and
+# printed from the read-back bytes. Every file question is asked of
+# os.lstat or open: FileNotFoundError alone means absence, any other
+# OSError is a refusal with its text. The real home directory is written
+# as ~ wherever a path of it would reach the output.
 import datetime
 import os
 import stat
@@ -82,11 +153,26 @@ def require_env(name):
 
 TMPDIR = require_env("TMPDIR")
 PATH = require_env("PATH")
-SCRATCH = os.path.join(TMPDIR, "U116-home-4")
-OUT = os.path.join(TMPDIR, "U116-out-4")
+REAL_HOME = require_env("HOME")
+SCRATCH = os.path.join(TMPDIR, "U116-home-5")
+OUT = os.path.join(TMPDIR, "U116-out-5")
 CONFIG = os.path.join(SCRATCH, ".config", "mise", "config.toml")
 LOCK = os.path.join(SCRATCH, ".config", "mise", "mise.lock")
 PLATFORMS = "linux-x64,linux-arm64,macos-x64,macos-arm64"
+TIMEOUT = 900
+
+# The whole environment of every call: the variable set of CHANGE 1 and
+# nothing else (no inherited variable reaches mise).
+ENV = {
+    "HOME": SCRATCH,
+    "PATH": PATH,
+    "TMPDIR": TMPDIR,
+    "XDG_CONFIG_HOME": os.path.join(SCRATCH, ".config"),
+    "XDG_DATA_HOME": os.path.join(SCRATCH, ".local", "share"),
+    "XDG_CACHE_HOME": os.path.join(SCRATCH, ".cache"),
+    "XDG_STATE_HOME": os.path.join(SCRATCH, ".local", "state"),
+    "MISE_TRUSTED_CONFIG_PATHS": CONFIG,
+}
 
 # The runs of CHANGE 2 (a) to (f), plus the first eight lines of
 # `mise lock --help` that CHANGE 1 asks for; each output file is pasted whole.
@@ -111,9 +197,42 @@ REAL_DIRS = (
     "~/Library/Caches/mise",
 )
 
-# Outer guard on each mise call; perl's alarm 900 inside the env -i form
-# is the brief's, this one catches a perl that never started the alarm.
-TIMEOUT = 960
+
+def tilde(text):
+    return text.replace(REAL_HOME, "~")
+
+
+def real(path):
+    # ~/x in REAL_DIRS to the real path, by the HOME read above.
+    return os.path.join(REAL_HOME, path[2:])
+
+
+def resolve_mise(path):
+    # The first PATH entry holding a `mise`, asked of os.lstat entry by
+    # entry: FileNotFoundError moves to the next entry, any other OSError
+    # is a refusal with its text, and no entry at all is a refusal naming
+    # mise. The executable bit is not tested here: a mise that cannot be
+    # executed is left for the launch to raise PermissionError, which is a
+    # refusal with that text.
+    entries = [entry for entry in path.split(os.pathsep) if entry]
+    for number, entry in enumerate(entries, 1):
+        candidate = os.path.join(entry, "mise")
+        try:
+            os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            refuse(f"cannot read {tilde(candidate)}: {exc}")
+        print(f"mise={tilde(candidate)} (PATH entry {number} of {len(entries)})")
+        return candidate
+    refuse(f"mise not found on PATH ({len(entries)} entries searched)")
+
+
+MISE = resolve_mise(PATH)
+
+
+def mise_argv(args):
+    return [MISE, *args]
 
 
 def stamp():
@@ -164,50 +283,35 @@ def raise_error(exc):
     raise exc
 
 
-def env_i_argv(args):
-    return [
-        "/usr/bin/env",
-        "-i",
-        f"HOME={SCRATCH}",
-        f"PATH={PATH}",
-        f"TMPDIR={TMPDIR}",
-        f"XDG_CONFIG_HOME={SCRATCH}/.config",
-        f"XDG_DATA_HOME={SCRATCH}/.local/share",
-        f"XDG_CACHE_HOME={SCRATCH}/.cache",
-        f"XDG_STATE_HOME={SCRATCH}/.local/state",
-        f"MISE_TRUSTED_CONFIG_PATHS={CONFIG}",
-        "perl",
-        "-e",
-        "alarm 900; exec @ARGV",
-        "mise",
-        *args,
-    ]
+def receipt(name, start, began, status):
+    elapsed = round(time.monotonic() - began)
+    write(f"{name}.receipt.txt", f"start={start} end={stamp()} elapsed={elapsed}s exit={status}\n")
+    print(f"{name}: {read_back(f'{name}.receipt.txt')}")
 
 
-def timed(name, argv):
-    # Runs argv, writes <name>.txt (stdout and stderr merged, as 2>&1 would)
-    # and <name>.receipt.txt, prints the receipt read back, returns the
-    # exit status.
+def timed(name, argv, timeout=TIMEOUT):
+    # Runs argv with ENV as its whole environment, stdout and stderr to
+    # <name>.txt, writes and prints <name>.receipt.txt, returns the exit
+    # status. A launch that raises, be it TimeoutExpired,
+    # FileNotFoundError, PermissionError or any other OSError, writes
+    # exit=refused into the receipt first and then refuses with the
+    # error's class and text.
     start = stamp()
     began = time.monotonic()
     try:
-        proc = subprocess.run(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=False,
-            timeout=TIMEOUT,
-        )
-    except subprocess.TimeoutExpired as exc:
-        write(f"{name}.txt", exc.stdout or b"")
-        refuse(f"{name} outlived {TIMEOUT} s")
-    except OSError as exc:
-        refuse(f"{name} could not start: {exc}")
-    elapsed = round(time.monotonic() - began)
-    end = stamp()
-    write(f"{name}.txt", proc.stdout)
-    write(f"{name}.receipt.txt", f"start={start} end={end} elapsed={elapsed}s exit={proc.returncode}\n")
-    print(f"{name}: {read_back(f'{name}.receipt.txt')}")
+        with open(os.path.join(OUT, f"{name}.txt"), "wb") as handle:
+            proc = subprocess.run(
+                argv,
+                env=ENV,
+                timeout=timeout,
+                check=False,
+                stdout=handle,
+                stderr=subprocess.STDOUT,
+            )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        receipt(name, start, began, "refused")
+        refuse(f"{name} did not complete: {type(exc).__name__}: {tilde(str(exc))}")
+    receipt(name, start, began, proc.returncode)
     return proc.returncode
 
 
@@ -215,7 +319,7 @@ def real_mtimes(name):
     lines = []
     for directory in REAL_DIRS:
         try:
-            mtime = os.lstat(os.path.expanduser(directory)).st_mtime
+            mtime = os.lstat(real(directory)).st_mtime
         except FileNotFoundError:
             lines.append(f"missing {directory}")
             continue
@@ -231,7 +335,7 @@ def scratch_tree(name, depth=4):
         level = 0 if rel == "." else rel.count(os.sep) + 1
         if level >= depth:
             dirs[:] = []
-        prefix = "$TMPDIR/U116-home-4" if rel == "." else f"$TMPDIR/U116-home-4/{rel}"
+        prefix = "$TMPDIR/U116-home-5" if rel == "." else f"$TMPDIR/U116-home-5/{rel}"
         lines.append(prefix)
         for entry in files:
             lines.append(f"{prefix}/{entry}")
@@ -264,13 +368,13 @@ def main():
     # mise's parent-directory walk reads the real ~/.config/mise/config.toml
     # as a project config (round 1, attempt 1).
     os.chdir(SCRATCH)
-    print("cwd=$TMPDIR/U116-home-4")
+    print("cwd=$TMPDIR/U116-home-5")
     real_mtimes("real-dirs-mtime-before.txt")
     failed = 0
     for name, args in RUNS:
-        if timed(name, env_i_argv(args)) != 0:
+        if timed(name, mise_argv(args)) != 0:
             failed += 1
-    for name, path in (("g-scratch-after", os.path.join(SCRATCH, ".config", "mise")), ("g-real-after", os.path.expanduser("~/.config/mise"))):
+    for name, path in (("g-scratch-after", os.path.join(SCRATCH, ".config", "mise")), ("g-real-after", real("~/.config/mise"))):
         if timed(name, ["/bin/ls", "-la", path]) != 0:
             failed += 1
     failed += check_lock()
@@ -284,38 +388,114 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:  # any raised step is a refusal, never a summary line
-        refuse(f"{type(exc).__name__}: {exc}")
+        refuse(f"{type(exc).__name__}: {tilde(str(exc))}")
 ```
 
 ```sh
 cd /tmp
-python3 -I /tmp/U116-run-6.py > /tmp/U116-round6/run.txt 2>&1; echo "run-exit=$?"
+python3 -I /tmp/U116-run-7.py > /tmp/U116-round7/run.txt 2>&1; echo "run-exit=$?"
 ```
 
 ```text
 run-exit=0
-cwd=$TMPDIR/U116-home-4
-a-version: start=2026-10-29T12:26:37Z end=2026-10-29T12:26:38Z elapsed=0s exit=0
-help-lock: start=2026-10-29T12:26:38Z end=2026-10-29T12:26:38Z elapsed=0s exit=0
-b-lock-dry-run: start=2026-10-29T12:26:38Z end=2026-10-29T12:26:42Z elapsed=4s exit=0
-c-lock-dry-run-4-platforms: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
-d-lock-bump-json: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
-e-npm-package-manager: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
-f-minimum-release-age: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
-g-scratch-after: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
-g-real-after: start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0
+mise=~/.local/bin/mise (PATH entry 51 of 55)
+cwd=$TMPDIR/U116-home-5
+a-version: start=2026-10-29T13:23:49Z end=2026-10-29T13:23:50Z elapsed=0s exit=0
+help-lock: start=2026-10-29T13:23:50Z end=2026-10-29T13:23:50Z elapsed=0s exit=0
+b-lock-dry-run: start=2026-10-29T13:23:50Z end=2026-10-29T13:23:52Z elapsed=2s exit=0
+c-lock-dry-run-4-platforms: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
+d-lock-bump-json: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
+e-npm-package-manager: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
+f-minimum-release-age: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
+g-scratch-after: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
+g-real-after: start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0
 g-none-written: none-written
 runs=9 failed=0
 ```
 
+### Injected failures into the runner's mise lookup and launch
+
+In memory, as the ROUND 7 AMENDMENT asks: `/tmp/U116-inject-7.py` sets `PATH` in its own process, then loads `/tmp/U116-run-7.py` above as a module, so the runner's own `resolve_mise` runs against that `PATH`; for the two fake cases it points the runner's output directory at `/tmp/U116-inject-7-out` (so nothing lands in `U116-out-5`) and calls the runner's `timed` on `mise --version`. The fakes are written by the injection script itself with `open` and `os.chmod`, a `mise` that sleeps for 30 s with the executable bit set and a `mise` without the executable bit; the real mise is never touched. The script catches nothing, so the process exit status is the runner's own and the shell line after each call is its exit line. First, a `PATH` of one empty directory: the lookup refuses before any receipt exists. Second, the sleeping fake first on `PATH` under `timeout=2`: the receipt reads `exit=refused`, then the refusal carries `TimeoutExpired` and its text. Third, the fake without the executable bit first on `PATH`: the lookup finds it (it tests presence, not mode), the launch raises `PermissionError`, the receipt reads `exit=refused`, then the refusal carries that text. No receipt of these three runs reads `exit=0`; under the round-6 form the second and third cases were perl exiting 0 after a failed `exec`. The script, the three commands from `/tmp`, and their outputs in that order:
+
+```python
+#!/usr/bin/env python3
+# In-memory injections into the round-7 runner's mise lookup and launch
+# (the ROUND 7 AMENDMENT). Sets PATH in this process, then loads
+# /tmp/U116-run-7.py as a module so the runner's own resolve_mise runs
+# against that PATH; for the two fake cases, points the runner's output
+# directory at a scratch directory (nothing lands in U116-out-5) and calls
+# its timed function on `mise --version`, with timeout=2 for the sleeping
+# fake. The fakes are written here by open and os.chmod; the real mise is
+# never touched. No exception is caught: the process exit status is the
+# runner's own, a refusal exits 2, and a timed call that returns is
+# reported and exits 1, so the shell line after each call is its exit
+# line.
+import importlib.util
+import os
+import sys
+
+RUNNER = "/tmp/U116-run-7.py"
+OUT = "/tmp/U116-inject-7-out"
+EMPTY = "/tmp/U116-inject-7-empty"
+FAKES = {
+    "sleep": ("/tmp/U116-inject-7-sleep", b"#!/bin/sh\nexec sleep 30\n", 0o755),
+    "noexec": ("/tmp/U116-inject-7-noexec", b"#!/bin/sh\nexit 0\n", 0o644),
+}
+
+case = sys.argv[1]
+os.makedirs(OUT, exist_ok=True)
+os.makedirs(EMPTY, exist_ok=True)
+if case == "no-mise":
+    os.environ["PATH"] = EMPTY
+else:
+    directory, body, mode = FAKES[case]
+    os.makedirs(directory, exist_ok=True)
+    fake = os.path.join(directory, "mise")
+    with open(fake, "wb") as handle:
+        handle.write(body)
+    os.chmod(fake, mode)
+    os.environ["PATH"] = directory + os.pathsep + os.environ["PATH"]
+print(f"case {case}: PATH starts with {os.environ['PATH'].split(os.pathsep)[0]}")
+spec = importlib.util.spec_from_file_location("runner", RUNNER)
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)  # resolve_mise runs here; no-mise refuses inside
+runner.OUT = OUT
+deadline = 2 if case == "sleep" else runner.TIMEOUT
+code = runner.timed(f"inject-{case}", runner.mise_argv(["--version"]), timeout=deadline)
+print(f"inject-{case} returned exit {code}: the launch did not refuse")
+sys.exit(1)
+```
+
+```sh
+python3 -I /tmp/U116-inject-7.py no-mise; echo "exit=$?"
+python3 -I /tmp/U116-inject-7.py sleep; echo "exit=$?"
+python3 -I /tmp/U116-inject-7.py noexec; echo "exit=$?"
+```
+
+```text
+case no-mise: PATH starts with /tmp/U116-inject-7-empty
+run REFUSED: mise not found on PATH (1 entries searched)
+exit=2
+case sleep: PATH starts with /tmp/U116-inject-7-sleep
+mise=/tmp/U116-inject-7-sleep/mise (PATH entry 1 of 56)
+inject-sleep: start=2026-10-29T13:38:18Z end=2026-10-29T13:38:20Z elapsed=2s exit=refused
+run REFUSED: inject-sleep did not complete: TimeoutExpired: Command '['/tmp/U116-inject-7-sleep/mise', '--version']' timed out after 2 seconds
+exit=2
+case noexec: PATH starts with /tmp/U116-inject-7-noexec
+mise=/tmp/U116-inject-7-noexec/mise (PATH entry 1 of 56)
+inject-noexec: start=2026-10-29T13:38:20Z end=2026-10-29T13:38:20Z elapsed=0s exit=refused
+run REFUSED: inject-noexec did not complete: PermissionError: [Errno 13] Permission denied: '/tmp/U116-inject-7-noexec/mise'
+exit=2
+```
+
 ### Injected failures into the runner's none-written check
 
-In memory, as the ROUND 6 AMENDMENT asks: `/tmp/U116-inject-6.py` loads `/tmp/U116-run-6.py` above as a module, points its output directory at `/tmp/U116-inject-6-out` (so nothing lands in `U116-out-4`), replaces `os.lstat` for the lockfile path alone and calls `check_lock`. The injection script catches nothing, so the process exit status is the check's own and the shell line after each call is its exit line. First, `os.lstat` raises `PermissionError`: the check refuses with the error's text and exits `2` instead of writing `none-written` (the round-5 script printed `none-written` and exited 0 here). Second, it raises `FileNotFoundError`: the check writes and prints `none-written` and returns 0. Third, the positive control, it returns a stat result (the runner file's own): the check prints `WRITTEN` and returns 1. The script, the three commands from `/tmp`, and their outputs in that order:
+In memory, as the ROUND 6 AMENDMENT asks, re-run against the round-7 runner: `/tmp/U116-inject-7-lock.py` (the round-6 script with the runner path and its output directory changed, nothing else) loads `/tmp/U116-run-7.py` above as a module, points its output directory at `/tmp/U116-inject-7-lock-out` (so nothing lands in `U116-out-5`), replaces `os.lstat` for the lockfile path alone and calls `check_lock`. The injection script catches nothing, so the process exit status is the check's own and the shell line after each call is its exit line; the first printed line of each run is the runner's own resolution of mise at module load. First, `os.lstat` raises `PermissionError`: the check refuses with the error's text and exits `2` instead of writing `none-written` (the round-5 script printed `none-written` and exited 0 here). Second, it raises `FileNotFoundError`: the check writes and prints `none-written` and returns 0. Third, the positive control, it returns a stat result (the runner file's own): the check prints `WRITTEN` and returns 1. The script, the three commands from `/tmp`, and their outputs in that order:
 
 ```python
 #!/usr/bin/env python3
 # In-memory injection into the corrected runner's none-written check (the
-# ROUND 6 AMENDMENT). Loads /tmp/U116-run-6.py as a module, points its
+# ROUND 6 AMENDMENT). Loads /tmp/U116-run-7.py as a module, points its
 # output directory at a scratch directory, replaces os.lstat for the
 # lockfile path alone with one that raises the named error (or, for the
 # positive control, returns a stat result), and calls check_lock. No
@@ -326,8 +506,8 @@ import importlib.util
 import os
 import sys
 
-RUNNER = "/tmp/U116-run-6.py"
-OUT = "/tmp/U116-inject-6-out"
+RUNNER = "/tmp/U116-run-7.py"
+OUT = "/tmp/U116-inject-7-lock-out"
 ERRORS = {
     "permission": (PermissionError, 13, "Permission denied"),
     "missing": (FileNotFoundError, 2, "No such file or directory"),
@@ -359,26 +539,29 @@ sys.exit(runner.check_lock())
 ```
 
 ```sh
-python3 -I /tmp/U116-inject-6.py permission; echo "exit=$?"
-python3 -I /tmp/U116-inject-6.py missing; echo "exit=$?"
-python3 -I /tmp/U116-inject-6.py present; echo "exit=$?"
+python3 -I /tmp/U116-inject-7-lock.py permission; echo "exit=$?"
+python3 -I /tmp/U116-inject-7-lock.py missing; echo "exit=$?"
+python3 -I /tmp/U116-inject-7-lock.py present; echo "exit=$?"
 ```
 
 ```text
-injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: permission
-run REFUSED: cannot read /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: [Errno 13] Permission denied: '/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock'
+mise=~/.local/bin/mise (PATH entry 51 of 55)
+injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: permission
+run REFUSED: cannot read /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: [Errno 13] Permission denied: '/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock'
 exit=2
-injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: missing
+mise=~/.local/bin/mise (PATH entry 51 of 55)
+injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: missing
 g-none-written: none-written
 exit=0
-injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: present
+mise=~/.local/bin/mise (PATH entry 51 of 55)
+injected os.lstat for /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: present
 g-none-written: WRITTEN
 exit=1
 ```
 
 ### `mise lock --help`, first eight lines
 
-From `help-lock.txt` of the runner (receipt `start=2026-10-29T12:26:38Z end=2026-10-29T12:26:38Z elapsed=0s exit=0`), the first eight of its 183 lines:
+From `help-lock.txt` of the runner (receipt `start=2026-10-29T13:23:50Z end=2026-10-29T13:23:50Z elapsed=0s exit=0`), the first eight of its 183 lines:
 
 ```text
 Create or refresh lockfile versions, checksums, and download URLs
@@ -403,24 +586,24 @@ mise ERROR Version: 2026.10.19 macos-arm64 (2026-10-24)
 mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information
 ```
 
-The (c) and (d) runs printed the same five lines; their files are `attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt` and `attempt1-cwd-checkout/d-lock-bump-json.txt` under `$TMPDIR/U116-out/`, the round-1 output directory. The `settings get` runs (e) and (f) printed `npm` and `72h` and exited 0. Round 6 did not repeat the attempt: a repeat would open the real `~/.config/mise/config.toml` on purpose, which the brief's SCOPE forbids, so the lesson is applied instead. This block is the one pasted output in this section that does not come from `U116-out-4/`; the document is scanned whole below, so the scan covers it.
+The (c) and (d) runs printed the same five lines; their files are `attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt` and `attempt1-cwd-checkout/d-lock-bump-json.txt` under `$TMPDIR/U116-out/`, the round-1 output directory. The `settings get` runs (e) and (f) printed `npm` and `72h` and exited 0. Round 7 did not repeat the attempt: a repeat would open the real `~/.config/mise/config.toml` on purpose, which the brief's SCOPE forbids, so the lesson is applied instead. This block is the one pasted output in this section that does not come from `U116-out-5/`; the document is scanned whole below, so the scan covers it.
 
 Reading: the error names the real `~/.config/mise/config.toml`, although `HOME` pointed elsewhere. mise walks the parent directories of the cwd for project config files, and `.config/mise/config.toml` is one of the names it looks for, so the real home directory, an ancestor of the checkout, supplied a project config that the scratch trust store does not know (inferred from the path in the error and from the fact that the same command succeeds from a cwd outside the real home). mise refused to load it and did not write to it. Lesson for the next rerun: the cwd of a scratch-HOME mise run must sit outside the real home. The runner above changes to the scratch home before its first call.
 
-### The measured run (round 6), cwd `$TMPDIR/U116-home-4`
+### The measured run (round 7), cwd `$TMPDIR/U116-home-5`
 
 Each run below names its output file and its receipt, both written by the runner above.
 
-(a) `mise --version`, `a-version.txt`, receipt `start=2026-10-29T12:26:37Z end=2026-10-29T12:26:38Z elapsed=0s exit=0`
+(a) `mise --version`, `a-version.txt`, receipt `start=2026-10-29T13:23:49Z end=2026-10-29T13:23:50Z elapsed=0s exit=0`
 
 ```text
 2026.10.19 macos-arm64 (2026-10-24)
 ```
 
-(b) `mise lock --global --dry-run`, `b-lock-dry-run.txt`, receipt `start=2026-10-29T12:26:38Z end=2026-10-29T12:26:42Z elapsed=4s exit=0`
+(b) `mise lock --global --dry-run`, `b-lock-dry-run.txt`, receipt `start=2026-10-29T13:23:50Z end=2026-10-29T13:23:52Z elapsed=2s exit=0`
 
 ```text
-→ Targeting 7 platform(s) for /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: linux-arm64, linux-arm64-musl, linux-x64, linux-x64-musl, macos-arm64, macos-x64, windows-x64
+→ Targeting 7 platform(s) for /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: linux-arm64, linux-arm64-musl, linux-x64, linux-x64-musl, macos-arm64, macos-x64, windows-x64
 → Processing 36 tool(s): node@26.12.1, rust@1.99.1, python@3.15.2, age@1.3.2, bun@1.4.4, chezmoi@2.73.3, dotenvx@2.38.2, cargo:eza@0.23.5, fd@10.5.0, jq@1.8.2, hugo-extended@0.168.0, uv@0.13.5, yazi@26.9.1, aqua:micro-editor/micro@2.0.15, aqua:mikefarah/yq@4.54.1, aqua:watchexec/watchexec@2.8.0, npm:@anthropic-ai/claude-code@2.1.310, npm:@openai/codex@0.164.0, npm:@anthropic-ai/sandbox-runtime@0.0.81, npm:bash-language-server@5.8.1, npm:ccstatusline@2.2.32, npm:ccusage@20.0.37, npm:pyright@1.1.414, npm:fast-cli@6.0.0, npm:prettier@3.9.10, npm:pnpm@12.8.1, github:x-motemen/ghq@1.11.2, github:d-kuro/gwq@0.1.2, github:cli/cli@2.103.2, github:ogulcancelik/herdr@0.9.5, cargo:pueue@4.0.4, http:bats@1.14.0, http:gcloud@590.0.0, http:shellcheck@0.11.0, http:shfmt@3.14.1, http:ruff@0.17.2
 → Dry run - would update:
   ✓ node@26.12.1 for linux-arm64
@@ -683,10 +866,10 @@ Each run below names its output file and its receipt, both written by the runner
   ✓ http:ruff@0.17.2 for windows-x64
 ```
 
-(c) `mise lock --global --dry-run --platform linux-x64,linux-arm64,macos-x64,macos-arm64`, `c-lock-dry-run-4-platforms.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(c) `mise lock --global --dry-run --platform linux-x64,linux-arm64,macos-x64,macos-arm64`, `c-lock-dry-run-4-platforms.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
-→ Targeting 4 platform(s) for /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock: linux-arm64, linux-x64, macos-arm64, macos-x64
+→ Targeting 4 platform(s) for /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock: linux-arm64, linux-x64, macos-arm64, macos-x64
 → Processing 36 tool(s): node@26.12.1, rust@1.99.1, python@3.15.2, age@1.3.2, bun@1.4.4, chezmoi@2.73.3, dotenvx@2.38.2, cargo:eza@0.23.5, fd@10.5.0, jq@1.8.2, hugo-extended@0.168.0, uv@0.13.5, yazi@26.9.1, aqua:micro-editor/micro@2.0.15, aqua:mikefarah/yq@4.54.1, aqua:watchexec/watchexec@2.8.0, npm:@anthropic-ai/claude-code@2.1.310, npm:@openai/codex@0.164.0, npm:@anthropic-ai/sandbox-runtime@0.0.81, npm:bash-language-server@5.8.1, npm:ccstatusline@2.2.32, npm:ccusage@20.0.37, npm:pyright@1.1.414, npm:fast-cli@6.0.0, npm:prettier@3.9.10, npm:pnpm@12.8.1, github:x-motemen/ghq@1.11.2, github:d-kuro/gwq@0.1.2, github:cli/cli@2.103.2, github:ogulcancelik/herdr@0.9.5, cargo:pueue@4.0.4, http:bats@1.14.0, http:gcloud@590.0.0, http:shellcheck@0.11.0, http:shfmt@3.14.1, http:ruff@0.17.2
 → Dry run - would update:
   ✓ node@26.12.1 for linux-arm64
@@ -840,14 +1023,14 @@ Each run below names its output file and its receipt, both written by the runner
   ✓ http:ruff@0.17.2 for macos-x64
 ```
 
-(d) `mise lock --global --dry-run --bump --json`, `d-lock-bump-json.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(d) `mise lock --global --dry-run --bump --json`, `d-lock-bump-json.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
 [
   {
     "name": "node",
     "backend": "core:node",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "26.12.1"
@@ -856,7 +1039,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "rust",
     "backend": "core:rust",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.99.1"
@@ -865,7 +1048,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "python",
     "backend": "core:python",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "3.15.2"
@@ -874,7 +1057,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "age",
     "backend": "aqua:FiloSottile/age",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.3.2"
@@ -883,7 +1066,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "bun",
     "backend": "core:bun",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.4.4"
@@ -892,7 +1075,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "chezmoi",
     "backend": "aqua:twpayne/chezmoi",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.73.3"
@@ -901,7 +1084,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "dotenvx",
     "backend": "aqua:dotenvx/dotenvx",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.38.2"
@@ -910,7 +1093,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "cargo:eza",
     "backend": "cargo:eza",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.23.5"
@@ -919,7 +1102,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "fd",
     "backend": "aqua:sharkdp/fd",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "10.5.0"
@@ -928,7 +1111,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "jq",
     "backend": "aqua:jqlang/jq",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.8.2"
@@ -937,7 +1120,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "hugo-extended",
     "backend": "aqua:gohugoio/hugo/hugo-extended",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.168.0"
@@ -946,7 +1129,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "uv",
     "backend": "aqua:astral-sh/uv",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.13.5"
@@ -955,7 +1138,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "yazi",
     "backend": "aqua:sxyazi/yazi",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "26.9.1"
@@ -964,7 +1147,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "aqua:micro-editor/micro",
     "backend": "aqua:micro-editor/micro",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.0.15"
@@ -973,7 +1156,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "aqua:mikefarah/yq",
     "backend": "aqua:mikefarah/yq",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "4.54.1"
@@ -982,7 +1165,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "aqua:watchexec/watchexec",
     "backend": "aqua:watchexec/watchexec",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.8.0"
@@ -991,7 +1174,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:@anthropic-ai/claude-code",
     "backend": "npm:@anthropic-ai/claude-code",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.1.310"
@@ -1000,7 +1183,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:@openai/codex",
     "backend": "npm:@openai/codex",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.164.0"
@@ -1009,7 +1192,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:@anthropic-ai/sandbox-runtime",
     "backend": "npm:@anthropic-ai/sandbox-runtime",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.0.81"
@@ -1018,7 +1201,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:bash-language-server",
     "backend": "npm:bash-language-server",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "5.8.1"
@@ -1027,7 +1210,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:ccstatusline",
     "backend": "npm:ccstatusline",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.2.32"
@@ -1036,7 +1219,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:ccusage",
     "backend": "npm:ccusage",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "20.0.37"
@@ -1045,7 +1228,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:pyright",
     "backend": "npm:pyright",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.1.414"
@@ -1054,7 +1237,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:fast-cli",
     "backend": "npm:fast-cli",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "6.0.0"
@@ -1063,7 +1246,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:prettier",
     "backend": "npm:prettier",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "3.9.10"
@@ -1072,7 +1255,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "npm:pnpm",
     "backend": "npm:pnpm",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "12.8.1"
@@ -1081,7 +1264,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "github:x-motemen/ghq",
     "backend": "github:x-motemen/ghq",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.11.2"
@@ -1090,7 +1273,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "github:d-kuro/gwq",
     "backend": "github:d-kuro/gwq",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.1.2"
@@ -1099,7 +1282,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "github:cli/cli",
     "backend": "github:cli/cli",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "2.103.2"
@@ -1108,7 +1291,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "github:ogulcancelik/herdr",
     "backend": "github:ogulcancelik/herdr",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.9.5"
@@ -1117,7 +1300,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "cargo:pueue",
     "backend": "cargo:pueue",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "4.0.4"
@@ -1126,7 +1309,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "http:bats",
     "backend": "http:bats",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "1.14.0"
@@ -1135,7 +1318,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "http:gcloud",
     "backend": "http:gcloud",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "590.0.0"
@@ -1144,7 +1327,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "http:shellcheck",
     "backend": "http:shellcheck",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.11.0"
@@ -1153,7 +1336,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "http:shfmt",
     "backend": "http:shfmt",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "3.14.1"
@@ -1162,7 +1345,7 @@ Each run below names its output file and its receipt, both written by the runner
   {
     "name": "http:ruff",
     "backend": "http:ruff",
-    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-4/.config/mise/mise.lock",
+    "lockfile": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-5/.config/mise/mise.lock",
     "old_versions": [],
     "new_versions": [
       "0.17.2"
@@ -1171,28 +1354,28 @@ Each run below names its output file and its receipt, both written by the runner
 ]
 ```
 
-(e) `mise settings get npm.package_manager`, `e-npm-package-manager.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(e) `mise settings get npm.package_manager`, `e-npm-package-manager.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
 npm
 ```
 
-(f) `mise settings get minimum_release_age`, `f-minimum-release-age.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(f) `mise settings get minimum_release_age`, `f-minimum-release-age.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
 72h
 ```
 
-(g) `/bin/ls -la "$TMPDIR/U116-home-4/.config/mise"` after all runs, `g-scratch-after.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(g) `/bin/ls -la "$TMPDIR/U116-home-5/.config/mise"` after all runs, `g-scratch-after.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
 total 16
-drwxr-xr-x@ 3 <user>  staff    96 Oct 29 21:26 .
-drwxr-xr-x@ 3 <user>  staff    96 Oct 29 21:26 ..
--rw-r--r--@ 1 <user>  staff  6962 Oct 29 21:26 config.toml
+drwxr-xr-x@ 3 <user>  staff    96 Oct 29 22:23 .
+drwxr-xr-x@ 3 <user>  staff    96 Oct 29 22:23 ..
+-rw-r--r--@ 1 <user>  staff  6962 Oct 29 22:23 config.toml
 ```
 
-(g) `/bin/ls -la ~/.config/mise` after all runs, `g-real-after.txt`, receipt `start=2026-10-29T12:26:42Z end=2026-10-29T12:26:42Z elapsed=0s exit=0`
+(g) `/bin/ls -la ~/.config/mise` after all runs, `g-real-after.txt`, receipt `start=2026-10-29T13:23:52Z end=2026-10-29T13:23:52Z elapsed=0s exit=0`
 
 ```text
 total 16
@@ -1203,7 +1386,7 @@ drwxr-xr-x  24 <user>  staff   768 Oct 16 17:44 ..
 
 ### Further checks
 
-`g-none-written.txt`, written by the runner's `check_lock` after its last call from an in-process `os.lstat` of `$TMPDIR/U116-home-4/.config/mise/mise.lock`, `FileNotFoundError` the only absence (the injections above show the other two outcomes):
+`g-none-written.txt`, written by the runner's `check_lock` after its last call from an in-process `os.lstat` of `$TMPDIR/U116-home-5/.config/mise/mise.lock`, `FileNotFoundError` the only absence (the second set of injections above shows the other two outcomes):
 
 ```text
 none-written
@@ -1212,14 +1395,14 @@ none-written
 The brief's ACCEPTANCE 6 test, run after the runner:
 
 ```sh
-test ! -e "$TMPDIR/U116-home-4/.config/mise/mise.lock" && echo none-written
+test ! -e "$TMPDIR/U116-home-5/.config/mise/mise.lock" && echo none-written
 ```
 
 ```text
 none-written
 ```
 
-The before and after listings of the real `~/.config/mise` both come from `/bin/ls -la` (the before one from the bash of the preparation, the after one from the runner) and are byte for byte equal: `cmp "$TMPDIR/U116-out-4/real-before.txt" "$TMPDIR/U116-out-4/g-real-after.txt"; echo "exit=$?"`
+The before and after listings of the real `~/.config/mise` both come from `/bin/ls -la` (the before one from the preparation script, the after one from the runner) and are byte for byte equal: `cmp "$TMPDIR/U116-out-5/real-before.txt" "$TMPDIR/U116-out-5/g-real-after.txt"; echo "exit=$?"`
 
 ```text
 exit=0
@@ -1243,16 +1426,16 @@ missing ~/.cache/mise
 2026-10-29T18:57:42 ~/Library/Caches/mise
 ```
 
-Redaction and credential scan, round 6 (standing orders 21 and 22; the ROUND 4, ROUND 5 and ROUND 6 amendments of the brief of 2026-10-29). The script is the round-5 one with its file set pointed at the round-6 outputs (`DIRS` is the single directory `U116-out-4`; `EXPECTED_FILES` stays 23, the `.txt` files the preparation and the runner wrote, listed in the clean run below: 9 outputs, 9 receipts, the before listing, the none-written file, the two mtime files and the scratch tree) and its two error-swallowing calls replaced as the ROUND 6 AMENDMENT asks: `entry.is_file(follow_symlinks=False)` at line 1200 of the file at `188312bf` (a `DirEntry` method that catches `FileNotFoundError` itself) is now `os.lstat` plus `stat.S_ISREG`, a `.txt` that is not a regular file being a refusal, and `os.environ.get("TMPDIR")` at line 1222 is now an index with `KeyError` a refusal. Everything else stands from round 4: one `python3 -I` script, `/tmp/U116-scan.py`, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only external command is `gh auth token`, with its exit status, output and timeout read; two pattern classes, the token and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt`, read in-process, with the path and the pattern count printed and zero patterns a refusal; two file sets, the 23 `.txt` files for the token (no run needed `MISE_GITHUB_TOKEN`, so none was set) and the two documents that cite this scan, this file as committed (the worktree copy, which is the committed bytes once ACCEPTANCE 1 shows the tree clean) and the PR body `/tmp/dotfiles-wt/U116-pr-body.md`, for both classes. The raw outputs are not scanned for the redact words: the three `ls -la` listings hold the login name in the owner column, which the substitution named at the top of this section replaces on paste; the positive control after the injected failures shows what the class finds there. The script prints one line per file with the count of each class applied to it, and `scan clean (25 files, 0 matches)` only when every count is 0; a `.txt` count other than 23, an empty pattern list or any exception is exit `2` before any clean line. Neither the script nor its invocation holds a process substitution, a command substitution or a pipeline. The script, then its output:
+Redaction and credential scan, round 7 (standing orders 21 and 22; the ROUND 4 to ROUND 7 amendments of the brief of 2026-10-29). The script is the round-6 one with its file set pointed at the round-7 outputs (`DIRS` is the single directory `U116-out-5`; `EXPECTED_FILES` stays 23, the `.txt` files the preparation and the runner wrote, listed in the clean run below: 9 outputs, 9 receipts, the before listing, the none-written file, the two mtime files and the scratch tree; the injection runs above write under `/tmp` and are not in this set) and its comments; nothing else changed. Everything else stands from rounds 4 to 6: one `python3 -I` script, `/tmp/U116-scan.py`, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only external command is `gh auth token`, with its exit status, output and timeout read; two pattern classes, the token and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt`, read in-process, with the path and the pattern count printed and zero patterns a refusal; two file sets, the 23 `.txt` files for the token (no run needed `MISE_GITHUB_TOKEN`, so none was set) and the two documents that cite this scan, this file as committed (the worktree copy, which is the committed bytes once ACCEPTANCE 1 shows the tree clean) and the PR body `/tmp/dotfiles-wt/U116-pr-body.md`, for both classes. The raw outputs are not scanned for the redact words: the three `ls -la` listings hold the login name in the owner column, which the substitution named at the top of this section replaces on paste; the positive control after the injected failures shows what the class finds there. The script prints one line per file with the count of each class applied to it, and `scan clean (25 files, 0 matches)` only when every count is 0; a `.txt` count other than 23, an empty pattern list or any exception is exit `2` before any clean line. Neither the script nor its invocation holds a process substitution, a command substitution, a pipeline or a wrapper process. The script, then its output:
 
 ```python
 #!/usr/bin/env python3
-# Fail-closed redaction and credential scan, round 6 (standing orders 21
+# Fail-closed redaction and credential scan, round 7 (standing orders 21
 # and 22; brief amendments of 2026-10-29). One process whose only external
 # command is `gh auth token`, with its exit status, output and timeout
 # read. Two pattern classes: the token, and every non-comment, non-empty
 # line of the coordinator's redact list, read in-process. Two file sets:
-# the 23 .txt outputs of the round-6 dry runs (token class), and the two
+# the 23 .txt outputs of the round-7 dry runs (token class), and the two
 # documents that cite this scan (both classes). Any exception, an empty
 # pattern list or a .txt count other than the stated one is exit 2 before
 # a clean line can print. Every file question is asked of os.lstat or
@@ -1263,13 +1446,13 @@ import stat
 import subprocess
 import sys
 
-# The .txt files the round-6 preparation and runner wrote under
-# U116-out-4: 9 outputs, 9 receipts, the before listing, the none-written
+# The .txt files the round-7 preparation and runner wrote under
+# U116-out-5: 9 outputs, 9 receipts, the before listing, the none-written
 # file, the two mtime files and the scratch tree. A different count means
 # the directory was not walked or the output set changed, so refuse.
 EXPECTED_FILES = 23
 
-DIRS = ("U116-out-4",)
+DIRS = ("U116-out-5",)
 
 # The coordinator's list; the path is printed in this form, never expanded.
 REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
@@ -1389,29 +1572,29 @@ if __name__ == "__main__":
 ```text
 token from gh auth token patterns=1
 redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
-U116-out-4/a-version.receipt.txt token=0
-U116-out-4/a-version.txt token=0
-U116-out-4/b-lock-dry-run.receipt.txt token=0
-U116-out-4/b-lock-dry-run.txt token=0
-U116-out-4/c-lock-dry-run-4-platforms.receipt.txt token=0
-U116-out-4/c-lock-dry-run-4-platforms.txt token=0
-U116-out-4/d-lock-bump-json.receipt.txt token=0
-U116-out-4/d-lock-bump-json.txt token=0
-U116-out-4/e-npm-package-manager.receipt.txt token=0
-U116-out-4/e-npm-package-manager.txt token=0
-U116-out-4/f-minimum-release-age.receipt.txt token=0
-U116-out-4/f-minimum-release-age.txt token=0
-U116-out-4/g-none-written.txt token=0
-U116-out-4/g-real-after.receipt.txt token=0
-U116-out-4/g-real-after.txt token=0
-U116-out-4/g-scratch-after.receipt.txt token=0
-U116-out-4/g-scratch-after.txt token=0
-U116-out-4/help-lock.receipt.txt token=0
-U116-out-4/help-lock.txt token=0
-U116-out-4/real-before.txt token=0
-U116-out-4/real-dirs-mtime-after.txt token=0
-U116-out-4/real-dirs-mtime-before.txt token=0
-U116-out-4/scratch-tree.txt token=0
+U116-out-5/a-version.receipt.txt token=0
+U116-out-5/a-version.txt token=0
+U116-out-5/b-lock-dry-run.receipt.txt token=0
+U116-out-5/b-lock-dry-run.txt token=0
+U116-out-5/c-lock-dry-run-4-platforms.receipt.txt token=0
+U116-out-5/c-lock-dry-run-4-platforms.txt token=0
+U116-out-5/d-lock-bump-json.receipt.txt token=0
+U116-out-5/d-lock-bump-json.txt token=0
+U116-out-5/e-npm-package-manager.receipt.txt token=0
+U116-out-5/e-npm-package-manager.txt token=0
+U116-out-5/f-minimum-release-age.receipt.txt token=0
+U116-out-5/f-minimum-release-age.txt token=0
+U116-out-5/g-none-written.txt token=0
+U116-out-5/g-real-after.receipt.txt token=0
+U116-out-5/g-real-after.txt token=0
+U116-out-5/g-scratch-after.receipt.txt token=0
+U116-out-5/g-scratch-after.txt token=0
+U116-out-5/help-lock.receipt.txt token=0
+U116-out-5/help-lock.txt token=0
+U116-out-5/real-before.txt token=0
+U116-out-5/real-dirs-mtime-after.txt token=0
+U116-out-5/real-dirs-mtime-before.txt token=0
+U116-out-5/scratch-tree.txt token=0
 /tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md token=0 redact=0
 /tmp/dotfiles-wt/U116-pr-body.md token=0 redact=0
 scan clean (25 files, 0 matches)
@@ -1454,12 +1637,12 @@ scan REFUSED: redact list /tmp/U116-redact-comment-only.txt holds no pattern
 exit=2
 ```
 
-Fourth, the output directory renamed away and renamed back: `mv "$TMPDIR/U116-out-4" "$TMPDIR/U116-out-4.away" && python3 -I /tmp/U116-scan.py; echo "exit=$?"; mv "$TMPDIR/U116-out-4.away" "$TMPDIR/U116-out-4"; ls -d "$TMPDIR/U116-out-4" > /dev/null && echo "restored"`. `os.scandir` raises:
+Fourth, the output directory renamed away and renamed back: `mv "$TMPDIR/U116-out-5" "$TMPDIR/U116-out-5.away" && python3 -I /tmp/U116-scan.py; echo "exit=$?"; mv "$TMPDIR/U116-out-5.away" "$TMPDIR/U116-out-5"; ls -d "$TMPDIR/U116-out-5" > /dev/null && echo "restored"`. `os.scandir` raises:
 
 ```text
 token from gh auth token patterns=1
 redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
-scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: 'U116-out-4'
+scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: 'U116-out-5'
 exit=2
 restored
 ```
@@ -1486,53 +1669,69 @@ Positive control, not a failure injection but proof that the redact class matche
 >         total += count_matches(path, [token_class, redact_class])
 token from gh auth token patterns=1
 redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
-U116-out-4/a-version.receipt.txt token=0 redact=0
-U116-out-4/a-version.txt token=0 redact=0
-U116-out-4/b-lock-dry-run.receipt.txt token=0 redact=0
-U116-out-4/b-lock-dry-run.txt token=0 redact=0
-U116-out-4/c-lock-dry-run-4-platforms.receipt.txt token=0 redact=0
-U116-out-4/c-lock-dry-run-4-platforms.txt token=0 redact=0
-U116-out-4/d-lock-bump-json.receipt.txt token=0 redact=0
-U116-out-4/d-lock-bump-json.txt token=0 redact=0
-U116-out-4/e-npm-package-manager.receipt.txt token=0 redact=0
-U116-out-4/e-npm-package-manager.txt token=0 redact=0
-U116-out-4/f-minimum-release-age.receipt.txt token=0 redact=0
-U116-out-4/f-minimum-release-age.txt token=0 redact=0
-U116-out-4/g-none-written.txt token=0 redact=0
-U116-out-4/g-real-after.receipt.txt token=0 redact=0
-U116-out-4/g-real-after.txt token=0 redact=3
-U116-out-4/g-scratch-after.receipt.txt token=0 redact=0
-U116-out-4/g-scratch-after.txt token=0 redact=3
-U116-out-4/help-lock.receipt.txt token=0 redact=0
-U116-out-4/help-lock.txt token=0 redact=0
-U116-out-4/real-before.txt token=0 redact=3
-U116-out-4/real-dirs-mtime-after.txt token=0 redact=0
-U116-out-4/real-dirs-mtime-before.txt token=0 redact=0
-U116-out-4/scratch-tree.txt token=0 redact=0
+U116-out-5/a-version.receipt.txt token=0 redact=0
+U116-out-5/a-version.txt token=0 redact=0
+U116-out-5/b-lock-dry-run.receipt.txt token=0 redact=0
+U116-out-5/b-lock-dry-run.txt token=0 redact=0
+U116-out-5/c-lock-dry-run-4-platforms.receipt.txt token=0 redact=0
+U116-out-5/c-lock-dry-run-4-platforms.txt token=0 redact=0
+U116-out-5/d-lock-bump-json.receipt.txt token=0 redact=0
+U116-out-5/d-lock-bump-json.txt token=0 redact=0
+U116-out-5/e-npm-package-manager.receipt.txt token=0 redact=0
+U116-out-5/e-npm-package-manager.txt token=0 redact=0
+U116-out-5/f-minimum-release-age.receipt.txt token=0 redact=0
+U116-out-5/f-minimum-release-age.txt token=0 redact=0
+U116-out-5/g-none-written.txt token=0 redact=0
+U116-out-5/g-real-after.receipt.txt token=0 redact=0
+U116-out-5/g-real-after.txt token=0 redact=3
+U116-out-5/g-scratch-after.receipt.txt token=0 redact=0
+U116-out-5/g-scratch-after.txt token=0 redact=3
+U116-out-5/help-lock.receipt.txt token=0 redact=0
+U116-out-5/help-lock.txt token=0 redact=0
+U116-out-5/real-before.txt token=0 redact=3
+U116-out-5/real-dirs-mtime-after.txt token=0 redact=0
+U116-out-5/real-dirs-mtime-before.txt token=0 redact=0
+U116-out-5/scratch-tree.txt token=0 redact=0
 /tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md token=0 redact=0
 /tmp/dotfiles-wt/U116-pr-body.md token=0 redact=0
 scan FOUND (25 files, 9 matches)
 exit=1
 ```
 
-No-producer and no-swallow check (the ROUND 5 AMENDMENT, extended by the ROUND 6 AMENDMENT): one file, `/tmp/U116-forms.py`, run as `python3 -I /tmp/U116-forms.py; echo "exit=$?"` from the worktree, reads this file and the PR body in-process and counts two classes of line per document. Inside fenced `sh` or `bash` blocks: lines that hold a dollar-paren command substitution, a process substitution or a pipe character. Inside fenced `python` blocks: lines that call one of the names the amendment lists (`os.path.exists`, `os.path.lexists`, `os.path.isfile`, `os.path.isdir`, `os.path.islink`, `os.path.ismount`, `os.access`, `shutil.which`, any `.exists(`, `.is_file(`, `.is_dir(` or `.is_symlink(` method, which covers `pathlib.Path` and `os.DirEntry`, and any `.get(` lookup, which covers a dictionary default on a required key) and lines that open an `except` clause other than the one-line `except FileNotFoundError:` whose body holds no line beginning `refuse(` or `raise`. A fence of three or more backticks opens a block and a bare fence at least as long closes it, so the four-backtick fence around this script counts as a `python` block too. It prints the block counts and the two line counts per document; exit 0 when every line count is 0, exit 1 when any is not, exit 2 on any exception or a document that ends inside a fence. The PR body's fenced blocks are all `text`, so its block counts are 0. Run against the round-5 file as committed at `188312bf`, the second count is 7 (the four runner lines named above, the two scan lines named above, and the check's own `except Exception` whose body printed and exited without a refusal). The script, then its output:
+No-producer, no-swallow and no-wrapper check (the ROUND 5 AMENDMENT, extended by the ROUND 6 and ROUND 7 amendments): one file, `/tmp/U116-forms.py`, run as `python3 -I /tmp/U116-forms.py; echo "exit=$?"` from the worktree, reads this file and the PR body in-process and counts three classes of line per document. Inside fenced `sh` or `bash` blocks: lines that hold a dollar-paren command substitution, a process substitution or a pipe character. Inside fenced `python` blocks: lines that call one of the names the ROUND 6 AMENDMENT lists (`os.path.exists`, `os.path.lexists`, `os.path.isfile`, `os.path.isdir`, `os.path.islink`, `os.path.ismount`, `os.access`, `shutil.which`, any `.exists(`, `.is_file(`, `.is_dir(` or `.is_symlink(` method, which covers `pathlib.Path` and `os.DirEntry`, and any `.get(` lookup, which covers a dictionary default on a required key) and lines that open an `except` clause other than the one-line `except FileNotFoundError:` whose body holds no line beginning `refuse(` or `raise`. Inside both kinds of block, the third count of the ROUND 7 AMENDMENT: lines whose word in command position is a wrapper process, `perl`, `timeout`, `xargs`, `nohup`, `nice` or `setsid` by its basename, or `env` followed by `-i`, or `bash` or `sh` followed by `-c`. For a shell line, read with `shlex`, command position is the first word of each simple command (after `;`, `&&`, `||`, `&` or the pipe character; leading `NAME=value` words skipped; a redirection operator and the word after it are not command words). For a Python block, read with `tokenize`, it is the first string element of a list literal (a subscript is told apart by the token before the bracket) or the first word of a string handed to `subprocess.run`; the string elements after it are read too, an f-string as its source text, so `env -i` counts with its flag, and behind `env` the next command word, its options and `NAME=value` words skipped, is tested again and counted on its own line. A list whose first element is a name rather than a string, such as the runner's `[MISE, *args]`, has no literal to test; `MISE` is what `resolve_mise` returned. A fence of three or more backticks opens a block and a bare fence at least as long closes it, so the four-backtick fences around this script and around its positive control's script (both hold triple backticks in their text) count as `python` blocks too. It prints the block counts and the three line counts per document; exit 0 when every line count is 0, exit 1 when any is not, exit 2 on any exception (a block `shlex` or `tokenize` cannot read included) or a document that ends inside a fence. The PR body's fenced blocks are all `text`, so its block counts are 0. Run against the round-6 file as committed at `a3efa54a`, the third count is 2, the lines named under The runner above (169, `/usr/bin/env` followed by `-i`, and 179, `perl` behind them); the positive control below pastes that run. The script, then its output:
 
 ````python
 #!/usr/bin/env python3
-# No-producer and no-swallow check (the ROUND 5 and ROUND 6 amendments).
-# Reads the two documents in this process and counts, per document, two
-# classes of line. Inside fenced sh or bash blocks: lines that hold a
-# dollar-paren command substitution, a process substitution or a pipe
-# character. Inside fenced python blocks: lines that call one of the
-# predicates the ROUND 6 AMENDMENT names (an existence or type test that
-# returns False on any error, a lookup with a default; spelled apart
-# below), and lines that open an except clause other than the narrow
-# FileNotFoundError one whose body neither refuses nor raises. Prints the
-# block counts and the line counts per document; exit 0 when every line
-# count is 0, exit 1 when any is not, exit 2 on any exception or on a
-# document that ends inside a fence, before a result line for that
-# document.
+# No-producer, no-swallow and no-wrapper check (the ROUND 5, ROUND 6 and
+# ROUND 7 amendments). Reads the two documents in this process and
+# counts, per document, three classes of line. Inside fenced sh or bash
+# blocks: lines that hold a dollar-paren command substitution, a process
+# substitution or a pipe character. Inside fenced python blocks: lines
+# that call one of the predicates the ROUND 6 AMENDMENT names (an
+# existence or type test that returns False on any error, a lookup with a
+# default; spelled apart below), and lines that open an except clause
+# other than the narrow FileNotFoundError one whose body neither refuses
+# nor raises. Inside both kinds of block: lines whose word in command
+# position is a wrapper process of the ROUND 7 list. In a shell line,
+# read with shlex, command position is the first word of each simple
+# command (after `;`, `&&`, `||`, `&` or the pipe character; leading
+# NAME=value words skipped). In a Python block, read with tokenize, it is
+# the first string element of a list literal or the first word of a
+# string handed to subprocess.run; the string elements after it are read
+# too, so env -i, bash -c and sh -c count with their flag, and behind env
+# the next command word (its options and NAME=value words skipped) is
+# tested again and counted on its own line. Prints the block counts and
+# the three line counts per document; exit 0 when every line count is 0,
+# exit 1 when any is not, exit 2 on any exception (a block that shlex or
+# tokenize cannot read included) or on a document that ends inside a
+# fence, before a result line for that document.
+import ast
+import io
+import keyword
+import os
+import shlex
 import sys
+import tokenize
 
 DOCUMENTS = (
     "/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md",
@@ -1563,6 +1762,14 @@ NAMES = tuple(
 )
 NARROW = "except FileNotFoundError:"
 REFUSALS = ("refuse(", "raise")
+# The wrapper words of the ROUND 7 AMENDMENT, matched against the basename
+# of the word in command position; env, bash and sh count when the word
+# after them is the listed flag. Spelled apart like MARKS above.
+WRAPPERS = tuple("".join(parts) for parts in (("pe", "rl"), ("time", "out"), ("xa", "rgs"), ("no", "hup"), ("ni", "ce"), ("set", "sid")))
+FLAGGED = {"env": "-i", "ba" + "sh": "-c", "sh": "-c"}
+SHELL_BREAKS = (";", "&&", "||", "&", chr(124))
+QUIET = (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT)
+RUN_CALL = ["subprocess", ".", "run", "("]
 
 
 def refuse(message):
@@ -1603,12 +1810,125 @@ def swallows(block, index):
     return True
 
 
+def is_assignment(word):
+    return "=" in word and word.split("=")[0].isidentifier()
+
+
+def wrapper_indices(words, start=0):
+    # Indices into words of every wrapper in command position: the first
+    # word behind the NAME=value words (its basename against the list, or
+    # env, bash or sh with its flag next), and behind env, its options and
+    # NAME=value words skipped, the next command word again.
+    index = start
+    while index < len(words) and is_assignment(words[index]):
+        index += 1
+    if index >= len(words):
+        return []
+    head = os.path.basename(words[index])
+    flagged = head in FLAGGED and index + 1 < len(words) and words[index + 1] == FLAGGED[head]
+    found = [index] if head in WRAPPERS or flagged else []
+    if head == "env":
+        index += 1
+        while index < len(words) and words[index].startswith("-"):
+            index += 1
+        found += wrapper_indices(words, index)
+    return found
+
+
+def shell_wrapper_lines(block):
+    # Lines of a shell block holding a simple command whose word in
+    # command position is a wrapper. A redirection operator and the word
+    # after it are not command words.
+    found = 0
+    for text in block:
+        lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        commands = [[]]
+        skip = False
+        for token in lexer:
+            if token in SHELL_BREAKS or token in ("(", ")"):
+                commands.append([])
+                skip = False
+            elif all(char in "<>&" for char in token):
+                skip = True
+            elif skip:
+                skip = False
+            else:
+                commands[-1].append(token)
+        if any(wrapper_indices(words) for words in commands):
+            found += 1
+    return found
+
+
+def string_elements(tokens, index):
+    # The run of string elements that starts at tokens[index] and
+    # continues over commas: (text, line) pairs, an f-string read as its
+    # source text, a bytes literal decoded. Stops at the first other token.
+    elements = []
+    position = index
+    while position < len(tokens):
+        current = tokens[position]
+        if current.type == tokenize.STRING:
+            value = ast.literal_eval(current.string)
+            elements.append((value.decode() if isinstance(value, bytes) else value, current.start[0]))
+            position += 1
+        elif current.type == tokenize.FSTRING_START:
+            start = position
+            while tokens[position].type != tokenize.FSTRING_END:
+                position += 1
+            elements.append(("".join(piece.string for piece in tokens[start + 1 : position]), current.start[0]))
+            position += 1
+        else:
+            break
+        if position < len(tokens) and tokens[position].string == ",":
+            position += 1
+        else:
+            break
+    return elements
+
+
+def opens_list(tokens, index):
+    # True when tokens[index] is a `[` that opens a list literal rather
+    # than a subscript: the token before it is not a name (keywords
+    # aside), a closing bracket or a string.
+    if tokens[index].string != "[":
+        return False
+    if index == 0:
+        return True
+    earlier = tokens[index - 1]
+    if earlier.type in (tokenize.STRING, tokenize.FSTRING_END) or earlier.string in (")", "]"):
+        return False
+    return not (earlier.type == tokenize.NAME and not keyword.iskeyword(earlier.string))
+
+
+def python_wrapper_lines(block):
+    # Lines of a Python block holding a wrapper in command position: in a
+    # list literal whose first element is a string, or in the string
+    # handed to subprocess.run.
+    source = "\n".join(block) + "\n"
+    tokens = [token for token in tokenize.generate_tokens(io.StringIO(source).readline) if token.type not in QUIET]
+    lines = set()
+    for index, token in enumerate(tokens):
+        if index == 0 or token.type not in (tokenize.STRING, tokenize.FSTRING_START):
+            continue
+        if opens_list(tokens, index - 1):
+            elements = string_elements(tokens, index)
+            words = [text for text, line in elements]
+            for found in wrapper_indices(words):
+                lines.add(elements[found][1])
+        elif [item.string for item in tokens[max(0, index - 4) : index]] == RUN_CALL:
+            elements = string_elements(tokens, index)
+            if elements and wrapper_indices(shlex.split(elements[0][0])):
+                lines.add(elements[0][1])
+    return len(lines)
+
+
 def count(path):
     with open(path, encoding="utf-8") as handle:
         lines = handle.read().split("\n")
     state = None  # None outside a fence; else (kind, fence length)
     block = []
-    shell_blocks = python_blocks = producer = swallow = 0
+    shell_blocks = python_blocks = producer = swallow = wrapper = 0
     for text in lines:
         fence = fence_of(text)
         if state is None:
@@ -1624,16 +1944,18 @@ def count(path):
         if fence is not None and fence[1] == "" and fence[0] >= length:
             if kind == "shell":
                 producer += sum(1 for line in block if any(mark in line for mark in MARKS))
+                wrapper += shell_wrapper_lines(block)
             if kind == "python":
                 swallow += sum(1 for line in block if any(name in line for name in NAMES))
                 swallow += sum(1 for index in range(len(block)) if swallows(block, index))
+                wrapper += python_wrapper_lines(block)
             state = None
             continue
         block.append(text)
     if state is not None:
         raise ValueError(f"{path} ends inside a fenced block")
-    print(f"{path} shell-blocks={shell_blocks} producer-lines={producer} python-blocks={python_blocks} swallow-lines={swallow}")
-    return producer + swallow
+    print(f"{path} shell-blocks={shell_blocks} producer-lines={producer} python-blocks={python_blocks} swallow-lines={swallow} wrapper-lines={wrapper}")
+    return producer + swallow + wrapper
 
 
 def main():
@@ -1649,108 +1971,186 @@ if __name__ == "__main__":
 ````
 
 ```text
-/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md shell-blocks=4 producer-lines=0 python-blocks=4 swallow-lines=0
-/tmp/dotfiles-wt/U116-pr-body.md shell-blocks=0 producer-lines=0 python-blocks=0 swallow-lines=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md shell-blocks=6 producer-lines=0 python-blocks=7 swallow-lines=0 wrapper-lines=0
+/tmp/dotfiles-wt/U116-pr-body.md shell-blocks=0 producer-lines=0 python-blocks=0 swallow-lines=0 wrapper-lines=0
 exit=0
 ```
 
-Its positive control: `python3 -I /tmp/U116-forms-inject-6.py` writes `/tmp/U116-forms-control.md`, a copy of this file with one pipeline line (`true`, a pipe, `true`) inserted after its first `sh` fence and one line calling the second name of the list above on the lockfile path inserted after its first `python` fence, and a copy of the check pointed at that file by `sed 's|^    "/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md",|    "/tmp/U116-forms-control.md",|' /tmp/U116-forms.py > /tmp/U116-forms-control.py` runs over it; the `diff` outputs show the two inserted lines and the one changed path, then the check counts one line of each class and exits `1`:
+Its positive control: `/tmp/U116-forms-inject-7.py` writes `/tmp/U116-forms-control.md`, a copy of this file with two lines inserted after its first `sh` fence (a pipeline, `true`, a pipe, `true`; and `timeout 5 true`) and two after its first `python` fence (a call of the second name of the ROUND 6 list on the lockfile path; and a `subprocess.run` list whose first element is `perl`, with the round-6 arguments behind it), writes `/tmp/U116-forms-r6.md`, the round-6 file as committed at `a3efa54a`, from one `subprocess.run` of `git show` whose status it reads, and writes `/tmp/U116-forms-control.py`, the check with its two document paths replaced in-process by those two files; it prints what it inserted and replaced. The check over those two files then counts, in the injected copy, one producer line, one swallow line and two wrapper lines, and in the round-6 file as committed, no producer line, no swallow line and the two wrapper lines of its runner, and exits `1`. The injection script, the two commands from the worktree, and their outputs:
+
+````python
+#!/usr/bin/env python3
+# Positive control for the no-producer, no-swallow and no-wrapper check.
+# Writes three files. /tmp/U116-forms-control.md is a copy of the
+# evaluation file with two lines inserted after its first sh fence (a
+# pipeline, and a timeout-wrapped command) and two after its first python
+# fence (an error-swallowing predicate call, and a subprocess.run list
+# whose first element is perl). /tmp/U116-forms-r6.md is the round-6 file
+# as committed at a3efa54a, written from one subprocess.run of git show
+# with its status read, the file whose wrapper lines the ROUND 7
+# AMENDMENT names. /tmp/U116-forms-control.py is the check with its two
+# document paths replaced by those two files. Prints what it inserted and
+# replaced. Any failure raises; nothing here is caught. The injected
+# lines are spelled apart below so that this script, pasted into the
+# evaluation file, holds none of the forms the check counts.
+import subprocess
+import sys
+
+WORKTREE = "/tmp/dotfiles-wt/U116"
+RELATIVE = ".orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md"
+SOURCE = f"{WORKTREE}/{RELATIVE}"
+CHECK = "/tmp/U116-forms.py"
+CONTROL_MD = "/tmp/U116-forms-control.md"
+ROUND6_MD = "/tmp/U116-forms-r6.md"
+CONTROL_PY = "/tmp/U116-forms-control.py"
+PR_BODY = "/tmp/dotfiles-wt/U116-pr-body.md"
+PIPE = chr(124)
+WRAPPED = "time" + "out 5 true\n"
+SWALLOW = "if os.path." + "lexists(LOCK):\n"
+PERL = 'subprocess.run(["pe' + 'rl", "-e", "alarm 900; exec @ARGV", "mise", "--version"])\n'
+INJECTED = {
+    "```sh": [f"true {PIPE} true\n", WRAPPED],
+    "```python": [SWALLOW, PERL],
+}
+
+with open(SOURCE, encoding="utf-8") as handle:
+    lines = handle.readlines()
+for fence, inserts in INJECTED.items():
+    for index, line in enumerate(lines):
+        if line.rstrip("\n") == fence:
+            for offset, text in enumerate(inserts, 1):
+                lines.insert(index + offset, text)
+                print(f"{CONTROL_MD}: inserted at line {index + offset + 1}: {text.rstrip()}")
+            break
+    else:
+        raise SystemExit(f"no {fence} fence found")
+with open(CONTROL_MD, "w", encoding="utf-8") as handle:
+    handle.writelines(lines)
+
+with open(ROUND6_MD, "wb") as handle:
+    proc = subprocess.run(
+        ["git", "-C", WORKTREE, "show", f"a3efa54a:{RELATIVE}"],
+        stdout=handle,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=60,
+    )
+if proc.returncode != 0:
+    raise SystemExit(f"git show exited {proc.returncode}: {proc.stderr.decode()}")
+print(f"{ROUND6_MD}: git show a3efa54a:{RELATIVE} exit=0")
+
+with open(CHECK, encoding="utf-8") as handle:
+    check = handle.read()
+for old, new in ((SOURCE, CONTROL_MD), (PR_BODY, ROUND6_MD)):
+    if check.count(f'    "{old}",\n') != 1:
+        raise SystemExit(f"{CHECK} does not name {old} once")
+    check = check.replace(f'    "{old}",\n', f'    "{new}",\n')
+    print(f"{CONTROL_PY}: {old} replaced by {new}")
+with open(CONTROL_PY, "w", encoding="utf-8") as handle:
+    handle.write(check)
+sys.exit(0)
+````
+
+```sh
+python3 -I /tmp/U116-forms-inject-7.py; echo "exit=$?"
+python3 -I /tmp/U116-forms-control.py; echo "exit=$?"
+```
 
 ```text
-19a20
-> true | true
-47a49
-> if os.path.lexists(LOCK):
-18c18
-<     "/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md",
----
->     "/tmp/U116-forms-control.md",
-/tmp/U116-forms-control.md shell-blocks=4 producer-lines=1 python-blocks=4 swallow-lines=1
-/tmp/dotfiles-wt/U116-pr-body.md shell-blocks=0 producer-lines=0 python-blocks=0 swallow-lines=0
+/tmp/U116-forms-control.md: inserted at line 91: true | true
+/tmp/U116-forms-control.md: inserted at line 92: timeout 5 true
+/tmp/U116-forms-control.md: inserted at line 20: if os.path.lexists(LOCK):
+/tmp/U116-forms-control.md: inserted at line 21: subprocess.run(["perl", "-e", "alarm 900; exec @ARGV", "mise", "--version"])
+/tmp/U116-forms-r6.md: git show a3efa54a:.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md exit=0
+/tmp/U116-forms-control.py: /tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md replaced by /tmp/U116-forms-control.md
+/tmp/U116-forms-control.py: /tmp/dotfiles-wt/U116-pr-body.md replaced by /tmp/U116-forms-r6.md
+exit=0
+/tmp/U116-forms-control.md shell-blocks=6 producer-lines=1 python-blocks=7 swallow-lines=1 wrapper-lines=2
+/tmp/U116-forms-r6.md shell-blocks=4 producer-lines=0 python-blocks=4 swallow-lines=0 wrapper-lines=2
 exit=1
 ```
 
-What the scratch home holds after the run, `scratch-tree.txt`, written by the runner from an in-process walk of `$TMPDIR/U116-home-4` four directory levels deep (the files inside a fourth-level directory included; a directory the walk cannot read raises instead of being skipped), the prefix written as `$TMPDIR`:
+What the scratch home holds after the run, `scratch-tree.txt`, written by the runner from an in-process walk of `$TMPDIR/U116-home-5` four directory levels deep (the files inside a fourth-level directory included; a directory the walk cannot read raises instead of being skipped), the prefix written as `$TMPDIR`:
 
 ```text
-$TMPDIR/U116-home-4
-$TMPDIR/U116-home-4/.cache
-$TMPDIR/U116-home-4/.cache/mise
-$TMPDIR/U116-home-4/.cache/mise/cargo-eza
-$TMPDIR/U116-home-4/.cache/mise/cargo-eza/remote_versions-cfe45.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/cargo-pueue
-$TMPDIR/U116-home-4/.cache/mise/cargo-pueue/remote_versions-711b5.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github
-$TMPDIR/U116-home-4/.cache/mise/github-cli-cli
-$TMPDIR/U116-home-4/.cache/mise/github-cli-cli/remote_versions-fbf2d.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-astral-sh-uv-latest-75f152cbb3234e33-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-cli-cli-latest-c422894432b07a75-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-cli-cli-versions-fdcb0a0009af6507-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-d-kuro-gwq-latest-6c17f18eaf4e3a2b-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-dotenvx-dotenvx-latest-851010c943271a76-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-filo-sottile-age-latest-5aaeb641c690722-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-gohugoio-hugo-latest-7e8a758b278d01f5-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-jqlang-jq-latest-bdd9320085deaae5-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-micro-editor-micro-latest-e2cefac8305717dd-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-mikefarah-yq-latest-a3188cde7430c1ee-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-ogulcancelik-herdr-latest-b515115e6d3664ca-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-sharkdp-fd-latest-a69cff9e0d9ad20b-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-sxyazi-yazi-latest-29d17fd18245505c-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-twpayne-chezmoi-latest-ab43663cda310c28-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-watchexec-watchexec-latest-130a48c37d16befe-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/github/https-api-github-com-x-motemen-ghq-latest-1d789ce64118519b-hosted-2-2f6a0.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/http-bats
-$TMPDIR/U116-home-4/.cache/mise/http-gcloud
-$TMPDIR/U116-home-4/.cache/mise/http-ruff
-$TMPDIR/U116-home-4/.cache/mise/http-shellcheck
-$TMPDIR/U116-home-4/.cache/mise/http-shfmt
-$TMPDIR/U116-home-4/.cache/mise/latest-version.releases-v1
-$TMPDIR/U116-home-4/.cache/mise/node
-$TMPDIR/U116-home-4/.cache/mise/node/remote_versions-73876.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-claude-code
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-claude-code/latest_version-999a7.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-claude-code/remote_versions-999a7.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-sandbox-runtime
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-sandbox-runtime/latest_version-dab3a.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-anthropic-ai-sandbox-runtime/remote_versions-dab3a.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-bash-language-server
-$TMPDIR/U116-home-4/.cache/mise/npm-bash-language-server/latest_version-1b050.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-bash-language-server/remote_versions-1b050.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-fast-cli
-$TMPDIR/U116-home-4/.cache/mise/npm-fast-cli/latest_version-81575.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-fast-cli/remote_versions-81575.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-meta
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@anthropic-ai__claude-code.json
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@anthropic-ai__sandbox-runtime.json
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@openai__codex.json
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/bash-language-server.json
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/fast-cli.json
-$TMPDIR/U116-home-4/.cache/mise/npm-meta/origin-3c364d36b2d92b17/pyright.json
-$TMPDIR/U116-home-4/.cache/mise/npm-openai-codex
-$TMPDIR/U116-home-4/.cache/mise/npm-openai-codex/latest_version-50bdb.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-openai-codex/remote_versions-50bdb.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-pyright
-$TMPDIR/U116-home-4/.cache/mise/npm-pyright/latest_version-30d9a.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/npm-pyright/remote_versions-30d9a.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/python
-$TMPDIR/U116-home-4/.cache/mise/python/remote_versions-ee8bb.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/uv
-$TMPDIR/U116-home-4/.cache/mise/uv/remote_versions-3ed32.msgpack.z
-$TMPDIR/U116-home-4/.cache/mise/versions-index
-$TMPDIR/U116-home-4/.cache/mise/versions-index/index.v1
-$TMPDIR/U116-home-4/.cache/mise/versions-index/index.v1.validated
-$TMPDIR/U116-home-4/.config
-$TMPDIR/U116-home-4/.config/mise
-$TMPDIR/U116-home-4/.config/mise/config.toml
-$TMPDIR/U116-home-4/.local
-$TMPDIR/U116-home-4/.local/share
-$TMPDIR/U116-home-4/.local/state
-$TMPDIR/U116-home-4/.local/state/mise
-$TMPDIR/U116-home-4/.local/state/mise/incomplete-installs
-$TMPDIR/U116-home-4/.local/state/mise/incomplete-installs/.migrated
-$TMPDIR/U116-home-4/.local/state/mise/tracked-configs
-$TMPDIR/U116-home-4/.local/state/mise/tracked-configs/fba11e4b7b4918ff
+$TMPDIR/U116-home-5
+$TMPDIR/U116-home-5/.cache
+$TMPDIR/U116-home-5/.cache/mise
+$TMPDIR/U116-home-5/.cache/mise/cargo-eza
+$TMPDIR/U116-home-5/.cache/mise/cargo-eza/remote_versions-cfe45.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/cargo-pueue
+$TMPDIR/U116-home-5/.cache/mise/cargo-pueue/remote_versions-711b5.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github
+$TMPDIR/U116-home-5/.cache/mise/github-cli-cli
+$TMPDIR/U116-home-5/.cache/mise/github-cli-cli/remote_versions-fbf2d.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-astral-sh-uv-latest-75f152cbb3234e33-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-cli-cli-latest-c422894432b07a75-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-cli-cli-versions-fdcb0a0009af6507-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-d-kuro-gwq-latest-6c17f18eaf4e3a2b-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-dotenvx-dotenvx-latest-851010c943271a76-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-filo-sottile-age-latest-5aaeb641c690722-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-gohugoio-hugo-latest-7e8a758b278d01f5-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-jqlang-jq-latest-bdd9320085deaae5-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-micro-editor-micro-latest-e2cefac8305717dd-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-mikefarah-yq-latest-a3188cde7430c1ee-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-ogulcancelik-herdr-latest-b515115e6d3664ca-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-sharkdp-fd-latest-a69cff9e0d9ad20b-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-sxyazi-yazi-latest-29d17fd18245505c-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-twpayne-chezmoi-latest-ab43663cda310c28-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-watchexec-watchexec-latest-130a48c37d16befe-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/github/https-api-github-com-x-motemen-ghq-latest-1d789ce64118519b-hosted-2-2f6a0.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/http-bats
+$TMPDIR/U116-home-5/.cache/mise/http-gcloud
+$TMPDIR/U116-home-5/.cache/mise/http-ruff
+$TMPDIR/U116-home-5/.cache/mise/http-shellcheck
+$TMPDIR/U116-home-5/.cache/mise/http-shfmt
+$TMPDIR/U116-home-5/.cache/mise/latest-version.releases-v1
+$TMPDIR/U116-home-5/.cache/mise/node
+$TMPDIR/U116-home-5/.cache/mise/node/remote_versions-73876.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-claude-code
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-claude-code/latest_version-999a7.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-claude-code/remote_versions-999a7.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-sandbox-runtime
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-sandbox-runtime/latest_version-dab3a.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-anthropic-ai-sandbox-runtime/remote_versions-dab3a.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-bash-language-server
+$TMPDIR/U116-home-5/.cache/mise/npm-bash-language-server/latest_version-1b050.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-bash-language-server/remote_versions-1b050.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-fast-cli
+$TMPDIR/U116-home-5/.cache/mise/npm-fast-cli/latest_version-81575.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-fast-cli/remote_versions-81575.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-meta
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@anthropic-ai__claude-code.json
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@anthropic-ai__sandbox-runtime.json
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/@openai__codex.json
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/bash-language-server.json
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/fast-cli.json
+$TMPDIR/U116-home-5/.cache/mise/npm-meta/origin-3c364d36b2d92b17/pyright.json
+$TMPDIR/U116-home-5/.cache/mise/npm-openai-codex
+$TMPDIR/U116-home-5/.cache/mise/npm-openai-codex/latest_version-50bdb.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-openai-codex/remote_versions-50bdb.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-pyright
+$TMPDIR/U116-home-5/.cache/mise/npm-pyright/latest_version-30d9a.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/npm-pyright/remote_versions-30d9a.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/python
+$TMPDIR/U116-home-5/.cache/mise/python/remote_versions-ee8bb.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/uv
+$TMPDIR/U116-home-5/.cache/mise/uv/remote_versions-3ed32.msgpack.z
+$TMPDIR/U116-home-5/.cache/mise/versions-index
+$TMPDIR/U116-home-5/.cache/mise/versions-index/index.v1
+$TMPDIR/U116-home-5/.cache/mise/versions-index/index.v1.validated
+$TMPDIR/U116-home-5/.config
+$TMPDIR/U116-home-5/.config/mise
+$TMPDIR/U116-home-5/.config/mise/config.toml
+$TMPDIR/U116-home-5/.local
+$TMPDIR/U116-home-5/.local/share
+$TMPDIR/U116-home-5/.local/state
+$TMPDIR/U116-home-5/.local/state/mise
+$TMPDIR/U116-home-5/.local/state/mise/incomplete-installs
+$TMPDIR/U116-home-5/.local/state/mise/incomplete-installs/.migrated
+$TMPDIR/U116-home-5/.local/state/mise/tracked-configs
+$TMPDIR/U116-home-5/.local/state/mise/tracked-configs/dcb01309670eb950
 ```
 
 ## Measured facts
@@ -1759,17 +2159,17 @@ $TMPDIR/U116-home-4/.local/state/mise/tracked-configs/fba11e4b7b4918ff
 
 | Run                                           | Platforms       | Tools | Entries mise would write             | Elapsed | Exit |
 | --------------------------------------------- | --------------- | ----- | ------------------------------------ | ------- | ---- |
-| (b) default platform set                      | 7               | 36    | 258                                  | 4 s     | 0    |
+| (b) default platform set                      | 7               | 36    | 258                                  | 2 s     | 0    |
 | (c) the four platforms the `http:` tables pin | 4               | 36    | 149                                  | 0 s     | 0    |
 | (d) `--bump --json`                           | 7 (same target) | 36    | 36 objects, all `old_versions` empty | 0 s     | 0    |
 
 - **Platforms.** With no `lockfile_platforms` setting and no existing lockfile, mise targets `linux-arm64, linux-arm64-musl, linux-x64, linux-x64-musl, macos-arm64, macos-x64, windows-x64` (first line of (b)). That is the vendor's new-lockfile set from the reference page, and it matches the "7 platforms" of row 233.
 - **Entries.** (b) lists 258 `✓` lines: 36 tools times 7 platforms is 252, and bun adds six more keys (`linux-x64-baseline`, `linux-x64-musl-baseline`, `macos-x64-baseline`, `windows-x64-baseline`, and `linux-arm64-musl` and `linux-x64-musl` listed a second time). (c) lists 149: 144 plus bun's `linux-arm64-musl`, `linux-x64-baseline`, `linux-x64-musl`, `linux-x64-musl-baseline` and `macos-x64-baseline`. Counted with `grep -c '^  ✓'` on the two files.
-- **Backends.** Every one of the 36 tools resolved (one resolved version moved since round 5: `python@3.15.1` is now `python@3.15.2`, a release in the five hours between the two runs; the other 35 are the same): 4 core (`node`, `rust`, `python`, `bun`), 11 aqua (`age`, `chezmoi`, `dotenvx`, `fd`, `jq`, `hugo-extended`, `uv`, `yazi`, `micro`, `yq`, `watchexec`; the backend names come from the `backend` field of (d)), 10 npm, 4 github, 2 cargo, 5 http. No line reports a failure, a skipped platform or a rate limit, and no run needed `MISE_GITHUB_TOKEN`.
+- **Backends.** Every one of the 36 tools resolved, each to the version round 6 resolved an hour earlier (the one move between rounds 5 and 6, `python@3.15.1` to `python@3.15.2`, stands; no version moved between rounds 6 and 7): 4 core (`node`, `rust`, `python`, `bun`), 11 aqua (`age`, `chezmoi`, `dotenvx`, `fd`, `jq`, `hugo-extended`, `uv`, `yazi`, `micro`, `yq`, `watchexec`; the backend names come from the `backend` field of (d)), 10 npm, 4 github, 2 cargo, 5 http. No line reports a failure, a skipped platform or a rate limit, and no run needed `MISE_GITHUB_TOKEN`.
 - **What a bump would move today.** Nothing moves: every object in (d) has `"old_versions": []`, because no lockfile exists. The 36 `new_versions` equal the versions (b) resolved, so today's bump PR would be the first write of the file, not an update. The exact pins resolve to themselves (`npm:ccstatusline@2.2.32`, `npm:ccusage@20.0.37`, `npm:prettier@3.9.10`, `npm:pnpm@12.8.1`, the five `http:` tools), as the vendor says for `--bump`.
-- **Elapsed.** (b) took 4 s wall time; this is the one measured number of this table the round-6 re-take moved (round 5 measured 5 s, the round-1 run that rounds 1 to 4 pasted 8 s), every count in this section being unchanged. (c) and (d) returned in under a second because mise reused the version lists (b) had cached under the scratch `~/.cache/mise` (the `remote_versions-*.msgpack.z` files in the scratch tree). The brief's estimate of "about 36 tools per platform over the network" taking minutes did not hold: mise resolves a version once per tool, not once per platform, and the dry run downloads no artifact.
+- **Elapsed.** (b) took 2 s wall time; this is the one measured number of this table the round-7 re-take moved (round 6 measured 4 s, round 5 5 s, the round-1 run that rounds 1 to 4 pasted 8 s), every count in this section being unchanged. (c) and (d) returned in under a second because mise reused the version lists (b) had cached under the scratch `~/.cache/mise` (the `remote_versions-*.msgpack.z` files in the scratch tree). The brief's estimate of "about 36 tools per platform over the network" taking minutes did not hold: mise resolves a version once per tool, not once per platform, and the dry run downloads no artifact.
 - **Hosts contacted.** No packet capture was taken. The cache file names show `api.github.com` (sixteen `github/https-api-github-com-*` entries), the mise versions index (`versions-index/index.v1`) and an npm registry origin (`npm-meta/origin-*`, which in this run holds one metadata file for each of the six unheld `npm:` tools and none for the four held ones). All are in the brief's host list. Whether any other host was contacted is unverified.
-- **Nothing written.** The scratch `~/.config/mise` holds `config.toml` alone before and after, and `none-written` printed. The real `~/.config/mise` holds the same single entry before and after (`config.toml`, 6962 bytes, dated Oct 26 23:40, no `mise.lock`), and `cmp` under Further checks reports the before and after listings byte for byte equal. The modification times of the real `~/.config/mise`, `~/.local/share/mise`, `~/Library/Caches/mise` and `~/.local/state/mise` are identical before and after the run; the `~/.config/mise` stamp is the one every round recorded. Three stamps are later than the ones round 5 recorded, `~/.local/share/mise` (2026-10-29T19:43:40, round 5 2026-10-29T17:53:08), `~/.local/state/mise` (2026-10-29T18:57:51, round 5 2026-10-28T09:59:20) and `~/Library/Caches/mise` (2026-10-29T18:57:42, round 5 2026-10-26T23:41:00); each change happened before this run started, as the before file shows, not during it, and this unit's `env -i` runs point every mise directory variable inside the scratch home. mise wrote only under the scratch home: version-list caches under `.cache/mise` and the `tracked-configs` and `incomplete-installs` directories under `.local/state/mise`.
+- **Nothing written.** The scratch `~/.config/mise` holds `config.toml` alone before and after, and `none-written` printed. The real `~/.config/mise` holds the same single entry before and after (`config.toml`, 6962 bytes, dated Oct 26 23:40, no `mise.lock`), and `cmp` under Further checks reports the before and after listings byte for byte equal. The modification times of the real `~/.config/mise`, `~/.local/share/mise`, `~/Library/Caches/mise` and `~/.local/state/mise` are identical before and after the run; the `~/.config/mise` stamp is the one every round recorded. All five stamps are the ones round 6 recorded (three of them later than round 5's, each a change that happened before the round-6 run started, as that round's before file showed); nothing moved between round 6 and this run, and this unit's runs hand mise an environment of the CHANGE 1 variables alone, every mise directory variable pointed inside the scratch home. mise wrote only under the scratch home: version-list caches under `.cache/mise` and the `tracked-configs` and `incomplete-installs` directories under `.local/state/mise`.
 - **Settings.** `npm.package_manager` is `npm` and `minimum_release_age` is `72h` in the copy, as `config.toml:112-113` and `:107` set them.
 - **Attempt 1 (round 1, not re-taken).** With the cwd under the real home, mise read the real `~/.config/mise/config.toml` as an untrusted project config and stopped. The file was opened, not changed (its listing and mtime are unchanged). This is the one way the unit touched a real mise path, and it is a property of mise's config discovery, not of `HOME`.
 
@@ -1806,7 +2206,7 @@ $TMPDIR/U116-home-4/.local/state/mise/tracked-configs/fba11e4b7b4918ff
 
 ## Recommendation
 
-**defer.** The measured output agrees with row 233 of `decisions.tsv` (`2026-10-28T09:40:00Z`, phase `plan-P-36`): the same 7 platforms and 36 tools, nothing written, and the lock is technically ready (every backend resolved in 4 s, no token, no failure). What the dry run adds is the entry counts (258 and 149), the fact that today's bump would be a first write and not a move, and the attempt-1 finding about mise's config discovery. None of this changes the facts the deferral rests on: the tree forbids the lock in three places by policy, `make update` would rewrite it on every host run, the CI copy carries one file, `package_manager = "npm"` records the version only, and the 72 h cooldown would move from install time to the bump schedule.
+**defer.** The measured output agrees with row 233 of `decisions.tsv` (`2026-10-28T09:40:00Z`, phase `plan-P-36`): the same 7 platforms and 36 tools, nothing written, and the lock is technically ready (every backend resolved in 2 s, no token, no failure). What the dry run adds is the entry counts (258 and 149), the fact that today's bump would be a first write and not a move, and the attempt-1 finding about mise's config discovery. None of this changes the facts the deferral rests on: the tree forbids the lock in three places by policy, `make update` would rewrite it on every host run, the CI copy carries one file, `package_manager = "npm"` records the version only, and the 72 h cooldown would move from install time to the bump schedule.
 
 The condition that would change the recommendation to `adopt` is an operator decision, recorded in `decisions.tsv`, to stop unattended host upgrades (`upgrade-tools.sh:318`) and take every unheld version from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in `test.yaml:276-279`, plus a decision on the npm installer. The condition that would change it to `reject` is a decision to keep the present `latest` behind the cooldown as the permanent policy, in which case the lockfile settings test and `.chezmoiremove:21` are the complete record and this question closes. Absent either, the no-lock policy stands as `README.md:199-202` and `:250-255` describe it.
 
@@ -1814,9 +2214,9 @@ The condition that would change the recommendation to `adopt` is an operator dec
 
 | field    | value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ts       | 2026-10-29T12:29:21Z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ts       | 2026-10-29T13:29:01Z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | phase    | plan-P-36                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| decision | mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 4 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first |
+| decision | mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 2 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first |
 | why      | the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config                                                                                                                                                                                       |
 | evidence | handoff/evaluations/U116-mise-lock.md                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | result   | proposed; the coordinator records                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -1824,7 +2224,7 @@ The condition that would change the recommendation to `adopt` is an operator dec
 The same row as one line with literal tab separators:
 
 ```text
-2026-10-29T12:29:21Z	plan-P-36	mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 4 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first	the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config	handoff/evaluations/U116-mise-lock.md	proposed; the coordinator records
+2026-10-29T13:29:01Z	plan-P-36	mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 2 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first	the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config	handoff/evaluations/U116-mise-lock.md	proposed; the coordinator records
 ```
 
 ## Left out

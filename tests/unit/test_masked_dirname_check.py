@@ -302,6 +302,17 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
         self.assertIn("shfmt not found; the list is refused", result.stderr)
 
+    def test_files_with_no_substitution_at_all_are_clean(self) -> None:
+        # A group whose files hold no command substitution is a clean group, not a walk that saw nothing: the
+        # self-check against the latter runs on the contract fixtures, before any listed file is read (U105).
+        plain = self.script("plain", 'printf "%s\\n" "${1:-}"\n')
+        comments = self.script("comments", "# only a comment\n")
+
+        result = self.run_check(plain, comments)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(("", ""), (result.stdout, result.stderr))
+
     def test_a_shfmt_variable_cannot_select_another_binary(self) -> None:
         # Round-2 audit of 473b63a1: the guard checks PATH's shfmt, so SHFMT pointing elsewhere must change nothing.
         clean = self.script("clean", "true\n")

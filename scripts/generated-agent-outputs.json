@@ -368,7 +368,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "fe45d1e72ccd539032233311def9c6286f0f706d6edb95a4b303460199fe8e79"
+      "sha256": "0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -424,7 +424,7 @@
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "8e2bd76f70bdc1af724bf3bb8926b5bc5f0eb88de6ac7a38f936455424ff29f4"
+      "sha256": "d7cff85921ce06b58222763858db7d3c11069ca4c4ec6e62b88fac3f1a8914d7"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",

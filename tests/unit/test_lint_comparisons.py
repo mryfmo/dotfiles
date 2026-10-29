@@ -21,6 +21,17 @@ from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "scripts/lint-comparisons.py"
+# The contract every shell parse runs first (U105): the lint refuses unless the shfmt on PATH parses these fixtures
+# into the pinned node table; a fake shfmt answers each one's captured tree.
+CONTRACT_FIXTURES = {
+    ROOT / "tests/fixtures/shfmt-json/contract.sh": ROOT / "tests/fixtures/shfmt-json/contract.json",
+    ROOT / "tests/fixtures/shfmt-json/contract-backquotes": ROOT / "tests/fixtures/shfmt-json/contract-backquotes.json",
+}
+CONTRACT_ANSWERS = "".join(  # sh lines: after `input` holds a parse's stdin, answer a fixture its captured tree
+    f'[ "$input" = "$(/bin/cat "{fixture}")" ] && exec /bin/cat "{tree}"\n'
+    for fixture, tree in CONTRACT_FIXTURES.items()
+)
+CONTRACT_LOG = "".join(f"-ln bash --to-json\n{fixture.read_text()}" for fixture in CONTRACT_FIXTURES)
 # plan 024 5.14 item 2: env -i, a system git by its absolute path, an explicit -C, no system or global config
 GIT_ENV = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 GIT_C = ("core.hooksPath=/dev/null", "core.fsmonitor=false", "protocol.allow=never", "protocol.https.allow=always")
@@ -414,8 +425,13 @@ class LintComparisonsTest(unittest.TestCase):
         def git(*args):
             subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false", *args], check=True, env=env)
 
-        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts/ci").mkdir(parents=True)
         shutil.copy(LINT, repo / "scripts/lint-comparisons.py")
+        for rel in ("scripts/ci/shfmt_json_contract.py", "scripts/ci/pinned-tool-version.sh"):  # the contract (U105)
+            shutil.copy(ROOT / rel, repo / rel)
+        (repo / "tests/fixtures/shfmt-json").mkdir(parents=True)
+        for fixture in CONTRACT_FIXTURES:
+            shutil.copy(fixture, repo / "tests/fixtures/shfmt-json" / fixture.name)
         (repo / "home/dot_mise").mkdir(parents=True)  # the shfmt pin the lint checks PATH's shfmt against
         shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
         row = hashlib.sha256(refused.strip().encode()).hexdigest()
@@ -585,20 +601,27 @@ class LintComparisonsTest(unittest.TestCase):
         for answer in ("not-json", "{}", "null", '{"Type": "Word"}'):
             with self.subTest(answer=answer):
                 version = f'[ "$1" = --version ] && {{ echo v{self.shfmt_pin()}; exit 0; }}\n'
-                fake.write_text(f"#!/bin/sh\n{version}echo '{answer}'\n")
+                fake.write_text(f"#!/bin/sh\n{version}input=$(/bin/cat)\n{CONTRACT_ANSWERS}echo '{answer}'\n")
                 fake.chmod(0o755)
                 result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn("ok.sh: shfmt gave no JSON AST", result.stderr)
 
     def fake_shfmt(self, version: str) -> Path:
-        """A shfmt on an otherwise empty PATH that logs argv and input, reports `version`, and answers a file node."""
+        """A shfmt on an otherwise empty PATH (bash and awk beside it, for the pin check the contract runs) that logs
+        argv and input, reports `version`, answers each contract fixture its captured tree and any other parse the
+        first fixture's."""
         fake = self.temp / "path-only/shfmt"
         fake.parent.mkdir(exist_ok=True)
+        for tool in ("bash", "awk"):
+            if not (fake.parent / tool).exists():
+                (fake.parent / tool).symlink_to(shutil.which(tool))
+        tree = next(iter(CONTRACT_FIXTURES.values()))
         fake.write_text(
             '#!/bin/sh\necho "$*" >> "$0.log"\n'
             f'[ "$1" = --version ] && {{ echo v{version}; exit 0; }}\n'
-            '/bin/cat >> "$0.log"\necho \'{"Type": "File"}\'\n'
+            '/bin/cat > "$0.input"\n/bin/cat "$0.input" >> "$0.log"\ninput=$(/bin/cat "$0.input")\n'
+            f'{CONTRACT_ANSWERS}/bin/cat "{tree}"\n'
         )
         fake.chmod(0o755)
         return fake
@@ -617,7 +640,8 @@ class LintComparisonsTest(unittest.TestCase):
         )
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
         blanked = f'(\n:{" " * 16}\n)\n:{" " * 24}\necho "{" " * 8}"\n'  # an include alone is `:`
-        log = f"--version\n-ln bash --tojson\n{blanked}-ln zsh --tojson\necho\n-ln zsh --tojson\n#!/bin/zsh\necho\n"
+        contract = f"--version\n{CONTRACT_LOG}"  # the pin check and the fixtures, parsed before the first file
+        log = f"--version\n{contract}-ln bash --tojson\n{blanked}-ln zsh --tojson\necho\n-ln zsh --tojson\n#!/bin/zsh\necho\n"
         self.assertEqual(log, Path(f"{fake}.log").read_text())
 
     def test_a_shfmt_that_is_not_the_pin_is_refused_naming_both(self):  # U97: one shfmt version, no fallback

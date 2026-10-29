@@ -1,0 +1,6 @@
+cat <<'E'OF
+dir=$(cd "$(dirname "$0")" && pwd -P)
+EOF
+cat <<E"O"F
+dir=$(cd "$(dirname "$0")" && pwd -P)
+EOF

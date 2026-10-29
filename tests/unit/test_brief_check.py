@@ -216,9 +216,10 @@ class BriefCheckTest(unittest.TestCase):
                 self.assertIn("has no GOAL, CHANGE or CONTEXT section", result.stdout)
 
     def test_the_script_runs_by_its_own_name_under_python_isolated_mode(self):
-        # The SKILL sentence runs the file directly, so it is executable and its shebang runs `python -I`.
+        # The SKILL sentence runs the file directly, so it is executable and its shebang runs `python3 -I` from PATH:
+        # round 4 found `uv run` honouring a `.python-version` in the cwd, so a planted interpreter ran first.
         self.assertTrue(os.access(SCRIPT, os.X_OK), f"{SCRIPT} is not executable")
-        self.assertEqual("#!/usr/bin/env -S uv run --no-project python -I", SCRIPT.read_text().splitlines()[0])
+        self.assertEqual("#!/usr/bin/env -S python3 -I", SCRIPT.read_text().splitlines()[0])
 
     def test_the_checkout_script_passes_its_self_check_against_the_checkout_manifest(self):
         # Round 3: the script is a pinned lever; run from the checkout it reads home/dot_agents/agent-config.yaml.
@@ -265,18 +266,47 @@ class InstalledBriefCheckTest(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        root = Path(temp.name).resolve()
-        self.home = root / "home"
+        self.root = Path(temp.name).resolve()
+        self.home = self.root / "home"
         self.manifest = self.home / ".agents/agent-config.yaml"
+        self.copy = self.home / ".local/bin/common/brief-check.py"
         (self.home / ".local/bin/common").mkdir(parents=True)
         (self.home / ".agents").mkdir()
         self.assertTrue(INSTALLED.is_file(), f"{INSTALLED} is the copy chezmoi installs; the generator writes it")
-        shutil.copy2(INSTALLED, self.home / ".local/bin/common/brief-check.py")
+        shutil.copy2(INSTALLED, self.copy)
         shutil.copy2(MANIFEST, self.manifest)
-        self.checkout = root / "checkout"
+        self.checkout = self.root / "checkout"
         self.briefs = self.checkout / ".orchestration/orchestrate/p/briefs"
         self.briefs.mkdir(parents=True)
         self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "LC_ALL": "C"}
+
+    def pin_lines(self, replacement):
+        """Rewrite the deployed pin line of brief-check.py as `replacement` (a line, two lines, or nothing)."""
+        text = self.manifest.read_text()
+        pin_line = next(line for line in text.splitlines() if line.startswith("      brief-check.py: "))
+        self.manifest.write_text(text.replace(pin_line + "\n", replacement))
+
+    def zero_pin(self):
+        self.pin_lines("      brief-check.py: " + "0" * 64 + "\n")
+
+    def run_copy(self, text, env):
+        """The copy by its absolute path: with HOME unset bash expands `~` to the passwd entry, not the scratch home."""
+        (self.briefs / "U1-x.md").write_text(text)
+        return subprocess.run(
+            [str(self.copy), ".orchestration/orchestrate/p/briefs/U1-x.md"],
+            cwd=self.checkout,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    def assert_refused(self, result, message):
+        """Exit 2, the refusal in the shell levers' words on stderr, nothing on stdout: no judgement escaped."""
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertIn(f"brief-check.py: refused: {message}", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
     def run_skill_command(self, text):
         """The SKILL command with `<program>` and `U<n>-<slug>` substituted, through bash so `~` expands as in the seat."""
@@ -306,13 +336,96 @@ class InstalledBriefCheckTest(unittest.TestCase):
         self.assertIn("no CLOSURE section", result.stdout)
 
     def test_a_copy_whose_deployed_pin_differs_refuses_and_judges_nothing(self):
+        self.zero_pin()
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+        self.assert_refused(result, "sha256 ")
+        self.assertIn(f"differs from the pin in {self.manifest}", result.stderr)
+
+    def test_the_cwd_and_the_environment_choose_no_interpreter(self):
+        """Round 4 (P1): `uv run --no-project` honoured a `.python-version` in the checkout the lever ran from, so an
+        interpreter planted there answered before the self-check (exit 0 on `GOAL\\nshell\\n` with a zeroed pin).
+
+        The plant is what uv honours: a `.python-version` naming the path of a venv (a shell script fails uv's
+        interpreter probe) whose `sitecustomize` prints a clean decision line and exits 0 whenever the script run is
+        brief-check.py, beside a `pyproject.toml`, with PYTHONPATH and PYTHONSTARTUP naming planted files. The
+        shebang runs `python3 -I` from PATH, so none of it is consulted.
+        """
+        text = brief(GOAL="A shell reader.")
+        clean = self.run_skill_command(text)
+        self.assertEqual((1, ""), (clean.returncode, clean.stderr), clean.stdout)
+        self.assertIn('brief-check: GOAL holds "shell"', clean.stdout)
+        venv = self.root / "venv"
+        subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True, capture_output=True)
+        site = next(venv.glob("lib/python3*/site-packages"))
+        (site / "sitecustomize.py").write_text(
+            "import os, sys\n"
+            'if sys.argv and sys.argv[0].endswith("brief-check.py"):\n'
+            '    sys.stdout.write("brief-check: no trigger term in GOAL, CHANGE or CONTEXT\\n")\n'
+            "    sys.stdout.flush()\n"
+            "    os._exit(0)\n"
+        )
+        (self.checkout / ".python-version").write_text(f"{venv}/bin/python\n")
+        (self.checkout / "pyproject.toml").write_text(
+            '[project]\nname = "p"\nversion = "0"\nrequires-python = ">=3.9"\n'
+        )
+        planted = self.root / "planted"
+        planted.mkdir()
+        (planted / "hashlib.py").write_text('raise SystemExit("planted hashlib")\n')
+        (planted / "startup.py").write_text('raise SystemExit("planted startup")\n')
+        self.env |= {"PYTHONPATH": str(planted), "PYTHONSTARTUP": str(planted / "startup.py")}
+        self.zero_pin()
+        result = self.run_skill_command(text)
+        self.assert_refused(result, "sha256 ")
+        self.assertIn(f"differs from the pin in {self.manifest}", result.stderr)
+        shutil.copy2(MANIFEST, self.manifest)
+        result = self.run_skill_command(text)
+        self.assertEqual(
+            (clean.returncode, clean.stdout, clean.stderr), (result.returncode, result.stdout, result.stderr)
+        )
+
+    @unittest.skipIf(os.geteuid() == 0, "mode 000 does not stop root, so the unreadable-manifest injection is skipped")
+    def test_an_unreadable_manifest_refuses_before_any_judgement(self):
+        self.manifest.chmod(0)
+        self.addCleanup(self.manifest.chmod, 0o644)
+        self.assert_refused(self.run_skill_command(brief(GOAL=CLEAN_GOAL)), f"manifest unreadable: {self.manifest}")
+
+    def test_a_manifest_that_is_a_directory_passes_the_access_test_and_refuses_on_the_read(self):
+        self.manifest.unlink()
+        self.manifest.mkdir()
+        self.assertTrue(os.access(self.manifest, os.R_OK))
+        self.assert_refused(self.run_skill_command(brief(GOAL=CLEAN_GOAL)), f"cannot read {self.manifest}")
+
+    def test_an_absent_or_doubled_pin_line_refuses(self):
         text = self.manifest.read_text()
         pin_line = next(line for line in text.splitlines() if line.startswith("      brief-check.py: "))
-        self.manifest.write_text(text.replace(pin_line, "      brief-check.py: " + "0" * 64))
+        for replacement in ("", pin_line + "\n" + pin_line + "\n"):
+            with self.subTest(pin_lines=replacement.count("\n")):
+                self.manifest.write_text(text)
+                self.pin_lines(replacement)
+                result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+                self.assert_refused(result, f"no single sha256 pin for brief-check.py in {self.manifest}")
+
+    @unittest.skipIf(os.geteuid() == 0, "mode 000 does not stop root, so the unreadable-copy injection is skipped")
+    def test_an_unreadable_copy_cannot_start_and_judges_nothing(self):
+        # The interpreter never gets the file, so no refusal line is owed; only that nothing is judged (non-zero, no
+        # stdout), since a judgement from a copy nobody could hash must not escape.
+        self.copy.chmod(0)
+        self.addCleanup(self.copy.chmod, 0o755)
         result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
-        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
-        self.assertIn("brief-check.py: refused: sha256 ", result.stderr)
-        self.assertIn(f"differs from the pin in {self.manifest}", result.stderr)
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertEqual("", result.stdout)
+
+    def test_an_unset_or_missing_home_chooses_the_checkout_manifest(self):
+        # Neither case may crash: the physical directory of the copy decides, and two levels up from the scratch bin
+        # there is no checkout, so the refusal names that manifest and nothing is judged.
+        checkout_manifest = f"{self.copy.parent}/../../home/dot_agents/agent-config.yaml"
+        for name, env in (
+            ("unset", {key: value for key, value in self.env.items() if key != "HOME"}),
+            ("missing", {**self.env, "HOME": str(self.root / "nobody")}),
+        ):
+            with self.subTest(home=name):
+                result = self.run_copy(brief(GOAL=CLEAN_GOAL), env)
+                self.assert_refused(result, f"manifest unreadable: {checkout_manifest}")
 
 
 if __name__ == "__main__":

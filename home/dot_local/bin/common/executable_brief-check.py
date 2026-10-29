@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --no-project python -I
+#!/usr/bin/env -S python3 -I
 """Refuse a brief that judges an open-ended input without naming the mechanism that closes it (regime-cutover U104).
 
 `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the
@@ -47,8 +47,11 @@ def lever_self_check():
 
     The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the
     directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two
-    levels up; an unset or unresolvable HOME means the checkout manifest. The cwd decides nothing. Every read is
-    checked and a failed one is a refusal, never a pass (preferences.md standing order 21).
+    levels up; an unset or unresolvable HOME means the checkout manifest. The cwd decides nothing: the shebang runs
+    `python3 -I` from PATH as the shell levers' `bash` comes from PATH, since `uv run` honoured a `.python-version`
+    in the checkout the lever ran from and a planted interpreter answered before this check (round 4), and `-I`
+    ignores `PYTHON*` variables, the user site and the script directory. Every read is checked and a failed one is
+    a refusal, never a pass (preferences.md standing order 21).
     """
     directory = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
     self_path = os.path.join(directory, os.path.basename(__file__))

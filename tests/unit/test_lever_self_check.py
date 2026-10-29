@@ -129,7 +129,9 @@ class LeverSelfCheckTest(unittest.TestCase):
         hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
         round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
         brief-check.py is Python (U104 round 3): it hashes with hashlib and reads the manifest itself, so it runs
-        neither tool and a planted one is never consulted; its failed reads are refusals in its own tests.
+        neither tool and a planted one is never consulted; each of its own reads is failed in
+        `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest mode 000, a directory, no or two pin
+        lines, the copy mode 000, HOME unset or missing), every one a refusal with nothing on stdout (round 4).
         """
         path_levers = [name for name in LEVERS if name not in ("hcom-seat", "brief-check.py")]
         env = self.fake_tools("sha256sum", "shasum")

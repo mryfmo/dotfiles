@@ -2860,7 +2860,13 @@ class TreeRuleTest(unittest.TestCase):
                 "a function and a case",
                 'skippable() {\n  case "$1" in\n    *) return 1 ;;\n  esac\n}\nskippable "${path}" || exit 1\n',
             ),
-            ("a PATH set on the line before a literal command", 'PATH="${claude_bin_dir}:${PATH}" claude --version\n'),
+            ("a PATH set on the line before a literal command", 'PATH="${bin_dir}:${PATH}" claude --version\n'),
+            (
+                # Round 19: the Claude step's line. The command word is the literal `mise`; `exec` is mise's subcommand,
+                # an argument of mise, not a word the shell runs (the shell builtin would be a command word).
+                "mise exec, the command word being mise",
+                'mise -C "${RUNNER_TEMP}/statusline-mise" exec -- claude --version\n',
+            ),
             ("a trap and a source", "trap 'rm -f x' EXIT\nsource scripts/lib/github-release.sh\n"),
             ("an expansion as an argument", 'echo "${OS} is not supported" >&2\n'),
             (

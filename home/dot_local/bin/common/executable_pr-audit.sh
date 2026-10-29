@@ -152,7 +152,7 @@ git_names=$(compgen -e) || {
 }
 while IFS= read -r git_name; do
     [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
-    unset "${git_name}" 2> /dev/null || {
+    unset -v "${git_name}" 2> /dev/null || {
         echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
         exit 2
     }

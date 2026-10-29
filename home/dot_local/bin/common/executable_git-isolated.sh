@@ -239,7 +239,7 @@ git_env_scrub() {
     for name in ${names}; do
         git_isolated_own_name "${who}" "${name}"
         git_env_scrubbed "${name}" "$@" || continue
-        unset "${name}" 2> /dev/null || {
+        unset -v "${name}" 2> /dev/null || {
             echo "${who}: refused: cannot remove ${name} from the environment" >&2
             exit 2
         }

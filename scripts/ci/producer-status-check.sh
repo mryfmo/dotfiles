@@ -95,16 +95,35 @@
 #   e. `allow`: `# producer-status: allow <reason>` on the statement's first line exempts that statement from a, b
 #      and d; an allow comment with no reason is itself a finding and exempts nothing. The enforced file set is
 #      tests/unit/test_producer_status_check.py (the library and the five levers), not a Makefile target.
-#   f. `shadow`: the rules above read a closed set of command words as bash builtins or as the table's producers:
-#      `set` (c), `exit` and `return` (a, form i), `echo` and `printf` (the refusal grammar), and the first word of
-#      every producer row (`git`, `find`, `ls`; b). The set is built from that data (PROLOGUE_WORDS, TERMINATORS,
-#      WRITERS, the rows), not listed twice. A function definition of such a name, at any depth and in any spelling
-#      (`set() { :; }` lets a warned listing pass a bare `[[ ! -s err ]]`, since the `set -euo pipefail` the test
-#      relies on ran a function; `exit() { :; }`, `echo() { exit 0; }`, `git() { command git "$@"; return 0; }`), is
-#      a finding at its definition line naming what it shadows, and so is a plain command `alias`, `enable` or `hash`
-#      with an argument whose known text, before any `=`, is such a name (`alias set='…'`, `enable -n set`, `hash -p
-#      /x/git git`) or with an argument that has no known text (not shown to name another). A refusal name (`refuse`,
-#      `fail`) is held by the single-definition rule of form (ii) instead. An allow comment exempts nothing here.
+#   f. `shadow`: the rules above read a closed set of command words as bash builtins, as the table's producers or as
+#      the refusal functions: `set` (c), `exit` and `return` (a, form i), `echo` and `printf` (the refusal grammar),
+#      the first word of every producer row (`git`, `find`, `ls`; b) and REFUSAL_NAMES (`refuse`, `fail`; a, form
+#      ii). The set is built from that data (interpreted), not listed twice. A function definition of a builtin's or
+#      a producer's name, at any depth and in any spelling (`set() { :; }` lets a warned listing pass a bare `[[ ! -s
+#      err ]]`, since the `set -euo pipefail` the test relies on ran a function; `exit() { :; }`, `echo() { exit 0;
+#      }`, `git() { command git "$@"; return 0; }`), is a finding at its definition line naming what it shadows (a
+#      refusal name's definitions are judged by form ii: one, at top level, before the read). So is every other way
+#      bash offers to rebind a word or to run text this walk has not read, a plain command whose known first word is
+#      one of REBINDERS, read as bash reads that word (the leading options for their letters, `--` ending them): a
+#      NAMER (`alias`, `enable`, `hash`, `unset`) with an argument whose known text, before any `=`, is such a name
+#      (`alias fail=true`, `enable -n echo`, `hash -p /x/true refuse`, `unset -f refuse`, and `unset refuse`, which
+#      removes the function when no variable has the name) or with an argument that has no known text (`unset
+#      "$name"`; `unset -v` names variables only and binds nothing, INERT_OPTIONS); a FORWARDER (`builtin`,
+#      `command`) whose arguments name such a word or have no known text (`command git ls-files` runs past rule b),
+#      and whose command is judged again when its own first word is a rebinder (`command unset -f refuse`; `command
+#      -v` and `-V` print and run nothing); a RUNNER whose text or file this walk has not read: `eval` with any
+#      argument, `source` and `.` with any argument but the one accepted shape, `. "${LEVER_DIR}/git-isolated.sh"`
+#      or `. "${LEVER_DIR}/read-lib.sh"`, the two libraries every lever sources (LIBRARY_DIR, LIBRARY_FILES; the
+#      parts of the one argument, nothing else), `trap` with an action that is not empty, `-` or one simple command
+#      whose first word is no rebinder (`trap cleanup EXIT` and `trap 'rm -f "${f}"' EXIT` are read whole; `trap
+#      'refuse() { :; }' DEBUG` redefines the function before the next command runs), `mapfile` or `readarray` with
+#      `-C` (the callback is text bash runs); and an assignment with a value, anywhere (plain, a command's prefix, a
+#      declaration's argument), to a variable that binds a command word (BINDING_VARIABLES: PATH, where `git`,
+#      `find` and `ls` are found; BASH_ALIASES and BASH_CMDS, the alias and hash tables of bash 4). A `declare`,
+#      `typeset`, `readonly`, `export` or `local` acts on variables, and with `-f` on a function it leaves bound
+#      (`export -f refuse`, `readonly -f refuse`, measured on bash 3.2), so none is a rebinder: `export PATH` and
+#      `declare -r y=1` pass. Not read: an indirect write to a binding variable (`read`, `printf -v`, `for`, a
+#      nameref, `${name=value}`), which this rule does not close. An allow comment exempts nothing here.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
 #   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
 #   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
@@ -163,6 +182,7 @@ fi
 walk=$(
     cat << 'PY'
 import json
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -237,7 +257,46 @@ BOTH_OPS = ("&>", "&>>")  # touch fd 2 with no descriptor written
 DUP_OP = ">&"  # the operator a refusal body writes to stderr with (`>&2`, `1>&2`)
 DUP_OPS = (DUP_OP, "<&")  # to a plain descriptor (`>&1`, `>&-`) each moves the one before it; to any other word fd 2
 UNCAPTURED = object()  # the stderr target when the last redirect touching fd 2 is not one of FILE_OPS
-REBINDERS = ("alias", "enable", "hash")  # bind a command word to other text, a file or nothing (rule f)
+# Rule f's rebinders: every plain command bash offers that binds a command word to other text, a file, a builtin or
+# nothing, or runs text this walk has not read, each read as bash reads it (measured on /bin/bash 3.2.57; the bash 4
+# builtins by the manual). A NAMER's arguments are names: `alias` (expanded under `shopt -s expand_aliases` or an
+# inherited BASHOPTS), `enable` (`-n` disables a builtin, `-f` loads one), `hash` (`-p` binds a word to a file) and
+# `unset` (`-f` names a function, and so does a name with no variable; `-v` names variables only). A FORWARDER runs its
+# arguments as a command past any function (`command unset -f refuse`, `builtin unset -f refuse`; `command -v`/`-V`
+# print and run nothing). A RUNNER's argument is text or a file: `eval`, `source` and `.` (the one accepted shape is
+# sourced_library), `trap` (an action read whole is trap_action), `mapfile` and `readarray` (`-C` names a callback).
+# A `declare`, `typeset`, `readonly`, `export` or `local` acts on variables, and with `-f` on a function it leaves
+# bound (`export -f refuse`, `readonly -f refuse`, measured), so none is a rebinder.
+NAMERS = ("alias", "enable", "hash", "unset")
+FORWARDERS = ("builtin", "command")
+RUNNERS = ("eval", "source", ".", "trap", "mapfile", "readarray")
+REBINDERS = NAMERS + FORWARDERS + RUNNERS
+INERT_OPTIONS = {"unset": "v", "command": "vV"}  # the option letters under which the word binds and runs nothing
+CALLBACK_OPTION = "C"  # `mapfile`/`readarray`: the option whose argument is text bash runs per line
+SOURCES = ("source", ".")
+RUNS = {  # how a finding names what a RUNNER runs
+    "eval": "runs text",
+    "source": "reads a file",
+    ".": "reads a file",
+    "trap": "runs an action",
+    "mapfile": "runs a callback (`-C`)",
+    "readarray": "runs a callback (`-C`)",
+}
+# The one `source` the rules accept: every lever sources the two libraries beside it, `. "${LEVER_DIR}/git-isolated.sh"`
+# and `. "${LEVER_DIR}/read-lib.sh"` (scripts/orchestrator/README.md); the argument's parts are the bare expansion of
+# LIBRARY_DIR and one literal of LIBRARY_FILES, in any quoting name_parts flattens. Nothing else is read as that file.
+LIBRARY_DIR = "LEVER_DIR"
+LIBRARY_FILES = ("/git-isolated.sh", "/read-lib.sh")
+# A simple command as a trap's action, read whole: one identifier, then arguments holding no second command, no
+# substitution and no assignment (`;`, `&`, `|`, `(`, `)`, a backquote, `=`, a newline). `trap cleanup EXIT` and `trap
+# 'rm -f "${file}"' EXIT` are read; `trap 'refuse() { :; }' DEBUG`, which redefines the function before the next
+# command runs (measured), is not.
+SIMPLE_COMMAND = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)(?:[ \t][^;&|()\x60=\n]*)?")  # \x60 is the backquote
+BINDING_VARIABLES = {  # an assignment to one binds a command word, as the rebinders do (rule f)
+    "PATH": "the directories bash searches for `git`, `find` and `ls`",
+    "BASH_ALIASES": "the alias table of bash 4, as `alias` does",
+    "BASH_CMDS": "the hash table of bash 4, as `hash -p` does",
+}
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # inside double quotes bash removes a backslash before these only
@@ -519,12 +578,15 @@ def definitions(tree):
 
 
 def interpreted(rows):
-    """The command words the rules read as bash builtins or as the producers of the table, name -> what a function,
-    alias or rebinding of that name shadows (rule f): `set` (the prologue, rule c), `exit` and `return` (form i of
-    rule a), `echo` and `printf` (the refusal grammar, forms ii and iii) and the first word of every producer row
-    (rule b). Built from the data those rules hold, so a word added to one of them is covered without a second list;
-    a refusal name (`refuse`, `fail`) is held by the single-definition rule of form ii instead."""
+    """The command words the rules read as bash builtins, as the producers of the table or as the refusal functions,
+    name -> what a rebinding of that name shadows (rule f): `set` (the prologue, rule c), `exit` and `return` (form i
+    of rule a), `echo` and `printf` (the refusal grammar, forms ii and iii), the first word of every producer row
+    (rule b) and REFUSAL_NAMES (form ii). Built from the data those rules hold, so a word added to one of them is
+    covered without a second list. A function definition of a refusal name is judged by form ii (one, at top level,
+    before the read), of any other word by Walk.run."""
     words = {PROLOGUE_WORDS[0]: "the builtin the prologue `set -euo pipefail` relies on (rule c)"}
+    for name in REFUSAL_NAMES:
+        words[name] = "the refusal function a `||` branch calls (rule a, form ii)"
     for name in TERMINATORS:
         words[name] = "the builtin a `||` branch ends a failed read with (rule a, form i)"
     for name in WRITERS:
@@ -536,6 +598,32 @@ def interpreted(rows):
         plural = "s" if len(named) > 1 else ""
         words.setdefault(name, f"the producer{plural} {', '.join(named)} rule b holds to a stderr capture")
     return words
+
+
+def sourced_library(args):
+    """Whether a `source` or `.` is the one shape rule f accepts: exactly one argument whose parts (name_parts, the
+    double quotes flattened) are the bare expansion of LIBRARY_DIR (`${LEVER_DIR}` or `$LEVER_DIR`, with no operator,
+    index or length) and one literal of LIBRARY_FILES. Anything else is a file this walk has not read."""
+    parts = name_parts(args[0]) if len(args) == 1 else None
+    if parts is None or len(parts) != 2:
+        return False
+    directory, library = parts
+    return (
+        directory.get("Type") == "ParamExp"
+        and set(directory) <= {"Type", "Short", "Param"}
+        and (directory.get("Param") or {}).get("Value") == LIBRARY_DIR
+        and library.get("Type") == "Lit"
+        and library.get("Value") in LIBRARY_FILES
+    )
+
+
+def trap_action(text):
+    """Whether a trap's action, a known text, is read whole: empty or `-` (the signal's default), or one simple
+    command (SIMPLE_COMMAND) whose first word is no rebinder. Anything else is text this walk has not read."""
+    if text in ("", "-"):
+        return True
+    match = SIMPLE_COMMAND.fullmatch(text)
+    return match is not None and match[1] not in REBINDERS
 
 
 def refusal_function(text, tested, functions, defined):
@@ -902,7 +990,7 @@ class Walk:
         self.defined = definitions(tree)
         self.terminators = tuple(name for name in TERMINATORS if name not in self.defined)
         for name, lines in self.defined.items():  # rule f: a function of a name the rules read, at any depth
-            if name in self.shadowed:
+            if name in self.shadowed and name not in REFUSAL_NAMES:  # a refusal name's definitions are form ii's
                 for line in lines:
                     self.findings.add(
                         (line, SHADOW, f"a function named `{name}` shadows {self.shadowed[name]}; bash runs it instead")
@@ -988,6 +1076,9 @@ class Walk:
         kind = node.get("Type")
         if kind is None and "Cmd" in node:
             self.seen["Stmt"] += 1
+            for redirect in node.get("Redirs") or []:  # on any command: a descriptor that is not a decimal refuses the file
+                self.seen["Redirect"] += 1
+                descriptor_number(redirect)
             stack = (node, *stack)
             if siblings is not None and siblings[0] is self.top:
                 self.top_index = siblings[1]
@@ -997,6 +1088,7 @@ class Walk:
                 self.prologues.append(stack)
         elif kind is None and "Name" in node:
             self.seen["Assign"] += 1
+            self.binding(node)
         elif kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
             # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it. The
             # condition's last statement may be negated; a flag on any statement around the clause is a flag.
@@ -1063,21 +1155,69 @@ class Walk:
             break
 
     def rebinding(self, stmt, word, args):
-        """Rule f on a plain command `alias`, `enable` or `hash` (word): each argument whose known text, before any
-        `=`, is a word the rules read (`alias set='…'`, `enable -n set`, `hash -p /x/git git`) is a finding naming
-        what it shadows, and so is an argument with no known text, which is not shown to name another word; an
-        option (`-n`, `-p`, `-r`) names none. No allow comment exempts it."""
+        """Rule f on a plain command whose known first word is one of REBINDERS (word), read as bash reads that word.
+        The leading arguments that are options are read for their letters (`--` ends them): under one of
+        INERT_OPTIONS (`unset -v`, `command -v`) the command binds and runs nothing. Then a NAMER's or a FORWARDER's
+        argument whose known text, before any `=`, is a word the rules read is a finding naming what it shadows
+        (`alias fail=true`, `enable -n echo`, `hash -p /x/git git`, `unset -f refuse`, `command git`), and so is one
+        with no known text, which may name any of them; a FORWARDER's command is judged again when its own first word
+        is a rebinder (`command unset -f refuse`). A RUNNER's argument is text or a file this walk has not read:
+        `eval` with any argument, `source` or `.` with any but the one accepted shape (sourced_library), `trap` with
+        an action that is not read whole (trap_action; the signal names after it are not text), `mapfile` or
+        `readarray` with `-C`. No allow comment exempts it."""
         line = stmt["Pos"]["Line"]
+        letters = set()
+        while args and (text := word_text(args[0])) is not None and len(text) > 1 and text[0] in "-+":
+            args = args[1:]
+            if text == "--":
+                break
+            letters.update(text[1:])
+        if letters & set(INERT_OPTIONS.get(word, "")):
+            return
+        names = ", ".join(f"`{name}`" for name in sorted(self.shadowed))
+        unknown = f"`{word}` has an argument with no known text, which may name one of {names}"
+        if word in RUNNERS:
+            unread = f"which may define or rebind one of {names}"
+            if word in SOURCES and sourced_library(args):
+                return
+            if word == "trap":
+                args = args[:1]
+            elif word not in SOURCES and word != "eval":  # mapfile, readarray: the callback is an option's argument
+                if CALLBACK_OPTION in letters:
+                    self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read, {unread}"))
+                for arg in args:
+                    if word_text(arg) is None:
+                        self.findings.add((line, SHADOW, unknown))
+                return
+            for arg in args:
+                text = word_text(arg)
+                if text is None:
+                    self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} with no known text, {unread}"))
+                elif word != "trap" or not trap_action(text):
+                    whole = " whole" if word == "trap" else ""  # one simple command is read; more is not
+                    self.findings.add(
+                        (line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read{whole}, {unread}: `{text}`")
+                    )
+            return
         for arg in args:
             text = word_text(arg)
             if text is None:
-                names = ", ".join(f"`{name}`" for name in sorted(self.shadowed))
-                self.findings.add(
-                    (line, SHADOW, f"`{word}` has an argument with no known text, which may name one of {names}")
-                )
-            elif text.split("=", 1)[0] in self.shadowed:
-                name = text.split("=", 1)[0]
+                self.findings.add((line, SHADOW, unknown))
+            elif (name := text.split("=", 1)[0]) in self.shadowed:
                 self.findings.add((line, SHADOW, f"`{word}` names `{name}` and shadows {self.shadowed[name]}"))
+        if word in FORWARDERS and args and (first := word_text(args[0])) in REBINDERS:
+            self.rebinding(stmt, first, args[1:])
+
+    def binding(self, assign):
+        """Rule f on an assignment anywhere (plain, a prefix of a command, an argument of a declaration): one that
+        gives a value to a variable that binds a command word (BINDING_VARIABLES) is a finding at its line.
+        `export PATH` and `declare -A BASH_ALIASES` carry no value and bind nothing. No allow comment exempts it."""
+        name = assign["Name"]["Value"]
+        if name in BINDING_VARIABLES and ("Value" in assign or "Array" in assign):
+            what = BINDING_VARIABLES[name]
+            self.findings.add(
+                (assign["Pos"]["Line"], SHADOW, f"an assignment to `{name}` binds a command word: {what}")
+            )
 
     def tests_empty(self, stmt, target):
         """Whether the statement's own command is `[[ ! -s <target> ]]`, the two words shown to name one file."""
@@ -1200,7 +1340,7 @@ for source, tree in fixtures.items():
     except Exception as error:  # a fixture the walk cannot read is "could not judge" for every listed file
         refuse(f"cannot walk the syntax tree of {source} ({error!r})")
     visited.update(walk.seen)
-for kind in ("Stmt", "Assign", "CmdSubst"):
+for kind in ("Stmt", "Assign", "CmdSubst", "Redirect"):
     if not visited[kind]:
         refuse(f"the walk visited no {kind} node in the contract fixtures, which hold some")
 

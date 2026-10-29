@@ -6,9 +6,9 @@
 		"Col": 1
 	},
 	"End": {
-		"Offset": 2672,
-		"Line": 71,
-		"Col": 67
+		"Offset": 2886,
+		"Line": 75,
+		"Col": 29
 	},
 	"Stmts": [
 		{
@@ -12306,6 +12306,402 @@
 			"Position": {
 				"Offset": 2606,
 				"Line": 71,
+				"Col": 1
+			}
+		},
+		{
+			"Pos": {
+				"Offset": 2825,
+				"Line": 74,
+				"Col": 1
+			},
+			"End": {
+				"Offset": 2857,
+				"Line": 74,
+				"Col": 33
+			},
+			"Comments": [
+				{
+					"Pos": {
+						"Offset": 2673,
+						"Line": 72,
+						"Col": 1
+					},
+					"End": {
+						"Offset": 2790,
+						"Line": 72,
+						"Col": 118
+					},
+					"Hash": {
+						"Offset": 2673,
+						"Line": 72,
+						"Col": 1
+					},
+					"Text": " producer-status-check (U112 round 14): the one `source` shape rule f accepts, so the parameter and the two literals"
+				},
+				{
+					"Pos": {
+						"Offset": 2791,
+						"Line": 73,
+						"Col": 1
+					},
+					"End": {
+						"Offset": 2824,
+						"Line": 73,
+						"Col": 34
+					},
+					"Hash": {
+						"Offset": 2791,
+						"Line": 73,
+						"Col": 1
+					},
+					"Text": " the rule reads are in the tree."
+				}
+			],
+			"Cmd": {
+				"Type": "CallExpr",
+				"Pos": {
+					"Offset": 2825,
+					"Line": 74,
+					"Col": 1
+				},
+				"End": {
+					"Offset": 2857,
+					"Line": 74,
+					"Col": 33
+				},
+				"Args": [
+					{
+						"Pos": {
+							"Offset": 2825,
+							"Line": 74,
+							"Col": 1
+						},
+						"End": {
+							"Offset": 2826,
+							"Line": 74,
+							"Col": 2
+						},
+						"Parts": [
+							{
+								"Type": "Lit",
+								"Pos": {
+									"Offset": 2825,
+									"Line": 74,
+									"Col": 1
+								},
+								"End": {
+									"Offset": 2826,
+									"Line": 74,
+									"Col": 2
+								},
+								"ValuePos": {
+									"Offset": 2825,
+									"Line": 74,
+									"Col": 1
+								},
+								"ValueEnd": {
+									"Offset": 2826,
+									"Line": 74,
+									"Col": 2
+								},
+								"Value": "."
+							}
+						]
+					},
+					{
+						"Pos": {
+							"Offset": 2827,
+							"Line": 74,
+							"Col": 3
+						},
+						"End": {
+							"Offset": 2857,
+							"Line": 74,
+							"Col": 33
+						},
+						"Parts": [
+							{
+								"Type": "DblQuoted",
+								"Pos": {
+									"Offset": 2827,
+									"Line": 74,
+									"Col": 3
+								},
+								"End": {
+									"Offset": 2857,
+									"Line": 74,
+									"Col": 33
+								},
+								"Left": {
+									"Offset": 2827,
+									"Line": 74,
+									"Col": 3
+								},
+								"Right": {
+									"Offset": 2856,
+									"Line": 74,
+									"Col": 32
+								},
+								"Parts": [
+									{
+										"Type": "ParamExp",
+										"Pos": {
+											"Offset": 2828,
+											"Line": 74,
+											"Col": 4
+										},
+										"End": {
+											"Offset": 2840,
+											"Line": 74,
+											"Col": 16
+										},
+										"Dollar": {
+											"Offset": 2828,
+											"Line": 74,
+											"Col": 4
+										},
+										"Rbrace": {
+											"Offset": 2839,
+											"Line": 74,
+											"Col": 15
+										},
+										"Param": {
+											"Pos": {
+												"Offset": 2830,
+												"Line": 74,
+												"Col": 6
+											},
+											"End": {
+												"Offset": 2839,
+												"Line": 74,
+												"Col": 15
+											},
+											"ValuePos": {
+												"Offset": 2830,
+												"Line": 74,
+												"Col": 6
+											},
+											"ValueEnd": {
+												"Offset": 2839,
+												"Line": 74,
+												"Col": 15
+											},
+											"Value": "LEVER_DIR"
+										}
+									},
+									{
+										"Type": "Lit",
+										"Pos": {
+											"Offset": 2840,
+											"Line": 74,
+											"Col": 16
+										},
+										"End": {
+											"Offset": 2856,
+											"Line": 74,
+											"Col": 32
+										},
+										"ValuePos": {
+											"Offset": 2840,
+											"Line": 74,
+											"Col": 16
+										},
+										"ValueEnd": {
+											"Offset": 2856,
+											"Line": 74,
+											"Col": 32
+										},
+										"Value": "/git-isolated.sh"
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			"Position": {
+				"Offset": 2825,
+				"Line": 74,
+				"Col": 1
+			}
+		},
+		{
+			"Pos": {
+				"Offset": 2858,
+				"Line": 75,
+				"Col": 1
+			},
+			"End": {
+				"Offset": 2886,
+				"Line": 75,
+				"Col": 29
+			},
+			"Cmd": {
+				"Type": "CallExpr",
+				"Pos": {
+					"Offset": 2858,
+					"Line": 75,
+					"Col": 1
+				},
+				"End": {
+					"Offset": 2886,
+					"Line": 75,
+					"Col": 29
+				},
+				"Args": [
+					{
+						"Pos": {
+							"Offset": 2858,
+							"Line": 75,
+							"Col": 1
+						},
+						"End": {
+							"Offset": 2859,
+							"Line": 75,
+							"Col": 2
+						},
+						"Parts": [
+							{
+								"Type": "Lit",
+								"Pos": {
+									"Offset": 2858,
+									"Line": 75,
+									"Col": 1
+								},
+								"End": {
+									"Offset": 2859,
+									"Line": 75,
+									"Col": 2
+								},
+								"ValuePos": {
+									"Offset": 2858,
+									"Line": 75,
+									"Col": 1
+								},
+								"ValueEnd": {
+									"Offset": 2859,
+									"Line": 75,
+									"Col": 2
+								},
+								"Value": "."
+							}
+						]
+					},
+					{
+						"Pos": {
+							"Offset": 2860,
+							"Line": 75,
+							"Col": 3
+						},
+						"End": {
+							"Offset": 2886,
+							"Line": 75,
+							"Col": 29
+						},
+						"Parts": [
+							{
+								"Type": "DblQuoted",
+								"Pos": {
+									"Offset": 2860,
+									"Line": 75,
+									"Col": 3
+								},
+								"End": {
+									"Offset": 2886,
+									"Line": 75,
+									"Col": 29
+								},
+								"Left": {
+									"Offset": 2860,
+									"Line": 75,
+									"Col": 3
+								},
+								"Right": {
+									"Offset": 2885,
+									"Line": 75,
+									"Col": 28
+								},
+								"Parts": [
+									{
+										"Type": "ParamExp",
+										"Pos": {
+											"Offset": 2861,
+											"Line": 75,
+											"Col": 4
+										},
+										"End": {
+											"Offset": 2873,
+											"Line": 75,
+											"Col": 16
+										},
+										"Dollar": {
+											"Offset": 2861,
+											"Line": 75,
+											"Col": 4
+										},
+										"Rbrace": {
+											"Offset": 2872,
+											"Line": 75,
+											"Col": 15
+										},
+										"Param": {
+											"Pos": {
+												"Offset": 2863,
+												"Line": 75,
+												"Col": 6
+											},
+											"End": {
+												"Offset": 2872,
+												"Line": 75,
+												"Col": 15
+											},
+											"ValuePos": {
+												"Offset": 2863,
+												"Line": 75,
+												"Col": 6
+											},
+											"ValueEnd": {
+												"Offset": 2872,
+												"Line": 75,
+												"Col": 15
+											},
+											"Value": "LEVER_DIR"
+										}
+									},
+									{
+										"Type": "Lit",
+										"Pos": {
+											"Offset": 2873,
+											"Line": 75,
+											"Col": 16
+										},
+										"End": {
+											"Offset": 2885,
+											"Line": 75,
+											"Col": 28
+										},
+										"ValuePos": {
+											"Offset": 2873,
+											"Line": 75,
+											"Col": 16
+										},
+										"ValueEnd": {
+											"Offset": 2885,
+											"Line": 75,
+											"Col": 28
+										},
+										"Value": "/read-lib.sh"
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			"Position": {
+				"Offset": 2858,
+				"Line": 75,
 				"Col": 1
 			}
 		}

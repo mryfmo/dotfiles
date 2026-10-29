@@ -77,14 +77,20 @@ TABLE: dict[str, Kind] = {
     # The lint reads Dollar on both quoted kinds: an ANSI-C `$'…'` or a locale `$"…"` string has no known text to it.
     "DblQuoted": Kind(None, ("Parts", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
-    "Lit": Kind(None, ("Value", "Pos.Line", "Pos.Offset", "End.Offset"), {"Value": ("a\\ b",)}),
+    # The lint reads a literal's value for the one `source` shape rule f accepts (U112 round 14): the two libraries
+    # beside a lever, named by `${LEVER_DIR}` and one of these literals.
+    "Lit": Kind(
+        None,
+        ("Value", "Pos.Line", "Pos.Offset", "End.Offset"),
+        {"Value": ("a\\ b", "/git-isolated.sh", "/read-lib.sh")},
+    ),
     # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that
     # spelling, so the fixture expands both. The lint reads `$?` as the whole node (Short, Param.Value `?`): the
-    # `name=$?` branch of a tested read.
+    # `name=$?` branch of a tested read; and LEVER_DIR, the directory of the two libraries a `source` may name.
     "ParamExp": Kind(
         None,
         ("Param.Value", "Short", "Length", "Index", "Pos.Line"),
-        {"Length": (True,), "Short": (True,), "Param.Value": ("TMPDIR", "jq", "?")},
+        {"Length": (True,), "Short": (True,), "Param.Value": ("TMPDIR", "jq", "?", "LEVER_DIR")},
     ),
     "ExtGlob": Kind(None, ("Pattern.Value", "Pos.Line")),
     "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&", "||")}),

@@ -37,7 +37,11 @@ had made the file's real `refuse` a duplicate), and round 13 reads a redirect's 
 fd 2; `{fd}>` refuses the file) and the word of a `>&` or `<&` as a plain descriptor only when all digits or `-`
 (`1>&2-`, `>&2-`, `<&2-`, `1>&file` and `1>&$fd` after `2> err` had passed), and adds rule f: a function, `alias`,
 `enable` or `hash` naming a word the rules read as a builtin or a producer (`set() { :; }` had let a warned listing
-pass a bare `[[ ! -s err ]]`) is a `shadow` finding at its line.
+pass a bare `[[ ! -s err ]]`) is a `shadow` finding at its line, and round 14 completes rule f over what bash offers
+(the refusal names among the words; `unset`, `builtin`, `command`, `eval`, `source`, `.`, `trap`, `mapfile`,
+`readarray` among the rebinders, each read as bash reads it, with the one `source` shape the levers use accepted; an
+assignment to PATH, BASH_ALIASES or BASH_CMDS) and validates every redirect the walk meets (`true {fd}>err` had
+passed off a producer).
 """
 
 from __future__ import annotations
@@ -1441,7 +1445,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "git ls-files > l 2> err\n[[ ! -s err ]]\n"  # 4, 5: rule b accepts the bare test after the prologue
             "exit() { :; }\n"  # 6
             "echo() { exit 0; }\n"  # 7
-            'git() { command git "$@"; return 0; }\n'  # 8
+            'git() { command git "$@"; return 0; }\n'  # 8: three findings since round 14 (`command git`, `"$@"`)
             "printf() { :; }\n"  # 9
             "return() { :; }\n"  # 10
             "find() { :; }\n"  # 11
@@ -1454,9 +1458,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "other() { :; }\n"  # 18: accepted
             "alias ll='ls -l'\n"  # 19: accepted, `ll` is no word the rules read
             "hash -r\n"  # 20: accepted
-            "unset -f set\n"  # 21: accepted, the definition at 3 is the finding whatever follows it
+            "unset -f set\n"  # 21: a finding since round 14, like the definition at 3
         )
-        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18))])
+        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18), 8, 8, 21)])
         producers = (
             "the producers `git ls-files`, `git config -f`, `git config --file` rule b holds to a stderr capture"
         )
@@ -1477,11 +1481,123 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (15, f"`hash` names `git` and shadows {producers}"),
             (
                 16,
-                "`alias` has an argument with no known text, which may name one of `echo`, `exit`, `find`, `git`, `ls`, `printf`, `return`, `set`",
+                "`alias` has an argument with no known text, which may name one of `echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`",
             ),
             (17, "a function named `set` shadows the builtin the prologue"),
         ):
             self.assertIn(f":{line}: shadow: {message}", result.stdout)
+
+    def test_the_round_14_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the d6a0da12 audit, which that head read as clean: rule f's rebinders were three words and
+        left out the refusal names, so `refuse() { exit 2; }; unset -f refuse; hash -p /usr/bin/true refuse;
+        x=$(false) || refuse` passed while /bin/bash 3.2 ran on with exit 0 (`refuse: command not found`, and the same
+        after `unset refuse`: a name with no variable is a function); and descriptor_number ran on a producer's
+        redirects only, so `set -euo pipefail; true {fd}>err` passed. Round 14 reads every rebinding form bash offers
+        (REBINDERS, each word as bash reads it, and an assignment to PATH, BASH_ALIASES or BASH_CMDS), accepts the one
+        `source` shape the levers use, and validates every redirect the walk meets."""
+        rebinders = (
+            "refuse() { exit 2; }\n"  # 3: a refusal name's one definition is form ii's, not a shadow finding
+            "fail() { exit 1; }\n"  # 4
+            "unset -f refuse; hash -p /usr/bin/true refuse; x=$(false) || refuse\n"  # 5: the auditor's line, twice
+            "alias fail=true\n"  # 6: the auditor's alias
+            "y=$(false) || fail\n"  # 7: accepted, the alias is the finding
+            "enable -n echo\n"  # 8: the auditor's enable
+            'eval "refuse() { :; }"\n'  # 9: the auditor's eval
+            "source ./lib.sh\n"  # 10: the auditor's source
+            "unset refuse\n"  # 11: a name with no variable is a function
+            'unset "$name"\n'  # 12: no known text
+            "command unset -f refuse\n"  # 13: `command` names refuse, and the forwarded `unset` does
+            "builtin unset -f fail\n"  # 14: the same
+            "command git ls-files > l 2> err\n"  # 15: `command git` runs past rule b
+            "trap 'refuse() { :; }' DEBUG\n"  # 16: redefined before the next command
+            "trap 'cleanup; unset -f refuse' EXIT\n"  # 17: a second command in the action
+            'trap "$handler" EXIT\n'  # 18
+            "mapfile -C 'unset -f refuse' -c 1 lines\n"  # 19
+            "PATH=/tmp/bin\n"  # 20
+            "BASH_ALIASES[fail]=true\n"  # 21
+            "export PATH=/tmp/bin\n"  # 22: a declaration's argument is an assignment
+            "declare -A BASH_CMDS=([git]=/usr/bin/true)\n"  # 23
+            'source "${LEVER_DIR}/other.sh"\n'  # 24: not a library
+            '. "${LEVER_DIR:-.}/read-lib.sh"\n'  # 25: not the bare expansion
+            '. "$dir/read-lib.sh"\n'  # 26: not LEVER_DIR
+            'eval "$code"\n'  # 27
+            'command "$@"\n'  # 28
+            "unset x\n"  # 29: accepted from here on
+            "export PATH\n"  # 30: no value
+            "declare -r y=1\n"  # 31
+            "hash -r\n"  # 32
+            'unset -v "$name"\n'  # 33: variables only
+            'command -v "$tool" > /dev/null\n'  # 34: prints, runs nothing
+            '. "${LEVER_DIR}/git-isolated.sh"\n'  # 35: the one accepted shape
+            '. "${LEVER_DIR}/read-lib.sh"\n'  # 36
+            'source "$LEVER_DIR/read-lib.sh"\n'  # 37
+            "trap cleanup EXIT\n"  # 38: one simple command
+            "trap '' INT TERM HUP\n"  # 39
+            "trap 'rm -f \"${file}\"' EXIT\n"  # 40
+            "trap - EXIT\n"  # 41
+            "alias -p\n"  # 42
+            "mapfile -t lines\n"  # 43
+            "export GIT_INDEX_FILE=${scratch}/index\n"  # 44
+            'export "${GIT_ISOLATED_ENV[@]}"\n'  # 45
+            "export -f refuse\n"  # 46: leaves the function bound
+            "readonly -f fail\n"  # 47
+            "unset -f other\n"  # 48: no word the rules read
+        )
+        twice = (5, 13, 14)
+        expected = [(line, "shadow") for line in (*range(5, 7), *range(8, 29), *twice)]
+        result = self.assert_findings(rebinders, expected)
+        names = "`echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`"
+        refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
+        unread = f"this walk has not read, which may define or rebind one of {names}"
+        for line, message in (
+            (5, f"`unset` names `refuse` {refusal}"),
+            (5, f"`hash` names `refuse` {refusal}"),
+            (6, f"`alias` names `fail` {refusal}"),
+            (8, "`enable` names `echo` and shadows the builtin the refusal grammar writes to stderr with"),
+            (9, f"`eval` runs text {unread}: `refuse() {{ :; }}`"),
+            (10, f"`source` reads a file {unread}: `./lib.sh`"),
+            (11, f"`unset` names `refuse` {refusal}"),
+            (12, f"`unset` has an argument with no known text, which may name one of {names}"),
+            (13, f"`command` names `refuse` {refusal}"),
+            (13, f"`unset` names `refuse` {refusal}"),
+            (
+                15,
+                "`command` names `git` and shadows the producers `git ls-files`, `git config -f`, `git config --file`",
+            ),
+            (16, f"`trap` runs an action {unread[:22]} whole{unread[22:]}: `refuse() {{ :; }}`"),
+            (18, f"`trap` runs an action with no known text, which may define or rebind one of {names}"),
+            (19, f"`mapfile` runs a callback (`-C`) {unread}"),
+            (
+                20,
+                "an assignment to `PATH` binds a command word: the directories bash searches for `git`, `find` and `ls`",
+            ),
+            (21, "an assignment to `BASH_ALIASES` binds a command word: the alias table of bash 4, as `alias` does"),
+            (23, "an assignment to `BASH_CMDS` binds a command word: the hash table of bash 4, as `hash -p` does"),
+            (25, f"`.` reads a file with no known text, which may define or rebind one of {names}"),
+            (28, f"`command` has an argument with no known text, which may name one of {names}"),
+        ):
+            self.assertIn(f":{line}: shadow: {message}", result.stdout)
+        # Every redirect the walk meets is validated: a descriptor that is not a decimal refuses the file on any
+        # command, in any statement, never only on a producer; a decimal one passes anywhere.
+        for body, line in (
+            ("true {fd}>err\n", 3),  # the auditor's line
+            ("exec {fd}>err\n", 3),
+            ("f() { :; } {fd}>err\n", 3),
+            ("if true; then :; fi {fd}>err\n", 3),
+            ("x=$(a) || exit 1\n[[ -n x ]] {fd}<err\n", 4),
+            ("while :; do break; done {fd}>err\n", 3),
+        ):
+            with self.subTest(body=body):
+                variable = self.script("variable.sh", body)
+                result = self.run_check(variable)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertEqual(
+                    f"producer-status-check: cannot judge {variable}: the redirect descriptor `{{fd}}` at line {line} "
+                    "is not a decimal; the list is refused\n",
+                    result.stderr,
+                )
+        self.assert_findings("exec 3>err\ntrue 2>err\nf() { :; } 2>err\nx=$(a) || exit 1\n", [])
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every

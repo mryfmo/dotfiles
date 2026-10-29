@@ -994,7 +994,7 @@ def workflow_texts() -> dict[str, str]:
     return {path.name: workflow_text(path) for path in sorted(WORKFLOWS.glob("*.y*ml"))}
 
 
-# --- Rounds 10 to 12: the run bodies are read from shfmt's syntax tree ---------------------------------------------
+# --- Rounds 10 to 13: the run bodies are read from shfmt's syntax tree ---------------------------------------------
 #
 # Audit of 15c4afa8 (round 10): rounds 2, 8 and 9 each tightened the text rule above, and the auditor found two more
 # ways past it (`ci.run:`, `time\` and a newline). A regex over shell text cannot bound what bash executes; shfmt's
@@ -1009,22 +1009,31 @@ def workflow_texts() -> dict[str, str]:
 #       known text of every word, so `'apt'`, `"apt-get"` and `ap""t-get` count) or the form's first word
 #       TIMEOUT_PATH anywhere, or whose text names apt (APT_CALL). Every top-level statement of an apt step is
 #       exactly the bound form: a CallExpr with no assignment, in a statement with no redirection, `!`, `&` or
-#       coprocess, whose words are bare literals (one `Lit` part, no backslash) equal to FORM_WORDS, a decimal N of at
-#       least MIN_APT_BOUND, the verb, and after `install` exactly `-y` and one or more package names. Any other
-#       statement (a FuncDecl, an IfClause, a BinaryCmd, a `cd`, a `source`, an `echo`, anything) is a problem naming
-#       its line and node. No table of commands is needed, since nothing but the form is accepted.
-#   (b) In every step, apt or not, a command word with no known text (word_text, round 11: bare, single-quoted or
-#       double-quoted literals; an expansion, a substitution, an ANSI-C or locale string has none) is a problem
-#       naming the step and line: the first word of every CallExpr, and the word a `sudo` hands on (sudo is how a
-#       step reaches root, which apt needs to touch the image; SUDO_FLAGS and SUDO_VALUED are the options read
-#       before its command, any other option refused, so no option's value stands where the command is read).
+#       coprocess, whose words are bare literals (one `Lit` part over KNOWN_CHARACTERS) equal to FORM_WORDS, a
+#       decimal N of at least MIN_APT_BOUND, the verb, and after `install` exactly `-y` and one or more package
+#       names. Any other statement (a FuncDecl, an IfClause, a BinaryCmd, a `cd`, a `source`, an `echo`, anything)
+#       is a problem naming its line and node. No table of commands is needed, since nothing but the form is
+#       accepted.
+#   (b) In every step, apt or not, a command word with no known text is a problem naming the step and line: the
+#       first word of every CallExpr, and the word a `sudo` hands on (sudo is how a step reaches root, which apt
+#       needs to touch the image; SUDO_FLAGS and SUDO_VALUED are the options read before its command, any other
+#       option refused, so no option's value stands where the command is read). A word's text is known (word_text,
+#       round 13) when every part is a bare `Lit` over KNOWN_CHARACTERS or one of TEST_BUILTIN_WORDS, a plain
+#       single-quoted string, or double quotes around literals (any character there) and such strings; a bare
+#       literal holding a glob character, a brace, a tilde, `$`, a backquote, a backslash or whitespace, an
+#       expansion, a substitution, an ANSI-C or locale string has none, and nothing is decoded (the audit of
+#       e161f194 ran `sudo /usr/bin/a[p]t-get update` past round 12, which read a bare literal as its text).
 #       UNKNOWN_COMMAND_EXEMPT, keyed by workflow, step name and the exact line, names the lines where that word is a
 #       path from a variable the workflow set from a literal tool name and checked, each with its reason; a row must
 #       match a line. A comment ending in a backslash is a problem in every step too: shfmt joins the next line into
 #       the comment and bash runs it, so the tree would not show that line.
 #   (c) An apt token outside the form is a problem wherever it stands, since the step holding it is an apt step
-#       under (a); an apt step carries the guard APT_STEP_IF in its `if:` (the macOS rows have no apt and no
-#       /usr/bin/timeout), and the tree holds as many form statements as the text rule counted bound forms.
+#       under (a). A bare literal among a call's words that bash expands (unknown_characters) is a possible apt token
+#       too (`a[p]t-get`, `apt-g?t`, `ap*t` spell apt once bash has read them), named by line, so such a step is held
+#       to (a) as well; a case pattern or a `[[ ]]` operand is matched, never run, and is not one. An apt step's
+#       `if:` is one of APT_STEP_IFS, whole (the macOS rows have no apt and no /usr/bin/timeout; the audit of
+#       e161f194 appended `|| true` past a substring check), and the tree holds as many form statements as the text
+#       rule counted bound forms.
 # tests/unit/test_shfmt_json_contract.py extracts every field and literal this walk reads and holds TABLE to them.
 APT_TOKEN = re.compile(APT_CALL.pattern + r"|(?<=/)apt\Z|\Aapt\Z")
 FORM_WORDS = (
@@ -1047,15 +1056,35 @@ CALL_FIELDS = ("Type", "Args")  # Assigns is not
 COMMENT_JOIN = "shfmt joins the next line to the command before the comment, bash runs that line on its own"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # bash 3.1.2.3: the characters a backslash quotes inside double quotes
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # a `NAME=value` word sudo takes before the command
+# Bash reads a bare literal over this set as written; a glob character, a brace, a tilde, `$`, a backquote, a
+# backslash or whitespace is expanded or stripped first, so such a word's text is not known here and nothing is
+# decoded (the rule scripts/ci/producer-status-check.sh adopted in U112 round 4). Inside double quotes bash expands
+# none of them, so the set does not apply there.
+KNOWN_CHARACTERS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./:=+@%,")
+# The words of the test builtin `[ ... ]` that bash reads as written although a character is outside the set: an
+# unmatched `[` and a lone `]` are no pattern to bash (pathname expansion needs the pair) and `!` expands nothing in
+# a script (history expansion is off), so every `if [ ! "$x" != y ]` of the workflows runs as spelled.
+TEST_BUILTIN_WORDS = frozenset({"[", "]", "!", "!="})
 UNKNOWN_COMMAND = (
-    "a command word must have a known text: bare, single-quoted or double-quoted literals, nothing bash expands"
+    "a command word must have a known text: a bare literal over the known characters, single-quoted or "
+    "double-quoted literals, nothing bash expands"
 )
+EXPANDED_WORD = "a bare literal bash expands among a call's words is a possible apt token, and its step an apt step"
 SUDO = "sudo"
 SUDO_FLAGS = frozenset({"-E", "-H", "-n"})  # take no value
 SUDO_VALUED = frozenset({"-u", "-g"})  # take the next word
 APT_STEP = "an apt step holds nothing but bound apt calls, one exact form per statement"
-APT_STEP_IF = "runner.os == 'Linux'"
-APT_STEP_GUARD = f"an apt step's if: holds `{APT_STEP_IF}`; the macOS rows have no apt and no {TIMEOUT_PATH}"
+# The if: expressions an apt step carries, whole: the one the two apt steps of test.yaml's test job share, and the
+# Codecov step's, which adds the upload step's conditions. The set is the data, not a pattern: an expression with
+# anything added, removed or reordered is refused (the audit of e161f194 appended `|| true` past a substring check).
+APT_STEP_IFS = (
+    "${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}",
+    "${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}",
+)
+APT_STEP_GUARD = (
+    f"an apt step's if: is one of the {len(APT_STEP_IFS)} APT_STEP_IFS expressions, whole; the macOS rows have no "
+    f"apt and no {TIMEOUT_PATH}"
+)
 NODE_TABLE = "the pinned shfmt's JSON does not match the pinned node table"
 TREE_COUNT = "every apt call the tree holds is one the text counted as the form, and the reverse"
 # (workflow file, step name, the whole stripped line, exactly) -> why its command word, a quoted path, may have no
@@ -1145,30 +1174,46 @@ def line_of(node: dict) -> object:
     return pos.get("Line", "?")
 
 
-def unescaped(value: str, escapable: str | None) -> str:
-    """A literal's value without the backslashes bash removes when it reads the word: before any character in a bare
-    literal (`escapable` None), before one of `escapable` inside double quotes. A backslash-newline is already
-    joined by shfmt (the `time\\` and newline case of round 10)."""
+def unescaped(value: str) -> str:
+    """A double-quoted literal's value without the backslashes bash removes when it reads the word: before one of
+    DOUBLE_QUOTE_ESCAPES. A backslash-newline is already joined by shfmt (the `time\\` and newline case of round
+    10)."""
     out: list[str] = []
     index = 0
     while index < len(value):
-        if value[index] == "\\" and index + 1 < len(value) and (escapable is None or value[index + 1] in escapable):
+        if value[index] == "\\" and index + 1 < len(value) and value[index + 1] in DOUBLE_QUOTE_ESCAPES:
             index += 1
         out.append(value[index])
         index += 1
     return "".join(out)
 
 
+def unknown_characters(value: str) -> str:
+    """The characters of a bare literal outside KNOWN_CHARACTERS, each once in order; empty when bash reads the
+    literal as written (every character in the set, or one of TEST_BUILTIN_WORDS)."""
+    if value in TEST_BUILTIN_WORDS:
+        return ""
+    return "".join(dict.fromkeys(char for char in value if char not in KNOWN_CHARACTERS))
+
+
 def word_text(word: dict, in_double_quotes: bool = False) -> str | None:
-    """The known text of a word: every part a bare `Lit`, a plain single-quoted string, or double quotes around such
-    parts (`apt-get`, `'apt-get'`, `"apt-get"`, `ap""t-get` and `ap\\t-get` are one text). None for any other word,
-    whose text exists only when it runs: an expansion, a substitution, arithmetic, a process substitution, an
-    ANSI-C `$'...'` or a locale `$"..."` string (shfmt's Dollar). Nothing is decoded."""
+    """The known text of a word: every part a bare `Lit` bash reads as written (unknown_characters empty), a plain
+    single-quoted string, or double quotes around literals (any character there, their escapes removed) and such
+    strings (`apt-get`, `'apt-get'`, `"apt-get"`, `ap""t-get` and `"a[p]t"` are texts). None for any other word,
+    whose text exists only when it runs: a bare literal with a glob character, a brace, a tilde, `$`, a backquote, a
+    backslash or whitespace, an expansion, a substitution, arithmetic, a process substitution, an ANSI-C `$'...'` or
+    a locale `$"..."` string (shfmt's Dollar). Nothing is decoded."""
     text = ""
     for part in word.get("Parts") or []:
         kind = part.get("Type")
         if kind == "Lit":
-            text += unescaped(str(part.get("Value") or ""), DOUBLE_QUOTE_ESCAPES if in_double_quotes else None)
+            value = str(part.get("Value") or "")
+            if in_double_quotes:
+                text += unescaped(value)
+            elif not unknown_characters(value):
+                text += value
+            else:
+                return None
         elif kind == "SglQuoted" and not part.get("Dollar"):
             text += str(part.get("Value") or "")  # shfmt writes no Value for ''
         elif kind == "DblQuoted" and not part.get("Dollar"):
@@ -1182,18 +1227,19 @@ def word_text(word: dict, in_double_quotes: bool = False) -> str | None:
 
 
 def bare_text(word: dict) -> str | None:
-    """The text of a word written as the form's words are, one bare `Lit` part with no backslash; None otherwise."""
+    """The text of a word written as the form's words are, one bare `Lit` part bash reads as written; None
+    otherwise."""
     parts = word.get("Parts") or []
     if len(parts) != 1 or parts[0].get("Type") != "Lit":
         return None
     value = str(parts[0].get("Value") or "")
-    return None if "\\" in value else value
+    return None if unknown_characters(value) else value
 
 
 def lits(node: dict) -> list[str]:
     """Every text at or below node that could name apt: each `Lit` and `SglQuoted` value as shfmt holds it (inside
     quotes, expansions and substitutions too, `$'...'` included), and the known text of every word (word_text), so
-    `'apt'`, `"apt-get"`, `ap""t-get` and `ap\\t-get` are read as what they are."""
+    `'apt'`, `"apt-get"` and `ap""t-get` are read as what they are."""
     found: list[str] = []
     for part, _ in tree_nodes(node):
         if part.get("Type") in ("Lit", "SglQuoted"):
@@ -1205,14 +1251,44 @@ def lits(node: dict) -> list[str]:
     return found
 
 
+def expansion(word: dict) -> tuple[str, str]:
+    """The bare text of a word (its `Lit` parts joined as written, shfmt splits `a[p]t` into `a` and `[p]t`; the
+    other parts left out) and the characters of it bash expands, each once in order; the second empty when bash
+    reads every bare literal of the word as written."""
+    values = [str(part.get("Value") or "") for part in word.get("Parts") or [] if part.get("Type") == "Lit"]
+    outside = "".join(dict.fromkeys(char for value in values for char in unknown_characters(value)))
+    return "".join(values), outside
+
+
+def shown_characters(outside: str) -> str:
+    """The characters for a message, each in backquotes, comma-separated."""
+    return ", ".join(f"`{char}`" for char in outside)
+
+
+def expanded_words(tree: dict) -> list[tuple[object, str, str]]:
+    """`(line, spelled, characters)` of every word among a call's words holding a bare literal bash expands before
+    the call runs (expansion): `a[p]t-get`, `apt-g?t`, `ap*t`, `ap\\t-get`, `{apt,x}-get`, `~+/apt` may spell apt
+    once read. A case pattern, a `[[ ]]` operand, a `for` list or a redirect target is matched, tested or opened,
+    never run, so a glob there is not one."""
+    found: list[tuple[object, str, str]] = []
+    for node, _ in tree_nodes(tree):
+        if node.get("Type") == "CallExpr":
+            for word in node.get("Args") or []:
+                spelled, outside = expansion(word)
+                if outside:
+                    found.append((line_of(node), spelled, outside))
+    return found
+
+
 def apt_tokens(tree: dict) -> tuple[str, ...]:
-    """The tokens that make a step an apt step, sorted: every APT_TOKEN match in the texts lits() finds, and
-    TIMEOUT_PATH where one of them holds the form's first word."""
+    """The tokens that make a step an apt step, sorted: every APT_TOKEN match in the texts lits() finds, TIMEOUT_PATH
+    where one of them holds the form's first word, and every spelled word expanded_words() finds."""
     found: set[str] = set()
     for value in lits(tree):
         found.update(match.group() for match in APT_TOKEN.finditer(value))
         if TIMEOUT_PATH in value:
             found.add(TIMEOUT_PATH)
+    found.update(spelled for _, spelled, _ in expanded_words(tree))
     return tuple(sorted(found))
 
 
@@ -1227,7 +1303,8 @@ def names_apt(script: str) -> bool:
 
 def describe(word: dict) -> str:
     """A word with no known text, or not written bare, by the kinds of its parts: the parts inside double quotes in
-    parentheses, a `$'...'` or `$"..."` string by its Dollar, a literal holding a backslash by it."""
+    parentheses, a `$'...'` or `$"..."` string by its Dollar; a word holding a bare literal bash expands adds its
+    spelling and the characters bash expands."""
     kinds = []
     for part in word.get("Parts") or []:
         kind = str(part.get("Type", "untyped"))
@@ -1235,10 +1312,12 @@ def describe(word: dict) -> str:
             kind += f"({', '.join(str(inner.get('Type', 'untyped')) for inner in part.get('Parts') or [])})"
         if part.get("Type") in ("SglQuoted", "DblQuoted") and part.get("Dollar"):
             kind += " with Dollar"
-        if part.get("Type") == "Lit" and "\\" in str(part.get("Value") or ""):
-            kind += " with a backslash"
         kinds.append(kind)
-    return f"a word of {', '.join(kinds)} part(s)" if kinds else "an empty word"
+    text = f"a word of {', '.join(kinds)} part(s)" if kinds else "an empty word"
+    spelled, outside = expansion(word)
+    if outside:
+        text += f" spelling `{spelled}`, which bash expands ({shown_characters(outside)})"
+    return text
 
 
 def shown(words: list[dict], texts: list[str | None], position: int) -> str:
@@ -1371,9 +1450,10 @@ def command_problems(words: list[dict], line: object) -> list[tuple[object, str]
 
 def walk(tree: dict, source: str, text_names_apt: bool = False) -> Walked:
     """One step body's tree under the round 12 rule: an apt step (apt_tokens, or `text_names_apt` from the text)
-    accepts only form statements at its top level, each named by line and node otherwise; every step is read for
-    command words with no known text and for comments that hide the next line. `source` names the script in
-    messages that have no line."""
+    accepts only form statements at its top level, each named by line and node otherwise, and every bare literal
+    bash expands among a call's words is named by line (round 13); every step is read for command words with no
+    known text and for comments that hide the next line. `source` names the script in messages that have no
+    line."""
     tokens = apt_tokens(tree)
     problems: list[tuple[object, str]] = []
     unknown: list[tuple[object, str]] = []
@@ -1385,6 +1465,10 @@ def walk(tree: dict, source: str, text_names_apt: bool = False) -> Walked:
                 apt_calls += 1
             else:
                 problems.append((line_of(statement), f"{fault}: {APT_STEP}"))
+    problems.extend(
+        (line, f"`{spelled}` holds {shown_characters(outside)}: {EXPANDED_WORD}")
+        for line, spelled, outside in expanded_words(tree)
+    )
     for node, _ in tree_nodes(tree):
         if "Hash" in node:
             if str(node.get("Text", "")).rstrip("\n").endswith("\\"):
@@ -1411,11 +1495,12 @@ def script_line(script: str, line: object) -> str:
 def tree_problems(name: str, text: str) -> list[str]:
     """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a `shell:` other than bash
     (the tree reads the runner's bash), a `${{` in a run body (GitHub expands it before bash reads the text), a body
-    shfmt refuses, each statement of an apt step that is not the form, each comment that hides a line, each command
-    word with no known text in any step unless UNKNOWN_COMMAND_EXEMPT names its step and line, an apt step whose
-    `if:` lacks the guard, and a step whose tree holds another number of form statements than the text holds bound
-    forms. The bodies are PyYAML's (Parser), the lines the census's; a file the census or the parser gate refuses
-    is named there and not read here."""
+    shfmt refuses, each statement of an apt step that is not the form, each bare literal bash expands among a call's
+    words, each comment that hides a line, each command word with no known text in any step unless
+    UNKNOWN_COMMAND_EXEMPT names its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS
+    whole, and a step whose tree holds another number of form statements than the text holds bound forms. The
+    bodies are PyYAML's (Parser), the lines the census's; a file the census or the parser gate refuses is named
+    there and not read here."""
     if refused_characters(text) or parser_problems(name, text):
         return []
     document, _ = Parser.read(text)
@@ -1454,7 +1539,7 @@ def tree_problems(name: str, text: str) -> list[str]:
                 for at, what in walked.unknown
                 if (name, label, script_line(script, at)) not in UNKNOWN_COMMAND_EXEMPT
             )
-            if (walked.tokens or names_apt(script)) and APT_STEP_IF not in str(step.get("if") or ""):
+            if (walked.tokens or names_apt(script)) and str(step.get("if") or "").strip() not in APT_STEP_IFS:
                 problems.append(f"{where.format(text_step['line'])}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
             bounds = len(APT_BOUND.findall("\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))))
             if walked.apt_calls != bounds:
@@ -1935,16 +2020,18 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 12: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 13: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
     in every step; the real workflows pass; a parser or contract that cannot be read is a failure, never an
-    absence."""
+    absence. Round 13 (audit of e161f194): a bare literal is a text only over KNOWN_CHARACTERS, so the auditor's
+    `sudo /usr/bin/a[p]t-get update` is refused as an unknown word, as a possible apt token and as a non-form
+    statement; an apt step's `if:` is one of APT_STEP_IFS whole, so `|| true` appended is refused."""
 
     FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     NAME = "Install apt packages"
-    GUARD = f"${{{{ steps.decide.outputs.should_test == 'true' && {APT_STEP_IF} }}}}"
+    GUARD = APT_STEP_IFS[0]
     STEP = "x.yaml:{}: test: step 0 'Install apt packages': "
 
     def setUp(self) -> None:
@@ -1977,6 +2064,13 @@ class TreeRuleTest(unittest.TestCase):
         first = "a CallExpr whose word 1 is `{}`, not `/usr/bin/timeout`" + off
         quoted = "a CallExpr whose word 1 is a word of {} part(s), not the bare literal `/usr/bin/timeout`" + off
         unknown = f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"
+        expanded = "`{}` holds {}: " + EXPANDED_WORD
+        handed = "`sudo` followed by {}, which has no known text, before its command word"
+        command = "{} in command position: " + UNKNOWN_COMMAND
+        expands = (
+            "a CallExpr whose word 1 is a word of {} part(s) spelling `{}`, which bash expands ({}), not the bare "
+            "literal `/usr/bin/timeout`" + off
+        )
         for case, script, expected in (
             (
                 "the auditor's builtin eval",
@@ -2153,7 +2247,72 @@ class TreeRuleTest(unittest.TestCase):
             (
                 "a backslash in the path",
                 f"{form.replace('timeout', 'time\\out')} update\n",
-                [(1, quoted.format("Lit with a backslash"))],
+                [
+                    (1, expands.format("Lit", "/usr/bin/time\\out", "`\\`")),
+                    (1, expanded.format("/usr/bin/time\\out", "`\\`")),
+                    (
+                        1,
+                        command.format(
+                            "a word of Lit part(s) spelling `/usr/bin/time\\out`, which bash expands (`\\`)"
+                        ),
+                    ),
+                ],
+            ),
+            # Round 13 (audit of e161f194): a bare literal bash expands is read as no text, named as a possible apt
+            # token, and the step is an apt step; in command position or after sudo it is refused there too.
+            (
+                "the auditor's glob spelling of apt-get",
+                "sudo /usr/bin/a[p]t-get update\n",
+                [
+                    (1, first.format("sudo")),
+                    (1, expanded.format("/usr/bin/a[p]t-get", "`[`, `]`")),
+                    (
+                        1,
+                        handed.format(
+                            "a word of Lit, Lit part(s) spelling `/usr/bin/a[p]t-get`, which bash expands (`[`, `]`)"
+                        ),
+                    ),
+                ],
+            ),
+            (
+                "a ? in apt-get",
+                "sudo apt-g?t update\n",
+                [
+                    (1, first.format("sudo")),
+                    (1, expanded.format("apt-g?t", "`?`")),
+                    (1, handed.format("a word of Lit part(s) spelling `apt-g?t`, which bash expands (`?`)")),
+                ],
+            ),
+            (
+                "a * in apt",
+                "sudo ap*t update\n",
+                [
+                    (1, first.format("sudo")),
+                    (1, expanded.format("ap*t", "`*`")),
+                    (1, handed.format("a word of Lit part(s) spelling `ap*t`, which bash expands (`*`)")),
+                ],
+            ),
+            (
+                "a glob handed to env, which runs its arguments",
+                "env a[p]t-get update\n",
+                [(1, first.format("env")), (1, expanded.format("a[p]t-get", "`[`, `]`"))],
+            ),
+            (
+                "a brace spelling and a tilde path as the command",
+                "ap{t,x}-get update\n~+/apt-get update\n",
+                [
+                    (1, expands.format("Lit", "ap{t,x}-get", "`{`, `}`")),
+                    (1, expanded.format("ap{t,x}-get", "`{`, `}`")),
+                    (1, command.format("a word of Lit part(s) spelling `ap{t,x}-get`, which bash expands (`{`, `}`)")),
+                    (2, expands.format("Lit", "~+/apt-get", "`~`")),
+                    (2, expanded.format("~+/apt-get", "`~`")),
+                    (2, command.format("a word of Lit part(s) spelling `~+/apt-get`, which bash expands (`~`)")),
+                ],
+            ),
+            (
+                "a glob as an argument of echo",
+                "echo *\n",
+                [(1, first.format("echo")), (1, expanded.format("*", "`*`"))],
             ),
             (
                 "a bound under 120",
@@ -2194,7 +2353,7 @@ class TreeRuleTest(unittest.TestCase):
                 self.assertEqual(
                     ([], [], len(script.splitlines())), (walked.problems, walked.unknown, walked.apt_calls)
                 )
-                self.assertIn(APT_STEP_IF, str(steps[name]["if"]))
+                self.assertIn(str(steps[name]["if"]).strip(), APT_STEP_IFS)
 
     def test_a_command_word_with_no_known_text_is_refused_in_every_step(self) -> None:
         # Rule (b), in steps that run no apt: the first word of every call and the word a `sudo` hands on must have a
@@ -2260,10 +2419,30 @@ class TreeRuleTest(unittest.TestCase):
             ("a PATH set on the line before a literal command", 'PATH="${claude_bin_dir}:${PATH}" claude --version\n'),
             ("a trap and a source", "trap 'rm -f x' EXIT\nsource scripts/lib/github-release.sh\n"),
             ("an expansion as an argument", 'echo "${OS} is not supported" >&2\n'),
+            (
+                "the test builtin's words",
+                'if [ -n "${x}" ] && [ ! -s f ] && [ "${y}" != z ]; then echo yes; fi\n',
+            ),
+            (
+                "a case pattern, a [[ operand and a for list, matched or listed, never run",
+                'case "${OS}" in macos-*) : ;; *) : ;; esac\n[[ "${OS}" == ubuntu-* ]] || true\nfor f in *.md; do echo "$f"; done\n',
+            ),
         ):
             with self.subTest(case=case):
                 self.assertEqual([], self.body(script), case)
-        self.assertEqual("ap t-get", word_text({"Parts": [{"Type": "Lit", "Value": "ap\\ t-get"}]}))
+        # word_text over the closed set: a bare literal with a character outside it has no text, nothing is decoded;
+        # the test builtin's words and a double-quoted glob are texts.
+        for value in ("ap\\ t-get", "a[p]t-get", "apt-g?t", "ap*t", "ap{t,x}-get", "~+/apt", "$", "`", "apt\t"):
+            self.assertIsNone(word_text({"Parts": [{"Type": "Lit", "Value": value}]}), value)
+        for value in ("apt-get", "/usr/bin/timeout", "--kill-after=10", "Acquire::http::Timeout=15", "a,b@c%d+e_f"):
+            self.assertEqual(value, word_text({"Parts": [{"Type": "Lit", "Value": value}]}), value)
+        for value in TEST_BUILTIN_WORDS:
+            self.assertEqual(value, word_text({"Parts": [{"Type": "Lit", "Value": value}]}), value)
+        self.assertEqual(
+            "a[p]t", word_text({"Parts": [{"Type": "DblQuoted", "Parts": [{"Type": "Lit", "Value": "a[p]t"}]}]})
+        )
+        self.assertEqual(("/usr/bin/a[p]t-get",), apt_tokens(script_tree("sudo /usr/bin/a[p]t-get update\n", "x")))
+        self.assertEqual((), apt_tokens(script_tree("case x in *) : ;; esac\n[[ x == a* ]]\n[ ! x != y ]\n", "x")))
         self.assertEqual(
             'a"$b', word_text({"Parts": [{"Type": "DblQuoted", "Parts": [{"Type": "Lit", "Value": 'a\\"\\$b'}]}]})
         )
@@ -2334,6 +2513,37 @@ class TreeRuleTest(unittest.TestCase):
             )
             self.assertEqual(
                 [self.STEP.format(dash) + f"if: \"${{{{ matrix.os == 'ubuntu-24.04' }}}}\": {APT_STEP_GUARD}"],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case="the guard with anything added, or another expression (audit of e161f194)"):
+            for guard in (
+                f"{self.GUARD} || true",
+                "${{ runner.os == 'Linux' }}",
+                "${{ true && steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}",
+                self.GUARD.replace(" }}", "  }}"),
+                APT_STEP_IFS[1].replace(" && !endsWith(github.actor, '[bot]')", ""),
+            ):
+                text, _, dash = self.step(f"{form} update\n", **{"if": guard})
+                self.assertEqual(
+                    [self.STEP.format(dash) + f"if: {guard!r}: {APT_STEP_GUARD}"], tree_problems("x.yaml", text), guard
+                )
+            for guard in APT_STEP_IFS:
+                text, _, _ = self.step(f"{form} update\n", **{"if": guard})
+                self.assertEqual([], tree_problems("x.yaml", text), guard)
+        with self.subTest(case="a new step running sudo /usr/bin/a[p]t-get update (audit of e161f194)"):
+            text = render({"test": [{"name": "Added", "run": "sudo /usr/bin/a[p]t-get update\n"}]})
+            found = text_steps(text)["test"][0]
+            first, dash = found["runs"][0]["line"] + 1, found["line"]
+            at = "x.yaml:{}: test: step 0 'Added': "
+            self.assertEqual(
+                [
+                    at.format(first) + f"a CallExpr whose word 1 is `sudo`, not `/usr/bin/timeout`{off}",
+                    at.format(first) + f"`/usr/bin/a[p]t-get` holds `[`, `]`: {EXPANDED_WORD}",
+                    at.format(first)
+                    + "`sudo` followed by a word of Lit, Lit part(s) spelling `/usr/bin/a[p]t-get`, which bash expands "
+                    "(`[`, `]`), which has no known text, before its command word",
+                    at.format(dash) + f"if: None: {APT_STEP_GUARD}",
+                ],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case='"$cmd" --version in a step that runs no apt'):

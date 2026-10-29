@@ -9,10 +9,14 @@
 #   printed as `file:line: <rule>: <message>`:
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
-#      condition (negated or not) or the left side of a `||` whose branch handles the status, and the tested
-#      statement itself runs in the foreground and, under `||`, is not negated: `! x=$(…) || exit 1` reads the
-#      failure as success, `x=$(…) || exit 1 &` ends only the background job, `coproc x=$(…) || exit 1` tests the
-#      coprocess's start, and each is a finding naming that. The branches that handle the status are a closed list:
+#      condition (negated or not) or the left side of a `||` whose branch handles the status, and no statement on
+#      the path from the tested statement to the top level (the statement itself, the `||` list, and every block,
+#      subshell, list, `if`, loop or function body around it) runs in the background, is negated (the condition's
+#      own `!` aside) or is a `coproc`: `! x=$(…) || exit 1` reads the failure as success, `x=$(…) || exit 1 &`,
+#      `{ x=$(…) || exit 1; } &` and `( x=$(…) || exit 1 ) &` end only the background job, `coproc { x=$(…); } ||
+#      exit 1` tests the coprocess's start, and each is a finding naming the flagged statement's line. A function
+#      body is not the top level: `f() { x=$(…) || return 1; }` is judged by its own path, whatever `f &` does at
+#      the call. The branches that handle the status are a closed list:
 #      (i) a plain command whose known first word is `exit` or `return`, with no argument (the status of the failed
 #      substitution propagates, so only as the whole branch or as the only statement of its block or subshell), with
 #      one argument whose known text is a decimal from 1 to 255, or with one argument that is the bare `$?` (`exit
@@ -22,7 +26,8 @@
 #      top-level function defines is not accepted; a bare `exit` or `return` there passes on the status of the
 #      body's earlier command, and the finding names that command); (iii) a block or subshell whose last statement is
 #      (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?` (`status=$?`).
-#      A branch statement run in the background (`exit 2 &`) handles nothing.
+#      A branch statement run in the background (`exit 2 &`) or negated (`! exit 1`, `! (exit 1)`) handles nothing,
+#      and a block or subshell branch must hold no such statement at any depth (`{ echo x & exit 1; }`).
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
 #      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell ending
 #      otherwise, an assignment of anything else, a first word with no known text. A later line that handles an
@@ -46,9 +51,11 @@
 #      equal, or both hold a parameter expansion and their parts are equal. `read_listing` of
 #      scripts/orchestrator/read-lib.sh is that shape by construction, and a producer the table does not name is not
 #      held to this rule.
-#   c. `prologue`: the file runs `set -euo pipefail` at top level before its first statement holding a command
-#      substitution (a function body counts), else a finding at line 1. `shopt -s inherit_errexit` is not required:
-#      bash 3.2 has no such option.
+#   c. `prologue`: the file runs `set -euo pipefail` at top level, in the foreground and not negated, before its
+#      first statement holding a command substitution (a function body counts), else a finding at line 1 naming why
+#      the first `set -euo pipefail` the file holds does not count: `set -euo pipefail &`, `{ set -euo pipefail; } &`
+#      and `( set -euo pipefail )` set the options of a child shell only, one inside a function, block or `if` is
+#      not at the top level. `shopt -s inherit_errexit` is not required: bash 3.2 has no such option.
 #   d. `read`: a `read` that carries its own `<` redirect is a finding naming `read_file` (`done < file` redirects
 #      the loop, not the `read`; a here-string is not a file).
 #   e. `allow`: `# producer-status: allow <reason>` on the statement's first line exempts that statement from a, b
@@ -140,13 +147,15 @@ STATUS_PARAMETERS = (
     {"Type": "ParamExp", "Short": True, "Param": {"Value": "?"}},
     {"Type": "ParamExp", "Param": {"Value": "?"}},
 )
-# A tested read whose statement does not run in the foreground, or is negated under `||`: its failure stops nothing.
-FLAGS = {
-    "Negated": "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run",
-    "Background": "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job",
+# A tested read whose path to the top level holds a flagged statement: its failure stops nothing. The path is the
+# read's own statement and every statement around it (a `||` list, a block, a subshell, an `if`, a loop, a function
+# body); a statement is flagged when it runs in the background (`&`), is negated (`!`) or runs a `coproc` clause.
+BACKGROUND, NEGATED, COPROCESS = "Background", "Negated", "CoprocClause"
+BRANCH_FLAGS = {  # how a finding names a flagged statement in a `||` branch
+    BACKGROUND: "a command run in the background (`&`), which lets the script go on",
+    NEGATED: "a negated command (`!`), whose failure status is read as success",
+    COPROCESS: "a `coproc`, whose status is its start, not its command's",
 }
-COPROCESS = "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"
-BACKGROUND_BRANCH = "a command run in the background (`&`), which lets the script go on"
 IN_FUNCTION = object()  # the `before` of a bare `exit` or `return` that is a function body's only statement
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
@@ -431,14 +440,61 @@ def statement_name(stmt):
     return SHAPES.get(kind, f"a {kind}")
 
 
-def flagged(stmt, negation=True):
-    """The flag that takes a tested statement out of the accepted positions, else None: it runs in the background
-    (`&`, so its failure stops nothing), or, under `||` (negation), it is negated (`!`, so its failure is read as
-    success); an `if` or `while` condition may be negated."""
-    if stmt.get("Background"):
-        return FLAGS["Background"]
-    if negation and stmt.get("Negated"):
-        return FLAGS["Negated"]
+def flagged_path(stack, negation=True):
+    """The first flagged statement on the path from a statement (stack[0]) out to the top level (stack[-1]), as
+    (flag, depth) into the stack, else None: a statement run in the background (`&`, so a failure ends only the job),
+    negated (`!`, so the failure of what it ends is read as success) or running a `coproc` clause (shfmt 3.14.1 writes
+    no Coprocess flag on the statement in bash mode: the clause is the flag). An `if` or `while` condition may negate
+    its own statement (negation False passes over the `!` of stack[0] alone); a `!` around it is a flag."""
+    for depth, stmt in enumerate(stack):
+        if stmt.get("Background"):
+            return BACKGROUND, depth
+        if stmt.get("Negated") and (negation or depth):
+            return NEGATED, depth
+        cmd = command_of(stmt)
+        if isinstance(cmd, dict) and cmd.get("Type") == "CoprocClause":
+            return COPROCESS, depth
+    return None
+
+
+def read_flag(flag, stmt, depth):
+    """The message of a tested read whose path holds a flagged statement (stmt, at depth in the path), naming its
+    line: the `&`, the `!` or the `coproc` may be on the read's own line or on a statement lines above it."""
+    line = stmt["Pos"]["Line"]
+    if flag == BACKGROUND:
+        return (
+            "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job "
+            f"started at line {line}"
+        )
+    if flag == COPROCESS:
+        return (
+            "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends: the `coproc` "
+            f"is at line {line}"
+        )
+    if depth:
+        return (
+            f"the tested read sits in a statement negated (`!`) at line {line}, so a failure that ends that statement "
+            "is read as success and the script goes on"
+        )
+    return (
+        "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run: the "
+        f"`!` is at line {line}"
+    )
+
+
+def statements_inside(stmt):
+    """Every statement inside a statement, at any depth, in file order; not the statement itself."""
+    inside = [node for node in every(stmt) if node is not stmt and node.get("Type") is None and "Cmd" in node]
+    return sorted(inside, key=lambda node: node["Pos"]["Offset"])
+
+
+def flagged_inside(stmt):
+    """The first flagged statement inside a `||` branch's block or subshell, at any depth, as (flag, statement), else
+    None: the branch is held to flagged_path like the read it handles."""
+    for inner in statements_inside(stmt):
+        flag = flagged_path((inner,))
+        if flag is not None:
+            return flag[0], inner
     return None
 
 
@@ -500,9 +556,11 @@ def branch_shape(stmt, functions, terminators, inner=False, before=None):
     statement is (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?`. As the
     last statement of a block or a function body (inner), only (i) and (ii) count: no recursion, no nested block, no
     `$?` that the enclosing read never tests.
-    A statement run in the background handles nothing: the script goes on while it runs."""
-    if stmt.get("Background"):
-        return BACKGROUND_BRANCH
+    A statement run in the background or negated handles nothing (the script goes on, or the failure reads as
+    success), and a block or subshell must hold no such statement at any depth."""
+    flag = flagged_path((stmt,))
+    if flag is not None:
+        return BRANCH_FLAGS[flag[0]]
     cmd = command_of(stmt)
     kind = cmd.get("Type") if isinstance(cmd, dict) else None
     if kind == "CallExpr":
@@ -535,9 +593,12 @@ def branch_shape(stmt, functions, terminators, inner=False, before=None):
             return f"a {noun} whose last statement is nothing"
         before = statement_name(stmts[-2]) if len(stmts) > 1 else None
         shape = branch_shape(stmts[-1], functions, terminators, True, before)
-        if shape is None:
-            return None
-        return f"a {noun} whose last statement is {shape}"
+        if shape is not None:
+            return f"a {noun} whose last statement is {shape}"
+        flag = flagged_inside(stmt)
+        if flag is not None:
+            return f"a {noun} that holds, at line {flag[1]['Pos']['Line']}, {BRANCH_FLAGS[flag[0]]}"
+        return None
     if kind == "BinaryCmd":
         op = cmd.get("Op")
         return LIST_SHAPES.get(op, f"a `{op}` list")
@@ -577,6 +638,7 @@ class Walk:
         self.top = []
         self.top_index = 0
         self.first_substitution = None  # the index of the top-level statement holding the first substitution
+        self.prologues = []  # the path (statement stack) of every `set -euo pipefail` the file holds
         self.functions = {}  # the top-level functions of the file, name -> bodies (branch form ii)
         self.terminators = TERMINATORS  # `exit` and `return`, less any name a top-level function takes
 
@@ -586,14 +648,14 @@ class Walk:
         self.accepted.clear()
         self.reasons.clear()
         self.allowed.clear()
+        self.prologues.clear()
         self.top = tree.get("Stmts") or []
         self.top_index = 0
         self.first_substitution = None
         self.functions = top_level_functions(tree)
         self.terminators = tuple(name for name in TERMINATORS if name not in self.functions)
         self.comments(tree)
-        self.accept(tree)
-        self.visit(tree, None, None)
+        self.visit(tree, (), None)
         self.prologue()
         return sorted(self.findings)
 
@@ -607,33 +669,37 @@ class Walk:
                     else:
                         self.findings.add((node["Hash"]["Line"], ALLOW, MESSAGES[ALLOW]))
 
-    def accept(self, tree):
-        """Mark the substitutions in the two accepted positions: the last statement of an `if` or `while` condition,
-        and the left side of a `||` whose branch handles the status (branch_shape), when the tested statement runs in
-        the foreground and, under `||`, is not negated (flagged) or a coprocess; any other branch or flag leaves the
-        left side's substitution a finding that names the branch's shape or the flag."""
-        for node in every(tree):
-            kind = node.get("Type")
-            # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it.
-            if kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
-                for stmt in (node.get("Cond") or [])[-1:]:
-                    self.candidate(stmt, flagged(stmt, False))
-            elif kind is None and "Cmd" in node:
-                binary = node["Cmd"]
-                if not isinstance(binary, dict) or binary.get("Type") != "BinaryCmd" or binary.get("Op") != "||":
-                    continue
-                # The `&` of `x=$(…) || exit 1 &` is on the whole statement; a `!` is on the tested side.
-                tested = binary["X"]
-                reason = flagged(node, False) or flagged(tested)
-                run = command_of(tested)
-                if reason is None and isinstance(run, dict) and run.get("Type") == "CoprocClause":
-                    inner = body_statements(run["Stmt"])
-                    tested, reason = (inner[0] if len(inner) == 1 else run["Stmt"]), COPROCESS
-                elif reason is None:
-                    shape = branch_shape(binary["Y"], self.functions, self.terminators)
-                    if shape is not None:
-                        reason = branch_reason(shape)
-                self.candidate(tested, reason)
+    def tested_list(self, stmt, stack):
+        """The second accepted position: the left side of a `||` (stmt's command) whose branch handles the status
+        (branch_shape), when no statement on the left side's path is flagged (flagged_path over the left side, the
+        `||` statement and every statement around it: `x=$(…) || exit 1 &` and `{ x=$(…) || exit 1; } &` end only
+        the job). A `coproc` as the left side tests the coprocess's start: the one statement it runs is the candidate,
+        and the clause on its path is the flag. Any other branch or flag leaves the substitution a finding naming it."""
+        binary = stmt.get("Cmd")
+        if not isinstance(binary, dict) or binary.get("Type") != "BinaryCmd" or binary.get("Op") != "||":
+            return
+        tested = binary["X"]
+        path = (tested, *stack)
+        run = command_of(tested)
+        if isinstance(run, dict) and run.get("Type") == "CoprocClause":
+            held = run["Stmt"]
+            inner = body_statements(held)
+            tested = inner[0] if len(inner) == 1 else held
+            path = (tested, held, *path) if tested is not held else (held, *path)
+        self.test(tested, path, self.branch(binary["Y"]))
+
+    def branch(self, stmt):
+        """Why a `||` branch does not handle the status of the tested read, else None."""
+        shape = branch_shape(stmt, self.functions, self.terminators)
+        return None if shape is None else branch_reason(shape)
+
+    def test(self, tested, path, reason, negation=True):
+        """A tested statement on its path: a flag on the path is its reason (naming the flagged line), else the
+        branch's reason, else the read is accepted."""
+        flag = flagged_path(path, negation)
+        if flag is not None:
+            reason = read_flag(flag[0], path[flag[1]], flag[1])
+        self.candidate(tested, reason)
 
     def candidate(self, stmt, reason):
         """Accept the substitution a tested statement captures, or record why it is still a finding."""
@@ -650,38 +716,48 @@ class Walk:
             return
         self.findings.add((line, rule, message))
 
-    def visit(self, node, stmt, siblings):
-        """Depth first; stmt is the innermost statement holding node, siblings the statement list it sits in and its
-        index there (the list a later `[[ ! -s file ]]` is searched in)."""
+    def visit(self, node, stack, siblings):
+        """Depth first; stack is the statements holding node, innermost first (the path flagged_path reads), siblings
+        the statement list it sits in and its index there (the list a later `[[ ! -s file ]]` is searched in). The two
+        accepted positions are marked here, at the statement or clause that tests the read, before its substitution is
+        visited."""
         if isinstance(node, list):
             for item in node:
-                self.visit(item, stmt, siblings)
+                self.visit(item, stack, siblings)
             return
         if not isinstance(node, dict):
             return
         kind = node.get("Type")
         if kind is None and "Cmd" in node:
             self.seen["Stmt"] += 1
-            stmt = node
+            stack = (node, *stack)
             if siblings is not None and siblings[0] is self.top:
                 self.top_index = siblings[1]
             self.statement(node, siblings)
+            self.tested_list(node, stack)
+            if prologue_statement(node):
+                self.prologues.append(stack)
         elif kind is None and "Name" in node:
             self.seen["Assign"] += 1
+        elif kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
+            # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it. The
+            # condition's last statement may be negated; a flag on any statement around the clause is a flag.
+            for stmt in (node.get("Cond") or [])[-1:]:
+                self.test(stmt, (stmt, *stack), None, False)
         elif kind == "CmdSubst":
             self.seen["CmdSubst"] += 1
             if self.first_substitution is None:
                 self.first_substitution = self.top_index
             if id(node) not in self.accepted:
                 message = self.reasons.get(id(node), MESSAGES[SUBSTITUTION])
-                self.report(stmt, node["Pos"]["Line"], SUBSTITUTION, message)
+                self.report(stack[0] if stack else None, node["Pos"]["Line"], SUBSTITUTION, message)
         node = without_literal_body(node)
         for value in node.values():
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
                 for index, item in enumerate(value):
-                    self.visit(item, stmt, (value, index))
+                    self.visit(item, stack, (value, index))
             else:
-                self.visit(value, stmt, siblings)
+                self.visit(value, stack, siblings)
 
     def statement(self, stmt, siblings):
         """Rules b and d on one statement's own command."""
@@ -728,20 +804,50 @@ class Walk:
         return same_word(inner["X"], target)
 
     def prologue(self):
-        """Rule c: `set -euo pipefail` at top level before the first statement holding a substitution."""
+        """Rule c: a `set -euo pipefail` at top level, on no flagged path, before the first statement holding a
+        substitution; else a finding at line 1 that names why the first one the file holds does not count."""
         if self.first_substitution is None:
             return
-        if any(prologue_statement(stmt) for stmt in self.top[: self.first_substitution]):
-            return
+        before = self.top[: self.first_substitution]
+        for stack in self.prologues:
+            if len(stack) == 1 and flagged_path(stack) is None and any(stmt is stack[0] for stmt in before):
+                return
         line = self.top[self.first_substitution]["Pos"]["Line"]
         self.findings.add(
             (
                 1,
                 PROLOGUE,
                 "`set -euo pipefail` must run at top level before the first statement holding a command "
-                f"substitution (line {line})",
+                f"substitution (line {line}): {self.prologue_why()}",
             )
         )
+
+    def prologue_why(self):
+        """Why the first `set -euo pipefail` of the file (by line) is not the prologue: it runs in a background job,
+        is negated or runs in a coprocess (the options are set in a child shell, or not read), it sits inside a
+        statement (a block, a subshell, a function definition, an `if`), or it comes after the first substitution."""
+        if not self.prologues:
+            return "the file holds none"
+        stack = min(self.prologues, key=lambda path: path[0]["Pos"]["Offset"])
+        line = stack[0]["Pos"]["Line"]
+        flag = flagged_path(stack)
+        if flag is not None:
+            at = stack[flag[1]]["Pos"]["Line"]
+            if flag[0] == BACKGROUND:
+                return (
+                    f"the one at line {line} runs in a background job started at line {at} (`&`), which sets the "
+                    "options of a child shell only"
+                )
+            if flag[0] == NEGATED:
+                return f"the one at line {line} is negated (`!`) at line {at}"
+            return f"the one at line {line} runs in a coprocess started at line {at}, a child shell"
+        if len(stack) > 1:
+            outer = stack[-1]
+            return (
+                f"the one at line {line} runs inside {statement_name(outer)} at line {outer['Pos']['Line']}, not at "
+                "the top level"
+            )
+        return f"the one at line {line} comes after it"
 
 
 try:

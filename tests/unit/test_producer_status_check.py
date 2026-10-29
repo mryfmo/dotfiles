@@ -16,7 +16,10 @@ decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a faile
 the tested statement's flags (`!`, `&`, `coproc`) and accepts the bare `exit` or `return` only as the whole branch or
 as the only statement of its block or subshell, since after an earlier command `$?` is that command's, and round 7
 builds every message that quotes a word of the tree by an f-string, so a word spelled `{y}` is reported, never read
-as a format field that makes the walk raise and the lint refuse the file.
+as a format field that makes the walk raise and the lint refuse the file, and round 8 reads the flags of every
+statement on the path from the tested read to the top level (`{ x=$(false) || exit 1; } &` ended only the job), of
+the `||` branch and every statement inside it (`|| ! (exit 1)` read the refusal as success) and of the prologue
+(`set -euo pipefail &` set the options of a child shell only).
 """
 
 from __future__ import annotations
@@ -560,6 +563,91 @@ class ProducerStatusCheckTest(unittest.TestCase):
             with self.subTest(body=body):
                 result = self.assert_findings(body, [(line, rule)])
                 self.assertIn(f":{line}: {rule}: {named}", result.stdout)
+
+    def test_the_round_8_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The three lines of the e2a87fef audit and the next members of each list, which that head read as clean:
+        only the tested statement's own flags were read, so `{ x=$(false) || exit 1; } &` ended only the background
+        job while the parent went on; branch_shape ignored `Negated`, so `|| ! (exit 1)` turned the refusal into
+        success; and the prologue check accepted `set -euo pipefail &`, which sets the options of a child shell. Round 8
+        reads the flags of every statement on the path from the tested read to the top level (flagged_path), of the
+        `||` branch and every statement inside its block or subshell, and of the prologue; each finding names the
+        flagged statement's line. A function body is not the top level: `f() { x=$(false) || return 1; }` is judged
+        by its own path and accepted, and the `&` of its call `f &` is outside that path (a documented accept: the
+        read's failure returns from `f`, whatever the caller does with the job)."""
+        body = (
+            "{ x=$(false) || exit 1; } &\n"  # 3: the auditor's first probe
+            "x=$(false) || ! (exit 1)\n"  # 4: the second
+            "( x=$(false) || exit 1 ) &\n"  # 5
+            "f() { x=$(false) || return 1; }\n"  # 6: accepted, see the docstring
+            "f &\n"  # 7
+            "x=$(a) || { ! exit 1; }\n"  # 8
+            "x=$(a) || ( ! exit 1 )\n"  # 9
+            "x=$(a) || ! exit 1\n"  # 10
+            "! { x=$(a) || exit 1; }\n"  # 11
+            "! ( x=$(a) || exit 1 )\n"  # 12
+            "{\n    x=$(a) || exit 1\n} &\n"  # 13 to 15: the finding at 14 names the job started at 13
+            "coproc { if x=$(a); then :; fi; }\n"  # 16
+            "x=$(a) || { echo x & exit 1; }\n"  # 17
+            "if x=$(a); then :; fi &\n"  # 18
+            "while x=$(a); do break; done &\n"  # 19
+            "g() { ( x=$(a) || exit 1 ) & }\n"  # 20: the subshell inside the body is on the read's path
+            "{ x=$(a) || exit 1; }\n"  # 21: a foreground block, accepted
+            "( x=$(a) || exit 1 )\n"  # 22: a foreground subshell, accepted
+            "x=$(a) || { exit 1; } &\n"  # 23
+        )
+        expected = [(line, "substitution") for line in (3, 4, 5, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 23)]
+        result = self.assert_findings(body, expected)
+        background = "the tested read runs in the background (`&`), so its failure stops nothing: the test sees the job"
+        negated_branch = "a negated command (`!`), whose failure status is read as success"
+        for line, message in (
+            (3, f"{background} started at line 3"),
+            (4, f"the `||` branch is {negated_branch} and does not end the read"),
+            (5, f"{background} started at line 5"),
+            (8, f"the `||` branch is a block whose last statement is {negated_branch}"),
+            (9, f"the `||` branch is a subshell whose last statement is {negated_branch}"),
+            (10, f"the `||` branch is {negated_branch}"),
+            (11, "the tested read sits in a statement negated (`!`) at line 11, so a failure that ends that statement"),
+            (12, "the tested read sits in a statement negated (`!`) at line 12"),
+            (14, f"{background} started at line 13"),
+            (
+                16,
+                "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends: the "
+                "`coproc` is at line 16",
+            ),
+            (
+                17,
+                "the `||` branch is a block that holds, at line 17, a command run in the background (`&`), which "
+                "lets the script go on",
+            ),
+            (18, f"{background} started at line 18"),
+            (19, f"{background} started at line 19"),
+            (20, f"{background} started at line 20"),
+            (23, f"{background} started at line 23"),
+        ):
+            self.assertIn(f":{line}: substitution: {message}", result.stdout)
+        # The prologue: the auditor's third probe and the other ways `set -euo pipefail` is not the script's own.
+        read = "x=$(a) || exit 1\n"
+        for name, prologue, why in (
+            ("in the background", "set -euo pipefail &\n", "runs in a background job started at line 2 (`&`)"),
+            ("in a subshell", "( set -euo pipefail )\n", "runs inside a subshell at line 2, not at the top level"),
+            (
+                "in a block in the background",
+                "{ set -euo pipefail; } &\n",
+                "runs in a background job started at line 2",
+            ),
+            ("negated", "! set -euo pipefail\n", "is negated (`!`) at line 2"),
+            ("in a block", "{ set -euo pipefail; }\n", "runs inside a block at line 2, not at the top level"),
+            ("in a function", "f() { set -euo pipefail; }\n", "runs inside a function definition at line 2"),
+            ("after the read", "", "the one at line 3 comes after it"),
+            ("absent", "", "the file holds none"),
+        ):
+            with self.subTest(name):
+                tail = "set -euo pipefail\n" if name == "after the read" else ""
+                result = self.assert_findings(read + tail, [(1, "prologue")], prologue=prologue)
+                if prologue:
+                    why = f"substitution (line 3): the one at line 2 {why}"
+                self.assertIn("`set -euo pipefail` must run at top level", result.stdout)
+                self.assertIn(why, result.stdout)
 
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
         """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument (as

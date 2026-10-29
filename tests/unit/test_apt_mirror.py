@@ -24,7 +24,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Iterator, NamedTuple
+from typing import Iterable, Iterator, NamedTuple
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
@@ -179,12 +179,15 @@ COMMENT = re.compile(r"(?:^|[ \t])#")  # a comment starts at a `#` that opens th
 KEY_FORM = "a plain `key:` line (lower-case letters, digits, `_` and `-`, the colon right after, then a blank or the line's end)"
 JOBS_LINE = "the readers find the bare `jobs:` line, with nothing else on it"
 # The keys the workflow schema allows on a job and on a step (docs.github.com, workflow syntax); any other key is
-# refused, as the runner refuses it.
-JOB_KEYS = frozenset(
+# refused, as the runner refuses it. The schema's sets, for the census: the keys the workflows hold today are the
+# round 17 tuples (WORKFLOW_KEYS, JOB_KEYS, STEP_KEYS), which the tree rule reads.
+SCHEMA_JOB_KEYS = frozenset(
     "name permissions needs if runs-on environment concurrency outputs env defaults steps timeout-minutes strategy "
     "continue-on-error container services uses with secrets".split()
 )
-STEP_KEYS = frozenset("id if name uses run working-directory shell with env continue-on-error timeout-minutes".split())
+SCHEMA_STEP_KEYS = frozenset(
+    "id if name uses run working-directory shell with env continue-on-error timeout-minutes".split()
+)
 # A value's first character names its form. Both readers read a value that is empty (a nested block, a list or
 # nothing follows), a plain scalar, a quoted scalar or a flow collection, since none of these moves a step or a `run:`
 # body; `steps:` takes the empty form alone, and a `run:` value is compared with the reader's (READ_FORMS). The other
@@ -211,10 +214,10 @@ RUN_COMMENT = "a comment after a one-line run:, which the reader returns inside 
 # top-level `name: "x` whose quoted value continued onto a `jobs:` line at the margin handed both readers a jobs key
 # inside the string, and the real `"jobs":` mapping under a quoted key (YAML the runner executes) was never read: an
 # apt step there passed. The grammar now covers the whole document: every line at the margin is a plain key the
-# workflow schema allows (TOP_KEYS) whose value is a read form and complete on its line (a quoted scalar closes, a
-# flow collection balances; a `#` inside either is content), `jobs:` is bare and once, and a line indented under any
-# other top-level key is its value. No line of the file is unread.
-TOP_KEYS = frozenset("name run-name on permissions env defaults concurrency jobs".split())
+# workflow schema allows (SCHEMA_TOP_KEYS) whose value is a read form and complete on its line (a quoted scalar
+# closes, a flow collection balances; a `#` inside either is content), `jobs:` is bare and once, and a line indented
+# under any other top-level key is its value. No line of the file is unread.
+SCHEMA_TOP_KEYS = frozenset("name run-name on permissions env defaults concurrency jobs".split())
 TOP_STOP = "both readers stop at the first unindented line"
 # Round 7 (audit of 8c1d334a): the census split the text at LF alone and took Python's notion of a blank, while
 # PyYAML (YAML 1.1) also breaks a line at U+0085, U+2028 and U+2029, so a comment line that went on after one of
@@ -554,18 +557,18 @@ def key_problem(lexed: Lexed, allowed: frozenset[str], seen: set[str], level: st
 def census(text: str) -> Census:
     """Every step of every job, from the raw text alone, at whatever indentation the file uses.
 
-    The whole document is read. A line at the margin is a plain key the workflow schema allows (TOP_KEYS), its value
-    in a read form and complete on its line; `jobs:` is bare and appears once; a line indented under any other
-    top-level key is that key's value (a nested block, a list, a continuation). Inside `jobs:` the shape is derived,
-    never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a job its keys', the first
-    dash under `steps:` the dashes', and each dash line its own keys' (the column after `- `). Any other line inside
-    `jobs:` is the value of the key above it when it is indented past that key (a `run: |` body, a nested `with:`
-    mapping; a `run:` there is not a key) and is refused by line otherwise. Every line the shape places is lexed and
-    held to the grammar (KEY_LINE, JOB_KEYS, STEP_KEYS, the value forms) or refused by line with its construct named.
-    A `run:` key's body is every following line indented past the step's keys, blank lines included, up to the first
-    that is not; so the body is collected in any scalar form, whatever the reader makes of the form. Before any of
-    this, every character is held to the census's character set: a file with one outside it (REFUSED_CHARACTERS)
-    is refused by line and column, and no line of it is read."""
+    The whole document is read. A line at the margin is a plain key the workflow schema allows (SCHEMA_TOP_KEYS),
+    its value in a read form and complete on its line; `jobs:` is bare and appears once; a line indented under any
+    other top-level key is that key's value (a nested block, a list, a continuation). Inside `jobs:` the shape is
+    derived, never assumed: the first key after `jobs:` sets the jobs' indent, the first key under a job its keys',
+    the first dash under `steps:` the dashes', and each dash line its own keys' (the column after `- `). Any other
+    line inside `jobs:` is the value of the key above it when it is indented past that key (a `run: |` body, a
+    nested `with:` mapping; a `run:` there is not a key) and is refused by line otherwise. Every line the shape
+    places is lexed and held to the grammar (KEY_LINE, SCHEMA_JOB_KEYS, SCHEMA_STEP_KEYS, the value forms) or refused
+    by line with its construct named. A `run:` key's body is every following line indented past the step's keys,
+    blank lines included, up to the first that is not; so the body is collected in any scalar form, whatever the
+    reader makes of the form. Before any of this, every character is held to the census's character set: a file
+    with one outside it (REFUSED_CHARACTERS) is refused by line and column, and no line of it is read."""
     faults = refused_characters(text)
     if faults:
         return Census({}, faults)
@@ -604,7 +607,7 @@ def census(text: str) -> Census:
                 stop = f"; {TOP_STOP}" if inside else ""
                 refused.append((number, f"{lexed.text} (not {KEY_FORM}{stop})"))
             elif lexed.key != "jobs":
-                problem = key_problem(lexed, TOP_KEYS, top_keys, "workflow")
+                problem = key_problem(lexed, SCHEMA_TOP_KEYS, top_keys, "workflow")
                 if problem:
                     refused.append((number, f"{lexed.text} ({problem})"))
             elif "jobs" in top_keys:
@@ -645,17 +648,17 @@ def census(text: str) -> Census:
             step = {"line": number, "dash": lexed.indent, "keys": keys, "runs": []}
             steps.append(step)
             step_keys = set()
-            problem = key_problem(lexed, STEP_KEYS, step_keys, "step", entry=True)
+            problem = key_problem(lexed, SCHEMA_STEP_KEYS, step_keys, "step", entry=True)
             step_key = True
             value_at = keys
         elif lexed.indent > jobs_at and (keys_at is None or lexed.indent == keys_at):
             keys_at = lexed.indent
-            problem = key_problem(lexed, JOB_KEYS, job_keys, "job")
+            problem = key_problem(lexed, SCHEMA_JOB_KEYS, job_keys, "job")
             in_steps = lexed.key == "steps" and not lexed.dash
             dash_at = step = None
             value_at = None if in_steps else lexed.indent
         elif in_steps and step is not None and lexed.indent == step["keys"]:
-            problem = key_problem(lexed, STEP_KEYS, step_keys, "step")
+            problem = key_problem(lexed, SCHEMA_STEP_KEYS, step_keys, "step")
             step_key = True
             value_at = lexed.indent
         else:
@@ -1165,6 +1168,46 @@ APT_ENV = (
     "`BASH_ENV` and the like before the body"
 )
 APT_STEP_ENV = "an apt step holds no `env:` key, whatever its names; the names in its scope are its job's"
+# Round 17 (audit of ed447ea8; decisions row 2026-10-29T16:21Z): rounds 15 and 16 and the round 16 finding (a job
+# key the rule never read, whose own `env:` and `options:` reach the step's process as a `BASH_ENV` does) are one
+# class, a YAML key at the workflow, the job or the step level that shapes how a step's script runs, and each round
+# pinned the key its audit named. The rule now pins the key sets themselves: WORKFLOW_KEYS, JOB_KEYS and STEP_KEYS
+# are exact sorted tuples of the keys present at each level in the eleven files, measured before the rule was
+# written (test_every_key_at_every_level_is_one_the_workflows_hold pins the union at each level to its tuple, so a
+# key that enters use or leaves it is a reviewed edit here), and over every workflow, every job and every step a key
+# outside its level's tuple is a problem naming the level, the job or the step and the key, at the key's line. A key
+# no workflow holds today (the `container`, `services` and `defaults` the audits of rounds 15 and 16 named among
+# them, and any key the runner learns later) is refused by its absence from the tuple, never by name: nothing here
+# lists a refused key. The round 15 `defaults` check and the round 16 `env:` checks stay as the finer checks on the
+# keys the tuples hold (`shell:` is the string `bash`; the `env:` names in scope of an apt step are APT_ENV_NAMES).
+# An apt step's own keys are exactly APT_STEP_KEYS, the name, the guard, the bound and the body (a YAML comment is
+# not a key), so a key STEP_KEYS allows another step (`shell: bash`, an `env:`, an `id:`) is refused on an apt step
+# naming the key. The margin keys are read from the text (the census lexer's, which the round 6 grammar holds to the
+# schema and the parser gate holds to PyYAML's jobs), since PyYAML (YAML 1.1) reads the key `on` as the boolean true
+# and the JSON carrier spells it `true`; the job and step keys are PyYAML's.
+WORKFLOW_KEYS = ("concurrency", "jobs", "name", "on", "permissions")
+JOB_KEYS = (
+    "concurrency",
+    "continue-on-error",
+    "env",
+    "if",
+    "needs",
+    "outputs",
+    "runs-on",
+    "steps",
+    "strategy",
+    "timeout-minutes",
+)
+STEP_KEYS = ("env", "id", "if", "name", "run", "shell", "timeout-minutes", "uses", "with")
+APT_STEP_KEYS = ("if", "name", "run", "timeout-minutes")
+KEY_OUTSIDE = "the keys the eleven workflows hold today, measured; a key outside the tuple is a reviewed edit here"
+WORKFLOW_KEY = f"a workflow's keys are the {len(WORKFLOW_KEYS)} WORKFLOW_KEYS, {KEY_OUTSIDE}"
+JOB_KEY = f"a job's keys are the {len(JOB_KEYS)} JOB_KEYS, {KEY_OUTSIDE}"
+STEP_KEY = f"a step's keys are the {len(STEP_KEYS)} STEP_KEYS, {KEY_OUTSIDE}"
+APT_STEP_KEY = (
+    f"an apt step's keys are exactly the {len(APT_STEP_KEYS)} APT_STEP_KEYS ({', '.join(APT_STEP_KEYS)}); the step "
+    "holds nothing but the form, under its name, its guard and its bound"
+)
 
 
 class Walked(NamedTuple):
@@ -1580,6 +1623,26 @@ def key_line(text: str, key: str, job: str | None = None) -> object:
     return "?"
 
 
+def top_keys(text: str) -> list[tuple[int, str]]:
+    """The plain keys at the margin of `text` with their lines, in file order, as the census places them (round 6:
+    every line at the margin is a plain key the schema allows, a comment or blank). The tree rule reads the
+    workflow's keys here, since PyYAML's document spells the key `on` as the boolean true."""
+    found = []
+    for number, line in enumerate(text.split("\n"), 1):
+        lexed = lex(line)
+        if lexed.indent == 0 and lexed.key is not None and not lexed.dash and not lexed.fault:
+            found.append((number, lexed.key))
+    return found
+
+
+def keys_outside(keys: Iterable[str], allowed: tuple[str, ...]) -> list[str]:
+    """The keys of a mapping (or in a list) outside `allowed`, in their order. A set difference, not `key not in
+    allowed`: the contract extractor (tests/unit/test_shfmt_json_contract.py) reads a key compared with a module
+    tuple as a tree field."""
+    outside = set(keys).difference(allowed)
+    return [key for key in keys if key in outside]
+
+
 def env_problems(document: dict, job: str, body: dict, step: dict, text: str, where: str, dash: object) -> list[str]:
     """The round 16 refusals for one apt step: its own `env:` key, whatever it holds, and at the workflow level and
     on its job each `env:` name outside APT_ENV_NAMES (compared exactly) or an `env:` value that is not a mapping,
@@ -1605,40 +1668,53 @@ def env_problems(document: dict, job: str, body: dict, step: dict, text: str, wh
 
 
 def tree_problems(name: str, text: str) -> list[str]:
-    """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a `defaults` key at the
+    """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a key at the margin outside
+    WORKFLOW_KEYS, a job's key outside JOB_KEYS and a step's key outside STEP_KEYS (round 17: the keys the eleven
+    files hold today, so a key no file holds is refused by its absence, whatever its name), a `defaults` key at the
     workflow level or on a job, whatever it holds, and a step's `shell:` other than the string `bash` (round 15: a
     `defaults.run.shell` is the shell of every step that names none, and the tree reads the runner's bash), a
     `${{` in a run body (GitHub expands it before bash reads the text), a body shfmt refuses,
     each statement of an apt step that is not the form, each bare literal bash expands among a call's words, each
     comment that hides a line, each command word with no known text in any step unless UNKNOWN_COMMAND_EXEMPT names
-    its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS whole, an apt step's `env:` key
-    and each name the workflow's or its job's `env:` holds outside APT_ENV_NAMES (round 16), and a step whose tree
-    holds another number of form statements than the text holds bound forms. The bodies and the keys are PyYAML's
-    (Parser), the lines the census's; a file the census or the parser gate refuses is named there and not read
-    here."""
+    its step and line, an apt step's key outside APT_STEP_KEYS among those STEP_KEYS allows (round 17), an apt step
+    whose stripped `if:` is not one of APT_STEP_IFS whole, an apt step's `env:` key and each name the workflow's or
+    its job's `env:` holds outside APT_ENV_NAMES (round 16), and a step whose tree holds another number of form
+    statements than the text holds bound forms. The bodies and the job and step keys are PyYAML's (Parser), the
+    lines the census's, the margin keys the text's (top_keys); a file the census or the parser gate refuses is named
+    there and not read here."""
     if refused_characters(text) or parser_problems(name, text):
         return []
     document, _ = Parser.read(text)
     found = text_steps(text)
-    problems = []
+    margin = top_keys(text)
+    outside = keys_outside([key for _, key in margin], WORKFLOW_KEYS)
+    problems = [f"{name}:{line}: workflow key {key!r}: {WORKFLOW_KEY}" for line, key in margin if key in outside]
     if "defaults" in document:
         problems.append(f"{name}:{key_line(text, 'defaults')}: defaults: {document['defaults']!r}: {WORKFLOW_DEFAULTS}")
     for job, body in document["jobs"].items():
+        problems.extend(
+            f"{name}:{key_line(text, key, job)}: {job}: job key {key!r}: {JOB_KEY}"
+            for key in keys_outside(body, JOB_KEYS)
+        )
         if "defaults" in body:
             problems.append(
                 f"{name}:{key_line(text, 'defaults', job)}: {job}: defaults: {body['defaults']!r}: {JOB_DEFAULTS}"
             )
         for index, step in enumerate(body["steps"]):
-            if "run" not in step:
-                continue
             text_step = found[job][index]
-            runs = text_step["runs"]
-            run = runs[0] if len(runs) == 1 else {"line": text_step["line"], "header": ""}
+            dash = text_step["line"]
             label = step.get("name") or f"step {index}"
             where = f"{name}:{{}}: {job}: step {index} {label!r}"
+            problems.extend(
+                f"{where.format(dash)}: step key {key!r}: {STEP_KEY}" for key in keys_outside(step, STEP_KEYS)
+            )
+            if "run" not in step:
+                continue
+            runs = text_step["runs"]
+            run = runs[0] if len(runs) == 1 else {"line": dash, "header": ""}
             script = str(step["run"])
             if "shell" in step and step["shell"] != "bash":
-                problems.append(f"{where.format(text_step['line'])}: shell: {step['shell']!r}: {STEP_SHELL}")
+                problems.append(f"{where.format(dash)}: shell: {step['shell']!r}: {STEP_SHELL}")
                 continue
             if "${{" in script:
                 at = next(number for number, line in enumerate(script.splitlines(), 1) if "${{" in line)
@@ -1658,9 +1734,14 @@ def tree_problems(name: str, text: str) -> list[str]:
                 if (name, label, script_line(script, at)) not in UNKNOWN_COMMAND_EXEMPT
             )
             if walked.tokens or names_apt(script):
+                # The keys STEP_KEYS allows another step and APT_STEP_KEYS does not; a key outside STEP_KEYS is named above.
+                apt_only = set(STEP_KEYS).difference(APT_STEP_KEYS)
+                problems.extend(
+                    f"{where.format(dash)}: step key {key!r}: {APT_STEP_KEY}" for key in step if key in apt_only
+                )
                 if str(step.get("if") or "").strip() not in APT_STEP_IFS:
-                    problems.append(f"{where.format(text_step['line'])}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
-                problems.extend(env_problems(document, job, body, step, text, where, text_step["line"]))
+                    problems.append(f"{where.format(dash)}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
+                problems.extend(env_problems(document, job, body, step, text, where, dash))
             bounds = len(APT_BOUND.findall("\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))))
             if walked.apt_calls != bounds:
                 problems.append(
@@ -2151,6 +2232,41 @@ class AptBoundRuleTest(unittest.TestCase):
             self.assertEqual(set(APT_ENV_NAMES), set(body.get("env") or {}), (name, job, label))
             self.assertNotIn("env", step, (name, job, label))
 
+    def test_every_key_at_every_level_is_one_the_workflows_hold(self) -> None:
+        # Round 17 (audit of ed447ea8): tree_problems (run over the real files above) refuses a key outside its
+        # level's tuple; this pins the state the tuples were measured from, as an equality each way: the union of
+        # the keys at the margin of the eleven files is exactly WORKFLOW_KEYS, of every job's keys exactly JOB_KEYS,
+        # of every step's keys exactly STEP_KEYS, each tuple sorted, so a key that enters use or leaves it is a
+        # reviewed change here; each apt step holds exactly APT_STEP_KEYS; and the margin keys the rule reads from
+        # the text are PyYAML's top-level keys, with `on` read as YAML 1.1's boolean true.
+        for keys in (WORKFLOW_KEYS, JOB_KEYS, STEP_KEYS, APT_STEP_KEYS):
+            self.assertEqual(tuple(sorted(set(keys))), keys)
+        self.assertLess(set(APT_STEP_KEYS), set(STEP_KEYS))
+        workflow_keys: set[str] = set()
+        job_keys: set[str] = set()
+        step_keys: set[str] = set()
+        apt_steps = 0
+        for name, text in workflow_texts().items():
+            with self.subTest(workflow=name):
+                self.assertEqual([], parser_problems(name, text))
+                document, _ = Parser.read(text)
+                margin = [key for _, key in top_keys(text)]
+                self.assertEqual(sorted(set(margin)), sorted(margin))
+                self.assertEqual({"true" if key == "on" else key for key in margin}, set(document))
+                workflow_keys.update(margin)
+                for job, body in document["jobs"].items():
+                    job_keys.update(body)
+                    for step in body["steps"]:
+                        step_keys.update(step)
+                        script = str(step.get("run", ""))
+                        if names_apt(script) or TIMEOUT_PATH in script:
+                            apt_steps += 1
+                            self.assertEqual(set(APT_STEP_KEYS), set(step), (name, job, step.get("name")))
+        self.assertEqual(set(WORKFLOW_KEYS), workflow_keys)
+        self.assertEqual(set(JOB_KEYS), job_keys)
+        self.assertEqual(set(STEP_KEYS), step_keys)
+        self.assertEqual(3, apt_steps)  # the round 16 pin above names them
+
     def test_an_exemption_needs_its_exact_line(self) -> None:
         table = {("x.yaml", "# apt-get runs inside setup.sh"): "comment; names the tool without running it"}
         self.assertEqual([], apt_violations("x.yaml", "  # apt-get runs inside setup.sh\n", table))
@@ -2191,7 +2307,7 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 16: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 17: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
@@ -2206,7 +2322,9 @@ class TreeRuleTest(unittest.TestCase):
     `/usr/bin/timeout` function and sources the script is named at either level. Round 16 (audit of 60b17bd4): an
     `env:` name in scope of an apt step outside APT_ENV_NAMES, at the workflow or the job level, and an `env:` on
     an apt step at all, are refused naming the level, the step and the name, so the auditor's `BASH_ENV` is named
-    at each of the three levels."""
+    at each of the three levels. Round 17 (audit of ed447ea8): a key outside the measured tuple of its level, in
+    any workflow, job or step, is refused naming the level and the key, so the auditor's `container:` on the job is
+    named by its absence from JOB_KEYS, as every key no workflow holds is."""
 
     FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     NAME = "Install apt packages"
@@ -2857,40 +2975,65 @@ class TreeRuleTest(unittest.TestCase):
         def in_job(text: str, keys: str) -> str:
             return text.replace(job, job + "".join(f"    {line}\n" for line in keys.splitlines()))
 
+        # Round 17: a `defaults` key is outside WORKFLOW_KEYS and JOB_KEYS too, so each is named twice, by its absence
+        # from the tuple and by the round 15 check.
         with self.subTest(case="the auditor's defaults.run.shell at the workflow level (audit of 8ce0efda)"):
             text, _, _ = self.step(f"{form} update\n")
             self.assertEqual(
-                [f"x.yaml:3: defaults: {value!r}: {WORKFLOW_DEFAULTS}"], tree_problems("x.yaml", at_top(text, block))
+                [
+                    f"x.yaml:3: workflow key 'defaults': {WORKFLOW_KEY}",
+                    f"x.yaml:3: defaults: {value!r}: {WORKFLOW_DEFAULTS}",
+                ],
+                tree_problems("x.yaml", at_top(text, block)),
             )
         with self.subTest(case="the auditor's defaults.run.shell at the job level"):
             text, _, _ = self.step(f"{form} update\n")
             self.assertEqual(
-                [f"x.yaml:6: test: defaults: {value!r}: {JOB_DEFAULTS}"], tree_problems("x.yaml", in_job(text, block))
+                [
+                    f"x.yaml:6: test: job key 'defaults': {JOB_KEY}",
+                    f"x.yaml:6: test: defaults: {value!r}: {JOB_DEFAULTS}",
+                ],
+                tree_problems("x.yaml", in_job(text, block)),
             )
         with self.subTest(case="a one-line defaults.run.shell, bash itself, at either level"):
             text, _, _ = self.step(f"{form} update\n")
             one = "defaults:\n  run:\n    shell: bash\n"
             self.assertEqual(
-                [f"x.yaml:3: defaults: {{'run': {{'shell': 'bash'}}}}: {WORKFLOW_DEFAULTS}"],
+                [
+                    f"x.yaml:3: workflow key 'defaults': {WORKFLOW_KEY}",
+                    f"x.yaml:3: defaults: {{'run': {{'shell': 'bash'}}}}: {WORKFLOW_DEFAULTS}",
+                ],
                 tree_problems("x.yaml", at_top(text, one)),
             )
             self.assertEqual(
-                [f"x.yaml:6: test: defaults: {{'run': {{'shell': 'bash'}}}}: {JOB_DEFAULTS}"],
+                [
+                    f"x.yaml:6: test: job key 'defaults': {JOB_KEY}",
+                    f"x.yaml:6: test: defaults: {{'run': {{'shell': 'bash'}}}}: {JOB_DEFAULTS}",
+                ],
                 tree_problems("x.yaml", in_job(text, one)),
             )
         with self.subTest(case="a defaults.run.working-directory alone is refused too, since no workflow uses one"):
             text, _, _ = self.step(f"{form} update\n")
             directory = "defaults:\n  run:\n    working-directory: scripts\n"
             self.assertEqual(
-                [f"x.yaml:3: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {WORKFLOW_DEFAULTS}"],
+                [
+                    f"x.yaml:3: workflow key 'defaults': {WORKFLOW_KEY}",
+                    f"x.yaml:3: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {WORKFLOW_DEFAULTS}",
+                ],
                 tree_problems("x.yaml", at_top(text, directory)),
             )
             self.assertEqual(
-                [f"x.yaml:6: test: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {JOB_DEFAULTS}"],
+                [
+                    f"x.yaml:6: test: job key 'defaults': {JOB_KEY}",
+                    f"x.yaml:6: test: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {JOB_DEFAULTS}",
+                ],
                 tree_problems("x.yaml", in_job(text, directory)),
             )
             self.assertEqual(
-                [f"x.yaml:6: test: defaults: {{'run': 'bash'}}: {JOB_DEFAULTS}"],
+                [
+                    f"x.yaml:6: test: job key 'defaults': {JOB_KEY}",
+                    f"x.yaml:6: test: defaults: {{'run': 'bash'}}: {JOB_DEFAULTS}",
+                ],
                 tree_problems("x.yaml", in_job(text, "defaults:\n  run: bash\n")),
             )
         for shell in ("sh", "bash -e {0}", "bash --noprofile --norc -eo pipefail {0}", "pwsh", "'bash '"):
@@ -2911,8 +3054,14 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="an empty shell:"):
             text, _, dash = self.step(f"{form} update\n", shell="")
             self.assertEqual([self.STEP.format(dash) + f"shell: None: {STEP_SHELL}"], tree_problems("x.yaml", text))
-        with self.subTest(case="shell: bash"):
-            text, _, _ = self.step(f"{form} update\n", shell="bash")
+        with self.subTest(
+            case="shell: bash, accepted by the shell check; on an apt step the key is refused (round 17)"
+        ):
+            text, _, dash = self.step(f"{form} update\n", shell="bash")
+            self.assertEqual(
+                [self.STEP.format(dash) + f"step key 'shell': {APT_STEP_KEY}"], tree_problems("x.yaml", text)
+            )
+            text = render({"test": [{"name": "Tools", "shell": "bash", "run": "true\n"}]})
             self.assertEqual([], tree_problems("x.yaml", text))
         with self.subTest(case="an expression in the body"):
             text, first, _ = self.step(f"echo ${{{{ github.token }}}}\n{form} update\n")
@@ -2980,9 +3129,13 @@ class TreeRuleTest(unittest.TestCase):
 
         pinned = tuple((name, "x") for name in APT_ENV_NAMES)
         with self.subTest(case="the auditor's BASH_ENV at the workflow level (audit of 60b17bd4)"):
+            # Round 17: no workflow holds an `env:` at the margin, so the key is named by its absence too.
             text, _, _ = self.step(f"{form} update\n")
             self.assertEqual(
-                [self.STEP.format(3) + f"workflow env: 'BASH_ENV': {APT_ENV}"],
+                [
+                    f"x.yaml:3: workflow key 'env': {WORKFLOW_KEY}",
+                    self.STEP.format(3) + f"workflow env: 'BASH_ENV': {APT_ENV}",
+                ],
                 tree_problems("x.yaml", at_top(text, ("BASH_ENV", startup))),
             )
         with self.subTest(case="the auditor's BASH_ENV on the job, among the pinned names"):
@@ -2992,15 +3145,22 @@ class TreeRuleTest(unittest.TestCase):
                 tree_problems("x.yaml", in_job(text, *pinned, ("BASH_ENV", startup))),
             )
         with self.subTest(case="the auditor's BASH_ENV on the apt step"):
+            # Round 17: `env` is a key another step may hold and an apt step may not, so the key is named too.
             text, _, dash = self.step(f"{form} update\n")
             self.assertEqual(
-                [self.STEP.format(dash) + f"env: {{'BASH_ENV': {startup!r}}}: {APT_STEP_ENV}"],
+                [
+                    self.STEP.format(dash) + f"step key 'env': {APT_STEP_KEY}",
+                    self.STEP.format(dash) + f"env: {{'BASH_ENV': {startup!r}}}: {APT_STEP_ENV}",
+                ],
                 tree_problems("x.yaml", on_step(text, ("BASH_ENV", startup))),
             )
         with self.subTest(case="a pinned name on the apt step is refused too: the step holds no env: key"):
             text, _, dash = self.step(f"{form} update\n")
             self.assertEqual(
-                [self.STEP.format(dash) + f"env: {{'OS': 'x'}}: {APT_STEP_ENV}"],
+                [
+                    self.STEP.format(dash) + f"step key 'env': {APT_STEP_KEY}",
+                    self.STEP.format(dash) + f"env: {{'OS': 'x'}}: {APT_STEP_ENV}",
+                ],
                 tree_problems("x.yaml", on_step(text, ("OS", "x"))),
             )
         for name in ("ENV", "SHELLOPTS", "LD_PRELOAD", "PATH", "FOO", "os", "SYSTEMD", "CODECOV"):
@@ -3022,7 +3182,10 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="an env: that is not a mapping, at either level"):
             text, _, _ = self.step(f"{form} update\n")
             self.assertEqual(
-                [self.STEP.format(3) + f"workflow env: 'startup': {APT_ENV}"],
+                [
+                    f"x.yaml:3: workflow key 'env': {WORKFLOW_KEY}",
+                    self.STEP.format(3) + f"workflow env: 'startup': {APT_ENV}",
+                ],
                 tree_problems("x.yaml", text.replace(top, top + "env: startup\n")),
             )
             self.assertEqual(
@@ -3047,6 +3210,114 @@ class TreeRuleTest(unittest.TestCase):
         with self.subTest(case="a step that is no apt step takes no env: refusal from its job"):
             text = render({"test": [{"name": "Tools", "run": "true\n"}]})
             self.assertEqual([], tree_problems("x.yaml", in_job(text, ("BASH_ENV", startup))))
+
+    def test_a_key_outside_its_levels_measured_set_is_refused_naming_the_level_and_the_key(self) -> None:
+        # Round 17 (audit of ed447ea8): the auditor's `container:` with an `env:` holding LD_PRELOAD on the job, a
+        # `container:` with `options:`, a `services:`, keys the schema allows that no workflow holds at the level
+        # (`run-name:`, `env:` and `defaults:` at the margin; `name:`, `environment:` and `permissions:` on a job;
+        # `working-directory:` and `continue-on-error:` on a step), and a key the schema does not allow (`foo:`,
+        # which the census names too), each refused by its absence from the level's tuple naming the level, the job
+        # or the step and the key, at the key's line; on an apt step the keys another step may hold are refused as
+        # well; the measured keys on a step that runs no apt are accepted.
+        form = self.FORM
+        top = "on: push\n"
+        job = "    runs-on: ubuntu-24.04\n"
+        guard = f"        if: {self.GUARD}\n"
+
+        def at_top(text: str, block: str) -> str:
+            return text.replace(top, top + block)
+
+        def in_job(text: str, block: str) -> str:
+            return text.replace(job, job + "".join(f"    {line}\n" for line in block.splitlines()))
+
+        def on_step(text: str, block: str) -> str:
+            return text.replace(guard, guard + "".join(f"        {line}\n" for line in block.splitlines()))
+
+        text, _, dash = self.step(f"{form} update\n")
+        job_key = "x.yaml:6: test: job key {!r}: " + JOB_KEY
+        with self.subTest(
+            case="the auditor's container with an env: holding LD_PRELOAD on the job (audit of ed447ea8)"
+        ):
+            container = "container:\n  image: ubuntu:24.04\n  env:\n    LD_PRELOAD: /tmp/preload.so\n"
+            self.assertEqual([job_key.format("container")], tree_problems("x.yaml", in_job(text, container)))
+        with self.subTest(case="a container with options: on the job, and a services: mapping"):
+            self.assertEqual(
+                [job_key.format("container")],
+                tree_problems("x.yaml", in_job(text, 'container: {options: "--privileged"}\n')),
+            )
+            self.assertEqual(
+                [job_key.format("services")],
+                tree_problems("x.yaml", in_job(text, "services:\n  redis:\n    image: redis\n")),
+            )
+        with self.subTest(case="keys the schema allows a job that no workflow holds, and one it does not allow"):
+            for block in ("name: x\n", "environment: production\n", "permissions: {}\n", "foo: bar\n"):
+                key = block.split(":")[0]
+                self.assertEqual([job_key.format(key)], tree_problems("x.yaml", in_job(text, block)), key)
+            self.assertEqual([6], [line for line, _ in census(in_job(text, "foo: bar\n")).refused])
+        with self.subTest(case="keys at the margin: run-name:, env: with a pinned name, defaults:, foo:"):
+            self.assertEqual(
+                [f"x.yaml:3: workflow key 'run-name': {WORKFLOW_KEY}"],
+                tree_problems("x.yaml", at_top(text, "run-name: x\n")),
+            )
+            self.assertEqual(
+                [f"x.yaml:3: workflow key 'env': {WORKFLOW_KEY}"],
+                tree_problems("x.yaml", at_top(text, "env:\n  CODECOV_FLAGS: x\n")),
+            )
+            self.assertEqual(
+                [
+                    f"x.yaml:3: workflow key 'defaults': {WORKFLOW_KEY}",
+                    f"x.yaml:3: defaults: {{'run': {{'shell': 'bash'}}}}: {WORKFLOW_DEFAULTS}",
+                ],
+                tree_problems("x.yaml", at_top(text, "defaults:\n  run:\n    shell: bash\n")),
+            )
+            self.assertEqual(
+                [f"x.yaml:3: workflow key 'foo': {WORKFLOW_KEY}"], tree_problems("x.yaml", at_top(text, "foo: x\n"))
+            )
+            self.assertEqual([3], [line for line, _ in census(at_top(text, "foo: x\n")).refused])
+        with self.subTest(case="keys on the apt step: outside STEP_KEYS, and inside it but outside APT_STEP_KEYS"):
+            for block in ("working-directory: .\n", "continue-on-error: true\n"):
+                key = block.split(":")[0]
+                self.assertEqual(
+                    [self.STEP.format(dash) + f"step key {key!r}: {STEP_KEY}"],
+                    tree_problems("x.yaml", on_step(text, block)),
+                    key,
+                )
+            self.assertEqual(
+                [self.STEP.format(dash) + f"step key 'id': {APT_STEP_KEY}"],
+                tree_problems("x.yaml", on_step(text, "id: apt\n")),
+            )
+            self.assertEqual(
+                [
+                    self.STEP.format(dash) + f"step key 'env': {APT_STEP_KEY}",
+                    self.STEP.format(dash) + f"env: {{'X': 'y'}}: {APT_STEP_ENV}",
+                ],
+                tree_problems("x.yaml", on_step(text, "env:\n  X: y\n")),
+            )
+            shell, _, _ = self.step(f"{form} update\n", shell="bash")
+            self.assertEqual(
+                [self.STEP.format(dash) + f"step key 'shell': {APT_STEP_KEY}"], tree_problems("x.yaml", shell)
+            )
+        with self.subTest(
+            case="a step that runs no apt: the measured keys are accepted, a key outside them is refused"
+        ):
+            tools = {"name": "Tools", "id": "tools", "shell": "bash", "timeout-minutes": "1", "run": "true\n"}
+            text = render({"test": [tools]})
+            text = text.replace("        shell: bash\n", "        shell: bash\n        env:\n          FOO: bar\n")
+            self.assertEqual([], tree_problems("x.yaml", text))
+            at = text_steps(text)["test"][0]["line"]
+            self.assertEqual(
+                [f"x.yaml:{at}: test: step 0 'Tools': step key 'continue-on-error': {STEP_KEY}"],
+                tree_problems(
+                    "x.yaml",
+                    text.replace("        id: tools\n", "        id: tools\n        continue-on-error: true\n"),
+                ),
+            )
+            uses = render({"test": [{"name": "Checkout", "uses": "actions/checkout@v4"}]})
+            self.assertEqual([], tree_problems("x.yaml", uses))
+            self.assertEqual(
+                [f"x.yaml:{at}: test: step 0 'Checkout': step key 'working-directory': {STEP_KEY}"],
+                tree_problems("x.yaml", uses.replace("        uses:", "        working-directory: .\n        uses:")),
+            )
 
     def test_a_contract_or_parser_that_cannot_be_read_is_a_failure_not_an_absence(self) -> None:
         # Standing order 21: the contract refusing the pinned shfmt, and a tree whose statements the walk cannot read
@@ -4077,8 +4348,8 @@ class ReaderCensusTest(unittest.TestCase):
         no_jobs = (1, f"no `jobs:` line in the file ({JOBS_LINE})")
         test_job = f"  test:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: {update}\n"
         complex_value = f"{{test: {{runs-on: ubuntu-24.04, steps: [{{run: {update}}}]}}}}"
-        step_keys, job_keys = ", ".join(sorted(STEP_KEYS)), ", ".join(sorted(JOB_KEYS))
-        top_keys = ", ".join(sorted(TOP_KEYS))
+        step_keys, job_keys = ", ".join(sorted(SCHEMA_STEP_KEYS)), ", ".join(sorted(SCHEMA_JOB_KEYS))
+        top_keys = ", ".join(sorted(SCHEMA_TOP_KEYS))
         nel = "a next line, a line break to a YAML 1.1 reader (U+0085)"
         ls = "a line separator, a line break to a YAML 1.1 reader (U+2028)"
         ps = "a paragraph separator, a line break to a YAML 1.1 reader (U+2029)"

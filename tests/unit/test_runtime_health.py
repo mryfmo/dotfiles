@@ -1037,6 +1037,7 @@ EOF
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
+        shutil.copy(ROOT / "scripts/lib/npm-release-age.sh", repo / "scripts/lib/npm-release-age.sh")
         shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
         shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")

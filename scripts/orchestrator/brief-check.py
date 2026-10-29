@@ -1,12 +1,20 @@
 #!/usr/bin/env -S uv run --no-project python -I
 """Refuse a brief that judges an open-ended input without naming the mechanism that closes it (regime-cutover U104).
 
-`scripts/orchestrator/brief-check.py briefs/U<n>-<slug>.md` reads one brief and prints one line. Exit 0: the brief's
-GOAL, CHANGE and CONTEXT hold no trigger term, or its CLOSURE section names exactly one mechanism. Exit 1: a trigger
-term fired and the brief has no CLOSURE section, or the CLOSURE section is not one mechanism name (`ast`,
-`parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text on the same line), or no GOAL,
-CHANGE or CONTEXT section was found at all, or one section heading appears twice. Exit 2: usage, or a file that
-cannot be read or decoded; an unreadable brief is never read as clean.
+`~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the
+checkout, reads one brief and prints one line. Exit 0: the brief's GOAL, CHANGE and CONTEXT hold no trigger term, or
+its CLOSURE section names exactly one mechanism. Exit 1: a trigger term fired and the brief has no CLOSURE section, or
+the CLOSURE section is not one mechanism name (`ast`, `parser-module`, `allowlist` or `remove`, optionally followed by
+a colon and free text on the same line), or no GOAL, CHANGE or CONTEXT section was found at all, or one section
+heading appears twice. Exit 2: usage, or a file that cannot be read or decoded; an unreadable brief is never read as
+clean.
+
+The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the
+same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as
+`~/.local/bin/common/brief-check.py`, and pins their sha256 under `claude.levers.sha256`; the orchestrator seat's
+policy allows that path alone. Before anything else the file hashes itself and refuses to run (exit 2, nothing on
+stdout) when the digest differs from its pin, so a repository without `scripts/orchestrator/` runs the same checked
+copy and a rewritten copy judges no brief.
 
 Thirteen `treadmill` and `premise` rows in the program's decisions share one shape (handoff
 `02-audit-treadmill-analysis.md`): a hand-written reader over an open-ended input passed a fresh audit once per round
@@ -18,8 +26,57 @@ Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term th
 """
 
 import argparse
+import hashlib
+import os
 import re
 import sys
+
+LEVER = "brief-check.py"
+# The pin line of this lever in the manifest, read as text: the manifest is never parsed as YAML here.
+PIN_LINE = re.compile(r"^      brief-check\.py: ([0-9a-f]{64})$")
+
+
+def refuse(reason):
+    """Print the refusal in the shell levers' words on stderr and exit 2; no brief was judged."""
+    print(f"{LEVER}: refused: {reason}", file=sys.stderr)
+    sys.exit(2)
+
+
+def lever_self_check():
+    """Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31).
+
+    The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the
+    directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two
+    levels up; an unset or unresolvable HOME means the checkout manifest. The cwd decides nothing. Every read is
+    checked and a failed one is a refusal, never a pass (preferences.md standing order 21).
+    """
+    directory = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+    self_path = os.path.join(directory, os.path.basename(__file__))
+    home = os.environ.get("HOME", "")
+    if home and os.path.isdir(home) and directory == os.path.join(os.path.realpath(home), ".local/bin/common"):
+        manifest = os.path.join(home, ".agents/agent-config.yaml")
+    else:
+        manifest = os.path.join(directory, "../../home/dot_agents/agent-config.yaml")
+    if not os.access(manifest, os.R_OK):
+        refuse(f"manifest unreadable: {manifest}")
+    try:
+        with open(manifest, "rb") as handle:
+            lines = handle.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        refuse(f"cannot read {manifest}")
+    pins = [match.group(1) for match in map(PIN_LINE.match, lines) if match]
+    if len(pins) != 1:
+        refuse(f"no single sha256 pin for {LEVER} in {manifest}")
+    try:
+        with open(self_path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+    except OSError:
+        refuse(f"cannot hash {self_path}")
+    if digest != pins[0]:
+        refuse(f"sha256 {digest} of {self_path} differs from the pin in {manifest}")
+
+
+lever_self_check()
 
 SECTIONS = (
     "GOAL",
@@ -111,7 +168,7 @@ def closure(body):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("brief", help="the brief file, briefs/U<n>-<slug>.md")
+    parser.add_argument("brief", help="the brief file, .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md")
     args = parser.parse_args(argv)
     try:
         with open(args.brief, encoding="utf-8") as handle:

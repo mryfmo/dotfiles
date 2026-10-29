@@ -1,6 +1,8 @@
-"""Exercise brief-check.py (regime-cutover U104) on scratch briefs, as a subprocess under `python -I`."""
+"""Exercise brief-check.py (regime-cutover U104) on scratch briefs, as a subprocess under `python -I`, and its installed
+copy under a scratch HOME as the hcom-orchestration SKILL spells the command (round 3)."""
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -9,6 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/orchestrator/brief-check.py"
+# The copy chezmoi installs as ~/.local/bin/common/brief-check.py and the manifest that pins it (U31 shape).
+INSTALLED = ROOT / "home/dot_local/bin/common/executable_brief-check.py"
+MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 SKILL = ROOT / "home/dot_agents/skills/hcom-orchestration/SKILL.md"
 # The trigger table as the brief fixed it; a later unit that adds a row adds it here too.
 TRIGGERS = (
@@ -32,10 +37,12 @@ TRIGGERS = (
 )
 MECHANISMS = ("ast", "parser-module", "allowlist", "remove")
 SKILL_SENTENCE = (
-    "Run `scripts/orchestrator/brief-check.py briefs/U<n>-<slug>.md` and send no TASK while it exits non-zero; "
-    "a brief whose unit judges an open-ended input names the closing mechanism in a `CLOSURE` section "
-    "(`ast`, `parser-module`, `allowlist` or `remove`)."
+    "Run `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md` from the "
+    "checkout and send no TASK while it exits non-zero; a brief whose unit judges an open-ended input names the "
+    "closing mechanism in a `CLOSURE` section (`ast`, `parser-module`, `allowlist` or `remove`)."
 )
+# The command inside the sentence's first code span, the spelling the orchestrator seat runs.
+SKILL_COMMAND = SKILL_SENTENCE.split("`")[1]
 CLEAN_GOAL = "The six dead installer functions leave the installers and nothing else changes."
 
 
@@ -213,11 +220,99 @@ class BriefCheckTest(unittest.TestCase):
         self.assertTrue(os.access(SCRIPT, os.X_OK), f"{SCRIPT} is not executable")
         self.assertEqual("#!/usr/bin/env -S uv run --no-project python -I", SCRIPT.read_text().splitlines()[0])
 
+    def test_the_checkout_script_passes_its_self_check_against_the_checkout_manifest(self):
+        # Round 3: the script is a pinned lever; run from the checkout it reads home/dot_agents/agent-config.yaml.
+        result = self.check_text(brief(GOAL=CLEAN_GOAL))
+        self.assertEqual(
+            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
+            (result.returncode, result.stdout, result.stderr),
+        )
+        # A checkout-shaped copy beside a manifest whose pin differs is refused naming that manifest, so the
+        # checkout branch of the manifest choice is the one exercised here, not the cwd.
+        checkout = self.dir / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(SCRIPT, checkout / "scripts/orchestrator/brief-check.py")
+        text = MANIFEST.read_text()
+        pin_line = next(line for line in text.splitlines() if line.startswith("      brief-check.py: "))
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(
+            text.replace(pin_line, "      brief-check.py: " + "0" * 64)
+        )
+        target = self.dir / "U0-scratch.md"
+        cmd = [sys.executable, "-I", str(checkout / "scripts/orchestrator/brief-check.py"), str(target)]
+        result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertIn("brief-check.py: refused: sha256 ", result.stderr)
+        # The lever names the physical directory (`realpath`), which on macOS differs from the tempdir's spelling.
+        physical = (checkout / "scripts/orchestrator").resolve()
+        self.assertIn(f"differs from the pin in {physical}/../../home/dot_agents/agent-config.yaml", result.stderr)
+
     def test_the_orchestration_skill_step_1_runs_the_check_before_the_task_line(self):
         text = SKILL.read_text()
         step = next(line for line in text.splitlines() if line.startswith("1. Brief."))
         self.assertIn(SKILL_SENTENCE, step)
         self.assertLess(step.index("briefs/U<n>-<slug>.md` with GOAL"), step.index(SKILL_SENTENCE))
+
+
+class InstalledBriefCheckTest(unittest.TestCase):
+    """The installed copy, run as the hcom-orchestration SKILL step 1 spells it (U104 round 3).
+
+    The layout is the one `test_lever_self_check.py` builds: the copy at `<home>/.local/bin/common/brief-check.py`
+    and the manifest at `<home>/.agents/agent-config.yaml`, under a scratch HOME. The checkout is shaped like a
+    repository other than dotfiles: the brief under `.orchestration/orchestrate/<program>/briefs/`, no `scripts/`.
+    """
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name).resolve()
+        self.home = root / "home"
+        self.manifest = self.home / ".agents/agent-config.yaml"
+        (self.home / ".local/bin/common").mkdir(parents=True)
+        (self.home / ".agents").mkdir()
+        self.assertTrue(INSTALLED.is_file(), f"{INSTALLED} is the copy chezmoi installs; the generator writes it")
+        shutil.copy2(INSTALLED, self.home / ".local/bin/common/brief-check.py")
+        shutil.copy2(MANIFEST, self.manifest)
+        self.checkout = root / "checkout"
+        self.briefs = self.checkout / ".orchestration/orchestrate/p/briefs"
+        self.briefs.mkdir(parents=True)
+        self.env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "LC_ALL": "C"}
+
+    def run_skill_command(self, text):
+        """The SKILL command with `<program>` and `U<n>-<slug>` substituted, through bash so `~` expands as in the seat."""
+        (self.briefs / "U1-x.md").write_text(text)
+        command = SKILL_COMMAND.replace("<program>", "p").replace("U<n>-<slug>", "U1-x")
+        return subprocess.run(
+            ["bash", "-c", command],
+            cwd=self.checkout,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    def test_the_skill_command_judges_a_store_brief_from_a_checkout_without_scripts(self):
+        # The round-2 audit's integration failure: the skill's own command on a valid brief.
+        self.assertFalse((self.checkout / "scripts").exists())
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+        self.assertEqual(
+            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
+            (result.returncode, result.stdout, result.stderr),
+        )
+        result = self.run_skill_command(brief(GOAL="A shell reader."))
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        self.assertIn('brief-check: GOAL holds "shell"', result.stdout)
+        self.assertIn("no CLOSURE section", result.stdout)
+
+    def test_a_copy_whose_deployed_pin_differs_refuses_and_judges_nothing(self):
+        text = self.manifest.read_text()
+        pin_line = next(line for line in text.splitlines() if line.startswith("      brief-check.py: "))
+        self.manifest.write_text(text.replace(pin_line, "      brief-check.py: " + "0" * 64))
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertIn("brief-check.py: refused: sha256 ", result.stderr)
+        self.assertIn(f"differs from the pin in {self.manifest}", result.stderr)
 
 
 if __name__ == "__main__":

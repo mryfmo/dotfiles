@@ -839,6 +839,9 @@ claude:
   # for the exact head and green CI, U71). pr-audit.sh is the Codex audit route
   # (U71b): one `codex exec` under the `audit` permission profile of
   # codex.audit, never run unless its launch-time sandbox probes pass.
+  # brief-check.py is the orchestrator seat's brief gate (U104): the same install
+  # and self-check, run from the checkout before the first TASK of a unit and
+  # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
       hcom-seat: c21451cbb0c4a4ff38ba2fc1837933c01e76d4facc205e71dd18685d18115abe
@@ -860,6 +863,7 @@ claude:
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
       pr-audit.sh: 0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419
+      brief-check.py: 8d959d162cffbad25a2e5f9795530858331fd07abee4c8386061ae0e6666a2d7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

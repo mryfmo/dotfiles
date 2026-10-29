@@ -382,6 +382,10 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract` |",
     ): Exempt("documentation; names the tool without running it"),
     (
+        "scripts/orchestrator/README.md",
+        "Regime-cutover U104 (handoff R1). `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the checkout, runs between a written brief and its TASK line (`hcom-orchestration` SKILL, step 1) and prints one line: exit 0 when the GOAL, CHANGE and CONTEXT sections hold none of the trigger terms in the script's table (shell, tokenize, tokenizer, parse, parser, regex, hook, worktree, config, path, process, signal, supervisor, curl, wget, heredoc, quote; whole words, any case) or when the `CLOSURE` section is exactly one line naming one mechanism, `ast`, `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text; exit 1 when a term fired and there is no `CLOSURE`, when `CLOSURE` is empty, names two mechanisms or holds any other line, when the brief has no GOAL, CHANGE or CONTEXT section, or when one section heading appears twice (named with both line numbers; a brief has one of each, and merging the bodies would hide an empty second `CLOSURE`); exit 2 on usage or a file that cannot be read, never read as clean. A section is a line that is exactly its upper-case name, so a term in SCOPE or FORBIDDEN fires nothing. It is installed and pinned like the levers below (`claude.levers.sha256`; the same self-check, in Python with `hashlib`, exits 2 with nothing on stdout when the copy differs from its pin) and allowed by `orchestrator.yml` at its installed path, so a repository without `scripts/orchestrator/` runs the same checked copy. The thirteen treadmill rows behind the rule are in the program's `handoff/02-audit-treadmill-analysis.md`; `tests/unit/test_brief_check.py` runs the checkout script as a subprocess under `python -I` and the installed copy under a scratch HOME as the SKILL spells it.",
+    ): Exempt(f"documentation; the brief-check.py trigger-term list {MENTION}"),
+    (
         "scripts/orchestrator/pr-audit.sh",
         "#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail",
     ): Exempt("comment; names the tool without running it"),
@@ -411,6 +415,13 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "scripts/orchestrator/pr-audit.sh",
         'refuse "the sandbox network probe did not show the network denied (curl exit 6 or 7): ${probe_out:-no output}"',
     ): Exempt("message; names the tool without running it"),
+    # U104: brief-check.py's trigger table names the two tools as words a brief may hold; the script fetches nothing.
+    ("scripts/orchestrator/brief-check.py", '("curl", "fetched content is open-ended input"),'): Exempt(
+        f"trigger-term table row; {MENTION}"
+    ),
+    ("scripts/orchestrator/brief-check.py", '("wget", "fetched content is open-ended input"),'): Exempt(
+        f"trigger-term table row; {MENTION}"
+    ),
 }
 SNAP_EXEMPT = {
     (

@@ -73,10 +73,13 @@ TABLE: dict[str, Kind] = {
     "TestClause": Kind(None, ("X", "Pos.Line")),
     "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
     "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
-    "FuncDecl": Kind(None, ("Name", "Body", "Pos.Line")),
+    "FuncDecl": Kind(None, ("Name", "Name.Value", "Body", "Pos.Line")),
     "Block": Kind(None, ("Stmts", "Pos.Line")),
     "Subshell": Kind(None, ("Stmts", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),
+    # An assignment is untyped, named by its Name; its array literal and the elements are untyped too and are read
+    # through it (`Array.Elems`, each element's `Value` a word), so they have no row of their own (U113).
+    "Assign": Kind("Name", ("Name.Value", "Value", "Array.Elems", "Pos.Line")),
 }
 UNTYPED = {row.marker: kind for kind, row in TABLE.items() if row.marker}
 

@@ -9,6 +9,7 @@ name=$(basename "$0")
 printf '%s\n' "double $name" 'single' $'dollar\n' a\ b
 count=${#name}
 item=${list[index]}
+words=(one two)
 cat << 'EOF'
 $(quoted body)
 EOF

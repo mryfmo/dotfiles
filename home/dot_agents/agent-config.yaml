@@ -665,8 +665,11 @@ codex:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
         enabled: true
-      # Ponytail 5.3.2 at 09c434a (both hosts, 2026-10-25): each hook runs `node -e` on the plugin's own
-      # hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout, the same three scripts as before.
+      # Ponytail 5.3.3 at 7801d06 (review bump 2026-10-29: upstream released v5.3.3 and the marketplace upgrade
+      # installs the copy from upstream main, so a fresh bootstrap landed off the 5.3.2 pin). The compare
+      # 09c434ab...7801d061 touches hooks/band/*.ts, tests and the plugin manifests only;
+      # hooks/claude-codex-hooks.json is unchanged, so these hashes still match. Each hook runs `node -e` on
+      # the plugin's own hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout.
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
         trusted_hash: sha256:defea43402fc8edba23234c694a1117cf80efc2da38968a40a1004cd9d63f725
         enabled: true
@@ -1371,7 +1374,7 @@ assets:
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
       frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
-      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
+      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.3}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
       pstack@cursor-plugins: {marketplace: cursor/plugins, pin: 0.15.30}
   codex-plugins:
@@ -1393,8 +1396,8 @@ assets:
       superpowers@openai-curated: {marketplace: openai-curated, pin: 6.3.0}
       ponytail@ponytail:
         marketplace: https://github.com/DietrichGebert/ponytail.git
-        pin: 5.3.2
-        ref: 09c434ab73ca43761c5d8b0c5d341926c2fba710
+        pin: 5.3.3
+        ref: 7801d061243d7b753bad0e0b3c057cd250b11755
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

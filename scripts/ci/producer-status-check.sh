@@ -9,17 +9,24 @@
 #   printed as `file:line: <rule>: <message>`:
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
-#      condition (negated or not) or the left side of a `||` whose right side is not `true`, `:` or `false` in any
-#      quoting (a word holding an expansion is none of them; a substitution there is a finding of its own). Every
-#      other position is a finding at the line where the substitution opens: an argument, a `local`, `export`,
-#      `declare` or `readonly`, a redirect target, an unquoted heredoc body, `[[ ]]`, an arithmetic expansion, a
-#      `for` list, a `case` word, a plain assignment whose status only `set -e` sees, two assignments in one
-#      statement, and a substitution inside another one.
-#   b. `producer`: a command whose leading words (literals, quoting aside) match a row of status-blind-producers.tsv
-#      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must send its stderr
-#      to a file other than /dev/null by the last redirect of fd 2 in the statement (`2>`, `2>>` or `2>|`; a later
-#      `2>&N`, `&>` or `>&file` moves it elsewhere), and a later statement of the same list must be
-#      `[[ ! -s <that file> ]]` (the words compared by their parts, quoting aside); `read_listing` of
+#      condition (negated or not) or the left side of a `||` whose right side keeps the status: a block, a subshell,
+#      a bare assignment, or a command whose first word has a known text other than `true`, `:` or `false`. A word
+#      has a known text only when every part is a bare literal, a plain single-quoted string or double quotes around
+#      such parts (`true`, 'true', "true" and tr\ue are one text); nothing else is decoded, so a first word holding
+#      an expansion, an ANSI-C `$'…'` or a locale `$"…"` string is not shown to read the status, and the left side's
+#      substitution is a finding that says so. Every other position is a finding at the line where the substitution
+#      opens: an argument, a `local`, `export`, `declare` or `readonly`, a redirect target, an unquoted heredoc body,
+#      `[[ ]]`, an arithmetic expansion, a `for` list, a `case` word, a plain assignment whose status only `set -e`
+#      sees, two assignments in one statement, and a substitution inside another one.
+#   b. `producer`: a command whose leading words (known texts, as above) match a row of status-blind-producers.tsv
+#      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must capture its
+#      stderr to a file, and a later statement of the same list must be `[[ ! -s <that file> ]]`. Stderr is captured
+#      only when the last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known
+#      text is not /dev/null, or whose parts are literals and parameter expansions. A redirect touches fd 2 when its
+#      descriptor is 2 whatever the operator, when it is `&>` or `&>>`, or when it is `>&` to a word that is not a
+#      descriptor; any other operator there (`2>&N`, `2<&-`, `2<`, `2<>`, `2<<<`, `&>`, `>&file`, one shfmt adds
+#      later) leaves stderr uncaptured. The tested word names the same file only when both texts are known and
+#      equal, or both hold a parameter expansion and their parts are equal. `read_listing` of
 #      scripts/orchestrator/read-lib.sh is that shape by construction, and a producer the table does not name is not
 #      held to this rule.
 #   c. `prologue`: the file runs `set -euo pipefail` at top level before its first statement holding a command
@@ -42,8 +49,9 @@
 # @exitcode 0 No finding.
 # @exitcode 1 At least one finding, each printed as `file:line: <rule>: <message>`.
 # @exitcode 2 No file given, a listed file cannot be read or parsed, shfmt or python3 is missing, shfmt's JSON does
-#   not match the pinned node table, the producer table is missing or malformed, or this walk saw no statement in a
-#   listed file or none of its kinds in the contract fixtures: the list is refused, never read as clean.
+#   not match the pinned node table, the producer table is missing or malformed, a listed file holds no statement
+#   (empty or comment-only), or this walk saw none of a listed file's statements or none of its kinds in the contract
+#   fixtures: the list is refused, never read as clean.
 # @example
 #   scripts/ci/producer-status-check.sh scripts/orchestrator/read-lib.sh scripts/orchestrator/records-sync.sh
 set -euo pipefail
@@ -107,11 +115,13 @@ ALLOW_WORDS = ["producer-status:", "allow"]
 TRIVIAL = ("true", ":", "false")  # `|| true`, `|| :` and `|| false` discard the status of what precedes them
 PROLOGUE_WORDS = ["set", "-euo", "pipefail"]
 STDERR = "2"
-FILE_OPS = (">", ">>", ">|")  # on fd 2, each names the file that holds stderr from then on
-BOTH_OPS = ("&>", "&>>")  # stdout and stderr to one file: stderr is no longer captured on its own
-DUP_OP = ">&"  # `2>&1`, `2>&-` and `>&file` (both streams to the file) move stderr; `>&2` moves only stdout
-DUPLICATED = object()  # the effective stderr target when a duplication sends it where another stream goes
+FILE_OPS = (">", ">>", ">|")  # the only operators that, on fd 2, capture stderr to the word's file
+BOTH_OPS = ("&>", "&>>")  # touch fd 2 with no descriptor written
+DUP_OP = ">&"  # with no descriptor written, `>&file` touches fd 2; `>&N` and `>&-` move only stdout
+UNCAPTURED = object()  # the stderr target when the last redirect touching fd 2 is not one of FILE_OPS
+NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
+UNKNOWN_RIGHT_SIDE = "the right side of the `||` is not a known command word, so the status is not shown to be read"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # inside double quotes bash removes a backslash before these only
 
 
@@ -190,17 +200,18 @@ def unescaped(value, escapable):
 
 
 def word_text(word, in_double_quotes=False):
-    """The text of a word made of literals, whatever the quoting (`true`, 'true', "true" and tr\\ue are one text);
-    None for a word holding an expansion, whose text exists only when it runs."""
+    """The known text of a word: every part a bare literal, a plain single-quoted string, or double quotes around such
+    parts (`true`, 'true', "true" and tr\\ue are one text). None for any other word, whose text exists only when it
+    runs: an expansion, an ANSI-C `$'…'` or a locale `$"…"` string (shfmt's Dollar); nothing is decoded."""
     parts = (word.get("Parts") or []) if isinstance(word, dict) else []
     text = ""
     for part in parts:
         kind = part.get("Type")
         if kind == "Lit":
             text += unescaped(part.get("Value") or "", DOUBLE_QUOTE_ESCAPES if in_double_quotes else None)
-        elif kind == "SglQuoted":
+        elif kind == "SglQuoted" and not part.get("Dollar"):
             text += part.get("Value") or ""  # shfmt writes no Value for ''
-        elif kind == "DblQuoted":
+        elif kind == "DblQuoted" and not part.get("Dollar"):
             inner = word_text(part, True)
             if inner is None:
                 return None
@@ -212,23 +223,30 @@ def word_text(word, in_double_quotes=False):
 
 def descriptor(word):
     """Whether the word of a `>&` names a descriptor (`1`, `-`), so the redirect duplicates stdout and leaves stderr
-    alone; a word with an expansion is not known to, so it counts as `>&file`."""
+    alone; a word with no known text is not shown to, so it counts as `>&file`."""
     text = word_text(word)
     return text is not None and (text.isdigit() or text == "-")
 
 
+def touches_stderr(redirect):
+    """Whether the redirect moves fd 2: its descriptor is 2 whatever the operator, it is `&>` or `&>>`, or it is `>&`
+    with no descriptor written to a word that is not one (`>&file` sends both streams there; `>&2` moves stdout)."""
+    fd = (redirect.get("N") or {}).get("Value")
+    if fd is not None:
+        return fd == STDERR
+    op = redirect.get("Op")
+    return op in BOTH_OPS or (op == DUP_OP and not descriptor(redirect["Word"]))
+
+
 def stderr_target(redirects):
-    """Where a statement's stderr ends up, decided by its last redirect that moves fd 2: the word of a file (`2>`,
-    `2>>`, `2>|`), DUPLICATED for `2>&N`, `2>&-`, `&>`, `&>>` and `>&file`, None when nothing moves it. `>&N` and a
-    redirect of another descriptor do not touch it."""
+    """Where a statement's stderr ends up, decided by the last redirect that touches fd 2: the word when that redirect
+    is `2>`, `2>>` or `2>|`, UNCAPTURED for any other (`2>&N`, `2<&-`, `2<`, `2<>`, `2<<<`, `&>`, `>&file`, an
+    operator shfmt adds later), None when no redirect touches it."""
     target = None
     for redirect in redirects:
-        op = redirect.get("Op")
-        fd = (redirect.get("N") or {}).get("Value")
-        if op in FILE_OPS and fd == STDERR:
-            target = redirect["Word"]
-        elif op in BOTH_OPS or (op == DUP_OP and (fd == STDERR or (fd is None and not descriptor(redirect["Word"])))):
-            target = DUPLICATED
+        if touches_stderr(redirect):
+            captures = redirect.get("Op") in FILE_OPS and (redirect.get("N") or {}).get("Value") == STDERR
+            target = redirect["Word"] if captures else UNCAPTURED
     return target
 
 
@@ -266,24 +284,45 @@ def without_positions(node):
     return node
 
 
-def word_parts(word):
-    """The parts of a word with its double quotes flattened and positions dropped: what the file name is made of."""
+def name_parts(word):
+    """The parts of a word that names a file only when it runs, double quotes flattened and positions dropped, when
+    every part is a literal, a plain quoted string or a parameter expansion; None for any other word (an ANSI-C or
+    locale string, a substitution, a glob), which is not shown to name any file."""
     parts = []
     for part in word.get("Parts") or []:
-        if part.get("Type") == "DblQuoted":
-            parts.extend(word_parts(part))
-        else:
+        kind = part.get("Type")
+        if kind == "DblQuoted" and not part.get("Dollar"):
+            inner = name_parts(part)
+            if inner is None:
+                return None
+            parts.extend(inner)
+        elif kind == "Lit" or (kind == "SglQuoted" and not part.get("Dollar")) or kind in NAME_KINDS:
             parts.append(without_positions(part))
+        else:
+            return None
     return parts
 
 
 def same_word(one, other):
-    """Whether two words name one file: by text when both are made of literals, else by their parts (`"${d}/err"` and
-    `${d}/err` are one file; `'${d}/err'` is another)."""
+    """Whether two words are shown to name one file: both with a known text and the texts equal, or both naming a file
+    only when they run and their parts equal (`"${d}/err"` and `${d}/err`; `'${d}/err'` is a known text, another
+    file). A known text and a run-time name are never shown to be one file."""
     texts = (word_text(one), word_text(other))
-    if None in texts:
-        return word_parts(one) == word_parts(other)
-    return texts[0] == texts[1]
+    if None not in texts:
+        return texts[0] == texts[1]
+    if texts != (None, None):
+        return False
+    parts = (name_parts(one), name_parts(other))
+    return None not in parts and parts[0] == parts[1]
+
+
+def captures_to_file(target):
+    """Whether the word of a `2>`, `2>>` or `2>|` names a file that holds stderr: a known text other than /dev/null, or
+    a name made of literals and parameter expansions; an ANSI-C string or any other word is not shown to."""
+    text = word_text(target)
+    if text is not None:
+        return text != DEVNULL
+    return name_parts(target) is not None
 
 
 def head(stmt):
@@ -294,14 +333,14 @@ def head(stmt):
     return cmd
 
 
-def trivial(stmt):
-    """Whether the statement is `true`, `:` or `false` in any quoting, which discard the status of what precedes a
-    `||`; a word holding an expansion is not one of them (a substitution there is a finding of its own)."""
+def first_word(stmt):
+    """The first argument word of a statement that runs a plain command; None when it runs none (a block, a subshell,
+    a bare assignment), whose branch reads the status by itself."""
     cmd = command_of(stmt)
     if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
-        return False
-    words = leading_words(cmd)
-    return bool(words) and words[0] in TRIVIAL
+        return None
+    args = cmd.get("Args") or []
+    return args[0] if args else None
 
 
 def tested_assignment(stmt):
@@ -332,6 +371,7 @@ class Walk:
         self.seen = Counter()
         self.findings = set()
         self.accepted = set()  # ids of the command substitutions in an accepted position
+        self.reasons = {}  # id of a substitution in a tested position that is still a finding -> why
         self.allowed = set()  # lines carrying `# producer-status: allow <reason>`
         self.top = []
         self.top_index = 0
@@ -341,6 +381,7 @@ class Walk:
         self.seen.clear()
         self.findings.clear()
         self.accepted.clear()
+        self.reasons.clear()
         self.allowed.clear()
         self.top = tree.get("Stmts") or []
         self.top_index = 0
@@ -366,17 +407,30 @@ class Walk:
         and the left side of a `||` whose right side keeps the status."""
         for node in every(tree):
             kind = node.get("Type")
+            reason = None
             # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it.
             if kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
                 candidates = (node.get("Cond") or [])[-1:]
-            elif kind == "BinaryCmd" and node.get("Op") == "||" and not trivial(node["Y"]):
+            elif kind == "BinaryCmd" and node.get("Op") == "||":
+                # The branch reads the status unless it runs `true`, `:` or `false`; a first word with no known text
+                # is not shown to be another command, so the left side stays a finding that says so.
+                word = first_word(node["Y"])
+                text = "" if word is None else word_text(word)
+                if text in TRIVIAL:
+                    continue
+                if text is None:
+                    reason = UNKNOWN_RIGHT_SIDE
                 candidates = [node["X"]]
             else:
                 continue
             for stmt in candidates:
                 substitution = tested_assignment(stmt)
-                if substitution is not None:
+                if substitution is None:
+                    continue
+                if reason is None:
                     self.accepted.add(id(substitution))
+                else:
+                    self.reasons[id(substitution)] = reason
 
     def report(self, stmt, line, rule, message):
         if stmt is not None and stmt["Pos"]["Line"] in self.allowed:
@@ -406,7 +460,8 @@ class Walk:
             if self.first_substitution is None:
                 self.first_substitution = self.top_index
             if id(node) not in self.accepted:
-                self.report(stmt, node["Pos"]["Line"], SUBSTITUTION, MESSAGES[SUBSTITUTION])
+                message = self.reasons.get(id(node), MESSAGES[SUBSTITUTION])
+                self.report(stmt, node["Pos"]["Line"], SUBSTITUTION, message)
         node = without_literal_body(node)
         for value in node.values():
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
@@ -431,8 +486,8 @@ class Walk:
             later = siblings[0][siblings[1] + 1 :] if siblings is not None else []
             if (
                 target is None
-                or target is DUPLICATED
-                or word_text(target) == DEVNULL
+                or target is UNCAPTURED
+                or not captures_to_file(target)
                 or not any(self.tests_empty(other, target) for other in later)
             ):
                 self.report(
@@ -440,14 +495,14 @@ class Walk:
                     stmt["Pos"]["Line"],
                     PRODUCER,
                     f"`{' '.join(row)}` can fail with exit 0 or after printing (status-blind-producers.tsv); send its "
-                    "stderr with `2>` to a file (the last redirect of fd 2 decides; `2>&1`, `&>` and /dev/null discard "
-                    "it) and test `[[ ! -s <that file> ]]` in a later statement of the same list, or run it through "
-                    "read_listing of read-lib.sh",
+                    "stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other "
+                    "operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later "
+                    "statement of the same list, or run it through read_listing of read-lib.sh",
                 )
             break
 
     def tests_empty(self, stmt, target):
-        """Whether the statement starts with `[[ ! -s <target> ]]`."""
+        """Whether the statement starts with `[[ ! -s <target> ]]`, the two words shown to name one file."""
         cmd = head(stmt)
         if not isinstance(cmd, dict) or cmd.get("Type") != "TestClause":
             return False
@@ -514,7 +569,9 @@ for file in sys.argv[3:]:
     except Exception as error:  # any failure to read the tree is "could not judge", never a clean file
         refuse(f"cannot walk the syntax tree of {file} ({error!r})")
     listed = len(tree.get("Stmts") or []) if isinstance(tree, dict) else 0
-    if listed and not walk.seen["Stmt"]:
+    if not listed:
+        refuse(f"{file} holds no statement")
+    if not walk.seen["Stmt"]:
         refuse(f"the walk saw none of the {listed} top-level statement(s) of {file}")
     for line, rule, message in findings:
         print(f"{file}:{line}: {rule}: {message}")

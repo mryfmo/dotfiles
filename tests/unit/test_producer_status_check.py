@@ -7,7 +7,9 @@ hooks" (shape 1, rule a), the bare `git ls-files` without its stderr capture (sh
 (shape 4, rule d) and `local x=$(false)` (shape 5, rule a); the reader halves of shapes 2, 3 and 4 are in
 tests/unit/test_read_lib.py. The lint needs shfmt on PATH (the pinned version, which the contract checks first). The
 enforcement test runs it over the library and the five levers: that test, not a Makefile target, holds them to zero
-findings.
+findings. Rounds 2 and 3 of the audit each have a test naming their probe lines by line and rule: round 3 inverted the
+two readings (a word has a known text only in three quoting forms; stderr is captured only by three operators), so a
+form the lint does not know is a finding, never decoded.
 """
 
 from __future__ import annotations
@@ -113,7 +115,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
         self.assert_findings(tested, [])
 
     def test_the_two_accepted_positions_pass_and_every_other_position_is_a_finding(self) -> None:
-        cases: list[tuple] = [  # (the lines, the rule of the finding or None, the finding's line within the case)
+        cases: list[tuple] = [  # (the lines, the rule(s) of the finding(s) or None, the finding's line within the case)
             ("x=$(a) || fail", None),
             ('x="$(a)" || fail', None),
             ("x=`a` || fail", None),
@@ -131,8 +133,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ('x=$(a) || "true"', "substitution"),
             ("x=$(a) || 'true'", "substitution"),
             ("x=$(a) || tr\\ue", "substitution"),
-            ('x=$(a) || "$(true)"', "substitution"),  # the `||` shape passes; the inner substitution is the finding
-            ('x=$(a) || "${on_failure}"', None),
+            ('x=$(a) || "$(true)"', ("substitution", "substitution")),  # the inner one, and a right side not known
+            ('x=$(a) || "${on_failure}"', "substitution"),  # a right side with no known text is not shown to read it
+            ('x=$(a) || "$cmd"', "substitution"),
+            ("x=$(a) || $'tr\\x75e'", "substitution"),  # ANSI-C: not decoded, not known
+            ('x=$(a) || $"true"', "substitution"),  # a locale string: not known either
+            ("x=$(a) || tr$'ue'", "substitution"),
+            ("x=$(a) || 'fail'", None),
+            ('x=$(a) || "fail" now', None),
             ("x=$(a) || :", "substitution"),
             ("x=$(a) || false", "substitution"),
             ("x=$(a) && echo ok", "substitution"),
@@ -157,11 +165,12 @@ class ProducerStatusCheckTest(unittest.TestCase):
         body_lines: list[str] = []
         expected: list[tuple[int, str]] = []
         for case in cases:
-            text, rule = case[0], case[1]
-            if rule is not None:
+            text, rules = case[0], case[1]
+            for rule in (rules,) if isinstance(rules, str) else rules or ():
                 expected.append((3 + len(body_lines) + (case[2] if len(case) > 2 else 0), rule))
             body_lines.extend(text.split("\n"))
-        self.assert_findings("\n".join(body_lines) + "\n", expected)
+        result = self.assert_findings("\n".join(body_lines) + "\n", expected)
+        self.assertIn("not a known command word, so the status is not shown to be read", result.stdout)
 
     def test_shape_5_a_declaration_assigned_from_a_substitution_is_a_finding(self) -> None:
         """`local x=$(false)` runs on under set -e, since local's own status wins (SC2155's case); the grammar
@@ -252,6 +261,39 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "git ls-files -z > list 2> a 2> b || exit 1\n[[ ! -s a ]] || exit 1\n",
                 [(3, "producer")],
             ),
+            "stderr closed by 2<&- after the capture": (
+                "git ls-files > out 2> err 2<&- || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "fd 2 opened for reading after the capture": (
+                "git ls-files 2> err 2< x || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "fd 2 opened read-write after the capture": (
+                "git ls-files 2> err 2<> x || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "a here-string on fd 2 after the capture": (
+                "git ls-files 2> err 2<<< '' || exit 1\n" + test,
+                [(3, "producer")],
+            ),
+            "an ANSI-C /dev/null": (
+                "git ls-files 2> $'/dev/n\\x75ll' || exit 1\n[[ ! -s $'/dev/n\\x75ll' ]] || exit 1\n",
+                [(3, "producer")],
+            ),
+            "an ANSI-C target is no known file": ("git ls-files 2> $'err' || exit 1\n" + test, [(3, "producer")]),
+            "an ANSI-C word in the test": (
+                "git ls-files 2> err || exit 1\n[[ ! -s $'err' ]] || exit 1\n",
+                [(3, "producer")],
+            ),
+            "a locale string in the test": (
+                'git ls-files 2> err || exit 1\n[[ ! -s $"err" ]] || exit 1\n',
+                [(3, "producer")],
+            ),
+            "a known text tested against an expansion": (
+                "git ls-files 2> err || exit 1\n[[ ! -s ${err} ]] || exit 1\n",
+                [(3, "producer")],
+            ),
         }
         for name, (body, expected) in found.items():
             with self.subTest(finding=name):
@@ -263,7 +305,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
     def test_the_round_2_mutations_are_findings_named_by_line_and_rule(self) -> None:
         """The three lines of the c7be7ede audit and their neighbours, which that head read as clean: a trivial right
         side in quotes (rule a), a later redirect that moves stderr off the tested file, and /dev/null in quotes
-        (rule b). `|| "$(true)"` is not trivial, so its `||` shape passes and the inner substitution is the finding."""
+        (rule b). `|| "$(true)"` is two findings on one line since round 3: the inner substitution, and the left side,
+        whose right side has no known command word."""
         body = (
             'x=$(false) || "true"\n'
             "x=$(a) || 'true'\n"
@@ -281,9 +324,58 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "git ls-files > list 2> '/dev/null' || exit 1\n"
             "[[ ! -s '/dev/null' ]] || exit 1\n"
         )
-        expected = [(3, "substitution"), (4, "substitution"), (5, "substitution")]
+        expected = [(3, "substitution"), (4, "substitution"), (5, "substitution"), (5, "substitution")]
         expected += [(line, "producer") for line in (6, 8, 10, 12, 14, 16)]
         self.assert_findings(body, expected)
+
+    def test_the_round_3_probes_are_findings_named_by_line_and_rule(self) -> None:
+        """The three lines of the 2fc472c6 audit and the next members of both lists, which that head read as clean:
+        `2<&-` after the capture (the redirect operators that touch fd 2 were an enumeration), an ANSI-C `true` on the
+        right of `||` and an ANSI-C /dev/null (the quoting forms of a literal were one too). Round 3 reads both as
+        allowlists, so `2<`, `2<>`, `2<<<`, an ANSI-C word in the test and an expansion on the right are findings
+        without being named; the expansion capture compared by parts and the block on the right stay clean."""
+        body = (
+            "git ls-files > out 2> err 2<&- || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "x=$(false) || $'tr\\x75e'\n"
+            "git ls-files 2> $'/dev/n\\x75ll' || exit 1\n"
+            "[[ ! -s $'/dev/n\\x75ll' ]] || exit 1\n"
+            "git ls-files 2> err 2< x || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files 2> err 2<> x || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files 2> err 2<<< '' || exit 1\n"
+            "[[ ! -s err ]] || exit 1\n"
+            "git ls-files 2> err || exit 1\n"
+            "[[ ! -s $'err' ]] || exit 1\n"
+            'x=$(a) || "$cmd"\n'
+            "d=$(pwd) || exit 1\n"
+            'git ls-files 2> "${d}/err" || exit 1\n'
+            "[[ ! -s ${d}/err ]] || exit 1\n"
+            "x=$(a) || { echo no; exit 1; }\n"
+        )
+        expected = [(5, "substitution"), (16, "substitution")]
+        expected += [(line, "producer") for line in (3, 6, 8, 10, 12, 14)]
+        result = self.assert_findings(body, expected)
+        self.assertIn("not a known command word", result.stdout)
+
+    def test_an_empty_or_comment_only_file_is_refused_naming_it(self) -> None:
+        """A tree with no top-level statement is never a clean file: the refusal names the file, before and after a
+        clean one in the list, and nothing is printed on stdout."""
+        clean = self.script("clean.sh", "x=$(a) || exit 1\n")
+        empty = self.temp / "empty.sh"
+        empty.write_text("")
+        comment = self.temp / "comment.sh"
+        comment.write_text("#!/usr/bin/env bash\n# nothing runs here\n")
+        for name, paths in {"empty": [clean, empty], "comment-only": [comment, clean]}.items():
+            with self.subTest(name):
+                result = self.run_check(*paths)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertEqual(
+                    f"producer-status-check: {paths[name == 'empty']} holds no statement; the list is refused\n",
+                    result.stderr,
+                )
 
     def test_shape_4_a_read_from_a_file_is_a_finding_naming_read_file(self) -> None:
         result = self.assert_findings("IFS= read -r x < unreadable || exit 1\n", [(3, "read")])

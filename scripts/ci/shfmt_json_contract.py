@@ -70,7 +70,8 @@ TABLE: dict[str, Kind] = {
     "WhileClause": Kind(None, ("Cond", "Pos.Line")),
     "CmdSubst": Kind(None, ("Stmts", "Backquotes", "Pos.Line"), {"Backquotes": (True,)}),
     "ProcSubst": Kind(None, ("Stmts", "Op"), {"Op": ("<(",)}),
-    "DblQuoted": Kind(None, ("Parts", "Pos.Line")),
+    # The lint reads Dollar on both quoted kinds: an ANSI-C `$'…'` or a locale `$"…"` string has no known text to it.
+    "DblQuoted": Kind(None, ("Parts", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "Lit": Kind(None, ("Value", "Pos.Line", "Pos.Offset", "End.Offset"), {"Value": ("a\\ b",)}),
     # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that

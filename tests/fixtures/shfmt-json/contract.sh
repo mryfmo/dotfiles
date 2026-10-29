@@ -6,7 +6,7 @@
 # (contract.json) and the line of the one nested command substitution below.
 dir=$(cd "$(dirname "$0")" && pwd -P) || exit 2
 name=$(basename "$0")
-printf '%s\n' "double $name" 'single' $'dollar\n' a\ b
+printf '%s\n' "double $name" 'single' $'dollar\n' $"locale" a\ b
 count=${#name}
 item=${list[index]}
 cat << 'EOF'

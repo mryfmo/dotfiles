@@ -21,20 +21,29 @@
 #      status of the failed substitution propagates), with one argument whose known text is a decimal from 1 to 255,
 #      or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0`
 #      are findings: a zero turns the failed read into success); (ii) a plain command whose known first word names a
-#      function this file defines at top level whose every body is the refusal grammar: zero or more statements, each
-#      a plain command whose known first word is `echo` or `printf` with a redirect that sends fd 1 to fd 2 (`>&2` or
-#      `1>&2`), then exactly one last statement, a plain command `exit` with one argument whose known text is a
-#      decimal from 1 to 255, every statement in the foreground and not negated, and nothing else of any kind: no
-#      `return`, no `$?`, no `local`, no `if`, no assignment, no second `exit`, no call of another function, no
-#      command substitution anywhere in the body. The body is matched, not analysed: `f() { echo failed >&2; return
-#      $?; }`, `f() { return 0; exit 1; }`, `f() { echo x; exit 2; }` and `f() { local m=$1; echo "$m" >&2; exit 2; }`
-#      are each a finding naming the function and the first statement outside the grammar, by line, whatever they
-#      would do when run (a name no top-level function defines is not accepted; a function that cleans up before it
-#      exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow comment naming the
-#      cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2; exit 1; }`), so a
-#      bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a bare assignment
-#      of exactly `$?` (`status=$?`). A branch statement run in the background (`exit 2 &`) or negated (`! exit 1`,
-#      `! (exit 1)`) handles nothing.
+#      function this file defines exactly once, at the top level, in the foreground and not negated, before the tested
+#      statement in file order, by a name that is no bash builtin or reserved word, whose body is the refusal grammar:
+#      zero or more statements, each a plain command whose known first word is `echo` or `printf` with a redirect that
+#      sends fd 1 to fd 2 (`>&2` or `1>&2`), then exactly one last statement, a plain command `exit` with one argument
+#      whose known text is a decimal from 1 to 255, every statement in the foreground and not negated, and nothing
+#      else of any kind: no `return`, no `$?`, no `local`, no `if`, no assignment, no second `exit`, no call of another
+#      function, no command substitution anywhere in the body. Every definition of the name counts, at any depth: a
+#      second one inside an `if`, a loop, a block, a subshell or another function (`refuse() { exit 2; }; if true;
+#      then refuse() { return 0; }; fi`) or a second spelling (`function refuse { …; }`) is a finding naming both
+#      lines, since bash runs whichever ran last; a definition run in the background (`true() { exit 2; } &`) exists
+#      in a child shell only; one after the tested statement has not run when the read fails; a name of a builtin or
+#      reserved word (`true`, `:`, `false`, `exit`, `return`, `test`, `set`, `echo`, …, the BUILTINS tuple below) is
+#      the one bash runs when the function is absent, so no function of such a name is accepted; each is a finding
+#      naming the duplicate's line, the flag or the builtin. The body is matched, not analysed: `f() { echo failed
+#      >&2; return $?; }`, `f() { return 0; exit 1; }`, `f() { echo x; exit 2; }` and `f() { local m=$1; echo "$m"
+#      >&2; exit 2; }` are each a finding naming the function and the first statement outside the grammar, by line,
+#      whatever they would do when run (a name no function defines is a plain command; a function that cleans up
+#      before it exits is not a refusal function: the cleanup goes in a trap, or the call carries an allow comment
+#      naming the cleanup line); (iii) a block or subshell whose statements are that grammar (`{ echo no >&2; exit 1;
+#      }`), so a bare `exit`, a `return`, a call of a refusal function or a `$?` inside one is a finding; (iv) a bare
+#      plain assignment (`=`, not `+=`) of exactly `$?` (`status=$?`; `status+=$?` adds the status to the value, 25
+#      and 6 making 256, and is a finding naming the append). A branch statement run in the background (`exit 2 &`)
+#      or negated (`! exit 1`, `! (exit 1)`) handles nothing.
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
 #      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell outside the
 #      grammar, an assignment of anything else, a first word with no known text. A later line that handles an
@@ -156,6 +165,16 @@ MESSAGES = {
 ALLOW_WORDS = ["producer-status:", "allow"]
 TERMINATORS = ("exit", "return")  # the plain commands that end the read when the tested substitution fails (form i)
 FAILURE_STATUSES = range(1, 256)  # the one argument of a terminator, when its text is known, is a decimal in this range
+# The names bash runs as a builtin or a reserved word when no function of that name is defined in the running shell:
+# a `||` branch calling one is never accepted as a refusal function (form ii), since `true() { exit 2; } &` defines
+# the function in a child shell and the parent runs the builtin `true`, turning the failed read into success.
+BUILTINS = (
+    "true", ":", "false", "exit", "return", "test", "[", "set", "eval", "exec", "source", ".", "command", "builtin",
+    "enable", "unset", "trap", "shift", "read", "echo", "printf", "cd", "pwd", "type", "hash", "alias", "unalias",
+    "declare", "local", "export", "readonly", "typeset", "let", "wait", "kill", "jobs", "fg", "bg", "times", "ulimit",
+    "umask", "getopts", "caller", "compgen", "complete", "compopt", "dirs", "pushd", "popd", "disown", "help",
+    "history", "logout", "mapfile", "readarray", "suspend", "bind", "shopt", "break", "continue",
+)
 # A bare literal is a known text only over this set: a glob character, a brace, a tilde, `$`, a backquote, a backslash
 # or whitespace is expanded or read by bash and is not decoded here. Inside double quotes bash expands none of them,
 # so the set does not apply there.
@@ -173,6 +192,11 @@ BRANCH_FLAGS = {  # how a finding names a flagged statement in a `||` branch
     BACKGROUND: "a command run in the background (`&`), which lets the script go on",
     NEGATED: "a negated command (`!`), whose failure status is read as success",
     COPROCESS: "a `coproc`, whose status is its start, not its command's",
+}
+DEFINITION_FLAGS = {  # how a finding names the flagged top-level definition of the function a `||` branch calls
+    BACKGROUND: "runs in the background (`&`), so the function exists in a child shell only",
+    NEGATED: "is negated (`!`), a flagged statement",
+    COPROCESS: "runs in a coprocess, a child shell",
 }
 WRITERS = ("echo", "printf")  # the plain commands a refusal body may run before its `exit`, each sending fd 1 to fd 2
 STDOUT = "1"  # the descriptor `1>&2` names; `>&2` names none
@@ -426,14 +450,57 @@ def leftmost(stmt):
 
 
 def top_level_functions(tree):
-    """The functions the file defines at top level, name -> its bodies (a name defined twice has two, and each must
-    end the read); a function defined inside another statement is not one of them."""
+    """The functions the file defines at top level, name -> the statements defining it, in file order; a definition
+    inside another statement is counted by definitions below, not here."""
     functions = {}
     for stmt in tree.get("Stmts") or []:
         cmd = command_of(stmt)
         if isinstance(cmd, dict) and cmd.get("Type") == "FuncDecl":
-            functions.setdefault(cmd["Name"]["Value"], []).append(cmd["Body"])
+            functions.setdefault(cmd["Name"]["Value"], []).append(stmt)
     return functions
+
+
+def definitions(tree):
+    """Every function definition the file holds, at any depth, name -> the lines of its FuncDecl nodes in file order:
+    one inside an `if`, a loop, a block, a subshell, another function or a background job counts (every visits them
+    all), since bash runs whichever definition ran last."""
+    lines = {}
+    for node in every(tree):
+        if node.get("Type") == "FuncDecl":
+            lines.setdefault(node["Name"]["Value"], []).append(node["Pos"]["Line"])
+    return {name: sorted(found) for name, found in lines.items()}
+
+
+def refusal_function(text, tested, functions, defined):
+    """Why a `||` branch calling text is not shown to run one refusal function of this file when the tested statement
+    fails, else None: the name is a bash builtin or reserved word (BUILTINS), which bash runs when the function is
+    absent from the running shell; the file defines the name more than once, at any depth (defined), and bash runs
+    whichever ran last; the one definition sits inside another statement (not in functions, the top-level ones), runs
+    in the background or is negated (flagged_path), or comes after the tested statement in file order, so it has not
+    run when the read fails."""
+    lines = defined[text]
+    if text in BUILTINS:
+        return (
+            f"a call of `{text}`, the name of a bash builtin or reserved word, which bash runs instead when the "
+            f"function (defined at line {lines[0]}) is absent from the running shell"
+        )
+    if len(lines) > 1:
+        return (
+            f"a call of `{text}`, defined {len(lines)} times (lines {', '.join(map(str, lines))}), where bash runs "
+            "whichever definition ran last"
+        )
+    stmts = functions.get(text) or []
+    if not stmts:
+        return f"a call of `{text}`, defined at line {lines[0]} inside another statement, not at the top level"
+    flag = flagged_path((stmts[0],))
+    if flag is not None:
+        return f"a call of `{text}`, whose definition at line {lines[0]} {DEFINITION_FLAGS[flag[0]]}"
+    if stmts[0]["Pos"]["Offset"] > tested["Pos"]["Offset"]:
+        return (
+            f"a call of `{text}`, defined at line {lines[0]}, after the tested statement at line "
+            f"{tested['Pos']['Line']}, so the function has not been defined when the read fails"
+        )
+    return None
 
 
 def function_body(stmt):
@@ -601,15 +668,15 @@ def sends_stdout_to_stderr(redirect):
     return redirect.get("Op") == DUP_OP and fd in (None, STDOUT) and word_text(redirect["Word"]) == STDERR
 
 
-def refusal_break(stmts, functions):
+def refusal_break(stmts, defined):
     """What breaks the refusal grammar in the statements of a function body or of a block or subshell branch, as
     (what, line), else None. The grammar: zero or more plain commands whose known first word is `echo` or `printf`
-    (not a name a top-level function takes) with a redirect that sends fd 1 to fd 2, then exactly one plain command
-    `exit` (not such a name either) with one argument whose known text is a decimal from 1 to 255, every statement in
-    the foreground and not negated, no command substitution and no `$?` anywhere. The body is matched, never
-    analysed: the first statement that is anything else (a `return`, a declaration, an `if`, an assignment, a call,
-    an `exit` before the last statement, an `echo` without `>&2`, an `echo` where the `exit` must be) is named,
-    whatever it would do when run."""
+    (not a name a function of this file takes, at any depth) with a redirect that sends fd 1 to fd 2, then exactly one
+    plain command `exit` (not such a name either) with one argument whose known text is a decimal from 1 to 255,
+    every statement in the foreground and not negated, no command substitution and no `$?` anywhere. The body is
+    matched, never analysed: the first statement that is anything else (a `return`, a declaration, an `if`, an
+    assignment, a call, an `exit` before the last statement, an `echo` without `>&2`, an `echo` where the `exit` must
+    be) is named, whatever it would do when run."""
     for index, stmt in enumerate(stmts):
         line = stmt["Pos"]["Line"]
         flag = flagged_path((stmt,))
@@ -629,7 +696,7 @@ def refusal_break(stmts, functions):
         text = word_text(args[0])
         if text is None:
             return "a command whose first word has no known text", line
-        if text in functions:
+        if text in defined:
             return f"a call of `{text}`", line
         last = index == len(stmts) - 1
         if text in WRITERS:
@@ -665,14 +732,16 @@ def grammar_break(noun, broken):
     return f"{noun} breaks the refusal grammar ({GRAMMAR}) {where}"
 
 
-def branch_shape(stmt, functions, terminators):
-    """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
-    handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
-    function of that name takes the name away) with no argument, one known decimal from 1 to 255 or one bare `$?`
-    (terminator_shape); (ii) a plain command whose known first word names a top-level function of this file whose
-    every body is the refusal grammar (refusal_break; a name no such function has is a plain command); (iii) a block
-    or subshell whose statements are that grammar; (iv) a bare assignment of exactly `$?`. A statement run in the
-    background or negated handles nothing (the script goes on, or the failure reads as success)."""
+def branch_shape(stmt, tested, functions, defined, terminators):
+    """None when the `||` branch (stmt) handles the status of the tested statement, else the name of its shape. The
+    branches that handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a
+    function of that name anywhere in the file takes the name away) with no argument, one known decimal from 1 to 255
+    or one bare `$?` (terminator_shape); (ii) a plain command whose known first word names a function this file
+    defines once, at top level, unflagged and before the tested statement (refusal_function), whose body is the
+    refusal grammar (refusal_break; a name no function has is a plain command); (iii) a block or subshell whose
+    statements are that grammar; (iv) a bare `=` assignment of exactly `$?` (`+=` adds the status to the value). A
+    statement run in the background or negated handles nothing (the script goes on, or the failure reads as
+    success)."""
     flag = flagged_path((stmt,))
     if flag is not None:
         return BRANCH_FLAGS[flag[0]]
@@ -682,23 +751,28 @@ def branch_shape(stmt, functions, terminators):
         args = cmd.get("Args") or []
         if not args:
             assigns = cmd.get("Assigns") or []
-            if len(assigns) == 1 and "Name" in assigns[0] and status_parameter(assigns[0].get("Value")):
-                return None
+            if len(assigns) == 1 and "Name" in assigns[0]:
+                if assigns[0].get("Append"):
+                    return "an append (`+=`) of the status to the value, not a capture of `$?`"
+                if status_parameter(assigns[0].get("Value")):
+                    return None
             return "an assignment of something other than `$?`" if assigns else "an empty command"
         text = word_text(args[0])
         if text is None:
             return "a command whose first word has no known text"
         if text in terminators:
             return terminator_shape(text, args[1:])
-        if text in functions:
-            for body in functions[text]:
-                broken = refusal_break(body_statements(body), functions)
-                if broken is not None:
-                    return grammar_break(f"a call of `{text}`, whose body", broken)
+        if text in defined:
+            reason = refusal_function(text, tested, functions, defined)
+            if reason is not None:
+                return reason
+            broken = refusal_break(body_statements(function_body(functions[text][0])), defined)
+            if broken is not None:
+                return grammar_break(f"a call of `{text}`, whose body", broken)
             return None
         return f"the command `{text}`"
     if kind in ("Block", "Subshell"):
-        broken = refusal_break(body_statements(stmt), functions)
+        broken = refusal_break(body_statements(stmt), defined)
         if broken is None:
             return None
         return grammar_break("a block that" if kind == "Block" else "a subshell that", broken)
@@ -742,8 +816,9 @@ class Walk:
         self.top_index = 0
         self.first_substitution = None  # the index of the top-level statement holding the first substitution
         self.prologues = []  # the path (statement stack) of every `set -euo pipefail` the file holds
-        self.functions = {}  # the top-level functions of the file, name -> bodies (branch form ii)
-        self.terminators = TERMINATORS  # `exit` and `return`, less any name a top-level function takes
+        self.functions = {}  # the top-level functions of the file, name -> defining statements (branch form ii)
+        self.defined = {}  # every function of the file, at any depth, name -> the lines of its definitions
+        self.terminators = TERMINATORS  # `exit` and `return`, less any name a function of the file takes
         self.set_e = None  # the offset of the first top-level, unflagged `set -euo pipefail` (a bare test of rule b)
 
     def run(self, tree):
@@ -757,7 +832,8 @@ class Walk:
         self.top_index = 0
         self.first_substitution = None
         self.functions = top_level_functions(tree)
-        self.terminators = tuple(name for name in TERMINATORS if name not in self.functions)
+        self.defined = definitions(tree)
+        self.terminators = tuple(name for name in TERMINATORS if name not in self.defined)
         self.set_e = min(
             (stmt["Pos"]["Offset"] for stmt in self.top if prologue_statement(stmt) and flagged_path((stmt,)) is None),
             default=None,
@@ -794,11 +870,11 @@ class Walk:
             inner = body_statements(held)
             tested = inner[0] if len(inner) == 1 else held
             path = (tested, held, *path) if tested is not held else (held, *path)
-        self.test(tested, path, self.branch(binary["Y"]))
+        self.test(tested, path, self.branch(stmt, binary["Y"]))
 
-    def branch(self, stmt):
-        """Why a `||` branch does not handle the status of the tested read, else None."""
-        shape = branch_shape(stmt, self.functions, self.terminators)
+    def branch(self, stmt, branch):
+        """Why the `||` branch of the statement stmt does not handle the status of its tested read, else None."""
+        shape = branch_shape(branch, stmt, self.functions, self.defined, self.terminators)
         return None if shape is None else branch_reason(shape)
 
     def test(self, tested, path, reason, negation=True):
@@ -942,7 +1018,7 @@ class Walk:
             path = (cond[-1], stmt, *outer)
         elif kind == "BinaryCmd" and cmd.get("Op") == "||" and self.tests_empty(cmd["X"], target):
             path = (cmd["X"], stmt, *outer)
-            shape = branch_shape(cmd["Y"], self.functions, self.terminators)
+            shape = branch_shape(cmd["Y"], stmt, self.functions, self.defined, self.terminators)
             if shape is not None:
                 why = f"is the left side of a `||` whose branch is {shape} and does not end the script"
         elif kind == "TestClause" and self.tests_empty(stmt, target):

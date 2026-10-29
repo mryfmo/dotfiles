@@ -10,6 +10,7 @@ printf '%s\n' "double $name" 'single' $'dollar\n' $"locale" a\ b
 count=${#name}
 item=${list[index]}
 words=(one two)
+words+=(three)
 cat << 'EOF'
 $(quoted body)
 EOF

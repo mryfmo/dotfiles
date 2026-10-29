@@ -26,7 +26,10 @@ nothing else of any kind), and rule b's `[[ ! -s file ]]` must be an `if` condit
 branch is an accepted form, or a bare top-level statement after the prologue, on a path with no `!` or `&`, and round
 10 reads the flags of the producer's own path too (`git ls-files > l 2> e &` let the next statement test `e` before
 the listing had finished), so a producer run in the background, negated or in a coprocess is a finding whatever
-follows it.
+follows it, and round 11 counts every function definition of the file at any depth: a `||` branch may call only a
+name defined exactly once, at the top level, in the foreground and not negated, before the tested statement, that
+is no bash builtin or reserved word (`refuse() { exit 2; }` redefined inside an `if`, and `true() { exit 2; } &`, had
+passed), and form (iv) is a plain `=` of `$?` (`status+=$?` had passed).
 """
 
 from __future__ import annotations
@@ -906,15 +909,69 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 result.stdout,
             )
 
+    def test_the_round_11_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The three P2 of the 3b416298 audit, which that head read as clean: form (ii) looked a name up among the
+        top-level definitions only, so a second definition inside an `if` (`refuse() { return 0; }`) was unseen and
+        `true() { exit 2; } &` was trusted although it defines the function in a child shell and the parent runs the
+        builtin `true`; and form (iv) accepted `status+=$?`, which adds the status to the value (25 and 6 making 256,
+        which a later `exit "$status"` turns into success). Round 11 counts every FuncDecl of the file at any depth,
+        accepts a call only of a name defined exactly once, at the top level, in the foreground and not negated, before
+        the tested statement in file order, and never of a bash builtin's or reserved word's name, each finding naming
+        the duplicate's line, the flag or the builtin; form (iv) is a plain `=` of `$?` and the append is named."""
+        body = (
+            "refuse() {\n    exit 2\n}\n"  # 3 to 5
+            "if true; then\n    refuse() {\n        return 0\n    }\nfi\n"  # 6 to 10: the nested redefinition, at 7
+            "x=$(false) || refuse\n"  # 11
+            "true() {\n    exit 2\n} &\n"  # 12 to 14: the background definition of a builtin's name
+            "x=$(false) || true\n"  # 15
+            "x=$(false) || late\n"  # 16: the definition comes after the read
+            "late() {\n    exit 2\n}\n"  # 17 to 19
+            "function twice {\n    exit 2\n}\n"  # 20 to 22: both spellings present
+            "twice() {\n    exit 2\n}\n"  # 23 to 25
+            "x=$(false) || twice\n"  # 26
+            "outer() {\n    inner() {\n        exit 2\n    }\n}\n"  # 27 to 31: defined inside another function, at 28
+            "x=$(false) || inner\n"  # 32
+            "x=$(false) || status+=$?\n"  # 33: the append
+            "! flagged() {\n    exit 2\n}\n"  # 34 to 36: a negated definition
+            "x=$(false) || flagged\n"  # 37
+            "ok() {\n    echo no >&2\n    exit 2\n}\n"  # 38 to 41: the single top-level definition before the read
+            "x=$(false) || ok\n"  # 42: accepted
+            "x=$(false) || status=$?\n"  # 43: accepted
+            "job() {\n    exit 2\n} &\n"  # 44 to 46: a background definition of a name no builtin takes
+            "x=$(false) || job\n"  # 47
+        )
+        expected = [(line, "substitution") for line in (11, 15, 16, 26, 32, 33, 37, 47)]
+        result = self.assert_findings(body, expected)
+        for line, shape in (
+            (11, "a call of `refuse`, defined 2 times (lines 3, 7), where bash runs whichever definition ran last"),
+            (
+                15,
+                "a call of `true`, the name of a bash builtin or reserved word, which bash runs instead when the function (defined at line 12) is absent from the running shell",
+            ),
+            (
+                16,
+                "a call of `late`, defined at line 17, after the tested statement at line 16, so the function has not been defined when the read fails",
+            ),
+            (26, "a call of `twice`, defined 2 times (lines 20, 23), where bash runs whichever definition ran last"),
+            (32, "a call of `inner`, defined at line 28 inside another statement, not at the top level"),
+            (33, "an append (`+=`) of the status to the value, not a capture of `$?`"),
+            (37, "a call of `flagged`, whose definition at line 34 is negated (`!`), a flagged statement"),
+            (
+                47,
+                "a call of `job`, whose definition at line 44 runs in the background (`&`), so the function exists in a child shell only",
+            ),
+        ):
+            self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
+
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
         """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` as the whole branch
-        with no argument, one known decimal from 1 to 255 or one bare `$?`; a top-level function of this file whose
-        every body is the refusal grammar (`echo`/`printf` sending fd 1 to fd 2, then one `exit <1-255>`; a function
-        ending in a call of another, a name defined inside another statement, a name whose second definition is
-        outside the grammar and a bare `exit` or `return` in a body are not accepted); a block or subshell whose
-        statements are that grammar; and `name=$?` or `name=${?}`. Everything else is a finding that names the shape
-        (a body or block outside the grammar names its first statement outside it, by line), and a top-level function
-        named `exit` takes the name away."""
+        with no argument, one known decimal from 1 to 255 or one bare `$?`; a function this file defines once, at top
+        level, before the read, whose body is the refusal grammar (`echo`/`printf` sending fd 1 to fd 2, then one
+        `exit <1-255>`; a function ending in a call of another, a name defined inside another statement, a name
+        defined twice and a bare `exit` or `return` in a body are not accepted); a block or subshell whose statements
+        are that grammar; and `name=$?` or `name=${?}`. Everything else is a finding that names the shape (a body or
+        block outside the grammar names its first statement outside it, by line), and a function named `exit` is
+        the builtin's name, which bash runs when the function is absent, so the call is never accepted."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
             "refuse_plain() exit 2\n"
@@ -1079,11 +1136,13 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 "a call of `fail_later`, whose body breaks the refusal grammar (GRAMMAR) at line 9 with the command "
                 "`echo` as the last statement, where the `exit` must be",
             ),
-            ("x=$(a) || nested_refuse", "the command `nested_refuse`"),
+            (
+                "x=$(a) || nested_refuse",
+                "a call of `nested_refuse`, defined at line 12 inside another statement, not at the top level",
+            ),
             (
                 "x=$(a) || twice",
-                "a call of `twice`, whose body breaks the refusal grammar (GRAMMAR) at line 20 with the command `echo` "
-                "as the last statement",
+                "a call of `twice`, defined 2 times (lines 16, 19), where bash runs whichever definition ran last",
             ),
             (
                 "x=$(a) || deep",
@@ -1125,8 +1184,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
         shadowed = "exit() {\n    echo no\n}\nx=$(a) || exit 1\n"
         result = self.assert_findings(shadowed, [(6, "substitution")])
         self.assertIn(
-            f"a call of `exit`, whose body breaks the refusal grammar ({grammar}) at line 4 with the command `echo` as "
-            "the last statement, where the `exit` must be",
+            "a call of `exit`, the name of a bash builtin or reserved word, which bash runs instead when the function "
+            "(defined at line 3) is absent from the running shell",
             result.stdout,
         )
         # A top-level function named `echo` takes that name from the grammar too: `echo x >&2` in a body is then a call.

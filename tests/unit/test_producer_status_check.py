@@ -33,7 +33,11 @@ name defined exactly once, at the top level, in the foreground and not negated, 
 closed allowlist REFUSAL_NAMES (the builtin denylist of round 11 missed `fc`, so `fc() { exit 2; }; unset -f fc;
 x=$(false) || fc -l` had passed), and every scan of the walk (the definitions, the allow comments, the body scan)
 descends by the one traversal that skips a literal heredoc body (a `$(refuse() { return 0; })` in a `<< 'E'OF` body
-had made the file's real `refuse` a duplicate).
+had made the file's real `refuse` a duplicate), and round 13 reads a redirect's descriptor as a decimal (`02>&1` is
+fd 2; `{fd}>` refuses the file) and the word of a `>&` or `<&` as a plain descriptor only when all digits or `-`
+(`1>&2-`, `>&2-`, `<&2-`, `1>&file` and `1>&$fd` after `2> err` had passed), and adds rule f: a function, `alias`,
+`enable` or `hash` naming a word the rules read as a builtin or a producer (`set() { :; }` had let a warned listing
+pass a bare `[[ ! -s err ]]`) is a `shadow` finding at its line.
 """
 
 from __future__ import annotations
@@ -979,7 +983,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
         defined twice and a bare `exit` or `return` in a body are not accepted); a block or subshell whose statements
         are that grammar; and `name=$?` or `name=${?}`. Everything else is a finding that names the shape (a body or
         block outside the grammar names its first statement outside it, by line), and a function named `exit`, like
-        every name outside the allowlist `refuse`, `fail` (round 12), is a finding naming the name, whatever its body."""
+        every name outside the allowlist `refuse`, `fail` (round 12), is a finding naming the name, whatever its body,
+        and its definition a `shadow` finding (round 13)."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
             "fail() exit 2\n"
@@ -1189,14 +1194,14 @@ class ProducerStatusCheckTest(unittest.TestCase):
                     shape = shape.replace("GRAMMAR", grammar).replace("LINE", str(first + index))
                     self.assertIn(f":{first + index}: substitution: the `||` branch is {shape}", result.stdout)
         shadowed = "exit() {\n    echo no\n}\nx=$(a) || exit 1\n"
-        result = self.assert_findings(shadowed, [(6, "substitution")])
+        result = self.assert_findings(shadowed, [(3, "shadow"), (6, "substitution")])
         self.assertIn(
             "a call of `exit`, defined at line 3, a name that is not a refusal name (`refuse`, `fail`)",
             result.stdout,
         )
         # A top-level function named `echo` takes that name from the grammar too: `echo x >&2` in a body is then a call.
         shadowed = "echo() {\n    :\n}\nfail() {\n    echo no >&2\n    exit 1\n}\nx=$(a) || fail\n"
-        result = self.assert_findings(shadowed, [(10, "substitution")])
+        result = self.assert_findings(shadowed, [(3, "shadow"), (10, "substitution")])
         self.assertIn(
             f"a call of `fail`, whose body breaks the refusal grammar ({grammar}) at line 7 with a call of `echo`",
             result.stdout,
@@ -1388,6 +1393,95 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 self.assertIn(
                     f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout
                 )
+
+    def test_the_round_13_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the 4f7b58c1 audit, which that head read as clean: a redirect's descriptor was compared with
+        the text `2`, so `02>&1` after `2> err` touched nothing while the warnings went to stdout and `[[ ! -s err ]]`
+        passed; the word of a `>&` counted as a descriptor whenever its text was digits or `-`, and a written
+        descriptor other than 2 never touched fd 2, so the move `1>&2-` (fd 2 closed) passed too; and the prologue
+        credited a file-defined `set() { :; }`, so a warned listing with a bare `[[ ! -s err ]]` had zero findings.
+        Round 13 reads the descriptor as bash does, a decimal (`02` and `002` are fd 2; `{fd}>` refuses the file, exit
+        2), reads the word of a `>&` or `<&` as a plain descriptor only when all digits or exactly `-` (any other word
+        touches fd 2 whatever the descriptor before it: a move, a file, which bash 3.2 sends both streams to after
+        `1>&` as well, a word with no known text), and adds rule f: a function, `alias`, `enable` or `hash` naming a
+        word the rules read as a builtin or a producer (`set`, `exit`, `return`, `echo`, `printf`, `git`, `find`, `ls`,
+        built from the rules' own data) is a `shadow` finding at its line, which no allow comment exempts."""
+        body = (
+            "git ls-files > l 2> err 02>&1\n[[ ! -s err ]]\n"  # 3: the auditor's probe, fd 2 back onto stdout
+            "git ls-files > l 2> err 1>&2-\n[[ ! -s err ]]\n"  # 5: the auditor's probe, fd 2 moved onto fd 1, closed
+            "git ls-files > l 2> err 2>&1-\n[[ ! -s err ]]\n"  # 7
+            "git ls-files > l 2> err >&2-\n[[ ! -s err ]]\n"  # 9
+            "git ls-files > l 2> err <&2-\n[[ ! -s err ]]\n"  # 11: fd 2 moved onto fd 0, closed
+            "git ls-files > l 2> err 1>&file\n[[ ! -s err ]]\n"  # 13: both streams to the file on bash 3.2
+            "git ls-files > l 2> err 1>&$fd\n[[ ! -s err ]]\n"  # 15: no known text, any of them when it runs
+            "git ls-files > l 02> err\n[[ ! -s err ]]\n"  # 17: accepted, 02 is fd 2 and err a file
+            "git ls-files > l 002> err 01>&1\n[[ ! -s err ]]\n"  # 19: accepted, `01>&1` leaves fd 2 alone
+            "git ls-files > l 2> err >&- <&0 2>&1 2> err\n[[ ! -s err ]]\n"  # 21: accepted, the last one captures
+        )
+        result = self.assert_findings(body, [(line, "producer") for line in (3, 5, 7, 9, 11, 13, 15)])
+        for line in result.stdout.splitlines():
+            self.assertTrue(line.endswith("or run it through read_listing of read-lib.sh"), line)  # no later test
+        # The grammar's `>&2` is read the same way: `1>&02` and `01>&2` send fd 1 to fd 2.
+        grammar = (
+            "x=$(a) || { echo no 1>&02; exit 1; }\nrefuse() {\n    echo no 01>&2\n    exit 2\n}\ny=$(a) || refuse\n"
+        )
+        self.assert_findings(grammar, [])
+        # A descriptor that is not a decimal is not read: the file is refused, never passed, and nothing is printed.
+        variable = self.script("variable.sh", "git ls-files > l {fd}> err\n[[ ! -s err ]]\n")
+        result = self.run_check(variable)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertEqual(
+            f"producer-status-check: cannot judge {variable}: the redirect descriptor `{{fd}}` at line 3 is not a "
+            "decimal; the list is refused\n",
+            result.stderr,
+        )
+        shadow = (
+            "set() { :; }\n"  # 3: the auditor's probe
+            "git ls-files > l 2> err\n[[ ! -s err ]]\n"  # 4, 5: rule b accepts the bare test after the prologue
+            "exit() { :; }\n"  # 6
+            "echo() { exit 0; }\n"  # 7
+            'git() { command git "$@"; return 0; }\n'  # 8
+            "printf() { :; }\n"  # 9
+            "return() { :; }\n"  # 10
+            "find() { :; }\n"  # 11
+            "ls() { :; }\n"  # 12
+            "alias set='true' # producer-status: allow nothing exempts rule f\n"  # 13
+            "enable -n set\n"  # 14
+            "hash -p /tmp/git git\n"  # 15
+            'alias "$name"\n'  # 16: an argument with no known text
+            "if true; then function set { :; }; fi\n"  # 17: at any depth, in any spelling
+            "other() { :; }\n"  # 18: accepted
+            "alias ll='ls -l'\n"  # 19: accepted, `ll` is no word the rules read
+            "hash -r\n"  # 20: accepted
+            "unset -f set\n"  # 21: accepted, the definition at 3 is the finding whatever follows it
+        )
+        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18))])
+        producers = (
+            "the producers `git ls-files`, `git config -f`, `git config --file` rule b holds to a stderr capture"
+        )
+        for line, message in (
+            (
+                3,
+                "a function named `set` shadows the builtin the prologue `set -euo pipefail` relies on (rule c); bash runs it instead",
+            ),
+            (6, "a function named `exit` shadows the builtin a `||` branch ends a failed read with (rule a, form i)"),
+            (
+                7,
+                "a function named `echo` shadows the builtin the refusal grammar writes to stderr with (rule a, forms ii and iii)",
+            ),
+            (8, f"a function named `git` shadows {producers}; bash runs it instead"),
+            (11, "a function named `find` shadows the producer `find` rule b holds to a stderr capture"),
+            (13, "`alias` names `set` and shadows the builtin the prologue `set -euo pipefail` relies on (rule c)"),
+            (14, "`enable` names `set` and shadows the builtin the prologue"),
+            (15, f"`hash` names `git` and shadows {producers}"),
+            (
+                16,
+                "`alias` has an argument with no known text, which may name one of `echo`, `exit`, `find`, `git`, `ls`, `printf`, `return`, `set`",
+            ),
+            (17, "a function named `set` shadows the builtin the prologue"),
+        ):
+            self.assertIn(f":{line}: shadow: {message}", result.stdout)
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every

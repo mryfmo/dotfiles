@@ -66,3 +66,6 @@ fail() {
     exit 1
 }
 first=$(printf w) || fail 'no w'
+# producer-status-check (U112 round 13): a descriptor spelled `02`, the move `1>&2-` and a `<&`, so the decimal
+# reading of the descriptor and both dup operators the lint reads are in the tree.
+git ls-files > "$dir/list" 2> "$dir/err" 02>&1 1>&2- <&0 || exit 1

@@ -56,11 +56,14 @@ TABLE: dict[str, Kind] = {
     "Stmt": Kind("Cmd", ("Cmd", "Pos.Line", "Pos.Offset", "End.Line", "End.Offset", "Redirs", "Negated", "Background")),
     # `2> f` is Op ">" with the descriptor in N; the fixture's `2>` pins that spelling, its `read < f` the `<`, and its
     # producer line the other ways stderr moves (`2>>`, `2>|`, `2>&1`, `&>`, `&>>`, `>&`) that the lint reads; its
-    # refusal function's `1>&2` pins the descriptor 1 the lint reads in a refusal body (U112 round 9).
+    # refusal function's `1>&2` pins the descriptor 1 the lint reads in a refusal body (U112 round 9). The lint reads
+    # N.Value as a decimal and the word of a `>&` or `<&` (U112 round 13): the round-13 producer line pins `02>&1`
+    # (shfmt writes the descriptor as spelled), the move `1>&2-` and a `<&`; a non-decimal descriptor (`{fd}>`) is a
+    # refusal naming the redirect's Pos.Line.
     "Redirect": Kind(
         "Op",
-        ("Op", "N", "N.Value", "Word", "Hdoc", "Hdoc.Parts", "Pos.Offset", "End.Offset"),
-        {"Op": (">", "<<", "<", ">>", ">|", ">&", "&>", "&>>"), "N.Value": ("1", "2")},
+        ("Op", "N", "N.Value", "Word", "Hdoc", "Hdoc.Parts", "Pos.Line", "Pos.Offset", "End.Offset"),
+        {"Op": (">", "<<", "<", ">>", ">|", ">&", "<&", "&>", "&>>"), "N.Value": ("1", "2", "02")},
     ),
     "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),

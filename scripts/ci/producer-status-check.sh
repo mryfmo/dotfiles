@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # @file producer-status-check.sh
-# @brief Refuse a command substitution outside the accepted grammar, a status-blind producer without its stderr capture, a missing `set -euo pipefail`, and a `read` from a file.
+# @brief Refuse a command substitution outside the accepted grammar, a status-blind producer without its stderr capture, a missing `set -euo pipefail`, a `read` from a file, and a function or rebinding that shadows a word the rules read.
 # @description
 #   Regime-cutover U112 (plan P-21): standing order 21 made checkable. ShellCheck's check-extra-masked-returns
 #   never flags a plain `x=$(producer)`, never looks at a file redirection, exempts echo, dirname, basename, printf,
 #   set and shopt, and sees nothing when a producer exits 0 on a partial failure. This check parses each file with
-#   shfmt (`shfmt -ln bash --to-json`) and walks its typed tree under five rules, each a closed set; a finding is
+#   shfmt (`shfmt -ln bash --to-json`) and walks its typed tree under six rules, each a closed set; a finding is
 #   printed as `file:line: <rule>: <message>`:
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
@@ -73,10 +73,15 @@
 #      ends only the job, and an `&&` list or a pipeline is not a test, so a producer whose only such statement is one
 #      of those is a finding naming that statement's line and why. Stderr is captured
 #      only when the last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known
-#      text is not /dev/null, or whose parts are literals and parameter expansions. A redirect touches fd 2 when its
-#      descriptor is 2 whatever the operator, when it is `&>` or `&>>`, or when it is `>&` to a word that is not a
-#      descriptor; any other operator there (`2>&N`, `2<&-`, `2<`, `2<>`, `2<<<`, `&>`, `>&file`, one shfmt adds
-#      later) leaves stderr uncaptured. The tested word names the same file only when both texts are known and
+#      text is not /dev/null, or whose parts are literals and parameter expansions. The descriptor written before an
+#      operator is read as bash reads it, a decimal (`02>&1` and `002> err` name fd 2; one that is not all digits,
+#      `{fd}>`, refuses the file, exit 2). A redirect touches fd 2 when that descriptor is 2 whatever the operator,
+#      when it is `&>` or `&>>`, or when it is `>&` or `<&` to a word that is not a plain descriptor (all digits or
+#      `-`), whatever the descriptor before it: `>&file` and `1>&file` send both streams to the file, `>&2-`, `1>&2-`
+#      and `<&2-` move fd 2 and close it, `>&$fd` may be any of them when it runs; `>&2`, `1>&2`, `01>&2` and `>&-`
+#      leave fd 2 alone. Any other operator there (`2>&N`, `2<&-`, `2<`, `2<>`, `2<<<`, `&>`, `>&file`, a move, one
+#      shfmt adds later) leaves stderr uncaptured, and the word of a `>&` or `<&` is never the captured file. The
+#      tested word names the same file only when both texts are known and
 #      equal, or both hold a parameter expansion and their parts are equal. `read_listing` of
 #      scripts/orchestrator/read-lib.sh is that shape by construction, and a producer the table does not name is not
 #      held to this rule.
@@ -90,6 +95,16 @@
 #   e. `allow`: `# producer-status: allow <reason>` on the statement's first line exempts that statement from a, b
 #      and d; an allow comment with no reason is itself a finding and exempts nothing. The enforced file set is
 #      tests/unit/test_producer_status_check.py (the library and the five levers), not a Makefile target.
+#   f. `shadow`: the rules above read a closed set of command words as bash builtins or as the table's producers:
+#      `set` (c), `exit` and `return` (a, form i), `echo` and `printf` (the refusal grammar), and the first word of
+#      every producer row (`git`, `find`, `ls`; b). The set is built from that data (PROLOGUE_WORDS, TERMINATORS,
+#      WRITERS, the rows), not listed twice. A function definition of such a name, at any depth and in any spelling
+#      (`set() { :; }` lets a warned listing pass a bare `[[ ! -s err ]]`, since the `set -euo pipefail` the test
+#      relies on ran a function; `exit() { :; }`, `echo() { exit 0; }`, `git() { command git "$@"; return 0; }`), is
+#      a finding at its definition line naming what it shadows, and so is a plain command `alias`, `enable` or `hash`
+#      with an argument whose known text, before any `=`, is such a name (`alias set='…'`, `enable -n set`, `hash -p
+#      /x/git git`) or with an argument that has no known text (not shown to name another). A refusal name (`refuse`,
+#      `fail`) is held by the single-definition rule of form (ii) instead. An allow comment exempts nothing here.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
 #   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
 #   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
@@ -105,8 +120,8 @@
 # @exitcode 1 At least one finding, each printed as `file:line: <rule>: <message>`.
 # @exitcode 2 No file given, a listed file cannot be read or parsed, shfmt or python3 is missing, shfmt's JSON does
 #   not match the pinned node table, the producer table is missing or malformed, a listed file holds no statement
-#   (empty or comment-only), or this walk saw none of a listed file's statements or none of its kinds in the contract
-#   fixtures: the list is refused, never read as clean.
+#   (empty or comment-only) or a redirect descriptor that is not a decimal (`{fd}>`), or this walk saw none of a
+#   listed file's statements or none of its kinds in the contract fixtures: the list is refused, never read as clean.
 # @example
 #   scripts/ci/producer-status-check.sh scripts/orchestrator/read-lib.sh scripts/orchestrator/records-sync.sh
 set -euo pipefail
@@ -158,6 +173,7 @@ import shfmt_json_contract as contract  # noqa: E402
 NAME = "producer-status-check"
 TABLE = sys.argv[2]
 SUBSTITUTION, PRODUCER, PROLOGUE, READ, ALLOW = "substitution", "producer", "prologue", "read", "allow"
+SHADOW = "shadow"  # rule f
 MESSAGES = {
     SUBSTITUTION: (
         "a command substitution here loses its status; make it the whole value of the one assignment of a statement "
@@ -197,7 +213,7 @@ DEFINITION_FLAGS = {  # how a finding names the flagged top-level definition of 
     COPROCESS: "runs in a coprocess, a child shell",
 }
 WRITERS = ("echo", "printf")  # the plain commands a refusal body may run before its `exit`, each sending fd 1 to fd 2
-STDOUT = "1"  # the descriptor `1>&2` names; `>&2` names none
+STDOUT = 1  # the descriptor `1>&2` writes, as a number; `>&2` writes none
 GRAMMAR = "`echo`/`printf` to stderr, then one `exit <1-255>`"  # how a finding names the refusal grammar (forms ii, iii)
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
@@ -215,11 +231,13 @@ SHAPES = {  # how a finding names the command kind of a branch; a kind not liste
 }
 LIST_SHAPES = {"|": "a pipeline", "&&": "an `&&` list", "||": "a `||` list"}
 PROLOGUE_WORDS = ["set", "-euo", "pipefail"]
-STDERR = "2"
+STDERR = 2  # a descriptor is read as a decimal, so `02>` and `002>` name it too
 FILE_OPS = (">", ">>", ">|")  # the only operators that, on fd 2, capture stderr to the word's file
 BOTH_OPS = ("&>", "&>>")  # touch fd 2 with no descriptor written
-DUP_OP = ">&"  # with no descriptor written, `>&file` touches fd 2; `>&N` and `>&-` move only stdout
+DUP_OP = ">&"  # the operator a refusal body writes to stderr with (`>&2`, `1>&2`)
+DUP_OPS = (DUP_OP, "<&")  # to a plain descriptor (`>&1`, `>&-`) each moves the one before it; to any other word fd 2
 UNCAPTURED = object()  # the stderr target when the last redirect touching fd 2 is not one of FILE_OPS
+REBINDERS = ("alias", "enable", "hash")  # bind a command word to other text, a file or nothing (rule f)
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # inside double quotes bash removes a backslash before these only
@@ -337,31 +355,54 @@ def word_text(word, in_double_quotes=False):
     return text
 
 
-def descriptor(word):
-    """Whether the word of a `>&` names a descriptor (`1`, `-`), so the redirect duplicates stdout and leaves stderr
-    alone; a word with no known text is not shown to, so it counts as `>&file`."""
+class Unread(Exception):
+    """A value of the tree this walk does not read, so the file is refused (exit 2), never judged: a redirect
+    descriptor that is not a decimal (`{fd}>`, the variable form bash 4.1 fills)."""
+
+
+def descriptor_number(redirect):
+    """The descriptor written before a redirect's operator (`2>`, `02>&1`, `002> err`, `1>&2-`) as the number bash
+    reads, a decimal: `02` and `002` are fd 2. None when none is written. One that is not all digits (`{fd}>`) is not
+    read here, and the file is refused (Unread), never passed."""
+    value = (redirect.get("N") or {}).get("Value")
+    if value is None:
+        return None
+    if not (value.isascii() and value.isdigit()):
+        raise Unread(f"the redirect descriptor `{value}` at line {redirect['Pos']['Line']} is not a decimal")
+    return int(value, 10)
+
+
+def plain_descriptor(word):
+    """Whether the word of a `>&` or `<&` is a plain descriptor, its known text all digits or exactly `-` (`>&1`,
+    `>&2`, `2>&-`), so the redirect duplicates or closes the descriptor before its operator and no other. Any other
+    word moves fd 2 or is not shown not to: `2-` and `1-` are moves that close the descriptor they name (`1>&2-`,
+    `>&2-` and `<&2-` close fd 2), a path sends both streams to its file (`>&file`, and `1>&file` on bash 3.2), and a
+    word with no known text (`>&$fd`) is any of them when it runs."""
     text = word_text(word)
-    return text is not None and (text.isdigit() or text == "-")
+    return text is not None and ((text.isascii() and text.isdigit()) or text == "-")
 
 
 def touches_stderr(redirect):
-    """Whether the redirect moves fd 2: its descriptor is 2 whatever the operator, it is `&>` or `&>>`, or it is `>&`
-    with no descriptor written to a word that is not one (`>&file` sends both streams there; `>&2` moves stdout)."""
-    fd = (redirect.get("N") or {}).get("Value")
-    if fd is not None:
-        return fd == STDERR
-    op = redirect.get("Op")
-    return op in BOTH_OPS or (op == DUP_OP and not descriptor(redirect["Word"]))
+    """Whether the redirect moves fd 2: the descriptor before its operator is 2 whatever the operator (`2>`, `02>&1`,
+    `2<&-`), the operator is `&>` or `&>>`, or it is `>&` or `<&` to a word that is not a plain descriptor (`>&file`,
+    `>&2-`, `1>&2-`, `<&2-`, `1>&$fd`), whatever the descriptor before it. `>&2`, `1>&2`, `01>&2` and `>&-`
+    duplicate or close fd 1 and leave fd 2 alone."""
+    if descriptor_number(redirect) == STDERR:
+        return True
+    if redirect.get("Op") in BOTH_OPS:
+        return True
+    return redirect.get("Op") in DUP_OPS and not plain_descriptor(redirect["Word"])
 
 
 def stderr_target(redirects):
     """Where a statement's stderr ends up, decided by the last redirect that touches fd 2: the word when that redirect
-    is `2>`, `2>>` or `2>|`, UNCAPTURED for any other (`2>&N`, `2<&-`, `2<`, `2<>`, `2<<<`, `&>`, `>&file`, an
-    operator shfmt adds later), None when no redirect touches it."""
+    is `2>`, `2>>` or `2>|` (the descriptor 2 in any decimal spelling), UNCAPTURED for any other (`2>&N`, `2<&-`,
+    `2<`, `2<>`, `2<<<`, `&>`, `>&file`, a move `1>&2-`, an operator shfmt adds later; the word of a `>&` or `<&` is
+    never the target), None when no redirect touches it."""
     target = None
     for redirect in redirects:
         if touches_stderr(redirect):
-            captures = redirect.get("Op") in FILE_OPS and (redirect.get("N") or {}).get("Value") == STDERR
+            captures = redirect.get("Op") in FILE_OPS and descriptor_number(redirect) == STDERR
             target = redirect["Word"] if captures else UNCAPTURED
     return target
 
@@ -475,6 +516,26 @@ def definitions(tree):
         if node.get("Type") == "FuncDecl":
             lines.setdefault(node["Name"]["Value"], []).append(node["Pos"]["Line"])
     return {name: sorted(found) for name, found in lines.items()}
+
+
+def interpreted(rows):
+    """The command words the rules read as bash builtins or as the producers of the table, name -> what a function,
+    alias or rebinding of that name shadows (rule f): `set` (the prologue, rule c), `exit` and `return` (form i of
+    rule a), `echo` and `printf` (the refusal grammar, forms ii and iii) and the first word of every producer row
+    (rule b). Built from the data those rules hold, so a word added to one of them is covered without a second list;
+    a refusal name (`refuse`, `fail`) is held by the single-definition rule of form ii instead."""
+    words = {PROLOGUE_WORDS[0]: "the builtin the prologue `set -euo pipefail` relies on (rule c)"}
+    for name in TERMINATORS:
+        words[name] = "the builtin a `||` branch ends a failed read with (rule a, form i)"
+    for name in WRITERS:
+        words[name] = "the builtin the refusal grammar writes to stderr with (rule a, forms ii and iii)"
+    producers = {}
+    for row in rows:
+        producers.setdefault(row[0], []).append(f"`{' '.join(row)}`")
+    for name, named in producers.items():
+        plural = "s" if len(named) > 1 else ""
+        words.setdefault(name, f"the producer{plural} {', '.join(named)} rule b holds to a stderr capture")
+    return words
 
 
 def refusal_function(text, tested, functions, defined):
@@ -666,10 +727,12 @@ def exit_shape(args):
 
 
 def sends_stdout_to_stderr(redirect):
-    """Whether the redirect is `>&2` or `1>&2`: the `>&` operator with no descriptor or descriptor 1, to a word whose
-    known text is 2."""
-    fd = (redirect.get("N") or {}).get("Value")
-    return redirect.get("Op") == DUP_OP and fd in (None, STDOUT) and word_text(redirect["Word"]) == STDERR
+    """Whether the redirect is `>&2` or `1>&2` in any decimal spelling (`01>&2`, `>&02`): the `>&` operator with no
+    descriptor or descriptor 1, to a word whose known text is all digits and reads as 2."""
+    if redirect.get("Op") != DUP_OP or descriptor_number(redirect) not in (None, STDOUT):
+        return False
+    text = word_text(redirect["Word"])
+    return text is not None and text.isascii() and text.isdigit() and int(text, 10) == STDERR
 
 
 def refusal_break(stmts, defined):
@@ -823,6 +886,7 @@ class Walk:
         self.defined = {}  # every function of the file, at any depth, name -> the lines of its definitions
         self.terminators = TERMINATORS  # `exit` and `return`, less any name a function of the file takes
         self.set_e = None  # the offset of the first top-level, unflagged `set -euo pipefail` (a bare test of rule b)
+        self.shadowed = interpreted(rows)  # rule f: the words the rules read, name -> what a definition of it shadows
 
     def run(self, tree):
         self.seen.clear()
@@ -837,6 +901,12 @@ class Walk:
         self.functions = top_level_functions(tree)
         self.defined = definitions(tree)
         self.terminators = tuple(name for name in TERMINATORS if name not in self.defined)
+        for name, lines in self.defined.items():  # rule f: a function of a name the rules read, at any depth
+            if name in self.shadowed:
+                for line in lines:
+                    self.findings.add(
+                        (line, SHADOW, f"a function named `{name}` shadows {self.shadowed[name]}; bash runs it instead")
+                    )
         self.set_e = min(
             (stmt["Pos"]["Offset"] for stmt in self.top if prologue_statement(stmt) and flagged_path((stmt,)) is None),
             default=None,
@@ -947,7 +1017,7 @@ class Walk:
                 self.visit(value, stack, siblings)
 
     def statement(self, stmt, stack, siblings):
-        """Rules b and d on one statement's own command. stack is the statement's path to the top level: a producer
+        """Rules b, d and f on one statement's own command. stack is the statement's path to the top level: a producer
         run in the background, negated or in a coprocess on any statement of it (flagged_path) is a finding whatever
         follows it. Else a later `[[ ! -s file ]]` of the same statement list is judged on that list's path to the
         top level (siblings[2]), which it shares with the producer."""
@@ -958,6 +1028,8 @@ class Walk:
         redirects = stmt.get("Redirs") or []
         if words[:1] == ["read"] and any(redirect.get("Op") == "<" for redirect in redirects):
             self.report(stmt, stmt["Pos"]["Line"], READ, MESSAGES[READ])
+        if words[:1] and words[0] in REBINDERS:
+            self.rebinding(stmt, words[0], (cmd.get("Args") or [])[1:])
         for row in self.rows:
             if words[: len(row)] != row:
                 continue
@@ -989,6 +1061,23 @@ class Walk:
                 "or run it through read_listing of read-lib.sh" + (f"; {why}" if why is not None else ""),
             )
             break
+
+    def rebinding(self, stmt, word, args):
+        """Rule f on a plain command `alias`, `enable` or `hash` (word): each argument whose known text, before any
+        `=`, is a word the rules read (`alias set='…'`, `enable -n set`, `hash -p /x/git git`) is a finding naming
+        what it shadows, and so is an argument with no known text, which is not shown to name another word; an
+        option (`-n`, `-p`, `-r`) names none. No allow comment exempts it."""
+        line = stmt["Pos"]["Line"]
+        for arg in args:
+            text = word_text(arg)
+            if text is None:
+                names = ", ".join(f"`{name}`" for name in sorted(self.shadowed))
+                self.findings.add(
+                    (line, SHADOW, f"`{word}` has an argument with no known text, which may name one of {names}")
+                )
+            elif text.split("=", 1)[0] in self.shadowed:
+                name = text.split("=", 1)[0]
+                self.findings.add((line, SHADOW, f"`{word}` names `{name}` and shadows {self.shadowed[name]}"))
 
     def tests_empty(self, stmt, target):
         """Whether the statement's own command is `[[ ! -s <target> ]]`, the two words shown to name one file."""
@@ -1131,7 +1220,9 @@ for file in sys.argv[3:]:
         refuse(f"shfmt gave no JSON tree for {file}")
     try:
         findings = walk.run(tree)
-    except Exception as error:  # any failure to read the tree is "could not judge", never a clean file
+    except Unread as error:  # a value the walk does not read is "could not judge", never a clean file
+        refuse(f"cannot judge {file}: {error}")
+    except Exception as error:  # any other failure to read the tree is the same, never a clean file
         refuse(f"cannot walk the syntax tree of {file} ({error!r})")
     listed = len(tree.get("Stmts") or []) if isinstance(tree, dict) else 0
     if not listed:

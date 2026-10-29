@@ -14,6 +14,8 @@
 #   ~/.local/bin/common stops the lever that sources it. scripts/ci/git-invocation-check.sh refuses any `git` word in
 #   the levers outside `git_isolated` and outside a line carrying `# git-isolated: allow <reason>`.
 #   bash 3.2 (macOS /bin/bash): plain arrays, no here-string, no case-modifying expansion.
+#   The three arrays are the library's own and never exported: each is unset before it is assigned (a readonly one is
+#   a refusal), git_env_scrub refuses one that is exported, and git_isolated refuses to run with one unset or empty.
 # @set GIT_ISOLATED_ENV The environment of every isolated git, a plain array that is never exported (so a scrub leaves it).
 # @set GIT_ISOLATED_ARGS The arguments before the caller's; a caller's later `-c` or `--git-dir` wins by git's last-wins rule.
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -73,6 +75,19 @@ lever_self_check() {
     }
 }
 lever_self_check
+
+# The library's own three names are never exported, and a caller's environment may already export one (a stray
+# `export`, or a planted one): an array assigned over an exported variable keeps the export attribute, git_env_scrub
+# would then remove the library's own data as one more `GIT_*` name, and git_isolated would run git with nothing
+# (audit round 2 P1). So each is unset before it is assigned, and one that cannot be (readonly) is a refusal.
+for git_isolated_name in GIT_ISOLATED_ENV GIT_ISOLATED_ARGS GIT_ISOLATED_SCRUB_NAMES; do
+    unset -v "${git_isolated_name}" 2> /dev/null || {
+        echo "git-isolated.sh: refused: ${git_isolated_name} is readonly in the sourcing shell; the library cannot assign it" >&2
+        exit 2
+    }
+done
+unset -v git_isolated_name
+declare +x -a GIT_ISOLATED_ENV GIT_ISOLATED_ARGS GIT_ISOLATED_SCRUB_NAMES
 
 # The environment of every isolated git: one entry per line, each with the channel it closes and where that channel
 # was found. The level switches close the files; the command scope (`GIT_CONFIG_PARAMETERS`, `GIT_CONFIG_COUNT`) is
@@ -135,11 +150,43 @@ GIT_ISOLATED_SCRUB_NAMES=(http_proxy HTTPS_PROXY https_proxy HTTP_PROXY NO_PROXY
 #   PATH runs. This function body is the one place in the levers where a bare `git` word is accepted
 #   (scripts/ci/git-invocation-check.sh).
 # @arg $@ string git's arguments.
+# @exitcode 2 An array of the library is unset or empty.
 # @exitcode * git's own status.
 git_isolated() {
+    local who
+    who=${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}
+    who=${who##*/}
+    # An array unset or emptied after the sourcing would run git with fewer flags than documented: a refusal instead.
+    # `${name[*]:-}` reads an unset array as empty under `set -u` on bash 3.2, where `${#name[@]}` is unbound.
+    [[ -n ${GIT_ISOLATED_ENV[*]:-} ]] || {
+        echo "${who}: refused: GIT_ISOLATED_ENV is empty; the library's flag set is gone" >&2
+        exit 2
+    }
+    [[ -n ${GIT_ISOLATED_ARGS[*]:-} ]] || {
+        echo "${who}: refused: GIT_ISOLATED_ARGS is empty; the library's flag set is gone" >&2
+        exit 2
+    }
+    [[ -n ${GIT_ISOLATED_SCRUB_NAMES[*]:-} ]] || {
+        echo "${who}: refused: GIT_ISOLATED_SCRUB_NAMES is empty; the library's flag set is gone" >&2
+        exit 2
+    }
     (
         export "${GIT_ISOLATED_ENV[@]}" && exec git "${GIT_ISOLATED_ARGS[@]}" "$@"
     )
+}
+
+# @description Refuse if $2 is one of the library's own names (`GIT_ISOLATED_*`): they are never exported, and a scrub
+#   that removed one as a stray `GIT_*` name would leave git_isolated with no flags (audit round 2 P1).
+# @arg $1 string The prefix of the refusal.
+# @arg $2 string An exported name.
+# @exitcode 2 The name is the library's own.
+git_isolated_own_name() {
+    case $2 in
+    GIT_ISOLATED_*)
+        echo "$1: refused: $2 is exported; the library's own names are never exported" >&2
+        exit 2
+        ;;
+    esac
 }
 
 # @description Whether $1 is a name git_env_scrub removes: an exported `GIT_*` name or one of GIT_ISOLATED_SCRUB_NAMES,
@@ -172,19 +219,23 @@ git_env_scrubbed() {
 #   GIT_AUTHOR_NAME would name a commit's author, and GIT_DIR would point every command at another repository. The names
 #   come from the builtin `compgen -e` through a command substitution and are split on the default IFS, which bash never
 #   imports (an exported name has no blank or glob character), so bash 3.2 with an unwritable TMPDIR, which cannot make
-#   a here-string file, cannot skip the loop (records-sync.sh U101 round 6). GIT_ISOLATED_ENV and GIT_ISOLATED_ARGS are
-#   shell variables, never exported, so they stay. The refusal is prefixed with the sourcing script's name.
+#   a here-string file, cannot skip the loop (records-sync.sh U101 round 6). The library's own `GIT_ISOLATED_*` names
+#   are never exported: one found exported is a refusal, kept or not, never removed. The refusal is prefixed with the
+#   sourcing script's name, or with this file's when a harness sourced it from a command string (no `BASH_SOURCE[1]`,
+#   which `set -u` would otherwise report as unbound).
 # @arg $@ string Names to keep.
-# @exitcode 2 The environment cannot be listed, an `unset` fails (a readonly name), or a name is still there afterwards.
+# @exitcode 2 The environment cannot be listed, an `unset` fails (a readonly name), a name of the library is exported,
+#   or a name is still there afterwards.
 git_env_scrub() {
     local who names name
-    who=${BASH_SOURCE[1]##*/}
-    [[ -n ${who} ]] || who=git-isolated.sh
+    who=${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}
+    who=${who##*/}
     names=$(compgen -e) || {
         echo "${who}: refused: cannot list the environment" >&2
         exit 2
     }
     for name in ${names}; do
+        git_isolated_own_name "${who}" "${name}"
         git_env_scrubbed "${name}" "$@" || continue
         unset "${name}" 2> /dev/null || {
             echo "${who}: refused: cannot remove ${name} from the environment" >&2
@@ -196,6 +247,7 @@ git_env_scrub() {
         exit 2
     }
     for name in ${names}; do
+        git_isolated_own_name "${who}" "${name}"
         git_env_scrubbed "${name}" "$@" || continue
         echo "${who}: refused: ${name} is still in the environment after the scrub" >&2
         exit 2

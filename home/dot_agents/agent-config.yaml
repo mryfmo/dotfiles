@@ -846,7 +846,7 @@ claude:
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
-      git-isolated.sh: c982cd44ddcbd0a499c41ea09fb6fd679b97aae8fd87c19977792189621c717d
+      git-isolated.sh: 302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
@@ -860,7 +860,7 @@ claude:
       records-sync.sh: cabf0b45cb032a3a42de43857c181db40b70638ad6d8016fac7c5bd2c3379afd
       pr-merge.sh: 215800f6db1c5678bfb19faca8cb6c2e6f8200e71e8b82e12ea52933579105d4
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: b3dd7d16318fbfcf92c9fe452efa32dd2be3ab97ece06f5e1f39b50c062ff523
+      pr-audit.sh: 46682b03586488d84524ac5ab5ffe8f89ec7cf0a797c75d7cdfe71da874cfad6
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

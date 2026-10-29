@@ -854,9 +854,11 @@ git_isolated init -q --template= "${clone}" || fail "git init ${clone} failed"
 printf '%s\n' "${common}/objects" > "${clone}/.git/objects/info/alternates" || fail 'cannot write the alternates file'
 head=''
 for ((try = 1; try <= wait_tries; try++)); do
-    # `bounded` is a perl exec, which cannot run a shell function, so the fetch carries the library's own arrays.
-    bounded "${gh_timeout}" env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -C "${clone}" fetch -q --no-tags \
-        "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' || # git-isolated: allow bounded exec of the library's own arrays
+    # `bounded` is a perl exec, which cannot run a shell function, so the fetch carries the library's own arrays, and
+    # after them the gh helper, the shape of records-sync.sh's push: the library's empty helper resets the list and the
+    # later `-c` wins, so a private origin answers to the gh login and to no helper of the operator's configuration.
+    bounded "${gh_timeout}" env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -c 'credential.helper=!gh auth git-credential' \
+        -C "${clone}" fetch -q --no-tags "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' || # git-isolated: allow bounded exec of the library's own arrays
         fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"
     head=$(git_isolated -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head=''
     [[ ${head} != "${want}" ]] || break

@@ -347,7 +347,7 @@
       "target": ".local/bin/common/git-isolated.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "c982cd44ddcbd0a499c41ea09fb6fd679b97aae8fd87c19977792189621c717d"
+      "sha256": "302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb"
     },
     {
       "source": "home/dot_local/bin/common/executable_hcom-dispatch",
@@ -375,7 +375,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "b3dd7d16318fbfcf92c9fe452efa32dd2be3ab97ece06f5e1f39b50c062ff523"
+      "sha256": "46682b03586488d84524ac5ab5ffe8f89ec7cf0a797c75d7cdfe71da874cfad6"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",

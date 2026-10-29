@@ -29,6 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from scratch_git import git_init, quiet_git_env
 from test_generate_agent_configs import load_generator, sample_manifest
+from test_git_isolated import ARGS as ISOLATED_ARGS
+from test_git_isolated import ENV as ISOLATED_ENV
 from test_pr_levers import GIT_WRAPPER, JQ
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -681,6 +683,26 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         prompt = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])["prompt"]
         self.assertIn(f"diff {self.main}..{self.head}", prompt)
+
+    def test_the_audit_fetch_adds_the_gh_credential_helper_after_the_library_s_empty_one(self):
+        """U113 round 2 (P2): the library's `credential.helper=` resets every helper, so a private https origin that
+        answered through the operator's configured helper would answer no more. The fetch adds
+        `credential.helper=!gh auth git-credential` after the library's arguments, the shape records-sync.sh pushes
+        with; git's last-wins rule makes it the fetch's one helper, and the fetch's environment is the library's."""
+        argv_file, env_file = self.root / "fetch-argv", self.root / "fetch-env"
+        record = f"printf '%s\\n' \"$@\" > '{argv_file}'; env > '{env_file}'"
+        run = self.run_lever("7", PATH=self.failing_tool("git", "*fetch*", record))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        argv = argv_file.read_text().splitlines()
+        self.assertEqual(ISOLATED_ARGS, argv[: len(ISOLATED_ARGS)], "the library's arguments first")
+        after = argv[len(ISOLATED_ARGS) :]
+        self.assertEqual(["-c", "credential.helper=!gh auth git-credential", "-C"], after[:3])
+        helpers = [argument for argument in argv if argument.startswith("credential.helper=")]
+        self.assertEqual(["credential.helper=", "credential.helper=!gh auth git-credential"], helpers)
+        self.assertEqual("+refs/pull/7/head:refs/audit/head", after[after.index("fetch") + 4])
+        exported = dict(line.split("=", 1) for line in env_file.read_text().splitlines() if "=" in line)
+        # The lever's own GIT_NO_REPLACE_OBJECTS=1 is exported beside the library's entries (pr-audit.sh, U71b round 7).
+        self.assertLessEqual(ISOLATED_ENV.items(), exported.items(), "the fetch runs under the library's environment")
 
     def test_the_callers_git_variables_never_change_the_audited_range(self):
         """U71b audit round 7: an inherited GIT_GRAFT_FILE made main a child of the head, so merge-base(main, head) was

@@ -86,9 +86,10 @@ class GitIsolatedTest(unittest.TestCase):
             ["git", *args], cwd=cwd, env=env or self.setup_env, capture_output=True, text=True, check=check
         )
 
-    def bash(self, shell, script, env, cwd=None):
+    def bash(self, shell, script, env, cwd=None, before=""):
+        """SCRIPT after the library is sourced under `set -euo pipefail`; BEFORE runs ahead of the sourcing."""
         return subprocess.run(
-            [shell, "-c", f'set -euo pipefail; . "{LIBRARY}"; {script}'],
+            [shell, "-c", f'set -euo pipefail; {before}. "{LIBRARY}"; {script}'],
             cwd=cwd,
             env=env,
             capture_output=True,
@@ -239,12 +240,10 @@ git_isolated --git-dir='{out}/scratch.git' -c protocol.file.allow=always push -q
                 self.assertIn("refused: cannot list the environment", run.stderr)
                 self.assertNotIn("reached", run.stdout)
 
-    def test_the_function_runs_git_with_exactly_the_arrays(self):
-        """The function and the data agree: a fake git first on PATH records its argv and environment; the argv starts
-        with GIT_ISOLATED_ARGS, the environment's GIT_* names are exactly GIT_ISOLATED_ENV, the arrays are the
-        documented set, and nothing is exported into the caller."""
+    def recording_git(self):
+        """A git first on PATH that records its argv and environment as JSON: the PATH entry and the record file."""
         fake_bin = self.root / "fake-bin"
-        fake_bin.mkdir()
+        fake_bin.mkdir(exist_ok=True)
         record = self.root / "git-call.json"
         fake = fake_bin / "git"
         fake.write_text(
@@ -252,6 +251,13 @@ git_isolated --git-dir='{out}/scratch.git' -c protocol.file.allow=always push -q
             f'json.dump({{"argv": sys.argv[1:], "env": dict(os.environ)}}, open({str(record)!r}, "w"))\n'
         )
         fake.chmod(0o755)
+        return fake_bin, record
+
+    def test_the_function_runs_git_with_exactly_the_arrays(self):
+        """The function and the data agree: a fake git first on PATH records its argv and environment; the argv starts
+        with GIT_ISOLATED_ARGS, the environment's GIT_* names are exactly GIT_ISOLATED_ENV, the arrays are the
+        documented set, and nothing is exported into the caller."""
+        fake_bin, record = self.recording_git()
         script = (
             "git_env_scrub; git_isolated -C /x status; "
             'printf "%s\\n" "${GIT_ISOLATED_ENV[@]}" --- "${GIT_ISOLATED_ARGS[@]}" ===; compgen -e'
@@ -272,6 +278,91 @@ git_isolated --git-dir='{out}/scratch.git' -c protocol.file.allow=always push -q
                 self.assertEqual(ENV, {name: value for name, value in call["env"].items() if name.startswith("GIT_")})
                 self.assertEqual(env["PATH"], call["env"]["PATH"], "the caller's other variables stay")
                 self.assertEqual([], [name for name in exported if name.startswith("GIT_")], "nothing exported")
+
+    def test_an_inherited_export_of_the_library_s_own_names_leaves_the_flags_whole(self):
+        """Round 2 P1: a GIT_ISOLATED_ENV, GIT_ISOLATED_ARGS or GIT_ISOLATED_SCRUB_NAMES exported in the caller's
+        environment (a stray `export`, or a planted one) keeps its export attribute through an array assignment, so
+        the scrub, which removes every exported GIT_* name, would remove the library's own arrays and `git_isolated`
+        would run git with no isolation. The library unsets the three names before it assigns them, so the scrub
+        leaves them and git runs under the whole set."""
+        fake_bin, record = self.recording_git()
+        inherited = {"GIT_ISOLATED_ENV": "x", "GIT_ISOLATED_ARGS": "x", "GIT_ISOLATED_SCRUB_NAMES": "x"}
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                record.unlink(missing_ok=True)
+                env = {**self.plain_env, "PATH": f"{fake_bin}:{self.plain_env['PATH']}", **STEERED, **inherited}
+                run = self.bash(shell, "git_env_scrub; git_isolated -C /x status; compgen -e", env)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                call = json.loads(record.read_text())
+                self.assertEqual([*ARGS, "-C", "/x", "status"], call["argv"])
+                self.assertEqual(ENV, {name: value for name, value in call["env"].items() if name.startswith("GIT_")})
+                self.assertEqual([], [name for name in run.stdout.split() if name.startswith("GIT_")], "none exported")
+
+    def test_a_readonly_library_name_in_the_sourcing_shell_is_a_refusal(self):
+        """A readonly GIT_ISOLATED_ENV, GIT_ISOLATED_ARGS or GIT_ISOLATED_SCRUB_NAMES can be neither unset nor
+        assigned: sourcing the library is exit 2 naming it, and nothing after the sourcing runs."""
+        for shell in SHELLS:
+            for name in ("GIT_ISOLATED_ENV", "GIT_ISOLATED_ARGS", "GIT_ISOLATED_SCRUB_NAMES"):
+                with self.subTest(shell=shell, name=name):
+                    run = self.bash(shell, "echo reached", self.plain_env, before=f"readonly {name}=stale; ")
+                    self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                    self.assertIn(f"git-isolated.sh: refused: {name} is readonly in the sourcing shell", run.stderr)
+                    self.assertNotIn("reached", run.stdout)
+
+    def test_an_export_or_an_emptying_of_a_library_name_after_the_sourcing_is_a_refusal(self):
+        """The nets behind the first: a name of the library exported after the sourcing is a refusal of the scrub,
+        never removed as one more GIT_* name (a kept name included), and `git_isolated` with an array unset or empty
+        is exit 2 naming the array, not a git with fewer flags."""
+        fake_bin, record = self.recording_git()
+        env = {**self.plain_env, "PATH": f"{fake_bin}:{self.plain_env['PATH']}"}
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                for scrub in ("git_env_scrub", "git_env_scrub GIT_ISOLATED_SCRUB_NAMES"):
+                    run = self.bash(shell, f"export GIT_ISOLATED_SCRUB_NAMES; {scrub}; echo reached", env)
+                    self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                    self.assertIn("refused: GIT_ISOLATED_SCRUB_NAMES is exported", run.stderr)
+                    self.assertNotIn("reached", run.stdout)
+                for name, emptied in (
+                    ("GIT_ISOLATED_ENV", "unset -v GIT_ISOLATED_ENV"),
+                    ("GIT_ISOLATED_ARGS", "GIT_ISOLATED_ARGS=()"),
+                    ("GIT_ISOLATED_SCRUB_NAMES", "unset -v GIT_ISOLATED_SCRUB_NAMES"),
+                ):
+                    with self.subTest(name=name):
+                        record.unlink(missing_ok=True)
+                        run = self.bash(shell, f"{emptied}; git_isolated -C /x status; echo reached", env)
+                        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                        self.assertIn(f"refused: {name} is empty", run.stderr)
+                        self.assertNotIn("reached", run.stdout)
+                        self.assertFalse(record.exists(), "no git ran")
+
+    def test_a_refusal_is_prefixed_with_the_sourcing_script_s_name_or_the_library_s_own(self):
+        """CI run 40834060550 of af5c1237: sourced by a harness from a `bash -c` string, the library has no
+        `BASH_SOURCE[1]`, and under `set -u` the scrub died on its own prefix (`unbound variable`, exit 1) instead of
+        refusing. A refusal from the scrub or from `git_isolated` is exit 2, prefixed with the sourcing script's name
+        when there is one and with `git-isolated.sh:` when there is none."""
+        lever = self.root / "some-lever.sh"
+        lever.write_text(
+            f'set -euo pipefail\n. "{LIBRARY}"\ncase $1 in\nscrub) export GIT_X=1; readonly GIT_X; git_env_scrub ;;\n'
+            "run) GIT_ISOLATED_ARGS=(); git_isolated -C /x status ;;\nesac\necho reached\n"
+        )
+        cases = (
+            ("export GIT_X=1; readonly GIT_X; git_env_scrub", "scrub", "cannot remove GIT_X from the environment"),
+            ("GIT_ISOLATED_ARGS=(); git_isolated -C /x status", "run", "GIT_ISOLATED_ARGS is empty"),
+        )
+        for shell in SHELLS:
+            for harness, mode, message in cases:
+                with self.subTest(shell=shell, mode=mode):
+                    run = self.bash(shell, f"{harness}; echo reached", self.plain_env)
+                    self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                    self.assertIn(f"git-isolated.sh: refused: {message}", run.stderr)
+                    self.assertNotIn("unbound variable", run.stderr)
+                    self.assertNotIn("reached", run.stdout)
+                    run = subprocess.run(
+                        [shell, str(lever), mode], env=self.plain_env, capture_output=True, text=True, check=False
+                    )
+                    self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                    self.assertIn(f"some-lever.sh: refused: {message}", run.stderr)
+                    self.assertNotIn("reached", run.stdout)
 
 
 if __name__ == "__main__":

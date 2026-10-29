@@ -47,6 +47,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -82,6 +84,17 @@ lever_self_check() {
     }
 }
 lever_self_check
+
+# The isolated git and the environment scrub come from the library beside this script (U113): the toplevel and the
+# current branch are read by a git no caller variable or configuration steers.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-body-edit.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
 
 lever='pr-body-edit.sh'
 usage='usage: pr-body-edit.sh --body-file <file>'
@@ -145,8 +158,8 @@ lines_matching() {
 
 [[ $# -eq 2 && $1 == --body-file ]] || refuse "${usage}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
-branch=$(git branch --show-current) || fail 'git branch --show-current failed'
+toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
+branch=$(git_isolated branch --show-current) || fail 'git branch --show-current failed'
 [[ -n ${branch} ]] || refuse 'HEAD is detached; switch to the branch of your pull request'
 [[ ${branch} != main ]] || refuse 'the current branch is main'
 body_file_check "$2"

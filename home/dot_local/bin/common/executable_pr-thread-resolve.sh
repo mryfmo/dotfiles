@@ -47,6 +47,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -82,6 +84,17 @@ lever_self_check() {
     }
 }
 lever_self_check
+
+# The isolated git and the environment scrub come from the library beside this script (U113): `disposition` is one
+# text with pr-threads-check.sh's (U28b F1), so its ancestry and commit-date reads go through the same git.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-thread-resolve.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
 
 lever='pr-thread-resolve.sh'
 usage='usage: pr-thread-resolve.sh <pr> <comment-id> [--records <dir>]'
@@ -152,12 +165,12 @@ disposition() {
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
-        git cat-file -e "${fix}^{commit}" 2> /dev/null || {
+        git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
             echo "open (fixed: ${fix} is not a commit here)"
             return
         }
         status=0
-        git merge-base --is-ancestor "${fix}" "${head}" || status=$?
+        git_isolated merge-base --is-ancestor "${fix}" "${head}" || status=$?
         case ${status} in
         0) ;;
         1)
@@ -166,7 +179,7 @@ disposition() {
             ;;
         *) fail "git merge-base --is-ancestor ${fix} ${head} failed" ;;
         esac
-        fix_time=$(git show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
+        fix_time=$(git_isolated show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
         if ((fix_time < created)); then
             echo "open (fixed: ${fix} predates the finding)"
             return
@@ -264,7 +277,7 @@ if ! [[ ${thread_count} =~ ^[0-9]+$ ]] || ((thread_count > 100)); then
     refuse "the thread of comment ${comment} has more than 100 comments; resolve it by hand"
 fi
 [[ ${thread_created} =~ ^[0-9]+$ ]] || fail "unreadable creation time for the thread of comment ${comment}"
-git cat-file -e "${head}^{commit}" 2> /dev/null || refuse "the head ${head} of pull request ${pr} is not a commit here; git fetch first"
+git_isolated cat-file -e "${head}^{commit}" 2> /dev/null || refuse "the head ${head} of pull request ${pr} is not a commit here; git fetch first"
 state=$(disposition "${thread_created}" "${thread_severity}" "${thread_reply}") || exit $?
 [[ ${state} != open* ]] ||
     refuse "the thread of comment ${comment} has no valid disposition, ${state#open }; reply with pr-thread-reply.sh first"

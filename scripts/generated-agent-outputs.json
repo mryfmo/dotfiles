@@ -350,6 +350,13 @@
       "sha256": "e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2"
     },
     {
+      "source": "home/dot_local/bin/common/executable_git-isolated.sh",
+      "target": ".local/bin/common/git-isolated.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_hcom-dispatch",
       "target": ".local/bin/common/hcom-dispatch",
       "kind": "file",
@@ -375,14 +382,14 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419"
+      "sha256": "46682b03586488d84524ac5ab5ffe8f89ec7cf0a797c75d7cdfe71da874cfad6"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee"
+      "sha256": "52029014b9a569883eede28a9c77bc32acb6beaf69594940815aea0dba84cdb8"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-close.sh",
@@ -396,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79"
+      "sha256": "215800f6db1c5678bfb19faca8cb6c2e6f8200e71e8b82e12ea52933579105d4"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -410,14 +417,14 @@
       "target": ".local/bin/common/pr-thread-resolve.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123"
+      "sha256": "8d66fae47de6e3c3148650bd7e8477ceb873bcf63f11d714d126f315461995ea"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-threads-check.sh",
       "target": ".local/bin/common/pr-threads-check.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610"
+      "sha256": "a97318847d741004ac9f6e9477f991c6aa5aac20305a6aad2dbc4f3237d4b87c"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",
@@ -431,7 +438,7 @@
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "d7cff85921ce06b58222763858db7d3c11069ca4c4ec6e62b88fac3f1a8914d7"
+      "sha256": "cabf0b45cb032a3a42de43857c181db40b70638ad6d8016fac7c5bd2c3379afd"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",
@@ -562,6 +569,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "ci-rerun.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "git-isolated.sh"
     },
     {
       "source": "home/dot_local/bin/common",

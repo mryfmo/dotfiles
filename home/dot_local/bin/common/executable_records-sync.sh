@@ -22,8 +22,9 @@
 #   directory, or the reverse, is mirrored as the deletion plus the additions in the one commit.
 #   The whole commit is built in a new repository in a scratch directory under `$TMPDIR` (U101: rounds 2 to 7 each
 #   found another channel by which the checkout's git config acted on a sync worktree, so there is none): `git init
-#   --bare --template=` (no hooks, no attributes, no config beyond the init's), every command there under
-#   `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` with every inherited `GIT_*` variable removed. Origin's main
+#   --bare --template=` (no hooks, no attributes, no config beyond the init's), every command there through
+#   `git_isolated` of `git-isolated.sh` (U113: the one flag set that isolates git from every configuration but the
+#   command's own), with every inherited `GIT_*` and transport variable removed first by its `git_env_scrub`. Origin's main
 #   is fetched into it from origin's https URL (read once from the checkout; any other scheme is refused) with the
 #   credential helper `!gh auth git-credential` only. The checkout is only read: its two listings, its store files
 #   and `git config user.name`/`user.email`. The copies are made in the scratch directory and masked there with
@@ -63,33 +64,6 @@
 #   ~/.local/bin/common/records-sync.sh --program regime-cutover --unit U20
 set -euo pipefail
 
-# Git is steered by no inherited environment (U101, as hcom-seat does since U85): an exported GIT_AUTHOR_NAME would
-# name the commit's author, and GIT_CONFIG_* would add config, includes and URL rewrites to every git command. The
-# names come from the builtin compgen through a command substitution (a pipe, no temporary file, so bash 3.2 cannot
-# skip the loop when no here-string file can be made) and split on the default IFS, which bash never imports: an
-# exported name is an identifier, with no blank or glob character. A second pass refuses if any GIT_* name is left.
-inherited=$(compgen -e) || {
-    echo 'records-sync.sh: refused: cannot list the environment' >&2
-    exit 2
-}
-for inherited_name in ${inherited}; do
-    case ${inherited_name} in
-    GIT_*) unset "${inherited_name}" ;;
-    esac
-done
-inherited=$(compgen -e) || {
-    echo 'records-sync.sh: refused: cannot list the environment' >&2
-    exit 2
-}
-for inherited_name in ${inherited}; do
-    case ${inherited_name} in
-    GIT_*)
-        echo "records-sync.sh: refused: ${inherited_name} is still in the environment after the scrub" >&2
-        exit 2
-        ;;
-    esac
-done
-
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
 #   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
@@ -109,6 +83,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -145,6 +121,18 @@ lever_self_check() {
 }
 lever_self_check
 
+# The isolated git and the environment scrub come from the library beside this script (U113). The scrub runs here,
+# before the first git: an exported GIT_AUTHOR_NAME would name the commit's author, GIT_CONFIG_* would add config,
+# includes and URL rewrites to every git command, and a proxy or certificate variable would steer the fetch and push.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "records-sync.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
+
 lever='records-sync.sh'
 usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
@@ -178,24 +166,17 @@ cleanup() {
     fi
 }
 
-# @description Run git with no user or system config (U101): no `url.*.insteadOf`/`pushInsteadOf`, credential
-#   helper or signing setting of the operator's global config reaches the push, the commit or the `gh` steps.
-# @arg $@ string The `git` arguments.
-git_plain() {
-    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git "$@"
-}
-
 # @description Run `gh` as gh_bounded does, with no user or system git config for the `git` it runs.
 # @arg $@ string The `gh` arguments.
 gh_plain() {
     GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 gh_bounded "$@"
 }
 
-# @description Run git in the sync's own repository (U101): no user or system config, auto maintenance off (the
-#   directory is removed on exit), and the repository named by `--git-dir`, so no checkout is consulted.
+# @description Run the isolated git in the sync's own repository (U101): the repository named by `--git-dir`, so no
+#   checkout is consulted, and nothing of the user, system or checkout configuration (git-isolated.sh, U113).
 # @arg $@ string The `git` arguments.
 git_scratch() {
-    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git --git-dir="${repo}" -c gc.auto=0 -c maintenance.auto=false "$@"
+    git_isolated --git-dir="${repo}" "$@"
 }
 
 # @description Refuse a path by its name alone: a control character (a newline would end the component split of
@@ -263,9 +244,9 @@ done
 [[ ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 
-toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
-git_dir=$(git rev-parse --path-format=absolute --git-dir) || refuse 'cannot read the git directory'
-common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
+toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
+git_dir=$(git_isolated rev-parse --path-format=absolute --git-dir) || refuse 'cannot read the git directory'
+common_dir=$(git_isolated rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
 git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
@@ -307,7 +288,7 @@ fi
 # measured on git 2.56.0 (2026-10-28), 128 for an unparsable file, where the manual says 3. Any status other than 0
 # and 1 is a failure here, so the reader is right under both. An empty value is refused here, before any branch
 # exists, where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).
-# @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).
+# @arg $1 string The git function to read with (`git` reads the user configuration too, `git_isolated` does not).
 # @arg $2 string The configuration key.
 # @arg $3 string The variable that receives the value.
 read_config() {
@@ -321,10 +302,10 @@ read_config() {
     printf -v "$3" '%s' "${value}"
 }
 author_name='' author_email='' push_url=''
-read_config git user.name author_name
-read_config git user.email author_email
+read_config git user.name author_name   # git-isolated: allow the identity is read from the user configuration on purpose
+read_config git user.email author_email # git-isolated: allow the identity is read from the user configuration on purpose
 # U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.
-read_config git_plain remote.origin.url push_url
+read_config git_isolated remote.origin.url push_url
 case ${push_url} in # lint-comparisons: allow the URL's scheme as configured, the push target itself
 https://?*) ;;
 *) refuse "the push needs an https origin URL, not ${push_url}" ;;
@@ -337,7 +318,7 @@ trap cleanup EXIT
 # into it with --no-filters, and the tree, the commit and the push are made there. The checkout is only read: its
 # listings, its store files and its config's user.name/user.email (above).
 repo=${scratch}/repo.git
-git_plain init --quiet --bare --template= "${repo}" || fail 'git init --bare for the sync failed'
+git_isolated init --quiet --bare --template= "${repo}" || fail 'git init --bare for the sync failed'
 git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     fetch --quiet --no-tags "${push_url}" refs/heads/main || fail 'git fetch main from origin failed'
 main=$(git_scratch rev-parse --verify 'FETCH_HEAD^{commit}') || fail 'cannot read the fetched main'
@@ -360,9 +341,10 @@ while IFS= read -r -d '' dir; do
 done < "${scratch}/dirs"
 [[ -z ${dir} ]] || refuse "the walk of ${records}/ ends mid-entry; nothing was created"
 # Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any
-# configuration the checkout reads would run inside it (and could write into the store before the copy). The
-# command line turns it off, with the hooks path; the user's ignore rules (core.excludesFile) still apply.
-git -c core.fsmonitor=false -c core.hooksPath=/dev/null ls-files -z --cached --others --exclude-standard -- "${records}/" \
+# configuration the checkout reads would run inside it (and could write into the store before the copy). The isolated
+# git turns it off, with the hooks path and the user and system files; the repository level has no off switch, so the
+# checkout's own ignore rules and the default ignore file still shape the listing, which the stderr test below bounds.
+git_isolated ls-files -z --cached --others --exclude-standard -- "${records}/" \
     > "${listing}" 2> "${scratch}/listing.err" || fail 'git ls-files failed'
 [[ ! -s ${scratch}/listing.err ]] ||
     refuse "git ls-files warned while listing ${records}/ (its output is withheld); nothing was created"
@@ -479,7 +461,7 @@ count=${count//[[:space:]]/}
 remote_heads=$(git_scratch -c credential.helper= -c 'credential.helper=!gh auth git-credential' \
     ls-remote --heads "${push_url}" 'refs/heads/records/*') || fail 'git ls-remote origin failed'
 # U28b F6: a local branch occupies its number too, whatever left it behind.
-local_heads=$(git for-each-ref --format='%(refname)' 'refs/heads/records/') || fail 'git for-each-ref failed'
+local_heads=$(git_isolated for-each-ref --format='%(refname)' 'refs/heads/records/') || fail 'git for-each-ref failed'
 pr_heads=$(gh_plain pr list --state all --limit 1000 --json headRefName --jq '.[].headRefName') ||
     fail 'gh pr list failed'
 last=$(printf '%s\n%s\n%s\n' "${remote_heads}" "${local_heads}" "${pr_heads}" |

@@ -20,6 +20,7 @@ LEVERS = (
     "hcom-dispatch",
     "bus-history.sh",
     "worktree-gc.sh",
+    "git-isolated.sh",
     "regime-env",
     "regime-init",
     "seat-login-preflight",

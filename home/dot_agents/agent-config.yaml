@@ -665,8 +665,11 @@ codex:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
         enabled: true
-      # Ponytail 5.3.2 at 09c434a (both hosts, 2026-10-25): each hook runs `node -e` on the plugin's own
-      # hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout, the same three scripts as before.
+      # Ponytail 5.3.3 at 7801d06 (review bump 2026-10-29: upstream released v5.3.3 and the marketplace upgrade
+      # installs the copy from upstream main, so a fresh bootstrap landed off the 5.3.2 pin). The compare
+      # 09c434ab...7801d061 touches hooks/band/*.ts, tests and the plugin manifests only;
+      # hooks/claude-codex-hooks.json is unchanged, so these hashes still match. Each hook runs `node -e` on
+      # the plugin's own hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout.
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
         trusted_hash: sha256:defea43402fc8edba23234c694a1117cf80efc2da38968a40a1004cd9d63f725
         enabled: true
@@ -849,20 +852,21 @@ claude:
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      git-isolated.sh: 302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
-      pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
+      pr-thread-resolve.sh: 8d66fae47de6e3c3148650bd7e8477ceb873bcf63f11d714d126f315461995ea
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
-      pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
-      records-sync.sh: d7cff85921ce06b58222763858db7d3c11069ca4c4ec6e62b88fac3f1a8914d7
-      pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
+      pr-body-edit.sh: 52029014b9a569883eede28a9c77bc32acb6beaf69594940815aea0dba84cdb8
+      pr-threads-check.sh: a97318847d741004ac9f6e9477f991c6aa5aac20305a6aad2dbc4f3237d4b87c
+      records-sync.sh: cabf0b45cb032a3a42de43857c181db40b70638ad6d8016fac7c5bd2c3379afd
+      pr-merge.sh: 215800f6db1c5678bfb19faca8cb6c2e6f8200e71e8b82e12ea52933579105d4
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419
+      pr-audit.sh: 46682b03586488d84524ac5ab5ffe8f89ec7cf0a797c75d7cdfe71da874cfad6
       brief-check.py: f183d0dc347c72da65794b036785b626c50ffc0e833fdac715b30c9c6675db9e
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
@@ -1375,7 +1379,7 @@ assets:
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
       frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
-      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
+      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.3}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
       pstack@cursor-plugins: {marketplace: cursor/plugins, pin: 0.15.30}
   codex-plugins:
@@ -1397,8 +1401,8 @@ assets:
       superpowers@openai-curated: {marketplace: openai-curated, pin: 6.3.0}
       ponytail@ponytail:
         marketplace: https://github.com/DietrichGebert/ponytail.git
-        pin: 5.3.2
-        ref: 09c434ab73ca43761c5d8b0c5d341926c2fba710
+        pin: 5.3.3
+        ref: 7801d061243d7b753bad0e0b3c057cd250b11755
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

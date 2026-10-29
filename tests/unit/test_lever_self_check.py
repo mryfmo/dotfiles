@@ -131,7 +131,8 @@ class LeverSelfCheckTest(unittest.TestCase):
         brief-check.py is Python (U104 round 3): it hashes with hashlib and reads the manifest itself, so it runs
         neither tool and a planted one is never consulted; each of its own reads is failed in
         `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest mode 000, a directory, no or two pin
-        lines, the copy mode 000, HOME unset or missing), every one a refusal with nothing on stdout (round 4).
+        lines, HOME unset or missing, and the hash read of its own bytes: the copy on stdin so `<stdin>` is the path,
+        and `builtins.open` raising in process, round 6), every one a refusal with nothing on stdout.
         """
         path_levers = [name for name in LEVERS if name not in ("hcom-seat", "brief-check.py")]
         env = self.fake_tools("sha256sum", "shasum")

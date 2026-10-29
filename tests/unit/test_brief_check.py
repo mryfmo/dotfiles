@@ -1,14 +1,19 @@
 """Exercise brief-check.py (regime-cutover U104) on scratch briefs, as a subprocess under `python -I`, and its installed
 copy under a scratch HOME as the hcom-orchestration SKILL spells the command (round 3)."""
 
+import builtins
 import contextlib
+import errno
+import io
 import os
+import runpy
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/orchestrator/brief-check.py"
@@ -427,15 +432,62 @@ class InstalledBriefCheckTest(unittest.TestCase):
                 result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
                 self.assert_refused(result, f"no single sha256 pin for brief-check.py in {self.manifest}")
 
-    @unittest.skipIf(os.geteuid() == 0, "mode 000 does not stop root, so the unreadable-copy injection is skipped")
-    def test_an_unreadable_copy_cannot_start_and_judges_nothing(self):
-        # The interpreter never gets the file, so no refusal line is owed; only that nothing is judged (non-zero, no
-        # stdout), since a judgement from a copy nobody could hash must not escape.
+    @unittest.skipIf(os.geteuid() == 0, "mode 000 does not stop root, so the unreadable-copy case is skipped")
+    def test_an_unreadable_copy_is_refused_by_the_interpreter_before_any_judgement(self):
+        # Mode 000 stops the shell: bash exits 126 before python3 starts, so the self-check's own hash read is never
+        # reached here (round 6) and no refusal line is owed. What this shows is only that nothing is judged (non-zero
+        # exit, empty stdout). The two tests below fail that read.
         self.copy.chmod(0)
         self.addCleanup(self.copy.chmod, 0o755)
         result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertEqual("", result.stdout)
+
+    def test_a_failed_hash_read_of_the_copy_refuses_naming_the_path_it_could_not_hash(self):
+        """Round 6 (P2): the mode-000 case exits 126 from the shell, so no committed test failed the self-check's read of
+        its own bytes. The installed copy's bytes go in on stdin, `python3 -I - <brief>`, from a cwd shaped like the
+        dotfiles checkout (`scripts/orchestrator`, the manifest with the correct pin two levels up): `__file__` is
+        `<stdin>`, so the manifest step passes and the hash step opens `<cwd>/<stdin>`, which does not exist."""
+        shape = self.root / "shape/scripts/orchestrator"
+        shape.mkdir(parents=True)
+        (self.root / "shape/home/dot_agents").mkdir(parents=True)
+        shutil.copy2(MANIFEST, self.root / "shape/home/dot_agents/agent-config.yaml")
+        (self.briefs / "U1-x.md").write_text(brief(GOAL=CLEAN_GOAL))
+        with open(self.copy, "rb") as handle:
+            result = subprocess.run(
+                ["python3", "-I", "-", str(self.briefs / "U1-x.md")],
+                cwd=shape,
+                env=self.env,
+                stdin=handle,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+        self.assert_refused(result, f"cannot hash {shape}/<stdin>")
+
+    def test_a_permission_error_on_the_hash_read_refuses_in_process(self):
+        """The same read failed as the kernel fails it: `runpy.run_path` on the checkout script with `builtins.open`
+        raising `PermissionError` for the script's own path only, so the checkout manifest two levels up is read and
+        the hash read is not; exit 2 as `SystemExit`, the refusal on stderr, nothing on stdout."""
+        real_open = builtins.open
+
+        def open_except_self(file, *args, **kwargs):
+            if str(file) == str(SCRIPT):
+                raise PermissionError(errno.EACCES, "Permission denied", str(file))
+            return real_open(file, *args, **kwargs)
+
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            mock.patch("builtins.open", open_except_self),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            runpy.run_path(str(SCRIPT), run_name="__main__")
+        self.assertEqual(2, raised.exception.code)
+        self.assertEqual("", out.getvalue())
+        self.assertEqual(f"brief-check.py: refused: cannot hash {SCRIPT}\n", err.getvalue())
 
     def test_an_unset_or_missing_home_chooses_the_checkout_manifest(self):
         # Neither case may crash: the physical directory of the copy decides, and two levels up from the scratch bin

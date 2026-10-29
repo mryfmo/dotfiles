@@ -243,7 +243,7 @@ class PrAuditTest(unittest.TestCase):
         )
         self.assertEqual(
             verdict.read_text(),
-            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nVerdict: correct\n",
+            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nBlocking: 0\nVerdict: correct\n",
         )
         self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before, "nothing outside the run dir is written")
 
@@ -297,6 +297,28 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("null when the finding has no line", prompt)
         self.assertIn("is met by the `verdict` field of that object", prompt)
         self.assertIn("an integer from 1 to 2147483647, never null", prompt)
+        self.assertIn("Any P0 or P1 finding means `incorrect`", prompt)
+        self.assertIn(
+            "Report every P2 and P3 finding with its priority and confidence; they do not change the verdict", prompt
+        )
+        self.assertNotIn("P0, P1 or P2", prompt, "a P2 no longer blocks (U119)")
+
+    def test_the_prompt_codex_receives_asks_for_a_census_of_findings(self):
+        """U119 addendum: the prompt the lever hands to codex, read back from what the fake received on stdin and from
+        the run's prompt.md (never from the script source), asks for every finding of the scope in one pass, right
+        after the verdict rule."""
+        run = self.run_lever("7")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (rundir,) = self.tmp.iterdir()
+        handed = self.codex_calls()[2]["prompt"]
+        self.assertEqual(handed, (rundir / "prompt.md").read_text())
+        rule = "Report every P2 and P3 finding with its priority and confidence; they do not change the verdict. "
+        census = (
+            "List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; "
+            "the findings list is a census of the head against the Contract, not a sample."
+        )
+        self.assertIn(rule + census, handed)
+        self.assertEqual(handed.count(census), 1)
 
     def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
         """The one write outside the run directory: Codex's own token refresh through the login link lands on the
@@ -790,7 +812,10 @@ class PrAuditTest(unittest.TestCase):
         bad_finding = {"priority": "P3", "confidence": "high", "path": "change.txt"}
         conforming = {"verdict": "correct", "findings": [], "reproduced": [], "notes": None}
         cases = (
-            ({"FAKE_CODEX_VERDICT_MODE": "contradiction"}, "verdict correct contradicts its findings: 1 of priority"),
+            (
+                {"FAKE_CODEX_VERDICT_MODE": "contradiction"},
+                "the verdict.verdict correct contradicts the verdict.findings: 1 of",
+            ),
             ({"FAKE_CODEX_VERDICT_MODE": "invalid-json"}, "not valid JSON"),
             ({"FAKE_CODEX_VERDICT_MODE": "unknown-enum"}, 'verdict.verdict is "maybe", not one of correct, incorrect'),
             ({"FAKE_CODEX_VERDICT_MODE": "none"}, "wrote no final message to"),
@@ -819,8 +844,10 @@ class PrAuditTest(unittest.TestCase):
                 self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
 
     def test_the_decision_rule_is_applied_from_the_findings(self):
-        """Any P0, P1 or P2 finding means incorrect; none means correct or blocked. A verdict the findings do not
-        derive is refused, never corrected: the lever prints no verdict at all."""
+        """Any P0 or P1 finding means incorrect; none means correct or blocked; a P2 or P3 is reported and changes no
+        verdict (U119, decision 2026-10-30 change 1). verdict.md carries `Blocking: <count of P0 and P1>` before its
+        last line. A verdict the findings do not derive, or a priority outside P0 to P3, is refused naming the field,
+        never corrected: the lever prints no verdict at all and writes no verdict.md."""
 
         def finding(priority, line=12):
             return {
@@ -832,12 +859,13 @@ class PrAuditTest(unittest.TestCase):
             }
 
         accepted = (
-            ({"verdict": "incorrect", "findings": [finding("P2"), finding("P3", 7)]}, "incorrect"),
-            ({"verdict": "incorrect", "findings": [finding("P0")]}, "incorrect"),
-            ({"verdict": "correct", "findings": [finding("P3")]}, "correct"),
-            ({"verdict": "blocked", "findings": []}, "blocked"),
+            ({"verdict": "correct", "findings": [finding("P2")]}, "correct", 0),
+            ({"verdict": "incorrect", "findings": [finding("P1")]}, "incorrect", 1),
+            ({"verdict": "incorrect", "findings": [finding("P0"), finding("P1", 3), finding("P2", 7)]}, "incorrect", 2),
+            ({"verdict": "correct", "findings": [finding("P3"), finding("P2", 7)]}, "correct", 0),
+            ({"verdict": "blocked", "findings": []}, "blocked", 0),
         )
-        for document, value in accepted:
+        for document, value, blocking in accepted:
             with self.subTest(verdict=value, findings=[f["priority"] for f in document["findings"]]):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
@@ -847,17 +875,46 @@ class PrAuditTest(unittest.TestCase):
                 (rundir,) = self.tmp.iterdir()
                 self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: {value}\n")
                 text = (rundir / "verdict.md").read_text()
-                self.assertTrue(text.endswith(f"\nVerdict: {value}\n"), text)
+                self.assertTrue(text.endswith(f"\n\nBlocking: {blocking}\nVerdict: {value}\n"), text)
                 for item in document["findings"]:
                     self.assertIn(f"- {item['priority']} (medium) change.txt:{item['line']}: Why.\n", text)
                 self.assertIn("## Reproduced\n\n- bash -n: ok\n", text)
                 self.assertIn("## Notes\n\nA note.\n", text)
         refused = (
-            {"verdict": "incorrect", "findings": [finding("P3")]},
-            {"verdict": "incorrect", "findings": []},
-            {"verdict": "blocked", "findings": [finding("P1")]},
+            (
+                {"verdict": "incorrect", "findings": [finding("P2")]},
+                "the verdict.verdict incorrect contradicts the verdict.findings: 0 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "incorrect", "findings": [finding("P3")]},
+                "the verdict.verdict incorrect contradicts the verdict.findings: 0 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "incorrect", "findings": []},
+                "the verdict.verdict incorrect contradicts the verdict.findings: 0 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("P1")]},
+                "the verdict.verdict correct contradicts the verdict.findings: 1 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("P2"), finding("P0", 3)]},
+                "the verdict.verdict correct contradicts the verdict.findings: 1 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "blocked", "findings": [finding("P1")]},
+                "the verdict.verdict blocked contradicts the verdict.findings: 1 of priority P0 or P1",
+            ),
+            (
+                {"verdict": "incorrect", "findings": [finding("P4")]},
+                'the verdict.findings[0].priority is "P4", not one of P0, P1, P2, P3',
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("p2")]},
+                'the verdict.findings[0].priority is "p2", not one of P0, P1, P2, P3',
+            ),
         )
-        for document in refused:
+        for document, message in refused:
             with self.subTest(verdict=document["verdict"], findings=[f["priority"] for f in document["findings"]]):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
@@ -865,8 +922,8 @@ class PrAuditTest(unittest.TestCase):
                 run = self.run_lever("7", FAKE_CODEX_VERDICT=json.dumps(document))
                 self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
                 self.assertEqual(run.stdout, "")
-                self.assertIn(f"verdict {document['verdict']} contradicts its findings", run.stderr)
                 (rundir,) = self.tmp.iterdir()
+                self.assertIn(f"{rundir / 'verdict.json'} refused: {message}", run.stderr)
                 self.assertFalse((rundir / "verdict.md").exists())
 
     def test_a_line_is_an_integer_within_its_bound_judged_on_the_written_digits(self):

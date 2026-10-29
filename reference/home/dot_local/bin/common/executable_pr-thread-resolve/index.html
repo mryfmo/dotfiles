@@ -1439,6 +1439,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_hcom-dispatch/" class="md-nav__link">
         
   
@@ -4099,6 +4127,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
         
   
@@ -4497,6 +4553,34 @@
     
   
     scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
   
 
     
@@ -5121,6 +5205,8 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -5156,6 +5242,17 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="o">}</span>
 <span class="o">}</span>
 lever_self_check
+
+<span class="c1"># The isolated git and the environment scrub come from the library beside this script (U113): `disposition` is one</span>
+<span class="c1"># text with pr-threads-check.sh's (U28b F1), so its ancestry and commit-date reads go through the same git.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-thread-resolve.sh: refused: git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="c1"># shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes</span>
+git_env_scrub
 
 <span class="nv">lever</span><span class="o">=</span><span class="s1">'pr-thread-resolve.sh'</span>
 <span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: pr-thread-resolve.sh &lt;pr&gt; &lt;comment-id&gt; [--records &lt;dir&gt;]'</span>
@@ -5226,12 +5323,12 @@ disposition<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">operator</span><span class="o">=</span><span class="s1">'^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">fixed</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">fix</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_REMATCH</span><span class="p">[1]</span><span class="si">}</span>
-<span class="w">        </span>git<span class="w"> </span>cat-file<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">^{commit}"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>git_isolated<span class="w"> </span>cat-file<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">^{commit}"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"open (fixed: </span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2"> is not a commit here)"</span>
 <span class="w">            </span><span class="k">return</span>
 <span class="w">        </span><span class="o">}</span>
 <span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
-<span class="w">        </span>git<span class="w"> </span>merge-base<span class="w"> </span>--is-ancestor<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span>git_isolated<span class="w"> </span>merge-base<span class="w"> </span>--is-ancestor<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="w">        </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span><span class="m">1</span><span class="o">)</span>
@@ -5240,7 +5337,7 @@ disposition<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span>*<span class="o">)</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git merge-base --is-ancestor </span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> failed"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>
-<span class="w">        </span><span class="nv">fix_time</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>show<span class="w"> </span>-s<span class="w"> </span>--format<span class="o">=</span>%ct<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git show </span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2"> failed"</span>
+<span class="w">        </span><span class="nv">fix_time</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>show<span class="w"> </span>-s<span class="w"> </span>--format<span class="o">=</span>%ct<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git show </span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2"> failed"</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>fix_time<span class="w"> </span>&lt;<span class="w"> </span>created<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"open (fixed: </span><span class="si">${</span><span class="nv">fix</span><span class="si">}</span><span class="s2"> predates the finding)"</span>
 <span class="w">            </span><span class="k">return</span>
@@ -5338,7 +5435,7 @@ disposition<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the thread of comment </span><span class="si">${</span><span class="nv">comment</span><span class="si">}</span><span class="s2"> has more than 100 comments; resolve it by hand"</span>
 <span class="k">fi</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">thread_created</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"unreadable creation time for the thread of comment </span><span class="si">${</span><span class="nv">comment</span><span class="si">}</span><span class="s2">"</span>
-git<span class="w"> </span>cat-file<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">^{commit}"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the head </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> of pull request </span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2"> is not a commit here; git fetch first"</span>
+git_isolated<span class="w"> </span>cat-file<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">^{commit}"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the head </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> of pull request </span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2"> is not a commit here; git fetch first"</span>
 <span class="nv">state</span><span class="o">=</span><span class="k">$(</span>disposition<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">thread_created</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">thread_severity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">thread_reply</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="nv">$?</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>open*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the thread of comment </span><span class="si">${</span><span class="nv">comment</span><span class="si">}</span><span class="s2"> has no valid disposition, </span><span class="si">${</span><span class="nv">state</span><span class="p">#open </span><span class="si">}</span><span class="s2">; reply with pr-thread-reply.sh first"</span>

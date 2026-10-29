@@ -1439,6 +1439,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_hcom-dispatch/" class="md-nav__link">
         
   
@@ -4099,6 +4127,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
         
   
@@ -4497,6 +4553,34 @@
     
   
     scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
   
 
     
@@ -5070,8 +5154,6 @@
 <li><code>codex_scratch</code></li>
 <li><code>fail</code></li>
 <li><code>gh_bounded</code></li>
-<li><code>git_safe</code></li>
-<li><code>git_tree</code></li>
 <li><code>hold_signals</code></li>
 <li><code>lever_self_check</code></li>
 <li><code>on_signal</code></li>
@@ -5265,6 +5347,8 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -5300,6 +5384,16 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="o">}</span>
 <span class="o">}</span>
 lever_self_check
+
+<span class="c1"># The isolated git comes from the library beside this script (U113), sourced after the scrub above (its self-check runs</span>
+<span class="c1"># sed and a hash tool, which the PERL* removal must precede) and after this lever's own self-check. Its git_env_scrub</span>
+<span class="c1"># is not called: the scrub above already removed every GIT_* name, with PERL* and PYTHON*.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-audit.sh: refused: git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
 
 <span class="c1"># The caller's cwd, against which a relative store path the caller's environment names is resolved (U71b audit round</span>
 <span class="c1"># 8), the way the tool that reads the variable resolves it.</span>
@@ -5342,24 +5436,6 @@ bounded<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="c1"># @arg $@ string The `gh` arguments.</span>
 gh_bounded<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>bounded<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gh_timeout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>gh<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Run git with no replace objects, no commit-graph and no hooks, whatever the caller's config.</span>
-<span class="c1"># @arg $@ string The git arguments.</span>
-git_safe<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span>git<span class="w"> </span>--no-replace-objects<span class="w"> </span>-c<span class="w"> </span>core.commitGraph<span class="o">=</span><span class="nb">false</span><span class="w"> </span>-c<span class="w"> </span>core.hooksPath<span class="o">=</span>/dev/null<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Run git on the audited repository with no configuration but its own fresh `.git/config`: no global or</span>
-<span class="c1">#   system config file and no global or system attributes file, so a `.gitattributes` in the pull request names no</span>
-<span class="c1">#   filter driver (`filter.&lt;name&gt;.smudge`/`.process`), diff driver or fsmonitor that the caller installed, and the</span>
-<span class="c1">#   checkout runs no program outside git (U71b audit round 1). Only git's built-in conversions (eol, ident,</span>
-<span class="c1">#   working-tree-encoding) apply.</span>
-<span class="c1"># @arg $@ string The git arguments.</span>
-git_tree<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">GIT_ATTR_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>git<span class="w"> </span>--no-replace-objects<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>-c<span class="w"> </span>core.commitGraph<span class="o">=</span><span class="nb">false</span><span class="w"> </span>-c<span class="w"> </span>core.hooksPath<span class="o">=</span>/dev/null<span class="w"> </span>-c<span class="w"> </span>core.attributesFile<span class="o">=</span>/dev/null<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>-c<span class="w"> </span>core.fsmonitor<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># The supervisor of every codex run (U71b audit round 12, treadmill rule: three rounds of a hand-built perl supervisor</span>
@@ -5808,11 +5884,11 @@ spellings<span class="o">()</span><span class="w"> </span><span class="o">{</spa
 <span class="c1"># @set rules The section, heading included, ending with a newline.</span>
 audit_rules<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">commit</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>size<span class="w"> </span>text<span class="w"> </span>line<span class="w"> </span><span class="nv">inside</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">headings</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>body<span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C
-<span class="w">    </span><span class="nv">size</span><span class="o">=</span><span class="k">$(</span>git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>cat-file<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">:AGENTS.md"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span><span class="nv">size</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>cat-file<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">:AGENTS.md"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">        </span>refuse<span class="w"> </span><span class="s2">"cannot read the size of AGENTS.md of main </span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">size</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git named no size for AGENTS.md of main </span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">size</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># The trailing `.` keeps the blob's final newlines through the command substitution, so the byte count is exact.</span>
-<span class="w">    </span><span class="nv">text</span><span class="o">=</span><span class="k">$(</span>git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>cat-file<span class="w"> </span>blob<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">:AGENTS.md"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>.<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span><span class="nv">text</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>cat-file<span class="w"> </span>blob<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">:AGENTS.md"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>.<span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">        </span>refuse<span class="w"> </span><span class="s2">"cannot read AGENTS.md of main </span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">text</span><span class="o">=</span><span class="si">${</span><span class="nv">text</span><span class="p">%.</span><span class="si">}</span>
 <span class="w">    </span><span class="o">((</span><span class="si">${#</span><span class="nv">text</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>size<span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"read </span><span class="si">${#</span><span class="nv">text</span><span class="si">}</span><span class="s2"> of the </span><span class="si">${</span><span class="nv">size</span><span class="si">}</span><span class="s2"> bytes of AGENTS.md of main </span><span class="si">${</span><span class="nv">commit</span><span class="si">}</span><span class="s2">"</span>
@@ -5895,11 +5971,11 @@ cleanup<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template</span><span class="si">}</span><span class="s2"> does not set </span><span class="si">${</span><span class="nv">setting</span><span class="si">}</span><span class="s2"> once before its first table; codex would load AGENTS.md instructions"</span>
 <span class="k">done</span>
 
-<span class="nv">repo</span><span class="o">=</span><span class="k">$(</span>git_safe<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout'</span>
-<span class="nv">common</span><span class="o">=</span><span class="k">$(</span>git_safe<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="nv">repo</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout'</span>
+<span class="nv">common</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>fail<span class="w"> </span><span class="s2">"cannot read the git common directory of </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">common</span><span class="si">}</span>/objects<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2"> holds no objects directory"</span>
-<span class="nv">url</span><span class="o">=</span><span class="k">$(</span>git_safe<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>remote<span class="w"> </span>get-url<span class="w"> </span>origin<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"the checkout </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2"> has no origin remote"</span>
+<span class="nv">url</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>remote<span class="w"> </span>get-url<span class="w"> </span>origin<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"the checkout </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2"> has no origin remote"</span>
 <span class="nv">slug</span><span class="o">=</span><span class="k">$(</span>gh_bounded<span class="w"> </span>repo<span class="w"> </span>view<span class="w"> </span>--json<span class="w"> </span>nameWithOwner<span class="w"> </span>--jq<span class="w"> </span>.nameWithOwner<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'cannot read the repository from gh'</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">slug</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>A-Za-z0-9_.-<span class="o">]</span>+/<span class="o">[</span>A-Za-z0-9_.-<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"gh named no repository: </span><span class="si">${</span><span class="nv">slug</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">view</span><span class="o">=</span><span class="k">$(</span>gh_bounded<span class="w"> </span>pr<span class="w"> </span>view<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--repo<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">slug</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--json<span class="w"> </span>state,baseRefName,headRefOid,url<span class="w"> </span><span class="se">\</span>
@@ -5942,14 +6018,17 @@ gh_bounded<span class="w"> </span>pr<span class="w"> </span>view<span class="w">
 <span class="c1"># The audited tree: a fresh repository that borrows the checkout's objects for the fetch and holds only the two fetched</span>
 <span class="c1"># refs. It then copies every object it needs into its own pack and drops the borrowing (U71b audit round 4), so the</span>
 <span class="c1"># auditor reads one self-contained repository and the checkout's object store stays outside the allowlist.</span>
-git_tree<span class="w"> </span>init<span class="w"> </span>-q<span class="w"> </span>--template<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git init </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2"> failed"</span>
+git_isolated<span class="w"> </span>init<span class="w"> </span>-q<span class="w"> </span>--template<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git init </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2"> failed"</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2">/objects"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">/.git/objects/info/alternates"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'cannot write the alternates file'</span>
 <span class="nv">head</span><span class="o">=</span><span class="s1">''</span>
 <span class="k">for</span><span class="w"> </span><span class="o">((</span><span class="nv">try</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span>try<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>wait_tries<span class="p">;</span><span class="w"> </span>try++<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span>bounded<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gh_timeout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>git<span class="w"> </span>--no-replace-objects<span class="w"> </span>-c<span class="w"> </span>core.hooksPath<span class="o">=</span>/dev/null<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>fetch<span class="w"> </span>-q<span class="w"> </span>--no-tags<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"+refs/pull/</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">/head:refs/audit/head"</span><span class="w"> </span><span class="s1">'+refs/heads/main:refs/audit/main'</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span><span class="c1"># `bounded` is a perl exec, which cannot run a shell function, so the fetch carries the library's own arrays, and</span>
+<span class="w">    </span><span class="c1"># after them the gh helper, the shape of records-sync.sh's push: the library's empty helper resets the list and the</span>
+<span class="w">    </span><span class="c1"># later `-c` wins, so a private origin answers to the gh login and to no helper of the operator's configuration.</span>
+<span class="w">    </span>bounded<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gh_timeout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>env<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GIT_ISOLATED_ENV</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>git<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GIT_ISOLATED_ARGS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-c<span class="w"> </span><span class="s1">'credential.helper=!gh auth git-credential'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>fetch<span class="w"> </span>-q<span class="w"> </span>--no-tags<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"+refs/pull/</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">/head:refs/audit/head"</span><span class="w"> </span><span class="s1">'+refs/heads/main:refs/audit/main'</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="c1"># git-isolated: allow bounded exec of the library's own arrays</span>
 <span class="w">        </span>fail<span class="w"> </span><span class="s2">"git fetch of refs/pull/</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">/head and main from </span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2"> failed"</span>
-<span class="w">    </span><span class="nv">head</span><span class="o">=</span><span class="k">$(</span>git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--verify<span class="w"> </span>--quiet<span class="w"> </span><span class="s1">'refs/audit/head^{commit}'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">head</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nv">head</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--verify<span class="w"> </span>--quiet<span class="w"> </span><span class="s1">'refs/audit/head^{commit}'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">head</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">want</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">break</span>
 <span class="w">    </span><span class="o">((</span><span class="nv">try</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>wait_tries<span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>sleep<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">wait_seconds</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">done</span>
@@ -5958,13 +6037,13 @@ git_tree<span class="w"> </span>init<span class="w"> </span>-q<span class="w"> <
 <span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">/.git/info/grafts"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">/.git/shallow"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2"> exists; it rewrites the history the audited range rests on"</span>
 <span class="k">done</span>
-<span class="nv">main</span><span class="o">=</span><span class="k">$(</span>git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--verify<span class="w"> </span>--quiet<span class="w"> </span><span class="s1">'refs/audit/main^{commit}'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'cannot resolve the fetched main'</span>
-<span class="nv">mergebase</span><span class="o">=</span><span class="k">$(</span>git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>merge-base<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git merge-base </span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> failed"</span>
-git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>repack<span class="w"> </span>-a<span class="w"> </span>-d<span class="w"> </span>-q<span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git repack in </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2"> failed"</span>
+<span class="nv">main</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--verify<span class="w"> </span>--quiet<span class="w"> </span><span class="s1">'refs/audit/main^{commit}'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'cannot resolve the fetched main'</span>
+<span class="nv">mergebase</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>merge-base<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git merge-base </span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> failed"</span>
+git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>repack<span class="w"> </span>-a<span class="w"> </span>-d<span class="w"> </span>-q<span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git repack in </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2"> failed"</span>
 rm<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">/.git/objects/info/alternates"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot remove the alternates file of </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span>
-git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-list<span class="w"> </span>--objects<span class="w"> </span>--quiet<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-list<span class="w"> </span>--objects<span class="w"> </span>--quiet<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>fail<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2"> does not hold every object of </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2"> on its own"</span>
-git_tree<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-c<span class="w"> </span>advice.detachedHead<span class="o">=</span><span class="nb">false</span><span class="w"> </span>checkout<span class="w"> </span>-q<span class="w"> </span>--detach<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git checkout </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> failed"</span>
+git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-c<span class="w"> </span>advice.detachedHead<span class="o">=</span><span class="nb">false</span><span class="w"> </span>checkout<span class="w"> </span>-q<span class="w"> </span>--detach<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"git checkout </span><span class="si">${</span><span class="nv">head</span><span class="si">}</span><span class="s2"> failed"</span>
 <span class="c1"># The rules (U71b audit round 3): main's AGENTS.md is read once and whole, its size checked against the blob's, and</span>
 <span class="c1"># its `## Audit` section cut out by this shell in one pass, so no producer can fail midway unseen; codex never runs</span>
 <span class="c1"># with partial rules.</span>

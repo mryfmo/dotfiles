@@ -1439,6 +1439,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_hcom-dispatch/" class="md-nav__link">
         
   
@@ -4099,6 +4127,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
         
   
@@ -4497,6 +4553,34 @@
     
   
     scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
   
 
     
@@ -5133,6 +5217,8 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -5169,9 +5255,17 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="o">}</span>
 lever_self_check
 
-<span class="c1"># The checkout is named from the cwd alone: a caller's repository-location variables could point git at another</span>
-<span class="c1"># checkout's store (U71).</span>
-<span class="nb">unset</span><span class="w"> </span>GIT_DIR<span class="w"> </span>GIT_WORK_TREE<span class="w"> </span>GIT_COMMON_DIR
+<span class="c1"># The isolated git and the environment scrub come from the library beside this script (U113). The checkout is named</span>
+<span class="c1"># from the cwd alone: a caller's repository-location variables could point git at another checkout's store (U71), so</span>
+<span class="c1"># every GIT_* and transport variable goes before the first git.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"pr-merge.sh: refused: git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="c1"># shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes</span>
+git_env_scrub
 
 <span class="nv">lever</span><span class="o">=</span><span class="s1">'pr-merge.sh'</span>
 <span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: pr-merge.sh &lt;pr&gt; --records &lt;dir&gt;'</span>
@@ -5278,11 +5372,11 @@ resolve_store<span class="o">()</span><span class="w"> </span><span class="o">{<
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">gh_timeout</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'PR_LEVER_GH_TIMEOUT must be a positive integer'</span>
 <span class="c1"># The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a</span>
 <span class="c1"># worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).</span>
-<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout that holds the program store'</span>
+<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout that holds the program store'</span>
 <span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run from the repository checkout that holds the program store'</span>
 <span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span>
-<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--absolute-git-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git directory'</span>
-<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--absolute-git-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git directory'</span>
+<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>refuse<span class="w"> </span><span class="s1">'cannot read the git common directory'</span>
 <span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span>

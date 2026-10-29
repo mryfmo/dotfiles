@@ -1496,6 +1496,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/home/dot_local/bin/common/executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/home/dot_local/bin/common/executable_hcom-dispatch/" class="md-nav__link">
         
   
@@ -4076,6 +4104,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
         
   
@@ -4474,6 +4530,34 @@
     
   
     scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
   
 
     
@@ -5031,7 +5115,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">104</span>
+  <span class="landing-stat__value">107</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -5041,12 +5125,12 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">32</span>
+  <span class="landing-stat__value">34</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">39</span>
+  <span class="landing-stat__value">40</span>
   <span class="landing-stat__label">local commands</span>
   <span class="landing-stat__note">helpers under home/dot_local/bin</span>
 </div>
@@ -5106,7 +5190,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **104** source reference pages are generated from tracked shell assets
+- **107** source reference pages are generated from tracked shell assets
 - **29** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -5164,16 +5248,16 @@ _29 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_32 documented entries_
+_34 documented entries_
 
 - [`scripts/apply-check.sh`](reference/scripts/apply-check.md): The disposable check `make apply-check` runs inside a container, for client and server. It copies the parts of the wo...
 - [`scripts/check-sleep.sh`](reference/scripts/check-sleep.md): An orchestrator Mac that sleeps overnight stalls every seat, so `make doctor` runs this check after the tools check. ...
 - [`scripts/check-tools.sh`](reference/scripts/check-tools.md): Reports the availability and versions of the commands that participate in the dotfiles lifecycle. This script does no...
+- [`scripts/ci/git-invocation-check.sh`](reference/scripts/ci/git-invocation-check.md): Regime-cutover U113 (plan P-22). The levers run git through scripts/orchestrator/git-isolated.sh, whose `git_isolated...
 - [`scripts/ci/install-pinned-lint-tools.sh`](reference/scripts/ci/install-pinned-lint-tools.md): CI's "Put the pinned `ShellCheck` and `shfmt` on PATH" step (regime-cutover U97). `mise install` installs each tool's...
 - [`scripts/ci/masked-dirname-check.sh`](reference/scripts/ci/masked-dirname-check.md): ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape `dir=$(cd "$(dirname ...
-- [`scripts/ci/pinned-tool-version.sh`](reference/scripts/ci/pinned-tool-version.md): The lint gates run this before they lint (regime-cutover U97): `make shellcheck` for shellcheck and shfmt (scripts/ci...
 
-[26 more entries in the full catalog](catalog/)
+[28 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">
@@ -5184,7 +5268,7 @@ _32 documented entries_
 
 Executable helpers published from `home/dot_local/bin/**`.
 
-_39 documented entries_
+_40 documented entries_
 
 - [`home/dot_local/bin/common/executable_agent-session-staleness`](reference/home/dot_local/bin/common/executable_agent-session-staleness.md)
 - [`home/dot_local/bin/common/executable_bus-history.sh`](reference/home/dot_local/bin/common/executable_bus-history.md): Plan 025 W2b (C-1). Reads `hcom events --type message --thread <team> --full --last <limit> [--after <since>]` (`hcom...
@@ -5193,7 +5277,7 @@ _39 documented entries_
 - [`home/dot_local/bin/common/executable_chezmoi-cd`](reference/home/dot_local/bin/common/executable_chezmoi-cd.md): Resolves `chezmoi source-path` and changes the current shell into that repository checkout.
 - [`home/dot_local/bin/common/executable_compactiondb-install`](reference/home/dot_local/bin/common/executable_compactiondb-install.md)
 
-[33 more entries in the full catalog](catalog/)
+[34 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

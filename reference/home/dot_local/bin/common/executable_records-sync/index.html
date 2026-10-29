@@ -1439,6 +1439,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_hcom-dispatch/" class="md-nav__link">
         
   
@@ -4099,6 +4127,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/install-pinned-lint-tools/" class="md-nav__link">
         
   
@@ -4497,6 +4553,34 @@
     
   
     scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
   
 
     
@@ -5055,7 +5139,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_records-syncsh">home/dot_local/bin/common/executable_records-sync.sh<a class="headerlink" href="#homedot_localbincommonexecutable_records-syncsh" title="Permanent link">&para;</a></h1>
-<p>Regime-cutover U28 (ADDENDUM), the orchestrator seat's lever, allowed by the rows <code>~/.local/bin/common/records-sync.sh *</code> and the bare <code>~/.local/bin/common/records-sync.sh</code> of <code>home/dot_agents/omp/policies/orchestrator.yml</code> (the seat's own <code>git push</code> and <code>gh pr create</code> stay denied; <code>worker.yml</code> denies every form, bare included, U28b F3). It runs in the main checkout, where the orchestrator writes its records (a linked worktree is refused), and <code>.orchestration</code> there must be a real directory. The copy set (U101) is exactly the program store <code>.orchestration/orchestrate/&lt;program&gt;/</code>: its files on disk, tracked or untracked and not ignored (<code>git ls-files --cached --others --exclude-standard</code>), compared with the same paths in <code>origin/main</code> by content, so a file the store lacks but <code>origin/main</code> holds is deleted and the checkout's <code>HEAD</code>, however stale, is never the base; nothing outside the store is carried. Both listings are read NUL-delimited from files: a git failure, even after output, or a listing that ends mid-entry refuses the run before anything is created. The store's <code>redact-words.txt</code> (one literal word per line, <code>#</code> comments) is never copied, deleted or published. Every path must lie under <code>.orchestration/</code>, hold no control character (a newline would hide a component from the symlink check) and no <code>..</code>. A path the store listing names must also have no symlink component (git lists the files below a linked directory too, U28b F2), and an existing one must be a regular file whose directory resolves (<code>pwd -P</code>) inside the store, or a directory (a file that became one), else the run is refused before anything is created. A deletion candidate (a path of <code>origin/main</code> the store no longer holds as a regular file) gets the name checks only: it is never read, only removed. A file that became a directory, or the reverse, is mirrored as the deletion plus the additions in the one commit. The whole commit is built in a new repository in a scratch directory under <code>$TMPDIR</code> (U101: rounds 2 to 7 each found another channel by which the checkout's git config acted on a sync worktree, so there is none): <code>git init --bare --template=</code> (no hooks, no attributes, no config beyond the init's), every command there under <code>GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1</code> with every inherited <code>GIT_*</code> variable removed. Origin's main is fetched into it from origin's https URL (read once from the checkout; any other scheme is refused) with the credential helper <code>!gh auth git-credential</code> only. The checkout is only read: its two listings, its store files and <code>git config user.name</code>/<code>user.email</code>. The copies are made in the scratch directory and masked there with main's <code>scripts/validate-agent-assets.py --mask-secrets</code> (the checkout's files are never changed; a masking failure aborts); the run is refused if that validator's <code>--scan-identifiers</code> still finds a secret pattern, a home directory path or a redact word in a copy's text or store path. Neither tool's output is shown (it may name a copy's path or an original key): both go to files in the scratch directory, and a failure prints a fixed message with the exit status only. Under a private <code>GIT_INDEX_FILE</code> the lever reads main's tree, removes each deletion (<code>update-index -z --index-info</code>, mode 0, which needs no work tree), then writes each masked copy, the very file scanned, with <code>hash-object -w --no-filters</code> and enters it by mode and object id (<code>update-index --add --cacheinfo</code>), and writes the tree. Its <code>diff-tree -r --name-only -z</code> against main's tree must equal, as sorted NUL lists, every deletion and every copy whose mode and object id differ from main's; otherwise, or when it is empty, the run is refused. <code>&lt;n&gt;</code> is one more than the largest number among origin's heads, the checkout's local branches (U28b F6) and the heads of the newest 1000 pull requests named <code>records/sync-&lt;n&gt;</code>, <code>records/program-store-&lt;n&gt;</code> or <code>records/&lt;program&gt;-sync-&lt;n&gt;</code> (the earlier syncs), and the branch must match <code>records/sync-&lt;n&gt;</code>. <code>commit-tree</code> makes <code>chore(records): &lt;program&gt; sync &lt;n&gt;</code> with the footer on main, author and committer both the identity read at the start, set as GIT_AUTHOR_<em>/GIT_COMMITTER_</em> for that command alone, and the same repository pushes <code>&lt;commit&gt;:refs/heads/records/sync-&lt;n&gt;</code> to the https URL. It then opens the pull request with <code>gh pr create --base main --head records/sync-&lt;n&gt; --title ... --body-file ...</code>, <code>gh</code> also reading no user or system git config. The body lists the <code>units.tsv</code> ids and the <code>decisions.tsv</code> timestamps the sync adds or changes and the line <code>Program-Unit: &lt;program&gt;/&lt;unit&gt;</code>, which the <code>regime</code> check requires (U28c F2). Every <code>GIT_*</code> variable the caller exported (GIT_AUTHOR_<em>, GIT_COMMITTER_</em>, GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs, by a loop over <code>compgen -e</code> with no here-string, and a second pass refuses if any is left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit. Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds.</p>
+<p>Regime-cutover U28 (ADDENDUM), the orchestrator seat's lever, allowed by the rows <code>~/.local/bin/common/records-sync.sh *</code> and the bare <code>~/.local/bin/common/records-sync.sh</code> of <code>home/dot_agents/omp/policies/orchestrator.yml</code> (the seat's own <code>git push</code> and <code>gh pr create</code> stay denied; <code>worker.yml</code> denies every form, bare included, U28b F3). It runs in the main checkout, where the orchestrator writes its records (a linked worktree is refused), and <code>.orchestration</code> there must be a real directory. The copy set (U101) is exactly the program store <code>.orchestration/orchestrate/&lt;program&gt;/</code>: its files on disk, tracked or untracked and not ignored (<code>git ls-files --cached --others --exclude-standard</code>), compared with the same paths in <code>origin/main</code> by content, so a file the store lacks but <code>origin/main</code> holds is deleted and the checkout's <code>HEAD</code>, however stale, is never the base; nothing outside the store is carried. Both listings are read NUL-delimited from files: a git failure, even after output, or a listing that ends mid-entry refuses the run before anything is created. The store's <code>redact-words.txt</code> (one literal word per line, <code>#</code> comments) is never copied, deleted or published. Every path must lie under <code>.orchestration/</code>, hold no control character (a newline would hide a component from the symlink check) and no <code>..</code>. A path the store listing names must also have no symlink component (git lists the files below a linked directory too, U28b F2), and an existing one must be a regular file whose directory resolves (<code>pwd -P</code>) inside the store, or a directory (a file that became one), else the run is refused before anything is created. A deletion candidate (a path of <code>origin/main</code> the store no longer holds as a regular file) gets the name checks only: it is never read, only removed. A file that became a directory, or the reverse, is mirrored as the deletion plus the additions in the one commit. The whole commit is built in a new repository in a scratch directory under <code>$TMPDIR</code> (U101: rounds 2 to 7 each found another channel by which the checkout's git config acted on a sync worktree, so there is none): <code>git init --bare --template=</code> (no hooks, no attributes, no config beyond the init's), every command there through <code>git_isolated</code> of <code>git-isolated.sh</code> (U113: the one flag set that isolates git from every configuration but the command's own), with every inherited <code>GIT_*</code> and transport variable removed first by its <code>git_env_scrub</code>. Origin's main is fetched into it from origin's https URL (read once from the checkout; any other scheme is refused) with the credential helper <code>!gh auth git-credential</code> only. The checkout is only read: its two listings, its store files and <code>git config user.name</code>/<code>user.email</code>. The copies are made in the scratch directory and masked there with main's <code>scripts/validate-agent-assets.py --mask-secrets</code> (the checkout's files are never changed; a masking failure aborts); the run is refused if that validator's <code>--scan-identifiers</code> still finds a secret pattern, a home directory path or a redact word in a copy's text or store path. Neither tool's output is shown (it may name a copy's path or an original key): both go to files in the scratch directory, and a failure prints a fixed message with the exit status only. Under a private <code>GIT_INDEX_FILE</code> the lever reads main's tree, removes each deletion (<code>update-index -z --index-info</code>, mode 0, which needs no work tree), then writes each masked copy, the very file scanned, with <code>hash-object -w --no-filters</code> and enters it by mode and object id (<code>update-index --add --cacheinfo</code>), and writes the tree. Its <code>diff-tree -r --name-only -z</code> against main's tree must equal, as sorted NUL lists, every deletion and every copy whose mode and object id differ from main's; otherwise, or when it is empty, the run is refused. <code>&lt;n&gt;</code> is one more than the largest number among origin's heads, the checkout's local branches (U28b F6) and the heads of the newest 1000 pull requests named <code>records/sync-&lt;n&gt;</code>, <code>records/program-store-&lt;n&gt;</code> or <code>records/&lt;program&gt;-sync-&lt;n&gt;</code> (the earlier syncs), and the branch must match <code>records/sync-&lt;n&gt;</code>. <code>commit-tree</code> makes <code>chore(records): &lt;program&gt; sync &lt;n&gt;</code> with the footer on main, author and committer both the identity read at the start, set as GIT_AUTHOR_<em>/GIT_COMMITTER_</em> for that command alone, and the same repository pushes <code>&lt;commit&gt;:refs/heads/records/sync-&lt;n&gt;</code> to the https URL. It then opens the pull request with <code>gh pr create --base main --head records/sync-&lt;n&gt; --title ... --body-file ...</code>, <code>gh</code> also reading no user or system git config. The body lists the <code>units.tsv</code> ids and the <code>decisions.tsv</code> timestamps the sync adds or changes and the line <code>Program-Unit: &lt;program&gt;/&lt;unit&gt;</code>, which the <code>regime</code> check requires (U28c F2). Every <code>GIT_*</code> variable the caller exported (GIT_AUTHOR_<em>, GIT_COMMITTER_</em>, GIT_CONFIG_*, GIT_DIR and the rest) is removed before anything else runs, by a loop over <code>compgen -e</code> with no here-string, and a second pass refuses if any is left. No branch, worktree or file of the checkout is created; the scratch directory is removed on every exit. Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_records-sync.sh</code></li>
@@ -5070,7 +5154,6 @@
 <li><code>fail</code></li>
 <li><code>gh_bounded</code></li>
 <li><code>gh_plain</code></li>
-<li><code>git_plain</code></li>
 <li><code>git_scratch</code></li>
 <li><code>lever_self_check</code></li>
 <li><code>read_config</code></li>
@@ -5101,8 +5184,9 @@
 <span class="c1">#   directory, or the reverse, is mirrored as the deletion plus the additions in the one commit.</span>
 <span class="c1">#   The whole commit is built in a new repository in a scratch directory under `$TMPDIR` (U101: rounds 2 to 7 each</span>
 <span class="c1">#   found another channel by which the checkout's git config acted on a sync worktree, so there is none): `git init</span>
-<span class="c1">#   --bare --template=` (no hooks, no attributes, no config beyond the init's), every command there under</span>
-<span class="c1">#   `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` with every inherited `GIT_*` variable removed. Origin's main</span>
+<span class="c1">#   --bare --template=` (no hooks, no attributes, no config beyond the init's), every command there through</span>
+<span class="c1">#   `git_isolated` of `git-isolated.sh` (U113: the one flag set that isolates git from every configuration but the</span>
+<span class="c1">#   command's own), with every inherited `GIT_*` and transport variable removed first by its `git_env_scrub`. Origin's main</span>
 <span class="c1">#   is fetched into it from origin's https URL (read once from the checkout; any other scheme is refused) with the</span>
 <span class="c1">#   credential helper `!gh auth git-credential` only. The checkout is only read: its two listings, its store files</span>
 <span class="c1">#   and `git config user.name`/`user.email`. The copies are made in the scratch directory and masked there with</span>
@@ -5142,33 +5226,6 @@
 <span class="c1">#   ~/.local/bin/common/records-sync.sh --program regime-cutover --unit U20</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
-<span class="c1"># Git is steered by no inherited environment (U101, as hcom-seat does since U85): an exported GIT_AUTHOR_NAME would</span>
-<span class="c1"># name the commit's author, and GIT_CONFIG_* would add config, includes and URL rewrites to every git command. The</span>
-<span class="c1"># names come from the builtin compgen through a command substitution (a pipe, no temporary file, so bash 3.2 cannot</span>
-<span class="c1"># skip the loop when no here-string file can be made) and split on the default IFS, which bash never imports: an</span>
-<span class="c1"># exported name is an identifier, with no blank or glob character. A second pass refuses if any GIT_* name is left.</span>
-<span class="nv">inherited</span><span class="o">=</span><span class="k">$(</span><span class="nb">compgen</span><span class="w"> </span>-e<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s1">'records-sync.sh: refused: cannot list the environment'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
-<span class="o">}</span>
-<span class="k">for</span><span class="w"> </span>inherited_name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">inherited</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">inherited_name</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>GIT_*<span class="o">)</span><span class="w"> </span><span class="nb">unset</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">inherited_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span><span class="k">esac</span>
-<span class="k">done</span>
-<span class="nv">inherited</span><span class="o">=</span><span class="k">$(</span><span class="nb">compgen</span><span class="w"> </span>-e<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s1">'records-sync.sh: refused: cannot list the environment'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
-<span class="o">}</span>
-<span class="k">for</span><span class="w"> </span>inherited_name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">inherited</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">inherited_name</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>GIT_*<span class="o">)</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"records-sync.sh: refused: </span><span class="si">${</span><span class="nv">inherited_name</span><span class="si">}</span><span class="s2"> is still in the environment after the scrub"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
-<span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span><span class="k">esac</span>
-<span class="k">done</span>
-
 <span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>
 <span class="c1">#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot</span>
 <span class="c1">#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the</span>
@@ -5188,6 +5245,8 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -5224,6 +5283,18 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="o">}</span>
 lever_self_check
 
+<span class="c1"># The isolated git and the environment scrub come from the library beside this script (U113). The scrub runs here,</span>
+<span class="c1"># before the first git: an exported GIT_AUTHOR_NAME would name the commit's author, GIT_CONFIG_* would add config,</span>
+<span class="c1"># includes and URL rewrites to every git command, and a proxy or certificate variable would steer the fetch and push.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"records-sync.sh: refused: git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="c1"># shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes</span>
+git_env_scrub
+
 <span class="nv">lever</span><span class="o">=</span><span class="s1">'records-sync.sh'</span>
 <span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: records-sync.sh [--base origin/main] [--program &lt;name&gt;] [--unit U&lt;n&gt; (default U20)]'</span>
 <span class="nv">gh_timeout</span><span class="o">=</span><span class="si">${</span><span class="nv">PR_LEVER_GH_TIMEOUT</span><span class="k">:-</span><span class="nv">60</span><span class="si">}</span>
@@ -5257,24 +5328,17 @@ cleanup<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Run git with no user or system config (U101): no `url.*.insteadOf`/`pushInsteadOf`, credential</span>
-<span class="c1">#   helper or signing setting of the operator's global config reaches the push, the commit or the `gh` steps.</span>
-<span class="c1"># @arg $@ string The `git` arguments.</span>
-git_plain<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
-<span class="o">}</span>
-
 <span class="c1"># @description Run `gh` as gh_bounded does, with no user or system git config for the `git` it runs.</span>
 <span class="c1"># @arg $@ string The `gh` arguments.</span>
 gh_plain<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>gh_bounded<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Run git in the sync's own repository (U101): no user or system config, auto maintenance off (the</span>
-<span class="c1">#   directory is removed on exit), and the repository named by `--git-dir`, so no checkout is consulted.</span>
+<span class="c1"># @description Run the isolated git in the sync's own repository (U101): the repository named by `--git-dir`, so no</span>
+<span class="c1">#   checkout is consulted, and nothing of the user, system or checkout configuration (git-isolated.sh, U113).</span>
 <span class="c1"># @arg $@ string The `git` arguments.</span>
 git_scratch<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span>--git-dir<span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-c<span class="w"> </span>gc.auto<span class="o">=</span><span class="m">0</span><span class="w"> </span>-c<span class="w"> </span>maintenance.auto<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="w">    </span>git_isolated<span class="w"> </span>--git-dir<span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Refuse a path by its name alone: a control character (a newline would end the component split of</span>
@@ -5342,9 +5406,9 @@ check_path<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^U<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"--unit is not a plain unit id U&lt;n&gt;: </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">gh_timeout</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'PR_LEVER_GH_TIMEOUT must be a positive integer'</span>
 
-<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'not in a git checkout'</span>
-<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git directory'</span>
-<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git common directory'</span>
+<span class="nv">toplevel</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'not in a git checkout'</span>
+<span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git directory'</span>
+<span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot read the git common directory'</span>
 <span class="nv">git_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">common_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -5386,7 +5450,7 @@ check_path<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="c1"># measured on git 2.56.0 (2026-10-28), 128 for an unparsable file, where the manual says 3. Any status other than 0</span>
 <span class="c1"># and 1 is a failure here, so the reader is right under both. An empty value is refused here, before any branch</span>
 <span class="c1"># exists, where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).</span>
-<span class="c1"># @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).</span>
+<span class="c1"># @arg $1 string The git function to read with (`git` reads the user configuration too, `git_isolated` does not).</span>
 <span class="c1"># @arg $2 string The configuration key.</span>
 <span class="c1"># @arg $3 string The variable that receives the value.</span>
 read_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -5400,10 +5464,10 @@ read_config<span class="o">()</span><span class="w"> </span><span class="o">{</s
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 <span class="nv">author_name</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">author_email</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">push_url</span><span class="o">=</span><span class="s1">''</span>
-read_config<span class="w"> </span>git<span class="w"> </span>user.name<span class="w"> </span>author_name
-read_config<span class="w"> </span>git<span class="w"> </span>user.email<span class="w"> </span>author_email
+read_config<span class="w"> </span>git<span class="w"> </span>user.name<span class="w"> </span>author_name<span class="w">   </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
+read_config<span class="w"> </span>git<span class="w"> </span>user.email<span class="w"> </span>author_email<span class="w"> </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
 <span class="c1"># U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.</span>
-read_config<span class="w"> </span>git_plain<span class="w"> </span>remote.origin.url<span class="w"> </span>push_url
+read_config<span class="w"> </span>git_isolated<span class="w"> </span>remote.origin.url<span class="w"> </span>push_url
 <span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="c1"># lint-comparisons: allow the URL's scheme as configured, the push target itself</span>
 https://?*<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 *<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the push needs an https origin URL, not </span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
@@ -5416,7 +5480,7 @@ https://?*<span class="o">)</span><span class="w"> </span><span class="p">;;</sp
 <span class="c1"># into it with --no-filters, and the tree, the commit and the push are made there. The checkout is only read: its</span>
 <span class="c1"># listings, its store files and its config's user.name/user.email (above).</span>
 <span class="nv">repo</span><span class="o">=</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span>/repo.git
-git_plain<span class="w"> </span>init<span class="w"> </span>--quiet<span class="w"> </span>--bare<span class="w"> </span>--template<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git init --bare for the sync failed'</span>
+git_isolated<span class="w"> </span>init<span class="w"> </span>--quiet<span class="w"> </span>--bare<span class="w"> </span>--template<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git init --bare for the sync failed'</span>
 git_scratch<span class="w"> </span>-c<span class="w"> </span>credential.helper<span class="o">=</span><span class="w"> </span>-c<span class="w"> </span><span class="s1">'credential.helper=!gh auth git-credential'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>fetch<span class="w"> </span>--quiet<span class="w"> </span>--no-tags<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>refs/heads/main<span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git fetch main from origin failed'</span>
 <span class="nv">main</span><span class="o">=</span><span class="k">$(</span>git_scratch<span class="w"> </span>rev-parse<span class="w"> </span>--verify<span class="w"> </span><span class="s1">'FETCH_HEAD^{commit}'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'cannot read the fetched main'</span>
@@ -5439,9 +5503,10 @@ find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><
 <span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/dirs"</span>
 <span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the walk of </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/ ends mid-entry; nothing was created"</span>
 <span class="c1"># Audit of 7b3c2718: the listing is the one index read in the checkout, and a `core.fsmonitor` hook set in any</span>
-<span class="c1"># configuration the checkout reads would run inside it (and could write into the store before the copy). The</span>
-<span class="c1"># command line turns it off, with the hooks path; the user's ignore rules (core.excludesFile) still apply.</span>
-git<span class="w"> </span>-c<span class="w"> </span>core.fsmonitor<span class="o">=</span><span class="nb">false</span><span class="w"> </span>-c<span class="w"> </span>core.hooksPath<span class="o">=</span>/dev/null<span class="w"> </span>ls-files<span class="w"> </span>-z<span class="w"> </span>--cached<span class="w"> </span>--others<span class="w"> </span>--exclude-standard<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span><span class="se">\</span>
+<span class="c1"># configuration the checkout reads would run inside it (and could write into the store before the copy). The isolated</span>
+<span class="c1"># git turns it off, with the hooks path and the user and system files; the repository level has no off switch, so the</span>
+<span class="c1"># checkout's own ignore rules and the default ignore file still shape the listing, which the stderr test below bounds.</span>
+git_isolated<span class="w"> </span>ls-files<span class="w"> </span>-z<span class="w"> </span>--cached<span class="w"> </span>--others<span class="w"> </span>--exclude-standard<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/listing.err"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git ls-files failed'</span>
 <span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-s<span class="w"> </span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span>/listing.err<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"git ls-files warned while listing </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/ (its output is withheld); nothing was created"</span>
@@ -5558,7 +5623,7 @@ cmp<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><s
 <span class="nv">remote_heads</span><span class="o">=</span><span class="k">$(</span>git_scratch<span class="w"> </span>-c<span class="w"> </span>credential.helper<span class="o">=</span><span class="w"> </span>-c<span class="w"> </span><span class="s1">'credential.helper=!gh auth git-credential'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>ls-remote<span class="w"> </span>--heads<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'refs/heads/records/*'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git ls-remote origin failed'</span>
 <span class="c1"># U28b F6: a local branch occupies its number too, whatever left it behind.</span>
-<span class="nv">local_heads</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>for-each-ref<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(refname)'</span><span class="w"> </span><span class="s1">'refs/heads/records/'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git for-each-ref failed'</span>
+<span class="nv">local_heads</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span>for-each-ref<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(refname)'</span><span class="w"> </span><span class="s1">'refs/heads/records/'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git for-each-ref failed'</span>
 <span class="nv">pr_heads</span><span class="o">=</span><span class="k">$(</span>gh_plain<span class="w"> </span>pr<span class="w"> </span>list<span class="w"> </span>--state<span class="w"> </span>all<span class="w"> </span>--limit<span class="w"> </span><span class="m">1000</span><span class="w"> </span>--json<span class="w"> </span>headRefName<span class="w"> </span>--jq<span class="w"> </span><span class="s1">'.[].headRefName'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>fail<span class="w"> </span><span class="s1">'gh pr list failed'</span>
 <span class="nv">last</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n%s\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remote_heads</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">local_heads</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pr_heads</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span>

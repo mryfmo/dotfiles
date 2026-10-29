@@ -930,81 +930,152 @@ stat: cannot stat '~/.cache/mise': No such file or directory (os error 2)
 2026-10-28T09:59:20 ~/.local/state/mise
 ```
 
-Credential scan of every output file of both attempts under `$TMPDIR/U116-out/` (top level and `attempt1-cwd-checkout/`) and of `$TMPDIR/U116-out-2/` (the brief requires `0` before any paste; no run needed `MISE_GITHUB_TOKEN`, so none was set). Round 2 replaced the first form, `grep -c -F -f <(gh auth token) <file>`, which never read the token reader's status, so a failed `gh auth token` gave an empty pattern file and the same `0` as a clean scan (verdict P2, standing order 21). The script below reads the status of `gh auth token`, refuses an empty token, passes the token to grep only through a process substitution, never on a command line, and reads grep's own exit status per file: `0` matches with grep exit `1` is clean, exit `0` is a match, exit `2` is a failed scan. `bash /tmp/U116-scan.sh`, run from the worktree with the script pasted first:
+Credential scan of every output file of both attempts under `$TMPDIR/U116-out/` (top level and `attempt1-cwd-checkout/`) and of `$TMPDIR/U116-out-2/` (the brief requires `0` before any paste; no run needed `MISE_GITHUB_TOKEN`, so none was set). Round 1 ran `grep -c -F -f <(gh auth token) <file>`, which never read the token reader's status (verdict P2 on `e0a1526a`). Round 2 read that status but left the other producers unread: the `<(printf …)` pattern file and the `<(find … | sort)` file list, where a failing `find` or `sort` gives an empty list and `scan clean` (verdict P2 on `b5281d6b`, reproduced by the auditor). A shell pipeline has one producer per stage and each needs its own check; a scan in one process has none but the token reader, so round 3 changes the shape (standing orders 21 and 22): one Python script, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only producer is `gh auth token`. Its exit status, output and timeout are read; the directory walk, the file reads and the counting are library calls that raise on failure, and any exception is exit `2` before a clean line can print. The file list must hold exactly 36 entries, the count the round-2 block listed, so a missing directory or a short list refuses. The token stays in the process: it reaches no command line and no file. The script, then its output:
 
-```sh
-#!/usr/bin/env bash
-# Fail-closed credential scan: the token reader's status is read, an empty
-# token is refused, the token reaches grep only through a process
-# substitution, and grep's own status is read per file (1 = clean, 0 = a
-# match, 2 = the scan itself failed).
-set -u
-token=$(gh auth token) || { echo 'gh auth token failed'; exit 2; }
-[[ -n ${token} ]] || { echo 'empty token'; exit 2; }
-cd "${TMPDIR}" || { echo 'cd TMPDIR failed'; exit 2; }
-worst=1
-while IFS= read -r f; do
-    n=$(grep -c -F -f <(printf '%s\n' "${token}") "${f}")
-    rc=$?
-    printf '%s matches=%s grep_exit=%s\n' "${f}" "${n}" "${rc}"
-    case ${rc} in
-        1) ;;
-        0) worst=0 ;;
-        *) worst=2 ;;
-    esac
-done < <(find U116-out U116-out-2 -type f -name '*.txt' | sort)
-case ${worst} in
-    1) echo 'scan clean: every file 0 matches with grep exit 1'; exit 0 ;;
-    0) echo 'scan FOUND the token'; exit 1 ;;
-    *) echo 'scan FAILED: grep exit 2 on at least one file'; exit 2 ;;
-esac
+```python
+#!/usr/bin/env python3
+# Fail-closed credential scan, round 3 (standing orders 21 and 22). One
+# process with one producer, the token reader, whose exit status, output
+# and timeout are read. Every other step is a library call that raises on
+# failure; any exception is exit 2 before a clean line can print. A file
+# list shorter or longer than the known set is refused. The token stays in
+# this process: it reaches no command line and no file.
+import os
+import subprocess
+import sys
+
+# The .txt files the round-2 block listed: 13 under U116-out-2, 7 under
+# U116-out/attempt1-cwd-checkout, 16 under U116-out. A different count
+# means a directory was not walked or the output set changed, so refuse.
+EXPECTED_FILES = 36
+
+DIRS = ("U116-out", "U116-out/attempt1-cwd-checkout", "U116-out-2")
+
+
+def refuse(message):
+    print(f"scan REFUSED: {message}")
+    sys.exit(2)
+
+
+def read_token():
+    try:
+        proc = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        refuse("gh auth token timed out after 60 s")
+    except OSError as exc:
+        refuse(f"gh auth token could not start: {exc}")
+    if proc.returncode != 0:
+        refuse(f"gh auth token exited {proc.returncode}")
+    token = proc.stdout.strip().encode()
+    if not token:
+        refuse("gh auth token returned an empty token")
+    return token
+
+
+def list_files():
+    files = []
+    for directory in DIRS:
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if entry.name.endswith(".txt") and entry.is_file(follow_symlinks=False):
+                    files.append(f"{directory}/{entry.name}")
+    files.sort()
+    if len(files) != EXPECTED_FILES:
+        refuse(f"found {len(files)} .txt files, expected {EXPECTED_FILES}")
+    return files
+
+
+def main():
+    tmpdir = os.environ.get("TMPDIR")
+    if not tmpdir:
+        refuse("TMPDIR is unset")
+    os.chdir(tmpdir)
+    token = read_token()
+    files = list_files()
+    total = 0
+    for path in files:
+        with open(path, "rb") as handle:
+            count = handle.read().count(token)
+        print(f"{path} matches={count}")
+        total += count
+    if total:
+        print(f"scan FOUND ({len(files)} files, {total} matches)")
+        sys.exit(1)
+    print(f"scan clean ({len(files)} files, 0 matches)")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:  # any raised step is a refusal, never a clean line
+        refuse(f"{type(exc).__name__}: {exc}")
 ```
 
 ```text
-U116-out-2/00-real-mise-before.txt matches=0 grep_exit=1
-U116-out-2/00-scratch-mise-before.txt matches=0 grep_exit=1
-U116-out-2/a-version.txt matches=0 grep_exit=1
-U116-out-2/b-lock-dry.txt matches=0 grep_exit=1
-U116-out-2/c-lock-dry-4p.txt matches=0 grep_exit=1
-U116-out-2/d-lock-bump-json.txt matches=0 grep_exit=1
-U116-out-2/e-npm-pm.txt matches=0 grep_exit=1
-U116-out-2/f-min-age.txt matches=0 grep_exit=1
-U116-out-2/g-none-written.txt matches=0 grep_exit=1
-U116-out-2/g-real-mise-after.txt matches=0 grep_exit=1
-U116-out-2/g-scratch-files-written.txt matches=0 grep_exit=1
-U116-out-2/g-scratch-mise-after.txt matches=0 grep_exit=1
-U116-out-2/help-lock.txt matches=0 grep_exit=1
-U116-out/a-version.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/g-real-after.txt matches=0 grep_exit=1
-U116-out/attempt1-cwd-checkout/g-scratch-after.txt matches=0 grep_exit=1
-U116-out/b-lock-dry-run.txt matches=0 grep_exit=1
-U116-out/c-lock-dry-run-4-platforms.txt matches=0 grep_exit=1
-U116-out/d-lock-bump-json.txt matches=0 grep_exit=1
-U116-out/e-npm-package-manager.txt matches=0 grep_exit=1
-U116-out/f-minimum-release-age.txt matches=0 grep_exit=1
-U116-out/g-real-after-bin-ls.txt matches=0 grep_exit=1
-U116-out/g-real-after-shell-ls.txt matches=0 grep_exit=1
-U116-out/g-real-after.txt matches=0 grep_exit=1
-U116-out/g-scratch-after.txt matches=0 grep_exit=1
-U116-out/help.txt matches=0 grep_exit=1
-U116-out/real-before.txt matches=0 grep_exit=1
-U116-out/real-dirs-mtime-after.txt matches=0 grep_exit=1
-U116-out/real-dirs-mtime-before.txt matches=0 grep_exit=1
-U116-out/scratch-tree.txt matches=0 grep_exit=1
-U116-out/token-check.txt matches=0 grep_exit=1
-scan clean: every file 0 matches with grep exit 1
+U116-out-2/00-real-mise-before.txt matches=0
+U116-out-2/00-scratch-mise-before.txt matches=0
+U116-out-2/a-version.txt matches=0
+U116-out-2/b-lock-dry.txt matches=0
+U116-out-2/c-lock-dry-4p.txt matches=0
+U116-out-2/d-lock-bump-json.txt matches=0
+U116-out-2/e-npm-pm.txt matches=0
+U116-out-2/f-min-age.txt matches=0
+U116-out-2/g-none-written.txt matches=0
+U116-out-2/g-real-mise-after.txt matches=0
+U116-out-2/g-scratch-files-written.txt matches=0
+U116-out-2/g-scratch-mise-after.txt matches=0
+U116-out-2/help-lock.txt matches=0
+U116-out/a-version.txt matches=0
+U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt matches=0
+U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt matches=0
+U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt matches=0
+U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt matches=0
+U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt matches=0
+U116-out/attempt1-cwd-checkout/g-real-after.txt matches=0
+U116-out/attempt1-cwd-checkout/g-scratch-after.txt matches=0
+U116-out/b-lock-dry-run.txt matches=0
+U116-out/c-lock-dry-run-4-platforms.txt matches=0
+U116-out/d-lock-bump-json.txt matches=0
+U116-out/e-npm-package-manager.txt matches=0
+U116-out/f-minimum-release-age.txt matches=0
+U116-out/g-real-after-bin-ls.txt matches=0
+U116-out/g-real-after-shell-ls.txt matches=0
+U116-out/g-real-after.txt matches=0
+U116-out/g-scratch-after.txt matches=0
+U116-out/help.txt matches=0
+U116-out/real-before.txt matches=0
+U116-out/real-dirs-mtime-after.txt matches=0
+U116-out/real-dirs-mtime-before.txt matches=0
+U116-out/scratch-tree.txt matches=0
+U116-out/token-check.txt matches=0
+scan clean (36 files, 0 matches)
 exit=0
 ```
 
-Injected failure (standing order 21): the same script with a fake `gh` first on `PATH`, `printf '#!/bin/sh\nexit 1\n' > /tmp/U116-fake-gh/gh && chmod +x /tmp/U116-fake-gh/gh && PATH=/tmp/U116-fake-gh:$PATH bash /tmp/U116-scan.sh; echo "exit=$?"`. The refusal prints and the scan exits `2` before any file is read:
+Injected failures (standing order 21), each exiting `2` before any clean line. First, `gh` replaced by an executable that exits `1`, first on `PATH`: `mkdir -p /tmp/U116-fake-gh && printf '#!/bin/sh\nexit 1\n' > /tmp/U116-fake-gh/gh && chmod +x /tmp/U116-fake-gh/gh && PATH=/tmp/U116-fake-gh:$PATH python3 -I /tmp/U116-scan.py; echo "exit=$?"`:
 
 ```text
-gh auth token failed
+scan REFUSED: gh auth token exited 1
+exit=2
+```
+
+Second, one of the three directories renamed away and renamed back: `mv "$TMPDIR/U116-out-2" "$TMPDIR/U116-out-2.away" && python3 -I /tmp/U116-scan.py; echo "exit=$?"; mv "$TMPDIR/U116-out-2.away" "$TMPDIR/U116-out-2"`. `os.scandir` raises and the exception's text is the refusal:
+
+```text
+scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: 'U116-out-2'
+exit=2
+```
+
+Third, the count constant set to 35 by `sed -i '' 's/^EXPECTED_FILES = 36$/EXPECTED_FILES = 35/' /tmp/U116-scan.py`, the scan run, then the edit reverted by the same command with the two numbers exchanged (`grep -n '^EXPECTED_FILES' /tmp/U116-scan.py` prints `15:EXPECTED_FILES = 36` afterwards):
+
+```text
+scan REFUSED: found 36 .txt files, expected 35
 exit=2
 ```
 

@@ -12,11 +12,13 @@
 #      condition (negated or not) or the left side of a `||` whose branch handles the status, and no statement on
 #      the path from the tested statement to the top level (the statement itself, the `||` list, and every block,
 #      subshell, list, `if`, loop or function body around it) runs in the background, is negated (the condition's
-#      own `!` aside) or is a `coproc`: `! x=$(…) || exit 1` reads the failure as success, `x=$(…) || exit 1 &`,
-#      `{ x=$(…) || exit 1; } &` and `( x=$(…) || exit 1 ) &` end only the background job, `coproc { x=$(…); } ||
-#      exit 1` tests the coprocess's start, and each is a finding naming the flagged statement's line. A function
-#      body is not the top level: `f() { x=$(…) || return 1; }` is judged by its own path, whatever `f &` does at
-#      the call. The branches that handle the status are a closed list:
+#      own `!` aside) or is a `coproc`, and no process substitution (`<(…)`, `>(…)`) is on that path: `! x=$(…) ||
+#      exit 1` reads the failure as success, `x=$(…) || exit 1 &`, `{ x=$(…) || exit 1; } &` and `( x=$(…) || exit
+#      1 ) &` end only the background job, `coproc { x=$(…); } || exit 1` tests the coprocess's start, `cat <(x=$(…)
+#      || exit 1)` and `tee >(x=$(…) || exit 1)` run the read in a child whose status the parent never sees (measured:
+#      bash goes on with exit 0), and each is a finding naming the flagged statement's or the substitution's line. A
+#      function body is not the top level: `f() { x=$(…) || return 1; }` is judged by its own path, whatever `f &`
+#      does at the call. The branches that handle the status are a closed list:
 #      (i) a plain command whose known first word is `exit` or `return`, as the whole branch, with no argument (the
 #      status of the failed substitution propagates), with one argument whose known text is a decimal from 1 to 255,
 #      or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2` and `return 0`
@@ -66,14 +68,16 @@
 #      whose prologue (rule c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and
 #      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The producer
 #      statement, the test statement and every statement on the path of each to the top level must be in the
-#      foreground and not negated: `git ls-files > l 2> e &` lets the next statement test `e` before the listing has
-#      finished, `! git ls-files > l 2> e` reads its failure as success, `{ git ls-files > l 2> e; } &` ends only the
-#      job and `coproc git ls-files > l 2> e` tests the coprocess's start, so each is a finding naming the flag and
-#      its line whatever follows it; `! [[ ! -s err ]] || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &`
-#      ends only the job, and an `&&` list or a pipeline is not a test, so a producer whose only such statement is one
-#      of those is a finding naming that statement's line and why. Stderr is captured
-#      only when the last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known
-#      text is not /dev/null, or whose parts are literals and parameter expansions. The descriptor written before an
+#      foreground and not negated, with no process substitution on the path: `git ls-files > l 2> e &` lets the next
+#      statement test `e` before the listing has finished, `! git ls-files > l 2> e` reads its failure as success, `{
+#      git ls-files > l 2> e; } &` ends only the job, `coproc git ls-files > l 2> e` tests the coprocess's start and
+#      `done < <(git ls-files)` runs it in a child whose failure the parent never sees, so each is a finding naming
+#      the flag and its line whatever follows it; `! [[ ! -s err ]] || exit 1` reads a non-empty file as clean, `[[ !
+#      -s err ]] &` ends only the job, and an `&&` list or a pipeline is not a test, so a producer whose only such
+#      statement is one of those is a finding naming that statement's line and why. Stderr is captured only when the
+#      last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known text is not
+#      /dev/null, or whose parts are literals and parameter expansions (a process substitution, `2> >(tee e)`, is
+#      neither, and one among a producer's words, `ls <(…)`, has no known text). The descriptor written before an
 #      operator is read as bash reads it, a decimal (`02>&1` and `002> err` name fd 2; one that is not all digits,
 #      `{fd}>`, refuses the file, exit 2). A redirect touches fd 2 when that descriptor is 2 whatever the operator,
 #      when it is `&>` or `&>>`, or when it is `>&` or `<&` to a word that is not a plain descriptor (all digits or
@@ -131,11 +135,22 @@
 #      { :; }' DEBUG` redefines the function before the next command runs), `mapfile` or `readarray` with `-C` (the
 #      callback is text bash runs); and an assignment with a value, anywhere (plain, a command's prefix, a
 #      declaration's argument), to a variable that binds a command word (BINDING_VARIABLES: PATH, where `git`,
-#      `find` and `ls` are found; BASH_ALIASES and BASH_CMDS, the alias and hash tables of bash 4). A `declare`,
-#      `typeset`, `readonly`, `export` or `local` acts on variables, and with `-f` on a function it leaves bound
-#      (`export -f refuse`, `readonly -f refuse`, measured on bash 3.2), so none is a rebinder: `export PATH` and
-#      `declare -r y=1` pass. Not read: an indirect write to a binding variable (`read`, `printf -v`, `for`, a
-#      nameref, `${name=value}`), which this rule does not close. An allow comment exempts nothing here.
+#      `find` and `ls` are found; BASH_ALIASES and BASH_CMDS, the alias and hash tables of bash 4), spelled as an
+#      assignment or as a word: every argument word of a declaration (`declare`, `typeset`, `readonly`, `export`,
+#      `local`; shfmt's DeclClause) or of `env` that is no assignment of a name, through any chain of FORWARDERS
+#      (`builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`), is read as bash reads it (BINDERS): a known
+#      text matching BINDING_WORD assigns the name before `=` (`export 'PATH=/tmp/x:$PATH'`, `readonly 'PATH[0]=x'`,
+#      `env PATH=/tmp/x git ls-files`; measured: bash applies the word and runs the spoofed `git`), one with no known
+#      text (`export "$binding"`) may spell any of them and is a finding, with one accepted shape: the bare `[@]`
+#      expansion of LIBRARY_ENVIRONMENT, `export "${GIT_ISOLATED_ENV[@]}"`, which git_isolated of git-isolated.sh
+#      runs before it execs git, so every assignment to that name, in any file and at any depth, is read as the
+#      exported words: an array literal (`=`, `+=`), an element or a value must be a known text assigning a name that
+#      is none of BINDING_VARIABLES (an element with no known text, with no `=`, or `PATH=…` is a finding). A
+#      declaration or `env` acts on variables, and `-f` on a function leaves it bound (`export -f refuse`, measured
+#      on bash 3.2), so none is a rebinder: `export PATH`, `export GIT_CONFIG_NOSYSTEM=1`, `local status=0` and
+#      `declare -r y=1` pass. Not read: an indirect write to a binding variable or to LIBRARY_ENVIRONMENT (`read`,
+#      `printf -v`, `for`, a nameref, `${name=value}`), which this rule does not close. An allow comment exempts
+#      nothing here.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
 #   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
 #   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
@@ -232,17 +247,21 @@ STATUS_PARAMETERS = (
 )
 # A tested read whose path to the top level holds a flagged statement: its failure stops nothing. The path is the
 # read's own statement and every statement around it (a `||` list, a block, a subshell, an `if`, a loop, a function
-# body); a statement is flagged when it runs in the background (`&`), is negated (`!`) or runs a `coproc` clause.
-BACKGROUND, NEGATED, COPROCESS = "Background", "Negated", "CoprocClause"
+# body), and every process substitution around it (`<(…)`, `>(…)`: a child whose status the parent never sees, so
+# the substitution itself is the flag; measured: `cat <(x=$(false) || exit 1); echo ran` prints `ran` and exits 0);
+# a statement is flagged when it runs in the background (`&`), is negated (`!`) or runs a `coproc` clause.
+BACKGROUND, NEGATED, COPROCESS, PROCESS = "Background", "Negated", "CoprocClause", "ProcSubst"
 BRANCH_FLAGS = {  # how a finding names a flagged statement in a `||` branch
     BACKGROUND: "a command run in the background (`&`), which lets the script go on",
     NEGATED: "a negated command (`!`), whose failure status is read as success",
     COPROCESS: "a `coproc`, whose status is its start, not its command's",
+    PROCESS: "a process substitution (`<(…)`, `>(…)`), whose failure the parent never sees",
 }
 DEFINITION_FLAGS = {  # how a finding names the flagged top-level definition of the function a `||` branch calls
     BACKGROUND: "runs in the background (`&`), so the function exists in a child shell only",
     NEGATED: "is negated (`!`), a flagged statement",
     COPROCESS: "runs in a coprocess, a child shell",
+    PROCESS: "runs in a process substitution, a child shell",
 }
 WRITERS = ("echo", "printf")  # the plain commands a refusal body may run before its `exit`, each sending fd 1 to fd 2
 STDOUT = 1  # the descriptor `1>&2` writes, as a number; `>&2` writes none
@@ -345,6 +364,30 @@ BINDING_VARIABLES = {  # an assignment to one binds a command word, as the rebin
     "PATH": "the directories bash searches for `git`, `find` and `ls`",
     "BASH_ALIASES": "the alias table of bash 4, as `alias` does",
     "BASH_CMDS": "the hash table of bash 4, as `hash -p` does",
+}
+# Rule f reads a binding spelled as a word too: every argument word of a DECLARER (shfmt's DeclClause: `declare`,
+# `typeset`, `readonly`, `export`, `local`; a word that is no assignment of a name is an Assign with no Name, `Naked`,
+# and the word as its Value) or of ENVIRONMENT (`env`, which runs its command under the bindings among its arguments),
+# and of either through a FORWARDER (`builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`), measured on bash
+# 3.2: `export 'PATH=/tmp/x:$PATH'` and `builtin export PATH=/tmp/x` each set PATH and the next `git` is the spoofed
+# one. A known text matching BINDING_WORD assigns the name before `=` (an index and `+=` included); a word with no
+# known text may spell any binding. The forwarders are REBINDERS; the binders are not: a function or alias of `export`
+# hides no text this walk has not read.
+BINDING_WORD = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)(?:\[[^]]*\])?\+?=")
+ENVIRONMENT = ("env",)
+DECLARERS = ("declare", "typeset", "readonly", "export", "local")  # the words shfmt parses as a DeclClause
+BINDERS = DECLARERS + ENVIRONMENT
+# The one word with no known text a binder accepts: the bare `[@]` expansion of the library's environment array,
+# `export "${GIT_ISOLATED_ENV[@]}"`, which git_isolated of scripts/orchestrator/git-isolated.sh runs before it execs
+# git (in any quoting name_parts flattens; `[*]`, `[0]`, a length or an operator is another word). So every assignment
+# to that name, in any file and at any depth, is read by Walk.binding as the exported words: in an array literal (`=`
+# or `+=`) every element, else the value, must be a known text that assigns, by BINDING_WORD, a name that is none of
+# BINDING_VARIABLES.
+LIBRARY_ENVIRONMENT = "GIT_ISOLATED_ENV"
+ENVIRONMENT_ARRAY = {
+    "Type": "ParamExp",
+    "Param": {"Value": LIBRARY_ENVIRONMENT},
+    "Index": {"Type": "Word", "Parts": [{"Type": "Lit", "Value": "@"}]},
 }
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
@@ -669,6 +712,14 @@ def sourced_library(args):
     )
 
 
+def environment_array(word):
+    """Whether the word is the one word with no known text a binder accepts: the bare `[@]` expansion of
+    LIBRARY_ENVIRONMENT (ENVIRONMENT_ARRAY) and nothing else, in any quoting name_parts flattens
+    (`"${GIT_ISOLATED_ENV[@]}"`); `[*]`, `[0]`, `${#…[@]}` and `${…[@]:-}` are other words."""
+    parts = name_parts(word)
+    return parts is not None and len(parts) == 1 and parts[0] == ENVIRONMENT_ARRAY
+
+
 def leading_options(word, args):
     """The option letters of a rebinder's leading arguments and the arguments after them, as SKIPS_OPTIONS reads that
     word: a leading argument whose known text is `-` and letters is a cluster, `--` ends the options, a letter of
@@ -761,13 +812,23 @@ def statement_name(stmt):
     return SHAPES.get(kind, f"a {kind}")
 
 
+def process_substitution(node):
+    """Whether a node on a path is a process substitution (`<(…)`, `>(…)`), which Walk.visit puts on the stack of the
+    statements inside it: bash runs them in a child whose status the parent never sees."""
+    return isinstance(node, dict) and node.get("Type") == "ProcSubst"
+
+
 def flagged_path(stack, negation=True):
     """The first flagged statement on the path from a statement (stack[0]) out to the top level (stack[-1]), as
     (flag, depth) into the stack, else None: a statement run in the background (`&`, so a failure ends only the job),
     negated (`!`, so the failure of what it ends is read as success) or running a `coproc` clause (shfmt 3.14.1 writes
-    no Coprocess flag on the statement in bash mode: the clause is the flag). An `if` or `while` condition may negate
-    its own statement (negation False passes over the `!` of stack[0] alone); a `!` around it is a flag."""
+    no Coprocess flag on the statement in bash mode: the clause is the flag), or a process substitution around the
+    statement (a child whose status the parent never sees: the substitution is the flag). An `if` or `while`
+    condition may negate its own statement (negation False passes over the `!` of stack[0] alone); a `!` around it is
+    a flag."""
     for depth, stmt in enumerate(stack):
+        if process_substitution(stmt):
+            return PROCESS, depth
         if stmt.get("Background"):
             return BACKGROUND, depth
         if stmt.get("Negated") and (negation or depth):
@@ -792,6 +853,11 @@ def read_flag(flag, stmt, depth):
             "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends: the `coproc` "
             f"is at line {line}"
         )
+    if flag == PROCESS:
+        return (
+            f"the tested read runs in a process substitution (`<(…)` or `>(…)`) opened at line {line}, whose failure "
+            "the parent never sees: the script goes on whatever the read's status"
+        )
     if depth:
         return (
             f"the tested read sits in a statement negated (`!`) at line {line}, so a failure that ends that statement "
@@ -810,6 +876,8 @@ def test_flag(flag, stmt, depth):
         return f"runs in the background (`&`, the job started at line {line}), so its failure stops nothing"
     if flag == COPROCESS:
         return f"runs in a coprocess started at line {line}, whose status is its start"
+    if flag == PROCESS:
+        return f"runs in a process substitution opened at line {line}, whose failure the parent never sees"
     if depth:
         return f"sits in a statement negated (`!`) at line {line}, so a non-empty file is read as success"
     return "is negated (`!`), so a non-empty file is read as clean"
@@ -828,6 +896,11 @@ def producer_flag(flag, stmt, depth):
         return (
             f"the producer runs in a coprocess started at line {line}, so a later test reads its stderr file before "
             "the listing has finished and its status is the start's"
+        )
+    if flag == PROCESS:
+        return (
+            f"the producer runs in a process substitution opened at line {line}, whose failure the parent never sees, "
+            "and a later test reads its stderr file before the listing has finished"
         )
     if depth:
         return (
@@ -1135,11 +1208,11 @@ class Walk:
         self.findings.add((line, rule, message))
 
     def visit(self, node, stack, siblings):
-        """Depth first; stack is the statements holding node, innermost first (the path flagged_path reads), siblings
-        the statement list it sits in, its index there and the stack around that list (the list a later `[[ ! -s
-        file ]]` is searched in, and the path it shares with the producer). The two
-        accepted positions are marked here, at the statement or clause that tests the read, before its substitution is
-        visited."""
+        """Depth first; stack is the statements holding node, innermost first, and the process substitutions among
+        them (the path flagged_path reads), siblings the statement list it sits in, its index there and the stack
+        around that list (the list a later `[[ ! -s file ]]` is searched in, and the path it shares with the
+        producer). The two accepted positions are marked here, at the statement or clause that tests the read, before
+        its substitution is visited."""
         if isinstance(node, list):
             for item in node:
                 self.visit(item, stack, siblings)
@@ -1174,6 +1247,11 @@ class Walk:
             if id(node) not in self.accepted:
                 message = self.reasons.get(id(node), MESSAGES[SUBSTITUTION])
                 self.report(stack[0] if stack else None, node["Pos"]["Line"], SUBSTITUTION, message)
+        elif kind == "ProcSubst":
+            # A child whose status the parent never sees: the substitution joins the path of every statement inside
+            # it (flagged_path), so a tested read or a producer there is a finding naming the substitution's line.
+            self.seen["ProcSubst"] += 1
+            stack = (node, *stack)
         for value in children(node):
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
                 for index, item in enumerate(value):
@@ -1183,10 +1261,11 @@ class Walk:
 
     def statement(self, stmt, stack, siblings):
         """Rules b, d and f on one statement's own command. stack is the statement's path to the top level: a producer
-        run in the background, negated or in a coprocess on any statement of it (flagged_path) is a finding whatever
-        follows it. Else a later `[[ ! -s file ]]` of the same statement list is judged on that list's path to the
-        top level (siblings[2]), which it shares with the producer."""
+        run in the background, negated, in a coprocess or in a process substitution on any statement of it
+        (flagged_path) is a finding whatever follows it. Else a later `[[ ! -s file ]]` of the same statement list is
+        judged on that list's path to the top level (siblings[2]), which it shares with the producer."""
         cmd = stmt.get("Cmd")
+        self.declaration(stmt, cmd)
         if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
             return
         words = leading_words(cmd)
@@ -1195,6 +1274,8 @@ class Walk:
             self.report(stmt, stmt["Pos"]["Line"], READ, MESSAGES[READ])
         if words[:1] and words[0] in REBINDERS:
             self.rebinding(stmt, words[0], (cmd.get("Args") or [])[1:])
+        if words[:1] and words[0] in ENVIRONMENT:
+            self.binding_words(stmt["Pos"]["Line"], f"`{words[0]}`", (cmd.get("Args") or [])[1:])
         for row in self.rows:
             if words[: len(row)] != row:
                 continue
@@ -1239,7 +1320,8 @@ class Walk:
         FORWARDER's argument whose known text, before any `=`, is a word the rules read, the rebinders among them, is
         a finding naming what it shadows (`enable -n echo`, `enable -n command`, `hash -p /x/git git`, `unset -f
         refuse`, `command git`), and so is one with no known text, which may name any of them; a FORWARDER's command
-        is judged again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`). A
+        is judged again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`) or a
+        binder (binding_words: `builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`). A
         RUNNER's argument is text or a file this walk has not read: `eval` with any argument, `source` or `.` with any
         but the one accepted shape (sourced_library; every argument word counts, `source -- lib.sh` and `source
         +lib.sh` among them), `trap` with an action that is not read whole (trap_action; the signal names after it
@@ -1321,17 +1403,68 @@ class Walk:
                 self.findings.add((line, SHADOW, f"`{word}` names `{name}` and shadows {self.shadowed[name]}"))
         if forwarded in REBINDERS:
             self.rebinding(stmt, forwarded, args[1:])
+        elif forwarded in BINDERS:
+            self.binding_words(line, f"`{forwarded}`", args[1:])
 
     def binding(self, assign):
         """Rule f on an assignment anywhere (plain, a prefix of a command, an argument of a declaration): one that
         gives a value to a variable that binds a command word (BINDING_VARIABLES) is a finding at its line.
-        `export PATH` and `declare -A BASH_ALIASES` carry no value and bind nothing. No allow comment exempts it."""
+        `export PATH` and `declare -A BASH_ALIASES` carry no value and bind nothing. One to LIBRARY_ENVIRONMENT, the
+        array `export "${GIT_ISOLATED_ENV[@]}"` exports word by word, is read as those words (binding_words over the
+        elements of its array literal, else over its value, every one an assignment). No allow comment exempts it."""
         name = assign["Name"]["Value"]
+        line = assign["Pos"]["Line"]
         if name in BINDING_VARIABLES and ("Value" in assign or "Array" in assign):
             what = BINDING_VARIABLES[name]
-            self.findings.add(
-                (assign["Pos"]["Line"], SHADOW, f"an assignment to `{name}` binds a command word: {what}")
-            )
+            self.findings.add((line, SHADOW, f"an assignment to `{name}` binds a command word: {what}"))
+        if name == LIBRARY_ENVIRONMENT:
+            if "Array" in assign:
+                words = [element["Value"] for element in assign["Array"].get("Elems") or []]
+            else:
+                words = [assign["Value"]] if "Value" in assign else []
+            exported = f'`{name}`, which `export "${{{name}[@]}}"` exports word by word,'
+            self.binding_words(line, exported, words, unit="element", every=True)
+
+    def declaration(self, stmt, cmd):
+        """Rule f on a declaration (shfmt's DeclClause: `declare`, `typeset`, `readonly`, `export`, `local`): an
+        argument that assigns a name (`export PATH=/tmp/x`, `local status=0`) or names one (`export PATH`) is an
+        Assign that visit hands to binding; every other argument, `Naked` with the word as its Value (an option, a
+        quoted or expanded word: `-x`, `'PATH=/tmp/x:$PATH'`, `"$binding"`), is read by binding_words."""
+        if not isinstance(cmd, dict) or cmd.get("Type") != "DeclClause":
+            return
+        words = [arg["Value"] for arg in cmd.get("Args") or [] if "Name" not in arg and "Value" in arg]
+        self.binding_words(stmt["Pos"]["Line"], f"`{cmd['Variant']['Value']}`", words)
+
+    def binding_words(self, line, what, words, unit="argument", every=False):
+        """Rule f on words bash reads as assignments: the arguments of a binder (a declaration or `env`, directly or
+        through a FORWARDER) and the elements of LIBRARY_ENVIRONMENT (every). A known text matching BINDING_WORD
+        assigns the name before `=`: one of BINDING_VARIABLES is a finding (`export 'PATH=/tmp/x:$PATH'`, `env
+        PATH=/tmp/x git ls-files`); a word with no known text may spell any of them (`export "$binding"`) and is a
+        finding, the one accepted shape aside (environment_array, whose elements this rule reads where they are
+        assigned); any other known text (`-x`, `GIT_CONFIG_NOSYSTEM=1`, `git`) binds no command word, unless every
+        word must be an assignment (an element of the array), when it is a finding too."""
+        names = ", ".join(f"`{name}`" for name in sorted(BINDING_VARIABLES))
+        for word in words:
+            text = word_text(word)
+            if text is None:
+                if not environment_array(word):
+                    self.findings.add(
+                        (line, SHADOW, f"{what} has an {unit} with no known text, which may assign one of {names}")
+                    )
+                continue
+            match = BINDING_WORD.match(text)
+            if match is None:
+                if every:
+                    self.findings.add((line, SHADOW, f"{what} has an {unit} that is no assignment of a name: `{text}`"))
+            elif match[1] in BINDING_VARIABLES:
+                self.findings.add(
+                    (
+                        line,
+                        SHADOW,
+                        f"{what} assigns `{match[1]}` in an {unit}, which binds a command word: "
+                        f"{BINDING_VARIABLES[match[1]]}",
+                    )
+                )
 
     def tests_empty(self, stmt, target):
         """Whether the statement's own command is `[[ ! -s <target> ]]`, the two words shown to name one file."""
@@ -1429,6 +1562,8 @@ class Walk:
                 )
             if flag[0] == NEGATED:
                 return f"the one at line {line} is negated (`!`) at line {at}"
+            if flag[0] == PROCESS:
+                return f"the one at line {line} runs in a process substitution opened at line {at}, a child shell"
             return f"the one at line {line} runs in a coprocess started at line {at}, a child shell"
         if len(stack) > 1:
             outer = stack[-1]
@@ -1454,7 +1589,7 @@ for source, tree in fixtures.items():
     except Exception as error:  # a fixture the walk cannot read is "could not judge" for every listed file
         refuse(f"cannot walk the syntax tree of {source} ({error!r})")
     visited.update(walk.seen)
-for kind in ("Stmt", "Assign", "CmdSubst", "Redirect"):
+for kind in ("Stmt", "Assign", "CmdSubst", "Redirect", "ProcSubst"):
     if not visited[kind]:
         refuse(f"the walk visited no {kind} node in the contract fixtures, which hold some")
 

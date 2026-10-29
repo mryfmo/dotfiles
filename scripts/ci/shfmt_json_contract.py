@@ -69,11 +69,17 @@ TABLE: dict[str, Kind] = {
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),
     # Every command kind carries Pos.Line: the lint reads it on each statement's Cmd, whatever the kind.
     "CallExpr": Kind(None, ("Args", "Assigns", "Pos.Line")),
+    # A declaration (`declare`, `typeset`, `readonly`, `export`, `local`): the lint reads its variant and its arguments,
+    # each an Assign (one that is no assignment of a name is `Naked` with the word as its Value: `export 'PATH=x'`),
+    # for a binding spelled as a word (U112 round 17).
+    "DeclClause": Kind(None, ("Variant.Value", "Args")),
     # An `elif` is an IfClause with no Type key (shfmt types interface fields only), so Cond marks the untyped one.
     "IfClause": Kind("Cond", ("Cond", "Pos.Line")),
     "WhileClause": Kind(None, ("Cond", "Pos.Line")),
     "CmdSubst": Kind(None, ("Stmts", "Backquotes", "Pos.Line"), {"Backquotes": (True,)}),
-    "ProcSubst": Kind(None, ("Stmts", "Op"), {"Op": ("<(",)}),
+    # The lint puts a process substitution on the path of the statements inside it, a child whose status the parent
+    # never sees, and names its line (U112 round 17).
+    "ProcSubst": Kind(None, ("Stmts", "Op", "Pos.Line"), {"Op": ("<(",)}),
     # The lint reads Dollar on both quoted kinds: an ANSI-C `$'…'` or a locale `$"…"` string has no known text to it.
     "DblQuoted": Kind(None, ("Parts", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),

@@ -47,7 +47,12 @@ reads; the other rebinders read `-` words only, a `+` word is an argument; a cal
 finding), and round 16 closes the protected set over the rebinders themselves (`alias command=eval` then `command
 'refuse() { return 0; }'` had redefined the refusal function through a word rule f read as its own) and reads `alias`
 and `unalias` in any form, and `shopt` with `expand_aliases` among its arguments, as findings: no lever defines an
-alias, and non-interactive bash expands none unless that option is set.
+alias, and non-interactive bash expands none unless that option is set, and round 17 reads a binding spelled as a word
+(every argument word of `declare`, `typeset`, `readonly`, `export`, `local` or `env`, through any chain of `builtin` and
+`command`: `export 'PATH=/tmp/x:$PATH'` and `builtin export PATH=/tmp/x` had passed while bash ran the spoofed git;
+`export "${GIT_ISOLATED_ENV[@]}"` is the one accepted word with no known text, the array's assignments read as the
+exported words) and puts a process substitution on the path of the statements inside it (`cat <(x=$(false) || exit 1)`
+had passed while bash went on with exit 0), so a tested read or a producer there is a finding naming its line.
 """
 
 from __future__ import annotations
@@ -69,6 +74,7 @@ from test_shfmt_json_contract import CAPTURES, captures, hidden_tree, pinned_ver
 CHECK = ROOT / "scripts/ci/producer-status-check.sh"
 TABLE = ROOT / "scripts/ci/status-blind-producers.tsv"
 LIB = ROOT / "scripts/orchestrator/read-lib.sh"
+GIT_LIB = ROOT / "scripts/orchestrator/git-isolated.sh"
 LEVERS = tuple(
     ROOT / "scripts/orchestrator" / name
     for name in ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
@@ -1776,6 +1782,145 @@ class ProducerStatusCheckTest(unittest.TestCase):
             self.assertIn(f":{line}: shadow: {message}", result.stdout)
         self.assertNotIn(":5:", result.stdout)
 
+    def test_the_round_17_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the e0386559 audit, which that head read as clean: rule f read a binding assignment as an
+        Assign node only, so `export 'PATH=/tmp/x:$PATH'` (a quoted word) and `builtin export PATH=/tmp/x` (a word
+        through a forwarder) passed while /bin/bash 3.2 set PATH and the next `git` was the spoofed one (measured
+        below); and a process substitution was no boundary, so `cat <(x=$(false) || exit 1)` passed while bash went
+        on with exit 0 after the failed read (measured below). Round 17 reads every argument word of a declaration, of
+        `env` and of either through a forwarder (BINDERS, BINDING_WORD; `export "${GIT_ISOLATED_ENV[@]}"` the one
+        accepted word with no known text, that array's assignments read as the exported words), and puts a process
+        substitution on the path of the statements inside it (flagged_path), so a tested read or a producer there is a
+        finding naming the substitution's line."""
+        spoof = self.temp / "x"
+        spoof.mkdir()
+        (spoof / "git").write_text("#!/bin/sh\necho spoofed\n")
+        (spoof / "git").chmod(0o755)
+        read = 'listing=$(git ls-files) || exit 1\necho "ran ${listing}"\n'
+        for binding in (
+            f"export 'PATH={spoof}:$PATH'\n",  # the auditor's quoted word: PATH is the literal, git is the spoofed one
+            f"builtin export PATH={spoof}\n",  # the auditor's forwarded word
+            f"declare -x PATH={spoof}\n",
+            f'GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM=1 PATH={spoof})\nexport "${{GIT_ISOLATED_ENV[@]}}"\n',
+        ):
+            with self.subTest(binding=binding):
+                script = self.script("spoofed.sh", binding + read)
+                ran = subprocess.run(
+                    ["/bin/bash", str(script)], cwd=self.temp, capture_output=True, text=True, check=False
+                )
+                self.assertEqual((0, "ran spoofed\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured
+        script = self.script("env.sh", f'listing=$(env PATH={spoof} git ls-files) || exit 1\necho "ran ${{listing}}"\n')
+        ran = subprocess.run(["/bin/bash", str(script)], cwd=self.temp, capture_output=True, text=True, check=False)
+        self.assertEqual((0, "ran spoofed\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured
+        for child in ("cat <(x=$(false) || exit 1)\n", "tee >(x=$(false) || exit 1) < /dev/null\n"):
+            with self.subTest(child=child):
+                script = self.script("child.sh", child + "echo ran\n")
+                ran = subprocess.run(
+                    ["/bin/bash", str(script)], cwd=self.temp, capture_output=True, text=True, check=False
+                )
+                self.assertEqual((0, "ran\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured: the parent goes on
+        bindings = (
+            "refuse() { exit 2; }\n"  # 3
+            "export 'PATH=/tmp/x:$PATH'\n"  # 4: the auditor's quoted word
+            "builtin export PATH=/tmp/x\n"  # 5: the auditor's forwarded word
+            'export "PATH=/tmp/x:$PATH"\n'  # 6: no known text
+            'export "$binding"\n'  # 7
+            "declare -x PATH=/tmp/x\n"  # 8: an Assign, a finding since round 14
+            "env PATH=/tmp/x git ls-files\n"  # 9: the spoofed git runs past rule b
+            "env -i PATH=/tmp/x git ls-files\n"  # 10
+            "command env PATH=/tmp/x true\n"  # 11: through a forwarder
+            "builtin command export PATH=/tmp/x\n"  # 12: through a chain of forwarders
+            "readonly 'PATH[0]=/tmp/x'\n"  # 13: an index
+            "typeset 'BASH_CMDS[git]=/tmp/x/git'\n"  # 14
+            "f() { local 'PATH+=:/tmp/x'; }\n"  # 15: an append
+            "export -n 'BASH_ALIASES[git]=true'\n"  # 16
+            'env "$@" git ls-files\n'  # 17: no known text
+            "GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM=1 PATH=/tmp/x)\n"  # 18: an element of the exported array binds
+            'GIT_ISOLATED_ENV+=("$extra")\n'  # 19: an element with no known text
+            "GIT_ISOLATED_ENV[0]=PATH=/tmp/x\n"  # 20
+            "GIT_ISOLATED_ENV=(git)\n"  # 21: an element that assigns nothing
+            'export "${OTHER[@]}"\n'  # 22: not the library's array
+            'export "${GIT_ISOLATED_ENV[0]}"\n'  # 23: not the whole array
+            'export "${GIT_ISOLATED_ENV[@]:-}"\n'  # 24
+            "x=$(false) || refuse\n"  # 25: accepted from here on
+            "export GIT_CONFIG_NOSYSTEM=1\n"  # 26
+            "g() { local status=0; declare -r y=1; local -- z; }\n"  # 27
+            "export PATH\n"  # 28: no value
+            "declare +x -a GIT_ISOLATED_ENV GIT_ISOLATED_ARGS\n"  # 29: git-isolated.sh's own line
+            "GIT_ISOLATED_ENV=(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1)\n"  # 30: known assignments of other names
+            "GIT_ISOLATED_ENV+=(GIT_TERMINAL_PROMPT=0)\n"  # 31
+            '( export "${GIT_ISOLATED_ENV[@]}" && exec git "${GIT_ISOLATED_ARGS[@]}" "$@" )\n'  # 32: git_isolated's line
+            "export -f refuse\n"  # 33: leaves the function bound
+            "env GIT_CONFIG_NOSYSTEM=1 true\n"  # 34
+            'env "${GIT_ISOLATED_ENV[@]}" true\n'  # 35: the accepted word in any binder position
+        )
+        expected = [(line, "shadow") for line in range(4, 25)]
+        result = self.assert_findings(bindings, expected)
+        path = "assigns `PATH` in an argument, which binds a command word: the directories bash searches for `git`, `find` and `ls`"
+        unknown = "has an argument with no known text, which may assign one of `BASH_ALIASES`, `BASH_CMDS`, `PATH`"
+        exported = '`GIT_ISOLATED_ENV`, which `export "${GIT_ISOLATED_ENV[@]}"` exports word by word,'
+        for line, message in (
+            (4, f"`export` {path}"),
+            (5, f"`export` {path}"),
+            (6, f"`export` {unknown}"),
+            (7, f"`export` {unknown}"),
+            (
+                8,
+                "an assignment to `PATH` binds a command word: the directories bash searches for `git`, `find` and `ls`",
+            ),
+            (9, f"`env` {path}"),
+            (11, f"`env` {path}"),
+            (12, f"`export` {path}"),
+            (13, f"`readonly` {path}"),
+            (
+                14,
+                "`typeset` assigns `BASH_CMDS` in an argument, which binds a command word: the hash table of bash 4, as `hash -p` does",
+            ),
+            (15, f"`local` {path}"),
+            (17, f"`env` {unknown}"),
+            (
+                18,
+                f"{exported} assigns `PATH` in an element, which binds a command word: the directories bash searches for `git`, `find` and `ls`",
+            ),
+            (
+                19,
+                f"{exported} has an element with no known text, which may assign one of `BASH_ALIASES`, `BASH_CMDS`, `PATH`",
+            ),
+            (21, f"{exported} has an element that is no assignment of a name: `git`"),
+            (22, f"`export` {unknown}"),
+            (24, f"`export` {unknown}"),
+        ):
+            self.assertIn(f":{line}: shadow: {message}", result.stdout)
+        children = (
+            "cat <(x=$(false) || exit 1)\n"  # 3: the auditor's line
+            "tee >(x=$(false) || exit 1)\n"  # 4
+            "while read -r l; do :; done < <(git ls-files)\n"  # 5: a producer in a child, whatever follows it
+            "cat <(if x=$(false); then :; fi)\n"  # 6
+            "cat <(y=$(false))\n"  # 7: untested, a finding anywhere
+            "cat <(git ls-files > l 2> e; [[ ! -s e ]] || exit 1)\n"  # 8: the test runs in the child too
+            "x=$(cat <(y=$(false) || exit 1)) || exit 1\n"  # 9: the outer read is accepted, the inner is the finding
+            "git ls-files > l 2> >(tee e) || exit 1\n"  # 10: a substitution is no captured file
+            "ls <(true) > l 2> e || exit 1\n"  # 11: a word with no known text; no later test
+            "diff <(sort a) <(sort b)\n"  # 12: accepted: no tested read inside
+            "cat <(echo x) > /dev/null\n"  # 13
+        )
+        expected = [(3, "substitution"), (4, "substitution"), (5, "producer"), (6, "substitution"), (7, "substitution")]
+        expected += [(8, "producer"), (9, "substitution"), (10, "producer"), (11, "producer")]
+        result = self.assert_findings(children, expected)
+        opened = "the tested read runs in a process substitution (`<(…)` or `>(…)`) opened at line {}, whose failure the parent never sees"
+        for line, message in (
+            (3, opened.format(3)),
+            (4, opened.format(4)),
+            (5, "the producer runs in a process substitution opened at line 5, whose failure the parent never sees"),
+            (6, opened.format(6)),
+            (8, "the producer runs in a process substitution opened at line 8, whose failure the parent never sees"),
+            (9, opened.format(9)),
+        ):
+            self.assertIn(f":{line}: {'producer' if 'producer' in message else 'substitution'}: ", result.stdout)
+            self.assertIn(message, result.stdout)
+        result = self.assert_findings("cat <(set -euo pipefail)\nx=$(a) || exit 1\n", [(1, "prologue")], prologue="")
+        self.assertIn("the one at line 2 runs in a process substitution opened at line 2, a child shell", result.stdout)
+
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every
         (which definitions, comments and refusal_break iterate) and Walk.visit descend by children alone. A second
@@ -1839,8 +1984,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
     def test_the_library_and_the_five_levers_are_clean(self) -> None:
-        """The enforced set: zero findings over read-lib.sh and the five levers, nothing printed."""
-        result = self.run_check(LIB, *LEVERS)
+        """The enforced set: zero findings over read-lib.sh, git-isolated.sh and the five levers, nothing printed."""
+        result = self.run_check(LIB, GIT_LIB, *LEVERS)
         self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
 

@@ -73,3 +73,6 @@ git ls-files > "$dir/list" 2> "$dir/err" 02>&1 1>&2- <&0 || exit 1
 # the rule reads are in the tree.
 . "${LEVER_DIR}/git-isolated.sh"
 . "${LEVER_DIR}/read-lib.sh"
+# producer-status-check (U112 round 17): a declaration whose argument is a quoted assignment word, so the variant and
+# the arguments the lint reads on a DeclClause are in the tree.
+export 'FIRST=1'

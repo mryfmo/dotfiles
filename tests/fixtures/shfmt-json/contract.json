@@ -6,9 +6,9 @@
 		"Col": 1
 	},
 	"End": {
-		"Offset": 2886,
-		"Line": 75,
-		"Col": 29
+		"Offset": 3085,
+		"Line": 78,
+		"Col": 17
 	},
 	"Stmts": [
 		{
@@ -12702,6 +12702,150 @@
 			"Position": {
 				"Offset": 2858,
 				"Line": 75,
+				"Col": 1
+			}
+		},
+		{
+			"Pos": {
+				"Offset": 3069,
+				"Line": 78,
+				"Col": 1
+			},
+			"End": {
+				"Offset": 3085,
+				"Line": 78,
+				"Col": 17
+			},
+			"Comments": [
+				{
+					"Pos": {
+						"Offset": 2887,
+						"Line": 76,
+						"Col": 1
+					},
+					"End": {
+						"Offset": 3004,
+						"Line": 76,
+						"Col": 118
+					},
+					"Hash": {
+						"Offset": 2887,
+						"Line": 76,
+						"Col": 1
+					},
+					"Text": " producer-status-check (U112 round 17): a declaration whose argument is a quoted assignment word, so the variant and"
+				},
+				{
+					"Pos": {
+						"Offset": 3005,
+						"Line": 77,
+						"Col": 1
+					},
+					"End": {
+						"Offset": 3068,
+						"Line": 77,
+						"Col": 64
+					},
+					"Hash": {
+						"Offset": 3005,
+						"Line": 77,
+						"Col": 1
+					},
+					"Text": " the arguments the lint reads on a DeclClause are in the tree."
+				}
+			],
+			"Cmd": {
+				"Type": "DeclClause",
+				"Pos": {
+					"Offset": 3069,
+					"Line": 78,
+					"Col": 1
+				},
+				"End": {
+					"Offset": 3085,
+					"Line": 78,
+					"Col": 17
+				},
+				"Variant": {
+					"Pos": {
+						"Offset": 3069,
+						"Line": 78,
+						"Col": 1
+					},
+					"End": {
+						"Offset": 3075,
+						"Line": 78,
+						"Col": 7
+					},
+					"ValuePos": {
+						"Offset": 3069,
+						"Line": 78,
+						"Col": 1
+					},
+					"ValueEnd": {
+						"Offset": 3075,
+						"Line": 78,
+						"Col": 7
+					},
+					"Value": "export"
+				},
+				"Args": [
+					{
+						"Pos": {
+							"Offset": 3076,
+							"Line": 78,
+							"Col": 8
+						},
+						"End": {
+							"Offset": 3085,
+							"Line": 78,
+							"Col": 17
+						},
+						"Naked": true,
+						"Value": {
+							"Pos": {
+								"Offset": 3076,
+								"Line": 78,
+								"Col": 8
+							},
+							"End": {
+								"Offset": 3085,
+								"Line": 78,
+								"Col": 17
+							},
+							"Parts": [
+								{
+									"Type": "SglQuoted",
+									"Pos": {
+										"Offset": 3076,
+										"Line": 78,
+										"Col": 8
+									},
+									"End": {
+										"Offset": 3085,
+										"Line": 78,
+										"Col": 17
+									},
+									"Left": {
+										"Offset": 3076,
+										"Line": 78,
+										"Col": 8
+									},
+									"Right": {
+										"Offset": 3084,
+										"Line": 78,
+										"Col": 16
+									},
+									"Value": "FIRST=1"
+								}
+							]
+						}
+					}
+				]
+			},
+			"Position": {
+				"Offset": 3069,
+				"Line": 78,
 				"Col": 1
 			}
 		}

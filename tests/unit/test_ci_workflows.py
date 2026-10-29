@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -406,6 +407,92 @@ class TypeScriptTestsStepTest(unittest.TestCase):
         for directory in self.DIRECTORIES:
             with self.subTest(directory=directory):
                 self.assertTrue(sorted((ROOT / directory).glob("*.test.ts")), directory)
+
+
+class InstallToolsChecksumToolTest(unittest.TestCase):
+    """U109 round 21 (audit of 76f1a732): the "Install tools" step picks the checksum tool from `sha256sum --version`.
+    The round 11 line ran the producer inside `[[ ]]`, so its exit status was lost: an exit-42 sha256sum with a GNU
+    banner selected sha256sum, one with empty output selected shasum, and the step went on either way. The body is run
+    here up to and including the decision, under the runner's `bash -e`, with a fake sha256sum first on PATH."""
+
+    GNU = "sha256sum (GNU coreutils) 9.4"
+    DARWIN = "sha256sum (Darwin) 1.0"  # macOS 15 to 27: text_cmds md5.c `version()` prints this and exits 0
+
+    @classmethod
+    def decision(cls, text: str) -> str:
+        """The step's `run:` body from its first line to the line before the first download, dedented."""
+        step = text.split("      - name: Install tools\n", 1)[1].split("\n      - name: ", 1)[0]
+        body = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        lines = body.splitlines()
+        first_download = next(i for i, line in enumerate(lines) if line.startswith("curl "))
+        block = "\n".join(lines[:first_download]) + "\n"
+        assert "sha256_tool=" in block and "curl" not in block, block
+        return block
+
+    def run_decision(self, block: str, sha256sum: str | None) -> subprocess.CompletedProcess[str]:
+        """Run `block` as the runner does (`bash --noprofile --norc -eo pipefail`), from a scratch directory whose
+        PATH holds only the stubs: a `uname` answering Linux/x86_64, and `sha256sum` as the case gives it (None: no
+        sha256sum anywhere on PATH). The scratch `scripts/lib/github-release.sh` answers a tag without the network.
+        A `printf` after the block shows whether the step went on past the decision, and an EXIT trap prints the
+        selection, or `none`, whatever the body did."""
+        holder = tempfile.TemporaryDirectory()
+        self.addCleanup(holder.cleanup)
+        scratch = Path(holder.name)
+        stubs = scratch / "stubs"
+        stubs.mkdir()
+        (scratch / "scripts/lib").mkdir(parents=True)
+        (scratch / "scripts/lib/github-release.sh").write_text("github_release_tag() { printf 'v2.66.0\\n'; }\n")
+        (stubs / "uname").write_text('#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo x86_64 ;; esac\n')
+        if sha256sum is not None:
+            (stubs / "sha256sum").write_text(f"#!/bin/sh\n{sha256sum}\n")
+        for stub in stubs.iterdir():
+            stub.chmod(0o755)
+        script = scratch / "install-tools-decision.sh"
+        script.write_text(
+            'trap \'printf "selected=%s\\n" "${sha256_tool-none}"\' EXIT\n' + block + "printf 'went on\\n'\n"
+        )
+        bash = shutil.which("bash")
+        assert bash is not None
+        env = {
+            "PATH": str(stubs),
+            "HOME": str(scratch),
+            "OS": "ubuntu-24.04",
+            "SYSTEM": "client",
+            "RUNNER_TEMP": str(scratch),
+        }
+        return subprocess.run(
+            [bash, "--noprofile", "--norc", "-eo", "pipefail", str(script)],
+            cwd=scratch,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_the_decision_reads_every_status_of_sha256sum(self) -> None:
+        # A failing `sha256sum --version` ends the step with its status before any tool is selected; a banner that
+        # is not GNU's, or no sha256sum at all, selects shasum. On 76f1a732 the exit-42 cases went on, one with
+        # sha256sum selected and one with shasum.
+        block = self.decision(TEST.read_text())
+        for case, stub, status, stdout in (
+            ("GNU banner, exit 0", f"echo '{self.GNU}'\nexit 0", 0, "went on\nselected=sha256sum\n"),
+            ("GNU banner, exit 42", f"echo '{self.GNU}'\nexit 42", 42, "selected=none\n"),
+            ("no output, exit 42", "exit 42", 42, "selected=none\n"),
+            ("no sha256sum on PATH", None, 0, "went on\nselected=shasum\n"),
+            ("the BSD banner, exit 0", f"echo '{self.DARWIN}'\nexit 0", 0, "went on\nselected=shasum\n"),
+        ):
+            with self.subTest(case=case):
+                result = self.run_decision(block, stub)
+                self.assertEqual((status, stdout), (result.returncode, result.stdout), result.stderr)
+
+    def test_the_decision_is_spelled_in_literal_command_words(self) -> None:
+        # The tree rule of tests/unit/test_apt_mirror.py reads every command word; the decision gives it `command`,
+        # `sha256sum` and assignments, never an expansion in command position, and no `[[ ]]` around the producer.
+        block = self.decision(TEST.read_text())
+        self.assertIn('sha256sum_banner="$(sha256sum --version)"\n', block)
+        self.assertNotIn('[[ "$(sha256sum', block)
+        self.assertNotIn("2> /dev/null)", block)
 
 
 class RenderOnlySubtreesTest(unittest.TestCase):

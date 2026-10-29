@@ -412,7 +412,11 @@ class PinnedLintToolsTest(unittest.TestCase):
             self.assertEqual(expected, mentions, tools)
         install = steps["Install tools"]["run"]
         self.assertIn("brew install bash bats-core gawk parallel\n", install)
-        self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", install)
+        self.assertIn(
+            "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+            " install -y bats curl iproute2 parallel ruby\n",
+            steps["Install apt packages"]["run"],
+        )
 
 
 BAD_SHELL = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"

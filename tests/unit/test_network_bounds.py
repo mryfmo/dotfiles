@@ -209,9 +209,12 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("comment; names the tool without running it"),
     (
         ".github/workflows/test.yaml",
-        "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby",
+        "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby",
     ): Exempt("an apt-get install package name"),
-    (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): Exempt("an apt-get install package name"),
+    (
+        ".github/workflows/test.yaml",
+        "sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl",
+    ): Exempt("an apt-get install package name"),
     # U96's chezmoi externals prefetch (scripts/lib/chezmoi-externals.sh and its copy in setup.sh): its own allowlisted
     # retry loop, so curl's --retry stays off; --max-time 900 caps one attempt on the checked continuation. U111's
     # cache check shares the prefetch's curl predicate and says in one message why it did not run without it.

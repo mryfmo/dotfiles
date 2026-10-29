@@ -1,6 +1,6 @@
 # U116 mise.lock evaluation (plan P-36, research V4-9)
 
-Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the runs pasted below are the round-7 re-take of the same date.
+Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the runs pasted below are the round-7 re-take of the same date, and round 8 (same date) re-took no run: it routed every printed string of every pasted script through one `redact` function and re-ran the injections, the scan and the forms check.
 
 ## Question
 
@@ -10,29 +10,60 @@ The plan row P-36 (`handoff/05-remediation-plan.md:116`) asks for a decisions ro
 
 ## Commands run
 
-Every output below is pasted whole from the file the command wrote under `$TMPDIR/U116-out-5/`, the round-7 re-take of every run (the ROUND 7 AMENDMENT of the brief: the pasted runner is the one that ran, and it launches mise itself). One substitution applies to the three pasted `ls -la` blocks, because the store refuses the login name: the owner column reads `<user>`. Nothing else was edited; no other pasted output holds the login name or the home directory, because the runner writes the real mise paths in `~` form itself. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; mise prints it through its `/private` alias. One block, marked as such, is older: the attempt-1 error of round 1, which round 7 did not repeat.
+Every output below is pasted whole from the file the command wrote under `$TMPDIR/U116-out-5/`, the round-7 re-take of every run (the ROUND 7 AMENDMENT of the brief: the pasted runner is the one that ran, and it launches mise itself). One substitution applies to the three pasted `ls -la` blocks, because the store refuses the login name: the owner column reads `<user>`. Nothing else was edited; no other pasted output holds the login name or the home directory, because the runner writes the real mise paths in `~` form itself. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; mise prints it through its `/private` alias. One block, marked as such, is older: the attempt-1 error of round 1, which round 7 did not repeat. Round 8 re-took no run: it added a `redact` function to every pasted script (every string that reaches stdout or stderr, refusals, receipts and exception texts included, passes through it; the real home directory in both its spellings becomes `~` and the login name `<user>`), after the round-7 audit found that the runner's `resolve_mise` printed a raw exception text holding a path under the real home (verdict P2 on `31be35ac`). The round-7 outputs under `U116-out-5/` stand: the only printed strings the change alters are diagnostics, and none of the pasted runs printed one (the resolved mise path was already written in `~` form; every other printed line is a receipt, a count or a `$TMPDIR` path). The injections, the scan and the forms check are re-run with the round-8 scripts and pasted from those runs.
 
 ### The scratch home and the config copy (CHANGE 1)
 
-One `python3 -I` script, `/tmp/U116-prepare-7.py`, run from `/tmp` with the invocation below. It refuses when `U116-home-5` or `U116-out-5` exists already (`os.lstat`, `FileNotFoundError` the one acceptable answer; neither existed), makes the four scratch directories and the output directory, copies the config in-process and writes the before listing of the real `~/.config/mise` to `real-before.txt` from one `subprocess.run` of `/bin/ls` whose status it reads and prints. Rounds 1 to 6 ran the four commands of CHANGE 1 under `bash`; this round runs no shell for them, so no wrapper word stands anywhere in the procedure. The script, its invocation and its printed output:
+One `python3 -I` script, `/tmp/U116-prepare-7.py`, run from `/tmp` with the invocation below; the script as pasted is `/tmp/U116-prepare-8.py`, the round-7 script with the round-8 `redact` function and its four `print` sites (the refusal and three result lines) routed through it, nothing else, and it was not run again: it refuses when `U116-home-5` exists, and the three round-7 lines below hold no string `redact` changes. It refuses when `U116-home-5` or `U116-out-5` exists already (`os.lstat`, `FileNotFoundError` the one acceptable answer; neither existed), makes the four scratch directories and the output directory, copies the config in-process and writes the before listing of the real `~/.config/mise` to `real-before.txt` from one `subprocess.run` of `/bin/ls` whose status it reads and prints. Rounds 1 to 6 ran the four commands of CHANGE 1 under `bash`; this round runs no shell for them, so no wrapper word stands anywhere in the procedure. The script as pasted, the round-7 invocation and its printed output:
 
 ```python
 #!/usr/bin/env python3
-# U116 scratch home and config copy, round 7 (brief CHANGE 1). One
+# U116 scratch home and config copy, round 7 (brief CHANGE 1), with the
+# round-8 redact() on every printed string. One
 # python3 -I process, no shell: the four directories are made and the
 # config is copied in this process, and the before listing of the real
 # ~/.config/mise is one subprocess.run of /bin/ls with its status read and
 # its output written to real-before.txt. A scratch home or output
 # directory that exists already is a refusal (this round wants fresh
 # ones), decided by os.lstat raising FileNotFoundError; any other error
-# anywhere is a refusal (exit 2) with its text.
+# anywhere is a refusal (exit 2) with its text, through redact().
+import getpass
 import os
 import subprocess
 import sys
 
 
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
+
 def refuse(message):
-    print(f"prepare REFUSED: {message}")
+    print(redact(f"prepare REFUSED: {message}"))
     sys.exit(2)
 
 
@@ -62,12 +93,12 @@ def main():
     for subdir in SUBDIRS:
         os.makedirs(os.path.join(SCRATCH, subdir))
     os.makedirs(OUT)
-    print("mkdir: $TMPDIR/U116-home-5 (.config/mise .local/share .cache .local/state) and $TMPDIR/U116-out-5")
+    print(redact("mkdir: $TMPDIR/U116-home-5 (.config/mise .local/share .cache .local/state) and $TMPDIR/U116-out-5"))
     with open(SOURCE, "rb") as source:
         data = source.read()
     with open(os.path.join(SCRATCH, ".config", "mise", "config.toml"), "wb") as target:
         target.write(data)
-    print(f"copy: {len(data)} bytes to $TMPDIR/U116-home-5/.config/mise/config.toml")
+    print(redact(f"copy: {len(data)} bytes to $TMPDIR/U116-home-5/.config/mise/config.toml"))
     with open(os.path.join(OUT, "real-before.txt"), "wb") as handle:
         proc = subprocess.run(
             ["/bin/ls", "-la", REAL_MISE_DIR],
@@ -76,7 +107,7 @@ def main():
             check=False,
             timeout=60,
         )
-    print(f"ls-before: /bin/ls -la ~/.config/mise exit={proc.returncode} to $TMPDIR/U116-out-5/real-before.txt")
+    print(redact(f"ls-before: /bin/ls -la ~/.config/mise exit={proc.returncode} to $TMPDIR/U116-out-5/real-before.txt"))
     sys.exit(1 if proc.returncode else 0)
 
 
@@ -110,13 +141,13 @@ drwxr-xr-x  24 <user>  staff   768 Oct 16 17:44 ..
 
 ### The runner
 
-Every mise command runs through this `python3 -I` script, `/tmp/U116-run-7.py`, which launches mise itself. The binary is resolved once, at the top of the script, by `resolve_mise`: a lookup over the entries of `PATH` that asks `os.lstat` for `<entry>/mise`, moves to the next entry on `FileNotFoundError` alone, refuses on any other `OSError` with its text, and refuses naming mise when no entry holds one. It does not test the executable bit: a mise that cannot be executed is left to the launch, which raises `PermissionError`. Each call is `subprocess.run([mise, ...], env=ENV, timeout=900, check=False, stdout=<the output file>, stderr=subprocess.STDOUT)`, where `ENV` is a dict holding exactly the variables of CHANGE 1 (`HOME`, `PATH`, `TMPDIR`, the four XDG variables and `MISE_TRUSTED_CONFIG_PATHS`) and nothing else, so the deadline and the environment belong to the process that reads the status. A launch that raises, be it `subprocess.TimeoutExpired`, `FileNotFoundError`, `PermissionError` or any other `OSError`, first writes a receipt reading `exit=refused`, then refuses (exit 2) with the error's class and text; a launch that returns writes its return code into the receipt. The start and end stamps and the elapsed seconds come from the `datetime` and `time` modules, and every receipt (`<name>.receipt.txt`) is written, read back and printed from the read-back bytes (an empty receipt is a refusal). Rounds 1 to 6 started every mise call through the brief's `env -i … perl -e 'alarm 900; exec @ARGV' mise …` form; when `exec` fails, because mise is absent or not executable, perl falls through its one-line program and exits 0, so that runner would have recorded a success for a command that never ran (verdict P2 on `a3efa54a`). The wrapper words left the argv list of the round-6 script as committed at `a3efa54a`: `/usr/bin/env` with `-i` at its lines 169 and 170, and `perl` with `-e` and `alarm 900; exec @ARGV` at lines 179 to 181; the first set of injections below shows the three ways the launch now refuses instead. Everything else stands from round 6: no command substitution, no process substitution, no pipeline, no predicate that turns a failed read into an absence (every file question is asked of `os.lstat` or `open`, `FileNotFoundError` alone means absence, any other `OSError` is a refusal with its text, `TMPDIR`, `PATH` and `HOME` are read by index with a missing variable a refusal, and the scratch-tree walk passes an `onerror` that raises); a non-zero exit or a lockfile that appears is exit 1 after every receipt is written. The real home directory is written as `~` wherever a path under it would reach the output (the resolved mise path in the first printed line, and any error text). Its cwd is the scratch home (the attempt-1 lesson below). The script, its invocation from `/tmp` and its printed output, which is the receipt of every run:
+Every mise command of the pasted run went through the `python3 -I` script `/tmp/U116-run-7.py`; the script pasted below is `/tmp/U116-run-8.py`, the same script with the round-8 `redact` function in place of its `tilde` helper and every `print` site routed through it (the `diff` between the two is the `redact` block, the removed `tilde`, three comments and the twelve lines that print or refuse). It launches mise itself. The binary is resolved once, at the top of the script, by `resolve_mise`: a lookup over the entries of `PATH` that asks `os.lstat` for `<entry>/mise`, moves to the next entry on `FileNotFoundError` alone, refuses on any other `OSError` with its text, and refuses naming mise when no entry holds one. It does not test the executable bit: a mise that cannot be executed is left to the launch, which raises `PermissionError`. Each call is `subprocess.run([mise, ...], env=ENV, timeout=900, check=False, stdout=<the output file>, stderr=subprocess.STDOUT)`, where `ENV` is a dict holding exactly the variables of CHANGE 1 (`HOME`, `PATH`, `TMPDIR`, the four XDG variables and `MISE_TRUSTED_CONFIG_PATHS`) and nothing else, so the deadline and the environment belong to the process that reads the status. A launch that raises, be it `subprocess.TimeoutExpired`, `FileNotFoundError`, `PermissionError` or any other `OSError`, first writes a receipt reading `exit=refused`, then refuses (exit 2) with the error's class and text; a launch that returns writes its return code into the receipt. The start and end stamps and the elapsed seconds come from the `datetime` and `time` modules, and every receipt (`<name>.receipt.txt`) is written, read back and printed from the read-back bytes (an empty receipt is a refusal). Rounds 1 to 6 started every mise call through the brief's `env -i … perl -e 'alarm 900; exec @ARGV' mise …` form; when `exec` fails, because mise is absent or not executable, perl falls through its one-line program and exits 0, so that runner would have recorded a success for a command that never ran (verdict P2 on `a3efa54a`). The wrapper words left the argv list of the round-6 script as committed at `a3efa54a`: `/usr/bin/env` with `-i` at its lines 169 and 170, and `perl` with `-e` and `alarm 900; exec @ARGV` at lines 179 to 181; the first set of injections below shows the three ways the launch now refuses instead. Everything else stands from round 6: no command substitution, no process substitution, no pipeline, no predicate that turns a failed read into an absence (every file question is asked of `os.lstat` or `open`, `FileNotFoundError` alone means absence, any other `OSError` is a refusal with its text, `TMPDIR`, `PATH` and `HOME` are read by index with a missing variable a refusal, and the scratch-tree walk passes an `onerror` that raises); a non-zero exit or a lockfile that appears is exit 1 after every receipt is written. Every string that reaches stdout or stderr passes through `redact`: `refuse` calls it, the receipt line and every other `print` call it, and an exception's text is formatted into the refusal message and so passes through it. `redact` replaces the real home directory, in both its spellings (`os.path.realpath(os.path.expanduser('~'))` and `HOME` when set), with `~` and the login name (`getpass.getuser()` and `USER` when set) with `<user>`, longest string first; the optional variables are read by membership and index, not by a lookup with a default, so the forms check's second count stays 0. The round-7 `tilde` helper covered the candidate path of `resolve_mise` and the launch error's text, but not the exception text of a refused `os.lstat` in that lookup, which names the same path again, so a `PermissionError` there printed a path under the real home (verdict P2 on `31be35ac`); the second injection section below shows that refusal now. Its cwd is the scratch home (the attempt-1 lesson below). The script as pasted, the round-7 invocation from `/tmp` and its printed output, which is the receipt of every run (none of its lines holds a string `redact` changes; the resolved mise path was written in `~` form by `tilde`, as `redact` writes it in the injection runs below):
 
 ```python
 #!/usr/bin/env python3
-# U116 dry runs under the scratch HOME, round 7 (brief CHANGE 1 and 2; the
-# ROUND 5 to ROUND 7 amendments). One python3 -I process that launches
-# mise itself. The mise binary is resolved once, below, from PATH by a
+# U116 dry runs under the scratch HOME, round 8 (brief CHANGE 1 and 2; the
+# ROUND 5 to ROUND 7 amendments; round 8 adds redact()). One python3 -I
+# process that launches mise itself. The mise binary is resolved once, below, from PATH by a
 # lookup that refuses when no entry holds it; every call is
 # subprocess.run([mise, ...]) with the variable set of CHANGE 1 as its
 # whole environment, timeout=900, check=False and the output file as
@@ -128,9 +159,11 @@ Every mise command runs through this `python3 -I` script, `/tmp/U116-run-7.py`, 
 # returncode in the receipt. Every receipt is written, read back and
 # printed from the read-back bytes. Every file question is asked of
 # os.lstat or open: FileNotFoundError alone means absence, any other
-# OSError is a refusal with its text. The real home directory is written
-# as ~ wherever a path of it would reach the output.
+# OSError is a refusal with its text. Every string that reaches stdout or
+# stderr, refusals, receipts and exception texts included, passes through
+# redact(): the real home directory becomes ~ and the login name <user>.
 import datetime
+import getpass
 import os
 import stat
 import subprocess
@@ -138,8 +171,37 @@ import sys
 import time
 
 
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
+
 def refuse(message):
-    print(f"run REFUSED: {message}")
+    print(redact(f"run REFUSED: {message}"))
     sys.exit(2)
 
 
@@ -198,10 +260,6 @@ REAL_DIRS = (
 )
 
 
-def tilde(text):
-    return text.replace(REAL_HOME, "~")
-
-
 def real(path):
     # ~/x in REAL_DIRS to the real path, by the HOME read above.
     return os.path.join(REAL_HOME, path[2:])
@@ -213,7 +271,9 @@ def resolve_mise(path):
     # is a refusal with its text, and no entry at all is a refusal naming
     # mise. The executable bit is not tested here: a mise that cannot be
     # executed is left for the launch to raise PermissionError, which is a
-    # refusal with that text.
+    # refusal with that text. Both the refusal and the resolved path print
+    # through redact() (verdict P2 on 31be35ac: the raw exception text
+    # named a path under the real home).
     entries = [entry for entry in path.split(os.pathsep) if entry]
     for number, entry in enumerate(entries, 1):
         candidate = os.path.join(entry, "mise")
@@ -222,8 +282,8 @@ def resolve_mise(path):
         except FileNotFoundError:
             continue
         except OSError as exc:
-            refuse(f"cannot read {tilde(candidate)}: {exc}")
-        print(f"mise={tilde(candidate)} (PATH entry {number} of {len(entries)})")
+            refuse(f"cannot read {candidate}: {exc}")
+        print(redact(f"mise={candidate} (PATH entry {number} of {len(entries)})"))
         return candidate
     refuse(f"mise not found on PATH ({len(entries)} entries searched)")
 
@@ -286,7 +346,7 @@ def raise_error(exc):
 def receipt(name, start, began, status):
     elapsed = round(time.monotonic() - began)
     write(f"{name}.receipt.txt", f"start={start} end={stamp()} elapsed={elapsed}s exit={status}\n")
-    print(f"{name}: {read_back(f'{name}.receipt.txt')}")
+    print(redact(f"{name}: {read_back(f'{name}.receipt.txt')}"))
 
 
 def timed(name, argv, timeout=TIMEOUT):
@@ -310,7 +370,7 @@ def timed(name, argv, timeout=TIMEOUT):
             )
     except (subprocess.TimeoutExpired, OSError) as exc:
         receipt(name, start, began, "refused")
-        refuse(f"{name} did not complete: {type(exc).__name__}: {tilde(str(exc))}")
+        refuse(f"{name} did not complete: {type(exc).__name__}: {exc}")
     receipt(name, start, began, proc.returncode)
     return proc.returncode
 
@@ -352,12 +412,12 @@ def check_lock():
         os.lstat(LOCK)
     except FileNotFoundError:
         write("g-none-written.txt", "none-written\n")
-        print("g-none-written: none-written")
+        print(redact("g-none-written: none-written"))
         return 0
     except OSError as exc:
         refuse(f"cannot read {LOCK}: {exc}")
     write("g-none-written.txt", "WRITTEN\n")
-    print("g-none-written: WRITTEN")
+    print(redact("g-none-written: WRITTEN"))
     return 1
 
 
@@ -368,7 +428,7 @@ def main():
     # mise's parent-directory walk reads the real ~/.config/mise/config.toml
     # as a project config (round 1, attempt 1).
     os.chdir(SCRATCH)
-    print("cwd=$TMPDIR/U116-home-5")
+    print(redact("cwd=$TMPDIR/U116-home-5"))
     real_mtimes("real-dirs-mtime-before.txt")
     failed = 0
     for name, args in RUNS:
@@ -380,7 +440,7 @@ def main():
     failed += check_lock()
     real_mtimes("real-dirs-mtime-after.txt")
     scratch_tree("scratch-tree.txt")
-    print(f"runs={len(RUNS) + 2} failed={failed}")
+    print(redact(f"runs={len(RUNS) + 2} failed={failed}"))
     sys.exit(1 if failed else 0)
 
 
@@ -388,7 +448,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:  # any raised step is a refusal, never a summary line
-        refuse(f"{type(exc).__name__}: {tilde(str(exc))}")
+        refuse(f"{type(exc).__name__}: {exc}")
 ```
 
 ```sh
@@ -415,13 +475,13 @@ runs=9 failed=0
 
 ### Injected failures into the runner's mise lookup and launch
 
-In memory, as the ROUND 7 AMENDMENT asks: `/tmp/U116-inject-7.py` sets `PATH` in its own process, then loads `/tmp/U116-run-7.py` above as a module, so the runner's own `resolve_mise` runs against that `PATH`; for the two fake cases it points the runner's output directory at `/tmp/U116-inject-7-out` (so nothing lands in `U116-out-5`) and calls the runner's `timed` on `mise --version`. The fakes are written by the injection script itself with `open` and `os.chmod`, a `mise` that sleeps for 30 s with the executable bit set and a `mise` without the executable bit; the real mise is never touched. The script catches nothing, so the process exit status is the runner's own and the shell line after each call is its exit line. First, a `PATH` of one empty directory: the lookup refuses before any receipt exists. Second, the sleeping fake first on `PATH` under `timeout=2`: the receipt reads `exit=refused`, then the refusal carries `TimeoutExpired` and its text. Third, the fake without the executable bit first on `PATH`: the lookup finds it (it tests presence, not mode), the launch raises `PermissionError`, the receipt reads `exit=refused`, then the refusal carries that text. No receipt of these three runs reads `exit=0`; under the round-6 form the second and third cases were perl exiting 0 after a failed `exec`. The script, the three commands from `/tmp`, and their outputs in that order:
+In memory, as the ROUND 7 AMENDMENT asks, re-run in round 8 against the round-8 runner: `/tmp/U116-inject-8.py` (the round-7 script with the runner path and its directories renamed and its two printed lines routed through `redact`, nothing else) sets `PATH` in its own process, then loads `/tmp/U116-run-8.py` above as a module, so the runner's own `resolve_mise` runs against that `PATH`; for the two fake cases it points the runner's output directory at `/tmp/U116-inject-8-out` (so nothing lands in `U116-out-5`) and calls the runner's `timed` on `mise --version`. The fakes are written by the injection script itself with `open` and `os.chmod`, a `mise` that sleeps for 30 s with the executable bit set and a `mise` without the executable bit; the real mise is never touched. The script catches nothing, so the process exit status is the runner's own and the shell line after each call is its exit line. First, a `PATH` of one empty directory: the lookup refuses before any receipt exists. Second, the sleeping fake first on `PATH` under `timeout=2`: the receipt reads `exit=refused`, then the refusal carries `TimeoutExpired` and its text. Third, the fake without the executable bit first on `PATH`: the lookup finds it (it tests presence, not mode), the launch raises `PermissionError`, the receipt reads `exit=refused`, then the refusal carries that text. No receipt of these three runs reads `exit=0`; under the round-6 form the second and third cases were perl exiting 0 after a failed `exec`. Every line of the three outputs passed through `redact`; none held a string it changes, so they read as in round 7 apart from the round-8 directory names and the stamps. The script, the three commands from `/tmp`, and their outputs in that order:
 
 ```python
 #!/usr/bin/env python3
-# In-memory injections into the round-7 runner's mise lookup and launch
-# (the ROUND 7 AMENDMENT). Sets PATH in this process, then loads
-# /tmp/U116-run-7.py as a module so the runner's own resolve_mise runs
+# In-memory injections into the round-8 runner's mise lookup and launch
+# (the ROUND 7 AMENDMENT, re-run in round 8). Sets PATH in this process,
+# then loads /tmp/U116-run-8.py as a module so the runner's own resolve_mise runs
 # against that PATH; for the two fake cases, points the runner's output
 # directory at a scratch directory (nothing lands in U116-out-5) and calls
 # its timed function on `mise --version`, with timeout=2 for the sleeping
@@ -429,18 +489,48 @@ In memory, as the ROUND 7 AMENDMENT asks: `/tmp/U116-inject-7.py` sets `PATH` in
 # never touched. No exception is caught: the process exit status is the
 # runner's own, a refusal exits 2, and a timed call that returns is
 # reported and exits 1, so the shell line after each call is its exit
-# line.
+# line. Its own two printed lines pass through redact() too.
+import getpass
 import importlib.util
 import os
 import sys
 
-RUNNER = "/tmp/U116-run-7.py"
-OUT = "/tmp/U116-inject-7-out"
-EMPTY = "/tmp/U116-inject-7-empty"
+RUNNER = "/tmp/U116-run-8.py"
+OUT = "/tmp/U116-inject-8-out"
+EMPTY = "/tmp/U116-inject-8-empty"
 FAKES = {
-    "sleep": ("/tmp/U116-inject-7-sleep", b"#!/bin/sh\nexec sleep 30\n", 0o755),
-    "noexec": ("/tmp/U116-inject-7-noexec", b"#!/bin/sh\nexit 0\n", 0o644),
+    "sleep": ("/tmp/U116-inject-8-sleep", b"#!/bin/sh\nexec sleep 30\n", 0o755),
+    "noexec": ("/tmp/U116-inject-8-noexec", b"#!/bin/sh\nexit 0\n", 0o644),
 }
+
+
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
 
 case = sys.argv[1]
 os.makedirs(OUT, exist_ok=True)
@@ -455,64 +545,221 @@ else:
         handle.write(body)
     os.chmod(fake, mode)
     os.environ["PATH"] = directory + os.pathsep + os.environ["PATH"]
-print(f"case {case}: PATH starts with {os.environ['PATH'].split(os.pathsep)[0]}")
+print(redact(f"case {case}: PATH starts with {os.environ['PATH'].split(os.pathsep)[0]}"))
 spec = importlib.util.spec_from_file_location("runner", RUNNER)
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)  # resolve_mise runs here; no-mise refuses inside
 runner.OUT = OUT
 deadline = 2 if case == "sleep" else runner.TIMEOUT
 code = runner.timed(f"inject-{case}", runner.mise_argv(["--version"]), timeout=deadline)
-print(f"inject-{case} returned exit {code}: the launch did not refuse")
+print(redact(f"inject-{case} returned exit {code}: the launch did not refuse"))
 sys.exit(1)
 ```
 
 ```sh
-python3 -I /tmp/U116-inject-7.py no-mise; echo "exit=$?"
-python3 -I /tmp/U116-inject-7.py sleep; echo "exit=$?"
-python3 -I /tmp/U116-inject-7.py noexec; echo "exit=$?"
+python3 -I /tmp/U116-inject-8.py no-mise; echo "exit=$?"
+python3 -I /tmp/U116-inject-8.py sleep; echo "exit=$?"
+python3 -I /tmp/U116-inject-8.py noexec; echo "exit=$?"
 ```
 
 ```text
-case no-mise: PATH starts with /tmp/U116-inject-7-empty
+case no-mise: PATH starts with /tmp/U116-inject-8-empty
 run REFUSED: mise not found on PATH (1 entries searched)
 exit=2
-case sleep: PATH starts with /tmp/U116-inject-7-sleep
-mise=/tmp/U116-inject-7-sleep/mise (PATH entry 1 of 56)
-inject-sleep: start=2026-10-29T13:38:18Z end=2026-10-29T13:38:20Z elapsed=2s exit=refused
-run REFUSED: inject-sleep did not complete: TimeoutExpired: Command '['/tmp/U116-inject-7-sleep/mise', '--version']' timed out after 2 seconds
+case sleep: PATH starts with /tmp/U116-inject-8-sleep
+mise=/tmp/U116-inject-8-sleep/mise (PATH entry 1 of 56)
+inject-sleep: start=2026-10-29T13:53:45Z end=2026-10-29T13:53:47Z elapsed=2s exit=refused
+run REFUSED: inject-sleep did not complete: TimeoutExpired: Command '['/tmp/U116-inject-8-sleep/mise', '--version']' timed out after 2 seconds
 exit=2
-case noexec: PATH starts with /tmp/U116-inject-7-noexec
-mise=/tmp/U116-inject-7-noexec/mise (PATH entry 1 of 56)
-inject-noexec: start=2026-10-29T13:38:20Z end=2026-10-29T13:38:20Z elapsed=0s exit=refused
-run REFUSED: inject-noexec did not complete: PermissionError: [Errno 13] Permission denied: '/tmp/U116-inject-7-noexec/mise'
+case noexec: PATH starts with /tmp/U116-inject-8-noexec
+mise=/tmp/U116-inject-8-noexec/mise (PATH entry 1 of 56)
+inject-noexec: start=2026-10-29T13:53:48Z end=2026-10-29T13:53:48Z elapsed=0s exit=refused
+run REFUSED: inject-noexec did not complete: PermissionError: [Errno 13] Permission denied: '/tmp/U116-inject-8-noexec/mise'
 exit=2
+```
+
+### Injected failure into the runner's mise lookup: a refused `os.lstat` under the real home (round 8)
+
+The round-7 audit injected a `PermissionError` into the `os.lstat` of `resolve_mise` and read a path under the real home in the refusal (verdict P2 on `31be35ac`): `tilde` rewrote the candidate path in the message, but the exception's own text names the same path again and reached the output raw. In memory: `/tmp/U116-inject-8-lookup.py` builds, from the real home string of its own process, a `PATH` whose first entry is `<real home>/bin`, replaces `os.lstat` so that the one path `<real home>/bin/mise` raises `PermissionError(13, 'Permission denied', <that path>)` and every other path is answered as before, then loads `/tmp/U116-run-8.py` above as a module, so the runner's own `resolve_mise` meets the error on its first entry. Nothing on disk is touched; the real home string is never written into any file by this script. The script catches nothing, so the exit status is the runner's own. The refusal names `~/bin/mise` twice, once from the message and once from the exception text, and the real home nowhere; the script's own first line passes through its own `redact` the same way. The script, the command from `/tmp` (its output to a file, so the scan can count over the text), the exit line and then the file:
+
+```python
+#!/usr/bin/env python3
+# In-memory injection into the round-8 runner's mise lookup (verdict P2 on
+# 31be35ac). Builds, from the real home string of this process, a PATH
+# whose first entry is <real home>/bin, replaces os.lstat so that the one
+# path <real home>/bin/mise raises PermissionError(13, 'Permission
+# denied', <that path>) and every other path is answered as before, then
+# loads /tmp/U116-run-8.py as a module, so the runner's own resolve_mise
+# meets the error on its first entry. Nothing on disk is touched; the real
+# home string reaches this process's output only through the runner's
+# redact() (the refusal) and this script's redact() (its own first line).
+# No exception is caught: the process exit status is the runner's own, a
+# refusal exits 2, and a lookup that returns is reported and exits 1, so
+# the shell line after the call is its exit line.
+import getpass
+import importlib.util
+import os
+import sys
+
+RUNNER = "/tmp/U116-run-8.py"
+HOME = os.environ["HOME"]
+ENTRY = os.path.join(HOME, "bin")
+BLOCKED = os.path.join(ENTRY, "mise")
+
+
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
+
+real_lstat = os.lstat
+
+
+def injected_lstat(path, *args, **kwargs):
+    if path == BLOCKED:
+        raise PermissionError(13, "Permission denied", path)
+    return real_lstat(path, *args, **kwargs)
+
+
+os.lstat = injected_lstat
+os.environ["PATH"] = ENTRY + os.pathsep + os.environ["PATH"]
+print(redact(f"case lookup-permission: PATH starts with {ENTRY}; os.lstat of {BLOCKED} raises PermissionError"))
+spec = importlib.util.spec_from_file_location("runner", RUNNER)
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)  # resolve_mise runs here and meets the error on entry 1
+print(redact(f"resolve_mise returned {runner.MISE}: the lookup did not refuse"))
+sys.exit(1)
+```
+
+```sh
+cd /tmp
+python3 -I /tmp/U116-inject-8-lookup.py > /tmp/U116-round8/inject-lookup.txt 2>&1; echo "exit=$?"
+```
+
+```text
+exit=2
+case lookup-permission: PATH starts with ~/bin; os.lstat of ~/bin/mise raises PermissionError
+run REFUSED: cannot read ~/bin/mise: [Errno 13] Permission denied: '~/bin/mise'
+```
+
+The scan's `redact` class over that file: a copy of `/tmp/U116-scan.py` (the script under Redaction and credential scan below) with the PR body's entry in `DOCUMENTS` replaced by the file, `sed 's|^    "/tmp/dotfiles-wt/U116-pr-body.md",$|    "/tmp/U116-round8/inject-lookup.txt",|' /tmp/U116-scan.py > /tmp/U116-scan-lookup.py; diff /tmp/U116-scan.py /tmp/U116-scan-lookup.py; python3 -I /tmp/U116-scan-lookup.py; echo "exit=$?"` from the worktree, counts `token=0 redact=0` over it; the login name is one of the five words of the redact list, so a path under the real home would count:
+
+```text
+35c35
+<     "/tmp/dotfiles-wt/U116-pr-body.md",
+---
+>     "/tmp/U116-round8/inject-lookup.txt",
+token from gh auth token patterns=1
+redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
+U116-out-5/a-version.receipt.txt token=0
+U116-out-5/a-version.txt token=0
+U116-out-5/b-lock-dry-run.receipt.txt token=0
+U116-out-5/b-lock-dry-run.txt token=0
+U116-out-5/c-lock-dry-run-4-platforms.receipt.txt token=0
+U116-out-5/c-lock-dry-run-4-platforms.txt token=0
+U116-out-5/d-lock-bump-json.receipt.txt token=0
+U116-out-5/d-lock-bump-json.txt token=0
+U116-out-5/e-npm-package-manager.receipt.txt token=0
+U116-out-5/e-npm-package-manager.txt token=0
+U116-out-5/f-minimum-release-age.receipt.txt token=0
+U116-out-5/f-minimum-release-age.txt token=0
+U116-out-5/g-none-written.txt token=0
+U116-out-5/g-real-after.receipt.txt token=0
+U116-out-5/g-real-after.txt token=0
+U116-out-5/g-scratch-after.receipt.txt token=0
+U116-out-5/g-scratch-after.txt token=0
+U116-out-5/help-lock.receipt.txt token=0
+U116-out-5/help-lock.txt token=0
+U116-out-5/real-before.txt token=0
+U116-out-5/real-dirs-mtime-after.txt token=0
+U116-out-5/real-dirs-mtime-before.txt token=0
+U116-out-5/scratch-tree.txt token=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md token=0 redact=0
+/tmp/U116-round8/inject-lookup.txt token=0 redact=0
+scan clean (25 files, 0 matches)
+exit=0
 ```
 
 ### Injected failures into the runner's none-written check
 
-In memory, as the ROUND 6 AMENDMENT asks, re-run against the round-7 runner: `/tmp/U116-inject-7-lock.py` (the round-6 script with the runner path and its output directory changed, nothing else) loads `/tmp/U116-run-7.py` above as a module, points its output directory at `/tmp/U116-inject-7-lock-out` (so nothing lands in `U116-out-5`), replaces `os.lstat` for the lockfile path alone and calls `check_lock`. The injection script catches nothing, so the process exit status is the check's own and the shell line after each call is its exit line; the first printed line of each run is the runner's own resolution of mise at module load. First, `os.lstat` raises `PermissionError`: the check refuses with the error's text and exits `2` instead of writing `none-written` (the round-5 script printed `none-written` and exited 0 here). Second, it raises `FileNotFoundError`: the check writes and prints `none-written` and returns 0. Third, the positive control, it returns a stat result (the runner file's own): the check prints `WRITTEN` and returns 1. The script, the three commands from `/tmp`, and their outputs in that order:
+In memory, as the ROUND 6 AMENDMENT asks, re-run against the round-8 runner: `/tmp/U116-inject-8-lock.py` (the round-6 script with the runner path and its output directory changed and its one printed line routed through `redact`, nothing else) loads `/tmp/U116-run-8.py` above as a module, points its output directory at `/tmp/U116-inject-8-lock-out` (so nothing lands in `U116-out-5`), replaces `os.lstat` for the lockfile path alone and calls `check_lock`. The injection script catches nothing, so the process exit status is the check's own and the shell line after each call is its exit line; the first printed line of each run is the runner's own resolution of mise at module load. First, `os.lstat` raises `PermissionError`: the check refuses with the error's text and exits `2` instead of writing `none-written` (the round-5 script printed `none-written` and exited 0 here). Second, it raises `FileNotFoundError`: the check writes and prints `none-written` and returns 0. Third, the positive control, it returns a stat result (the runner file's own): the check prints `WRITTEN` and returns 1. The script, the three commands from `/tmp`, and their outputs in that order:
 
 ```python
 #!/usr/bin/env python3
 # In-memory injection into the corrected runner's none-written check (the
-# ROUND 6 AMENDMENT). Loads /tmp/U116-run-7.py as a module, points its
+# ROUND 6 AMENDMENT, re-run in round 8). Loads /tmp/U116-run-8.py as a module, points its
 # output directory at a scratch directory, replaces os.lstat for the
 # lockfile path alone with one that raises the named error (or, for the
 # positive control, returns a stat result), and calls check_lock. No
 # exception is caught here: the process exit status is the check's own, a
 # refusal exits 2 and a normal return exits with the check's failure
-# count, so the shell line after each call is the exit line.
+# count, so the shell line after each call is the exit line. Its one
+# printed line passes through redact().
+import getpass
 import importlib.util
 import os
 import sys
 
-RUNNER = "/tmp/U116-run-7.py"
-OUT = "/tmp/U116-inject-7-lock-out"
+RUNNER = "/tmp/U116-run-8.py"
+OUT = "/tmp/U116-inject-8-lock-out"
 ERRORS = {
     "permission": (PermissionError, 13, "Permission denied"),
     "missing": (FileNotFoundError, 2, "No such file or directory"),
     "present": None,
 }
+
+
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
 
 case = sys.argv[1]
 error = ERRORS[case]
@@ -534,14 +781,14 @@ def injected_lstat(path, *args, **kwargs):
 
 
 os.lstat = injected_lstat
-print(f"injected os.lstat for {runner.LOCK}: {case}")
+print(redact(f"injected os.lstat for {runner.LOCK}: {case}"))
 sys.exit(runner.check_lock())
 ```
 
 ```sh
-python3 -I /tmp/U116-inject-7-lock.py permission; echo "exit=$?"
-python3 -I /tmp/U116-inject-7-lock.py missing; echo "exit=$?"
-python3 -I /tmp/U116-inject-7-lock.py present; echo "exit=$?"
+python3 -I /tmp/U116-inject-8-lock.py permission; echo "exit=$?"
+python3 -I /tmp/U116-inject-8-lock.py missing; echo "exit=$?"
+python3 -I /tmp/U116-inject-8-lock.py present; echo "exit=$?"
 ```
 
 ```text
@@ -1426,11 +1673,11 @@ missing ~/.cache/mise
 2026-10-29T18:57:42 ~/Library/Caches/mise
 ```
 
-Redaction and credential scan, round 7 (standing orders 21 and 22; the ROUND 4 to ROUND 7 amendments of the brief of 2026-10-29). The script is the round-6 one with its file set pointed at the round-7 outputs (`DIRS` is the single directory `U116-out-5`; `EXPECTED_FILES` stays 23, the `.txt` files the preparation and the runner wrote, listed in the clean run below: 9 outputs, 9 receipts, the before listing, the none-written file, the two mtime files and the scratch tree; the injection runs above write under `/tmp` and are not in this set) and its comments; nothing else changed. Everything else stands from rounds 4 to 6: one `python3 -I` script, `/tmp/U116-scan.py`, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only external command is `gh auth token`, with its exit status, output and timeout read; two pattern classes, the token and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt`, read in-process, with the path and the pattern count printed and zero patterns a refusal; two file sets, the 23 `.txt` files for the token (no run needed `MISE_GITHUB_TOKEN`, so none was set) and the two documents that cite this scan, this file as committed (the worktree copy, which is the committed bytes once ACCEPTANCE 1 shows the tree clean) and the PR body `/tmp/dotfiles-wt/U116-pr-body.md`, for both classes. The raw outputs are not scanned for the redact words: the three `ls -la` listings hold the login name in the owner column, which the substitution named at the top of this section replaces on paste; the positive control after the injected failures shows what the class finds there. The script prints one line per file with the count of each class applied to it, and `scan clean (25 files, 0 matches)` only when every count is 0; a `.txt` count other than 23, an empty pattern list or any exception is exit `2` before any clean line. Neither the script nor its invocation holds a process substitution, a command substitution, a pipeline or a wrapper process. The script, then its output:
+Redaction and credential scan, round 8 (standing orders 21 and 22; the ROUND 4 to ROUND 7 amendments of the brief of 2026-10-29). The script is the round-7 one with the round-8 `redact` function and its six `print` sites (the refusal, the two pattern lines, the per-file line and the two result lines) routed through it, and its header comment; its file set is the round-7 one, because round 8 re-took no run (`DIRS` is the single directory `U116-out-5`; `EXPECTED_FILES` stays 23, the `.txt` files the preparation and the runner wrote, listed in the clean run below: 9 outputs, 9 receipts, the before listing, the none-written file, the two mtime files and the scratch tree; the injection runs above write under `/tmp` and are not in this set); nothing else changed. Everything else stands from rounds 4 to 7: one `python3 -I` script, `/tmp/U116-scan.py`, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only external command is `gh auth token`, with its exit status, output and timeout read; two pattern classes, the token and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt`, read in-process, with the path and the pattern count printed and zero patterns a refusal; two file sets, the 23 `.txt` files for the token (no run needed `MISE_GITHUB_TOKEN`, so none was set) and the two documents that cite this scan, this file as committed (the worktree copy, which is the committed bytes once ACCEPTANCE 1 shows the tree clean) and the PR body `/tmp/dotfiles-wt/U116-pr-body.md`, for both classes. The raw outputs are not scanned for the redact words: the three `ls -la` listings hold the login name in the owner column, which the substitution named at the top of this section replaces on paste; the positive control after the injected failures shows what the class finds there. The script prints one line per file with the count of each class applied to it, and `scan clean (25 files, 0 matches)` only when every count is 0; a `.txt` count other than 23, an empty pattern list or any exception is exit `2` before any clean line. Neither the script nor its invocation holds a process substitution, a command substitution, a pipeline or a wrapper process. The script, then its output:
 
 ```python
 #!/usr/bin/env python3
-# Fail-closed redaction and credential scan, round 7 (standing orders 21
+# Fail-closed redaction and credential scan, round 8 (standing orders 21
 # and 22; brief amendments of 2026-10-29). One process whose only external
 # command is `gh auth token`, with its exit status, output and timeout
 # read. Two pattern classes: the token, and every non-comment, non-empty
@@ -1440,7 +1687,9 @@ Redaction and credential scan, round 7 (standing orders 21 and 22; the ROUND 4 t
 # pattern list or a .txt count other than the stated one is exit 2 before
 # a clean line can print. Every file question is asked of os.lstat or
 # open, with any error a refusal. The token and the redact words stay in
-# this process: they reach no command line and no file.
+# this process: they reach no command line and no file. Every printed
+# line, refusals included, passes through redact().
+import getpass
 import os
 import stat
 import subprocess
@@ -1465,8 +1714,37 @@ DOCUMENTS = (
 )
 
 
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
+
 def refuse(message):
-    print(f"scan REFUSED: {message}")
+    print(redact(f"scan REFUSED: {message}"))
     sys.exit(2)
 
 
@@ -1495,7 +1773,7 @@ def read_token():
     token = proc.stdout.strip().encode()
     if not token:
         refuse("gh auth token returned an empty token")
-    print("token from gh auth token patterns=1")
+    print(redact("token from gh auth token patterns=1"))
     return token
 
 
@@ -1506,7 +1784,7 @@ def read_redact_words():
             word = line.strip()
             if word and not word.startswith(b"#"):
                 words.append(word)
-    print(f"redact list {REDACT_LIST} patterns={len(words)}")
+    print(redact(f"redact list {REDACT_LIST} patterns={len(words)}"))
     if not words:
         refuse(f"redact list {REDACT_LIST} holds no pattern")
     return words
@@ -1540,7 +1818,7 @@ def count_matches(path, classes):
         count = sum(data.count(pattern) for pattern in patterns)
         line += f" {name}={count}"
         total += count
-    print(line)
+    print(redact(line))
     return total
 
 
@@ -1557,9 +1835,9 @@ def main():
         total += count_matches(path, [token_class, redact_class])
     files = len(outputs) + len(DOCUMENTS)
     if total:
-        print(f"scan FOUND ({files} files, {total} matches)")
+        print(redact(f"scan FOUND ({files} files, {total} matches)"))
         sys.exit(1)
-    print(f"scan clean ({files} files, 0 matches)")
+    print(redact(f"scan clean ({files} files, 0 matches)"))
 
 
 if __name__ == "__main__":
@@ -1613,7 +1891,7 @@ exit=2
 Second, the redact list path pointed at a missing file: `sed 's|^REDACT_LIST = .*|REDACT_LIST = "/tmp/U116-no-such-list.txt"|' /tmp/U116-scan.py > /tmp/U116-scan-missing-list.py; diff /tmp/U116-scan.py /tmp/U116-scan-missing-list.py; test ! -e /tmp/U116-no-such-list.txt && echo "no such file"; python3 -I /tmp/U116-scan-missing-list.py; echo "exit=$?"`. `open` raises and the exception's text is the refusal:
 
 ```text
-27c27
+29c29
 < REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
 ---
 > REDACT_LIST = "/tmp/U116-no-such-list.txt"
@@ -1627,7 +1905,7 @@ Third, the list replaced by a comment-only copy, the header line of the store's 
 
 ```text
 # Words records-sync.sh refuses to publish (U101). Never copied.
-27c27
+29c29
 < REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
 ---
 > REDACT_LIST = "/tmp/U116-redact-comment-only.txt"
@@ -1650,7 +1928,7 @@ restored
 Fifth, the count constant off by one: `sed 's/^EXPECTED_FILES = 23$/EXPECTED_FILES = 22/' /tmp/U116-scan.py > /tmp/U116-scan-22.py; diff /tmp/U116-scan.py /tmp/U116-scan-22.py; python3 -I /tmp/U116-scan-22.py; echo "exit=$?"`:
 
 ```text
-22c22
+24c24
 < EXPECTED_FILES = 23
 ---
 > EXPECTED_FILES = 22
@@ -1663,7 +1941,7 @@ exit=2
 Positive control, not a failure injection but proof that the redact class matches real data: a copy in which the raw outputs are scanned for both classes, `sed 's/count_matches(path, \[token_class\])  # raw outputs: token only/count_matches(path, [token_class, redact_class])/' /tmp/U116-scan.py > /tmp/U116-scan-control.py; diff /tmp/U116-scan.py /tmp/U116-scan-control.py; python3 -I /tmp/U116-scan-control.py; echo "exit=$?"`. It finds the login name in the owner column of the three `ls -la` listings (3 matches each, 9 in all), reports `scan FOUND` and exits `1`; only counts leave the process, never the matched text. The two documents count 0 for both classes:
 
 ```text
-124c124
+155c155
 <         total += count_matches(path, [token_class])  # raw outputs: token only
 ---
 >         total += count_matches(path, [token_class, redact_class])
@@ -1698,7 +1976,7 @@ scan FOUND (25 files, 9 matches)
 exit=1
 ```
 
-No-producer, no-swallow and no-wrapper check (the ROUND 5 AMENDMENT, extended by the ROUND 6 and ROUND 7 amendments): one file, `/tmp/U116-forms.py`, run as `python3 -I /tmp/U116-forms.py; echo "exit=$?"` from the worktree, reads this file and the PR body in-process and counts three classes of line per document. Inside fenced `sh` or `bash` blocks: lines that hold a dollar-paren command substitution, a process substitution or a pipe character. Inside fenced `python` blocks: lines that call one of the names the ROUND 6 AMENDMENT lists (`os.path.exists`, `os.path.lexists`, `os.path.isfile`, `os.path.isdir`, `os.path.islink`, `os.path.ismount`, `os.access`, `shutil.which`, any `.exists(`, `.is_file(`, `.is_dir(` or `.is_symlink(` method, which covers `pathlib.Path` and `os.DirEntry`, and any `.get(` lookup, which covers a dictionary default on a required key) and lines that open an `except` clause other than the one-line `except FileNotFoundError:` whose body holds no line beginning `refuse(` or `raise`. Inside both kinds of block, the third count of the ROUND 7 AMENDMENT: lines whose word in command position is a wrapper process, `perl`, `timeout`, `xargs`, `nohup`, `nice` or `setsid` by its basename, or `env` followed by `-i`, or `bash` or `sh` followed by `-c`. For a shell line, read with `shlex`, command position is the first word of each simple command (after `;`, `&&`, `||`, `&` or the pipe character; leading `NAME=value` words skipped; a redirection operator and the word after it are not command words). For a Python block, read with `tokenize`, it is the first string element of a list literal (a subscript is told apart by the token before the bracket) or the first word of a string handed to `subprocess.run`; the string elements after it are read too, an f-string as its source text, so `env -i` counts with its flag, and behind `env` the next command word, its options and `NAME=value` words skipped, is tested again and counted on its own line. A list whose first element is a name rather than a string, such as the runner's `[MISE, *args]`, has no literal to test; `MISE` is what `resolve_mise` returned. A fence of three or more backticks opens a block and a bare fence at least as long closes it, so the four-backtick fences around this script and around its positive control's script (both hold triple backticks in their text) count as `python` blocks too. It prints the block counts and the three line counts per document; exit 0 when every line count is 0, exit 1 when any is not, exit 2 on any exception (a block `shlex` or `tokenize` cannot read included) or a document that ends inside a fence. The PR body's fenced blocks are all `text`, so its block counts are 0. Run against the round-6 file as committed at `a3efa54a`, the third count is 2, the lines named under The runner above (169, `/usr/bin/env` followed by `-i`, and 179, `perl` behind them); the positive control below pastes that run. The script, then its output:
+No-producer, no-swallow and no-wrapper check (the ROUND 5 AMENDMENT, extended by the ROUND 6 and ROUND 7 amendments): one file, `/tmp/U116-forms.py`, run as `python3 -I /tmp/U116-forms.py; echo "exit=$?"` from the worktree, reads this file and the PR body in-process and counts three classes of line per document; round 8 routed its two `print` sites (the per-document line and the refusal) through `redact` and changed nothing else in it. Inside fenced `sh` or `bash` blocks: lines that hold a dollar-paren command substitution, a process substitution or a pipe character. Inside fenced `python` blocks: lines that call one of the names the ROUND 6 AMENDMENT lists (`os.path.exists`, `os.path.lexists`, `os.path.isfile`, `os.path.isdir`, `os.path.islink`, `os.path.ismount`, `os.access`, `shutil.which`, any `.exists(`, `.is_file(`, `.is_dir(` or `.is_symlink(` method, which covers `pathlib.Path` and `os.DirEntry`, and any `.get(` lookup, which covers a dictionary default on a required key) and lines that open an `except` clause other than the one-line `except FileNotFoundError:` whose body holds no line beginning `refuse(` or `raise`. Inside both kinds of block, the third count of the ROUND 7 AMENDMENT: lines whose word in command position is a wrapper process, `perl`, `timeout`, `xargs`, `nohup`, `nice` or `setsid` by its basename, or `env` followed by `-i`, or `bash` or `sh` followed by `-c`. For a shell line, read with `shlex`, command position is the first word of each simple command (after `;`, `&&`, `||`, `&` or the pipe character; leading `NAME=value` words skipped; a redirection operator and the word after it are not command words). For a Python block, read with `tokenize`, it is the first string element of a list literal (a subscript is told apart by the token before the bracket) or the first word of a string handed to `subprocess.run`; the string elements after it are read too, an f-string as its source text, so `env -i` counts with its flag, and behind `env` the next command word, its options and `NAME=value` words skipped, is tested again and counted on its own line. A list whose first element is a name rather than a string, such as the runner's `[MISE, *args]`, has no literal to test; `MISE` is what `resolve_mise` returned. A fence of three or more backticks opens a block and a bare fence at least as long closes it, so the four-backtick fences around this script and around its positive control's script (both hold triple backticks in their text) count as `python` blocks too. It prints the block counts and the three line counts per document; exit 0 when every line count is 0, exit 1 when any is not, exit 2 on any exception (a block `shlex` or `tokenize` cannot read included) or a document that ends inside a fence. The PR body's fenced blocks are all `text`, so its block counts are 0. Run against the round-6 file as committed at `a3efa54a`, the third count is 2, the lines named under The runner above (169, `/usr/bin/env` followed by `-i`, and 179, `perl` behind them); the positive control below pastes that run. The script, then its output:
 
 ````python
 #!/usr/bin/env python3
@@ -1724,8 +2002,10 @@ No-producer, no-swallow and no-wrapper check (the ROUND 5 AMENDMENT, extended by
 # the three line counts per document; exit 0 when every line count is 0,
 # exit 1 when any is not, exit 2 on any exception (a block that shlex or
 # tokenize cannot read included) or on a document that ends inside a
-# fence, before a result line for that document.
+# fence, before a result line for that document. Every printed line,
+# refusals included, passes through redact().
 import ast
+import getpass
 import io
 import keyword
 import os
@@ -1772,8 +2052,37 @@ QUIET = (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT, token
 RUN_CALL = ["subprocess", ".", "run", "("]
 
 
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
+
 def refuse(message):
-    print(f"check REFUSED: {message}")
+    print(redact(f"check REFUSED: {message}"))
     sys.exit(2)
 
 
@@ -1954,7 +2263,7 @@ def count(path):
         block.append(text)
     if state is not None:
         raise ValueError(f"{path} ends inside a fenced block")
-    print(f"{path} shell-blocks={shell_blocks} producer-lines={producer} python-blocks={python_blocks} swallow-lines={swallow} wrapper-lines={wrapper}")
+    print(redact(f"{path} shell-blocks={shell_blocks} producer-lines={producer} python-blocks={python_blocks} swallow-lines={swallow} wrapper-lines={wrapper}"))
     return producer + swallow + wrapper
 
 
@@ -1971,12 +2280,12 @@ if __name__ == "__main__":
 ````
 
 ```text
-/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md shell-blocks=6 producer-lines=0 python-blocks=7 swallow-lines=0 wrapper-lines=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md shell-blocks=7 producer-lines=0 python-blocks=8 swallow-lines=0 wrapper-lines=0
 /tmp/dotfiles-wt/U116-pr-body.md shell-blocks=0 producer-lines=0 python-blocks=0 swallow-lines=0 wrapper-lines=0
 exit=0
 ```
 
-Its positive control: `/tmp/U116-forms-inject-7.py` writes `/tmp/U116-forms-control.md`, a copy of this file with two lines inserted after its first `sh` fence (a pipeline, `true`, a pipe, `true`; and `timeout 5 true`) and two after its first `python` fence (a call of the second name of the ROUND 6 list on the lockfile path; and a `subprocess.run` list whose first element is `perl`, with the round-6 arguments behind it), writes `/tmp/U116-forms-r6.md`, the round-6 file as committed at `a3efa54a`, from one `subprocess.run` of `git show` whose status it reads, and writes `/tmp/U116-forms-control.py`, the check with its two document paths replaced in-process by those two files; it prints what it inserted and replaced. The check over those two files then counts, in the injected copy, one producer line, one swallow line and two wrapper lines, and in the round-6 file as committed, no producer line, no swallow line and the two wrapper lines of its runner, and exits `1`. The injection script, the two commands from the worktree, and their outputs:
+Its positive control: `/tmp/U116-forms-inject-8.py` (the round-7 script with its printed lines and `SystemExit` messages routed through `redact`, nothing else) writes `/tmp/U116-forms-control.md`, a copy of this file with two lines inserted after its first `sh` fence (a pipeline, `true`, a pipe, `true`; and `timeout 5 true`) and two after its first `python` fence (a call of the second name of the ROUND 6 list on the lockfile path; and a `subprocess.run` list whose first element is `perl`, with the round-6 arguments behind it), writes `/tmp/U116-forms-r6.md`, the round-6 file as committed at `a3efa54a`, from one `subprocess.run` of `git show` whose status it reads, and writes `/tmp/U116-forms-control.py`, the check with its two document paths replaced in-process by those two files; it prints what it inserted and replaced. The check over those two files then counts, in the injected copy, one producer line, one swallow line and two wrapper lines, and in the round-6 file as committed, no producer line, no swallow line and the two wrapper lines of its runner, and exits `1`. The injection script, the two commands from the worktree, and their outputs:
 
 ````python
 #!/usr/bin/env python3
@@ -1992,7 +2301,10 @@ Its positive control: `/tmp/U116-forms-inject-7.py` writes `/tmp/U116-forms-cont
 # document paths replaced by those two files. Prints what it inserted and
 # replaced. Any failure raises; nothing here is caught. The injected
 # lines are spelled apart below so that this script, pasted into the
-# evaluation file, holds none of the forms the check counts.
+# evaluation file, holds none of the forms the check counts. Every
+# printed line and every SystemExit message passes through redact().
+import getpass
+import os
 import subprocess
 import sys
 
@@ -2013,6 +2325,35 @@ INJECTED = {
     "```python": [SWALLOW, PERL],
 }
 
+
+def redactions():
+    # The strings redact() replaces, longest first so a home path is
+    # replaced before the login name inside it: the real home directory in
+    # both spellings (the resolved path of ~, and HOME when it is set) as
+    # ~, and the login name (getpass, and USER when it is set) as <user>.
+    # The optional variables are read by membership and index, not by a
+    # lookup with a default.
+    homes = [os.path.realpath(os.path.expanduser("~"))]
+    if "HOME" in os.environ:
+        homes.append(os.environ["HOME"])
+    users = [getpass.getuser()]
+    if "USER" in os.environ:
+        users.append(os.environ["USER"])
+    pairs = [(home, "~") for home in homes if len(home) > 1] + [(user, "<user>") for user in users if user]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(dict.fromkeys(pairs))
+
+
+REDACTIONS = redactions()
+
+
+def redact(text):
+    # Every string that reaches stdout or stderr passes through here,
+    # refusals and receipts included.
+    for literal, replacement in REDACTIONS:
+        text = text.replace(literal, replacement)
+    return text
+
 with open(SOURCE, encoding="utf-8") as handle:
     lines = handle.readlines()
 for fence, inserts in INJECTED.items():
@@ -2020,10 +2361,10 @@ for fence, inserts in INJECTED.items():
         if line.rstrip("\n") == fence:
             for offset, text in enumerate(inserts, 1):
                 lines.insert(index + offset, text)
-                print(f"{CONTROL_MD}: inserted at line {index + offset + 1}: {text.rstrip()}")
+                print(redact(f"{CONTROL_MD}: inserted at line {index + offset + 1}: {text.rstrip()}"))
             break
     else:
-        raise SystemExit(f"no {fence} fence found")
+        raise SystemExit(redact(f"no {fence} fence found"))
 with open(CONTROL_MD, "w", encoding="utf-8") as handle:
     handle.writelines(lines)
 
@@ -2036,36 +2377,36 @@ with open(ROUND6_MD, "wb") as handle:
         timeout=60,
     )
 if proc.returncode != 0:
-    raise SystemExit(f"git show exited {proc.returncode}: {proc.stderr.decode()}")
-print(f"{ROUND6_MD}: git show a3efa54a:{RELATIVE} exit=0")
+    raise SystemExit(redact(f"git show exited {proc.returncode}: {proc.stderr.decode()}"))
+print(redact(f"{ROUND6_MD}: git show a3efa54a:{RELATIVE} exit=0"))
 
 with open(CHECK, encoding="utf-8") as handle:
     check = handle.read()
 for old, new in ((SOURCE, CONTROL_MD), (PR_BODY, ROUND6_MD)):
     if check.count(f'    "{old}",\n') != 1:
-        raise SystemExit(f"{CHECK} does not name {old} once")
+        raise SystemExit(redact(f"{CHECK} does not name {old} once"))
     check = check.replace(f'    "{old}",\n', f'    "{new}",\n')
-    print(f"{CONTROL_PY}: {old} replaced by {new}")
+    print(redact(f"{CONTROL_PY}: {old} replaced by {new}"))
 with open(CONTROL_PY, "w", encoding="utf-8") as handle:
     handle.write(check)
 sys.exit(0)
 ````
 
 ```sh
-python3 -I /tmp/U116-forms-inject-7.py; echo "exit=$?"
+python3 -I /tmp/U116-forms-inject-8.py; echo "exit=$?"
 python3 -I /tmp/U116-forms-control.py; echo "exit=$?"
 ```
 
 ```text
-/tmp/U116-forms-control.md: inserted at line 91: true | true
-/tmp/U116-forms-control.md: inserted at line 92: timeout 5 true
+/tmp/U116-forms-control.md: inserted at line 122: true | true
+/tmp/U116-forms-control.md: inserted at line 123: timeout 5 true
 /tmp/U116-forms-control.md: inserted at line 20: if os.path.lexists(LOCK):
 /tmp/U116-forms-control.md: inserted at line 21: subprocess.run(["perl", "-e", "alarm 900; exec @ARGV", "mise", "--version"])
 /tmp/U116-forms-r6.md: git show a3efa54a:.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md exit=0
 /tmp/U116-forms-control.py: /tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md replaced by /tmp/U116-forms-control.md
 /tmp/U116-forms-control.py: /tmp/dotfiles-wt/U116-pr-body.md replaced by /tmp/U116-forms-r6.md
 exit=0
-/tmp/U116-forms-control.md shell-blocks=6 producer-lines=1 python-blocks=7 swallow-lines=1 wrapper-lines=2
+/tmp/U116-forms-control.md shell-blocks=7 producer-lines=1 python-blocks=8 swallow-lines=1 wrapper-lines=2
 /tmp/U116-forms-r6.md shell-blocks=4 producer-lines=0 python-blocks=4 swallow-lines=0 wrapper-lines=2
 exit=1
 ```

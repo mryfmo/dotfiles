@@ -40,7 +40,7 @@ enabled = true
 enabled = true
 
 [marketplaces.ponytail]
-ref = "09c434ab73ca43761c5d8b0c5d341926c2fba710"
+ref = "7801d061243d7b753bad0e0b3c057cd250b11755"
 source_type = "git"
 source = "https://github.com/DietrichGebert/ponytail.git"
 

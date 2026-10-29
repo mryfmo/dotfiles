@@ -5,15 +5,16 @@
 GOAL, CHANGE and CONTEXT hold no trigger term, or its CLOSURE section names exactly one mechanism. Exit 1: a trigger
 term fired and the brief has no CLOSURE section, or the CLOSURE section is not one mechanism name (`ast`,
 `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text on the same line), or no GOAL,
-CHANGE or CONTEXT section was found at all. Exit 2: usage, or a file that cannot be read or decoded; an unreadable
-brief is never read as clean.
+CHANGE or CONTEXT section was found at all, or one section heading appears twice. Exit 2: usage, or a file that
+cannot be read or decoded; an unreadable brief is never read as clean.
 
 Thirteen `treadmill` and `premise` rows in the program's decisions share one shape (handoff
 `02-audit-treadmill-analysis.md`): a hand-written reader over an open-ended input passed a fresh audit once per round
 until, three or more rounds in, the mechanism changed to an AST walk, one strict parser module, an exact-form
 allowlist, or removal. The trigger terms below are the words those briefs' GOAL, CHANGE and CONTEXT held. A section
-is a line that is exactly its upper-case name; its body runs to the next such line. Only SCOPE, FORBIDDEN and the
-other sections name paths and limits, so a term there fires nothing.
+is a line that is exactly its upper-case name; its body runs to the next such line, and a brief has one of each, so a
+heading that appears twice is refused rather than merged (a merge would read `CLOSURE\nast\nCLOSURE\n` as `ast`).
+Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires nothing.
 """
 
 import argparse
@@ -56,22 +57,31 @@ TRIGGERS = (
     ("quote", "quoting rules differ by shell, by context and by the word's position"),
 )
 MECHANISMS = ("ast", "parser-module", "allowlist", "remove")
-# The one regular expression over the brief (FORBIDDEN): the trigger terms as whole words, case-insensitive.
-TRIGGER_WORD = re.compile(r"\b(?:" + "|".join(re.escape(term) for term, _ in TRIGGERS) + r")\b", re.IGNORECASE)
-REASONS = {term: reason for term, reason in TRIGGERS}
+# The one regular expression over the brief (FORBIDDEN): the trigger terms as whole words, case-insensitive. One named
+# group per table row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds `ſhell`
+# and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.
+TRIGGER_WORD = re.compile(
+    r"\b(?:" + "|".join(f"(?P<{term}>{re.escape(term)})" for term, _ in TRIGGERS) + r")\b", re.IGNORECASE
+)
+REASONS = dict(TRIGGERS)
 
 
 def sections(text):
-    """The brief's sections, name to body text; a name that appears twice has its bodies joined."""
+    """(name to body text, None), or (None, why) when one heading appears twice, naming it and both line numbers."""
     found = {}
+    heading_line = {}
     current = None
-    for line in text.splitlines():
-        if line.rstrip() in SECTIONS:
-            current = line.rstrip()
-            found.setdefault(current, [])
+    for number, line in enumerate(text.splitlines(), 1):
+        name = line.rstrip()
+        if name in SECTIONS:
+            if name in found:
+                return None, f"{name} appears twice (lines {heading_line[name]} and {number}); a brief has one of each"
+            current = name
+            found[current] = []
+            heading_line[name] = number
         elif current is not None:
             found[current].append(line)
-    return {name: "\n".join(body) for name, body in found.items()}
+    return {name: "\n".join(body) for name, body in found.items()}, None
 
 
 def first_trigger(found):
@@ -79,7 +89,7 @@ def first_trigger(found):
     for name in JUDGED:
         match = TRIGGER_WORD.search(found.get(name, ""))
         if match:
-            return name, match.group(0).lower()
+            return name, match.lastgroup
     return None
 
 
@@ -109,7 +119,10 @@ def main(argv=None):
     except (OSError, UnicodeDecodeError) as error:
         print(f"brief-check: cannot read {args.brief}: {error}", file=sys.stderr)
         return 2
-    found = sections(text)
+    found, repeated = sections(text)
+    if found is None:
+        print(f"brief-check: {args.brief}: {repeated}")
+        return 1
     if not any(name in found for name in JUDGED):
         print(f"brief-check: {args.brief} has no GOAL, CHANGE or CONTEXT section")
         return 1

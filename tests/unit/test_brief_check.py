@@ -70,6 +70,21 @@ class BriefCheckTest(unittest.TestCase):
                 self.assertIn(f'brief-check: GOAL holds "{term}"', result.stdout)
                 self.assertIn("no CLOSURE section", result.stdout)
 
+    def test_a_spelling_the_regex_folds_onto_a_term_prints_that_term_s_decision_line_never_a_traceback(self):
+        # Round 1: `ſhell` matched under `re.IGNORECASE`, then `"ſhell".lower()` missed the reasons table and the
+        # script died with a KeyError traceback. The reason now comes from the table row the regex matched.
+        for spelling, term in (("\u017fhell", "shell"), ("hoo\u212a", "hook"), ("wor\u212atree", "worktree")):
+            with self.subTest(spelling=spelling):
+                result = self.check_text(brief(GOAL=f"A {spelling} reader."))
+                self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+                prefix = f'brief-check: GOAL holds "{term}" ('
+                self.assertEqual(prefix, result.stdout[: len(prefix)], result.stdout)
+                self.assertIn("; no CLOSURE section\n", result.stdout)
+                result = self.check_text(brief(GOAL=f"A {spelling} reader.", CLOSURE="ast"))
+                self.assertEqual(
+                    (0, f'brief-check: GOAL holds "{term}"; closure: ast\n'), (result.returncode, result.stdout)
+                )
+
     def test_a_term_in_change_or_context_fires_and_a_capitalised_or_backticked_term_counts(self):
         for section, body in (
             ("CHANGE", "1. Rewrite the Parser."),
@@ -148,13 +163,29 @@ class BriefCheckTest(unittest.TestCase):
         )
 
     def test_a_section_line_is_the_exact_upper_case_name(self):
-        # `GOAL:` and `## GOAL` are prose, not section lines, so the title and such lines fire nothing; a repeated
-        # section's bodies are read together, so two CLOSURE sections of one mechanism each name two.
+        # `GOAL:` and `## GOAL` are prose, not section lines, so the title and such lines fire nothing.
         result = self.check_text("GOAL: a shell reader\n## GOAL\nshell\n" + brief(GOAL=CLEAN_GOAL))
-        self.assertEqual(0, result.returncode, result.stdout)
-        result = self.check_text(brief(GOAL="A shell reader.", CLOSURE="ast") + "CLOSURE\nremove\n")
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn("CLOSURE names 2 mechanisms", result.stdout)
+        self.assertEqual(
+            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n"), (result.returncode, result.stdout)
+        )
+
+    def test_a_repeated_section_heading_exits_1_naming_the_heading_and_both_lines(self):
+        # Round 1 merged the bodies, so `GOAL\nshell\nCLOSURE\nast\nCLOSURE\n` read the empty second CLOSURE as `ast`.
+        for text, message in (
+            ("GOAL\nshell\nCLOSURE\nast\nCLOSURE\n", "CLOSURE appears twice (lines 3 and 5)"),
+            ("GOAL\nshell\nCLOSURE\nast\nCLOSURE\nremove\n", "CLOSURE appears twice (lines 3 and 5)"),
+            (
+                brief(GOAL=CLEAN_GOAL, SCOPE="one file") + "GOAL\n" + CLEAN_GOAL + "\n",
+                "GOAL appears twice (lines 3 and 9)",
+            ),
+            ("SCOPE  \none file\nSCOPE\n", "SCOPE appears twice (lines 1 and 3)"),
+        ):
+            with self.subTest(text=text[:40]):
+                result = self.check_text(text)
+                self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+                self.assertEqual(
+                    f"brief-check: {self.dir / 'U0-scratch.md'}: {message}; a brief has one of each\n", result.stdout
+                )
 
     def test_an_unreadable_or_undecodable_file_and_a_usage_error_exit_2_with_nothing_on_stdout(self):
         missing = self.dir / "absent.md"

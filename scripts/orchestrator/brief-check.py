@@ -1,13 +1,16 @@
 #!/usr/bin/env -S python3 -I
-"""Refuse a brief that judges an open-ended input without naming the mechanism that closes it (regime-cutover U104).
+"""Refuse a brief that judges an open-ended input without naming its closing form and its trust boundary (regime-cutover
+U104, U121).
 
 `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the
-checkout, reads one brief and prints one line. Exit 0: the brief's GOAL, CHANGE and CONTEXT hold no trigger term, or
-its CLOSURE section names exactly one mechanism. Exit 1: a trigger term fired and the brief has no CLOSURE section, or
-the CLOSURE section is not one mechanism name (`ast`, `parser-module`, `allowlist` or `remove`, optionally followed by
-a colon and free text on the same line), or no GOAL, CHANGE or CONTEXT section was found at all, or one section
-heading appears twice. Exit 2: usage, or a file that cannot be read or decoded; an unreadable brief is never read as
-clean.
+checkout, reads one brief. Exit 0, printing nothing: the brief's GOAL, CHANGE and CONTEXT hold no trigger term, or
+its CLOSURE section names exactly one form and its TRUST section names what the unit trusts. Exit 1, one reason per
+line on stdout: a trigger term fired and there is no CLOSURE section, or CLOSURE names zero, two or more forms or a
+word outside `ast`, `parser-module`, `allowlist` and `remove`; a trigger term fired and there is no TRUST section, or
+it is under 40 characters, or it holds neither `trusted` nor `trusts`; CLOSURE names `allowlist` or `ast` while CHANGE
+holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or no GOAL, CHANGE or
+CONTEXT section was found at all. Exit 2, nothing on stdout: usage, a file that cannot be read or decoded, or a
+section heading that appears twice; a brief the check cannot read is never read as clean.
 
 The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the
 same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as
@@ -16,13 +19,14 @@ policy allows that path alone. Before anything else the file hashes itself and r
 stdout) when the digest differs from its pin, so a repository without `scripts/orchestrator/` runs the same checked
 copy and a rewritten copy judges no brief.
 
-Thirteen `treadmill` and `premise` rows in the program's decisions share one shape (handoff
-`02-audit-treadmill-analysis.md`): a hand-written reader over an open-ended input passed a fresh audit once per round
-until, three or more rounds in, the mechanism changed to an AST walk, one strict parser module, an exact-form
-allowlist, or removal. The trigger terms below are the words those briefs' GOAL, CHANGE and CONTEXT held. A section
-is a line that is exactly its upper-case name; its body runs to the next such line, and a brief has one of each, so a
-heading that appears twice is refused rather than merged (a merge would read `CLOSURE\nast\nCLOSURE\n` as `ast`).
-Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires nothing.
+The data shape: a brief is a sequence of upper-case section headings, each a line that is exactly its name (plus the
+`WORKER RULES (...)` line, whose body names shells, paths and hooks as rules, not as the thing judged), each followed
+by its text; `sections` parses it into one `dict[str, str]` and refuses a heading that appears twice (a merge would
+read `CLOSURE\nast\nCLOSURE\n` as `ast`). The trigger terms are one tuple of (term, reason) rows: the words the
+thirteen treadmill rows of the program's `handoff/02-audit-treadmill-analysis.md` and U109 and U112 held in GOAL,
+CHANGE and CONTEXT before three or more rounds found the form. The forms are one tuple of four. A later unit adds a
+term by adding a row. Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires
+nothing.
 """
 
 import argparse
@@ -92,17 +96,21 @@ SECTIONS = (
     "VERIFY",
     "TIMEBOX",
     "FORBIDDEN",
+    "CLOSURE",
+    "TRUST",
     "REPORT",
     "STANDING",
-    "CLOSURE",
 )
-# The sections whose text says what the unit judges; SCOPE and FORBIDDEN name paths and limits, not the mechanism.
+# The one heading that carries a parenthesised note: `WORKER RULES (standing orders ...)`.
+WORKER_RULES = "WORKER RULES"
+# The sections whose text says what the unit judges; SCOPE and FORBIDDEN name paths and limits, not the form.
 JUDGED = ("GOAL", "CHANGE", "CONTEXT")
-# One row per term, (term, why a brief holding it must name its closing mechanism). A later unit adds a row.
+# One row per term, (term, why a brief holding it must name its closing form and its trust boundary). A term is
+# matched as a whole word, any case; a space in a term also matches a hyphen (`fail-closed`); a term ending in `*`
+# matches every word that begins with it (`tokenize`, `tokenizer`, `tokenization`). A later unit adds a row.
 TRIGGERS = (
     ("shell", "shell text has quoting, expansion and word-splitting forms no hand-written reader lists"),
-    ("tokenize", "a hand-written tokenizer leaks on the next token form its author did not list"),
-    ("tokenizer", "a hand-written tokenizer leaks on the next token form its author did not list"),
+    ("tokeniz*", "a hand-written tokenizer leaks on the next token form its author did not list"),
     ("parse", "hand parsing of an open-ended input is the shape of every treadmill row"),
     ("parser", "a hand-written parser is replaced by an AST walk or one strict parser module in the end"),
     ("regex", "a regular expression over an open-ended input matches forms its author did not list"),
@@ -117,58 +125,148 @@ TRIGGERS = (
     ("wget", "fetched content is open-ended input"),
     ("heredoc", "here-document bodies carry every quoting and substitution form"),
     ("quote", "quoting rules differ by shell, by context and by the word's position"),
+    ("bound", "a bound over an open-ended input is a check whose cases its author listed (U109: 24 rounds)"),
+    ("refuse", "a refusal decides on evidence read from an open-ended input"),
+    ("fail closed", "a fail-closed read decides on a producer's output, an open-ended input (U112: 18 rounds)"),
+    ("untrusted", "untrusted input is open-ended by definition"),
+    ("sandbox", "a sandbox boundary is judged from paths, mounts and probes the reader did not list"),
+    ("lint", "a lint over text is a hand-written reader unless it walks the language's own tree"),
+    ("rule", "a rule over text has cases its author did not list"),
+    ("allowlist", "an allowlist closes only as an exact-form table; written as prose it is a denylist"),
+    ("denylist", "a denylist over an open-ended input never closes (research/04 entries 14 and 15)"),
+    ("walk", "a walk over a tree or a directory meets node kinds its author did not list"),
+    ("census", "a census of a scope is complete only against a closed set"),
 )
-MECHANISMS = ("ast", "parser-module", "allowlist", "remove")
-# The one regular expression over the brief (FORBIDDEN): the trigger terms as whole words, case-insensitive. One named
-# group per table row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds `ſhell`
-# and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.
-TRIGGER_WORD = re.compile(
-    r"\b(?:" + "|".join(f"(?P<{term}>{re.escape(term)})" for term, _ in TRIGGERS) + r")\b", re.IGNORECASE
-)
-REASONS = dict(TRIGGERS)
+# The four closing forms; a CLOSURE names exactly one.
+FORMS = ("ast", "parser-module", "allowlist", "remove")
+# A CLOSURE naming one of these forms while CHANGE holds one of the phrases below is a denylist dressed as a form.
+DRESSED_FORMS = ("ast", "allowlist")
+DRESSED_PHRASES = ("denylist", "forbidden words", "list of commands")
+# The TRUST section names what the unit trusts and does not read: at least this many characters, one of these words.
+TRUST_WORDS = ("trusted", "trusts")
+TRUST_MINIMUM = 40
+
+
+def word_pattern(terms):
+    """One regex over the terms, each a whole word, any case, with one named group per row (`t<index>`).
+
+    One group per row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds
+    `ſhell` and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.
+    """
+    alternatives = []
+    for index, term in enumerate(terms):
+        stem = term.endswith("*")
+        body = "[ -]".join(re.escape(part) for part in term.rstrip("*").split(" "))
+        alternatives.append(rf"(?P<t{index}>\b{body}" + ("" if stem else r"\b") + ")")
+    return re.compile("|".join(alternatives), re.IGNORECASE)
+
+
+TRIGGER_WORD = word_pattern([term for term, _ in TRIGGERS])
+# The reason by the term as a reason line names it, without a stem's `*`.
+REASONS = {term.rstrip("*"): reason for term, reason in TRIGGERS}
+DRESSED_WORD = word_pattern(DRESSED_PHRASES)
+TRUST_WORD = word_pattern(TRUST_WORDS)
+
+
+def matched_term(pattern, terms, text):
+    """The row of `terms` the first match in `text` belongs to, stripped of a stem `*`, or None."""
+    match = pattern.search(text)
+    if match is None:
+        return None
+    return terms[int(match.lastgroup[1:])].rstrip("*")
+
+
+class BriefError(Exception):
+    """The text is not a brief in the grammar, so nothing is judged (exit 2)."""
+
+
+def heading(line):
+    """The section name when `line` is a heading, else None."""
+    name = line.rstrip()
+    if name in SECTIONS:
+        return name
+    if name.startswith(WORKER_RULES + " (") and name.endswith(")"):
+        return WORKER_RULES
+    return None
 
 
 def sections(text):
-    """(name to body text, None), or (None, why) when one heading appears twice, naming it and both line numbers."""
+    """The brief as name to body text; a heading that appears twice raises BriefError naming both lines."""
     found = {}
     heading_line = {}
     current = None
     for number, line in enumerate(text.splitlines(), 1):
-        name = line.rstrip()
-        if name in SECTIONS:
+        name = heading(line)
+        if name is not None:
             if name in found:
-                return None, f"{name} appears twice (lines {heading_line[name]} and {number}); a brief has one of each"
+                raise BriefError(
+                    f"{name} appears twice (lines {heading_line[name]} and {number}); a brief has one of each"
+                )
             current = name
             found[current] = []
             heading_line[name] = number
         elif current is not None:
             found[current].append(line)
-    return {name: "\n".join(body) for name, body in found.items()}, None
+    return {name: "\n".join(body) for name, body in found.items()}
 
 
 def first_trigger(found):
     """(section, term) of the first trigger term in a judged section, or None."""
     for name in JUDGED:
-        match = TRIGGER_WORD.search(found.get(name, ""))
-        if match:
-            return name, match.lastgroup
+        term = matched_term(TRIGGER_WORD, [term for term, _ in TRIGGERS], found.get(name, ""))
+        if term is not None:
+            return name, term
     return None
 
 
 def closure(body):
-    """(mechanism, None) when the CLOSURE body is exactly one mechanism line, else (None, why it is not)."""
+    """(form, None) when the CLOSURE body is exactly one form line, else (None, why it is not)."""
     lines = [line.strip() for line in body.splitlines() if line.strip()]
     if not lines:
         return None, "CLOSURE is empty"
     named = []
     for line in lines:
         name = line.split(":", 1)[0].rstrip()
-        if name not in MECHANISMS:
-            return None, f'CLOSURE line "{line}" names no mechanism ({", ".join(MECHANISMS)})'
+        if name not in FORMS:
+            return None, f'CLOSURE line "{line}" names no form ({", ".join(FORMS)})'
         named.append(name)
     if len(named) != 1:
-        return None, f"CLOSURE names {len(named)} mechanisms ({', '.join(named)}), not one"
+        return None, f"CLOSURE names {len(named)} forms ({', '.join(named)}), not one"
     return named[0], None
+
+
+def trust(body):
+    """None when the TRUST body names what the unit trusts, else why it does not."""
+    text = " ".join(body.split())
+    if len(text) < TRUST_MINIMUM:
+        return f"TRUST is {len(text)} characters, under {TRUST_MINIMUM}"
+    if matched_term(TRUST_WORD, TRUST_WORDS, text) is None:
+        return "TRUST names nothing as trusted (no word `trusted` or `trusts`)"
+    return None
+
+
+def judge(found):
+    """The reasons the parsed brief is refused, one per line; empty when it passes."""
+    if not any(name in found for name in JUDGED):
+        return ["no GOAL, CHANGE or CONTEXT section"]
+    reasons = []
+    trigger = first_trigger(found)
+    form, fault = closure(found["CLOSURE"]) if "CLOSURE" in found else (None, "no CLOSURE section")
+    if trigger is None:
+        if fault is not None and "CLOSURE" in found:
+            reasons.append(fault)  # a CLOSURE the check cannot read is never read as clean
+    else:
+        section, term = trigger
+        if form is None:
+            reasons.append(f'{section} holds "{term}" ({REASONS[term]}); {fault}')
+        trust_fault = trust(found["TRUST"]) if "TRUST" in found else "no TRUST section"
+        if trust_fault is not None:
+            reasons.append(f'{section} holds "{term}"; {trust_fault}')
+    if form in DRESSED_FORMS:
+        phrase = matched_term(DRESSED_WORD, DRESSED_PHRASES, found.get("CHANGE", ""))
+        if phrase is not None:
+            reasons.append(f'CLOSURE names {form} and CHANGE holds "{phrase}": a denylist dressed as a form')
+    return reasons
 
 
 def main(argv=None):
@@ -181,27 +279,15 @@ def main(argv=None):
     except (OSError, UnicodeDecodeError) as error:
         print(f"brief-check: cannot read {args.brief}: {error}", file=sys.stderr)
         return 2
-    found, repeated = sections(text)
-    if found is None:
-        print(f"brief-check: {args.brief}: {repeated}")
-        return 1
-    if not any(name in found for name in JUDGED):
-        print(f"brief-check: {args.brief} has no GOAL, CHANGE or CONTEXT section")
-        return 1
-    trigger = first_trigger(found)
-    mechanism, fault = closure(found["CLOSURE"]) if "CLOSURE" in found else (None, "no CLOSURE section")
-    if trigger is None:
-        if fault is not None and "CLOSURE" in found:
-            print(f"brief-check: {fault}")  # a CLOSURE the check cannot read is never read as clean
-            return 1
-        print("brief-check: no trigger term in GOAL, CHANGE or CONTEXT")
-        return 0
-    name, term = trigger
-    if mechanism is None:
-        print(f'brief-check: {name} holds "{term}" ({REASONS[term]}); {fault}')
-        return 1
-    print(f'brief-check: {name} holds "{term}"; closure: {mechanism}')
-    return 0
+    try:
+        found = sections(text)
+    except BriefError as error:
+        print(f"brief-check: cannot read {args.brief}: {error}", file=sys.stderr)
+        return 2
+    reasons = judge(found)
+    for reason in reasons:
+        print(f"brief-check: {args.brief}: {reason}")
+    return 1 if reasons else 0
 
 
 if __name__ == "__main__":

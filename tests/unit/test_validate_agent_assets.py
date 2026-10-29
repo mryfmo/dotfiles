@@ -2333,36 +2333,180 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         """Round 7 verdict on 1632d807: the lazy capture's lookahead rescanned the rest of the line at every step, so a
         quoted value behind 2,000, 8,000 and 32,000 spaces took 0.018, 0.264 and 4.191 s against 0.0001 s on
         origin/main, and a small padded file could stall validation. The capture is one greedy class to the LF and
-        the trailing whitespace is trimmed in code, so a line padded with 32,000 spaces or 32,000 low-entropy
-        characters is scanned and masked under half a second (0.02 and 0.03 s measured; the lookahead took 4.2 s for
-        the spaces), and the value behind the padding is still reported, with the whole rest of the line as the
-        secret."""
+        the trailing whitespace is trimmed in code, so the scan is linear in the line.
+
+        The rule: the line is scanned and masked at 2,000, 8,000 and 32,000 padding characters in this process (the
+        least of three runs each), and each 4x step may grow the time by less than 8x; one loose absolute cap of 5 s
+        on any single run still fails a hang. Round 8 bounded every run at 0.5 s, which measured the runner's speed,
+        not the scanner's complexity: CI on 1bd17d87 (run 40826819351, the ubuntu-26.04 client row) took 0.648 and
+        0.676 s for 32,000 low-entropy characters, a linear scan on a slow shared runner. The value behind the
+        padding is still reported, with the whole rest of the line as the secret."""
         module = self.module
         mask = module.SECRET_MASK
-        bound = 0.5
-        for length in (2_000, 8_000, 32_000):
-            for padding_kind, padding in (("spaces", " " * length), ("low-entropy characters", "low-" * (length // 4))):
-                for kind, text in (
-                    ("inside the quotes", f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n'),
-                    ("after the value", f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n'),
-                ):
+        lengths = (2_000, 8_000, 32_000)
+        # 8x per 4x step: a linear scan grows about 4x (the densest-window measure visits one window per character),
+        # a quadratic one 16x (the round-7 lookahead grew 14.7x and 16.1x); 8x is the midpoint with headroom for the
+        # jitter of a slow shared runner on the millisecond runs at 2,000 characters.
+        growth_bound = 8
+        hang_bound = 5.0
+
+        def least_of_three(scan) -> float:
+            times = []
+            for _ in range(3):
+                started = time.perf_counter()
+                scan()
+                times.append(time.perf_counter() - started)
+            return min(times)
+
+        for padding_kind, unit in (("spaces", " "), ("low-entropy characters", "low-")):
+            for kind in ("inside the quotes", "after the value", "in a JSON string"):
+                times = []
+                for length in lengths:
+                    padding = unit * (length // len(unit))
+                    if kind == "after the value":
+                        text = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"{padding}\n'
+                    else:
+                        text = f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"\n'
                     with self.subTest(length=length, padding=padding_kind, kind=kind):
-                        started = time.perf_counter()
-                        findings = module.secret_findings(text)
-                        masked = module.mask_secret_matches(text)
-                        elapsed = time.perf_counter() - started
-                        self.assertLess(elapsed, bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
-                        secret = text.split(" = ", 1)[1].rstrip()
-                        self.assertEqual([(f.rule.id, f.secret) for f in findings], [("generic-token", secret)])
-                        self.assertEqual(masked, (f"{mask}{text[len(text.rstrip()) :]}", 1))
-                # The same padded line as a JSON member, masked per decoded string as the JSON masker does.
-                with self.subTest(length=length, padding=padding_kind, kind="in a JSON string"):
-                    document = {"note": f'{FIELD} = "{padding}{HIGH_ENTROPY_VALUE}"'}
-                    started = time.perf_counter()
-                    masked_document = module.mask_json_strings(document)
-                    elapsed = time.perf_counter() - started
-                    self.assertLess(elapsed, bound, f"{length:,} {padding_kind} in a JSON string took {elapsed:.3f} s")
-                    self.assertEqual(masked_document, ({"note": mask}, 1))
+                        if kind == "in a JSON string":
+                            # The padded line as a JSON member, masked per decoded string as the JSON masker does.
+                            document = {"note": text.rstrip("\n")}
+                            elapsed = least_of_three(lambda: module.mask_json_strings(document))
+                            self.assertEqual(module.mask_json_strings(document), ({"note": mask}, 1))
+                        else:
+                            elapsed = least_of_three(
+                                lambda: (module.secret_findings(text), module.mask_secret_matches(text))
+                            )
+                            secret = text.split(" = ", 1)[1].rstrip()
+                            findings = [(f.rule.id, f.secret) for f in module.secret_findings(text)]
+                            self.assertEqual(findings, [("generic-token", secret)])
+                            self.assertEqual(
+                                module.mask_secret_matches(text), (f"{mask}{text[len(text.rstrip()) :]}", 1)
+                            )
+                        self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
+                        times.append(elapsed)
+                for (shorter, before), (longer, after) in zip(zip(lengths, times), zip(lengths[1:], times[1:])):
+                    with self.subTest(step=f"{shorter:,} to {longer:,}", padding=padding_kind, kind=kind):
+                        self.assertLess(
+                            after / before,
+                            growth_bound,
+                            f"{padding_kind} {kind}: {before:.4f} s at {shorter:,} to {after:.4f} s at {longer:,}, "
+                            f"{after / before:.1f}x per 4x step",
+                        )
+
+    def test_a_key_spelled_with_a_letter_the_regex_folds_is_reported_and_masked(self) -> None:
+        """Round 8 verdict on 1bd17d87: the keyword filter looked for a keyword in the lower-cased text while the
+        rules' `(?i)` regexes fold by Unicode simple case folding, and str.lower keeps U+017F LATIN SMALL LETTER LONG
+        S, so a `ſecret` key with a quoted 4.32-bit value never reached its rule and passed the tree scan and both CLIs
+        in text and in JSON while origin/main reported it. The filter is now a `(?i)` regex over the keywords, so a key
+        spelled with a long s, a Kelvin sign (U+212A) or a dotted or dotless i (U+0130, U+0131) is reported under
+        its rule and masked whole, in text and in a JSON string, and the ASCII spellings stay reported."""
+        module = self.module
+        mask = module.SECRET_MASK
+        long_s, kelvin, dotted_i, dotless_i = "\u017f", "\u212a", "\u0130", "\u0131"
+        spellings = (
+            (f"{long_s}ecret", "generic-secret"),
+            (f"{long_s}ECRET", "generic-secret"),
+            (f"pa{long_s}{long_s}word", "generic-password"),
+            (f"to{kelvin}en", "generic-token"),
+            (f"api_{kelvin}ey", "generic-api-key"),
+            (f"ap{dotted_i}_key", "generic-api-key"),
+            (f"ap{dotless_i}-key", "generic-api-key"),
+            # The spellings reported before this round stay reported.
+            (SECRET_KEY, "generic-secret"),
+            (FIELD.upper(), "generic-token"),
+            (API_KEY, "generic-api-key"),
+        )
+        text_path = self.write_text_file("docs/notes.md", "")
+        json_path = self.write_text_file("fixtures/evidence.json", "{}\n")
+        for key, rule in spellings:
+            text = f'{key} = "{HIGH_ENTROPY_VALUE}"\n'
+            with self.subTest(key=key):
+                findings = [(f.rule.id, f.secret) for f in module.secret_findings(text)]
+                self.assertEqual(findings, [(rule, f'"{HIGH_ENTROPY_VALUE}"')])
+                self.assertEqual(module.mask_secret_matches(text), (f"{mask}\n", 1))
+                text_path.write_text(text)
+                json_path.write_text("{}\n")
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    module.validate_no_obvious_secrets()
+                self.assertIn(f'docs/notes.md:{rule}:1 "Qz7...', stderr.getvalue())
+                self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+                text_path.write_text(f"{mask}\n")
+                module.validate_no_obvious_secrets()
+                # The same line in a JSON string whose literal escapes the letter (`\\u017f`): the decoded string is
+                # reported on its literal's line (line 4 of the document) and masked.
+                document = json.dumps({"items": [{"note": text.rstrip("\n")}]}, indent=2) + "\n"
+                self.assertEqual("\\u" in document, not key.isascii())
+                json_path.write_text(document)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    module.validate_no_obvious_secrets()
+                self.assertIn(f'fixtures/evidence.json:{rule}:4 "Qz7...', stderr.getvalue())
+                self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+                masked, count = module.mask_json_strings(json.loads(document))
+                self.assertEqual((masked, count), ({"items": [{"note": mask}]}, 1))
+                json_path.write_text(json.dumps(masked, indent=2) + "\n")
+                module.validate_no_obvious_secrets()
+        # The threshold still applies to a folded spelling: a word is not a finding under any of them.
+        for key, _ in spellings:
+            low = f'{key} = "{LOW_ENTROPY_VALUE}"\n'
+            with self.subTest(key=key, value="low"):
+                self.assertEqual(module.secret_findings(low), [])
+                self.assertEqual(module.mask_secret_matches(low), (low, 0))
+                text_path.write_text(low)
+                module.validate_no_obvious_secrets()
+
+    def test_the_keyword_filter_agrees_with_the_rule_regex_on_every_letter_it_folds(self) -> None:
+        """The filter before a rule's regex folds a text as the regex folds it, so it never skips a text the regex
+        would match (round 8 verdict on 1bd17d87, where a filter over the lower-cased text skipped the long s). The
+        letters Python's `(?i)` folds onto a keyword letter beyond ASCII are enumerated here over the whole code
+        space: exactly the four the re module documents, and str.lower and str.casefold each miss some of them. Every
+        keyword of every rule spelled with each of them is passed by the filter and reported by the rule; a letter the
+        regex does not fold (a Cyrillic es or ka) is passed by neither, so the filter is no wider than the regex."""
+        module = self.module
+        letters = sorted(
+            {c for rule in module.SECRET_RULES for keyword in rule.keywords for c in keyword if c.isalpha()}
+        )
+        beyond_ascii = "".join(map(chr, range(0x80, sys.maxunicode + 1)))
+        folded = re.compile("(?i)[" + "".join(letters) + "]").findall(beyond_ascii)
+        self.assertEqual(folded, ["\u0130", "\u0131", "\u017f", "\u212a"])
+        self.assertEqual([c.lower() for c in folded], ["i\u0307", "\u0131", "\u017f", "k"])
+        self.assertEqual([c.casefold() for c in folded], ["i\u0307", "\u0131", "s", "k"])
+        folds = {c: [letter for letter in letters if re.fullmatch(f"(?i){letter}", c)] for c in folded}
+        self.assertEqual(folds, {"\u0130": ["i"], "\u0131": ["i"], "\u017f": ["s"], "\u212a": ["k"]})
+        body = "A1b2C3d4E5f6G7h8I9j0K1l2M"
+        for rule in module.SECRET_RULES:
+            for keyword in rule.keywords:
+                spellings = [
+                    keyword[:index] + char + keyword[index + 1 :]
+                    for index, letter in enumerate(keyword)
+                    for char, targets in folds.items()
+                    if letter in targets
+                ]
+                for spelling in spellings:
+                    text = (
+                        f'{spelling} = "{HIGH_ENTROPY_VALUE}"\n' if rule.entropy is not None else f"{spelling}{body}\n"
+                    )
+                    secret = f'"{HIGH_ENTROPY_VALUE}"' if rule.entropy is not None else f"{spelling}{body}"
+                    with self.subTest(rule=rule.id, spelling=spelling):
+                        self.assertEqual(
+                            [(f.rule.id, f.secret) for f in module.secret_findings(text)], [(rule.id, secret)]
+                        )
+                        self.assertEqual(module.mask_secret_matches(text), (f"{module.SECRET_MASK}\n", 1))
+                        self.assertIsNotNone(rule.keyword_regex.search(text))
+                        self.assertIsNotNone(rule.regex.search(text))
+        # Letters the regex does not fold: U+0455 CYRILLIC SMALL LETTER DZE for s, U+043A CYRILLIC SMALL LETTER KA for k.
+        for text in (
+            f'\u0455ecret = "{HIGH_ENTROPY_VALUE}"\n',
+            f'to\u043aen = "{HIGH_ENTROPY_VALUE}"\n',
+            f"\u0455k-{body}\n",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(module.secret_findings(text), [])
+                for rule in module.SECRET_RULES:
+                    self.assertIsNone(rule.keyword_regex.search(text), rule.id)
+                    self.assertIsNone(rule.regex.search(text), rule.id)
 
     def test_masking_repeats_until_the_text_passes_the_scan(self) -> None:
         """Round 4 verdict on 43fe25f3: for a quoted assignment whose value is a word and a provider token, the masker
@@ -3254,6 +3398,43 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         self.assertEqual(masked.stdout, f"masked 1 match(es) in {crlf}\n")
         self.assertEqual(crlf.read_bytes(), f"{module.SECRET_MASK}\r\nVerdict: correct\r\n".encode())
         self.assertEqual(self.scan(crlf).returncode, 0)
+
+    def test_a_key_spelled_with_a_long_s_or_a_kelvin_sign_is_refused_and_masked(self) -> None:
+        """Round 8 verdict on 1bd17d87, through the two CLIs records-sync.sh runs: a `ſecret` key (U+017F) with a quoted
+        4.32-bit value exited 0 from --scan-identifiers and --mask-secrets masked nothing, in text and in a JSON string
+        whose literal holds `\\u017f`, because the keyword filter lower-cased the text and str.lower keeps the long s.
+        Each spelling the rule regex folds is refused and masked whole; the Kelvin sign (U+212A), which str.lower did
+        fold, stays so."""
+        module = load_validator()
+        long_s, kelvin = "\u017f", "\u212a"
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_bytes(f'{long_s}ecret = "{HIGH_ENTROPY_VALUE}"\nVerdict: correct\n'.encode())
+        member = self.temp_dir / "member.json"
+        line = f'pa{long_s}{long_s}word = "{HIGH_ENTROPY_VALUE}"'
+        member.write_bytes((json.dumps({"items": [{"note": line}]}, indent=2) + "\n").encode())
+        self.assertIn(b"\\u017f", member.read_bytes())
+        kelvin_file = self.temp_dir / "kelvin.md"
+        kelvin_file.write_bytes(f'to{kelvin}en: "{HIGH_ENTROPY_VALUE}"\nVerdict: correct\n'.encode())
+        for path, masked_text in (
+            (evidence, f"{module.SECRET_MASK}\nVerdict: correct\n"),
+            (member, json.dumps({"items": [{"note": module.SECRET_MASK}]}, indent=2) + "\n"),
+            (kelvin_file, f"{module.SECRET_MASK}\nVerdict: correct\n"),
+        ):
+            with self.subTest(path=path.name):
+                result = self.scan(path)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): a secret pattern\n")
+                self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+
+                masked = subprocess.run(
+                    [sys.executable, str(VALIDATOR), "--mask-secrets", str(path)], text=True, capture_output=True
+                )
+                self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+                self.assertEqual(masked.stdout, f"masked 1 match(es) in {path}\n")
+                self.assertEqual(path.read_bytes().decode(), masked_text)
+                result = self.scan(path)
+                self.assertEqual((result.returncode, result.stderr), (0, ""))
+                self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
 
 if __name__ == "__main__":

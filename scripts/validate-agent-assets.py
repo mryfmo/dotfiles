@@ -56,8 +56,9 @@ class SecretRule(NamedTuple):
     measured_text(secret), the secret with every SECRET_MASK, quoting character and carriage return removed, as
     the greatest entropy of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's
     own output passes the scan, a value beside a marker is judged on its own, no quoting changes the measure, and
-    nothing else on the line can dilute it. The rule runs over a text only when one of `keywords` (lower case)
-    occurs in the lower-cased text, a cheap filter before the regex.
+    nothing else on the line can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
+    under the same `(?i)` the rule's regex uses (keyword_filter), finds one in it: a cheap filter before the regex
+    that folds a text exactly as the regex folds it, so it never skips a text the regex would match.
     """
 
     id: str
@@ -66,6 +67,7 @@ class SecretRule(NamedTuple):
     secret_group: int
     entropy: float | None
     keywords: tuple[str, ...]
+    keyword_regex: re.Pattern[str]
 
     def secret_in(self, match: re.Match[str]) -> tuple[str, int]:
         """The secret MATCH holds and where its finding ends: the secret group with its trailing whitespace removed
@@ -133,10 +135,24 @@ def densest_window_entropy(text: str) -> float:
     return max(shannon_entropy(text[start : start + GENERIC_SECRET_MIN_LENGTH]) for start in starts)
 
 
+def keyword_filter(keywords: tuple[str, ...]) -> re.Pattern[str]:
+    """The filter that decides whether a rule's regex runs over a text: one of KEYWORDS, under the same `(?i)` the
+    rule's regex uses, so the two fold a text the same way and the filter never skips a text the regex would match.
+
+    Round 8 (1bd17d87) looked for a keyword in the lower-cased text, and str.lower keeps U+017F LATIN SMALL LETTER
+    LONG S and U+0131 dotless i and turns U+0130 dotted I into two characters, while the regex folds each onto its
+    ASCII letter (with U+212A KELVIN SIGN, which str.lower does fold): a `ſecret` key with a quoted 4.32-bit value
+    never reached its rule and passed the tree scan and both CLIs while origin/main's one regex reported it.
+    str.casefold folds the long s and still keeps the two i. Measured over this tree's 9.6 million scanned
+    characters: the lower-cased filter 0.34 s, str.casefold 0.33 s, this filter 0.47 s, a translation table of the
+    four letters 0.52 s, no filter 1.74 s."""
+    return re.compile("(?i)" + "|".join(map(re.escape, keywords)))
+
+
 def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
     """A rule for a key format whose prefix identifies it: the whole match is the secret, no entropy test."""
     regex = re.compile("(?i)" + KEY_PREFIX_BOUNDARY + body)
-    return SecretRule(rule_id, description, regex, 0, None, (keyword,))
+    return SecretRule(rule_id, description, regex, 0, None, (keyword,), keyword_filter((keyword,)))
 
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
@@ -168,7 +184,15 @@ def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str,
     unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
     prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
     regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\n]*)""")
-    return SecretRule(rule_id, f"a quoted {keywords[0]} assignment", regex, 1, GENERIC_SECRET_ENTROPY, keywords)
+    return SecretRule(
+        rule_id,
+        f"a quoted {keywords[0]} assignment",
+        regex,
+        1,
+        GENERIC_SECRET_ENTROPY,
+        keywords,
+        keyword_filter(keywords),
+    )
 
 
 SECRET_RULES = (
@@ -2073,14 +2097,13 @@ def secret_allowance(
 def secret_findings(text: str) -> list[SecretFinding]:
     """Every SECRET_RULES finding in TEXT that no content-only allowlist row suppresses, in text order.
 
-    A rule runs when one of its keywords occurs in the text; a match of a rule with an entropy threshold counts only
-    when the secret reaches it. Rows with a path or fingerprint condition need the repository path and are applied
-    by validate_no_obvious_secrets().
+    A rule runs when its keyword filter finds one of its keywords in the text (keyword_filter, which folds as the
+    rule's regex folds); a match of a rule with an entropy threshold counts only when the secret reaches it. Rows
+    with a path or fingerprint condition need the repository path and are applied by validate_no_obvious_secrets().
     """
-    lowered = text.lower()
     findings = []
     for rule in SECRET_RULES:
-        if not any(keyword in lowered for keyword in rule.keywords):
+        if rule.keyword_regex.search(text) is None:
             continue
         for match in rule.regex.finditer(text):
             secret, end = rule.secret_in(match)

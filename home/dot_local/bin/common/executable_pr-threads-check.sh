@@ -88,6 +88,17 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The isolated git and the environment scrub come from the library beside this script (U113): the ancestry and the
+# commit dates below are read in the checkout by a git no caller variable or configuration steers.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-threads-check.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
+
 [[ -r ${LEVER_DIR}/read-lib.sh ]] || {
     echo "pr-threads-check.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
     exit 2
@@ -162,12 +173,12 @@ disposition() {
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
-        git cat-file -e "${fix}^{commit}" 2> /dev/null || {
+        git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
             echo "open (fixed: ${fix} is not a commit here)"
             return
         }
         status=0
-        git merge-base --is-ancestor "${fix}" "${head}" || status=$?
+        git_isolated merge-base --is-ancestor "${fix}" "${head}" || status=$?
         case ${status} in
         0) ;;
         1)
@@ -176,7 +187,7 @@ disposition() {
             ;;
         *) fail "git merge-base --is-ancestor ${fix} ${head} failed" ;;
         esac
-        fix_time=$(git show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
+        fix_time=$(git_isolated show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
         if ((fix_time < created)); then
             echo "open (fixed: ${fix} predates the finding)"
             return
@@ -242,7 +253,7 @@ done
 [[ -z ${records} || (-f ${records}/units.tsv && -f ${records}/decisions.tsv) ]] ||
     refuse "--records holds no units.tsv and decisions.tsv: ${records}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-git cat-file -e "${head}^{commit}" 2> /dev/null || refuse "${head} is not a commit in this checkout; git fetch first"
+git_isolated cat-file -e "${head}^{commit}" 2> /dev/null || refuse "${head} is not a commit in this checkout; git fetch first"
 
 repo=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'gh repo view failed'
 [[ ${repo} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "gh repo view printed no owner/repo: ${repo}"

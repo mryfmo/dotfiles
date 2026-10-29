@@ -81,7 +81,7 @@ lever_self_check
 #   is right under both. Status 1 is also what an unreadable `-f` file returns, with only a warning on stderr
 #   (research 01 section 1.2), so git's stderr goes to a file and anything in it is a failed read, whatever the
 #   status; 3 is never special-cased. The value is never printed.
-# @arg $1 string The git function to read with (`git` reads the user configuration too, `git_plain` does not).
+# @arg $1 string The git function to read with (`git` reads the user configuration too, `git_isolated` does not).
 # @arg $2 string The configuration key.
 # @arg $3 string The variable that receives the value.
 # @arg $4 path The file that receives git's stderr: truncated first, then required empty.

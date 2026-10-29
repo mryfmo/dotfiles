@@ -68,11 +68,15 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}pr-close.sh --from-table .orchestration/orchestrate/regime-cutover/handouts/cleanup-table.md",
     f"{LEVER}pr-close.sh --from-table t.md --only 378",
     f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
+    # U104: the brief gate, read-only, before a unit's first TASK.
+    f"{LEVER}brief-check.py .orchestration/orchestrate/regime-cutover/briefs/U1-x.md",
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
     # U71: the merge lever (a `correct` ledger row for the head and green CI).
     f"{LEVER}pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover",
 ]
 BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
+# The orchestrator's read-only checks: the worker policy names neither, so the worker table holds no row for them.
+READ_ONLY_CHECKS = ("pr-threads-check", "brief-check")
 # A verdict line, the text the audit seat once sent on the bus; the audit run now has no bus reply in any form (U58).
 VERDICT = "VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
@@ -257,7 +261,8 @@ TABLE = {
         ("bash", f"{LEVER}pr-body-edit.sh 9", "deny"),
         ("bash", "scripts/orchestrator/pr-body-edit.sh --body-file b.md", "deny"),
         ("bash", f"{BODY_EDIT} && gh pr close 9", "deny"),
-        *[("bash", line, "deny") for line in ORCHESTRATOR_LEVERS if "pr-threads-check" not in line],
+        # The read-only checks (pr-threads-check.sh, brief-check.py) have no worker row; every writing lever is denied.
+        *[("bash", line, "deny") for line in ORCHESTRATOR_LEVERS if not any(c in line for c in READ_ONLY_CHECKS)],
         ("bash", "shellcheck -x scripts/orchestrator/pr-close.sh", "allow"),
         # U28b F3: the bare records-sync form, alone or chained, by any path, is denied to the worker.
         ("bash", f"{LEVER}records-sync.sh", "deny"),
@@ -487,6 +492,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/pr-update-branch.sh *",
                 "~/.local/bin/common/pr-close.sh --from-table *",
                 "~/.local/bin/common/pr-threads-check.sh *",
+                "~/.local/bin/common/brief-check.py *",
                 "~/.local/bin/common/records-sync.sh *",
                 "~/.local/bin/common/records-sync.sh",
             ],

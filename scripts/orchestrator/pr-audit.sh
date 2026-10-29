@@ -216,6 +216,16 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The isolated git comes from the library beside this script (U113), sourced after the scrub above (its self-check runs
+# sed and a hash tool, which the PERL* removal must precede) and after this lever's own self-check. Its git_env_scrub
+# is not called: the scrub above already removed every GIT_* name, with PERL* and PYTHON*.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-audit.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+
 # The readers (read-lib.sh, U112) are sourced here, after the scrub above and the self-check: the library's own
 # self-check runs sed and a hash tool, which no caller's PERL* may reach, and under `-p` it inherits no function.
 [[ -r ${LEVER_DIR}/read-lib.sh ]] || {
@@ -266,24 +276,6 @@ bounded() {
 # @arg $@ string The `gh` arguments.
 gh_bounded() {
     bounded "${gh_timeout}" gh "$@"
-}
-
-# @description Run git with no replace objects, no commit-graph and no hooks, whatever the caller's config.
-# @arg $@ string The git arguments.
-git_safe() {
-    command git --no-replace-objects -c core.commitGraph=false -c core.hooksPath=/dev/null "$@"
-}
-
-# @description Run git on the audited repository with no configuration but its own fresh `.git/config`: no global or
-#   system config file and no global or system attributes file, so a `.gitattributes` in the pull request names no
-#   filter driver (`filter.<name>.smudge`/`.process`), diff driver or fsmonitor that the caller installed, and the
-#   checkout runs no program outside git (U71b audit round 1). Only git's built-in conversions (eol, ident,
-#   working-tree-encoding) apply.
-# @arg $@ string The git arguments.
-git_tree() {
-    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1 command git --no-replace-objects \
-        -c core.commitGraph=false -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
-        -c core.fsmonitor=false "$@"
 }
 
 # The supervisor of every codex run (U71b audit round 12, treadmill rule: three rounds of a hand-built perl supervisor
@@ -735,11 +727,11 @@ spellings() {
 # @set rules The section, heading included, ending with a newline.
 audit_rules() {
     local commit=$1 size text line inside=0 headings=0 body LC_ALL=C
-    size=$(git_tree -C "${clone}" cat-file -s "${commit}:AGENTS.md") ||
+    size=$(git_isolated -C "${clone}" cat-file -s "${commit}:AGENTS.md") ||
         refuse "cannot read the size of AGENTS.md of main ${commit}"
     [[ ${size} =~ ^[0-9]+$ ]] || refuse "git named no size for AGENTS.md of main ${commit}: ${size}"
     # The trailing `.` keeps the blob's final newlines through the command substitution, so the byte count is exact.
-    text=$(git_tree -C "${clone}" cat-file blob "${commit}:AGENTS.md" && printf .) ||
+    text=$(git_isolated -C "${clone}" cat-file blob "${commit}:AGENTS.md" && printf .) ||
         refuse "cannot read AGENTS.md of main ${commit}"
     text=${text%.}
     ((${#text} == size)) || refuse "read ${#text} of the ${size} bytes of AGENTS.md of main ${commit}"
@@ -830,11 +822,11 @@ for setting in 'project_doc_max_bytes = 0' 'project_doc_fallback_filenames = []'
         refuse "${template} does not set ${setting} once before its first table; codex would load AGENTS.md instructions"
 done
 
-repo=$(git_safe rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout'
-common=$(git_safe -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
+repo=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout'
+common=$(git_isolated -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
     fail "cannot read the git common directory of ${repo}"
 [[ -d ${common}/objects ]] || fail "${common} holds no objects directory"
-url=$(git_safe -C "${repo}" remote get-url origin) || fail "the checkout ${repo} has no origin remote"
+url=$(git_isolated -C "${repo}" remote get-url origin) || fail "the checkout ${repo} has no origin remote"
 slug=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'cannot read the repository from gh'
 [[ ${slug} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "gh named no repository: ${slug}"
 view=$(gh_bounded pr view "${pr}" --repo "${slug}" --json state,baseRefName,headRefOid,url \
@@ -877,14 +869,17 @@ contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || 
 # The audited tree: a fresh repository that borrows the checkout's objects for the fetch and holds only the two fetched
 # refs. It then copies every object it needs into its own pack and drops the borrowing (U71b audit round 4), so the
 # auditor reads one self-contained repository and the checkout's object store stays outside the allowlist.
-git_tree init -q --template= "${clone}" || fail "git init ${clone} failed"
+git_isolated init -q --template= "${clone}" || fail "git init ${clone} failed"
 printf '%s\n' "${common}/objects" > "${clone}/.git/objects/info/alternates" || fail 'cannot write the alternates file'
 head=''
 for ((try = 1; try <= wait_tries; try++)); do
-    bounded "${gh_timeout}" git --no-replace-objects -c core.hooksPath=/dev/null -C "${clone}" fetch -q --no-tags \
-        "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' ||
+    # `bounded` is a perl exec, which cannot run a shell function, so the fetch carries the library's own arrays, and
+    # after them the gh helper, the shape of records-sync.sh's push: the library's empty helper resets the list and the
+    # later `-c` wins, so a private origin answers to the gh login and to no helper of the operator's configuration.
+    bounded "${gh_timeout}" env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -c 'credential.helper=!gh auth git-credential' \
+        -C "${clone}" fetch -q --no-tags "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' || # git-isolated: allow bounded exec of the library's own arrays
         fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"
-    head=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head='' # producer-status: allow the head test after the loop refuses an empty head
+    head=$(git_isolated -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head='' # producer-status: allow the head test after the loop refuses an empty head
     [[ ${head} != "${want}" ]] || break
     ((try == wait_tries)) || sleep "${wait_seconds}"
 done
@@ -893,13 +888,13 @@ done
 for path in "${clone}/.git/info/grafts" "${clone}/.git/shallow"; do
     [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; it rewrites the history the audited range rests on"
 done
-main=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
-mergebase=$(git_tree -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
-git_tree -C "${clone}" repack -a -d -q || fail "git repack in ${clone} failed"
+main=$(git_isolated -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
+mergebase=$(git_isolated -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
+git_isolated -C "${clone}" repack -a -d -q || fail "git repack in ${clone} failed"
 rm -f -- "${clone}/.git/objects/info/alternates" || fail "cannot remove the alternates file of ${clone}"
-git_tree -C "${clone}" rev-list --objects --quiet "${head}" "${main}" ||
+git_isolated -C "${clone}" rev-list --objects --quiet "${head}" "${main}" ||
     fail "${clone} does not hold every object of ${head} and ${main} on its own"
-git_tree -C "${clone}" -c advice.detachedHead=false checkout -q --detach "${head}" || fail "git checkout ${head} failed"
+git_isolated -C "${clone}" -c advice.detachedHead=false checkout -q --detach "${head}" || fail "git checkout ${head} failed"
 # The rules (U71b audit round 3): main's AGENTS.md is read once and whole, its size checked against the blob's, and
 # its `## Audit` section cut out by this shell in one pass, so no producer can fail midway unseen; codex never runs
 # with partial rules.

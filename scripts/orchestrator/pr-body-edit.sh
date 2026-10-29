@@ -84,6 +84,17 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The isolated git and the environment scrub come from the library beside this script (U113): the toplevel and the
+# current branch are read by a git no caller variable or configuration steers.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-body-edit.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
+
 [[ -r ${LEVER_DIR}/read-lib.sh ]] || {
     echo "pr-body-edit.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
     exit 2
@@ -153,8 +164,8 @@ lines_matching() {
 
 [[ $# -eq 2 && $1 == --body-file ]] || refuse "${usage}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
-branch=$(git branch --show-current) || fail 'git branch --show-current failed'
+toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
+branch=$(git_isolated branch --show-current) || fail 'git branch --show-current failed'
 [[ -n ${branch} ]] || refuse 'HEAD is detached; switch to the branch of your pull request'
 [[ ${branch} != main ]] || refuse 'the current branch is main'
 body_file_check "$2"

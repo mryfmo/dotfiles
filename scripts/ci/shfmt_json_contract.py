@@ -61,8 +61,6 @@ TABLE: dict[str, Kind] = {
     ),
     "Comment": Kind("Hash", ("Hash.Line", "Text", "Pos.Line", "Pos.Offset", "End.Offset")),
     "Word": Kind("Parts", ("Parts", "Pos.Line", "End.Line", "Pos.Offset", "End.Offset")),
-    # An assignment (`x=$(…)`, a `local x=…` argument) is untyped and named by its Name; its Value is the word.
-    "Assign": Kind("Name", ("Name.Value", "Value", "Pos.Line")),
     # Every command kind carries Pos.Line: the lint reads it on each statement's Cmd, whatever the kind.
     "CallExpr": Kind(None, ("Args", "Assigns", "Pos.Line")),
     # An `elif` is an IfClause with no Type key (shfmt types interface fields only), so Cond marks the untyped one.
@@ -93,6 +91,9 @@ TABLE: dict[str, Kind] = {
     "Block": Kind(None, ("Stmts", "Pos.Line")),
     "Subshell": Kind(None, ("Stmts", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),
+    # An assignment is untyped, named by its Name; its array literal and the elements are untyped too and are read
+    # through it (`Array.Elems`, each element's `Value` a word), so they have no row of their own (U113).
+    "Assign": Kind("Name", ("Name.Value", "Value", "Array.Elems", "Pos.Line")),
 }
 UNTYPED = {row.marker: kind for kind, row in TABLE.items() if row.marker}
 

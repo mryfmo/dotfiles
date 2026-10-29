@@ -36,6 +36,7 @@ LEVERS = (
     "pr-merge.sh",
     "omp-run.sh",
     "pr-audit.sh",
+    "brief-check.py",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
@@ -98,7 +99,7 @@ class LeverSelfCheckTest(unittest.TestCase):
         for name in LEVERS:
             with self.subTest(lever=name):
                 with (self.bin / name).open("a") as lever:
-                    lever.write("echo rewritten\n")
+                    lever.write('print("rewritten")\n' if name.endswith(".py") else "echo rewritten\n")
                 run = self.run_lever(name)
                 self.assert_refused(run, "differs from the pin in")
                 self.assertNotIn("rewritten", run.stdout)
@@ -128,18 +129,25 @@ class LeverSelfCheckTest(unittest.TestCase):
 
         hcom-seat runs its self-check with PATH set to the system directories before any external command (U85
         round 4), so a producer planted on the caller's PATH is never consulted there and the check passes.
+        brief-check.py is Python (U104 round 3): it hashes with hashlib and reads the manifest itself, so it runs
+        neither tool and a planted one is never consulted; each of its own reads is failed in
+        `tests/unit/test_brief_check.py` (`InstalledBriefCheckTest`: manifest mode 000, a directory, no or two pin
+        lines, HOME unset or missing, and the hash read of its own bytes: the copy on stdin so `<stdin>` is the path,
+        and `builtins.open` raising in process, round 6), every one a refusal with nothing on stdout.
         """
-        path_levers = [name for name in LEVERS if name != "hcom-seat"]
+        path_levers = [name for name in LEVERS if name not in ("hcom-seat", "brief-check.py")]
         env = self.fake_tools("sha256sum", "shasum")
         for name in path_levers:
             with self.subTest(lever=name, producer="hash"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot hash")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
+        self.assert_passed(self.run_lever("brief-check.py", env=env))
         env = self.fake_tools("sed")
         for name in path_levers:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
         self.assert_passed(self.run_lever("hcom-seat", env=env))
+        self.assert_passed(self.run_lever("brief-check.py", env=env))
 
     def test_hcom_seat_self_check_refuses_a_failing_producer(self):
         """U85 round 15: hcom-seat's own self-check fails closed on a failing sed or hash tool too. Its first statement

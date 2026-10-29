@@ -239,6 +239,7 @@ MANAGED_ALLOW = [
     "Bash(hcom list *)",
 ]
 LEVERS = (
+    "brief-check.py",
     "bus-history.sh",
     "git-isolated.sh",
     "hcom-dispatch",

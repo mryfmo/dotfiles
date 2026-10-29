@@ -591,6 +591,7 @@ class LintFileSetTest(unittest.TestCase):
             # Recognised non-shell forms the repository uses: no word names bash or sh.
             "home/uv-tool": "#!/usr/bin/env -S uv run --no-cache --script\nprint( 'bad' )\n",
             "home/ruby-tool": "#!/usr/bin/env ruby\nputs( 'bad' )\n",
+            "home/python-tool": "#!/usr/bin/env -S python3 -I\nprint( 'bad' )\n",
             "home/locked/inner.sh": "#!/usr/bin/env bash\necho inner\n",
             "home/zsh-abs": bad.replace("/usr/bin/env bash", "/bin/zsh"),
             "home/zsh-env": bad.replace("bash", "zsh"),

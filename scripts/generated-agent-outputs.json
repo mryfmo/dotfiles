@@ -336,6 +336,13 @@
       "executable": false
     },
     {
+      "source": "home/dot_local/bin/common/executable_brief-check.py",
+      "target": ".local/bin/common/brief-check.py",
+      "kind": "file",
+      "executable": true,
+      "sha256": "f183d0dc347c72da65794b036785b626c50ffc0e833fdac715b30c9c6675db9e"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_bus-history.sh",
       "target": ".local/bin/common/bus-history.sh",
       "kind": "file",
@@ -547,6 +554,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "README.md"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "brief-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

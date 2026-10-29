@@ -2336,19 +2336,24 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         the trailing whitespace is trimmed in code, so the scan is linear in the line.
 
         The rule: the line is scanned and masked at 2,000, 8,000 and 32,000 padding characters in this process (the
-        least of three runs each), and each 4x step may grow the time by less than 8x; one loose absolute cap of 5 s
-        on any single run still fails a hang. Round 8 bounded every run at 0.5 s, which measured the runner's speed,
-        not the scanner's complexity: CI on 1bd17d87 (run 40826819351, the ubuntu-26.04 client row) took 0.648 and
-        0.676 s for 32,000 low-entropy characters, a linear scan on a slow shared runner. The value behind the
-        padding is still reported, with the whole rest of the line as the secret."""
+        least of three runs each), the 8,000-to-32,000 step may grow the time by less than 8x, and one loose absolute
+        cap of 2 s on any single run still fails a hang. Round 8 bounded every run at 0.5 s, which measured the
+        runner's speed, not the scanner's complexity: CI on 1bd17d87 (run 40826819351, the ubuntu-26.04 client row)
+        took 0.648 and 0.676 s for 32,000 low-entropy characters, a linear scan on a slow shared runner. Round 9 also
+        bounded the 2,000-to-8,000 step, where the 2 to 3 ms fixed cost of a run dominates the 2,000 run: CI on
+        17d2d99b (run 40830602891, the macos-15 and ubuntu-26.04 client rows) measured 8.1x there (0.0022 to 0.0179 s,
+        0.0032 to 0.0258 s) on the linear scan, so only the step whose runs are tens of milliseconds is judged. The
+        value behind the padding is still reported, with the whole rest of the line as the secret."""
         module = self.module
         mask = module.SECRET_MASK
         lengths = (2_000, 8_000, 32_000)
         # 8x per 4x step: a linear scan grows about 4x (the densest-window measure visits one window per character),
         # a quadratic one 16x (the round-7 lookahead grew 14.7x and 16.1x); 8x is the midpoint with headroom for the
-        # jitter of a slow shared runner on the millisecond runs at 2,000 characters.
+        # jitter of a slow shared runner. Judged on the 8,000-to-32,000 step only: at 2,000 characters a run is a few
+        # milliseconds and its fixed cost pushed a linear scan to 8.1x on CI.
         growth_bound = 8
-        hang_bound = 5.0
+        judged_step = (8_000, 32_000)
+        hang_bound = 2.0
 
         def least_of_three(scan) -> float:
             times = []
@@ -2372,27 +2377,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                             # The padded line as a JSON member, masked per decoded string as the JSON masker does.
                             document = {"note": text.rstrip("\n")}
                             elapsed = least_of_three(lambda: module.mask_json_strings(document))
-                            self.assertEqual(module.mask_json_strings(document), ({"note": mask}, 1))
                         else:
                             elapsed = least_of_three(
                                 lambda: (module.secret_findings(text), module.mask_secret_matches(text))
                             )
+                        # Recorded before any assertion, so the step below is judged even when a run fails the cap.
+                        times.append(elapsed)
+                        self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
+                        if kind == "in a JSON string":
+                            self.assertEqual(module.mask_json_strings(document), ({"note": mask}, 1))
+                        else:
                             secret = text.split(" = ", 1)[1].rstrip()
                             findings = [(f.rule.id, f.secret) for f in module.secret_findings(text)]
                             self.assertEqual(findings, [("generic-token", secret)])
                             self.assertEqual(
                                 module.mask_secret_matches(text), (f"{mask}{text[len(text.rstrip()) :]}", 1)
                             )
-                        self.assertLess(elapsed, hang_bound, f"{length:,} {padding_kind} {kind} took {elapsed:.3f} s")
-                        times.append(elapsed)
-                for (shorter, before), (longer, after) in zip(zip(lengths, times), zip(lengths[1:], times[1:])):
-                    with self.subTest(step=f"{shorter:,} to {longer:,}", padding=padding_kind, kind=kind):
-                        self.assertLess(
-                            after / before,
-                            growth_bound,
-                            f"{padding_kind} {kind}: {before:.4f} s at {shorter:,} to {after:.4f} s at {longer:,}, "
-                            f"{after / before:.1f}x per 4x step",
-                        )
+                shorter, longer = judged_step
+                before, after = times[lengths.index(shorter)], times[lengths.index(longer)]
+                with self.subTest(step=f"{shorter:,} to {longer:,}", padding=padding_kind, kind=kind):
+                    self.assertLess(
+                        after / before,
+                        growth_bound,
+                        f"{padding_kind} {kind}: {before:.4f} s at {shorter:,} to {after:.4f} s at {longer:,}, "
+                        f"{after / before:.1f}x per 4x step",
+                    )
 
     def test_a_key_spelled_with_a_letter_the_regex_folds_is_reported_and_masked(self) -> None:
         """Round 8 verdict on 1bd17d87: the keyword filter looked for a keyword in the lower-cased text while the

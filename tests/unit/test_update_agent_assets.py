@@ -784,7 +784,7 @@ claude() {
         installs = {"crit@crit": [{"scope": "user", "version": pin}]}
         step = (
             "doctor_pin_check() { printf 'ERROR: injected drift\\n' >&2; return 1; }; "
-            'converge_claude_step "crit@crit" || true; fail_on_claude_pin_failures'
+            'converge_claude_step "crit@crit" || true; fail_on_pin_failures'
         )
         result, _, _ = self.converge_listed(step, installs, {"crit@crit": True})
         self.assertEqual(1, result.returncode, result.stderr)
@@ -801,7 +801,7 @@ claude() {
             ("install", {}, {}, {"INSTALL_VERSION": "999.0.0"}),
             ("update", {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}, {"crit@crit": True}, {}),
         )
-        step = 'converge_claude_step "crit@crit" || true; fail_on_claude_pin_failures'
+        step = 'converge_claude_step "crit@crit" || true; fail_on_pin_failures'
         for action, installs, enabled, flags in cases:
             with self.subTest(action=action):
                 result, calls, state = self.converge_listed(step, installs, enabled, CORRUPT_AFTER="1", **flags)
@@ -828,7 +828,7 @@ claude() {
             ("doctor", "step() { :; }; doctor_pin_check() { return 2; }"),
         ):
             with self.subTest(way=name):
-                gate = f'{body}; converge_or_disable claude crit@crit step; printf "rc=%s failures=%s\\n" "$?" "${{CLAUDE_PIN_FAILURES}}"'
+                gate = f'{body}; converge_or_disable claude crit@crit step; printf "rc=%s failures=%s\\n" "$?" "${{PIN_FAILURES}}"'
                 result, calls, state = self.converge_listed(f"set +e; {gate}", installs, {"crit@crit": True})
                 self.assertIn("rc=1 failures=1", result.stdout, result.stderr)
                 self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
@@ -892,7 +892,7 @@ claude() {
             [
                 "bash",
                 "-c",
-                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_superpowers; fail_on_claude_pin_failures',
+                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_superpowers; fail_on_pin_failures',
                 "bash",
                 str(UPDATER),
             ],
@@ -929,8 +929,8 @@ claude() {
     # Round 27: the run fails only when unreviewed code could be active or the active state cannot be verified.
     ALL_CLAUDE_STEPS = (
         "ensure_crit_cli() { :; }; update_claude_superpowers; update_claude_crit; update_claude_ponytail; "
-        'update_claude_understand_anything; converge_claude_plugins; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; '
-        "fail_on_claude_pin_failures"
+        'update_claude_understand_anything; converge_claude_plugins; printf "failures=%s\\n" "${PIN_FAILURES}"; '
+        "fail_on_pin_failures"
     )
 
     def test_a_fresh_host_whose_marketplace_list_fails_skips_every_plugin_with_a_warning(self):
@@ -959,7 +959,7 @@ claude() {
             ),
         ):
             with self.subTest(case=name):
-                step = "converge_claude_step crit@crit || true; fail_on_claude_pin_failures"
+                step = "converge_claude_step crit@crit || true; fail_on_pin_failures"
                 result, calls, _ = self.converge_listed(step, installs, enabled, LIST_FAILS="sandbox unavailable")
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("not installed or updated from an unverified marketplace", result.stderr)
@@ -970,7 +970,7 @@ claude() {
         # CI public-bootstrap (macos-15): pstack's marketplace had moved to 0.15.32 past the 0.15.30 pin, and
         # Claude Code installs only the current release.
         pin = self.pin_of("pstack@cursor-plugins")
-        step = 'converge_claude_step pstack@cursor-plugins || true; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+        step = 'converge_claude_step pstack@cursor-plugins || true; printf "failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures'
         result, calls, state = self.converge_listed(step, {}, {}, INSTALL_VERSION="99.0.0")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("failures=0", result.stdout)
@@ -1038,7 +1038,7 @@ claude() {
             'doctor_pin_check() { local installs observed; installs="$(claude_plugin_installs "$2")" && '
             f'observed="$(claude_user_observed "${{installs}}" "{pin}")" && [ "${{observed}}" = "{pin}" ]; }}; '
             "converge_claude_step frontend-design@claude-plugins-official || true; "
-            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+            'printf "failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures'
         )
 
     def test_a_content_pin_follows_the_files_not_the_commit_version(self):
@@ -1147,7 +1147,7 @@ claude() {
                         "bash",
                         "-c",
                         f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_superpowers; '
-                        'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures',
+                        'printf "failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures',
                         "bash",
                         str(UPDATER),
                     ],
@@ -1375,7 +1375,7 @@ claude() {
                 step = (
                     f'{stubs}; set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
                     'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
-                    'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; '
+                    'printf "failures=%s\\n" "${PIN_FAILURES}"; '
                     '[ ! -e "${HOME}/.agents/.installed-manifest.json" ] || echo recorded'
                 )
                 result, _, _ = self.converge_listed(step, {}, {})
@@ -1387,7 +1387,7 @@ claude() {
         step = (
             'set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
             'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
-            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+            'printf "failures=%s\\n" "${PIN_FAILURES}"'
         )
         result, _, _ = self.converge_listed(step, {}, {})
         self.assertEqual(["rc=4", "failures=0"], result.stdout.splitlines(), result.stderr)
@@ -1409,7 +1409,7 @@ claude() {
             [
                 "bash",
                 "-c",
-                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; fail_on_claude_pin_failures',
+                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; fail_on_pin_failures',
                 "bash",
                 str(UPDATER),
             ],
@@ -1445,9 +1445,9 @@ claude() {
         # `marketplace upgrade` installs the enabled plugin's copy at CACHE_VERSION (what Codex does for a
         # plugin the managed config enables) and whose `plugin remove` empties the cache. BEFORE is the
         # version of the copy cached before the step, None for a fresh bootstrap; MANIFEST_VERSION, when given,
-        # is what that copy's plugin.json declares instead. FROM_ANOTHER_COMMIT gives the upgrade's copy the
-        # `.git` of a clone at a commit other than the pinned ref (the copy Codex writes from upstream main);
-        # REMOVE_FAILS makes `plugin remove` fail and leave the copy.
+        # is what that copy's plugin.json declares instead. FROM_ANOTHER_COMMIT gives the copy (the cached one and
+        # the upgrade's) the `.git` of a clone at a commit other than the pinned ref (the copy Codex writes from
+        # upstream main); REMOVE_FAILS makes `plugin remove` fail and leave the copy.
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]
         work = Path(tempfile.mkdtemp(prefix="ponytail-bootstrap-"))
         self.addCleanup(shutil.rmtree, work)
@@ -1466,6 +1466,8 @@ claude() {
             git = ["git", "-C", str(clone), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
             subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
             copy_git = str(clone / ".git")
+            if before is not None:
+                shutil.copytree(copy_git, cache / before / ".git")
         record = work / "home/.codex/.tmp/marketplaces/ponytail/.codex-marketplace-install.json"
         record_text = json.dumps({"source_type": "git", "source": pins["marketplace"], "revision": pins["ref"]})
         fake = (
@@ -1482,7 +1484,7 @@ claude() {
                 "bash",
                 "-c",
                 f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; '
-                'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures',
+                'printf "failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures',
                 "bash",
                 str(UPDATER),
             ],
@@ -1541,6 +1543,8 @@ claude() {
         self.assertFalse(cache.exists())
         self.assertNotIn("landed off its pin on a fresh install", result.stderr)
         self.assertIn("did not reach its pin", result.stderr)
+        # The counted failure is a Codex one; the summary names both agents, not Claude Code alone.
+        self.assertIn("1 plugin(s) (Claude Code or Codex) could not be checked or kept at their pin", result.stderr)
 
     def test_a_ponytail_cache_that_cannot_be_read_before_the_upgrade_stops_it_and_names_the_path(self):
         # Failure injection (standing order 21): a plugin.json without a version fails the reader. That is never
@@ -1556,23 +1560,83 @@ claude() {
         self.assertNotIn("already installed", result.stdout)
         self.assertFalse(cache.exists())  # converge_or_disable removes what it could not verify
 
-    def test_a_fresh_ponytail_copy_at_its_pinned_version_from_another_commit_is_judged_not_failed(self):
-        # Round 2: the judge compared the version alone, so a fresh copy at the pinned version installed from a
-        # commit other than the pinned ref passed it, then failed make doctor's pin check (which compares the
-        # commit too), and the bootstrap exited 1 after all. The judge is now the doctor's own check.
+    def test_a_fresh_ponytail_copy_at_its_pinned_version_from_another_commit_is_accepted(self):
+        # Incident 2026-10-30: the marketplace ref pins the catalog snapshot only, and the upgrade installs the copy
+        # from upstream main, so after any upstream push every host's copy comes from a commit other than the
+        # ref while its manifest still declares the pinned version. That copy is at its pin: judged by version,
+        # as the Claude copy of the same plugin is; the commit is not compared (what a hook may run is decided
+        # by the trusted_hash pins). Round 2 of 2026-10-29 had the doctor reject such a copy, and U117 then
+        # removed it on every fresh bootstrap.
         pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]["pin"]
         result, calls, cache, _ = self.run_ponytail_bootstrap(before=None, cache_version=pin, from_another_commit=True)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("failures=0", result.stdout)
-        self.assertEqual(["plugin marketplace upgrade ponytail", "plugin remove ponytail@ponytail"], calls)
-        self.assertFalse(cache.exists())
-        self.assertIn("was installed from", result.stderr)
-        self.assertIn("not the pinned ref", result.stderr)
-        self.assertIn(f"ponytail@ponytail landed at {pin} against its pin {pin} and make doctor rejects", result.stderr)
-        self.assertIn(
-            "landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex)", result.stderr
+        self.assertEqual("plugin marketplace upgrade ponytail", calls[0], calls)
+        self.assertFalse([call for call in calls if call.startswith(("plugin remove", "plugin add"))], calls)
+        self.assertTrue((cache / pin / ".git").exists())
+        self.assertIn("codex plugin ponytail@ponytail is at its pin (make doctor agrees).", result.stdout)
+        self.assertNotIn("not the pinned ref", result.stderr)
+        self.assertNotIn("make doctor rejects", result.stderr)
+        # A copy cached before the upgrade from another commit, at the pinned version, is at its pin too.
+        result, calls, cache, _ = self.run_ponytail_bootstrap(before=pin, cache_version=pin, from_another_commit=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual("plugin marketplace upgrade ponytail", calls[0], calls)
+        self.assertFalse([call for call in calls if call.startswith(("plugin remove", "plugin add"))], calls)
+        self.assertIn("Codex Ponytail plugin is already installed.", result.stdout)
+        self.assertTrue((cache / pin).is_dir())
+
+    def run_hook_trust_refresh(self, chezmoi_env: dict[str, str]) -> tuple[subprocess.CompletedProcess, list[str]]:
+        # refresh_codex_hook_trust against a fake chezmoi on PATH that logs every call and lists two managed Codex
+        # config files; CHEZMOI_ENV is what the caller's environment says about a chezmoi run (chezmoi exports
+        # CHEZMOI=1 to every script it runs).
+        work = Path(tempfile.mkdtemp(prefix="hook-trust-"))
+        self.addCleanup(shutil.rmtree, work)
+        (work / "bin").mkdir()
+        calls = work / "calls"
+        fake = work / "bin/chezmoi"
+        fake.write_text(
+            "#!/bin/sh\n"
+            f'printf "%s\\n" "$*" >> {str(calls)!r}\n'
+            'if [ "$1" = managed ]; then printf "/h/.codex/config.toml\\n/h/.codex/standard.config.toml\\n/h/.zshrc\\n"; fi\n'
+            "exit 0\n"
         )
-        self.assertNotIn("did not reach its pin", result.stderr)
+        fake.chmod(0o755)
+        env = {key: value for key, value in os.environ.items() if key != "CHEZMOI"}
+        env["PATH"] = f"{work / 'bin'}{os.pathsep}{env['PATH']}"
+        result = subprocess.run(
+            ["bash", "-c", 'source "$1" && refresh_codex_hook_trust', "bash", str(UPDATER)],
+            env=env | chezmoi_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        return result, calls.read_text().splitlines() if calls.exists() else []
+
+    def test_the_hook_trust_refresh_is_left_to_the_standalone_run_inside_chezmoi_apply(self):
+        # Incident 2026-10-30: run_once_after_06-install-agent-assets.sh runs this script inside chezmoi apply,
+        # where the outer apply holds the persistent state lock, so the nested apply always timed out on it and
+        # warned (since #284). make update runs the script standalone right after the apply, where the refresh
+        # works, so inside a chezmoi run the step says so in one line and does nothing.
+        result, calls = self.run_hook_trust_refresh({"CHEZMOI": "1"})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertEqual(1, len(result.stdout.splitlines()), result.stdout)
+        self.assertIn("standalone ./scripts/update-agent-assets.sh run of make update refreshes it", result.stdout)
+        self.assertEqual("", result.stderr)
+        # Standalone (no CHEZMOI, or another value), the managed Codex config files are re-applied as before.
+        for name, chezmoi_env in (("unset", {}), ("other value", {"CHEZMOI": "0"})):
+            with self.subTest(case=name):
+                result, calls = self.run_hook_trust_refresh(chezmoi_env)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(
+                    [
+                        "managed --path-style=absolute --include=files",
+                        "apply --force /h/.codex/config.toml /h/.codex/standard.config.toml",
+                    ],
+                    calls,
+                )
+                self.assertNotIn("not refreshed", result.stdout + result.stderr)
 
     def test_a_fresh_ponytail_copy_whose_removal_fails_fails_the_run(self):
         # Failure injection for the PLUGIN_FRESH_OFF_PIN path of converge_or_disable: `codex plugin remove` fails
@@ -1695,7 +1759,7 @@ claude() {
         self.assertIs(True, state["user"]["crit@crit"])
 
         # The run counts it, so main exits non-zero instead of reporting success.
-        step = 'converge_claude_step "crit@crit" || true; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        step = 'converge_claude_step "crit@crit" || true; printf "failures=%s\\n" "${PIN_FAILURES}"'
         result, _, _ = self.converge_listed(step, installs, {"crit@crit": True}, DISABLE_FAILS="1")
         self.assertIn("failures=1", result.stdout)
 
@@ -1740,7 +1804,7 @@ claude() {
         # Unchecked is a failure of the run, through every caller: the named step and the manifest loop.
         for step in ("update_claude_crit", "converge_claude_plugins"):
             with self.subTest(step=step):
-                gate = f"ensure_crit_cli() {{ :; }}; ensure_claude_crit_marketplace() {{ :; }}; {step}; fail_on_claude_pin_failures"
+                gate = f"ensure_crit_cli() {{ :; }}; ensure_claude_crit_marketplace() {{ :; }}; {step}; fail_on_pin_failures"
                 result, _, _ = self.converge_listed(gate, "{truncated", {})
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("could not be checked or kept at their pin", result.stderr)
@@ -1767,7 +1831,7 @@ claude() {
         }
         enabled = dict.fromkeys(pins, True)
         # pstack has no setup step of its own; the manifest-driven loop still converges it.
-        step = 'converge_claude_plugins; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        step = 'converge_claude_plugins; printf "failures=%s\\n" "${PIN_FAILURES}"'
         result, calls, state = self.converge_listed(step, installs, enabled)
 
         self.assertEqual(0, result.returncode, result.stderr)
@@ -1800,7 +1864,7 @@ claude() {
                 installs = {plugin_id: [{"scope": "user", "version": "999.0.0"}]}
                 gate = (
                     "ensure_crit_cli() { return 1; }; "
-                    f'{step}; printf "reached failures=%s\\n" "${{CLAUDE_PIN_FAILURES}}"; fail_on_claude_pin_failures'
+                    f'{step}; printf "reached failures=%s\\n" "${{PIN_FAILURES}}"; fail_on_pin_failures'
                 )
                 result, calls, state = self.converge_listed(
                     gate, installs, {plugin_id: True}, markets=[], ADD_FAILS="1"
@@ -1825,7 +1889,7 @@ claude() {
                 installs = {plugin_id: [{"scope": "user", "version": pins[plugin_id]["pin"]}]}
                 gate = (
                     'printf x > "${HOME}/.agents"; ensure_crit_cli() { :; }; '
-                    f'{step}; printf "reached failures=%s\\n" "${{CLAUDE_PIN_FAILURES}}"; fail_on_claude_pin_failures'
+                    f'{step}; printf "reached failures=%s\\n" "${{PIN_FAILURES}}"; fail_on_pin_failures'
                 )
                 result, _, state = self.converge_listed(gate, installs, {plugin_id: True})
                 self.assertEqual(1, result.returncode, result.stderr)
@@ -1844,7 +1908,7 @@ claude() {
             with self.subTest(step=step):
                 gate = (
                     f'printf x > "${{HOME}}/.agents"; {stubs}{step}; '
-                    'printf "reached failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+                    'printf "reached failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures'
                 )
                 result, _, _ = self.converge_listed(gate, {}, {})
                 self.assertEqual(1, result.returncode, result.stderr)

@@ -1389,10 +1389,13 @@ assets:
     verify: installed-version
     note: >-
       each pin is the version both hosts ran on 2026-10-25 (the plugin.json of the copy under
-      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d). A plugin with a ref comes
-      from a git marketplace that the Codex config fetches at that commit (`ref` under
-      [marketplaces.<name>], rendered from here; `codex plugin marketplace upgrade` stays on it),
-      and ponytail's hooks are trusted only at the trusted_hash pins under codex.hooks.state.
+      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
+      version alone, as the Claude copy of the same plugin is. A plugin with a ref comes from a git
+      marketplace: the ref pins the marketplace catalog snapshot only (`ref` under
+      [marketplaces.<name>], rendered from here, and `codex plugin marketplace upgrade` keeps the
+      catalog on it), while the upgrade installs the plugin copy from the source the catalog names
+      (upstream main for ponytail), whatever the ref says, so the copy's commit is not compared with
+      it. What ponytail's hooks may run is guarded by the trusted_hash pins under codex.hooks.state.
       superpowers comes from the OpenAI-curated catalog, which takes no version, so make update
       only compares it. make doctor fails when an installed version or a marketplace revision
       differs from its pin. The crit plugin is the local copy `crit install codex-plugin` writes

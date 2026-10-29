@@ -961,10 +961,15 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
 
 
 def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]:
-    """Fail for a Codex plugin or git marketplace off its pin; warn for an enabled third-party plugin without one.
+    """Fail for a Codex plugin at another version than its pin or a git marketplace off its ref; warn for an
+    enabled third-party plugin without a pin.
 
-    The copy checked is the one Codex loads (pin_records.load_codex_copy documents Codex's rule); the
-    marketplace's install record and the config.toml marketplace table must name the pinned source.
+    The copy checked is the one Codex loads (pin_records.load_codex_copy documents Codex's rule), judged by the
+    version its manifest declares, as the Claude copy of the same plugin is. The `ref` pins the marketplace
+    catalog snapshot only: `codex plugin marketplace upgrade` fetches the copy from the source the catalog names
+    (upstream main for ponytail), so the commit a copy came from is not compared with it; the marketplace's
+    install record and the config.toml marketplace table must name the pinned source and ref. What a hook may
+    run is decided by the codex.hooks.state trusted_hash pins, not here.
     """
     findings = []
     codex_dir = records.agent_home("codex", home)
@@ -1012,35 +1017,6 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
                 f"Codex plugin {plugin_id} is installed at {copy.version}, not its pin {pin.pin} "
                 "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
             )
-        # The commit a git copy was installed from, resolved by git itself (HEAD is often `ref: refs/heads/main`).
-        try:
-            git_dir = records.confined(root, "(version directory)", root, copy.version_dir) / ".git"
-            has_git = pin.ref is not None and present(git_dir)
-        except RecordError as error:
-            findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify the commit its copy came from")
-            continue
-        if has_git:
-            try:
-                resolved = subprocess.run(
-                    ["git", f"--git-dir={git_dir}", "rev-parse", "--verify", "HEAD^{commit}"],
-                    text=True,
-                    capture_output=True,
-                    check=False,
-                )
-                commit, detail = resolved.stdout.strip(), resolved.stderr.strip()
-                failed = resolved.returncode != 0
-            except OSError as error:
-                commit, detail, failed = "", repr(error), True
-            if failed or not re.fullmatch(r"[0-9a-f]{40}", commit):
-                findings.append(
-                    f"Codex plugin {plugin_id}: git cannot resolve the commit of {git_dir} "
-                    f"({detail or commit!r}); cannot verify it"
-                )
-            elif commit != pin.ref:
-                findings.append(
-                    f"Codex plugin {plugin_id} copy {git_dir.parent} was installed from {commit}, "
-                    f"not the pinned ref {pin.ref}"
-                )
     for plugin_id, on in sorted((config.plugins if config else {}).items()):
         third_party = plugin_id.partition("@")[2] not in UNPINNED_CODEX_MARKETPLACES
         if on and third_party and plugin_id not in pins:

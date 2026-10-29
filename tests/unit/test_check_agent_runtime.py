@@ -1744,22 +1744,34 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(any(foreign in error for error in errors), findings)
         self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
 
-    def test_doctor_checks_the_commit_a_git_copy_came_from(self) -> None:
+    def test_doctor_judges_a_git_copy_by_its_version_not_the_commit_it_came_from(self) -> None:
+        # Incident 2026-10-30: `codex plugin marketplace upgrade` installs the copy from the source the catalog
+        # names (upstream main), whatever [marketplaces.<name>] ref says, so a copy at the pinned version from a
+        # commit other than the ref is what every host gets after an upstream push. The ref pins the catalog
+        # snapshot only; the copy is judged by its manifest version, as the Claude copy of the same plugin is.
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         copy = self.target_root / ".codex/plugins/cache/tail/tail/5.0.0"
         git = ["git", "-C", str(copy), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
         git_init(copy, "-b", "main")
         subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
-        # A branch HEAD (`ref: refs/heads/main`) is resolved by git; that commit is not the pinned ref.
+        head = subprocess.run([*git, "rev-parse", "HEAD"], text=True, capture_output=True, check=True).stdout.strip()
+        self.assertNotEqual("a" * 40, head)
+        self.assertEqual([], self.plugin_findings(pins))
+        # The same copy at another version is off its pin, named by version.
+        (copy / ".codex-plugin/plugin.json").write_text(json.dumps({"name": "tail", "version": "5.1.0"}))
         errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
         self.assertEqual(1, len(errors), errors)
-        self.assertIn("was installed from", errors[0])
-        # A HEAD git cannot resolve is an error, never a pass.
-        (copy / ".git/HEAD").write_text("ref: refs/heads/missing\n")
+        self.assertIn("tail@tail is installed at 5.1.0, not its pin 5.0.0", errors[0])
+        self.assertNotIn(head, errors[0])
+        # The marketplace install record off its ref is still the marketplace finding: the ref keeps that meaning.
+        (copy / ".codex-plugin/plugin.json").write_text(json.dumps({"name": "tail", "version": "5.0.0"}))
+        (self.target_root / ".codex/.tmp/marketplaces/tail/.codex-marketplace-install.json").write_text(
+            json.dumps({"source_type": "git", "source": "https://example.invalid/tail.git", "revision": "b" * 40})
+        )
         errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
         self.assertEqual(1, len(errors), errors)
-        self.assertIn("git cannot resolve the commit", errors[0])
+        self.assertIn(f"Codex marketplace tail is at {'b' * 40}, not its pinned ref {'a' * 40}", errors[0])
 
     def test_doctor_reads_a_null_record_as_an_error(self) -> None:
         pins = self.plugin_pins_fixture()

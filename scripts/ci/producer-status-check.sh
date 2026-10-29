@@ -140,10 +140,6 @@ STATUS_PARAMETERS = (
     {"Type": "ParamExp", "Short": True, "Param": {"Value": "?"}},
     {"Type": "ParamExp", "Param": {"Value": "?"}},
 )
-BRANCH = (
-    "the `||` branch is {shape} and does not end the read with a failure status: exit or return with no argument, "
-    "a decimal from 1 to 255 or `$?`, a refusal function of this file ending so, or `name=$?`"
-)
 # A tested read whose statement does not run in the foreground, or is negated under `||`: its failure stops nothing.
 FLAGS = {
     "Negated": "the tested read is negated (`!`), so its failure is read as success and the `||` branch does not run",
@@ -151,9 +147,7 @@ FLAGS = {
 }
 COPROCESS = "the tested read runs as a coprocess (`coproc`), whose status is read before the read ends"
 BACKGROUND_BRANCH = "a command run in the background (`&`), which lets the script go on"
-# Why a bare `exit` or `return` is refused where `$?` is no longer the failed read's status (forms ii and iii).
-BARE_AFTER = "a bare `{text}` after {before}, which passes on that command's status, not the failed read's"
-BARE_IN_FUNCTION = "a bare `{text}` in a function body, which must name its status (1 to 255 or `$?`)"
+IN_FUNCTION = object()  # the `before` of a bare `exit` or `return` that is a function body's only statement
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
     "Subshell": "a subshell",
@@ -454,15 +448,34 @@ def status_parameter(word):
     return len(parts) == 1 and parts[0].get("Type") == "ParamExp" and without_positions(parts[0]) in STATUS_PARAMETERS
 
 
-def terminator_shape(text, args, bare=None):
+def branch_reason(shape):
+    """The message of a tested read whose `||` branch does not handle its status, naming the branch's shape. Every
+    message that quotes text read from the tree is built by an f-string or a join, never by a format template the
+    text could be read as: a word spelled `{y}` is a word, not a field."""
+    return (
+        f"the `||` branch is {shape} and does not end the read with a failure status: exit or return with no "
+        "argument, a decimal from 1 to 255 or `$?`, a refusal function of this file ending so, or `name=$?`"
+    )
+
+
+def bare_shape(text, before):
+    """How a finding names a refused bare `exit` or `return` (text) where `$?` is no longer the failed read's status
+    (forms ii and iii): after the statement `before` names, whose status it passes on, or as the only statement of a
+    function body (IN_FUNCTION), which must name its status."""
+    if before is IN_FUNCTION:
+        return f"a bare `{text}` in a function body, which must name its status (1 to 255 or `$?`)"
+    return f"a bare `{text}` after {before}, which passes on that command's status, not the failed read's"
+
+
+def terminator_shape(text, args, before=None):
     """None when `exit` or `return` (text) ends the read with the failed status: no argument (the status of the
-    failed substitution propagates; refused with the given reason where an earlier command or a function body sits
-    between, since `$?` is then that command's), one argument whose known text is a decimal from 1 to 255, or one bare
-    `$?` or `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument with no
-    known text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments are an
-    error bash reports before it exits."""
+    failed substitution propagates; refused, naming `before`, where an earlier statement or a function body sits
+    between, since `$?` is then that statement's), one argument whose known text is a decimal from 1 to 255, or one
+    bare `$?` or `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument
+    with no known text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments
+    are an error bash reports before it exits."""
     if not args:
-        return None if bare is None else bare.format(text=text)
+        return None if before is None else bare_shape(text, before)
     if len(args) != 1:
         return f"an `{text}` with {len(args)} arguments"
     if status_parameter(args[0]):
@@ -477,15 +490,16 @@ def terminator_shape(text, args, bare=None):
     return f"`{text} {value}`, whose argument is not a decimal from 1 to 255"
 
 
-def branch_shape(stmt, functions, terminators, inner=False, bare=None):
+def branch_shape(stmt, functions, terminators, inner=False, before=None):
     """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
     handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
     function of that name takes the name away) with no argument, one known decimal from 1 to 255 or one bare `$?`
-    (terminator_shape; bare is the reason a bare one is refused here, None where it is accepted); (ii) a plain
-    command whose known first word names a top-level function of this file whose every body ends in a form (i)
-    statement with an explicit argument; (iii) a block or subshell whose last statement is (i) or (ii), the bare form
-    only as its only statement; (iv) a bare assignment of exactly `$?`. As the last statement of a block or a function
-    body (inner), only (i) and (ii) count: no recursion, no nested block, no `$?` that the enclosing read never tests.
+    (terminator_shape; `before` names the statement a bare one follows, or is IN_FUNCTION, where it is refused, and
+    is None where it is accepted); (ii) a plain command whose known first word names a top-level function of this
+    file whose every body ends in a form (i) statement with an explicit argument; (iii) a block or subshell whose last
+    statement is (i) or (ii), the bare form only as its only statement; (iv) a bare assignment of exactly `$?`. As the
+    last statement of a block or a function body (inner), only (i) and (ii) count: no recursion, no nested block, no
+    `$?` that the enclosing read never tests.
     A statement run in the background handles nothing: the script goes on while it runs."""
     if stmt.get("Background"):
         return BACKGROUND_BRANCH
@@ -502,13 +516,13 @@ def branch_shape(stmt, functions, terminators, inner=False, bare=None):
         if text is None:
             return "a command whose first word has no known text"
         if text in terminators:
-            return terminator_shape(text, args[1:], bare)
+            return terminator_shape(text, args[1:], before)
         if text in functions:
             for body in functions[text]:
                 stmts = body_statements(body)
                 if not stmts:
                     return f"a call of `{text}`, whose body ends in nothing"
-                before = BARE_AFTER.replace("{before}", statement_name(stmts[-2])) if len(stmts) > 1 else BARE_IN_FUNCTION
+                before = statement_name(stmts[-2]) if len(stmts) > 1 else IN_FUNCTION
                 shape = branch_shape(stmts[-1], {}, terminators, True, before)
                 if shape is not None:
                     return f"a call of `{text}`, whose body ends in {shape}"
@@ -519,7 +533,7 @@ def branch_shape(stmt, functions, terminators, inner=False, bare=None):
         noun = "block" if kind == "Block" else "subshell"
         if not stmts:
             return f"a {noun} whose last statement is nothing"
-        before = BARE_AFTER.replace("{before}", statement_name(stmts[-2])) if len(stmts) > 1 else None
+        before = statement_name(stmts[-2]) if len(stmts) > 1 else None
         shape = branch_shape(stmts[-1], functions, terminators, True, before)
         if shape is None:
             return None
@@ -618,7 +632,7 @@ class Walk:
                 elif reason is None:
                     shape = branch_shape(binary["Y"], self.functions, self.terminators)
                     if shape is not None:
-                        reason = BRANCH.format(shape=shape)
+                        reason = branch_reason(shape)
                 self.candidate(tested, reason)
 
     def candidate(self, stmt, reason):

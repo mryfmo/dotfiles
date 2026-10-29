@@ -12,9 +12,11 @@ two readings (a word has a known text only in three quoting forms; stderr is cap
 4 names the `||` branches that handle a tested read's status (exit, return, a top-level function ending in one, a
 block or subshell ending so, `name=$?`) and the characters of a known bare literal, so a form the lint does not know
 is a finding naming its shape, never decoded, round 5 reads the argument of that `exit` or `return` (none, a known
-decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a failed read into success, and round 6
-reads the tested statement's flags (`!`, `&`, `coproc`) and accepts the bare `exit` or `return` only as the whole
-branch or as the only statement of its block or subshell, since after an earlier command `$?` is that command's.
+decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a failed read into success, round 6 reads
+the tested statement's flags (`!`, `&`, `coproc`) and accepts the bare `exit` or `return` only as the whole branch or
+as the only statement of its block or subshell, since after an earlier command `$?` is that command's, and round 7
+builds every message that quotes a word of the tree by an f-string, so a word spelled `{y}` is reported, never read
+as a format field that makes the walk raise and the lint refuse the file.
 """
 
 from __future__ import annotations
@@ -523,6 +525,41 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
         ):
             self.assertIn(f":{line}: substitution: {message}", result.stdout)
+
+    def test_the_round_7_probes_with_braces_in_a_word_are_findings_naming_the_word(self) -> None:
+        """The residual of the 45e66603 report: the message naming a bare `exit` or `return` after another command was
+        built by splicing that command's word into a template and then calling `str.format` on it, so a command
+        spelled `'{y}'` (a known text holding braces) raised KeyError inside the walk and the lint refused the file
+        (exit 2, `cannot walk the syntax tree … KeyError('y')`) instead of reporting the finding. Every message that
+        quotes a word of the tree is now an f-string or a join: the word is quoted as it is, exit 1, nothing on
+        stderr. The branch and producer messages, built by f-strings before, are pinned to the same reading."""
+        for body, line, rule, named in (
+            (
+                "x=$(false) || { '{y}'; exit; }\n",
+                3,
+                "substitution",
+                "the `||` branch is a block whose last statement is a bare `exit` after the command `{y}`, which passes "
+                "on that command's status, not the failed read's and does not end the read",
+            ),
+            (
+                "f() {\n    '{y}'\n    return\n}\n"  # 3 to 6
+                "x=$(false) || f\n",  # 7
+                7,
+                "substitution",
+                "the `||` branch is a call of `f`, whose body ends in a bare `return` after the command `{y}`, which "
+                "passes on that command's status, not the failed read's and does not end the read",
+            ),
+            (
+                "x=$(false) || '{a}' 'b}'\n",
+                3,
+                "substitution",
+                "the `||` branch is the command `{a}` and does not end the read",
+            ),
+            ("git ls-files 2> '{err}'\n", 3, "producer", "`git ls-files` can fail with exit 0 or after printing"),
+        ):
+            with self.subTest(body=body):
+                result = self.assert_findings(body, [(line, rule)])
+                self.assertIn(f":{line}: {rule}: {named}", result.stdout)
 
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
         """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument (as

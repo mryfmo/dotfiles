@@ -7,11 +7,12 @@ hooks" (shape 1, rule a), the bare `git ls-files` without its stderr capture (sh
 (shape 4, rule d) and `local x=$(false)` (shape 5, rule a); the reader halves of shapes 2, 3 and 4 are in
 tests/unit/test_read_lib.py. The lint needs shfmt on PATH (the pinned version, which the contract checks first). The
 enforcement test runs it over the library and the five levers: that test, not a Makefile target, holds them to zero
-findings. Rounds 2 to 4 of the audit each have a test naming their probe lines by line and rule: round 3 inverted the
+findings. Rounds 2 to 5 of the audit each have a test naming their probe lines by line and rule: round 3 inverted the
 two readings (a word has a known text only in three quoting forms; stderr is captured only by three operators), round
 4 names the `||` branches that handle a tested read's status (exit, return, a top-level function ending in one, a
 block or subshell ending so, `name=$?`) and the characters of a known bare literal, so a form the lint does not know
-is a finding naming its shape, never decoded.
+is a finding naming its shape, never decoded, and round 5 reads the argument of that `exit` or `return` (none, a known
+decimal from 1 to 255, or the bare `$?`), so `|| exit 0` no longer turns a failed read into success.
 """
 
 from __future__ import annotations
@@ -408,12 +409,59 @@ class ProducerStatusCheckTest(unittest.TestCase):
         ):
             self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
 
+    def test_the_round_5_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The residual of the c95367a7 body, which that head read as clean: `exit` and `return` were accepted without
+        their argument, so `|| exit 0`, `|| (exit 0)`, a block ending in `exit 0`, a function ending in `exit 0` and
+        `|| return 0` turned the failed read into success. Round 5 reads the one argument: none, a known decimal from
+        1 to 255 or the bare `$?` end the read; a zero, a 256, an argument with no known text (`"$code"`, `$(cmd)`,
+        `"$?"`), a non-decimal or two arguments are findings naming the shape."""
+        body = (
+            "zero_fn() {\n    exit 0\n}\n"  # lines 3 to 5
+            "x=$(false) || exit 0\n"  # 6
+            "x=$(a) || (exit 0)\n"  # 7
+            "x=$(a) || { echo x >&2; exit 0; }\n"  # 8
+            "x=$(a) || zero_fn\n"  # 9
+            "f() {\n    x=$(a) || return 0\n}\n"  # 10 to 12
+            'x=$(a) || exit "$code"\n'  # 13
+            "x=$(a) || exit $?\n"  # 14
+            "x=$(a) || exit 2\n"  # 15
+            "x=$(a) || exit\n"  # 16
+            "g() {\n    x=$(a) || return 1\n}\n"  # 17 to 19
+            "x=$(a) || exit 1 2\n"  # 20
+            "x=$(a) || exit $(cmd)\n"  # 21
+            "x=$(a) || exit 256\n"  # 22
+            "x=$(a) || exit abc\n"  # 23
+            "x=$(a) || exit ${?}\n"  # 24
+            "x=$(a) || exit '255'\n"  # 25
+            'x=$(a) || exit "$?"\n'  # 26
+            "x=$(a) || exit -1\n"  # 27
+            "h() {\n    x=$(a) || return $?\n}\n"  # 28 to 30
+        )
+        expected = [(line, "substitution") for line in (6, 7, 8, 9, 11, 13, 20, 21, 21, 22, 23, 26, 27)]
+        result = self.assert_findings(body, expected)
+        for line, shape in (
+            (6, "`exit 0`, which turns the failed read into success"),
+            (7, "a subshell whose last statement is `exit 0`, which turns the failed read into success"),
+            (8, "a block whose last statement is `exit 0`, which turns the failed read into success"),
+            (9, "a call of `zero_fn`, whose body ends in `exit 0`, which turns the failed read into success"),
+            (11, "`return 0`, which turns the failed read into success"),
+            (13, "an `exit` whose argument has no known text"),
+            (20, "an `exit` with 2 arguments"),
+            (21, "an `exit` whose argument has no known text"),
+            (22, "`exit 256`, which turns the failed read into success"),
+            (23, "`exit abc`, whose argument is not a decimal from 1 to 255"),
+            (26, "an `exit` whose argument has no known text"),
+            (27, "`exit -1`, whose argument is not a decimal from 1 to 255"),
+        ):
+            self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
+
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
-        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return`, a top-level function
-        of this file whose body's last statement is one of those (one level: a function ending in a call of another is
-        not accepted, nor a name defined inside another statement, nor a name whose second definition ends otherwise),
-        a block or subshell whose last statement is one of those, and `name=$?` or `name=${?}`. Everything else is a
-        finding that names the shape, and a top-level function named `exit` takes the name away."""
+        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` with no argument, one
+        known decimal from 1 to 255 or one bare `$?`, a top-level function of this file whose body's last statement is
+        one of those (one level: a function ending in a call of another is not accepted, nor a name defined inside
+        another statement, nor a name whose second definition ends otherwise), a block or subshell whose last statement
+        is one of those, and `name=$?` or `name=${?}`. Everything else is a finding that names the shape, and a
+        top-level function named `exit` takes the name away."""
         preamble = (
             'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
             "refuse_plain() exit 2\n"
@@ -422,6 +470,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "twice() {\n    exit 2\n}\n"
             'twice() {\n    echo "no"\n}\n'
             "deep() {\n    refuse 'x'\n}\n"
+            "zero() {\n    exit 0\n}\n"
         )
         cases: list[tuple[str, str | None]] = [  # (the line, the shape the finding names, or None when accepted)
             ("x=$(a) || exit", None),
@@ -433,6 +482,17 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a) || (refuse 'x')", None),
             ("x=$(a) || { refuse 'x'; }", None),
             ("x=$(a) || { echo no >&2; return 1; }", None),
+            ("x=$(a) || exit $?", None),
+            ("x=$(a) || return ${?}", None),
+            ("x=$(a) || exit '255'", None),
+            ("x=$(a) || exit 0", "`exit 0`, which turns the failed read into success"),
+            ("x=$(a) || return 0", "`return 0`, which turns the failed read into success"),
+            ("x=$(a) || exit 256", "`exit 256`, which turns the failed read into success"),
+            ("x=$(a) || exit abc", "`exit abc`, whose argument is not a decimal from 1 to 255"),
+            ('x=$(a) || exit "$?"', "an `exit` whose argument has no known text"),
+            ("x=$(a) || exit 1 2", "an `exit` with 2 arguments"),
+            ("x=$(a) || { echo no >&2; exit 0; }", "a block whose last statement is `exit 0`, which turns"),
+            ("x=$(a) || zero", "a call of `zero`, whose body ends in `exit 0`, which turns the failed read"),
             ('x=$(a) || status="$?"', "an assignment of something other than `$?`"),
             ("x=$(a) || status=${?:-0}", "an assignment of something other than `$?`"),
             ("x=$(a) || status=$? other=1", "an assignment of something other than `$?`"),

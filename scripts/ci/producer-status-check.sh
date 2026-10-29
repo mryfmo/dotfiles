@@ -10,10 +10,13 @@
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
 #      condition (negated or not) or the left side of a `||` whose branch handles the status. The branches that
-#      handle it are a closed list: (i) a plain command whose known first word is `exit` or `return`; (ii) a plain
-#      command whose known first word names a function this file defines at top level and whose body's last
-#      statement is form (i) (one level, no recursion; a name no top-level function defines is not accepted); (iii) a
-#      block or subshell whose last statement is (i) or (ii); (iv) a bare assignment of exactly `$?` (`status=$?`).
+#      handle it are a closed list: (i) a plain command whose known first word is `exit` or `return`, with no
+#      argument (the status of the failed substitution propagates), with one argument whose known text is a decimal
+#      from 1 to 255, or with one argument that is the bare `$?` (`exit 0`, `exit "$x"`, `exit $(cmd)`, `exit 1 2`
+#      and `return 0` are findings: a zero turns the failed read into success); (ii) a plain command whose known
+#      first word names a function this file defines at top level and whose body's last statement is form (i) (one
+#      level, no recursion; a name no top-level function defines is not accepted); (iii) a block or subshell whose
+#      last statement is (i) or (ii); (iv) a bare assignment of exactly `$?` (`status=$?`).
 #      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
 #      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell ending
 #      otherwise, an assignment of anything else, a first word with no known text. A later line that handles an
@@ -121,6 +124,7 @@ MESSAGES = {
 }
 ALLOW_WORDS = ["producer-status:", "allow"]
 TERMINATORS = ("exit", "return")  # the plain commands that end the read when the tested substitution fails (form i)
+FAILURE_STATUSES = range(1, 256)  # the one argument of a terminator, when its text is known, is a decimal in this range
 # A bare literal is a known text only over this set: a glob character, a brace, a tilde, `$`, a backquote, a backslash
 # or whitespace is expanded or read by bash and is not decoded here. Inside double quotes bash expands none of them,
 # so the set does not apply there.
@@ -131,8 +135,8 @@ STATUS_PARAMETERS = (
     {"Type": "ParamExp", "Param": {"Value": "?"}},
 )
 BRANCH = (
-    "the `||` branch is {shape} and does not end the read with exit, return, a refusal function of this file or "
-    "`name=$?`"
+    "the `||` branch is {shape} and does not end the read with a failure status: exit or return with no argument, "
+    "a decimal from 1 to 255 or `$?`, a refusal function of this file ending so, or `name=$?`"
 )
 SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
     "Block": "a block",
@@ -408,14 +412,36 @@ def status_parameter(word):
     return len(parts) == 1 and parts[0].get("Type") == "ParamExp" and without_positions(parts[0]) in STATUS_PARAMETERS
 
 
+def terminator_shape(text, args):
+    """None when `exit` or `return` (text) ends the read with the failed status: no argument (the status of the
+    failed substitution propagates), one argument whose known text is a decimal from 1 to 255, or one bare `$?` or
+    `${?}`; else the shape that names why not. `exit 0` turns the failed read into success; an argument with no known
+    text (`"$x"`, `$(cmd)`, `"$?"`) is not shown to be nonzero; `exit 256` is 0 to bash; two arguments are an error
+    bash reports before it exits."""
+    if not args:
+        return None
+    if len(args) != 1:
+        return f"an `{text}` with {len(args)} arguments"
+    if status_parameter(args[0]):
+        return None
+    value = word_text(args[0])
+    if value is None:
+        return f"an `{text}` whose argument has no known text"
+    if value.isascii() and value.isdigit() and int(value) in FAILURE_STATUSES:
+        return None
+    if value.isascii() and value.isdigit() and int(value) % 256 == 0:
+        return f"`{text} {value}`, which turns the failed read into success"
+    return f"`{text} {value}`, whose argument is not a decimal from 1 to 255"
+
+
 def branch_shape(stmt, functions, terminators, inner=False):
     """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
     handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
-    function of that name takes the name away); (ii) a plain command whose known first word names a top-level
-    function of this file whose every body ends in a form (i) statement; (iii) a block or subshell whose last
-    statement is (i) or (ii); (iv) a bare assignment of exactly `$?`. As the last statement of a block or a function
-    body (inner), only (i) and (ii) count: no recursion, no nested block, no `$?` that the enclosing read never
-    tests."""
+    function of that name takes the name away) with no argument, one known decimal from 1 to 255 or one bare `$?`
+    (terminator_shape); (ii) a plain command whose known first word names a top-level function of this file whose
+    every body ends in a form (i) statement; (iii) a block or subshell whose last statement is (i) or (ii); (iv) a
+    bare assignment of exactly `$?`. As the last statement of a block or a function body (inner), only (i) and (ii)
+    count: no recursion, no nested block, no `$?` that the enclosing read never tests."""
     cmd = command_of(stmt)
     kind = cmd.get("Type") if isinstance(cmd, dict) else None
     if kind == "CallExpr":
@@ -429,7 +455,7 @@ def branch_shape(stmt, functions, terminators, inner=False):
         if text is None:
             return "a command whose first word has no known text"
         if text in terminators:
-            return None
+            return terminator_shape(text, args[1:])
         if text in functions:
             for body in functions[text]:
                 last = last_statement(body)

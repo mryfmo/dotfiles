@@ -1127,6 +1127,25 @@ UNKNOWN_COMMAND_EXEMPT: dict[tuple[str, str, str], str] = {
         '"${RUNNER_TEMP}/chezmoi-bin/chezmoi" --version | grep -F "v${chezmoi_version}"',
     ): "the release binary the line above extracted into the runner's temp directory; remote.yaml is not this unit's (brief SCOPE)",
 }
+# Round 15 (audit of 8ce0efda): the rule read a step's own `shell:` alone, while a `defaults.run.shell` at the
+# workflow or the job level is the shell of every step that names none (GitHub runs `<shell> {0}` with the script
+# as the file, so a multi-line value can define a split-spelled `/usr/bin/timeout` function and `source {0}`), and
+# every apt step's bound was replaced with no `shell:` key on any step. The rule reads PyYAML's document whole: a
+# `defaults` key at the workflow level or on a job is refused with its line and value, whatever it holds (none of
+# the eleven files holds one at either level, measured before the rule was written, and none uses a
+# `defaults.run.working-directory`, so none is allowed; a workflow that needs one is a deliberate edit here); and a
+# step with `run:` holds no `shell:` key or `shell: bash` exactly, the string, so `bash -e {0}`, `bash --noprofile
+# {0}`, `sh`, `pwsh`, an empty value and a multi-line value are each refused naming the step and the value. The apt
+# steps keep no `shell:` key: GitHub's default on Linux, `bash -e {0}` with the runner's bash, is the shell the
+# bounds were measured under (`shell: bash` runs `bash --noprofile --norc -eo pipefail {0}`, the same bash, and is
+# accepted on the steps that write it).
+WORKFLOW_DEFAULTS = (
+    "a `defaults.run.shell` is the shell of every step that names none; no workflow holds a `defaults` key"
+)
+JOB_DEFAULTS = (
+    "a job's `defaults.run.shell` is the shell of every step of the job that names none; no job holds a `defaults` key"
+)
+STEP_SHELL = "a step with `run:` holds no `shell:` key or `shell: bash` exactly; the tree reads the runner's bash"
 
 
 class Walked(NamedTuple):
@@ -1515,21 +1534,54 @@ def script_line(script: str, line: object) -> str:
     return lines[line - 1].strip() if isinstance(line, int) and 0 < line <= len(lines) else ""
 
 
+def defaults_line(text: str, job: str | None = None) -> object:
+    """The line of the `defaults:` key at the workflow level (`job` None) or among `job`'s keys, placed as the census
+    places a line (the first key after `jobs:` sets the jobs' indent, the first key under a job its keys'), or `?`."""
+    jobs_at = keys_at = None
+    inside = in_job = False
+    for number, line in enumerate(text.split("\n"), 1):
+        lexed = lex(line)
+        if not lexed.text or lexed.text.startswith("#") or lexed.fault:
+            continue
+        if lexed.indent == 0:
+            if job is None and lexed.key == "defaults":
+                return number
+            inside, in_job = lexed.key == "jobs", False
+            continue
+        if not inside or job is None:
+            continue
+        if jobs_at is None:
+            jobs_at = lexed.indent
+        if lexed.indent == jobs_at:
+            in_job, keys_at = lexed.key == job, None
+        elif in_job and lexed.indent > jobs_at and keys_at in (None, lexed.indent):
+            keys_at = lexed.indent
+            if lexed.key == "defaults":
+                return number
+    return "?"
+
+
 def tree_problems(name: str, text: str) -> list[str]:
-    """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a `shell:` other than bash
-    (the tree reads the runner's bash), a `${{` in a run body (GitHub expands it before bash reads the text), a body
-    shfmt refuses, each statement of an apt step that is not the form, each bare literal bash expands among a call's
-    words, each comment that hides a line, each command word with no known text in any step unless
-    UNKNOWN_COMMAND_EXEMPT names its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS
-    whole, and a step whose tree holds another number of form statements than the text holds bound forms. The
-    bodies are PyYAML's (Parser), the lines the census's; a file the census or the parser gate refuses is named
-    there and not read here."""
+    """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a `defaults` key at the
+    workflow level or on a job, whatever it holds, and a step's `shell:` other than the string `bash` (round 15: a
+    `defaults.run.shell` is the shell of every step that names none, and the tree reads the runner's bash), a
+    `${{` in a run body (GitHub expands it before bash reads the text), a body shfmt refuses,
+    each statement of an apt step that is not the form, each bare literal bash expands among a call's words, each
+    comment that hides a line, each command word with no known text in any step unless UNKNOWN_COMMAND_EXEMPT names
+    its step and line, an apt step whose stripped `if:` is not one of APT_STEP_IFS whole, and a step whose tree
+    holds another number of form statements than the text holds bound forms. The bodies and the keys are PyYAML's
+    (Parser), the lines the census's; a file the census or the parser gate refuses is named there and not read
+    here."""
     if refused_characters(text) or parser_problems(name, text):
         return []
     document, _ = Parser.read(text)
     found = text_steps(text)
     problems = []
+    if "defaults" in document:
+        problems.append(f"{name}:{defaults_line(text)}: defaults: {document['defaults']!r}: {WORKFLOW_DEFAULTS}")
     for job, body in document["jobs"].items():
+        if "defaults" in body:
+            problems.append(f"{name}:{defaults_line(text, job)}: {job}: defaults: {body['defaults']!r}: {JOB_DEFAULTS}")
         for index, step in enumerate(body["steps"]):
             if "run" not in step:
                 continue
@@ -1539,11 +1591,8 @@ def tree_problems(name: str, text: str) -> list[str]:
             label = step.get("name") or f"step {index}"
             where = f"{name}:{{}}: {job}: step {index} {label!r}"
             script = str(step["run"])
-            shell = step.get("shell")
-            if shell is not None and str(shell) != "bash":
-                problems.append(
-                    f"{where.format(text_step['line'])}: shell: {shell!r}: the tree reads the runner's bash"
-                )
+            if "shell" in step and step["shell"] != "bash":
+                problems.append(f"{where.format(text_step['line'])}: shell: {step['shell']!r}: {STEP_SHELL}")
                 continue
             if "${{" in script:
                 at = next(number for number, line in enumerate(script.splitlines(), 1) if "${{" in line)
@@ -2003,6 +2052,28 @@ class AptBoundRuleTest(unittest.TestCase):
         self.assertEqual([], problems)
         self.assertGreaterEqual(calls, 5)
 
+    def test_no_workflow_sets_a_default_shell_and_the_apt_steps_name_none(self) -> None:
+        # Round 15 (audit of 8ce0efda): a `defaults.run.shell` at the workflow or the job level is the shell of
+        # every step that names none, so tree_problems (run over the real files above) refuses the key; this pins
+        # the state the rule was measured over: no `defaults` key in any of the eleven files at either level, so no
+        # `defaults.run.working-directory` is in use either, and every `shell:` a step writes is the string `bash`
+        # (seven steps, in agent-assets.yml, private-bootstrap.yaml and remote.yaml). The apt steps keep no `shell:`
+        # key: GitHub's default on Linux, `bash -e {0}` with the runner's bash, is the shell the bounds were
+        # measured under.
+        for name, text in workflow_texts().items():
+            with self.subTest(workflow=name):
+                self.assertEqual([], parser_problems(name, text))
+                document, _ = Parser.read(text)
+                self.assertNotIn("defaults", document)
+                for job, body in document["jobs"].items():
+                    self.assertNotIn("defaults", body, job)
+                    for index, step in enumerate(body["steps"]):
+                        script = str(step.get("run", ""))
+                        if names_apt(script) or TIMEOUT_PATH in script:
+                            self.assertNotIn("shell", step, (job, index, step.get("name")))
+                        elif "shell" in step:
+                            self.assertEqual("bash", step["shell"], (job, index, step.get("name")))
+
     def test_an_exemption_needs_its_exact_line(self) -> None:
         table = {("x.yaml", "# apt-get runs inside setup.sh"): "comment; names the tool without running it"}
         self.assertEqual([], apt_violations("x.yaml", "  # apt-get runs inside setup.sh\n", table))
@@ -2043,7 +2114,7 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Rounds 10 to 14: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    """Rounds 10 to 15: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
     21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
     (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
     statement are refused by line and node with no table of commands; a command word with no known text is refused
@@ -2052,7 +2123,10 @@ class TreeRuleTest(unittest.TestCase):
     `sudo /usr/bin/a[p]t-get update` is refused as an unknown word, as a possible apt token and as a non-form
     statement; an apt step's `if:` is one of APT_STEP_IFS whole, so `|| true` appended is refused. Round 14 (audit
     of 0fec5c91): the test builtin's exemption is a whole word's, so `sudo "/usr/bin/"["a"]"pt-get" update`, whose
-    bare `[` and `]` parts stand among quoted parts, is refused the same three ways."""
+    bare `[` and `]` parts stand among quoted parts, is refused the same three ways. Round 15 (audit of 8ce0efda):
+    a `defaults` key at the workflow level or on a job, whatever it holds, and a step's `shell:` other than the
+    string `bash` are refused with their values, so the auditor's `defaults.run.shell` that defines a split-spelled
+    `/usr/bin/timeout` function and sources the script is named at either level."""
 
     FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
     NAME = "Install apt packages"
@@ -2691,12 +2765,72 @@ class TreeRuleTest(unittest.TestCase):
 
     def test_a_step_the_tree_cannot_read_as_bash_is_refused_with_its_cause(self) -> None:
         form = self.FORM
-        with self.subTest(case="a shell other than bash"):
-            text, _, dash = self.step(f"{form} update\n", shell="sh")
+        custom = "bash --noprofile --norc -c '/usr/bin/time''out() { shift 2; \"$@\"; }\nsource {0}'\n"
+        block = "defaults:\n  run:\n    shell: |\n" + "".join(f"      {line}\n" for line in custom.splitlines())
+        value = {"run": {"shell": custom}}
+        top = "on: push\n"
+        job = "    runs-on: ubuntu-24.04\n"
+
+        def at_top(text: str, keys: str) -> str:
+            return text.replace(top, top + keys)
+
+        def in_job(text: str, keys: str) -> str:
+            return text.replace(job, job + "".join(f"    {line}\n" for line in keys.splitlines()))
+
+        with self.subTest(case="the auditor's defaults.run.shell at the workflow level (audit of 8ce0efda)"):
+            text, _, _ = self.step(f"{form} update\n")
             self.assertEqual(
-                [self.STEP.format(dash) + "shell: 'sh': the tree reads the runner's bash"],
-                tree_problems("x.yaml", text),
+                [f"x.yaml:3: defaults: {value!r}: {WORKFLOW_DEFAULTS}"], tree_problems("x.yaml", at_top(text, block))
             )
+        with self.subTest(case="the auditor's defaults.run.shell at the job level"):
+            text, _, _ = self.step(f"{form} update\n")
+            self.assertEqual(
+                [f"x.yaml:6: test: defaults: {value!r}: {JOB_DEFAULTS}"], tree_problems("x.yaml", in_job(text, block))
+            )
+        with self.subTest(case="a one-line defaults.run.shell, bash itself, at either level"):
+            text, _, _ = self.step(f"{form} update\n")
+            one = "defaults:\n  run:\n    shell: bash\n"
+            self.assertEqual(
+                [f"x.yaml:3: defaults: {{'run': {{'shell': 'bash'}}}}: {WORKFLOW_DEFAULTS}"],
+                tree_problems("x.yaml", at_top(text, one)),
+            )
+            self.assertEqual(
+                [f"x.yaml:6: test: defaults: {{'run': {{'shell': 'bash'}}}}: {JOB_DEFAULTS}"],
+                tree_problems("x.yaml", in_job(text, one)),
+            )
+        with self.subTest(case="a defaults.run.working-directory alone is refused too, since no workflow uses one"):
+            text, _, _ = self.step(f"{form} update\n")
+            directory = "defaults:\n  run:\n    working-directory: scripts\n"
+            self.assertEqual(
+                [f"x.yaml:3: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {WORKFLOW_DEFAULTS}"],
+                tree_problems("x.yaml", at_top(text, directory)),
+            )
+            self.assertEqual(
+                [f"x.yaml:6: test: defaults: {{'run': {{'working-directory': 'scripts'}}}}: {JOB_DEFAULTS}"],
+                tree_problems("x.yaml", in_job(text, directory)),
+            )
+            self.assertEqual(
+                [f"x.yaml:6: test: defaults: {{'run': 'bash'}}: {JOB_DEFAULTS}"],
+                tree_problems("x.yaml", in_job(text, "defaults:\n  run: bash\n")),
+            )
+        for shell in ("sh", "bash -e {0}", "bash --noprofile --norc -eo pipefail {0}", "pwsh", "'bash '"):
+            with self.subTest(case=f"shell: {shell}"):
+                text, _, dash = self.step(f"{form} update\n", shell=shell)
+                read = shell.strip("'")  # the quoted one keeps its blank, which PyYAML would strip from a plain scalar
+                self.assertEqual(
+                    [self.STEP.format(dash) + f"shell: {read!r}: {STEP_SHELL}"], tree_problems("x.yaml", text)
+                )
+        with self.subTest(case="a multi-line shell: holding the auditor's function"):
+            text, _, dash = self.step(f"{form} update\n", shell="|")
+            text = text.replace(
+                "shell: |\n", "shell: |\n" + "".join(f"          {line}\n" for line in custom.splitlines())
+            )
+            self.assertEqual(
+                [self.STEP.format(dash) + f"shell: {custom!r}: {STEP_SHELL}"], tree_problems("x.yaml", text)
+            )
+        with self.subTest(case="an empty shell:"):
+            text, _, dash = self.step(f"{form} update\n", shell="")
+            self.assertEqual([self.STEP.format(dash) + f"shell: None: {STEP_SHELL}"], tree_problems("x.yaml", text))
         with self.subTest(case="shell: bash"):
             text, _, _ = self.step(f"{form} update\n", shell="bash")
             self.assertEqual([], tree_problems("x.yaml", text))

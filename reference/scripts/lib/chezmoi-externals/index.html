@@ -5060,12 +5060,14 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>assert_chezmoi_externals_cached</code></li>
 <li><code>chezmoi_external_download</code></li>
 <li><code>chezmoi_external_list</code></li>
 <li><code>chezmoi_external_root_declares</code></li>
 <li><code>chezmoi_external_seconds</code></li>
 <li><code>chezmoi_external_sha256</code></li>
 <li><code>chezmoi_external_url_key</code></li>
+<li><code>chezmoi_externals_prefetch_runs</code></li>
 <li><code>prefetch_chezmoi_external</code></li>
 <li><code>prefetch_chezmoi_externals</code></li>
 </ul>
@@ -5074,7 +5076,7 @@
 <span class="c1"># shellcheck shell=bash</span>
 
 <span class="c1"># @file scripts/lib/chezmoi-externals.sh</span>
-<span class="c1"># @brief Fetch chezmoi's archive and file externals into its cache before chezmoi reads them.</span>
+<span class="c1"># @brief Fetch chezmoi's archive and file externals into its cache before chezmoi reads them, and prove it reads them.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   chezmoi downloads a `file`, `archive` or `archive-file` external the first time a command reads the target</span>
 <span class="c1">#   state (`chezmoi status`, `diff`, `apply`) and keeps it in `&lt;cacheDir&gt;/external/&lt;sha256 of the URL&gt;`, which it</span>
@@ -5085,6 +5087,9 @@
 <span class="c1">#   prefetch_chezmoi_externals takes that download out of chezmoi: one bounded, retried download per external, its</span>
 <span class="c1">#   sha256 checked before it is cached, so the read that follows finds a fresh, verified cache and fetches nothing.</span>
 <span class="c1">#   A dropped or failed transfer is retried; a complete download whose sha256 differs fails at once.</span>
+<span class="c1">#   assert_chezmoi_externals_cached then proves that chezmoi reads that cache: the cache layout above is read from</span>
+<span class="c1">#   one chezmoi version's source and documented nowhere, while the installed version floats, so a release that moved</span>
+<span class="c1">#   or re-keyed the cache would otherwise leave the prefetch green and chezmoi downloading unbounded again (U111).</span>
 <span class="c1">#   setup.sh runs before the repository exists, so it carries a copy of the functions below;</span>
 <span class="c1">#   tests/unit/test_chezmoi_externals.py keeps the copies equal. It needs curl, awk and sha256sum or shasum.</span>
 
@@ -5094,6 +5099,21 @@
 <span class="c1"># never read from the environment, so no caller can unbound the retries. Tests replace `sleep` instead.</span>
 <span class="nv">CHEZMOI_EXTERNAL_ATTEMPTS</span><span class="o">=</span><span class="m">4</span>
 <span class="nv">CHEZMOI_EXTERNAL_RETRY_DELAY</span><span class="o">=</span><span class="m">5</span>
+<span class="c1"># Network-denial guards for assert_chezmoi_externals_cached, probed in this order, each a tab-separated argv (the</span>
+<span class="c1"># sandbox profile holds spaces): a new network namespace alone (needs CAP_SYS_ADMIN: root, as test.yaml's `sudo</span>
+<span class="c1"># unshare --net`), the same inside an unprivileged user namespace with the current uid mapped, then without a mapping</span>
+<span class="c1"># (hosts differ in which write the kernel and AppArmor allow), and macOS's sandbox-exec with the profile</span>
+<span class="c1"># .github/workflows/test.yaml's statusline smoke test uses. The first whose probe runs `true` wraps the chezmoi call;</span>
+<span class="c1"># none leaves the check unguarded, and the log says so. Which one a host takes is read from its log, not assumed.</span>
+<span class="nv">CHEZMOI_EXTERNAL_NETWORK_GUARDS</span><span class="o">=(</span>
+<span class="w">    </span><span class="s1">$'unshare\t--net'</span>
+<span class="w">    </span><span class="s1">$'unshare\t--map-current-user\t--net'</span>
+<span class="w">    </span><span class="s1">$'unshare\t--user\t--net'</span>
+<span class="w">    </span><span class="s1">$'/usr/bin/sandbox-exec\t-p\t(version 1)(allow default)(deny network*)'</span>
+<span class="o">)</span>
+<span class="c1"># What chezmoi prints when it had to download an external and could not, or the transfer dropped: any of these in</span>
+<span class="c1"># its output fails the cache check whatever its exit status.</span>
+<span class="nv">CHEZMOI_EXTERNAL_NETWORK_ERRORS</span><span class="o">=(</span><span class="s1">'unexpected EOF'</span><span class="w"> </span><span class="s1">'dial tcp'</span><span class="w"> </span><span class="s1">'Get "http'</span><span class="w"> </span><span class="s1">'no such host'</span><span class="o">)</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print the lowercase sha256 of one file. It never reads standard input, so no caller hashes through a</span>
@@ -5364,6 +5384,19 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Whether the prefetch runs on this host: curl, its downloader, is on PATH. Without it the prefetch leaves</span>
+<span class="c1">#   the externals to chezmoi, which fetches them itself as before, and the cache check that follows has nothing to</span>
+<span class="c1">#   prove: run anyway, it would deny the network to the very download nothing replaced (a bootstrap without it</span>
+<span class="c1">#   stopped before status with `dial tcp`) or, unguarded, call that download a cache read. The prefetch and the check</span>
+<span class="c1">#   read this one predicate, so neither runs without the other.</span>
+<span class="c1"># @exitcode 0 It is.</span>
+<span class="c1"># @exitcode 1 It is not.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>chezmoi_externals_prefetch_runs<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>curl<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Fetch the `file`, `archive` and `archive-file` externals of a chezmoi source into chezmoi's cache,</span>
 <span class="c1">#   verified, before any command reads the target state. Only an external with one http(s) `url` and no fallback</span>
 <span class="c1">#   `urls` is prefetched. One with `urls` (chezmoi tries url, then urls, and keys its cache by each URL, chezmoi 2.73.3</span>
@@ -5380,7 +5413,7 @@
 <span class="k">function</span><span class="w"> </span>prefetch_chezmoi_externals<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">chezmoi</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>physical<span class="w"> </span><span class="nv">cache</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>scratch<span class="w"> </span>listing<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>name<span class="w"> </span><span class="nb">type</span><span class="w"> </span>sha256<span class="w"> </span>refresh<span class="w"> </span>seconds<span class="w"> </span>fallbacks<span class="w"> </span>url
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>fields
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>curl<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi_externals_prefetch_runs<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: curl not found; chezmoi fetches them itself, without retries\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -5448,6 +5481,81 @@
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span>prefetch_chezmoi_external<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">sha256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seconds</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cache</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Prove that chezmoi reads the prefetched externals from its cache, before anything applies: run</span>
+<span class="c1">#   `chezmoi status` over the externals' entries (`--include=externals`) with `--refresh-externals=never` and the</span>
+<span class="c1">#   network denied, so a cache entry chezmoi does not find (a release that moved or re-keyed `&lt;cacheDir&gt;/external`,</span>
+<span class="c1">#   a prefetch that wrote under another key) is a download that fails here, under a named chezmoi version, instead</span>
+<span class="c1">#   of the unbounded download the apply would make. The network is denied by the first guard in</span>
+<span class="c1">#   CHEZMOI_EXTERNAL_NETWORK_GUARDS whose probe runs; with none the check still runs, unguarded, and says so: it then</span>
+<span class="c1">#   catches a chezmoi that fails outright, not one that downloads. Only chezmoi's exit status and its output, scanned</span>
+<span class="c1">#   for CHEZMOI_EXTERNAL_NETWORK_ERRORS, are read; the status lines are not. The entry filter narrows what status</span>
+<span class="c1">#   compares, not what chezmoi reads: every external is read with the source state, so an external the prefetch</span>
+<span class="c1">#   leaves to chezmoi (fallback urls, a url that is not http(s)) has to be cached already or the guarded check</span>
+<span class="c1">#   fails. The source and config are chezmoi's own, the ones the apply that follows reads. Without the prefetch's</span>
+<span class="c1">#   downloader (chezmoi_externals_prefetch_runs) nothing was prefetched: the check says so and does not run. Runs no</span>
+<span class="c1">#   command but chezmoi and the guard: setup.sh carries it into a bootstrap whose tools are the bare minimum (the</span>
+<span class="c1">#   leanest Bats bootstrap pins them, with no grep or tail), so the scan and the last-line read are shell expansions.</span>
+<span class="c1"># @arg $1 path The chezmoi command (its config and source are chezmoi's defaults).</span>
+<span class="c1"># @stdout The chezmoi version and the guard the check ran under, then its verdict.</span>
+<span class="c1"># @stderr The one-line reason when it fails.</span>
+<span class="c1"># @exitcode 0 chezmoi exited 0 and printed none of the strings, or nothing was prefetched and the check did not run.</span>
+<span class="c1"># @exitcode 1 chezmoi exited non-zero or printed one of them, or a producer failed (version, guard table read).</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>assert_chezmoi_externals_cached<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">chezmoi</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>version<span class="w"> </span>entry<span class="w"> </span><span class="nv">how</span><span class="o">=</span>unguarded<span class="w"> </span>output<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">reason</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>pattern<span class="w"> </span>before<span class="w"> </span><span class="nv">offset</span><span class="o">=</span>-1
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>guard<span class="w"> </span>cmd
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>chezmoi_externals_prefetch_runs<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: nothing was prefetched (curl not found), so the cache check has nothing to prove and does not run\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">chezmoi</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: cannot read chezmoi'</span><span class="se">\'</span><span class="s1">'s version\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">cmd</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">chezmoi</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--refresh-externals<span class="o">=</span>never<span class="w"> </span>status<span class="w"> </span>--include<span class="o">=</span>externals<span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>entry<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHEZMOI_EXTERNAL_NETWORK_GUARDS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="c1"># An entry this step cannot read is a failure, never skipped: skipping would run the check unguarded, and an</span>
+<span class="w">        </span><span class="c1"># entry read to no words would probe bare `true` and call the check guarded, while the log claimed otherwise.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>guard<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">guard</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: cannot read a command from the guard table entry '</span><span class="se">\'</span><span class="s1">'%s'</span><span class="se">\'</span><span class="s1">'\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="p">//</span><span class="s1">$'\t'</span><span class="p">/ </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">guard</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">how</span><span class="o">=</span><span class="s2">"under </span><span class="si">${</span><span class="nv">guard</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">cmd</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">guard</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">            </span><span class="k">break</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: cache check %s with %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">how</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="k">:-</span><span class="nv">a</span><span class="p"> chezmoi that printed no version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">how</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>unguarded<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: no network-denial tool runs here (unshare, sandbox-exec); the check runs unguarded and cannot tell a download from a cache read\n'</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="c1"># The reason is the line holding the first listed string in the output, whichever string that is.</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHEZMOI_EXTERNAL_NETWORK_ERRORS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s2">"</span><span class="si">${</span><span class="nv">pattern</span><span class="si">}</span><span class="s2">"</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">before</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="p">%%</span><span class="s2">"</span><span class="si">${</span><span class="nv">pattern</span><span class="si">}</span><span class="s2">"</span><span class="p">*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">offset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-lt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">before</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-lt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">offset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">offset</span><span class="o">=</span><span class="s2">"</span><span class="si">${#</span><span class="nv">before</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">offset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ge<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">before</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="si">${</span><span class="nv">offset</span><span class="si">}}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">before</span><span class="p">##*</span><span class="s1">$'\n'</span><span class="si">}${</span><span class="nv">output</span><span class="p">:</span><span class="si">${</span><span class="nv">offset</span><span class="si">}}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="p">%%</span><span class="s1">$'\n'</span><span class="p">*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># No listed string: the reason is chezmoi's last line, the one its error takes.</span>
+<span class="w">        </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="p">##*</span><span class="s1">$'\n'</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">offset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ge<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: chezmoi did not read the externals from its cache (%s, status exited %s): %s\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">how</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="k">:-</span><span class="nv">no</span><span class="p"> output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'chezmoi externals: chezmoi read the externals from its cache (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">how</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 </code></pre></div>
 

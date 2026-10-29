@@ -1,6 +1,6 @@
 # U116 mise.lock evaluation (plan P-36, research V4-9)
 
-Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the dry runs pasted below are the round-12 re-take of the same date (2026-10-29T16:45:24Z to 2026-10-29T16:45:31Z, a scratch home and an output directory made by `tempfile.mkdtemp` under `$TMPDIR` and named in a receipt), taken by the one script this file holds, whose `timed` function returns a receipt every caller reads; `scan`, `check` and the twenty-four injections were run the same UTC day with the script as pasted.
+Measured 2026-10-29 (UTC) with `mise 2026.10.19 macos-arm64 (2026-10-24)` on the macOS host, every mise command under a scratch HOME; the dry runs pasted below are the round-13 re-take of the same date (2026-10-29T18:20:14Z to 2026-10-29T18:20:17Z, a scratch home and an output directory made by `tempfile.mkdtemp` under the resolved `$TMPDIR` and named in a receipt whose two paths one `contained` helper accepts), taken by the one script this file holds; `scan`, `check` and the twenty-eight injections were run the same UTC day with the script as pasted.
 
 ## Question
 
@@ -10,21 +10,21 @@ The plan row P-36 (`handoff/05-remediation-plan.md:116`) asks for a decisions ro
 
 ## Commands run
 
-One procedure, `U116-procedure.py`, pasted once below and run from `$TMPDIR` as `python3 -I U116-procedure.py <subcommand>`; every other fenced block in this file is one such invocation (an `sh` block of one line) followed by its output (a `text` block) or the content of a file the procedure wrote. Every output is a round-12 run of the script as pasted: `prepare` and `run` were re-taken once because round 12 changes `timed`, the function every mise call goes through (it returns a `Receipt` that every caller reads; the receipts and output files it writes are unchanged, and the re-take shows the same counts and, apart from the `mkdtemp` suffix, the modification times and two cache file names, the same bytes as round 11), and `scan`, `check` and the twenty-four `inject` runs follow over the same output directory. Each pasted output ends with the line `exit=<status>`, the process status as the harness that ran the command reported it, appended under the output; it is not printed by the procedure. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; the procedure prints that prefix (in its `/var` and `/private/var` spellings) as `$TMPDIR/` and the random suffix `mkdtemp` gives each scratch directory as `<tmp>`, so a line such as `$TMPDIR/U116-home-<tmp>/cwd` names this run's directory and reads the same on every run. The files mise wrote are pasted as mise wrote them: under `ENV`, `HOME` is the scratch home, so mise's `~` in a pasted output (`~/.config/mise/mise.lock` in (b), (c) and (d), `~/.config/mise/config.toml` in `h-config-ls.txt`) is the scratch home, and `h-config-ls-json.txt` names the same file by its full path, with this run's suffix. No pasted output holds the login name or the real home directory: the procedure writes the real mise paths in `~` form itself, its listings carry no owner column, and every string it prints passes through its `redact` function.
+One procedure, `U116-procedure.py`, pasted once below and run from `$TMPDIR` as `python3 -I U116-procedure.py <subcommand>`; every other fenced block in this file is one such invocation (an `sh` block of one line) followed by its output (a `text` block) or the content of a file the procedure wrote. Every output is a round-13 run of the script as pasted: `prepare` and `run` were re-taken once because round 13 changes the path by which `run` accepts its receipt: each path the receipt names goes through `contained`, which walks the path component by component from the root and refuses a symlink on the way, and on macOS `/var` is one, so the round-12 receipt (both paths in the `/var` spelling of `$TMPDIR`) is refused by the round-13 script and a receipt in the resolved `/private/var` spelling, which `prepare` now writes, was needed. The mise commands and their environment (apart from that spelling) are the round-12 ones, the output files (b), (c) and (d) are byte for byte the round-12 files, and `scan`, `check` and the twenty-eight `inject` runs follow over the new output directory. Each pasted output ends with the line `exit=<status>`, the process status as the harness that ran the command reported it, appended under the output; it is not printed by the procedure. `$TMPDIR` on this host is `/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/`; the procedure prints that prefix (in its `/var` and `/private/var` spellings) as `$TMPDIR/` and the random suffix `mkdtemp` gives each scratch directory as `<tmp>`, so a line such as `$TMPDIR/U116-home-<tmp>/cwd` names this run's directory and reads the same on every run. The files mise wrote are pasted as mise wrote them: under `ENV`, `HOME` is the scratch home, so mise's `~` in a pasted output (`~/.config/mise/mise.lock` in (b), (c) and (d), `~/.config/mise/config.toml` in `h-config-ls.txt`) is the scratch home, and `h-config-ls-json.txt` names the same file by its full path, with this run's suffix. No pasted output holds the login name or the real home directory: the procedure writes the real mise paths in `~` form itself, its listings carry no owner column, and every string it prints passes through its `redact` function.
 
-Rounds 1 to 8 (commits `e0a1526a`, `b5281d6b`, `8b1b9088`, `fb8118c1`, `188312bf`, `a3efa54a`, `31be35ac`, `1c99f9fc`, each on this branch) took the same dry runs, first from shell blocks and then from a growing set of `python3 -I` scripts, and each audit found one more place of the same class: a producer whose status nobody read (the token reader; the pattern writer and the file lister inside process substitutions; the redact-list reader of the brief's own ACCEPTANCE 5; the two `date` stamps and the `cat` of a receipt inside the bash runner), a predicate that turned a failed read into an absence (`os.path.lexists` on the lockfile path; the `test -e` of ACCEPTANCE 6), a wrapper that turned a failed launch into a success (the brief's `perl -e 'alarm 900; exec @ARGV'`), or a diagnostic printed raw (the lookup's exception text naming a path under the real home; a missing `git` raising a traceback out of the positive-control script). The ROUND 9 AMENDMENT shrank the surface to one place: the eight scripts and seven shell blocks of round 8 were replaced by one script (`524cbf15`), and the measured numbers of rounds 5 to 8 (258, 149, 36, the same 36 versions) were re-taken by it; the older blocks remain in the history of the branch, not in this file. The round-9 audit (`verdicts/U116-524cbf15.md`) found three more places (the planted-token injection wrote the live token under `/tmp` for the length of the scan, the redaction table was computed at module level before `main()`'s boundary, and the PR body's network row named no control), and round 10 (`792fa05e`) answered each: a synthetic marker, `arm()` as the first statement inside the boundary with a `HOME`/`USER` fallback, and a row naming its controls. The round-10 audit (`verdicts/U116-792fa05e.md`) found two more. First, the injection fixtures lived under one fixed path, `/tmp/U116-inject-9`, reused across runs without an ownership or symlink check, so a symlink pre-created at its `out-timeout/a-version.txt` was followed by the write-mode `open` in `timed` and its target truncated: the isolation the file claimed did not hold for a path another process could plant. Second, `MISE_TRUSTED_CONFIG_PATHS`, the one mise variable the environment carried, marks a config trusted and restricts nothing, and `mise lock --help` itself says `--global` covers the global and system config lockfiles, so the claim that no other config could be read rested on `HOME` and the cwd alone. Round 11 answers both where they are. No scratch path is fixed: each scratch home, output directory and fixture tree is a `tempfile.mkdtemp` directory under `$TMPDIR` (mode 0700, a random name), made by the run that uses it and either named in a receipt the script writes and reads back or removed when its case ends; every file the procedure makes is opened by one `create` function with `O_CREAT|O_EXCL|O_NOFOLLOW` and mode 0600, so a path that exists or a symlink waiting at it is a refusal and never a write through it (the `create-symlink` injection below). And the environment of every mise call carries the config discovery variables the vendor's two configuration pages give, set so that the scratch copy is the only config mise can load; the pasted `mise config ls` (run `h`) shows that file alone, and the `planted-config` injection shows configs planted where mise would otherwise look staying unlisted, with a control under the round-10 variable set where they are listed. The round-11 audit (`verdicts/U116-2f46b888.md`) found two more. First, `config_listing` discarded the exit status `timed` returned, so an in-memory injection that made all four `config ls` listings exit 17 still printed `unchanged` and exit 0: the planted-config evidence rested on a producer whose status nobody read. Second, none of the seventeen injections exercised the receipt and directory checks round 11 added, so the prepare threat row was closed on code alone. Round 12 answers both. `timed` returns a `Receipt` named tuple (`name`, `exit`, `line`), a `require_ok(receipt, what)` helper refuses on any exit but 0, every caller either calls it or compares `receipt.exit`, and `check` counts the `timed(` calls of the pasted block statically, refusing a call whose result is not assigned to a name later read as `.exit` or handed to `require_ok(` in the same function (`timed-calls=3 timed-unread=0` below; the round-11 block reads `timed-unread=3` under the same count). And seven injections are added: `config-ls-fails` (the audit's injection, now a refusal), `receipt-forged`, `receipt-symlink`, `receipt-owner`, `dir-mode`, `dir-owner` and `timed-unread`.
+Rounds 1 to 8 (commits `e0a1526a`, `b5281d6b`, `8b1b9088`, `fb8118c1`, `188312bf`, `a3efa54a`, `31be35ac`, `1c99f9fc`, each on this branch) took the same dry runs, first from shell blocks and then from a growing set of `python3 -I` scripts, and each audit found one more place of the same class: a producer whose status nobody read (the token reader; the pattern writer and the file lister inside process substitutions; the redact-list reader of the brief's own ACCEPTANCE 5; the two `date` stamps and the `cat` of a receipt inside the bash runner), a predicate that turned a failed read into an absence (`os.path.lexists` on the lockfile path; the `test -e` of ACCEPTANCE 6), a wrapper that turned a failed launch into a success (the brief's `perl -e 'alarm 900; exec @ARGV'`), or a diagnostic printed raw (the lookup's exception text naming a path under the real home; a missing `git` raising a traceback out of the positive-control script). The ROUND 9 AMENDMENT shrank the surface to one place: the eight scripts and seven shell blocks of round 8 were replaced by one script (`524cbf15`), and the measured numbers of rounds 5 to 8 (258, 149, 36, the same 36 versions) were re-taken by it; the older blocks remain in the history of the branch, not in this file. The round-9 audit (`verdicts/U116-524cbf15.md`) found three more places (the planted-token injection wrote the live token under `/tmp` for the length of the scan, the redaction table was computed at module level before `main()`'s boundary, and the PR body's network row named no control), and round 10 (`792fa05e`) answered each: a synthetic marker, `arm()` as the first statement inside the boundary with a `HOME`/`USER` fallback, and a row naming its controls. The round-10 audit (`verdicts/U116-792fa05e.md`) found two more. First, the injection fixtures lived under one fixed path, `/tmp/U116-inject-9`, reused across runs without an ownership or symlink check, so a symlink pre-created at its `out-timeout/a-version.txt` was followed by the write-mode `open` in `timed` and its target truncated: the isolation the file claimed did not hold for a path another process could plant. Second, `MISE_TRUSTED_CONFIG_PATHS`, the one mise variable the environment carried, marks a config trusted and restricts nothing, and `mise lock --help` itself says `--global` covers the global and system config lockfiles, so the claim that no other config could be read rested on `HOME` and the cwd alone. Round 11 answers both where they are. No scratch path is fixed: each scratch home, output directory and fixture tree is a `tempfile.mkdtemp` directory under `$TMPDIR` (mode 0700, a random name), made by the run that uses it and either named in a receipt the script writes and reads back or removed when its case ends; every file the procedure makes is opened by one `create` function with `O_CREAT|O_EXCL|O_NOFOLLOW` and mode 0600, so a path that exists or a symlink waiting at it is a refusal and never a write through it (the `create-symlink` injection below). And the environment of every mise call carries the config discovery variables the vendor's two configuration pages give, set so that the scratch copy is the only config mise can load; the pasted `mise config ls` (run `h`) shows that file alone, and the `planted-config` injection shows configs planted where mise would otherwise look staying unlisted, with a control under the round-10 variable set where they are listed. The round-11 audit (`verdicts/U116-2f46b888.md`) found two more. First, `config_listing` discarded the exit status `timed` returned, so an in-memory injection that made all four `config ls` listings exit 17 still printed `unchanged` and exit 0: the planted-config evidence rested on a producer whose status nobody read. Second, none of the seventeen injections exercised the receipt and directory checks round 11 added, so the prepare threat row was closed on code alone. Round 12 answers both. `timed` returns a `Receipt` named tuple (`name`, `exit`, `line`), a `require_ok(receipt, what)` helper refuses on any exit but 0, every caller either calls it or compares `receipt.exit`, and `check` counts the `timed(` calls of the pasted block statically, refusing a call whose result is not assigned to a name later read as `.exit` or handed to `require_ok(` in the same function (`timed-calls=3 timed-unread=0` below; the round-11 block reads `timed-unread=3` under the same count). And seven injections are added: `config-ls-fails` (the audit's injection, now a refusal), `receipt-forged`, `receipt-symlink`, `receipt-owner`, `dir-mode`, `dir-owner` and `timed-unread`. The round-12 audit (`verdicts/U116-f3d90908.md`) found one more: the containment check of `load_receipt` was lexical (`os.path.normpath` of the value's directory compared with `$TMPDIR`), so a receipt naming `<TMPDIR>/hop/../U116-out-X`, where `hop` is a symlink to a directory outside `$TMPDIR`, passed it, the directory's mode and owner checks passed too (a directory of this user, mode 0700), and `timed` wrote its output and receipt outside `$TMPDIR`. Round 13 answers it with one helper, `contained(path, label)`, that decides every containment the script needs (the two directories the receipt names, every directory `mkdtemp` makes): the path must be absolute and hold no `.`, `..` or empty component; every component from the root down must exist and not be a symlink, asked of `os.lstat` one by one (a missing component is a refusal too); and `os.path.commonpath` of the resolved `$TMPDIR` and the resolved path must be the resolved `$TMPDIR`. It returns the resolved path, which every later open uses, so `prepare` writes resolved paths into the receipt and the scratch home and output directory are held resolved. No other prefix or `startswith` test on a path remains in the script (the two `startswith("/")` of the home lookup are `os.path.isabs`, the `mkdtemp` name check is a `re.fullmatch` of the prefix and the eight-character suffix), and `check` counts such lines over the pasted block (`path-prefix-tests=0`; the round-12 block reads 3). Four injections are added: `receipt-hop-parent` (the audit's injection, refused for its `..` component, the outside directory listed empty before and after), `receipt-hop-child` (the same symlink without `..`, refused as a symlink component), `receipt-relative` (refused as not absolute) and `path-prefix-test` (the check's own: a planted `startswith` on a receipt value, counted once).
 
 ### The procedure
 
-`U116-procedure.py` has five subcommands. `prepare` refuses when the receipt `$TMPDIR/U116-prepare.receipt.txt` exists (a new re-take starts by removing it; the directories it names stay), makes a scratch home and an output directory with `tempfile.mkdtemp(prefix=..., dir=$TMPDIR)` (mode 0700, a random suffix no other run shares), makes the scratch home's nine directories one by one with `os.mkdir(..., 0o700)` (the four XDG trees, `cwd`, and `etc/mise`), copies `home/dot_mise/config.toml` from the worktree in-process, writes the receipt (`scratch=...` and `out=...`) and reads it back through `load_receipt` (opened with `O_NOFOLLOW`, `fstat` a regular file of this user with no group or other bits, exactly the two keys, each value a directory of this user directly under `$TMPDIR` with the matching prefix), then writes `real-before.txt`, a listing of the real `~/.config/mise` and its entries and of the other four real mise directories (mode, size, modification time, path in `~` form) taken with `os.scandir` and `os.lstat`. `run` reads the receipt, resolves `mise` once from `PATH` by a lookup that asks `os.lstat` entry by entry (`FileNotFoundError` moves on, any other `OSError` refuses, no entry at all refuses naming mise), changes to the scratch `cwd` (an empty directory inside the scratch home that is also the ceiling of mise's parent-directory walk: with a cwd under the real home, mise read the real `~/.config/mise/config.toml` as a project config in round 1, and with the scratch home itself as cwd the scratch copy was also a project config of that directory), prints `ENV`, and launches each of the nine mise commands (CHANGE 2 (a) to (f), `mise lock --help` for CHANGE 1, and `mise config ls` with and without `--json` as the evidence of which config files mise loaded) through `run([mise, ...], 900, env=ENV, ...)` with stdout and stderr to `<name>.txt`, writing `<name>.receipt.txt` (`start`, `end`, `elapsed`, `exit`) from its own clock and the returncode, read back and printed from the read-back bytes, and returned as a `Receipt` (`name`, `exit`, `line`) whose `exit` the loop compares to count failures; after the last call it writes the scratch `.config/mise` listing, `real-after.txt`, `g-none-written.txt` from `check_lock` (an `os.lstat` of the scratch `mise.lock` path, `FileNotFoundError` the only absence, any other `OSError` a refusal, a result `WRITTEN`) and `scratch-tree.txt` (an `os.walk` four levels deep whose errors raise, each path through `redact`). `scan` reads the receipt, the token from `gh auth token` (status, output and timeout read; an empty token refuses) and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt` in-process (the path and the count printed, zero patterns a refusal), derives the absolute prefix of home directories on this host from the real home, lists the `.txt` files of the output directory with `os.scandir` (a count other than 23 refuses) and counts the three classes over each of them and over this file and the PR body, printing only counts and `scan clean (<n> files, 0 matches)` when every count is 0, `scan FOUND` and exit 1 otherwise. `check` reads the receipt, runs `git diff --name-only 6fd09e96..HEAD` in the worktree and `prettier --check --ignore-path /dev/null` on this file, prints the six level-two headings with their line numbers and whether they are the six of CHANGE 4 in order, counts the six-field tab-separated lines whose second field is `plan-P-36`, runs `check_lock`, prints `real-before.txt` and `real-after.txt` and whether they are equal and free of a `mise.lock` line, and prints the forms counts of each document: fenced blocks by kind, `sh` blocks off the one-line form, lines inside `sh` blocks holding a command substitution, a process substitution or a pipe, lines inside the `python` block calling an error-swallowing predicate or a `.get(` lookup or opening an `except` clause other than `except FileNotFoundError:` whose body neither refuses nor raises, lines in either kind of block whose word in command position is a wrapper process, lines of the `python` block that print or write outside the bodies of `emit` and `refuse`, and the `timed(` calls of the `python` block with those whose result is not assigned to a name that is later read as `.exit` or handed to `require_ok(` in the same function (`timed-calls`, `timed-unread`, asked of the syntax tree); it prints `check ok` and exits 0 only when every one of those is as required, `check FAILED` and 1 otherwise. `inject <name>` is one of twenty-four named failure injections; each makes its own fixture directory with `mkdtemp` (removed when the case ends, however it ends), patches this process (`PATH`, one global, `os.lstat` or `os.fstat` for one path or one result, or one function: `token_bytes` replaced by a synthetic marker, `getpass.getuser` made to raise, `timed` made to return exit 17, `receipt_path` pointed at a receipt under the fixture tree) or plants fixtures under that directory, and then calls the targeted subcommand's own function, so the exit status is that code path's own.
+`U116-procedure.py` has five subcommands. `prepare` refuses when the receipt `$TMPDIR/U116-prepare.receipt.txt` exists (a new re-take starts by removing it; the directories it names stay), makes a scratch home and an output directory with `tempfile.mkdtemp(prefix=..., dir=<the resolved $TMPDIR>)` (mode 0700, a random suffix no other run shares; the result goes through `contained` too, so a symlink anywhere on the way would refuse), makes the scratch home's nine directories one by one with `os.mkdir(..., 0o700)` (the four XDG trees, `cwd`, and `etc/mise`), copies `home/dot_mise/config.toml` from the worktree in-process, writes the receipt (`scratch=...` and `out=...`) and reads it back through `load_receipt` (opened with `O_NOFOLLOW`, `fstat` a regular file of this user with no group or other bits, exactly the two keys, each value accepted by `contained` (absolute, no `.`, `..` or empty component, no missing or symlink component on the way from the root, resolving under the resolved `$TMPDIR`) and then, by its resolved path, a directory of this user with the matching `mkdtemp` prefix and no group or other bits), then writes `real-before.txt`, a listing of the real `~/.config/mise` and its entries and of the other four real mise directories (mode, size, modification time, path in `~` form) taken with `os.scandir` and `os.lstat`. `run` reads the receipt, resolves `mise` once from `PATH` by a lookup that asks `os.lstat` entry by entry (`FileNotFoundError` moves on, any other `OSError` refuses, no entry at all refuses naming mise), changes to the scratch `cwd` (an empty directory inside the scratch home that is also the ceiling of mise's parent-directory walk: with a cwd under the real home, mise read the real `~/.config/mise/config.toml` as a project config in round 1, and with the scratch home itself as cwd the scratch copy was also a project config of that directory), prints `ENV`, and launches each of the nine mise commands (CHANGE 2 (a) to (f), `mise lock --help` for CHANGE 1, and `mise config ls` with and without `--json` as the evidence of which config files mise loaded) through `run([mise, ...], 900, env=ENV, ...)` with stdout and stderr to `<name>.txt`, writing `<name>.receipt.txt` (`start`, `end`, `elapsed`, `exit`) from its own clock and the returncode, read back and printed from the read-back bytes, and returned as a `Receipt` (`name`, `exit`, `line`) whose `exit` the loop compares to count failures; after the last call it writes the scratch `.config/mise` listing, `real-after.txt`, `g-none-written.txt` from `check_lock` (an `os.lstat` of the scratch `mise.lock` path, `FileNotFoundError` the only absence, any other `OSError` a refusal, a result `WRITTEN`) and `scratch-tree.txt` (an `os.walk` four levels deep whose errors raise, each path through `redact`). `scan` reads the receipt, the token from `gh auth token` (status, output and timeout read; an empty token refuses) and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt` in-process (the path and the count printed, zero patterns a refusal), derives the absolute prefix of home directories on this host from the real home, lists the `.txt` files of the output directory with `os.scandir` (a count other than 23 refuses) and counts the three classes over each of them and over this file and the PR body, printing only counts and `scan clean (<n> files, 0 matches)` when every count is 0, `scan FOUND` and exit 1 otherwise. `check` reads the receipt, runs `git diff --name-only 6fd09e96..HEAD` in the worktree and `prettier --check --ignore-path /dev/null` on this file, prints the six level-two headings with their line numbers and whether they are the six of CHANGE 4 in order, counts the six-field tab-separated lines whose second field is `plan-P-36`, runs `check_lock`, prints `real-before.txt` and `real-after.txt` and whether they are equal and free of a `mise.lock` line, and prints the forms counts of each document: fenced blocks by kind, `sh` blocks off the one-line form, lines inside `sh` blocks holding a command substitution, a process substitution or a pipe, lines inside the `python` block calling an error-swallowing predicate or a `.get(` lookup or opening an `except` clause other than `except FileNotFoundError:` whose body neither refuses nor raises, lines in either kind of block whose word in command position is a wrapper process, lines of the `python` block that print or write outside the bodies of `emit` and `refuse`, and the `timed(` calls of the `python` block with those whose result is not assigned to a name that is later read as `.exit` or handed to `require_ok(` in the same function (`timed-calls`, `timed-unread`, asked of the syntax tree), and the lines of the `python` block holding a prefix test on a path (a `startswith(` call or a slice up to the `len(` of another string whose receiver is not one of the forms code's text-line variables; `path-prefix-tests`); it prints `check ok` and exits 0 only when every one of those is as required, `check FAILED` and 1 otherwise. `inject <name>` is one of twenty-eight named failure injections; each makes its own fixture directory with `mkdtemp` (removed when the case ends, however it ends), patches this process (`PATH`, one global, `os.lstat` or `os.fstat` for one path or one result, or one function: `token_bytes` replaced by a synthetic marker, `getpass.getuser` made to raise, `timed` made to return exit 17, `receipt_path` pointed at a receipt under the fixture tree; for the two hop cases also a symlink directly under `$TMPDIR` into a `mkdtemp` directory under `/tmp`, both removed when the case ends) or plants fixtures under that directory, and then calls the targeted subcommand's own function, so the exit status is that code path's own.
 
-The environment of every mise call, `ENV`, is built by `environment(scratch)` and printed by `run`. It holds the variable set of CHANGE 1 (`HOME`, `PATH`, `TMPDIR`, the four XDG variables pointed inside the scratch home, `MISE_TRUSTED_CONFIG_PATHS` naming the scratch copy) and the config discovery variables of <https://mise.jdx.dev/configuration.html> and <https://mise.jdx.dev/configuration/settings.html>, read 2026-10-29 and quoted under Measured facts: `MISE_GLOBAL_CONFIG_FILE` names the scratch copy (the page: "When set, mise reads and writes only this file", and it "also turns off the override files"), `MISE_CONFIG_DIR` the scratch `.config/mise`, `MISE_SYSTEM_CONFIG_FILE` a file that does not exist inside the scratch home (`etc/mise/none.toml`; "When set, mise reads and writes only this file") and `MISE_SYSTEM_CONFIG_DIR` its directory, `MISE_CEILING_PATHS` the scratch `cwd` itself in both spellings ("The search stops at a ceiling directory, which is not searched itself", and mise compares the resolved `/private/var` spelling, so the `/var` spelling alone did not match in a probe), `MISE_IGNORED_CONFIG_PATHS` the real `~/.config/mise` and `/etc/mise` in both spellings ("Config files and directories mise does not load"), `MISE_OVERRIDE_CONFIG_FILENAMES` one name no file carries (`U116-none.toml`; the brief's round-11 task asked for an empty value, which this mise reads as unset, as the `planted-config` injection's second control shows, so the variable carries a sentinel and the ceiling is the control that excludes project config) and `MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES` the page's `none`. Not set, and why: `MISE_ENV`, `MISE_AUTO_ENV` and `MISE_ENV_CONF_D` select environment overlays (unset selects none, `auto_env` defaults to `false` in this release, and a single global file has no overlay files), `MISE_GLOBAL_CONFIG_ROOT` is the template root for the global config (its default, `$HOME`, is the scratch home), `MISE_DEFAULT_CONFIG_FILENAME` names a file mise would create (nothing is created), and `MISE_NO_CONFIG` would drop the scratch config too.
+The environment of every mise call, `ENV`, is built by `environment(scratch)` and printed by `run`. It holds the variable set of CHANGE 1 (`HOME`, `PATH`, `TMPDIR`, the four XDG variables pointed inside the scratch home, `MISE_TRUSTED_CONFIG_PATHS` naming the scratch copy) and the config discovery variables of <https://mise.jdx.dev/configuration.html> and <https://mise.jdx.dev/configuration/settings.html>, read 2026-10-29 and quoted under Measured facts: `MISE_GLOBAL_CONFIG_FILE` names the scratch copy (the page: "When set, mise reads and writes only this file", and it "also turns off the override files"), `MISE_CONFIG_DIR` the scratch `.config/mise`, `MISE_SYSTEM_CONFIG_FILE` a file that does not exist inside the scratch home (`etc/mise/none.toml`; "When set, mise reads and writes only this file") and `MISE_SYSTEM_CONFIG_DIR` its directory, `MISE_CEILING_PATHS` the scratch `cwd` itself ("The search stops at a ceiling directory, which is not searched itself", and mise compares the resolved `/private/var` spelling, so the `/var` spelling alone did not match in a probe; `environment` computes both spellings, and since round 13 the scratch home is held resolved, so they coincide and the variable carries one entry where rounds 11 and 12 printed two), `MISE_IGNORED_CONFIG_PATHS` the real `~/.config/mise` and `/etc/mise` in both spellings ("Config files and directories mise does not load"), `MISE_OVERRIDE_CONFIG_FILENAMES` one name no file carries (`U116-none.toml`; the brief's round-11 task asked for an empty value, which this mise reads as unset, as the `planted-config` injection's second control shows, so the variable carries a sentinel and the ceiling is the control that excludes project config) and `MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES` the page's `none`. Not set, and why: `MISE_ENV`, `MISE_AUTO_ENV` and `MISE_ENV_CONF_D` select environment overlays (unset selects none, `auto_env` defaults to `false` in this release, and a single global file has no overlay files), `MISE_GLOBAL_CONFIG_ROOT` is the template root for the global config (its default, `$HOME`, is the scratch home), `MISE_DEFAULT_CONFIG_FILENAME` names a file mise would create (nothing is created), and `MISE_NO_CONFIG` would drop the scratch config too.
 
-Three functions carry the properties the amendments ask for. `main()` is the only entry; its body is one `try` whose `except BaseException` refuses with the exception's class and text and exits 2; the one thing it re-raises is a `SystemExit` the script raised itself, with code 0, 1 or 2 (a success, a measured failure such as `scan FOUND` or `check FAILED`, a refusal `refuse` has already printed), so no traceback and no second refusal line can leave the process. `run(argv, timeout, ...)` is the only launch point: it refuses any argv whose command is not `mise`, `gh`, `git` or `prettier`, calls `subprocess.run` with `check=False`, the timeout and stdin closed (so a prompt fails instead of waiting out the timeout), and turns `TimeoutExpired`, `FileNotFoundError`, `PermissionError` and every other `OSError` into a refusal naming the argv; `timed` wraps it for the mise calls so that a refused launch, or a refused output path, still gets its receipt, reading `exit=refused`, written and printed as the refusal unwinds through the `finally` clause (the receipt therefore follows the refusal line in the output); `timed` returns that receipt as a `Receipt` (`name`, `exit`, `line`), and its three callers read it: the dry-run loop compares `receipt.exit` to count failures, `config_listing` hands it to `require_ok`, which refuses on any exit but 0 (the `config-ls-fails` injection), and the `create-symlink` case does the same, while `check` counts the calls and fails on one whose result nobody reads (the `timed-unread` injection). `emit` and `refuse` are the only two functions that print, both through `redact`, which replaces each registered `mkdtemp` name with `<prefix><tmp>`, `$TMPDIR` in both spellings with `$TMPDIR/`, the real home directory (both spellings) with `~` and the login name with `<user>`; the home and login pairs are built by `arm()`, the first statement of `main()`'s `try`, from `expanduser("~")` (else `HOME`) and `getpass.getuser()` (else `USER`), with a refusal when neither spelling exists and the home pairs installed before the login name is looked up, so a lookup that fails is one redacted refusal and not a traceback; `configure()` adds the `$TMPDIR` pairs after requiring `$TMPDIR` to be a directory of this user not writable by group or others (the receipt's one fixed name lives there), and `scratch_dir` and `load_receipt` add each `mkdtemp` name. Module level holds constants, the `Receipt` class (a `typing.NamedTuple` of `name`, `exit` and `line`) and `def`s only, and nothing there can raise. Every file the script makes goes through `create(path)`, `os.open(path, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0o600)`, and every directory through `mkdtemp` or `os.mkdir(path, 0o700)` inside one; the two fixed paths the script holds, the worktree `/tmp/dotfiles-wt/U116` and the PR body beside it, are the brief's inputs, read and never written. Nothing else in the script prints or writes to stdout or stderr. There is no shell anywhere, no wrapper process, no `os.path.exists`-class predicate, no `dict.get` with a default; absence is decided only by `os.lstat` or `open` raising `FileNotFoundError`. The script, byte for byte the file that took every run and injection below:
+Three functions carry the properties the amendments ask for. `main()` is the only entry; its body is one `try` whose `except BaseException` refuses with the exception's class and text and exits 2; the one thing it re-raises is a `SystemExit` the script raised itself, with code 0, 1 or 2 (a success, a measured failure such as `scan FOUND` or `check FAILED`, a refusal `refuse` has already printed), so no traceback and no second refusal line can leave the process. `run(argv, timeout, ...)` is the only launch point: it refuses any argv whose command is not `mise`, `gh`, `git` or `prettier`, calls `subprocess.run` with `check=False`, the timeout and stdin closed (so a prompt fails instead of waiting out the timeout), and turns `TimeoutExpired`, `FileNotFoundError`, `PermissionError` and every other `OSError` into a refusal naming the argv; `timed` wraps it for the mise calls so that a refused launch, or a refused output path, still gets its receipt, reading `exit=refused`, written and printed as the refusal unwinds through the `finally` clause (the receipt therefore follows the refusal line in the output); `timed` returns that receipt as a `Receipt` (`name`, `exit`, `line`), and its three callers read it: the dry-run loop compares `receipt.exit` to count failures, `config_listing` hands it to `require_ok`, which refuses on any exit but 0 (the `config-ls-fails` injection), and the `create-symlink` case does the same, while `check` counts the calls and fails on one whose result nobody reads (the `timed-unread` injection). `emit` and `refuse` are the only two functions that print, both through `redact`, which replaces each registered `mkdtemp` name with `<prefix><tmp>`, `$TMPDIR` in both spellings with `$TMPDIR/`, the real home directory (both spellings) with `~` and the login name with `<user>`; the home and login pairs are built by `arm()`, the first statement of `main()`'s `try`, from `expanduser("~")` (else `HOME`) and `getpass.getuser()` (else `USER`), with a refusal when neither spelling exists and the home pairs installed before the login name is looked up, so a lookup that fails is one redacted refusal and not a traceback; `configure()` adds the `$TMPDIR` pairs after requiring `$TMPDIR` to be a directory of this user not writable by group or others (the receipt's one fixed name lives there), and `scratch_dir` and `load_receipt` add each `mkdtemp` name. Since round 13 a fourth function carries one more property: `contained(path, label)` is the only place a path is judged to lie under `$TMPDIR`, called by `load_receipt` for both receipt values and by `scratch_dir` for every `mkdtemp` result; it refuses a relative path, a `.`, `..` or empty component, a missing or symlink component on the way from the root (`os.lstat` per component) and a resolved path whose `os.path.commonpath` with the resolved `$TMPDIR` is not that directory, and returns the resolved path, so `SCRATCH`, `OUT` and every path built on them are resolved paths; no `startswith` or slice test on a path exists elsewhere in the script, and `check` counts such lines (`path-prefix-tests`). Module level holds constants, the `Receipt` class (a `typing.NamedTuple` of `name`, `exit` and `line`) and `def`s only, and nothing there can raise. Every file the script makes goes through `create(path)`, `os.open(path, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0o600)`, and every directory through `mkdtemp` or `os.mkdir(path, 0o700)` inside one; the two fixed paths the script holds, the worktree `/tmp/dotfiles-wt/U116` and the PR body beside it, are the brief's inputs, read and never written. Nothing else in the script prints or writes to stdout or stderr. There is no shell anywhere, no wrapper process, no `os.path.exists`-class predicate, no `dict.get` with a default; absence is decided only by `os.lstat` or `open` raising `FileNotFoundError`. The script, byte for byte the file that took every run and injection below:
 
 ```python
-# U116 procedure, round 12 (brief CHANGE 1, 2 and 4; the ROUND 4 to ROUND 9
-# amendments; the round-9 to round-11 verdicts). One file, five
+# U116 procedure, round 13 (brief CHANGE 1, 2 and 4; the ROUND 4 to ROUND 9
+# amendments; the round-9 to round-12 verdicts). One file, five
 # subcommands, run as `python3 -I U116-procedure.py <subcommand> [name]`
 # from $TMPDIR:
 #   prepare        a fresh scratch HOME and a fresh output directory, both
@@ -69,6 +69,14 @@ Three functions carry the properties the amendments ask for. `main()` is the onl
 # exit, line); each caller reads receipt.exit or hands the receipt to
 # require_ok(), which refuses on a non-zero exit, and check counts the
 # calls statically over the pasted block (timed-calls, timed-unread).
+# Every containment question (the directories the receipt names, the
+# directories mkdtemp makes) is decided by one helper, contained(path),
+# which refuses a relative path, a `.` or `..` component, a component that
+# is missing or a symlink (os.lstat per component from the root down) and
+# a resolved path whose common path with the resolved $TMPDIR is not the
+# resolved $TMPDIR, and returns the resolved path every later open uses;
+# no startswith or slice test on a path exists elsewhere, and check counts
+# such lines over the pasted block (path-prefix-tests).
 import ast
 import datetime
 import getpass
@@ -76,6 +84,7 @@ import io
 import keyword
 import os
 import secrets
+import re
 import shlex
 import shutil
 import stat
@@ -152,11 +161,21 @@ INJECTIONS = (
     "missing-mise", "missing-gh", "missing-git", "missing-prettier", "lookup-permission", "run-timeout",
     "lock-notadirectory", "lock-permission", "lock-missing", "txt-count", "redact-comment-only", "missing-out",
     "planted-token", "user-lookup", "forms-producer", "create-symlink", "planted-config", "config-ls-fails",
-    "receipt-forged", "receipt-symlink", "receipt-owner", "dir-mode", "dir-owner", "timed-unread",
+    "receipt-forged", "receipt-symlink", "receipt-owner", "dir-mode", "dir-owner", "receipt-hop-parent",
+    "receipt-hop-child", "receipt-relative", "timed-unread", "path-prefix-test",
 )
 # Injections that need no receipt: they patch this process alone or build
 # their own scratch home.
-STANDALONE = ("user-lookup", "forms-producer", "planted-config", "config-ls-fails", "timed-unread")
+STANDALONE = ("user-lookup", "forms-producer", "planted-config", "config-ls-fails", "timed-unread", "path-prefix-test")
+# The receipt cases: each forges a receipt or patches one stat result and
+# runs load_receipt, which must refuse.
+RECEIPT_CASES = ("receipt-forged", "receipt-symlink", "receipt-owner", "dir-mode", "dir-owner", "receipt-hop-parent", "receipt-hop-child", "receipt-relative")
+# The hop injections' fixtures: the symlink directly under $TMPDIR (a
+# random name, like a mkdtemp name) and the directory outside $TMPDIR it
+# points into, a mkdtemp under /tmp.
+HOP_PREFIX = "U116-hop-"
+OUTSIDE_PREFIX = "U116-outside-"
+OUTSIDE_PARENT = "/tmp"
 # The forms the check counts, spelled apart so this script holds none of
 # them as text.
 FENCE = chr(96) * 3
@@ -191,6 +210,17 @@ SHELL_BREAKS = (";", "&&", "||", "&", chr(124))
 QUIET = (tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT)
 RUN_CALL = ["subprocess", ".", "run", "("]
 FORM = ["python3", "-I", "U116-procedure.py"]
+# The one shape of a mkdtemp name's random part (tempfile's eight
+# characters from [a-z0-9_]); the hop name uses eight hex digits, a subset.
+SUFFIX = "[a-z0-9_]{8}"
+# A prefix test on a path: `<receiver>.startswith(` or `<receiver>[:len(`
+# whose receiver is not one of the text-line variables of the forms code
+# (a word, a stripped line, an except head, a later line, a shell word
+# list, a document line). The spaces the formatter puts inside a slice
+# are removed before the match, so `[: len(` counts too.
+PREFIX_TEST = re.compile(r"([A-Za-z_]\w*)(?:\[[^\]]*\]|\.\w+\(\))*(?:\.startswith\(|\[:len\()")
+SLICE_SPACES = re.compile(r"\[\s*:\s*len\s*\(")
+TEXT_WORDS = ("word", "stripped", "head", "later", "words", "text", "line")
 
 # Set by configure() from the environment, inside main()'s try, and by
 # set_scratch() from the receipt or from a fresh mkdtemp; the injections
@@ -228,9 +258,9 @@ def home_string():
     # returns "~" unchanged when HOME is unset and the UID has no passwd
     # entry).
     expanded = os.path.expanduser("~")
-    if expanded.startswith("/"):
+    if os.path.isabs(expanded):
         return os.path.realpath(expanded)
-    if "HOME" in os.environ and os.environ["HOME"].startswith("/"):
+    if "HOME" in os.environ and os.path.isabs(os.environ["HOME"]):
         return os.environ["HOME"]
     refuse("home directory unknown: ~ did not expand and HOME is unset")
 
@@ -277,10 +307,11 @@ def spellings(path):
 
 def register_temp(path, prefix):
     # A mkdtemp name, made by this process or read from the receipt, so
-    # that redact() prints it as <prefix><tmp>.
+    # that redact() prints it as <prefix><tmp>: the prefix and exactly the
+    # eight-character random part, matched whole.
     global TEMP_NAMES
     name = os.path.basename(path)
-    if not name.startswith(prefix) or len(name) == len(prefix):
+    if re.fullmatch(re.escape(prefix) + SUFFIX, name) is None:
         refuse(f"{path} is not a {prefix} mkdtemp name")
     TEMP_NAMES = tuple(dict.fromkeys(TEMP_NAMES + ((name, prefix + "<tmp>"),)))
 
@@ -347,6 +378,39 @@ def require_private_dir(path, forbidden, label):
         refuse(f"{label} {path} is owned by uid {info.st_uid}, not {os.getuid()}")
     if info.st_mode & forbidden:
         refuse(f"{label} {path} has mode {stat.filemode(info.st_mode)}; bits {oct(forbidden)} must be clear")
+
+
+def contained(path, label):
+    # The one containment decision (the round-12 verdict: a lexical check
+    # of the receipt's directory accepted <hop>/../U116-out-X through a
+    # symlink to a directory outside $TMPDIR). The path must be absolute
+    # and hold no `.`, `..` or empty component; every component from the
+    # root down must exist and not be a symlink (os.lstat each, a missing
+    # one a refusal too); and the common path of the resolved $TMPDIR and
+    # the resolved path must be the resolved $TMPDIR. Returns the resolved
+    # path, which every later open uses. No other prefix or startswith test
+    # on a path exists in this script; check counts them (path-prefix-tests).
+    if not os.path.isabs(path):
+        refuse(f"{label} {path} is not an absolute path")
+    parts = path.split(os.sep)[1:]
+    if any(part in ("", os.curdir, os.pardir) for part in parts):
+        refuse(f"{label} {path} holds a `.`, `..` or empty component")
+    current = os.sep
+    for part in parts:
+        current = os.path.join(current, part)
+        try:
+            info = os.lstat(current)
+        except FileNotFoundError:
+            refuse(f"{label} {path}: {current} is missing")
+        except OSError as exc:
+            refuse(f"{label} {path}: cannot read {current}: {exc}")
+        if stat.S_ISLNK(info.st_mode):
+            refuse(f"{label} {path}: {current} is a symlink")
+    base = os.path.realpath(TMPDIR)
+    resolved = os.path.realpath(path)
+    if os.path.commonpath([base, resolved]) != base:
+        refuse(f"{label} {path} resolves to {resolved}, outside {base}/")
+    return resolved
 
 
 def configure():
@@ -420,8 +484,11 @@ def set_scratch(scratch, out):
 
 def scratch_dir(prefix):
     # A fresh directory under $TMPDIR, mode 0700, with a random name mkdtemp
-    # chooses; registered so it prints as <prefix><tmp>.
-    path = tempfile.mkdtemp(prefix=prefix, dir=TMPDIR)
+    # chooses, made under the resolved $TMPDIR and passed through
+    # contained(), which refuses a symlink on the way (on macOS /var is
+    # one, so the /var spelling of $TMPDIR would be refused) and returns
+    # the resolved path; registered so it prints as <prefix><tmp>.
+    path = contained(tempfile.mkdtemp(prefix=prefix, dir=os.path.realpath(TMPDIR)), prefix + "<tmp>")
     register_temp(path, prefix)
     return path
 
@@ -475,8 +542,10 @@ def receipt_path():
 
 def load_receipt():
     # The receipt prepare wrote: exactly the two lines scratch=... and
-    # out=..., each naming a mkdtemp directory of this user directly under
-    # $TMPDIR with the matching prefix.
+    # out=..., each naming a mkdtemp directory of this user under $TMPDIR
+    # with the matching prefix. Each value goes through contained(), which
+    # returns the resolved path; the mode and owner checks and everything
+    # after use that path.
     path = receipt_path()
     text = read_private(path, "run prepare first").decode()
     fields = {}
@@ -488,11 +557,10 @@ def load_receipt():
     if sorted(fields) != sorted(dict(RECEIPT_KEYS)):
         refuse(f"{path} holds {sorted(fields)}, expected {sorted(dict(RECEIPT_KEYS))}")
     for key, prefix in RECEIPT_KEYS:
-        value = fields[key]
-        if os.path.normpath(os.path.dirname(value)) != os.path.normpath(TMPDIR):
-            refuse(f"{key}={value} is not directly under $TMPDIR")
-        register_temp(value, prefix)
-        require_private_dir(value, stat.S_IRWXG | stat.S_IRWXO, key)
+        resolved = contained(fields[key], key)
+        register_temp(resolved, prefix)
+        require_private_dir(resolved, stat.S_IRWXG | stat.S_IRWXO, key)
+        fields[key] = resolved
     set_scratch(fields["scratch"], fields["out"])
 
 
@@ -983,6 +1051,18 @@ def timed_reads(block):
     return calls, unread
 
 
+def prefix_tests(block):
+    # Lines of a Python block holding a prefix test on a path: a startswith
+    # call, or a slice up to the length of another string, whose receiver
+    # is not one of the text-line variables in TEXT_WORDS. The spaces
+    # inside a slice are removed before the match.
+    found = 0
+    for text in block:
+        receivers = PREFIX_TEST.findall(SLICE_SPACES.sub("[:len(", text))
+        found += any(receiver not in TEXT_WORDS for receiver in receivers)
+    return found
+
+
 def forms(path):
     # The forms counts of one document: fenced block counts by kind, sh
     # blocks off the one-line form, and the four line classes. Returns the
@@ -991,7 +1071,7 @@ def forms(path):
     lines = read_file(path).decode().split("\n")
     state = None  # None outside a fence; else (kind, fence length)
     block = []
-    counts = {"python": 0, "sh": 0, "text": 0, "other": 0, "off-form": 0, "producer": 0, "swallow": 0, "wrapper": 0, "raw-print": 0, "timed-calls": 0, "timed-unread": 0}
+    counts = {"python": 0, "sh": 0, "text": 0, "other": 0, "off-form": 0, "producer": 0, "swallow": 0, "wrapper": 0, "raw-print": 0, "timed-calls": 0, "timed-unread": 0, "path-prefix": 0}
     for text in lines:
         fence = fence_of(text)
         if state is None:
@@ -1016,6 +1096,7 @@ def forms(path):
                 calls, unread = timed_reads(block)
                 counts["timed-calls"] += calls
                 counts["timed-unread"] += unread
+                counts["path-prefix"] += prefix_tests(block)
             state = None
             continue
         block.append(text)
@@ -1025,9 +1106,9 @@ def forms(path):
         f"{path} python-blocks={counts['python']} sh-blocks={counts['sh']} sh-blocks-off-form={counts['off-form']}"
         f" text-blocks={counts['text']} other-blocks={counts['other']} producer-lines={counts['producer']}"
         f" swallow-lines={counts['swallow']} wrapper-lines={counts['wrapper']} raw-print-sites={counts['raw-print']}"
-        f" timed-calls={counts['timed-calls']} timed-unread={counts['timed-unread']}"
+        f" timed-calls={counts['timed-calls']} timed-unread={counts['timed-unread']} path-prefix-tests={counts['path-prefix']}"
     )
-    bad = counts["other"] + counts["off-form"] + counts["producer"] + counts["swallow"] + counts["wrapper"] + counts["raw-print"] + counts["timed-unread"]
+    bad = counts["other"] + counts["off-form"] + counts["producer"] + counts["swallow"] + counts["wrapper"] + counts["raw-print"] + counts["timed-unread"] + counts["path-prefix"]
     return line, bad, counts["python"]
 
 
@@ -1174,26 +1255,40 @@ def planted_config(name, root):
         shutil.rmtree(scratch)
 
 
+def entry_names(directory):
+    with os.scandir(directory) as entries:
+        names = sorted(entry.name for entry in entries)
+    return f"{len(names)} entries {names}"
+
+
 def receipt_cases(name, root):
     # The receipt and directory checks of load_receipt (the round-11
-    # verdict's second finding: no injection tested them). Each case
-    # writes a receipt of its own under the fixture tree, or patches one
-    # stat result in memory, points receipt_path at it and then makes the
-    # `run` subcommand's two calls, load_receipt and dry_runs; load_receipt
-    # must refuse, so dry_runs never starts and nothing lands anywhere.
-    # The real receipt (read by inject() before this case) supplies the
-    # scratch home; where the directory itself is the subject, a second
-    # mkdtemp output directory stands in for the real one and is removed
-    # when the case ends.
+    # verdict's second finding: no injection tested them; the round-12
+    # verdict: the containment check was lexical). Each case writes a
+    # receipt of its own under the fixture tree, or patches one stat result
+    # in memory, points receipt_path at it and then makes the `run`
+    # subcommand's two calls, load_receipt and dry_runs; load_receipt must
+    # refuse, so dry_runs never starts and nothing lands anywhere. The real
+    # receipt (read by inject() before this case) supplies the scratch
+    # home; where the directory itself is the subject, a second mkdtemp
+    # output directory stands in for the real one and is removed when the
+    # case ends, as are the hop cases' symlink and outside directory.
     forged = os.path.join(root, RECEIPT_NAME)
     real_lstat = os.lstat
     real_fstat = os.fstat
     made = []
+    links = []
+    watched = None
     try:
         if name == "receipt-forged":
-            write_file(forged, f"scratch={SCRATCH}\nout={WORKTREE}\n")
+            # The worktree in its resolved spelling (/tmp is a symlink on
+            # macOS; in the /tmp spelling contained() refuses that
+            # component first), so that every component is a real
+            # directory and the refusal is the last test, the common path.
+            elsewhere = os.path.realpath(WORKTREE)
+            write_file(forged, f"scratch={SCRATCH}\nout={elsewhere}\n")
             patch_receipt(forged)
-            emit(f"case {name}: {forged} names out={WORKTREE}, a directory of this user outside $TMPDIR; run")
+            emit(f"case {name}: {forged} names out={elsewhere}, a directory of this user outside $TMPDIR; run")
         if name == "receipt-symlink":
             target = os.path.join(root, "receipt-target.txt")
             write_file(target, read_private(receipt_path(), "run prepare first"))
@@ -1224,11 +1319,56 @@ def receipt_cases(name, root):
 
             os.lstat = foreign_lstat
             emit(f"case {name}: a second output directory {made[0]} whose os.lstat reports uid {os.getuid() + 1} (ownership cannot change without root), named by {forged}; run")
+        if name in ("receipt-hop-parent", "receipt-hop-child"):
+            # The round-12 verdict's injection. A symlink directly under
+            # $TMPDIR (a random name, as a mkdtemp name is) points into a
+            # directory outside $TMPDIR; the receipt names an output
+            # directory through it, with `..` (parent: <hop>/../U116-out-X,
+            # which the round-12 dirname check accepted, so timed() wrote
+            # outside $TMPDIR) or without (child: <hop>/U116-out-X). The
+            # directory named exists, mode 0700, this user's, so only
+            # contained() stands between the receipt and a write outside
+            # $TMPDIR; it is listed before, and again after in the finally.
+            emit(f"the real receipt was accepted: scratch={SCRATCH} out={OUT}")
+            outside = tempfile.mkdtemp(prefix=OUTSIDE_PREFIX, dir=OUTSIDE_PARENT)
+            made.append(outside)
+            register_temp(outside, OUTSIDE_PREFIX)
+            child = os.path.join(outside, "child")
+            mkdir(child)
+            hop = os.path.join(TMPDIR, HOP_PREFIX + secrets.token_hex(4))
+            os.symlink(child, hop)
+            links.append(hop)
+            register_temp(hop, HOP_PREFIX)
+            base = os.path.realpath(TMPDIR)
+            if name == "receipt-hop-parent":
+                watched = tempfile.mkdtemp(prefix=OUT_PREFIX, dir=outside)
+                out = os.path.join(base, os.path.basename(hop), os.pardir, os.path.basename(watched))
+            else:
+                watched = tempfile.mkdtemp(prefix=OUT_PREFIX, dir=child)
+                out = os.path.join(base, os.path.basename(hop), os.path.basename(watched))
+            register_temp(watched, OUT_PREFIX)
+            write_file(forged, f"scratch={SCRATCH}\nout={out}\n")
+            patch_receipt(forged)
+            emit(f"case {name}: {hop} is a symlink to {child}; {forged} names out={out}, which the kernel resolves to {os.path.realpath(out)} (the same directory as {watched}: {os.path.realpath(out) == os.path.realpath(watched)}), a directory of this user with mode {stat.filemode(os.lstat(watched).st_mode)} outside $TMPDIR; run")
+            emit(f"outside directory before: {entry_names(watched)}")
+        if name == "receipt-relative":
+            # A relative path: the real output directory's name alone,
+            # which would resolve to the right directory from the cwd
+            # ($TMPDIR, where every subcommand runs) and is refused before
+            # anything resolves it.
+            emit(f"the real receipt was accepted: scratch={SCRATCH} out={OUT}")
+            write_file(forged, f"scratch={SCRATCH}\nout={os.path.basename(OUT)}\n")
+            patch_receipt(forged)
+            emit(f"case {name}: {forged} names out={os.path.basename(OUT)}, the real output directory's name relative to the cwd; run")
         load_receipt()
         return dry_runs()
     finally:
         os.lstat = real_lstat
         os.fstat = real_fstat
+        if watched is not None:
+            emit(f"outside directory after: {entry_names(watched)}")
+        for path in links:
+            os.unlink(path)
         for path in made:
             shutil.rmtree(path)
 
@@ -1413,7 +1553,7 @@ def inject_case(name, root):
         timed = failing
         emit(f"case {name}: timed returns exit 17 for config ls; planted-config")
         return planted_config(name, root)
-    if name in ("receipt-forged", "receipt-symlink", "receipt-owner", "dir-mode", "dir-owner"):
+    if name in RECEIPT_CASES:
         return receipt_cases(name, root)
     if name == "timed-unread":
         # The check's own injection for the timed count: a copy of this
@@ -1426,6 +1566,22 @@ def inject_case(name, root):
         lines.insert(index + 1, '    timed("unread", [mise, "--version"], TIMEOUT)')
         write_file(copy, "\n".join(lines))
         emit(f"case {name}: {copy} is this file with `{lines[index + 1].strip()}` inserted at line {index + 2}, inside dry_runs in its python block; forms")
+        line, bad, python_blocks = forms(copy)
+        emit(line)
+        return 1 if bad else 0
+    if name == "path-prefix-test":
+        # The check's own injection for the path-prefix count: a copy of
+        # this file with a startswith test of a receipt value against
+        # $TMPDIR (the round-12 verdict's lexical check, in one line)
+        # inserted inside load_receipt in the python block; forms counts
+        # it once under path-prefix-tests, exit 1. The literal is split so
+        # that this script's own line is not one.
+        copy = os.path.join(root, "path-prefix-test.md")
+        lines = read_file(EVALUATION).decode().split("\n")
+        index = lines.index("        resolved = contained(fields[key], key)")
+        lines.insert(index, "        under = fields[key]." + "startswith" + "(TMPDIR)")
+        write_file(copy, "\n".join(lines))
+        emit(f"case {name}: {copy} is this file with `{lines[index].strip()}` inserted at line {index + 1}, inside load_receipt in its python block; forms")
         line, bad, python_blocks = forms(copy)
         emit(line)
         return 1 if bad else 0
@@ -1507,19 +1663,19 @@ env (the whole environment of every mise call):
   MISE_GLOBAL_CONFIG_FILE=$TMPDIR/U116-home-<tmp>/.config/mise/config.toml
   MISE_SYSTEM_CONFIG_DIR=$TMPDIR/U116-home-<tmp>/etc/mise
   MISE_SYSTEM_CONFIG_FILE=$TMPDIR/U116-home-<tmp>/etc/mise/none.toml
-  MISE_CEILING_PATHS=$TMPDIR/U116-home-<tmp>/cwd:$TMPDIR/U116-home-<tmp>/cwd
+  MISE_CEILING_PATHS=$TMPDIR/U116-home-<tmp>/cwd
   MISE_IGNORED_CONFIG_PATHS=~/.config/mise:/etc/mise:/private/etc/mise
   MISE_OVERRIDE_CONFIG_FILENAMES=U116-none.toml
   MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES=none
-a-version: start=2026-10-29T16:45:24Z end=2026-10-29T16:45:24Z elapsed=0s exit=0
-help-lock: start=2026-10-29T16:45:24Z end=2026-10-29T16:45:24Z elapsed=0s exit=0
-b-lock-dry-run: start=2026-10-29T16:45:24Z end=2026-10-29T16:45:31Z elapsed=6s exit=0
-c-lock-dry-run-4-platforms: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
-d-lock-bump-json: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
-e-npm-package-manager: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
-f-minimum-release-age: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
-h-config-ls: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
-h-config-ls-json: start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0
+a-version: start=2026-10-29T18:20:14Z end=2026-10-29T18:20:14Z elapsed=1s exit=0
+help-lock: start=2026-10-29T18:20:14Z end=2026-10-29T18:20:15Z elapsed=0s exit=0
+b-lock-dry-run: start=2026-10-29T18:20:15Z end=2026-10-29T18:20:17Z elapsed=3s exit=0
+c-lock-dry-run-4-platforms: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
+d-lock-bump-json: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
+e-npm-package-manager: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
+f-minimum-release-age: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
+h-config-ls: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
+h-config-ls-json: start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0
 g-none-written: none-written
 runs=9 failed=0
 exit=0
@@ -1527,13 +1683,13 @@ exit=0
 
 Each output file of the run, with its receipt as the procedure printed it.
 
-(a) `mise --version`, `a-version.txt`, receipt `start=2026-10-29T16:45:24Z end=2026-10-29T16:45:24Z elapsed=0s exit=0`:
+(a) `mise --version`, `a-version.txt`, receipt `start=2026-10-29T18:20:14Z end=2026-10-29T18:20:14Z elapsed=1s exit=0`:
 
 ```text
 2026.10.19 macos-arm64 (2026-10-24)
 ```
 
-`mise lock --help`, `help-lock.txt`, receipt `start=2026-10-29T16:45:24Z end=2026-10-29T16:45:24Z elapsed=0s exit=0`; the eight lines CHANGE 1 asks for are the first eight; the file is pasted whole, 183 lines:
+`mise lock --help`, `help-lock.txt`, receipt `start=2026-10-29T18:20:14Z end=2026-10-29T18:20:15Z elapsed=0s exit=0`; the eight lines CHANGE 1 asks for are the first eight; the file is pasted whole, 183 lines:
 
 ```text
 Create or refresh lockfile versions, checksums, and download URLs
@@ -1721,7 +1877,7 @@ Examples:
     $ mise lock --global
 ```
 
-(b) `mise lock --global --dry-run`, `b-lock-dry-run.txt`, receipt `start=2026-10-29T16:45:24Z end=2026-10-29T16:45:31Z elapsed=6s exit=0` (`~` in the first line is the scratch home, `HOME` of `ENV`):
+(b) `mise lock --global --dry-run`, `b-lock-dry-run.txt`, receipt `start=2026-10-29T18:20:15Z end=2026-10-29T18:20:17Z elapsed=3s exit=0` (`~` in the first line is the scratch home, `HOME` of `ENV`):
 
 ```text
 → Targeting 7 platform(s) for ~/.config/mise/mise.lock: linux-arm64, linux-arm64-musl, linux-x64, linux-x64-musl, macos-arm64, macos-x64, windows-x64
@@ -1987,7 +2143,7 @@ Examples:
   ✓ http:ruff@0.17.2 for windows-x64
 ```
 
-(c) `mise lock --global --dry-run --platform linux-x64,linux-arm64,macos-x64,macos-arm64`, `c-lock-dry-run-4-platforms.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`:
+(c) `mise lock --global --dry-run --platform linux-x64,linux-arm64,macos-x64,macos-arm64`, `c-lock-dry-run-4-platforms.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`:
 
 ```text
 → Targeting 4 platform(s) for ~/.config/mise/mise.lock: linux-arm64, linux-x64, macos-arm64, macos-x64
@@ -2144,7 +2300,7 @@ Examples:
   ✓ http:ruff@0.17.2 for macos-x64
 ```
 
-(d) `mise lock --global --dry-run --bump --json`, `d-lock-bump-json.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`:
+(d) `mise lock --global --dry-run --bump --json`, `d-lock-bump-json.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`:
 
 ```text
 [
@@ -2475,30 +2631,30 @@ Examples:
 ]
 ```
 
-(e) `mise settings get npm.package_manager`, `e-npm-package-manager.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`:
+(e) `mise settings get npm.package_manager`, `e-npm-package-manager.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`:
 
 ```text
 npm
 ```
 
-(f) `mise settings get minimum_release_age`, `f-minimum-release-age.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`:
+(f) `mise settings get minimum_release_age`, `f-minimum-release-age.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`:
 
 ```text
 72h
 ```
 
-(h) `mise config ls`, `h-config-ls.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`: the config files mise loaded under `ENV`, lowest precedence first; one file, the scratch copy, shown by mise relative to `HOME` (the scratch home):
+(h) `mise config ls`, `h-config-ls.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`: the config files mise loaded under `ENV`, lowest precedence first; one file, the scratch copy, shown by mise relative to `HOME` (the scratch home):
 
 ```text
 ~/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
 ```
 
-(h) `mise config ls --json`, `h-config-ls-json.txt`, receipt `start=2026-10-29T16:45:31Z end=2026-10-29T16:45:31Z elapsed=0s exit=0`: the same one file by its full path (this run's `mkdtemp` suffix), `"override": false`:
+(h) `mise config ls --json`, `h-config-ls-json.txt`, receipt `start=2026-10-29T18:20:17Z end=2026-10-29T18:20:17Z elapsed=0s exit=0`: the same one file by its full path (this run's `mkdtemp` suffix), `"override": false`:
 
 ```text
 [
   {
-    "path": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-kmlnlwbw/.config/mise/config.toml",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/U116-home-zvv3fx62/.config/mise/config.toml",
     "tools": [
       "node",
       "rust",
@@ -2545,8 +2701,8 @@ npm
 (g) `g-scratch-after.txt`, the scratch `.config/mise` after all runs (no `mise.lock`; the path through `redact`):
 
 ```text
-drwx------     96 2026-10-30T01:45:24 $TMPDIR/U116-home-<tmp>/.config/mise
--rw-------   6962 2026-10-30T01:45:24 $TMPDIR/U116-home-<tmp>/.config/mise/config.toml
+drwx------     96 2026-10-30T03:20:14 $TMPDIR/U116-home-<tmp>/.config/mise
+-rw-------   6962 2026-10-30T03:20:14 $TMPDIR/U116-home-<tmp>/.config/mise/config.toml
 ```
 
 (g) `real-after.txt`, the real mise directories after all runs, byte for byte `real-before.txt` (`check` below compares them):
@@ -2646,7 +2802,7 @@ $TMPDIR/U116-home-<tmp>/.local/state/mise
 $TMPDIR/U116-home-<tmp>/.local/state/mise/incomplete-installs
 $TMPDIR/U116-home-<tmp>/.local/state/mise/incomplete-installs/.migrated
 $TMPDIR/U116-home-<tmp>/.local/state/mise/tracked-configs
-$TMPDIR/U116-home-<tmp>/.local/state/mise/tracked-configs/493a329e23e819eb
+$TMPDIR/U116-home-<tmp>/.local/state/mise/tracked-configs/a4a3d3baf1588d50
 $TMPDIR/U116-home-<tmp>/cwd
 $TMPDIR/U116-home-<tmp>/etc
 $TMPDIR/U116-home-<tmp>/etc/mise
@@ -2694,7 +2850,7 @@ exit=0
 
 ### `check`
 
-Run from `$TMPDIR` against the worktree. ACCEPTANCE 1 here is the diff against the merge base `6fd09e96`, the commit this branch was cut from (the local `origin/main` has moved three commits past it, every one a change main received after the merge base and none touched by this branch; `git status --porcelain` is pasted by hand in the PR body). The forms line of this file reads `python-blocks=1` and `sh-blocks=28` (the four subcommands and the twenty-four injections), each on the one-line form, every line class 0, and `timed-calls=3 timed-unread=0` (the three `timed(` calls of the block, each assigned and read); the PR body holds `text` blocks alone.
+Run from `$TMPDIR` against the worktree. ACCEPTANCE 1 here is the diff against the merge base `6fd09e96`, the commit this branch was cut from (the local `origin/main` has moved three commits past it, every one a change main received after the merge base and none touched by this branch; `git status --porcelain` is pasted by hand in the PR body). The forms line of this file reads `python-blocks=1` and `sh-blocks=32` (the four subcommands and the twenty-eight injections), each on the one-line form, every line class 0, `timed-calls=3 timed-unread=0` (the three `timed(` calls of the block, each assigned and read) and `path-prefix-tests=0` (no `startswith(` call or slice to `len(` on a path in the block; the round-12 block reads 3 under the same count); the PR body holds `text` blocks alone.
 
 ```sh
 python3 -I U116-procedure.py check
@@ -2708,10 +2864,10 @@ prettier --check --ignore-path /dev/null .orchestration/orchestrate/regime-cutov
   All matched files use Prettier code style!
 5:## Question
 11:## Commands run
-3138:## Measured facts
-3192:## Recommendation
-3198:## Draft decisions row
-3215:## Left out
+3353:## Measured facts
+3407:## Recommendation
+3413:## Draft decisions row
+3430:## Left out
 headings=6 order=ok
 draft-rows=1
 g-none-written: none-written
@@ -2730,15 +2886,15 @@ real-after.txt:
   drwxr-xr-x    256 2026-10-29T18:57:51 ~/.local/state/mise
   drwxr-xr-x   1536 2026-10-29T18:57:42 ~/Library/Caches/mise
 real-dirs before=after: same; mise.lock lines=0
-/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md python-blocks=1 sh-blocks=28 sh-blocks-off-form=0 text-blocks=43 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=3 timed-unread=0
-/tmp/dotfiles-wt/U116-pr-body.md python-blocks=0 sh-blocks=0 sh-blocks-off-form=0 text-blocks=6 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=0 timed-unread=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md python-blocks=1 sh-blocks=32 sh-blocks-off-form=0 text-blocks=47 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=3 timed-unread=0 path-prefix-tests=0
+/tmp/dotfiles-wt/U116-pr-body.md python-blocks=0 sh-blocks=0 sh-blocks-off-form=0 text-blocks=6 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=0 timed-unread=0 path-prefix-tests=0
 check ok
 exit=0
 ```
 
 ### Injections
 
-Twenty-four `inject` runs, from `$TMPDIR`, each making its own fixture directory with `mkdtemp` under `$TMPDIR` (printed as `$TMPDIR/U116-inject-<tmp>`, removed when the case ends) and patching the process in memory or planting fixtures there, then running the targeted subcommand's own function; nothing lands in the receipt's output directory, and the real mise, `gh`, `git` and `prettier` are never touched. Nineteen exit 2 with a redacted refusal and no success line; the `FileNotFoundError` lock case exits 0 printing `none-written`, the planted token exits 1 with `scan FOUND`, the planted producer line and the planted unread `timed` call exit 1 as counted failures, and the planted configs exit 0 with `config ls` unchanged under `ENV` and changed under the two controls.
+Twenty-eight `inject` runs, from `$TMPDIR`, each making its own fixture directory with `mkdtemp` under `$TMPDIR` (printed as `$TMPDIR/U116-inject-<tmp>`, removed when the case ends) and patching the process in memory or planting fixtures there, then running the targeted subcommand's own function; nothing lands in the receipt's output directory, and the real mise, `gh`, `git` and `prettier` are never touched. Twenty-two exit 2 with a redacted refusal and no success line; the `FileNotFoundError` lock case exits 0 printing `none-written`, the planted token exits 1 with `scan FOUND`, the planted producer line, the planted unread `timed` call and the planted prefix test exit 1 as counted failures, and the planted configs exit 0 with `config ls` unchanged under `ENV` and changed under the two controls.
 
 `mise` absent: `PATH` is one empty directory under the fixture tree and the `run` path starts; the lookup refuses before any receipt exists.
 
@@ -2832,12 +2988,12 @@ env (the whole environment of every mise call):
   MISE_GLOBAL_CONFIG_FILE=$TMPDIR/U116-home-<tmp>/.config/mise/config.toml
   MISE_SYSTEM_CONFIG_DIR=$TMPDIR/U116-home-<tmp>/etc/mise
   MISE_SYSTEM_CONFIG_FILE=$TMPDIR/U116-home-<tmp>/etc/mise/none.toml
-  MISE_CEILING_PATHS=$TMPDIR/U116-home-<tmp>/cwd:$TMPDIR/U116-home-<tmp>/cwd
+  MISE_CEILING_PATHS=$TMPDIR/U116-home-<tmp>/cwd
   MISE_IGNORED_CONFIG_PATHS=~/.config/mise:/etc/mise:/private/etc/mise
   MISE_OVERRIDE_CONFIG_FILENAMES=U116-none.toml
   MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES=none
 inject run-timeout REFUSED: ['$TMPDIR/U116-inject-<tmp>/sleeper/mise', '--version'] did not complete: TimeoutExpired: Command '['$TMPDIR/U116-inject-<tmp>/sleeper/mise', '--version']' timed out after 2 seconds
-a-version: start=2026-10-29T17:41:09Z end=2026-10-29T17:41:11Z elapsed=2s exit=refused
+a-version: start=2026-10-29T18:26:07Z end=2026-10-29T18:26:09Z elapsed=2s exit=refused
 exit=2
 ```
 
@@ -2933,7 +3089,7 @@ python3 -I U116-procedure.py inject planted-token
 
 ```text
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
-case planted-token: the token class is the marker U116-SYNTHETIC-TOKEN-b5f184a990cc47d2 (gh is not called); 23 copies under $TMPDIR/U116-inject-<tmp>, the marker appended to the copy of a-version.txt; scan
+case planted-token: the token class is the marker U116-SYNTHETIC-TOKEN-d09879df157d1c0a (gh is not called); 23 copies under $TMPDIR/U116-inject-<tmp>, the marker appended to the copy of a-version.txt; scan
 token from the synthetic marker patterns=1
 redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
 U116-inject-<tmp>/a-version.receipt.txt token=0 redact=0 homeprefix=0
@@ -2986,8 +3142,8 @@ python3 -I U116-procedure.py inject forms-producer
 
 ```text
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
-case forms-producer: $TMPDIR/U116-inject-<tmp>/forms-producer.md is this file with `true $(true)` inserted at line 1465, inside its first sh block; forms
-$TMPDIR/U116-inject-<tmp>/forms-producer.md python-blocks=1 sh-blocks=28 sh-blocks-off-form=1 text-blocks=43 other-blocks=0 producer-lines=1 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=3 timed-unread=0
+case forms-producer: $TMPDIR/U116-inject-<tmp>/forms-producer.md is this file with `true $(true)` inserted at line 1621, inside its first sh block; forms
+$TMPDIR/U116-inject-<tmp>/forms-producer.md python-blocks=1 sh-blocks=32 sh-blocks-off-form=1 text-blocks=47 other-blocks=0 producer-lines=1 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=3 timed-unread=0 path-prefix-tests=0
 exit=1
 ```
 
@@ -3001,7 +3157,7 @@ python3 -I U116-procedure.py inject create-symlink
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
 mise=~/.local/bin/mise (PATH entry 51 of 55)
 case create-symlink: $TMPDIR/U116-inject-<tmp>/out/a-version.txt is a symlink to $TMPDIR/U116-inject-<tmp>/target.txt (46 bytes); OUT=$TMPDIR/U116-inject-<tmp>/out; timed a-version
-a-version: start=2026-10-29T17:41:12Z end=2026-10-29T17:41:12Z elapsed=0s exit=refused
+a-version: start=2026-10-29T18:26:10Z end=2026-10-29T18:26:10Z elapsed=0s exit=refused
 target after: 46 bytes; the link is still a symlink: True
 inject create-symlink REFUSED: FileExistsError: [Errno 17] File exists: '$TMPDIR/U116-inject-<tmp>/out/a-version.txt'
 exit=2
@@ -3017,26 +3173,26 @@ python3 -I U116-procedure.py inject planted-config
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
 mise=~/.local/bin/mise (PATH entry 51 of 55)
 case planted-config: scratch=$TMPDIR/U116-home-<tmp> (removed when this case ends); cwd=$TMPDIR/U116-home-<tmp>/cwd; config ls before, plant, config ls after, then the control
-config-ls-before: start=2026-10-29T17:41:12Z end=2026-10-29T17:41:12Z elapsed=0s exit=0
+config-ls-before: start=2026-10-29T18:26:10Z end=2026-10-29T18:26:10Z elapsed=0s exit=0
 config-ls-before.txt (1 lines):
   ~/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
 planted: mise.toml, cwd/mise.toml, cwd/.tool-versions, etc/mise/config.toml under $TMPDIR/U116-home-<tmp>
-config-ls-after: start=2026-10-29T17:41:12Z end=2026-10-29T17:41:12Z elapsed=0s exit=0
+config-ls-after: start=2026-10-29T18:26:10Z end=2026-10-29T18:26:10Z elapsed=0s exit=0
 config-ls-after.txt (1 lines):
   ~/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
 control: ENV reduced to HOME, PATH, TMPDIR, XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_CACHE_HOME, XDG_STATE_HOME, MISE_TRUSTED_CONFIG_PATHS
-config-ls-control: start=2026-10-29T17:41:12Z end=2026-10-29T17:41:12Z elapsed=0s exit=0
+config-ls-control: start=2026-10-29T18:26:10Z end=2026-10-29T18:26:10Z elapsed=0s exit=0
 config-ls-control.txt (4 lines):
-  $TMPDIR/U116-home-<tmp>/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
-  $TMPDIR/U116-home-<tmp>/mise.toml                 node
-  $TMPDIR/U116-home-<tmp>/cwd/.tool-versions        node
-  $TMPDIR/U116-home-<tmp>/cwd/mise.toml             node
+  ~/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
+  ~/mise.toml                 node
+  ~/cwd/.tool-versions        node
+  ~/cwd/mise.toml             node
 control: ENV without MISE_CEILING_PATHS and with MISE_OVERRIDE_CONFIG_FILENAMES empty
-config-ls-empty-override: start=2026-10-29T17:41:12Z end=2026-10-29T17:41:12Z elapsed=0s exit=0
+config-ls-empty-override: start=2026-10-29T18:26:10Z end=2026-10-29T18:26:10Z elapsed=0s exit=0
 config-ls-empty-override.txt (3 lines):
-  $TMPDIR/U116-home-<tmp>/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
-  $TMPDIR/U116-home-<tmp>/mise.toml                 node
-  $TMPDIR/U116-home-<tmp>/cwd/mise.toml             node
+  ~/.config/mise/config.toml  node, rust, python, age, bun, chezmoi, dotenvx, cargo:eza, fd, jq, hugo-extended, uv, yazi, aqua:micro-editor/micro, aqua:mikefarah/yq, aqua:watchexec/watchexec, npm:@anthropic-ai/claude-code, npm:@openai/codex, npm:@anthropic-ai/sandbox-runtime, npm:bash-language-server, npm:ccstatusline, npm:ccusage, npm:pyright, npm:fast-cli, npm:prettier, npm:pnpm, github:x-motemen/ghq, github:d-kuro/gwq, github:cli/cli, github:ogulcancelik/herdr, cargo:pueue, http:bats, http:gcloud, http:shellcheck, http:shfmt, http:ruff
+  ~/mise.toml                 node
+  ~/cwd/mise.toml             node
 config ls under ENV: unchanged; under the CHANGE 1 variables alone: the planted configs are listed; with the empty override value: planted files listed, so the empty value is ignored
 exit=0
 ```
@@ -3057,7 +3213,7 @@ inject config-ls-fails REFUSED: mise config ls: config-ls-before exited 17
 exit=2
 ```
 
-A forged receipt (the round-11 verdict's second finding, with the four cases below): a receipt under the fixture tree names the real scratch home and, as `out`, `/tmp/dotfiles-wt/U116`, a directory of this user that exists outside `$TMPDIR`; `receipt_path` is pointed at it and the `run` subcommand's two calls, `load_receipt` and `dry_runs`, are made. `load_receipt` refuses the value before it stats it, because the directory it names is not directly under `$TMPDIR`; `dry_runs` never starts.
+A forged receipt (the round-11 verdict's second finding, with the seven cases below): a receipt under the fixture tree names the real scratch home and, as `out`, the worktree `/tmp/dotfiles-wt/U116` in its resolved spelling, `/private/tmp/dotfiles-wt/U116` (`/tmp` is a symlink on macOS; in the `/tmp` spelling `contained` refuses that component first, as the round-12 block's refusal did not), a directory of this user that exists outside `$TMPDIR`; `receipt_path` is pointed at it and the `run` subcommand's two calls, `load_receipt` and `dry_runs`, are made. `contained` finds every component a real directory, resolves the path and refuses because its common path with the resolved `$TMPDIR` is not `$TMPDIR`; the mode and owner checks are never reached and `dry_runs` never starts.
 
 ```sh
 python3 -I U116-procedure.py inject receipt-forged
@@ -3065,8 +3221,8 @@ python3 -I U116-procedure.py inject receipt-forged
 
 ```text
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
-case receipt-forged: $TMPDIR/U116-inject-<tmp>/U116-prepare.receipt.txt names out=/tmp/dotfiles-wt/U116, a directory of this user outside $TMPDIR; run
-inject receipt-forged REFUSED: out=/tmp/dotfiles-wt/U116 is not directly under $TMPDIR
+case receipt-forged: $TMPDIR/U116-inject-<tmp>/U116-prepare.receipt.txt names out=/private/tmp/dotfiles-wt/U116, a directory of this user outside $TMPDIR; run
+inject receipt-forged REFUSED: out /private/tmp/dotfiles-wt/U116 resolves to /private/tmp/dotfiles-wt/U116, outside $TMPDIR/
 exit=2
 ```
 
@@ -3122,6 +3278,52 @@ inject dir-owner REFUSED: out $TMPDIR/U116-out-<tmp> is owned by uid 502, not 50
 exit=2
 ```
 
+The round-12 verdict's injection (`verdicts/U116-f3d90908.md`): a symlink directly under `$TMPDIR`, with a random name `U116-hop-<tmp>` as a `mkdtemp` name has (made by the case and removed when it ends, as the audit's `hop` was), points at a directory inside a `mkdtemp` directory outside `$TMPDIR` (under `/tmp`), and a receipt under the fixture tree names `out` as `<TMPDIR>/U116-hop-<tmp>/../U116-out-<tmp>` in the resolved spelling of `$TMPDIR`. Under the round-12 script that path passed: its directory after `os.path.normpath` is `$TMPDIR` itself, so the lexical check accepted it, and the kernel resolves it through the symlink to a `mkdtemp` directory of this user with mode 0700 outside `$TMPDIR`, so the mode and owner checks passed too and `timed` wrote its output and receipt there. `contained` refuses it for its `..` component, before any component is read or resolved. The case prints the real receipt's acceptance first (the same `load_receipt` accepted it a moment earlier), then the directory the kernel resolves the forged value to, and the outside directory's entries before the call and, from the `finally`, after it: none either time, so nothing was written outside `$TMPDIR`. The symlink and the outside directory are removed when the case ends.
+
+```sh
+python3 -I U116-procedure.py inject receipt-hop-parent
+```
+
+```text
+fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
+the real receipt was accepted: scratch=$TMPDIR/U116-home-<tmp> out=$TMPDIR/U116-out-<tmp>
+case receipt-hop-parent: $TMPDIR/U116-hop-<tmp> is a symlink to /tmp/U116-outside-<tmp>/child; $TMPDIR/U116-inject-<tmp>/U116-prepare.receipt.txt names out=$TMPDIR/U116-hop-<tmp>/../U116-out-<tmp>, which the kernel resolves to /private/tmp/U116-outside-<tmp>/U116-out-<tmp> (the same directory as /tmp/U116-outside-<tmp>/U116-out-<tmp>: True), a directory of this user with mode drwx------ outside $TMPDIR; run
+outside directory before: 0 entries []
+inject receipt-hop-parent REFUSED: out $TMPDIR/U116-hop-<tmp>/../U116-out-<tmp> holds a `.`, `..` or empty component
+outside directory after: 0 entries []
+exit=2
+```
+
+The same symlink without `..`: the receipt names `<TMPDIR>/U116-hop-<tmp>/U116-out-<tmp>`, a `mkdtemp` directory of this user inside the symlink's target. The path is absolute and holds no `.` or `..`, so `contained` walks its components from the root with `os.lstat` and refuses at `U116-hop-<tmp>`, a symlink; the outside directory again holds nothing before and after.
+
+```sh
+python3 -I U116-procedure.py inject receipt-hop-child
+```
+
+```text
+fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
+the real receipt was accepted: scratch=$TMPDIR/U116-home-<tmp> out=$TMPDIR/U116-out-<tmp>
+case receipt-hop-child: $TMPDIR/U116-hop-<tmp> is a symlink to /tmp/U116-outside-<tmp>/child; $TMPDIR/U116-inject-<tmp>/U116-prepare.receipt.txt names out=$TMPDIR/U116-hop-<tmp>/U116-out-<tmp>, which the kernel resolves to /private/tmp/U116-outside-<tmp>/child/U116-out-<tmp> (the same directory as /tmp/U116-outside-<tmp>/child/U116-out-<tmp>: True), a directory of this user with mode drwx------ outside $TMPDIR; run
+outside directory before: 0 entries []
+inject receipt-hop-child REFUSED: out $TMPDIR/U116-hop-<tmp>/U116-out-<tmp>: $TMPDIR/U116-hop-<tmp> is a symlink
+outside directory after: 0 entries []
+exit=2
+```
+
+A relative path: the receipt names `out` as the real output directory's name alone, `U116-out-<tmp>`, which from the directory every subcommand runs in (`$TMPDIR`) would resolve to the right directory. `contained` refuses it as not absolute, before any component is read.
+
+```sh
+python3 -I U116-procedure.py inject receipt-relative
+```
+
+```text
+fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
+the real receipt was accepted: scratch=$TMPDIR/U116-home-<tmp> out=$TMPDIR/U116-out-<tmp>
+case receipt-relative: $TMPDIR/U116-inject-<tmp>/U116-prepare.receipt.txt names out=U116-out-<tmp>, the real output directory's name relative to the cwd; run
+inject receipt-relative REFUSED: out U116-out-<tmp> is not an absolute path
+exit=2
+```
+
 The `check` subcommand's injection for the `timed` count: a copy of this file with `timed("unread", [mise, "--version"], TIMEOUT)`, a call whose result nothing reads, inserted inside `dry_runs` in its `python` block, and the forms counts over that copy. The line counts once under `timed-unread` and the exit status is 1. The same count over the round-11 block, whose three calls were a comparison inside an `if`, a bare statement and a `return`, reads `timed-calls=3 timed-unread=3`.
 
 ```sh
@@ -3130,8 +3332,21 @@ python3 -I U116-procedure.py inject timed-unread
 
 ```text
 fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
-case timed-unread: $TMPDIR/U116-inject-<tmp>/timed-unread.md is this file with `timed("unread", [mise, "--version"], TIMEOUT)` inserted at line 684, inside dry_runs in its python block; forms
-$TMPDIR/U116-inject-<tmp>/timed-unread.md python-blocks=1 sh-blocks=28 sh-blocks-off-form=0 text-blocks=43 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=4 timed-unread=1
+case timed-unread: $TMPDIR/U116-inject-<tmp>/timed-unread.md is this file with `timed("unread", [mise, "--version"], TIMEOUT)` inserted at line 752, inside dry_runs in its python block; forms
+$TMPDIR/U116-inject-<tmp>/timed-unread.md python-blocks=1 sh-blocks=32 sh-blocks-off-form=0 text-blocks=47 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=4 timed-unread=1 path-prefix-tests=0
+exit=1
+```
+
+The `check` subcommand's injection for the prefix-test count: a copy of this file with `under = fields[key].startswith(TMPDIR)`, the round-12 check's shape in one line, inserted inside `load_receipt` in its `python` block, and the forms counts over that copy. The line counts once under `path-prefix-tests` and the exit status is 1. The count takes every `startswith(` call and every slice up to the `len(` of another string whose receiver is not one of the forms code's text-line variables (`word`, `stripped`, `head`, `later`, `words`, `text`, `line`), the formatter's spaces inside a slice removed first; over the round-12 block it reads 3 (the two `startswith("/")` of the home lookup, now `os.path.isabs`, and the `mkdtemp` name check, now a `re.fullmatch` of the prefix and its eight-character suffix).
+
+```sh
+python3 -I U116-procedure.py inject path-prefix-test
+```
+
+```text
+fixtures: $TMPDIR/U116-inject-<tmp> (removed when this case ends)
+case path-prefix-test: $TMPDIR/U116-inject-<tmp>/path-prefix-test.md is this file with `under = fields[key].startswith(TMPDIR)` inserted at line 560, inside load_receipt in its python block; forms
+$TMPDIR/U116-inject-<tmp>/path-prefix-test.md python-blocks=1 sh-blocks=32 sh-blocks-off-form=0 text-blocks=47 other-blocks=0 producer-lines=0 swallow-lines=0 wrapper-lines=0 raw-print-sites=0 timed-calls=3 timed-unread=0 path-prefix-tests=1
 exit=1
 ```
 
@@ -3141,18 +3356,18 @@ exit=1
 
 | Run                                           | Platforms       | Tools | Entries mise would write             | Elapsed | Exit |
 | --------------------------------------------- | --------------- | ----- | ------------------------------------ | ------- | ---- |
-| (b) default platform set                      | 7               | 36    | 258                                  | 6 s     | 0    |
+| (b) default platform set                      | 7               | 36    | 258                                  | 3 s     | 0    |
 | (c) the four platforms the `http:` tables pin | 4               | 36    | 149                                  | 0 s     | 0    |
 | (d) `--bump --json`                           | 7 (same target) | 36    | 36 objects, all `old_versions` empty | 0 s     | 0    |
 
 - **Platforms.** With no `lockfile_platforms` setting and no existing lockfile, mise targets `linux-arm64, linux-arm64-musl, linux-x64, linux-x64-musl, macos-arm64, macos-x64, windows-x64` (first line of (b)). That is the vendor's new-lockfile set from the reference page, and it matches the "7 platforms" of row 233.
-- **Entries.** (b) lists 258 `✓` lines: 36 tools times 7 platforms is 252, and bun adds six more keys (`linux-x64-baseline`, `linux-x64-musl-baseline`, `macos-x64-baseline`, `windows-x64-baseline`, and `linux-arm64-musl` and `linux-x64-musl` listed a second time). (c) lists 149: 144 plus bun's `linux-arm64-musl`, `linux-x64-baseline`, `linux-x64-musl`, `linux-x64-musl-baseline` and `macos-x64-baseline`. Counted over the two pasted files by their `✓` lines; both counts are the ones rounds 5 to 11 recorded; the files (b), (c) and (d) of this re-take are byte for byte the round-11 files, whose `✓` lines and objects were the round-9 ones, so neither the config discovery variables of round 11 nor the `Receipt` return of round 12 changed an entry.
-- **Backends.** Every one of the 36 tools resolved, each to the version rounds 7 to 11 resolved (the one move since round 5, `python@3.15.1` to `python@3.15.2` between rounds 5 and 6, stands; no version moved between rounds 7 and 12): 4 core (`node`, `rust`, `python`, `bun`), 11 aqua (`age`, `chezmoi`, `dotenvx`, `fd`, `jq`, `hugo-extended`, `uv`, `yazi`, `micro`, `yq`, `watchexec`; the backend names come from the `backend` field of (d)), 10 npm, 4 github, 2 cargo, 5 http. No line reports a failure, a skipped platform or a rate limit, and no run needed `MISE_GITHUB_TOKEN`.
+- **Entries.** (b) lists 258 `✓` lines: 36 tools times 7 platforms is 252, and bun adds six more keys (`linux-x64-baseline`, `linux-x64-musl-baseline`, `macos-x64-baseline`, `windows-x64-baseline`, and `linux-arm64-musl` and `linux-x64-musl` listed a second time). (c) lists 149: 144 plus bun's `linux-arm64-musl`, `linux-x64-baseline`, `linux-x64-musl`, `linux-x64-musl-baseline` and `macos-x64-baseline`. Counted over the two pasted files by their `✓` lines; both counts are the ones rounds 5 to 12 recorded; the files (b), (c) and (d) of this re-take are byte for byte the round-12 files, which were the round-11 files, whose `✓` lines and objects were the round-9 ones, so neither the config discovery variables of round 11, the `Receipt` return of round 12 nor the resolved scratch paths of round 13 changed an entry.
+- **Backends.** Every one of the 36 tools resolved, each to the version rounds 7 to 12 resolved (the one move since round 5, `python@3.15.1` to `python@3.15.2` between rounds 5 and 6, stands; no version moved between rounds 7 and 13): 4 core (`node`, `rust`, `python`, `bun`), 11 aqua (`age`, `chezmoi`, `dotenvx`, `fd`, `jq`, `hugo-extended`, `uv`, `yazi`, `micro`, `yq`, `watchexec`; the backend names come from the `backend` field of (d)), 10 npm, 4 github, 2 cargo, 5 http. No line reports a failure, a skipped platform or a rate limit, and no run needed `MISE_GITHUB_TOKEN`.
 - **What a bump would move today.** Nothing moves: every object in (d) has `"old_versions": []`, because no lockfile exists. The 36 `new_versions` equal the versions (b) resolved, so today's bump PR would be the first write of the file, not an update. The exact pins resolve to themselves (`npm:ccstatusline@2.2.32`, `npm:ccusage@20.0.37`, `npm:prettier@3.9.10`, `npm:pnpm@12.8.1`, the five `http:` tools), as the vendor says for `--bump`.
-- **Elapsed.** (b) took 6 s wall time; this is the one measured number of this table that moves between re-takes (round 11 measured 10 s, round 9 3 s, round 7 2 s, round 6 4 s, round 5 5 s, the round-1 run that rounds 1 to 4 pasted 8 s), every count in this section being unchanged. The number is network latency at that minute, not mise's work: in round 11, two takes of the same hour measured 4 s and 2 s for (b) and `mise --version`, which resolves nothing, itself took 6 s in the pasted take; in this take it took 0 s. (c) and (d) returned in under a second because mise reused the version lists (b) had cached under the scratch `~/.cache/mise` (the `remote_versions-*.msgpack.z` files in the scratch tree). The brief's estimate of "about 36 tools per platform over the network" taking minutes did not hold: mise resolves a version once per tool, not once per platform, and the dry run downloads no artifact.
-- **Config discovery.** `h-config-ls.txt` and `h-config-ls-json.txt`, taken under `ENV` after the dry runs, list one config file, the scratch copy (`"override": false`, 36 tools), so the lock runs read that file and nothing else; the `planted-config` injection repeats the listing in a scratch home of its own with four configs planted where mise would otherwise look and gets the same one line, while its two controls list the planted files. Three things the measurement settled: mise compares the ceiling against the resolved path (`/private/var/...` on this host), so `MISE_CEILING_PATHS` carries both spellings and the `/var` spelling alone did not match in a probe; this mise reads an empty `MISE_OVERRIDE_CONFIG_FILENAMES` as unset (the second control), so the variable carries a sentinel name and the ceiling is the control that excludes project config; and with the discovery variables set, mise prints the global paths relative to `HOME` (`~/.config/mise/mise.lock` in the first line of (b), where rounds 5 to 10 pasted the full `/private/var/...` path), `~` being the scratch home, which `h-config-ls-json.txt` confirms by the full path. The `--help` text of `mise lock` says `--global` locks "the global and system config lockfiles"; under `ENV` the system config is `MISE_SYSTEM_CONFIG_FILE`, a path that does not exist, so the only lockfile (b) targets is the scratch one.
-- **Hosts contacted.** No packet capture was taken. The cache file names show `api.github.com` (sixteen `github/https-api-github-com-*` entries), the mise versions index (`versions-index/index.v1`) and an npm registry origin (`npm-meta/origin-*`, which in this run holds one metadata file for each of the six unheld `npm:` tools and none for the four held ones). All are in the brief's host list. The scratch tree is the round-11 tree line for line apart from two differences: a `node/remote_versions-*` cache entry where round 11 had a `bun/remote_versions-*` one (which version list mise caches under its own name and which under the versions index varies between takes; round 9 had the `node` entry too), and the name of the `tracked-configs` entry; the round-9 tree differed from round 11's by those and by the two directories round 11 added to the scratch home, `cwd` and `etc/mise`. Whether any other host was contacted is unverified; what bounds the set is the configuration and the environment, not an observation: the scratch config names only backends whose hosts are in the brief's list (core, aqua, npm, github and cargo tools, and `http:` URLs on `github.com` and `storage.googleapis.com`), the config discovery variables of `ENV` (`MISE_GLOBAL_CONFIG_FILE`, `MISE_CONFIG_DIR`, `MISE_SYSTEM_CONFIG_FILE`, `MISE_SYSTEM_CONFIG_DIR`, `MISE_CEILING_PATHS`, `MISE_IGNORED_CONFIG_PATHS`, the two override filename variables) leave that file the only config mise can load, which `h-config-ls` and the `planted-config` injection show, and the environment of every call is `ENV` and nothing else, so no other mise config, plugin or registry setting is consulted.
-- **Nothing written.** The scratch `.config/mise` holds `config.toml` alone after the runs, and `none-written` printed, from an `os.lstat` whose only absence is `FileNotFoundError`. The real `~/.config/mise` holds the same single entry before and after (`config.toml`, 6962 bytes, modified 2026-10-26T23:40:46, no `mise.lock`), and `check` reports `real-before.txt` and `real-after.txt` equal with no `mise.lock` line. The modification times of the real `~/.local/share/mise`, `~/.local/state/mise` and `~/Library/Caches/mise` are identical before and after the run and are the stamps rounds 6 to 11 recorded; nothing moved between round 7 and this run, and this unit's runs hand mise an environment of `ENV` alone, every mise directory and config variable pointed inside the scratch home and the real `~/.config/mise` and `/etc/mise` listed as ignored. mise wrote only under the scratch home: version-list caches under `.cache/mise` and the `tracked-configs` and `incomplete-installs` directories under `.local/state/mise`.
+- **Elapsed.** (b) took 3 s wall time; this is the one measured number of this table that moves between re-takes (round 12 measured 6 s, round 11 10 s, round 9 3 s, round 7 2 s, round 6 4 s, round 5 5 s, the round-1 run that rounds 1 to 4 pasted 8 s), every count in this section being unchanged. The number is network latency at that minute, not mise's work: in round 11, two takes of the same hour measured 4 s and 2 s for (b) and `mise --version`, which resolves nothing, itself took 6 s in the pasted take; in this take it took 1 s. (c) and (d) returned in under a second because mise reused the version lists (b) had cached under the scratch `~/.cache/mise` (the `remote_versions-*.msgpack.z` files in the scratch tree). The brief's estimate of "about 36 tools per platform over the network" taking minutes did not hold: mise resolves a version once per tool, not once per platform, and the dry run downloads no artifact.
+- **Config discovery.** `h-config-ls.txt` and `h-config-ls-json.txt`, taken under `ENV` after the dry runs, list one config file, the scratch copy (`"override": false`, 36 tools), so the lock runs read that file and nothing else; the `planted-config` injection repeats the listing in a scratch home of its own with four configs planted where mise would otherwise look and gets the same one line, while its two controls list the planted files. Three things the measurement settled: mise compares the ceiling against the resolved path (`/private/var/...` on this host), so `MISE_CEILING_PATHS` carries the resolved spelling (both spellings until round 12; since round 13 the scratch home is held resolved, so the two `environment` computes coincide) and the `/var` spelling alone did not match in a probe; this mise reads an empty `MISE_OVERRIDE_CONFIG_FILENAMES` as unset (the second control), so the variable carries a sentinel name and the ceiling is the control that excludes project config; and with the discovery variables set, mise prints the global paths relative to `HOME` (`~/.config/mise/mise.lock` in the first line of (b), where rounds 5 to 10 pasted the full `/private/var/...` path), `~` being the scratch home, which `h-config-ls-json.txt` confirms by the full path. The `--help` text of `mise lock` says `--global` locks "the global and system config lockfiles"; under `ENV` the system config is `MISE_SYSTEM_CONFIG_FILE`, a path that does not exist, so the only lockfile (b) targets is the scratch one.
+- **Hosts contacted.** No packet capture was taken. The cache file names show `api.github.com` (sixteen `github/https-api-github-com-*` entries), the mise versions index (`versions-index/index.v1`) and an npm registry origin (`npm-meta/origin-*`, which in this run holds one metadata file for each of the six unheld `npm:` tools and none for the four held ones). All are in the brief's host list. The scratch tree is the round-12 tree line for line apart from one difference, the name of the `tracked-configs` entry (a hash mise takes of the config path, which now carries the resolved spelling); the round-12 tree differed from round 11's by that name and by a `node/remote_versions-*` cache entry where round 11 had a `bun/remote_versions-*` one (which version list mise caches under its own name and which under the versions index varies between takes; round 9 had the `node` entry too), and the round-9 tree by those and by the two directories round 11 added to the scratch home, `cwd` and `etc/mise`. Whether any other host was contacted is unverified; what bounds the set is the configuration and the environment, not an observation: the scratch config names only backends whose hosts are in the brief's list (core, aqua, npm, github and cargo tools, and `http:` URLs on `github.com` and `storage.googleapis.com`), the config discovery variables of `ENV` (`MISE_GLOBAL_CONFIG_FILE`, `MISE_CONFIG_DIR`, `MISE_SYSTEM_CONFIG_FILE`, `MISE_SYSTEM_CONFIG_DIR`, `MISE_CEILING_PATHS`, `MISE_IGNORED_CONFIG_PATHS`, the two override filename variables) leave that file the only config mise can load, which `h-config-ls` and the `planted-config` injection show, and the environment of every call is `ENV` and nothing else, so no other mise config, plugin or registry setting is consulted.
+- **Nothing written.** The scratch `.config/mise` holds `config.toml` alone after the runs, and `none-written` printed, from an `os.lstat` whose only absence is `FileNotFoundError`. The real `~/.config/mise` holds the same single entry before and after (`config.toml`, 6962 bytes, modified 2026-10-26T23:40:46, no `mise.lock`), and `check` reports `real-before.txt` and `real-after.txt` equal with no `mise.lock` line. The modification times of the real `~/.local/share/mise`, `~/.local/state/mise` and `~/Library/Caches/mise` are identical before and after the run and are the stamps rounds 6 to 12 recorded; nothing moved between round 7 and this run, and this unit's runs hand mise an environment of `ENV` alone, every mise directory and config variable pointed inside the scratch home and the real `~/.config/mise` and `/etc/mise` listed as ignored. mise wrote only under the scratch home: version-list caches under `.cache/mise` and the `tracked-configs` and `incomplete-installs` directories under `.local/state/mise`.
 - **Settings.** `npm.package_manager` is `npm` and `minimum_release_age` is `72h` in the copy, as `config.toml:112-113` and `:107` set them.
 - **Attempt 1 (round 1, not re-taken).** With the shell's cwd under the real home, mise read the real `~/.config/mise/config.toml` as an untrusted project config and stopped with `Config files in ~/.config/mise/config.toml are not trusted`; the three `mise lock` runs exited 1 in 0 seconds and the file was opened, not changed (its listing and modification time are unchanged in every round since). The five error lines are pasted in the round-1 commit `e0a1526a`, not here, because a repeat would open the real file on purpose, which the brief's SCOPE forbids. This is the one way the unit touched a real mise path, and it is a property of mise's config discovery, not of `HOME`; since round 11 the procedure changes to a `cwd` that is also the ceiling of that walk and ignores the real directory by name.
 
@@ -3191,7 +3406,7 @@ exit=1
 
 ## Recommendation
 
-**defer.** The measured output agrees with row 233 of `decisions.tsv` (`2026-10-28T09:40:00Z`, phase `plan-P-36`): the same 7 platforms and 36 tools, nothing written, and the lock is technically ready (every backend resolved in 6 s, no token, no failure). What the dry run adds is the entry counts (258 and 149), the fact that today's bump would be a first write and not a move, and the attempt-1 finding about mise's config discovery. None of this changes the facts the deferral rests on: the tree forbids the lock in three places by policy, `make update` would rewrite it on every host run, the CI copy carries one file, `package_manager = "npm"` records the version only, and the 72 h cooldown would move from install time to the bump schedule.
+**defer.** The measured output agrees with row 233 of `decisions.tsv` (`2026-10-28T09:40:00Z`, phase `plan-P-36`): the same 7 platforms and 36 tools, nothing written, and the lock is technically ready (every backend resolved in 3 s, no token, no failure). What the dry run adds is the entry counts (258 and 149), the fact that today's bump would be a first write and not a move, and the attempt-1 finding about mise's config discovery. None of this changes the facts the deferral rests on: the tree forbids the lock in three places by policy, `make update` would rewrite it on every host run, the CI copy carries one file, `package_manager = "npm"` records the version only, and the 72 h cooldown would move from install time to the bump schedule.
 
 The condition that would change the recommendation to `adopt` is an operator decision, recorded in `decisions.tsv`, to stop unattended host upgrades (`upgrade-tools.sh:318`) and take every unheld version from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in `test.yaml:276-279`, plus a decision on the npm installer. The condition that would change it to `reject` is a decision to keep the present `latest` behind the cooldown as the permanent policy, in which case the lockfile settings test and `.chezmoiremove:21` are the complete record and this question closes. Absent either, the no-lock policy stands as `README.md:199-202` and `:250-255` describe it.
 
@@ -3199,9 +3414,9 @@ The condition that would change the recommendation to `adopt` is an operator dec
 
 | field    | value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ts       | 2026-10-29T16:45:31Z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ts       | 2026-10-29T18:20:17Z                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | phase    | plan-P-36                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| decision | mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 6 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first |
+| decision | mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 3 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first |
 | why      | the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config                                                                                                                                                                                       |
 | evidence | handoff/evaluations/U116-mise-lock.md                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | result   | proposed; the coordinator records                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -3209,7 +3424,7 @@ The condition that would change the recommendation to `adopt` is an operator dec
 The same row as one line with literal tab separators:
 
 ```text
-2026-10-29T16:45:31Z	plan-P-36	mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 6 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first	the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config	handoff/evaluations/U116-mise-lock.md	proposed; the coordinator records
+2026-10-29T18:20:17Z	plan-P-36	mise.lock evaluation measured (plan P-36, research V4-9): defer; corrects the evidence of the 2026-10-28T09:40:00Z row, whose file handoff/research/05-eval-mise-lock.md was never written. Measured 2026-10-29 under a scratch HOME with mise 2026.10.19: `mise lock --global --dry-run` targets 7 platforms and 36 tools and would write 258 entries (36 x 7 plus 6 bun variant keys); the 4-platform set the http tables pin gives 149 entries; `--bump --dry-run --json` lists 36 first-time entries and no move; every backend (4 core, 11 aqua, 10 npm, 4 github, 2 cargo, 5 http) resolved in 3 s without a GitHub token; no lockfile written, the real ~/.config/mise unchanged. The condition stands: an operator decision to stop host-side `mise upgrade` (scripts/upgrade-tools.sh:318) and take versions from a scheduled `mise lock --bump --minimum-release-age 72h` PR, with `mise install --locked` on hosts and in the CI copy step (.github/workflows/test.yaml:259-261), and the npm installer question settled first	the plan's acceptance asks for the measured output on record; the dry run changed no fact row 233 rests on: the tree's policy (README.md:199-202 and 250-255, home/.chezmoiremove:21, tests/unit/test_supply_chain_policy.py:404-421 and 464-466) forbids the lock and `--locked`, `make update` would rewrite the rendered lock on every run (vendor table: `mise upgrade` updates mise.lock), npm.package_manager=npm records the version only (the dependency graph needs the embedded installer, which scripts/update-agent-assets.sh:148 and tests/unit/test_runtime_health.py:347 do not use), and a locked version bypasses minimum_release_age so the 72 h policy would move to the bump schedule; one new fact: with a cwd under the real home, mise's parent-directory walk reads the real ~/.config/mise/config.toml as a project config	handoff/evaluations/U116-mise-lock.md	proposed; the coordinator records
 ```
 
 ## Left out

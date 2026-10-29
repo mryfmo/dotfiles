@@ -182,7 +182,7 @@ lever_self_check() {
     # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
     LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -201,9 +201,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -804,19 +804,19 @@ case ${template_status} in
 esac
 # read_file keeps the final newline the command substitution dropped; the line loop below sees the same lines as before.
 template_text=${template_text%$'\n'}
-selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] ||
+selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${selected} == 1 ]] || refuse "${template} does not make the permission profile audit the default"
-sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] ||
+sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${sandbox_keys} == 0 ]] || refuse "${template} names sandbox_mode, which replaces the permission profile"
-profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
+profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${profiles} == 1 ]] || refuse "${template} defines no single [permissions.audit] profile"
-template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] ||
+template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${template_entries} -gt 0 ]] || refuse "${template} has no filesystem entries"
 # The allowlist (U71b audit round 4): nothing is readable unless an entry opens it.
-root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
+root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 ((root_denies == 1)) || refuse "${template} does not deny :root once; the audit profile must be an allowlist"
 # No project instructions (U71b audit round 21): the rules arrive in the prompt, so codex loads no AGENTS.md from its
 # cwd or an ancestor. Each setting must stand once before the first table, where it is a top-level key.
@@ -871,7 +871,7 @@ mkdir "${work}" "${work}/home" "${work}/scratch-tmpdir" "${work}/cwd" "${codex_h
 
 gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/body.md" ||
     fail "cannot read the body of pull request ${pr}"
-contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md"
+contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"
 
 # The audited tree: a fresh repository that borrows the checkout's objects for the fetch and holds only the two fetched
@@ -884,7 +884,7 @@ for ((try = 1; try <= wait_tries; try++)); do
     bounded "${gh_timeout}" git --no-replace-objects -c core.hooksPath=/dev/null -C "${clone}" fetch -q --no-tags \
         "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' ||
         fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"
-    head=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head=''
+    head=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head='' # producer-status: allow the head test after the loop refuses an empty head
     [[ ${head} != "${want}" ]] || break
     ((try == wait_tries)) || sleep "${wait_seconds}"
 done

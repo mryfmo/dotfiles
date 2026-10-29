@@ -7,9 +7,11 @@ hooks" (shape 1, rule a), the bare `git ls-files` without its stderr capture (sh
 (shape 4, rule d) and `local x=$(false)` (shape 5, rule a); the reader halves of shapes 2, 3 and 4 are in
 tests/unit/test_read_lib.py. The lint needs shfmt on PATH (the pinned version, which the contract checks first). The
 enforcement test runs it over the library and the five levers: that test, not a Makefile target, holds them to zero
-findings. Rounds 2 and 3 of the audit each have a test naming their probe lines by line and rule: round 3 inverted the
-two readings (a word has a known text only in three quoting forms; stderr is captured only by three operators), so a
-form the lint does not know is a finding, never decoded.
+findings. Rounds 2 to 4 of the audit each have a test naming their probe lines by line and rule: round 3 inverted the
+two readings (a word has a known text only in three quoting forms; stderr is captured only by three operators), round
+4 names the `||` branches that handle a tested read's status (exit, return, a top-level function ending in one, a
+block or subshell ending so, `name=$?`) and the characters of a known bare literal, so a form the lint does not know
+is a finding naming its shape, never decoded.
 """
 
 from __future__ import annotations
@@ -116,6 +118,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
 
     def test_the_two_accepted_positions_pass_and_every_other_position_is_a_finding(self) -> None:
         cases: list[tuple] = [  # (the lines, the rule(s) of the finding(s) or None, the finding's line within the case)
+            ('fail() { echo "$1" >&2; exit 1; }', None),
             ("x=$(a) || fail", None),
             ('x="$(a)" || fail', None),
             ("x=`a` || fail", None),
@@ -125,7 +128,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("until x=$(a); do break; done", None),
             ("if true; then :; elif x=$(a); then :; fi", None),
             ("x=$(a) || { echo no; exit 1; }", None),
-            ("x=$(a) || x=''", None),
+            ("x=$(a) || x=''", "substitution"),  # an empty value a later line handles is not a branch (allow it)
             ("x=$(a) || exit 2", None),
             ("f() { x=$(a) || return 1; }", None),
             ("g() { local y; y=$(a) || return 1; }", None),
@@ -148,7 +151,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("x=$(a)/suffix || fail", "substitution"),
             ("x=prefix$(a) || fail", "substitution"),
             ("a=$(x) b=$(y) || exit 1", "substitution"),
-            ("x=$(a) || y=$(b) || exit 1", "substitution"),
+            ("x=$(a) || y=$(b) || exit 1", ("substitution", "substitution")),  # the inner `||` branch is an assignment
             ('echo "$(a)"', "substitution"),
             ("echo `a`", "substitution"),
             ('cat > "$(a)"', "substitution"),
@@ -170,7 +173,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 expected.append((3 + len(body_lines) + (case[2] if len(case) > 2 else 0), rule))
             body_lines.extend(text.split("\n"))
         result = self.assert_findings("\n".join(body_lines) + "\n", expected)
-        self.assertIn("not a known command word, so the status is not shown to be read", result.stdout)
+        self.assertIn("a command whose first word has no known text", result.stdout)
 
     def test_shape_5_a_declaration_assigned_from_a_substitution_is_a_finding(self) -> None:
         """`local x=$(false)` runs on under set -e, since local's own status wins (SC2155's case); the grammar
@@ -197,6 +200,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ),
             "the test chained with &&": capture + "[[ ! -s err ]] && echo clean\n",
             "through read_listing": "read_listing list err git ls-files -z || exit 1\n",
+            "a glob character inside double quotes in both": (
+                'git ls-files -z > list 2> "err*" || exit 1\n[[ ! -s "err*" ]] || exit 1\n'
+            ),
+            "a dot in the file name": "git ls-files -z > list 2> err.1 || exit 1\n[[ ! -s err.1 ]] || exit 1\n",
+            "a glob in a leading word is no row": "git ls-fil* > l || exit 1\n",
             "inside a function with the test in its body": (
                 "f() {\n    find . -type d > d 2> e || return 1\n    [[ ! -s e ]] || return 1\n}\n"
             ),
@@ -357,7 +365,109 @@ class ProducerStatusCheckTest(unittest.TestCase):
         expected = [(5, "substitution"), (16, "substitution")]
         expected += [(line, "producer") for line in (3, 6, 8, 10, 12, 14)]
         result = self.assert_findings(body, expected)
-        self.assertIn("not a known command word", result.stdout)
+        self.assertIn("a command whose first word has no known text", result.stdout)
+
+    def test_the_round_4_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two lines of the 03a4d5c6 audit and the next members of both lists, which that head read as clean: a
+        pipeline on the right of `||` (the branch was judged by a list of refused words) and a bare glob as the
+        captured file (a bare literal had no character rule). Round 4 names the branches that handle the status and
+        the characters of a known bare literal: every other branch is a finding naming its shape; a glob, a bracket, a
+        brace or a tilde in a bare literal is no file name, while the same characters in double quotes are."""
+        body = (
+            'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'  # lines 3 to 6
+            'fail_later() {\n    status=$?\n    echo "failed ${status}"\n}\n'  # 7 to 10
+            "x=$(false) || true | cat\n"  # 11
+            "x=$(a) || { true; }\n"  # 12
+            "x=$(a) || (true)\n"  # 13
+            "x=$(a) || echo failed\n"  # 14
+            "x=$(a) || other_var=1\n"  # 15
+            "x=$(a) || status=$?\n"  # 16
+            "x=$(a) || { echo x >&2; exit 2; }\n"  # 17
+            "x=$(a) || refuse 'x'\n"  # 18
+            "x=$(a) || undefined_refuse 'x'\n"  # 19
+            "x=$(a) || fail_later\n"  # 20
+            "git ls-files 2> err* || exit 1\n[[ ! -s err* ]] || exit 1\n"  # 21, 22
+            "git ls-files 2> err? || exit 1\n[[ ! -s err? ]] || exit 1\n"  # 23, 24
+            "git ls-files 2> err[1] || exit 1\n[[ ! -s err[1] ]] || exit 1\n"  # 25, 26
+            "git ls-files 2> e{rr,xx} || exit 1\n[[ ! -s e{rr,xx} ]] || exit 1\n"  # 27, 28
+            "git ls-files 2> ~/err || exit 1\n[[ ! -s ~/err ]] || exit 1\n"  # 29, 30
+            'git ls-files 2> "err*" || exit 1\n[[ ! -s "err*" ]] || exit 1\n'  # 31, 32
+            "git ls-files 2> err.1 || exit 1\n[[ ! -s err.1 ]] || exit 1\n"  # 33, 34
+        )
+        expected = [(line, "substitution") for line in (11, 12, 13, 14, 15, 19, 20)]
+        expected += [(line, "producer") for line in (21, 23, 25, 27, 29)]
+        result = self.assert_findings(body, expected)
+        for line, shape in (
+            (11, "a pipeline"),
+            (12, "a block whose last statement is the command `true`"),
+            (13, "a subshell whose last statement is the command `true`"),
+            (14, "the command `echo`"),
+            (15, "an assignment of something other than `$?`"),
+            (19, "the command `undefined_refuse`"),
+            (20, "a call of `fail_later`, whose body ends in the command `echo`"),
+        ):
+            self.assertIn(f":{line}: substitution: the `||` branch is {shape} and does not end the read", result.stdout)
+
+    def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
+        """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return`, a top-level function
+        of this file whose body's last statement is one of those (one level: a function ending in a call of another is
+        not accepted, nor a name defined inside another statement, nor a name whose second definition ends otherwise),
+        a block or subshell whose last statement is one of those, and `name=$?` or `name=${?}`. Everything else is a
+        finding that names the shape, and a top-level function named `exit` takes the name away."""
+        preamble = (
+            'refuse() {\n    echo "$1" >&2\n    exit 2\n}\n'
+            "refuse_plain() exit 2\n"
+            'fail_later() {\n    echo "failed"\n}\n'
+            "if true; then\n    nested_refuse() {\n        exit 2\n    }\nfi\n"
+            "twice() {\n    exit 2\n}\n"
+            'twice() {\n    echo "no"\n}\n'
+            "deep() {\n    refuse 'x'\n}\n"
+        )
+        cases: list[tuple[str, str | None]] = [  # (the line, the shape the finding names, or None when accepted)
+            ("x=$(a) || exit", None),
+            ("x=$(a) || 'exit' 2", None),
+            ('x=$(a) || "return" 1', None),
+            ("x=$(a) || status=${?}", None),
+            ("x=$(a) || refuse 'x'", None),
+            ("x=$(a) || refuse_plain", None),
+            ("x=$(a) || (refuse 'x')", None),
+            ("x=$(a) || { refuse 'x'; }", None),
+            ("x=$(a) || { echo no >&2; return 1; }", None),
+            ('x=$(a) || status="$?"', "an assignment of something other than `$?`"),
+            ("x=$(a) || status=${?:-0}", "an assignment of something other than `$?`"),
+            ("x=$(a) || status=$? other=1", "an assignment of something other than `$?`"),
+            ("x=$(a) || { status=$?; }", "a block whose last statement is an assignment of `$?` that only the block"),
+            ("x=$(a) || true", "the command `true`"),
+            ("x=$(a) || :", "the command `:`"),
+            ("x=$(a) || false", "the command `false`"),
+            ("x=$(a) || true | cat", "a pipeline"),
+            ("x=$(a) || { echo no && exit 1; }", "a block whose last statement is an `&&` list"),
+            ("x=$(a) || (exit 1 || exit 2)", "a subshell whose last statement is a `||` list"),
+            ("x=$(a) || { { exit 1; }; }", "a block whose last statement is a block"),
+            ("x=$(a) || if true; then exit 1; fi", "an `if`"),
+            ("x=$(a) || case $x in *) exit 1 ;; esac", "a `case`"),
+            ("x=$(a) || [[ $? == 1 ]]", "a `[[ ]]` test"),
+            ("x=$(a) || [[ $? == 1 ]] || exit 1", "a `[[ ]]` test"),
+            ("x=$(a) || local status=$?", "a declaration"),
+            ('x=$(a) || "$cmd"', "a command whose first word has no known text"),
+            ("x=$(a) || $'exit'", "a command whose first word has no known text"),
+            ("x=$(a) || ex\\it", "a command whose first word has no known text"),
+            ("x=$(a) || refuse_undefined", "the command `refuse_undefined`"),
+            ("x=$(a) || fail_later", "a call of `fail_later`, whose body ends in the command `echo`"),
+            ("x=$(a) || nested_refuse", "the command `nested_refuse`"),
+            ("x=$(a) || twice", "a call of `twice`, whose body ends in the command `echo`"),
+            ("x=$(a) || deep", "a call of `deep`, whose body ends in the command `refuse`"),
+        ]
+        first = 3 + preamble.count("\n")
+        expected = [(first + index, "substitution") for index, (_, shape) in enumerate(cases) if shape]
+        result = self.assert_findings(preamble + "".join(text + "\n" for text, _ in cases), expected)
+        for index, (text, shape) in enumerate(cases):
+            if shape:
+                with self.subTest(text):
+                    self.assertIn(f":{first + index}: substitution: the `||` branch is {shape}", result.stdout)
+        shadowed = "exit() {\n    echo no\n}\nx=$(a) || exit 1\n"
+        result = self.assert_findings(shadowed, [(6, "substitution")])
+        self.assertIn("a call of `exit`, whose body ends in the command `echo`", result.stdout)
 
     def test_an_empty_or_comment_only_file_is_refused_naming_it(self) -> None:
         """A tree with no top-level statement is never a clean file: the refusal names the file, before and after a

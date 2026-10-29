@@ -75,9 +75,12 @@ TABLE: dict[str, Kind] = {
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "Lit": Kind(None, ("Value", "Pos.Line", "Pos.Offset", "End.Offset"), {"Value": ("a\\ b",)}),
     # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that
-    # spelling, so the fixture expands both.
+    # spelling, so the fixture expands both. The lint reads `$?` as the whole node (Short, Param.Value `?`): the
+    # `name=$?` branch of a tested read.
     "ParamExp": Kind(
-        None, ("Param.Value", "Length", "Index", "Pos.Line"), {"Length": (True,), "Param.Value": ("TMPDIR", "jq")}
+        None,
+        ("Param.Value", "Short", "Length", "Index", "Pos.Line"),
+        {"Length": (True,), "Short": (True,), "Param.Value": ("TMPDIR", "jq", "?")},
     ),
     "ExtGlob": Kind(None, ("Pattern.Value", "Pos.Line")),
     "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&", "||")}),
@@ -85,7 +88,8 @@ TABLE: dict[str, Kind] = {
     "UnaryTest": Kind(None, ("Op", "X"), {"Op": ("!", "-s")}),
     "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
     "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
-    "FuncDecl": Kind(None, ("Name", "Body", "Pos.Line")),
+    # The lint reads a top-level function's name and body: a `||` branch may call one whose body ends in `exit`.
+    "FuncDecl": Kind(None, ("Name", "Name.Value", "Body", "Pos.Line")),
     "Block": Kind(None, ("Stmts", "Pos.Line")),
     "Subshell": Kind(None, ("Stmts", "Pos.Line")),
     "ArithmExp": Kind(None, ("X",)),

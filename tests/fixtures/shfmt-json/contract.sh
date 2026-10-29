@@ -43,3 +43,12 @@ read -r first < "$dir/file"
 echo "$first"
 # producer-status-check (U112 round 2): every way stderr moves, so the redirect spellings the lint reads are in the tree.
 git ls-files > "$dir/list" 2>> "$dir/err" 2>| "$dir/err" 2>&1 &> "$dir/out" &>> "$dir/out" >&"$dir/out" || exit 1
+# producer-status-check (U112 round 4): the `||` branches that handle a tested read's status, so the function name, the
+# block and the `$?` the lint reads are in the tree.
+refuse() {
+    echo "$1" >&2
+    exit 2
+}
+first=$(printf z) || refuse 'no z'
+first=$(printf z) || status=$?
+first=$(printf z) || { exit 1; }

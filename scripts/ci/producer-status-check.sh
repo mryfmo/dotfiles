@@ -9,15 +9,23 @@
 #   printed as `file:line: <rule>: <message>`:
 #   a. `substitution`: a command substitution (`$(…)` or backquotes) is accepted only as the whole value of the one
 #      assignment of a statement with no command word, where that statement is the last of an `if` or `while`
-#      condition (negated or not) or the left side of a `||` whose right side keeps the status: a block, a subshell,
-#      a bare assignment, or a command whose first word has a known text other than `true`, `:` or `false`. A word
-#      has a known text only when every part is a bare literal, a plain single-quoted string or double quotes around
-#      such parts (`true`, 'true', "true" and tr\ue are one text); nothing else is decoded, so a first word holding
-#      an expansion, an ANSI-C `$'…'` or a locale `$"…"` string is not shown to read the status, and the left side's
-#      substitution is a finding that says so. Every other position is a finding at the line where the substitution
-#      opens: an argument, a `local`, `export`, `declare` or `readonly`, a redirect target, an unquoted heredoc body,
-#      `[[ ]]`, an arithmetic expansion, a `for` list, a `case` word, a plain assignment whose status only `set -e`
-#      sees, two assignments in one statement, and a substitution inside another one.
+#      condition (negated or not) or the left side of a `||` whose branch handles the status. The branches that
+#      handle it are a closed list: (i) a plain command whose known first word is `exit` or `return`; (ii) a plain
+#      command whose known first word names a function this file defines at top level and whose body's last
+#      statement is form (i) (one level, no recursion; a name no top-level function defines is not accepted); (iii) a
+#      block or subshell whose last statement is (i) or (ii); (iv) a bare assignment of exactly `$?` (`status=$?`).
+#      Any other branch leaves the substitution a finding that names the branch's shape: a pipeline, an `&&` or `||`
+#      list, an `if`, a `case`, `true`, `:`, `false` or any other plain command, a block or subshell ending
+#      otherwise, an assignment of anything else, a first word with no known text. A later line that handles an
+#      empty value is not a branch: such a read carries `# producer-status: allow <reason naming that line>` (rule
+#      e). A word has a known text only when every part is a bare literal over the closed character set (letters,
+#      digits and `_ - . / : = + @ % ,`), a plain single-quoted string, or double quotes around literals (any
+#      character there) and such strings; `* ? [ ] { } ~ $`, a backquote, a backslash, whitespace or any other
+#      character in a bare literal, an expansion, an ANSI-C `$'…'` or a locale `$"…"` string make the word unknown,
+#      and nothing is decoded. Every other position is a finding at the line where the substitution opens: an
+#      argument, a `local`, `export`, `declare` or `readonly`, a redirect target, an unquoted heredoc body, `[[ ]]`,
+#      an arithmetic expansion, a `for` list, a `case` word, a plain assignment whose status only `set -e` sees, two
+#      assignments in one statement, and a substitution inside another one.
 #   b. `producer`: a command whose leading words (known texts, as above) match a row of status-blind-producers.tsv
 #      beside this script (`git ls-files`, `git config -f`, `git config --file`, `find`, `ls`) must capture its
 #      stderr to a file, and a later statement of the same list must be `[[ ! -s <that file> ]]`. Stderr is captured
@@ -112,7 +120,35 @@ MESSAGES = {
     ALLOW: "`# producer-status: allow` needs a reason after it",
 }
 ALLOW_WORDS = ["producer-status:", "allow"]
-TRIVIAL = ("true", ":", "false")  # `|| true`, `|| :` and `|| false` discard the status of what precedes them
+TERMINATORS = ("exit", "return")  # the plain commands that end the read when the tested substitution fails (form i)
+# A bare literal is a known text only over this set: a glob character, a brace, a tilde, `$`, a backquote, a backslash
+# or whitespace is expanded or read by bash and is not decoded here. Inside double quotes bash expands none of them,
+# so the set does not apply there.
+KNOWN_CHARACTERS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./:=+@%,")
+# The last status as a whole word, `$?` or `${?}` (form iv); `${?:-0}` and `"$?"` are not it.
+STATUS_PARAMETERS = (
+    {"Type": "ParamExp", "Short": True, "Param": {"Value": "?"}},
+    {"Type": "ParamExp", "Param": {"Value": "?"}},
+)
+BRANCH = (
+    "the `||` branch is {shape} and does not end the read with exit, return, a refusal function of this file or "
+    "`name=$?`"
+)
+SHAPES = {  # how a finding names the command kind of a branch; a kind not listed is named by shfmt's type
+    "Block": "a block",
+    "Subshell": "a subshell",
+    "IfClause": "an `if`",
+    "CaseClause": "a `case`",
+    "WhileClause": "a `while`",
+    "ForClause": "a `for`",
+    "DeclClause": "a declaration",
+    "FuncDecl": "a function definition",
+    "TestClause": "a `[[ ]]` test",
+    "ArithmCmd": "an arithmetic command",
+    "TimeClause": "a `time`",
+    "CoprocClause": "a `coproc`",
+}
+LIST_SHAPES = {"|": "a pipeline", "&&": "an `&&` list", "||": "a `||` list"}
 PROLOGUE_WORDS = ["set", "-euo", "pipefail"]
 STDERR = "2"
 FILE_OPS = (">", ">>", ">|")  # the only operators that, on fd 2, capture stderr to the word's file
@@ -121,7 +157,6 @@ DUP_OP = ">&"  # with no descriptor written, `>&file` touches fd 2; `>&N` and `>
 UNCAPTURED = object()  # the stderr target when the last redirect touching fd 2 is not one of FILE_OPS
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
-UNKNOWN_RIGHT_SIDE = "the right side of the `||` is not a known command word, so the status is not shown to be read"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # inside double quotes bash removes a backslash before these only
 
 
@@ -186,13 +221,13 @@ def command_of(stmt):
     return stmt.get("Cmd") if isinstance(stmt, dict) else None
 
 
-def unescaped(value, escapable):
-    """The literal's value without the backslashes bash removes when it reads the word: before any character in a
-    bare literal, before escapable inside double quotes."""
+def unescaped(value):
+    """A double-quoted literal's value without the backslashes bash removes when it reads the word: those before `$`,
+    a backquote, a double quote, a backslash or a newline."""
     out = []
     index = 0
     while index < len(value):
-        if value[index] == "\\" and index + 1 < len(value) and (escapable is None or value[index + 1] in escapable):
+        if value[index] == "\\" and index + 1 < len(value) and value[index + 1] in DOUBLE_QUOTE_ESCAPES:
             index += 1
         out.append(value[index])
         index += 1
@@ -200,15 +235,23 @@ def unescaped(value, escapable):
 
 
 def word_text(word, in_double_quotes=False):
-    """The known text of a word: every part a bare literal, a plain single-quoted string, or double quotes around such
-    parts (`true`, 'true', "true" and tr\\ue are one text). None for any other word, whose text exists only when it
-    runs: an expansion, an ANSI-C `$'…'` or a locale `$"…"` string (shfmt's Dollar); nothing is decoded."""
+    """The known text of a word: every part a bare literal over KNOWN_CHARACTERS, a plain single-quoted string, or
+    double quotes around literals (any character, their escapes removed) and such strings (`true`, 'true' and "true"
+    are one text). None for any other word, whose text exists only when it runs: a bare literal with a glob, a brace,
+    a tilde, a backslash or another character outside the set, an expansion, an ANSI-C `$'…'` or a locale `$"…"`
+    string (shfmt's Dollar); nothing is decoded."""
     parts = (word.get("Parts") or []) if isinstance(word, dict) else []
     text = ""
     for part in parts:
         kind = part.get("Type")
         if kind == "Lit":
-            text += unescaped(part.get("Value") or "", DOUBLE_QUOTE_ESCAPES if in_double_quotes else None)
+            value = part.get("Value") or ""
+            if in_double_quotes:
+                text += unescaped(value)
+            elif set(value) <= KNOWN_CHARACTERS:
+                text += value
+            else:
+                return None
         elif kind == "SglQuoted" and not part.get("Dollar"):
             text += part.get("Value") or ""  # shfmt writes no Value for ''
         elif kind == "DblQuoted" and not part.get("Dollar"):
@@ -284,19 +327,24 @@ def without_positions(node):
     return node
 
 
-def name_parts(word):
+def name_parts(word, in_double_quotes=False):
     """The parts of a word that names a file only when it runs, double quotes flattened and positions dropped, when
-    every part is a literal, a plain quoted string or a parameter expansion; None for any other word (an ANSI-C or
-    locale string, a substitution, a glob), which is not shown to name any file."""
+    every part is a literal (bare, over KNOWN_CHARACTERS), a plain quoted string or a parameter expansion; None for
+    any other word (a bare glob, brace or tilde, an ANSI-C or locale string, a substitution), which is not shown to
+    name any file."""
     parts = []
     for part in word.get("Parts") or []:
         kind = part.get("Type")
         if kind == "DblQuoted" and not part.get("Dollar"):
-            inner = name_parts(part)
+            inner = name_parts(part, True)
             if inner is None:
                 return None
             parts.extend(inner)
-        elif kind == "Lit" or (kind == "SglQuoted" and not part.get("Dollar")) or kind in NAME_KINDS:
+        elif kind == "Lit":
+            if not in_double_quotes and not set(part.get("Value") or "") <= KNOWN_CHARACTERS:
+                return None
+            parts.append(without_positions(part))
+        elif (kind == "SglQuoted" and not part.get("Dollar")) or kind in NAME_KINDS:
             parts.append(without_positions(part))
         else:
             return None
@@ -333,14 +381,73 @@ def head(stmt):
     return cmd
 
 
-def first_word(stmt):
-    """The first argument word of a statement that runs a plain command; None when it runs none (a block, a subshell,
-    a bare assignment), whose branch reads the status by itself."""
+def top_level_functions(tree):
+    """The functions the file defines at top level, name -> its bodies (a name defined twice has two, and each must
+    end the read); a function defined inside another statement is not one of them."""
+    functions = {}
+    for stmt in tree.get("Stmts") or []:
+        cmd = command_of(stmt)
+        if isinstance(cmd, dict) and cmd.get("Type") == "FuncDecl":
+            functions.setdefault(cmd["Name"]["Value"], []).append(cmd["Body"])
+    return functions
+
+
+def last_statement(stmt):
+    """The statement a function body or a `||` branch runs last: the last of a block's or subshell's statements (None
+    when it holds none), else the statement itself (`f() exit 2`, a plain command)."""
     cmd = command_of(stmt)
-    if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
-        return None
-    args = cmd.get("Args") or []
-    return args[0] if args else None
+    if isinstance(cmd, dict) and cmd.get("Type") in ("Block", "Subshell"):
+        stmts = cmd.get("Stmts") or []
+        return stmts[-1] if stmts else None
+    return stmt
+
+
+def status_parameter(word):
+    """Whether the word is exactly `$?` or `${?}`: one parameter expansion of the last status and nothing else."""
+    parts = (word.get("Parts") or []) if isinstance(word, dict) else []
+    return len(parts) == 1 and parts[0].get("Type") == "ParamExp" and without_positions(parts[0]) in STATUS_PARAMETERS
+
+
+def branch_shape(stmt, functions, terminators, inner=False):
+    """None when the `||` branch handles the status of the tested read, else the name of its shape. The branches that
+    handle it: (i) a plain command whose known first word is one of terminators (`exit`, `return`; a top-level
+    function of that name takes the name away); (ii) a plain command whose known first word names a top-level
+    function of this file whose every body ends in a form (i) statement; (iii) a block or subshell whose last
+    statement is (i) or (ii); (iv) a bare assignment of exactly `$?`. As the last statement of a block or a function
+    body (inner), only (i) and (ii) count: no recursion, no nested block, no `$?` that the enclosing read never
+    tests."""
+    cmd = command_of(stmt)
+    kind = cmd.get("Type") if isinstance(cmd, dict) else None
+    if kind == "CallExpr":
+        args = cmd.get("Args") or []
+        if not args:
+            assigns = cmd.get("Assigns") or []
+            if len(assigns) == 1 and "Name" in assigns[0] and status_parameter(assigns[0].get("Value")):
+                return None if not inner else "an assignment of `$?` that only the block or function body sees"
+            return "an assignment of something other than `$?`" if assigns else "an empty command"
+        text = word_text(args[0])
+        if text is None:
+            return "a command whose first word has no known text"
+        if text in terminators:
+            return None
+        if text in functions:
+            for body in functions[text]:
+                last = last_statement(body)
+                shape = "nothing" if last is None else branch_shape(last, {}, terminators, True)
+                if shape is not None:
+                    return f"a call of `{text}`, whose body ends in {shape}"
+            return None
+        return f"the command `{text}`"
+    if kind in ("Block", "Subshell") and not inner:
+        last = last_statement(stmt)
+        shape = "nothing" if last is None else branch_shape(last, functions, terminators, True)
+        if shape is None:
+            return None
+        return f"a {'block' if kind == 'Block' else 'subshell'} whose last statement is {shape}"
+    if kind == "BinaryCmd":
+        op = cmd.get("Op")
+        return LIST_SHAPES.get(op, f"a `{op}` list")
+    return SHAPES.get(kind, f"a {kind}")
 
 
 def tested_assignment(stmt):
@@ -376,6 +483,8 @@ class Walk:
         self.top = []
         self.top_index = 0
         self.first_substitution = None  # the index of the top-level statement holding the first substitution
+        self.functions = {}  # the top-level functions of the file, name -> bodies (branch form ii)
+        self.terminators = TERMINATORS  # `exit` and `return`, less any name a top-level function takes
 
     def run(self, tree):
         self.seen.clear()
@@ -386,6 +495,8 @@ class Walk:
         self.top = tree.get("Stmts") or []
         self.top_index = 0
         self.first_substitution = None
+        self.functions = top_level_functions(tree)
+        self.terminators = tuple(name for name in TERMINATORS if name not in self.functions)
         self.comments(tree)
         self.accept(tree)
         self.visit(tree, None, None)
@@ -404,7 +515,8 @@ class Walk:
 
     def accept(self, tree):
         """Mark the substitutions in the two accepted positions: the last statement of an `if` or `while` condition,
-        and the left side of a `||` whose right side keeps the status."""
+        and the left side of a `||` whose branch handles the status (branch_shape); any other branch leaves the left
+        side's substitution a finding that names the branch's shape."""
         for node in every(tree):
             kind = node.get("Type")
             reason = None
@@ -412,14 +524,9 @@ class Walk:
             if kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
                 candidates = (node.get("Cond") or [])[-1:]
             elif kind == "BinaryCmd" and node.get("Op") == "||":
-                # The branch reads the status unless it runs `true`, `:` or `false`; a first word with no known text
-                # is not shown to be another command, so the left side stays a finding that says so.
-                word = first_word(node["Y"])
-                text = "" if word is None else word_text(word)
-                if text in TRIVIAL:
-                    continue
-                if text is None:
-                    reason = UNKNOWN_RIGHT_SIDE
+                shape = branch_shape(node["Y"], self.functions, self.terminators)
+                if shape is not None:
+                    reason = BRANCH.format(shape=shape)
                 candidates = [node["X"]]
             else:
                 continue

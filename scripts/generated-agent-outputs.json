@@ -368,14 +368,14 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "e129c00148e46e0d9279c3da3d225c20b5848ed7bc3404dbc7a16fc3272f6578"
+      "sha256": "69604fc073a57eb5be13fe2cf334952b4e1b7ddaf68ebbabe5d02e7303841738"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "85ee67f24b85a05292d88c840c0aa710aa1a39c4cba4ba1d9ccfb7e845331937"
+      "sha256": "5d66a8a3f8f919c63c9c0ea0ca599485be95a8dbd37649905d4a8ec2eb52864f"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-close.sh",
@@ -389,7 +389,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "48de51d2393c12d716c6b2dce23e9eb58c6204d69bfc25722b83f03f6ea0f847"
+      "sha256": "2c27cbd83deac8e4c95a9729cbcbe86d43b9449eb5aa632a50800fbe54212ff3"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -410,7 +410,7 @@
       "target": ".local/bin/common/pr-threads-check.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "57dbc196879c4dd579934b126eca67680b3ac5694a7645a2108b91484f55d199"
+      "sha256": "650f4884c8c15935f840dd182bc4ab00e77e72359f10ff0846ce5e2ae977180b"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",
@@ -424,14 +424,14 @@
       "target": ".local/bin/common/read-lib.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "a7d13d89b182445f72fa18b2bb1c9e073e295c6ef9b1cf4a5bc13efc6e6cf77b"
+      "sha256": "5a09b3853f3b5d9b1f0934ee7f8a53f2b69c7cf597d8691a3c00d58cd6c2f7cf"
     },
     {
       "source": "home/dot_local/bin/common/executable_records-sync.sh",
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f90e6807174253cd4b0cdd4d1c2e1e42bc8c0cf7acc9300513b7fe326e20eb3a"
+      "sha256": "9922cc7f4ae24a2af4a2b0ca773f1fcfda81b25e156ea6de9ffa0f9415149b77"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",

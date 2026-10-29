@@ -41,7 +41,10 @@ pass a bare `[[ ! -s err ]]`) is a `shadow` finding at its line, and round 14 co
 (the refusal names among the words; `unset`, `builtin`, `command`, `eval`, `source`, `.`, `trap`, `mapfile`,
 `readarray` among the rebinders, each read as bash reads it, with the one `source` shape the levers use accepted; an
 assignment to PATH, BASH_ALIASES or BASH_CMDS) and validates every redirect the walk meets (`true {fd}>err` had
-passed off a producer).
+passed off a producer), and round 15 reads a rebinder's options per word (SKIPS_OPTIONS: `source`, `.` and `eval` skip
+none, so `source +payload.sh`, which the option loop had taken for an option with no file after it, is the file bash
+reads; the other rebinders read `-` words only, a `+` word is an argument; a call left with no argument to judge is a
+finding).
 """
 
 from __future__ import annotations
@@ -1598,6 +1601,87 @@ class ProducerStatusCheckTest(unittest.TestCase):
                     result.stderr,
                 )
         self.assert_findings("exec 3>err\ntrue 2>err\nf() { :; } 2>err\nx=$(a) || exit 1\n", [])
+
+    def test_the_round_15_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The P2 of the 861f4577 audit, which that head read as clean: rule f's option loop took a word starting with
+        `+` for an option of every rebinder, so `source +payload.sh` had no file left to judge and passed while
+        /bin/bash 3.2 sourced the file, whose `refuse() { :; }` let `x=$(false) || refuse` run on with exit 0. Round 15
+        reads the options per word (SKIPS_OPTIONS): `source`, `.` and `eval` skip nothing, every argument word is the
+        file or the text; the namers, the forwarders, `trap`, `mapfile` and `readarray` read only `-` words for their
+        letters, `--` ends them, a letter with an argument (`hash -p /x`) takes it and a `+` word is an argument
+        (measured: `hash +r` is looked up, `unset +f` is not a valid identifier); a call left with no argument to judge
+        is a finding, `hash -r` and `alias -p`, whose option is the whole job, aside."""
+        (self.temp / "+payload.sh").write_text("refuse() { :; }\n")
+        auditor = self.script(
+            "auditor.sh", "refuse() { exit 2; }\nsource +payload.sh\nx=$(false) || refuse\necho ran\n"
+        )
+        ran = subprocess.run(["/bin/bash", str(auditor)], cwd=self.temp, capture_output=True, text=True, check=False)
+        self.assertEqual((0, "ran\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured: bash reads the file
+        rebinders = (
+            "refuse() { exit 2; }\n"  # 3
+            "source +payload.sh\n"  # 4: the auditor's line
+            "x=$(false) || refuse\n"  # 5: accepted; the source is the finding
+            ". +payload.sh\n"  # 6
+            "source -- payload.sh\n"  # 7: bash skips the `--` and reads the file; every word is the finding's
+            "source\n"  # 8: no argument to judge
+            'source "$f"\n'  # 9
+            "source payload.sh arg\n"  # 10: the one accepted shape has one argument
+            "eval +x\n"  # 11
+            "eval\n"  # 12
+            "enable -n\n"  # 13: no argument after the options
+            "hash -p /usr/bin/true\n"  # 14: `-p` takes the path; no name after it
+            "unset\n"  # 15
+            "trap -p\n"  # 16
+            "mapfile -C 'unset -f refuse'\n"  # 17: the callback, and no array after the options (twice)
+            "command -- unset -f refuse\n"  # 18: `--` ends the options; `command` names refuse, so does `unset` (twice)
+            "hash -- refuse\n"  # 19
+            "enable -n -- echo\n"  # 20: disables the builtin (measured)
+            "unset -- refuse\n"  # 21
+            "alias +fail=true fail=true\n"  # 22: the `+` word is an argument naming `+fail`; the second names `fail`
+            "hash -p /usr/bin/true +refuse\n"  # 23: accepted from here on: binds the word `+refuse` (measured), not refuse
+            'source "${LEVER_DIR}/read-lib.sh"\n'  # 24: the one accepted shape
+            'source "${LEVER_DIR}/git-isolated.sh"\n'  # 25
+            "hash -r\n"  # 26: the option is the whole job
+            "alias -p\n"  # 27
+            "unset -v x\n"  # 28
+            "unset -v\n"  # 29: inert before the count
+            'hash -p "$path" other\n'  # 30: the path is the option's argument; `other` is no word the rules read
+            'enable -f "$file" other\n'  # 31
+            "mapfile -d '' -t lines\n"  # 32: `-d` takes the delimiter
+            "trap - EXIT\n"  # 33
+            "command -v\n"  # 34
+            "trap -- cleanup EXIT\n"  # 35
+        )
+        twice = (17, 18)
+        expected = [(line, "shadow") for line in (4, *range(6, 23), *twice)]
+        result = self.assert_findings(rebinders, expected)
+        names = "`echo`, `exit`, `fail`, `find`, `git`, `ls`, `printf`, `refuse`, `return`, `set`"
+        refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
+        unread = f"this walk has not read, which may define or rebind one of {names}"
+        for line, message in (
+            (4, f"`source` reads a file {unread}: `+payload.sh`"),
+            (6, f"`.` reads a file {unread}: `+payload.sh`"),
+            (7, f"`source` reads a file {unread}: `-- payload.sh`"),
+            (8, "`source` has no argument to judge"),
+            (9, f"`source` reads a file with no known text, which may define or rebind one of {names}"),
+            (10, f"`source` reads a file {unread}: `payload.sh arg`"),
+            (11, f"`eval` runs text {unread}: `+x`"),
+            (12, "`eval` has no argument to judge"),
+            (13, "`enable` has no argument to judge"),
+            (14, "`hash` has no argument to judge"),
+            (15, "`unset` has no argument to judge"),
+            (16, "`trap` has no argument to judge"),
+            (17, "`mapfile` has no argument to judge"),
+            (17, f"`mapfile` runs a callback (`-C`) {unread}"),
+            (18, f"`command` names `refuse` {refusal}"),
+            (18, f"`unset` names `refuse` {refusal}"),
+            (19, f"`hash` names `refuse` {refusal}"),
+            (20, "`enable` names `echo` and shadows the builtin the refusal grammar writes to stderr with"),
+            (21, f"`unset` names `refuse` {refusal}"),
+            (22, f"`alias` names `fail` {refusal}"),
+        ):
+            self.assertIn(f":{line}: shadow: {message}", result.stdout)
+        self.assertNotIn(":23:", result.stdout)
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every

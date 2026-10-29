@@ -104,7 +104,11 @@
 #      }`, `git() { command git "$@"; return 0; }`), is a finding at its definition line naming what it shadows (a
 #      refusal name's definitions are judged by form ii: one, at top level, before the read). So is every other way
 #      bash offers to rebind a word or to run text this walk has not read, a plain command whose known first word is
-#      one of REBINDERS, read as bash reads that word (the leading options for their letters, `--` ending them): a
+#      one of REBINDERS, read as bash reads that word (SKIPS_OPTIONS: for a NAMER, a FORWARDER, `trap`, `mapfile` and
+#      `readarray` the leading `-` words are options read for their letters, `--` ends them, a letter with an argument
+#      takes it, `hash -p /x`, and a `+` word is an argument; `source`, `.` and `eval` skip nothing, every argument
+#      word is the file or the text; a call left with no argument to judge, `source`, `enable -n`, `hash -p
+#      /usr/bin/true`, is a finding, `hash -r` and `alias -p`, whose option is the whole job, aside): a
 #      NAMER (`alias`, `enable`, `hash`, `unset`) with an argument whose known text, before any `=`, is such a name
 #      (`alias fail=true`, `enable -n echo`, `hash -p /x/true refuse`, `unset -f refuse`, and `unset refuse`, which
 #      removes the function when no variable has the name) or with an argument that has no known text (`unset
@@ -272,6 +276,34 @@ FORWARDERS = ("builtin", "command")
 RUNNERS = ("eval", "source", ".", "trap", "mapfile", "readarray")
 REBINDERS = NAMERS + FORWARDERS + RUNNERS
 INERT_OPTIONS = {"unset": "v", "command": "vV"}  # the option letters under which the word binds and runs nothing
+# How rule f reads a rebinder's leading arguments, as bash reads that word (measured on bash 3.2). Under
+# `skips_options` a leading argument whose known text starts with `-` and is longer than it is a cluster of option
+# letters, `--` ends the options, and a letter of OPTION_ARGUMENTS takes the rest of its cluster or the next word
+# (`hash -p /x`, `enable -f file`, `mapfile -C cb`); a `+` word is an argument to every rebinder (`hash +r` and `alias
+# +p` are looked up as names, `unset +f` is not a valid identifier), and so is a word with no known text, which ends
+# the options. `source`, `.` and `eval` skip nothing: every argument word is the file or the text bash reads (`source
+# -- file` and `source +file` read the file; the audit's `source +payload.sh` had been read as an option with no file
+# after it, and passed).
+SKIPS_OPTIONS = {
+    "alias": True,
+    "enable": True,
+    "hash": True,
+    "unset": True,
+    "builtin": True,
+    "command": True,
+    "trap": True,
+    "mapfile": True,
+    "readarray": True,
+    "eval": False,
+    "source": False,
+    ".": False,
+}
+OPTION_ARGUMENTS = {"hash": "p", "enable": "f", "mapfile": "CcdnOsu", "readarray": "CcdnOsu"}  # the letters with one
+# The option letters that are a rebinder's whole job with no name: `alias -p` prints the table, `hash -r` flushes it.
+# A rebinder left with no argument after its options, and not only such letters, has no argument to judge and is a
+# finding (`source`, `enable -n`, `hash -p /usr/bin/true`, `trap -p`: bash prints or binds nothing for most, measured,
+# but the rule judges names and has none), so a word the option reading took for an option is never silence.
+BARE_OPTIONS = {"alias": "p", "hash": "r"}
 CALLBACK_OPTION = "C"  # `mapfile`/`readarray`: the option whose argument is text bash runs per line
 SOURCES = ("source", ".")
 RUNS = {  # how a finding names what a RUNNER runs
@@ -615,6 +647,27 @@ def sourced_library(args):
         and library.get("Type") == "Lit"
         and library.get("Value") in LIBRARY_FILES
     )
+
+
+def leading_options(word, args):
+    """The option letters of a rebinder's leading arguments and the arguments after them, as SKIPS_OPTIONS reads that
+    word: a leading argument whose known text is `-` and letters is a cluster, `--` ends the options, a letter of
+    OPTION_ARGUMENTS takes the rest of its cluster or the next word; a `+` word, a bare `-` and a word with no known
+    text are arguments and end the options. For `source`, `.` and `eval` nothing is an option."""
+    letters = set()
+    if not SKIPS_OPTIONS[word]:
+        return letters, args
+    while args and (text := word_text(args[0])) is not None and len(text) > 1 and text[0] == "-":
+        args = args[1:]
+        if text == "--":
+            break
+        for index, letter in enumerate(text[1:], 1):
+            letters.add(letter)
+            if letter in OPTION_ARGUMENTS.get(word, ""):
+                if index == len(text) - 1:
+                    args = args[1:]  # the next word is the option's argument; else the rest of the cluster is
+                break
+    return letters, args
 
 
 def trap_action(text):
@@ -1156,48 +1209,54 @@ class Walk:
 
     def rebinding(self, stmt, word, args):
         """Rule f on a plain command whose known first word is one of REBINDERS (word), read as bash reads that word.
-        The leading arguments that are options are read for their letters (`--` ends them): under one of
-        INERT_OPTIONS (`unset -v`, `command -v`) the command binds and runs nothing. Then a NAMER's or a FORWARDER's
-        argument whose known text, before any `=`, is a word the rules read is a finding naming what it shadows
-        (`alias fail=true`, `enable -n echo`, `hash -p /x/git git`, `unset -f refuse`, `command git`), and so is one
-        with no known text, which may name any of them; a FORWARDER's command is judged again when its own first word
-        is a rebinder (`command unset -f refuse`). A RUNNER's argument is text or a file this walk has not read:
-        `eval` with any argument, `source` or `.` with any but the one accepted shape (sourced_library), `trap` with
+        Its leading options are read for their letters (leading_options, under SKIPS_OPTIONS: `source`, `.` and `eval`
+        have none): under one of INERT_OPTIONS (`unset -v`, `command -v`) the command binds and runs nothing; left
+        with no argument after them, and not only BARE_OPTIONS (`hash -r`, `alias -p`), it has no argument to judge, a
+        finding. Then a NAMER's or a FORWARDER's argument whose known text, before any `=`, is a word the rules read
+        is a finding naming what it shadows (`alias fail=true`, `enable -n echo`, `hash -p /x/git git`, `unset -f
+        refuse`, `command git`), and so is one with no known text, which may name any of them; a FORWARDER's command
+        is judged again when its own first word is a rebinder (`command unset -f refuse`). A RUNNER's argument is text
+        or a file this walk has not read: `eval` with any argument, `source` or `.` with any but the one accepted shape
+        (sourced_library; every argument word counts, `source -- lib.sh` and `source +lib.sh` among them), `trap` with
         an action that is not read whole (trap_action; the signal names after it are not text), `mapfile` or
         `readarray` with `-C`. No allow comment exempts it."""
         line = stmt["Pos"]["Line"]
-        letters = set()
-        while args and (text := word_text(args[0])) is not None and len(text) > 1 and text[0] in "-+":
-            args = args[1:]
-            if text == "--":
-                break
-            letters.update(text[1:])
+        letters, args = leading_options(word, args)
         if letters & set(INERT_OPTIONS.get(word, "")):
             return
+        if not args and not (letters and letters <= set(BARE_OPTIONS.get(word, ""))):
+            self.findings.add((line, SHADOW, f"`{word}` has no argument to judge"))
         names = ", ".join(f"`{name}`" for name in sorted(self.shadowed))
         unknown = f"`{word}` has an argument with no known text, which may name one of {names}"
         if word in RUNNERS:
             unread = f"which may define or rebind one of {names}"
+            if word == "trap":
+                for arg in args[:1]:
+                    text = word_text(arg)
+                    if text is None:
+                        self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} with no known text, {unread}"))
+                    elif not trap_action(text):  # one simple command is read whole; more is not
+                        self.findings.add(
+                            (line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read whole, {unread}: `{text}`")
+                        )
+                return
             if word in SOURCES and sourced_library(args):
                 return
-            if word == "trap":
-                args = args[:1]
-            elif word not in SOURCES and word != "eval":  # mapfile, readarray: the callback is an option's argument
-                if CALLBACK_OPTION in letters:
-                    self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read, {unread}"))
-                for arg in args:
-                    if word_text(arg) is None:
-                        self.findings.add((line, SHADOW, unknown))
-                return
-            for arg in args:
-                text = word_text(arg)
-                if text is None:
+            if word in SOURCES or word == "eval":  # every argument word, an option to bash or not, is the file or text
+                texts = [word_text(arg) for arg in args]
+                if None in texts:
                     self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} with no known text, {unread}"))
-                elif word != "trap" or not trap_action(text):
-                    whole = " whole" if word == "trap" else ""  # one simple command is read; more is not
+                elif texts:
+                    text = " ".join(texts)
                     self.findings.add(
-                        (line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read{whole}, {unread}: `{text}`")
+                        (line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read, {unread}: `{text}`")
                     )
+                return
+            if CALLBACK_OPTION in letters:  # mapfile, readarray: the callback is an option's argument
+                self.findings.add((line, SHADOW, f"`{word}` {RUNS[word]} this walk has not read, {unread}"))
+            for arg in args:
+                if word_text(arg) is None:
+                    self.findings.add((line, SHADOW, unknown))
             return
         for arg in args:
             text = word_text(arg)

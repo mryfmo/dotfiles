@@ -1069,9 +1069,13 @@ if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
 # The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
-# repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push.
+# repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push. The
+# local transport is re-opened for every call (U113: the library's `protocol.allow=never` refuses it, as it would
+# refuse a rewrite of the real origin to a path), the way a caller's own `-c protocol.file.allow=always` would.
 https_origin = os.environ.get("FAKE_GIT_HTTPS_ORIGIN")
-mapping = ["-c", "url.{1}.insteadOf={0}".format(*https_origin.split("=", 1))] if https_origin else []
+mapping = ["-c", "protocol.file.allow=always"]
+if https_origin:
+    mapping += ["-c", "url.{1}.insteadOf={0}".format(*https_origin.split("=", 1))]
 # FAKE_GIT_EXTRA_ENTRY=<path>: before a `write-tree`, one more entry (an empty blob) enters the index it writes, as
 # something other than the lever's own update-index calls would.
 extra_entry = os.environ.get("FAKE_GIT_EXTRA_ENTRY")

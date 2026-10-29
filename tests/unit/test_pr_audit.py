@@ -29,11 +29,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from scratch_git import git_init, quiet_git_env
 from test_generate_agent_configs import load_generator, sample_manifest
-from test_pr_levers import JQ
+from test_pr_levers import GIT_WRAPPER, JQ
 
 ROOT = Path(__file__).resolve().parents[2]
 DISCOVERY_OFF = ("project_doc_max_bytes = 0", "project_doc_fallback_filenames = []", "project_root_markers = []")
 LEVER = ROOT / "scripts/orchestrator/pr-audit.sh"
+LIBRARY = ROOT / "scripts/orchestrator/git-isolated.sh"
 TEMPLATE = ROOT / "home/dot_agents/codex-audit/config.toml"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
@@ -93,6 +94,9 @@ class PrAuditTest(unittest.TestCase):
         self.bin.mkdir()
         (self.bin / "gh").symlink_to(FAKE_GH)
         (self.bin / "codex").symlink_to(FAKE_CODEX)
+        # The tests' origin is a local path: the fake git re-opens the file transport the library closes (GIT_WRAPPER).
+        (self.bin / "git").write_text(GIT_WRAPPER)
+        (self.bin / "git").chmod(0o755)
         self.rec = self.root / "rec"
         self.rec.mkdir()
         self.tmp = self.root / "tmp"
@@ -122,6 +126,7 @@ class PrAuditTest(unittest.TestCase):
                 "PR_AUDIT_WAIT_SECONDS": "0",
             }
         )
+        self.env["REAL_GIT"] = shutil.which("git", path=os.environ["PATH"])
         self.origin = self.root / "origin.git"
         self.repo = self.root / "repo"
         git_init(self.origin, "--bare", env=self.env, cwd=self.root)
@@ -215,6 +220,7 @@ class PrAuditTest(unittest.TestCase):
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents/codex-audit").mkdir(parents=True)
         shutil.copy2(LEVER, tree / "scripts/orchestrator/pr-audit.sh")
+        shutil.copy2(LIBRARY, tree / "scripts/orchestrator/git-isolated.sh")  # the lever sources it from its directory
         shutil.copy2(MANIFEST, tree / "home/dot_agents/agent-config.yaml")
         (tree / "home/dot_agents/codex-audit/config.toml").write_text(edit(TEMPLATE.read_text()))
         return tree / "scripts/orchestrator/pr-audit.sh"
@@ -657,6 +663,25 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(marker.exists(), "a filter driver ran on the audited tree")
 
+    def test_a_fetch_rewrite_in_the_user_config_does_not_change_where_the_audit_fetches_from(self):
+        """U113 (research 01 section 1, GOAL): a `url.<decoy>.insteadOf = <origin>` in the operator's global config
+        would send the audit fetch to the decoy. The lever removes GIT_CONFIG_GLOBAL, so that config is HOME's own
+        .gitconfig, which the fetch must not read."""
+        decoy = self.root / "decoy.git"
+        git_init(decoy, "--bare", env=self.env, cwd=self.root)  # holds neither main nor refs/pull/7/head
+        (self.home / ".gitconfig").write_text(f'[url "{decoy}"]\n\tinsteadOf = {self.origin}\n')
+        plain = {
+            key: value for key, value in self.env.items() if key not in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM")
+        }
+        listed = subprocess.run(
+            ["git", "ls-remote", str(self.origin)], env=plain, capture_output=True, text=True, check=True
+        ).stdout
+        self.assertNotIn("refs/pull/7/head", listed, "the rewrite is live for a plain git under that HOME")
+        run = self.run_lever("7")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        prompt = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])["prompt"]
+        self.assertIn(f"diff {self.main}..{self.head}", prompt)
+
     def test_the_callers_git_variables_never_change_the_audited_range(self):
         """U71b audit round 7: an inherited GIT_GRAFT_FILE made main a child of the head, so merge-base(main, head) was
         the head and the range empty. Every GIT_* the caller exports is removed before any git runs."""
@@ -695,7 +720,9 @@ class PrAuditTest(unittest.TestCase):
             with self.subTest(file=name):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
-                action = f'"$REAL" "$@"; s=$?; d="${{5%/}}/.git"; mkdir -p "$d/info"; : > "$d/{name}"; exit $s'
+                # The clone is the word after `-C` in the fetch argv (the library's options come before it, U113).
+                clone = 'while [ $# -gt 1 ] && [ "$1" != -C ]; do shift; done; d="${2%/}/.git"'
+                action = f'"$REAL" "$@"; s=$?; {clone}; mkdir -p "$d/info"; : > "$d/{name}"; exit $s'
                 path = self.failing_tool("git", "*fetch*", action)
                 self.assert_stopped(
                     self.run_lever("7", PATH=path), 2, "rewrites the history the audited range rests on"

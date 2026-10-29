@@ -58,6 +58,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -94,9 +96,17 @@ lever_self_check() {
 }
 lever_self_check
 
-# The checkout is named from the cwd alone: a caller's repository-location variables could point git at another
-# checkout's store (U71).
-unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR
+# The isolated git and the environment scrub come from the library beside this script (U113). The checkout is named
+# from the cwd alone: a caller's repository-location variables could point git at another checkout's store (U71), so
+# every GIT_* and transport variable goes before the first git.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-merge.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
 
 lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir>'
@@ -203,11 +213,11 @@ records=$2
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 # The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
 # worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
-toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
+toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
 [[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'run from the repository checkout that holds the program store'
 toplevel=$(cd "${toplevel}" && pwd -P) || refuse "cannot resolve ${toplevel}"
-git_dir=$(git -C "${toplevel}" rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
-common_dir=$(git -C "${toplevel}" rev-parse --path-format=absolute --git-common-dir) ||
+git_dir=$(git_isolated -C "${toplevel}" rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
+common_dir=$(git_isolated -C "${toplevel}" rev-parse --path-format=absolute --git-common-dir) ||
     refuse 'cannot read the git common directory'
 git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"

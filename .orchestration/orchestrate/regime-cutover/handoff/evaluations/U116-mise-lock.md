@@ -930,29 +930,82 @@ stat: cannot stat '~/.cache/mise': No such file or directory (os error 2)
 2026-10-28T09:59:20 ~/.local/state/mise
 ```
 
-`grep -c -F -f <(gh auth token) <file>` on every output file of both attempts (the brief requires `0` before any paste; no run needed `MISE_GITHUB_TOKEN`, so none was set):
+Credential scan of every output file of both attempts under `$TMPDIR/U116-out/` (top level and `attempt1-cwd-checkout/`) and of `$TMPDIR/U116-out-2/` (the brief requires `0` before any paste; no run needed `MISE_GITHUB_TOKEN`, so none was set). Round 2 replaced the first form, `grep -c -F -f <(gh auth token) <file>`, which never read the token reader's status, so a failed `gh auth token` gave an empty pattern file and the same `0` as a clean scan (verdict P2, standing order 21). The script below reads the status of `gh auth token`, refuses an empty token, passes the token to grep only through a process substitution, never on a command line, and reads grep's own exit status per file: `0` matches with grep exit `1` is clean, exit `0` is a match, exit `2` is a failed scan. `bash /tmp/U116-scan.sh`, run from the worktree with the script pasted first:
+
+```sh
+#!/usr/bin/env bash
+# Fail-closed credential scan: the token reader's status is read, an empty
+# token is refused, the token reaches grep only through a process
+# substitution, and grep's own status is read per file (1 = clean, 0 = a
+# match, 2 = the scan itself failed).
+set -u
+token=$(gh auth token) || { echo 'gh auth token failed'; exit 2; }
+[[ -n ${token} ]] || { echo 'empty token'; exit 2; }
+cd "${TMPDIR}" || { echo 'cd TMPDIR failed'; exit 2; }
+worst=1
+while IFS= read -r f; do
+    n=$(grep -c -F -f <(printf '%s\n' "${token}") "${f}")
+    rc=$?
+    printf '%s matches=%s grep_exit=%s\n' "${f}" "${n}" "${rc}"
+    case ${rc} in
+        1) ;;
+        0) worst=0 ;;
+        *) worst=2 ;;
+    esac
+done < <(find U116-out U116-out-2 -type f -name '*.txt' | sort)
+case ${worst} in
+    1) echo 'scan clean: every file 0 matches with grep exit 1'; exit 0 ;;
+    0) echo 'scan FOUND the token'; exit 1 ;;
+    *) echo 'scan FAILED: grep exit 2 on at least one file'; exit 2 ;;
+esac
+```
 
 ```text
-a-version.txt 0
-b-lock-dry-run.txt 0
-c-lock-dry-run-4-platforms.txt 0
-d-lock-bump-json.txt 0
-e-npm-package-manager.txt 0
-f-minimum-release-age.txt 0
-g-real-after.txt 0
-g-scratch-after.txt 0
-help.txt 0
-real-before.txt 0
-real-dirs-mtime-after.txt 0
-real-dirs-mtime-before.txt 0
-scratch-tree.txt 0
-attempt1-cwd-checkout/b-lock-dry-run.txt 0
-attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt 0
-attempt1-cwd-checkout/d-lock-bump-json.txt 0
-attempt1-cwd-checkout/e-npm-package-manager.txt 0
-attempt1-cwd-checkout/f-minimum-release-age.txt 0
-attempt1-cwd-checkout/g-real-after.txt 0
-attempt1-cwd-checkout/g-scratch-after.txt 0
+U116-out-2/00-real-mise-before.txt matches=0 grep_exit=1
+U116-out-2/00-scratch-mise-before.txt matches=0 grep_exit=1
+U116-out-2/a-version.txt matches=0 grep_exit=1
+U116-out-2/b-lock-dry.txt matches=0 grep_exit=1
+U116-out-2/c-lock-dry-4p.txt matches=0 grep_exit=1
+U116-out-2/d-lock-bump-json.txt matches=0 grep_exit=1
+U116-out-2/e-npm-pm.txt matches=0 grep_exit=1
+U116-out-2/f-min-age.txt matches=0 grep_exit=1
+U116-out-2/g-none-written.txt matches=0 grep_exit=1
+U116-out-2/g-real-mise-after.txt matches=0 grep_exit=1
+U116-out-2/g-scratch-files-written.txt matches=0 grep_exit=1
+U116-out-2/g-scratch-mise-after.txt matches=0 grep_exit=1
+U116-out-2/help-lock.txt matches=0 grep_exit=1
+U116-out/a-version.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/g-real-after.txt matches=0 grep_exit=1
+U116-out/attempt1-cwd-checkout/g-scratch-after.txt matches=0 grep_exit=1
+U116-out/b-lock-dry-run.txt matches=0 grep_exit=1
+U116-out/c-lock-dry-run-4-platforms.txt matches=0 grep_exit=1
+U116-out/d-lock-bump-json.txt matches=0 grep_exit=1
+U116-out/e-npm-package-manager.txt matches=0 grep_exit=1
+U116-out/f-minimum-release-age.txt matches=0 grep_exit=1
+U116-out/g-real-after-bin-ls.txt matches=0 grep_exit=1
+U116-out/g-real-after-shell-ls.txt matches=0 grep_exit=1
+U116-out/g-real-after.txt matches=0 grep_exit=1
+U116-out/g-scratch-after.txt matches=0 grep_exit=1
+U116-out/help.txt matches=0 grep_exit=1
+U116-out/real-before.txt matches=0 grep_exit=1
+U116-out/real-dirs-mtime-after.txt matches=0 grep_exit=1
+U116-out/real-dirs-mtime-before.txt matches=0 grep_exit=1
+U116-out/scratch-tree.txt matches=0 grep_exit=1
+U116-out/token-check.txt matches=0 grep_exit=1
+scan clean: every file 0 matches with grep exit 1
+exit=0
+```
+
+Injected failure (standing order 21): the same script with a fake `gh` first on `PATH`, `printf '#!/bin/sh\nexit 1\n' > /tmp/U116-fake-gh/gh && chmod +x /tmp/U116-fake-gh/gh && PATH=/tmp/U116-fake-gh:$PATH bash /tmp/U116-scan.sh; echo "exit=$?"`. The refusal prints and the scan exits `2` before any file is read:
+
+```text
+gh auth token failed
+exit=2
 ```
 
 What the scratch home holds after attempt 2, `find "$TMPDIR/U116-home" -maxdepth 4` with `$TMPDIR` written back:

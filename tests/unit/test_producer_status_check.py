@@ -23,7 +23,10 @@ the `||` branch and every statement inside it (`|| ! (exit 1)` read the refusal 
 a function called from a `||` branch, and a block or subshell branch, are accepted only when their statements match
 one closed grammar (zero or more `echo`/`printf` commands sending fd 1 to fd 2, then exactly one `exit <1-255>`,
 nothing else of any kind), and rule b's `[[ ! -s file ]]` must be an `if` condition, the left side of a `||` whose
-branch is an accepted form, or a bare top-level statement after the prologue, on a path with no `!` or `&`.
+branch is an accepted form, or a bare top-level statement after the prologue, on a path with no `!` or `&`, and round
+10 reads the flags of the producer's own path too (`git ls-files > l 2> e &` let the next statement test `e` before
+the listing had finished), so a producer run in the background, negated or in a coprocess is a finding whatever
+follows it.
 """
 
 from __future__ import annotations
@@ -851,6 +854,57 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "x=$(false) || f9 # producer-status: allow f9 removes the run directory at line 5 before it exits\n"
         )
         self.assert_findings(allowed, [])
+
+    def test_the_round_10_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The residual of the f87a0a79 report, which that head read as clean: rule b read the flags of the test's
+        path but not of the producer's own, so `git ls-files > list 2> err &` with `[[ ! -s err ]] || exit 1` after it
+        passed while the test ran before the listing had finished, `! git ls-files > list 2> err` read the producer's
+        failure as success, and a producer inside a background block, a coprocess or a negated block was a finding
+        that named the test or nothing. Round 10 runs flagged_path over the producer's own path: a producer run in the
+        background, negated or in a coprocess on any statement of that path is a finding naming the flag and its line
+        whatever follows it; the same statements with no flag are accepted."""
+        body = (
+            "git ls-files > list 2> err &\n"  # 3: the residual, the test runs before the listing has finished
+            "[[ ! -s err ]] || exit 1\n"  # 4
+            "! git ls-files > list 2> err2\n"  # 5: the negated producer, its failure read as success
+            "[[ ! -s err2 ]] || exit 1\n"  # 6
+            "{\n    git ls-files > list 2> err3\n} &\n"  # 7 to 9: the block in the background, the flag at 7
+            "[[ ! -s err3 ]] || exit 1\n"  # 10
+            "coproc git ls-files > list 2> err4\n"  # 11: the coprocess
+            "[[ ! -s err4 ]] || exit 1\n"  # 12
+            "coproc {\n    git ls-files > list 2> err5 || exit 1\n    [[ ! -s err5 ]] || exit 1\n}\n"  # 13 to 16
+            "! {\n    git ls-files > list 2> err6 || exit 1\n    [[ ! -s err6 ]] || exit 1\n}\n"  # 17 to 20
+            "git ls-files > list 2> err7 || exit 1 &\n"  # 21: the producer and its branch in the background
+            "[[ ! -s err7 ]] || exit 1\n"  # 22
+            "( git ls-files > list 2> err8 || exit 1 ) &\n"  # 23: the subshell in the background
+            "[[ ! -s err8 ]] || exit 1\n"  # 24
+            "git ls-files > list 2> err9\n"  # 25: accepted, the residual's form with no flag
+            "[[ ! -s err9 ]] || exit 1\n"  # 26
+            "{\n    git ls-files > list 2> err10\n    [[ ! -s err10 ]] || exit 1\n}\n"  # 27 to 30: accepted, the block in the foreground
+            "f() {\n    git ls-files > list 2> err11 || return 1\n    [[ ! -s err11 ]] || return 1\n}\nf &\n"  # 31 to 35: accepted, judged by its own path
+        )
+        expected = [(line, "producer") for line in (3, 5, 8, 11, 14, 18, 21, 23)]
+        result = self.assert_findings(body, expected)
+        tail = "statement of the same list, as an `if` condition or the left side of a `||` that ends the script, or run it through read_listing of read-lib.sh; the producer"
+        background = "runs in the background (`&`, the job started at line {}), so a later test reads its stderr file before the listing has finished"
+        coprocess = "runs in a coprocess started at line {}, so a later test reads its stderr file before the listing has finished and its status is the start's"
+        for line, message in (
+            (3, background.format(3)),
+            (5, "is negated (`!`), so its failure status is read as success"),
+            (8, background.format(7)),
+            (11, coprocess.format(11)),
+            (14, coprocess.format(13)),
+            (
+                18,
+                "sits in a statement negated (`!`) at line 17, so a failure that ends that statement is read as success",
+            ),
+            (21, background.format(21)),
+            (23, background.format(23)),
+        ):
+            self.assertIn(
+                f":{line}: producer: `git ls-files` can fail with exit 0 or after printing (status-blind-producers.tsv); send its stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later {tail} {message}\n",
+                result.stdout,
+            )
 
     def test_the_branches_of_a_tested_read_are_a_closed_list_and_every_other_shape_is_named(self) -> None:
         """Forms i to iv of rule a pass in any quoting of a known first word: `exit` or `return` as the whole branch

@@ -53,11 +53,14 @@
 #      failure stops the script: the last statement of an `if` condition, or the left side of a `||` whose branch is
 #      one of the forms of rule a; a bare `[[ ! -s <file> ]]` statement is accepted only at the top level of a file
 #      whose prologue (rule c) runs `set -euo pipefail` before it, where `set -e` ends the script on its failure, and
-#      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The test statement
-#      and every statement on its path to the top level must be in the foreground and not negated (`! [[ ! -s err ]]
-#      || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &` ends only the job), and an `&&` list or a
-#      pipeline is not a test; a producer whose only such statement is one of those is a finding naming that
-#      statement's line and why. Stderr is captured
+#      anywhere else (a function body, a block, a file with no prologue before it) is not a test. The producer
+#      statement, the test statement and every statement on the path of each to the top level must be in the
+#      foreground and not negated: `git ls-files > l 2> e &` lets the next statement test `e` before the listing has
+#      finished, `! git ls-files > l 2> e` reads its failure as success, `{ git ls-files > l 2> e; } &` ends only the
+#      job and `coproc git ls-files > l 2> e` tests the coprocess's start, so each is a finding naming the flag and
+#      its line whatever follows it; `! [[ ! -s err ]] || exit 1` reads a non-empty file as clean, `[[ ! -s err ]] &`
+#      ends only the job, and an `&&` list or a pipeline is not a test, so a producer whose only such statement is one
+#      of those is a finding naming that statement's line and why. Stderr is captured
 #      only when the last redirect of the statement that touches fd 2 is `2>`, `2>>` or `2>|` to a word whose known
 #      text is not /dev/null, or whose parts are literals and parameter expansions. A redirect touches fd 2 when its
 #      descriptor is 2 whatever the operator, when it is `&>` or `&>>`, or when it is `>&` to a word that is not a
@@ -519,6 +522,28 @@ def test_flag(flag, stmt, depth):
     return "is negated (`!`), so a non-empty file is read as clean"
 
 
+def producer_flag(flag, stmt, depth):
+    """Why a producer whose path holds a flagged statement (stmt, at depth) is a finding whatever follows it: a later
+    test reads its stderr file before it has finished, or its own failure status is read as success."""
+    line = stmt["Pos"]["Line"]
+    if flag == BACKGROUND:
+        return (
+            f"the producer runs in the background (`&`, the job started at line {line}), so a later test reads its "
+            "stderr file before the listing has finished"
+        )
+    if flag == COPROCESS:
+        return (
+            f"the producer runs in a coprocess started at line {line}, so a later test reads its stderr file before "
+            "the listing has finished and its status is the start's"
+        )
+    if depth:
+        return (
+            f"the producer sits in a statement negated (`!`) at line {line}, so a failure that ends that statement "
+            "is read as success"
+        )
+    return "the producer is negated (`!`), so its failure status is read as success"
+
+
 def status_parameter(word):
     """Whether the word is exactly `$?` or `${?}`: one parameter expansion of the last status and nothing else."""
     parts = (word.get("Parts") or []) if isinstance(word, dict) else []
@@ -817,7 +842,7 @@ class Walk:
             stack = (node, *stack)
             if siblings is not None and siblings[0] is self.top:
                 self.top_index = siblings[1]
-            self.statement(node, siblings)
+            self.statement(node, stack, siblings)
             self.tested_list(node, stack)
             if prologue_statement(node):
                 self.prologues.append(stack)
@@ -843,9 +868,11 @@ class Walk:
             else:
                 self.visit(value, stack, siblings)
 
-    def statement(self, stmt, siblings):
-        """Rules b and d on one statement's own command; a later `[[ ! -s file ]]` of the same statement list is judged
-        on that list's path to the top level (siblings[2]), which it shares with the producer."""
+    def statement(self, stmt, stack, siblings):
+        """Rules b and d on one statement's own command. stack is the statement's path to the top level: a producer
+        run in the background, negated or in a coprocess on any statement of it (flagged_path) is a finding whatever
+        follows it. Else a later `[[ ! -s file ]]` of the same statement list is judged on that list's path to the
+        top level (siblings[2]), which it shares with the producer."""
         cmd = stmt.get("Cmd")
         if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
             return
@@ -856,23 +883,33 @@ class Walk:
         for row in self.rows:
             if words[: len(row)] != row:
                 continue
-            target = stderr_target(redirects)
-            later = siblings[0][siblings[1] + 1 :] if siblings is not None else []
-            outer = siblings[2] if siblings is not None else ()
-            tests = []
-            if target is not None and target is not UNCAPTURED and captures_to_file(target):
-                tests = [why for why in (self.empty_test(other, target, outer) for other in later) if why is not None]
-            if "" not in tests:
-                self.report(
-                    stmt,
-                    stmt["Pos"]["Line"],
-                    PRODUCER,
-                    f"`{' '.join(row)}` can fail with exit 0 or after printing (status-blind-producers.tsv); send its "
-                    "stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other "
-                    "operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later "
-                    "statement of the same list, as an `if` condition or the left side of a `||` that ends the script, "
-                    "or run it through read_listing of read-lib.sh" + (f"; {tests[0]}" if tests else ""),
-                )
+            flag = flagged_path(stack)
+            if flag is not None:
+                why = producer_flag(flag[0], stack[flag[1]], flag[1])
+            else:
+                target = stderr_target(redirects)
+                later = siblings[0][siblings[1] + 1 :] if siblings is not None else []
+                outer = siblings[2] if siblings is not None else ()
+                tests = []
+                if target is not None and target is not UNCAPTURED and captures_to_file(target):
+                    tests = [
+                        reason
+                        for reason in (self.empty_test(other, target, outer) for other in later)
+                        if reason is not None
+                    ]
+                if "" in tests:
+                    break
+                why = tests[0] if tests else None
+            self.report(
+                stmt,
+                stmt["Pos"]["Line"],
+                PRODUCER,
+                f"`{' '.join(row)}` can fail with exit 0 or after printing (status-blind-producers.tsv); send its "
+                "stderr with `2>`, `2>>` or `2>|` to a file (the last redirect that touches fd 2 decides; any other "
+                "operator there, and /dev/null, leave it uncaptured) and test `[[ ! -s <that file> ]]` in a later "
+                "statement of the same list, as an `if` condition or the left side of a `||` that ends the script, "
+                "or run it through read_listing of read-lib.sh" + (f"; {why}" if why is not None else ""),
+            )
             break
 
     def tests_empty(self, stmt, target):

@@ -13,17 +13,21 @@
 #   never by a regular expression over npm's output:
 #   1. the version mise would install: the config's request (`mise tool --json`, `requested_versions`) unless the
 #      argument carries one, resolved by `mise latest npm:<name>@<request>` ("Nothing is installed and no config
-#      changes"). `mise latest npm:<name>` alone ignores the config's pin (mise 2026.10.19 printed 20.0.44 for a
-#      config holding 20.0.37 on 2026-10-29), so the request is read first;
+#      changes") to exactly one SemVer version, read before any registry call: a tag, a range or two lines is exit 2.
+#      `mise latest npm:<name>` alone ignores the config's pin (mise 2026.10.19 printed 20.0.44 for a config holding
+#      20.0.37 on 2026-10-29), so the request is read first;
 #   2. the window: `mise settings get minimum_release_age`, exactly `<N>h` or `<N>d`, passed to
 #      npm_release_age_verdict as days (72h is 3; hours round up to the microday, so the window never shrinks);
 #   3. the meta package's publish time (`npm view --json <name> time`) through npm_release_age_verdict;
 #   4. its `optionalDependencies` (`npm view --json <name>@<version> optionalDependencies`): empty output is "no
-#      optional dependencies", otherwise an object of package name to one version;
+#      optional dependencies", otherwise an object of package name to exactly one SemVer version. A tag or a range
+#      there (npm would resolve it to a version this check never saw) is exit 2 before any package's `os` and `cpu`
+#      are read;
 #   5. for each of them, `npm view --json <dep>@<ver> os cpu`, an object whose `os` and `cpu` are lists of strings.
-#      The package is this runner's when both lists hold `node -p process.platform` and `process.arch`; a
-#      `!`-prefixed entry is an unknown shape. Each matching package's publish time goes through
-#      npm_release_age_verdict, and no matching package at all is a refusal naming the runner.
+#      The package is this runner's when both lists hold `node -p process.platform` and `process.arch`, each read
+#      once before any tool as exactly one word (a malformed answer is exit 2 on every run, with or without optional
+#      dependencies to match it against); a `!`-prefixed entry is an unknown shape. Each matching package's publish
+#      time goes through npm_release_age_verdict, and no matching package at all is a refusal naming the runner.
 #   npm and node are the config's own, `mise -C <dir> exec node -- …`. Naming the tool keeps mise from installing
 #   the config's other tools first: an unnamed `mise exec` installed all 35 of them on 2026-10-29.
 #   Every refusal is printed, never the first alone, so one run names every package to wait for.
@@ -38,7 +42,8 @@
 # @exitcode 0 Every package is old enough.
 # @exitcode 1 A package is younger than the window plus 60 s, or no optional dependency is built for this runner.
 # @exitcode 2 An answer cannot be read: a mise or npm command failed or printed another shape, the window is not
-#   `<N>h` or `<N>d`, the version is not one SemVer version, or the usage is wrong. Never read as "old enough".
+#   `<N>h` or `<N>d`, the version mise resolves or a dependency's is not one SemVer version, the runner's platform or
+#   architecture is not one word, or the usage is wrong. Never read as "old enough".
 # @example
 #   scripts/ci/npm-cooldown-skew-check.sh "${RUNNER_TEMP}/statusline-mise" npm:ccstatusline npm:ccusage
 set -euo pipefail
@@ -87,10 +92,17 @@ import re
 import sys
 
 mode, *args = sys.argv[1:]
-# One token: a platform or architecture as node prints it, or a version request as mise and npm take it.
+# One word: a platform or architecture as node prints it, or a version request as mise and npm take it.
 TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:+-]*", re.ASCII)
 # A package name, scoped or not, as the registry lists it.
 NAME = re.compile(r"(?:@[A-Za-z0-9._~-]+/)?[A-Za-z0-9._~-]+", re.ASCII)
+# One exact SemVer 2.0.0 version, the shape npm_release_age_verdict takes: no build metadata (npm drops it, so
+# 1.2.3+build would fetch 1.2.3), and never a tag or a range, which npm would resolve to a version this check never saw.
+EXACT = re.compile(
+    r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?",
+    re.ASCII,
+)
 WINDOW = re.compile(r"(0|[1-9]\d*)([hd])", re.ASCII)
 
 
@@ -132,8 +144,28 @@ def window():
     print(days.quantize(decimal.Decimal(1)) if days == days.to_integral_value() else days.normalize())
 
 
+def word(command):
+    """`node -p process.platform` or `process.arch`: exactly one word on one line, printed as read."""
+    text = sys.stdin.read()
+    if text.endswith("\n"):
+        text = text[:-1]
+    if not TOKEN.fullmatch(text):
+        refuse(f"{command} printed {text!r}, not one word")
+    print(text)
+
+
+def version(command):
+    """`mise latest npm:<name>@<request>`: exactly one SemVer version on one line, never a tag or a range."""
+    text = sys.stdin.read()
+    if text.endswith("\n"):
+        text = text[:-1]
+    if not EXACT.fullmatch(text):
+        refuse(f"{command} printed {text!r}, not one exact version")
+    print(text)
+
+
 def optional_dependencies(package):
-    """`npm view --json <pkg>@<ver> optionalDependencies`: nothing, or an object of package name to one version."""
+    """`npm view --json <pkg>@<ver> optionalDependencies`: nothing, or an object of package name to one exact version."""
     text = sys.stdin.read()
     if text.strip() == "":
         return
@@ -142,18 +174,19 @@ def optional_dependencies(package):
     except ValueError:
         refuse(f"npm view --json {package} optionalDependencies printed no JSON")
     if not isinstance(listed, dict) or not all(
-        isinstance(name, str) and NAME.fullmatch(name) and isinstance(version, str) and TOKEN.fullmatch(version)
+        isinstance(name, str) and NAME.fullmatch(name) and isinstance(version, str) and EXACT.fullmatch(version)
         for name, version in listed.items()
     ):
-        refuse(f"npm view --json {package} optionalDependencies printed {listed!r}, not an object of package name to version")
+        refuse(
+            f"npm view --json {package} optionalDependencies printed {listed!r},"
+            " not an object of package name to one exact version"
+        )
     for name in sorted(listed):
         print(name, listed[name])
 
 
 def platform(system, arch, package):
     """`npm view --json <pkg>@<ver> os cpu`: exit 0 when both lists name this runner, 1 when they do not."""
-    if not (TOKEN.fullmatch(system) and TOKEN.fullmatch(arch)):
-        refuse(f"node -p printed {system!r} and {arch!r}, not a platform and an architecture")
     shape = read_json(f"npm view --json {package} os cpu")
     lists = [shape.get(field) for field in ("os", "cpu")] if isinstance(shape, dict) else [None, None]
     if not all(strings(entries) for entries in lists):
@@ -175,6 +208,8 @@ def published(package, version):
 MODES = {
     "requested": requested,
     "window": window,
+    "word": word,
+    "version": version,
     "optional-dependencies": optional_dependencies,
     "platform": platform,
     "published": published,
@@ -252,6 +287,7 @@ function check_tool() {
     esac
     version=$(mise -C "${config_dir}" latest "npm:${name}@${request}") ||
         cannot_tell "mise -C ${config_dir} latest npm:${name}@${request} failed"
+    version=$(parse version "mise -C ${config_dir} latest npm:${name}@${request}" <<< "${version}") || exit 2
     refusals=0
     checked=""
     times=$(npm_view "${name}" time) || exit 2
@@ -290,8 +326,10 @@ window=$(mise -C "${config_dir}" settings get minimum_release_age) ||
 days=$(parse window <<< "${window}") || exit 2
 platform=$(mise -C "${config_dir}" exec node -- node -p process.platform) ||
     cannot_tell "mise -C ${config_dir} exec node -- node -p process.platform failed"
+platform=$(parse word "mise -C ${config_dir} exec node -- node -p process.platform" <<< "${platform}") || exit 2
 arch=$(mise -C "${config_dir}" exec node -- node -p process.arch) ||
     cannot_tell "mise -C ${config_dir} exec node -- node -p process.arch failed"
+arch=$(parse word "mise -C ${config_dir} exec node -- node -p process.arch" <<< "${arch}") || exit 2
 
 refusals=0
 checked=""

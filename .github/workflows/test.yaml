@@ -196,6 +196,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          # pipefail: the checksum pipeline's producers (the download, the grep) must end the step when they fail after
+          # printing, since the step names no `shell:` and the runner's `bash -e` alone reads the checker's status (round 22).
+
           if [[ "${OS}" == macos-* ]]; then
             # The macOS runner images ship third-party taps tapped but
             # untrusted, and Homebrew warns on every `brew install` while one

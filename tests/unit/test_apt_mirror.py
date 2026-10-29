@@ -144,9 +144,16 @@ REDEFINITION = "no workflow line gives `timeout` another meaning"
 APT_EXEMPT: dict[tuple[str, str], str] = {}
 # Measured, in seconds, outside the apt calls (passing `test` jobs, every matrix row, runs 40314863147 to
 # 40610790312): "Install tools" at most 73 s (ubuntu-24.04 server, run 40338292845), 14 to 46 s elsewhere; "Run
-# Python unit tests" at most 664 s (macos-15 client, run 40610790312), 189 to 388 s on the Ubuntu rows; "Setup for
-# Codecov" under 1 s. Twice the maximum each, so a step bound ends a stall, never a slow passing run.
-STEP_REST_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330, "Setup for Codecov": 60}
+# Python unit tests" at most 664 s (macos-15 client, run 40610790312), 189 to 388 s on the Ubuntu rows. Twice the
+# maximum each, so a step bound ends a stall, never a slow passing run. Round 12: every apt call runs in a step of its
+# own that holds nothing else (the tree rule below), so an apt step's rest is 0 and its bound is its calls alone;
+# the two steps that held the calls keep the formula over their measured rest (REST_ONLY_BUDGET, BoundOrderTest).
+STEP_REST_BUDGET = {
+    "Install apt packages": 0,
+    "Install apt packages for the unit tests": 0,
+    "Install apt packages for Codecov": 0,
+}
+REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 1330}
 # U109 round 3 (audit of 0a9fa727): the step check attaches names and timeout-minutes through the hand-written
 # reader `jobs()` (CI's interpreter has no YAML parser), which returns a `run: |` body and a one-line plain scalar
 # and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):
@@ -867,21 +874,31 @@ def parser_problems(name: str, text: str, parsed: dict[str, list[dict]] | None =
     return problems
 
 
+def step_minutes(apt_seconds: int, rest: int) -> int:
+    """The step bound the formula gives: the ceiling in minutes of the apt bounds (each N plus the kill delay) and the
+    measured rest of the step, plus one minute."""
+    return math.ceil((apt_seconds + rest) / 60) + 1
+
+
 def bounded_steps() -> list[dict]:
-    """Three steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
+    """The three apt steps in the bound form with the timeout-minutes the formula gives for STEP_REST_BUDGET."""
     form = "/usr/bin/timeout --kill-after=10 {} sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 {}"
     return [
         {
-            "name": "Install tools",
-            "timeout-minutes": "10",
+            "name": "Install apt packages",
+            "timeout-minutes": "8",
             "run": f"{form.format(180, 'update')}\n{form.format(180, 'install -y bats curl')}",
         },
         {
-            "name": "Run Python unit tests",
-            "timeout-minutes": "29",
+            "name": "Install apt packages for the unit tests",
+            "timeout-minutes": "7",
             "run": f"{form.format(150, 'update')}\n{form.format(150, 'install -y jq zsh')}",
         },
-        {"name": "Setup for Codecov", "timeout-minutes": "5", "run": form.format(150, "install -y jq curl")},
+        {
+            "name": "Install apt packages for Codecov",
+            "timeout-minutes": "4",
+            "run": form.format(150, "install -y jq curl"),
+        },
     ]
 
 
@@ -959,7 +976,7 @@ def apt_step_problems(texts: dict[str, str], parsed: dict[str, dict[str, list[di
         elif "timeout-minutes" not in step:
             problems.append(f"{where} has no timeout-minutes")
         else:
-            expected = math.ceil((apt_seconds + STEP_REST_BUDGET[name]) / 60) + 1
+            expected = step_minutes(apt_seconds, STEP_REST_BUDGET[name])
             if int(step["timeout-minutes"]) != expected:
                 problems.append(f"{where} has timeout-minutes {step['timeout-minutes']}, the formula gives {expected}")
     return problems
@@ -977,35 +994,38 @@ def workflow_texts() -> dict[str, str]:
     return {path.name: workflow_text(path) for path in sorted(WORKFLOWS.glob("*.y*ml"))}
 
 
-# --- Round 10: the run bodies are read from shfmt's syntax tree --------------------------------------------------------
+# --- Rounds 10 to 12: the run bodies are read from shfmt's syntax tree ---------------------------------------------
 #
-# Audit of 15c4afa8: rounds 2, 8 and 9 each tightened the text rule above, and the auditor found two more ways past
-# it (`ci.run:`, `time\` and a newline). A regex over shell text cannot bound what bash executes; shfmt's tree, under
-# the U105 contract (scripts/ci/shfmt_json_contract.py, run first; the pinned shfmt, never a skip), reads it as bash
-# does: backslash-newlines joined, quotes resolved into parts, every command a CallExpr with its words. The rule over
-# a step's tree: every CallExpr holding an apt token (APT_TOKEN, the text scan's rule, on any Lit of its words or
-# assignments, quotes included) is the exact form, word for word (FORM_WORDS, then the verb and its packages), a
-# statement of its own (no redirection, `!`, `&`, coprocess or assignment, not an operand of a BinaryCmd); the count
-# of apt calls in the tree equals the count of bound forms the text found; and the step holds no construct that can
-# change what a command word runs: no function definition at all (a function can be named by a path), and none of
-# REFUSED_COMMANDS as a command word unless its ALLOWED_USES row holds. A `source` of a literal path to a repository
-# file is followed and that file walked in turn, under the same table with one difference: it may define functions
-# whose names hold no `/` (scripts/lib/github-release.sh does), since only a path-named one can stand in for the form.
+# Audit of 15c4afa8 (round 10): rounds 2, 8 and 9 each tightened the text rule above, and the auditor found two more
+# ways past it (`ci.run:`, `time\` and a newline). A regex over shell text cannot bound what bash executes; shfmt's
+# tree, under the U105 contract (scripts/ci/shfmt_json_contract.py, run first; the pinned shfmt, never a skip), reads
+# it as bash does: backslash-newlines joined, quotes resolved into parts, every command a CallExpr with its words.
+# Rounds 10 and 11 read the apt steps as steps that also did other work, with a table of the commands that can give a
+# word another meaning (eval, source, alias, the wrappers that hand a command on), and the audits of 4d09be21 and
+# 21d53583 each found the next member (`'eval'`, `builtin eval`, a `source` after a `cd`). Round 12 (decisions row
+# 2026-10-29T12:16Z) writes that premise down as wrong: a rule cannot enumerate what else an apt step may do, so the
+# apt steps do nothing else. The rule over a step's tree:
+#   (a) An apt step is a step whose body holds an apt token (APT_TOKEN on every `Lit` and quoted value and on the
+#       known text of every word, so `'apt'`, `"apt-get"` and `ap""t-get` count) or the form's first word
+#       TIMEOUT_PATH anywhere, or whose text names apt (APT_CALL). Every top-level statement of an apt step is
+#       exactly the bound form: a CallExpr with no assignment, in a statement with no redirection, `!`, `&` or
+#       coprocess, whose words are bare literals (one `Lit` part, no backslash) equal to FORM_WORDS, a decimal N of at
+#       least MIN_APT_BOUND, the verb, and after `install` exactly `-y` and one or more package names. Any other
+#       statement (a FuncDecl, an IfClause, a BinaryCmd, a `cd`, a `source`, an `echo`, anything) is a problem naming
+#       its line and node. No table of commands is needed, since nothing but the form is accepted.
+#   (b) In every step, apt or not, a command word with no known text (word_text, round 11: bare, single-quoted or
+#       double-quoted literals; an expansion, a substitution, an ANSI-C or locale string has none) is a problem
+#       naming the step and line: the first word of every CallExpr, and the word a `sudo` hands on (sudo is how a
+#       step reaches root, which apt needs to touch the image; SUDO_FLAGS and SUDO_VALUED are the options read
+#       before its command, any other option refused, so no option's value stands where the command is read).
+#       UNKNOWN_COMMAND_EXEMPT, keyed by workflow, step name and the exact line, names the lines where that word is a
+#       path from a variable the workflow set from a literal tool name and checked, each with its reason; a row must
+#       match a line. A comment ending in a backslash is a problem in every step too: shfmt joins the next line into
+#       the comment and bash runs it, so the tree would not show that line.
+#   (c) An apt token outside the form is a problem wherever it stands, since the step holding it is an apt step
+#       under (a); an apt step carries the guard APT_STEP_IF in its `if:` (the macOS rows have no apt and no
+#       /usr/bin/timeout), and the tree holds as many form statements as the text rule counted bound forms.
 # tests/unit/test_shfmt_json_contract.py extracts every field and literal this walk reads and holds TABLE to them.
-#
-# Round 11 (audit of 4d09be21): that walk read a word only as one bare `Lit` part, so `'eval'` was not `eval`, `'apt'`
-# was no apt token, a `"$cmd"` in command position was an argument no rule read, and the words after `install` were
-# held to a set, not to the form (`install jq zsh` passed without `-y`). U112's round 3 met the same class (decisions
-# row 2026-10-29T08:13Z) and answers it with an allowlist of quoting forms: word_text() gives a word its text when
-# every part is a bare `Lit`, a plain single-quoted string or double quotes around such parts, with the backslashes
-# bash removes; any other part (an expansion, a substitution, an ANSI-C `$'...'` or a locale `$"..."` string,
-# arithmetic, a process substitution) leaves the word with no known text, and nothing is decoded. Every reading of a
-# word goes through it: the apt-token test, the command word against REFUSED_COMMANDS and WRAPPERS, the form's words,
-# the verb and its suffix (`update` alone; `install -y` and one or more package names, in that order). A word in
-# command position with no known text is refused: the first word of every CallExpr, and the word each wrapper in
-# WRAPPERS hands on as the next command after the options, assignments and plain words its row reads (an option
-# outside the row is refused, so no option's value stands where the rule expects the command). An argument of any
-# other command may hold an expansion: it is a word that command reads, not one the shell runs.
 APT_TOKEN = re.compile(APT_CALL.pattern + r"|(?<=/)apt\Z|\Aapt\Z")
 FORM_WORDS = (
     TIMEOUT_PATH,
@@ -1025,71 +1045,64 @@ POSITION = frozenset({"Offset", "Line", "Col"})
 STATEMENT_FIELDS = ("Type", "Cmd", "Semicolon", "Comments")  # Redirs, Negated, Background and Coprocess are not
 CALL_FIELDS = ("Type", "Args")  # Assigns is not
 COMMENT_JOIN = "shfmt joins the next line to the command before the comment, bash runs that line on its own"
-REFUSED_COMMANDS = {
-    "alias": "names text for the shell to run in place of a command word",
-    "hash": "binds a command name to a path for the shell's lookup",
-    "enable": "loads or hides a builtin by name",
-    "eval": "runs text the tree does not hold",
-    "exec": "replaces the shell, or redirects every command after it",
-    "trap": "runs text around other commands; a DEBUG trap runs before each one and skips it under extdebug",
-    "source": "runs a file's text in this shell",
-    ".": "runs a file's text in this shell",
-}
-# The one use of a refused command word the walk reads instead of refusing: `source` and `.` with a single literal
-# path to a file of this repository, whose tree is walked in turn; `trap` with a literal action, read as a script in
-# turn, and literal signals none of which is DEBUG.
-ALLOWED_USES = {
-    "source": "one literal path to a file of the repository, walked in turn",
-    ".": "one literal path to a file of the repository, walked in turn",
-    "trap": "a literal action, walked as a script in turn, and literal signals none of which is DEBUG",
-}
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # bash 3.1.2.3: the characters a backslash quotes inside double quotes
-ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # a `NAME=value` word sudo and env take before the command
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # a `NAME=value` word sudo takes before the command
 UNKNOWN_COMMAND = (
     "a command word must have a known text: bare, single-quoted or double-quoted literals, nothing bash expands"
 )
-
-
-class Wrapper(NamedTuple):
-    """How one wrapper reaches the command it runs: the options it may carry (a flag takes no value; a valued option
-    takes the next word, or the text after `=` in its long spelling), whether `NAME=value` words may precede the
-    command (sudo, env), and how many plain words do (timeout's duration). Anything else before the command is
-    refused."""
-
-    flags: frozenset[str]
-    valued: frozenset[str]
-    assigns: bool = False
-    positional: int = 0
-
-
-# The commands that run another command named by a later word, closed: the apt steps use `sudo` (the form, `sudo
-# install`), `command -v` and the form's `/usr/bin/timeout`; `env`, `nice` and `nohup` are the other coreutils and
-# builtin wrappers a step could reach for. `exec` is refused before it hands anything on (REFUSED_COMMANDS). A
-# wrapper not in this table is a plain command: its arguments are its own, and a wrapper hidden among them is not
-# read, so the table stays small on purpose and grows only with a row.
-WRAPPERS = {
-    "sudo": Wrapper(frozenset({"-E", "-H", "-n"}), frozenset({"-u", "-g"}), assigns=True),
-    "env": Wrapper(frozenset({"-i"}), frozenset({"-u", "-C"}), assigns=True),
-    "command": Wrapper(frozenset({"-p", "-v", "-V"}), frozenset()),
-    "nice": Wrapper(frozenset(), frozenset({"-n", "--adjustment"})),
-    "nohup": Wrapper(frozenset(), frozenset()),
-    TIMEOUT_PATH: Wrapper(
-        frozenset({"--preserve-status", "--foreground", "-v", "--verbose"}),
-        frozenset({"-k", "--kill-after", "-s", "--signal"}),
-        positional=1,
-    ),
-}
-FUNCTION_IN_STEP = "a function definition in an apt step: bash runs a function in place of the command it names, a path-named one included"
-FUNCTION_BY_PATH = "a function named by a path: bash runs it in place of the binary at that path"
-FORM_STATEMENT = "the form is a statement of its own"
+SUDO = "sudo"
+SUDO_FLAGS = frozenset({"-E", "-H", "-n"})  # take no value
+SUDO_VALUED = frozenset({"-u", "-g"})  # take the next word
+APT_STEP = "an apt step holds nothing but bound apt calls, one exact form per statement"
+APT_STEP_IF = "runner.os == 'Linux'"
+APT_STEP_GUARD = f"an apt step's if: holds `{APT_STEP_IF}`; the macOS rows have no apt and no {TIMEOUT_PATH}"
 NODE_TABLE = "the pinned shfmt's JSON does not match the pinned node table"
 TREE_COUNT = "every apt call the tree holds is one the text counted as the form, and the reverse"
+# (workflow file, step name, the whole stripped line, exactly) -> why its command word, a quoted path, may have no
+# known text. In test.yaml each path comes from a variable the workflow set from a literal tool name (`mise which
+# bun`, `command -v chezmoi`) and checked, and a test outside this unit pins the line's text, so the line is not
+# rewritten; the other three lines are in workflows this unit does not own (brief SCOPE), each a path the step built
+# from a literal. A row must match a line (test_an_unknown_command_exemption_needs_its_exact_step_and_line).
+UNKNOWN_COMMAND_EXEMPT: dict[tuple[str, str, str], str] = {
+    ("test.yaml", "Run the omp TypeScript tests", '"${bun_bin}" --version'): (
+        "bun_bin is `mise which bun` from the copied config; tests/unit/test_ci_workflows.py pins the step's bun lines"
+    ),
+    ("test.yaml", "Run the omp TypeScript tests", 'PATH="${bun_bin_dir}:${PATH}" "${bun_bin}" test "./${tests}"'): (
+        "bun_bin is `mise which bun` from the copied config; tests/unit/test_ci_workflows.py pins this exact line"
+    ),
+    ("test.yaml", "Prepare public dotfiles fixture", 'CI=true HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \\'): (
+        "FILES_TEST_CHEZMOI is `command -v chezmoi` as Install tools checked and exported it (absolute, outside mise "
+        "shims, at the release's version); tests/unit/test_files_fixture.py counts the two lines that run it"
+    ),
+    ("test.yaml", "Prepare public dotfiles fixture", 'HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \\'): (
+        "FILES_TEST_CHEZMOI is `command -v chezmoi` as Install tools checked and exported it (absolute, outside mise "
+        "shims, at the release's version); tests/unit/test_files_fixture.py counts the two lines that run it"
+    ),
+    ("macos.yaml", "Run benchmark", "$(chezmoi source-path)/../scripts/run_benchmark.sh > result.json"): (
+        "the checkout's benchmark script by chezmoi's source path, after `brew install chezmoi`; macos.yaml is not "
+        "this unit's (brief SCOPE)"
+    ),
+    ("remote.yaml", "Install chezmoi for the scratch apply", '| (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")'): (
+        "the checksum array set from literals two lines above (test.yaml spelled the same lines out in round 11); "
+        "remote.yaml is not this unit's (brief SCOPE)"
+    ),
+    (
+        "remote.yaml",
+        "Install chezmoi for the scratch apply",
+        '"${RUNNER_TEMP}/chezmoi-bin/chezmoi" --version | grep -F "v${chezmoi_version}"',
+    ): "the release binary the line above extracted into the runner's temp directory; remote.yaml is not this unit's (brief SCOPE)",
+}
 
 
 class Walked(NamedTuple):
-    """What one walk over a script's tree found: `(line, what)` per refused node, and how many apt calls it holds."""
+    """What one walk over a step's tree found: the apt tokens that make it an apt step (empty for another step), the
+    `(line, what)` of every statement of an apt step that is not the form and of every comment that hides a line,
+    the `(line, what)` of every command word with no known text (exemptable by step and line), and how many form
+    statements it holds."""
 
+    tokens: tuple[str, ...]
     problems: list[tuple[object, str]]
+    unknown: list[tuple[object, str]]
     apt_calls: int
 
 
@@ -1168,6 +1181,15 @@ def word_text(word: dict, in_double_quotes: bool = False) -> str | None:
     return text
 
 
+def bare_text(word: dict) -> str | None:
+    """The text of a word written as the form's words are, one bare `Lit` part with no backslash; None otherwise."""
+    parts = word.get("Parts") or []
+    if len(parts) != 1 or parts[0].get("Type") != "Lit":
+        return None
+    value = str(parts[0].get("Value") or "")
+    return None if "\\" in value else value
+
+
 def lits(node: dict) -> list[str]:
     """Every text at or below node that could name apt: each `Lit` and `SglQuoted` value as shfmt holds it (inside
     quotes, expansions and substitutions too, `$'...'` included), and the known text of every word (word_text), so
@@ -1183,9 +1205,29 @@ def lits(node: dict) -> list[str]:
     return found
 
 
+def apt_tokens(tree: dict) -> tuple[str, ...]:
+    """The tokens that make a step an apt step, sorted: every APT_TOKEN match in the texts lits() finds, and
+    TIMEOUT_PATH where one of them holds the form's first word."""
+    found: set[str] = set()
+    for value in lits(tree):
+        found.update(match.group() for match in APT_TOKEN.finditer(value))
+        if TIMEOUT_PATH in value:
+            found.add(TIMEOUT_PATH)
+    return tuple(sorted(found))
+
+
+def names_apt(script: str) -> bool:
+    """Whether the text of a step body names apt outside its comment lines (the text rule's token), so a step whose
+    tree shows no token (a comment after a command) is still held to the apt step's rule."""
+    return (
+        APT_CALL.search("\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#")))
+        is not None
+    )
+
+
 def describe(word: dict) -> str:
-    """A word with no known text, by the kinds of its parts: the parts inside double quotes in parentheses, a
-    `$'...'` or `$"..."` string by its Dollar."""
+    """A word with no known text, or not written bare, by the kinds of its parts: the parts inside double quotes in
+    parentheses, a `$'...'` or `$"..."` string by its Dollar, a literal holding a backslash by it."""
     kinds = []
     for part in word.get("Parts") or []:
         kind = str(part.get("Type", "untyped"))
@@ -1193,6 +1235,8 @@ def describe(word: dict) -> str:
             kind += f"({', '.join(str(inner.get('Type', 'untyped')) for inner in part.get('Parts') or [])})"
         if part.get("Type") in ("SglQuoted", "DblQuoted") and part.get("Dollar"):
             kind += " with Dollar"
+        if part.get("Type") == "Lit" and "\\" in str(part.get("Value") or ""):
+            kind += " with a backslash"
         kinds.append(kind)
     return f"a word of {', '.join(kinds)} part(s)" if kinds else "an empty word"
 
@@ -1214,17 +1258,17 @@ def set_fields(node: dict, known: tuple[str, ...]) -> list[str]:
 
 
 def form_fault(words: list[dict]) -> str | None:
-    """Why the words of an apt call are not the exact bound form, by position and text, or None when they are: the
-    nine FORM_WORDS, the verb, then nothing after `update`, and after `install` exactly `-y` and one or more package
-    names, in that order."""
-    texts = [word_text(word) for word in words]
+    """Why the words of a call are not the exact bound form, by position and text, or None when they are: the nine
+    FORM_WORDS and the verb as bare literals, then nothing after `update`, and after `install` exactly `-y` and one
+    or more package names, in that order."""
+    texts = [bare_text(word) for word in words]
     for position, want in enumerate(FORM_WORDS):
         number = position + 1
         if position >= len(words):
             return f"has {len(words)} word(s); word {number} of the form is `{want or FORM_N}`"
         got = texts[position]
         if got is None:
-            return f"word {number} is {describe(words[position])}, not the literal `{want or FORM_N}`"
+            return f"word {number} is {describe(words[position])}, not the bare literal `{want or FORM_N}`"
         if want is None:
             if not got.isdigit() or int(got) < MIN_APT_BOUND:
                 return f"word {number} `{got}` is not {FORM_N}"
@@ -1255,180 +1299,99 @@ def form_fault(words: list[dict]) -> str | None:
     return None
 
 
-def repository_file(path: str) -> Path | None:
-    """The file of this repository a literal `source` path names, relative to the checkout the step runs in, or
-    None: a path that is no file, or that leads outside the repository (an absolute one, a `..`), is not one."""
-    root = ROOT.resolve()
-    candidate = (root / path).resolve()
-    return candidate if candidate.is_file() and candidate.is_relative_to(root) else None
+def article(kind: object) -> str:
+    """`an IfClause`, `a Block`: a node kind for a message."""
+    name = str(kind)
+    return f"an {name}" if name[:1] in "AEIOU" else f"a {name}"
 
 
-def refused_use(name: str, words: list[dict]) -> str | None:
-    """Why a refused command word's use is refused, or None when its ALLOWED_USES row holds."""
-    texts = [word_text(word) for word in words[1:]]
-    if name in ("source", "."):
-        if len(texts) != 1 or texts[0] is None:
-            return f"`{name}` with {len(texts)} word(s) after it, not one literal path"
-        if repository_file(texts[0]) is None:
-            return f"`{name}` of {texts[0]!r}, which is no file of the repository"
-        return None
-    if name == "trap":
-        if not texts:
-            return None  # lists the traps set
-        if texts[0] is None:
-            return "`trap` with an action that is not literal text"
-        if any(text is None for text in texts[1:]):
-            return "`trap` with a signal that is not a literal"
-        if any(text.upper() == "DEBUG" for text in texts[1:]):
-            return "`trap` with the signal DEBUG"
-        return None
-    return f"`{name}` as a command word"
+def statement_fault(statement: dict) -> str | None:
+    """Why one top-level statement of an apt step is not the bound form, naming its node, or None when it is."""
+    call = statement.get("Cmd")
+    if not isinstance(call, dict):
+        return "a statement with no command"
+    kind = call.get("Type")
+    if kind == "FuncDecl":
+        return f"a FuncDecl `{(call.get('Name') or {}).get('Value', '')}`"
+    if kind == "BinaryCmd":
+        return f"a BinaryCmd `{call.get('Op')}`"
+    if kind != "CallExpr":
+        return article(kind)
+    for field in set_fields(statement, STATEMENT_FIELDS):
+        return f"a CallExpr in a statement with {field}"
+    for field in set_fields(call, CALL_FIELDS):
+        return f"a CallExpr with {field}"
+    fault = form_fault(call.get("Args") or [])
+    return (
+        None
+        if fault is None
+        else f"a CallExpr that {fault}"
+        if fault.startswith("has")
+        else f"a CallExpr whose {fault}"
+    )
 
 
-def handed_word(name: str, words: list[dict]) -> tuple[int | None, str | None]:
-    """Where the wrapper `name` (words[0]) finds the command it runs: the index of that word, or None and the reason
-    (a word with no known text where the row reads an option, a value, an assignment or the command; an option
-    outside the row). (None, None) when no command follows: the wrapper alone runs nothing of the step's."""
-    row = WRAPPERS[name]
-    at, plain, options = 1, 0, True
+def sudo_fault(words: list[dict], texts: list[str | None], at: int) -> str | None:
+    """Why the command the `sudo` at words[at] runs has no known text, or None when it has one or sudo stands alone:
+    after sudo come its flags, its valued options with their values, and `NAME=value` words, then the command."""
+    at += 1
     while at < len(words):
-        text = word_text(words[at])
+        text = texts[at]
         if text is None:
-            return None, f"`{name}` followed by {describe(words[at])}, which has no known text, before its command word"
-        if options and text.startswith("-") and len(text) > 1:
-            option, attached, _ = text.partition("=") if text.startswith("--") else (text, "", "")
-            if option in row.valued and not attached:
-                at += 1
-                if at < len(words) and word_text(words[at]) is None:
-                    return None, f"`{name} {option}` with a value that is {describe(words[at])}, with no known text"
-            elif not (option in row.valued or (option in row.flags and not attached)):
-                return None, f"`{name}` with the option `{text}`, outside the options the rule reads for it"
+            return f"`sudo` followed by {describe(words[at])}, which has no known text, before its command word"
+        if text in SUDO_VALUED:
             at += 1
-            continue
-        options = False
-        if row.assigns and ASSIGNMENT.match(text):
-            at += 1
-            continue
-        if plain < row.positional:
-            plain += 1
-            at += 1
-            continue
-        return at, None
-    return None, None
+            if at < len(words) and texts[at] is None:
+                return f"`sudo {text}` with a value that is {describe(words[at])}, with no known text"
+        elif text.startswith("-") and len(text) > 1 and text not in SUDO_FLAGS:
+            return f"`sudo` with the option `{text}`, outside the options the rule reads for it"
+        elif not (text in SUDO_FLAGS or ASSIGNMENT.match(text)):
+            return None
+        at += 1
+    return None
 
 
-def followed_problems(
-    name: str, words: list[dict], source: str, library: bool, followed: frozenset[str]
-) -> list[tuple[object, str]]:
-    """The problems inside the text a permitted `trap` action or `source` path leads to, named under its own line
-    (the trap's action) or under the sourced file's path and line."""
-    if name == "trap":
-        if len(words) < 2:
-            return []
-        try:
-            inner = walk(script_tree(word_text(words[1]), f"{source} trap"), source, library, followed)
-        except contract.ContractError as error:
-            return [("?", f"a trap action shfmt refuses: {error}")]
-        return [("?", f"in the trap's action: {what}") for _, what in inner.problems]
-    path = word_text(words[1])
-    if path in followed:
-        return []
-    sourced = repository_file(path)
-    relative = str(sourced.relative_to(ROOT.resolve()))
-    try:
-        inner = walk(script_tree(sourced.read_text(), relative), relative, True, followed | {path})
-    except contract.ContractError as error:
-        return [("?", f"sources {relative}, which shfmt refuses: {error}")]
-    return [("?", f"sources {relative}:{at}: {what}") for at, what in inner.problems]
-
-
-def command_problems(
-    words: list[dict], line: object, source: str, library: bool, followed: frozenset[str]
-) -> list[tuple[object, str]]:
-    """The refused command words of one call: the first word and every word a WRAPPERS row hands on as the next
-    command must have a known text (word_text), hold no backslash, and be none of REFUSED_COMMANDS unless its
-    ALLOWED_USES row holds, in which case what it leads to is walked."""
+def command_problems(words: list[dict], line: object) -> list[tuple[object, str]]:
+    """The command words of one call that have no known text: its first word, and the word every `sudo` among its
+    words hands on (sudo_fault). An argument of any other command is that command's: a word it reads, not one the
+    shell runs."""
+    if not words:
+        return []  # an assignment alone runs nothing
     problems: list[tuple[object, str]] = []
-    at = 0
-    while at < len(words):
-        word = words[at]
-        name = word_text(word)
-        if name is None:
-            problems.append((line, f"{describe(word)} in command position: {UNKNOWN_COMMAND}"))
-            break
-        raw = "".join(str(part.get("Value") or "") for part in word.get("Parts") or [] if part.get("Type") == "Lit")
-        if "\\" in raw:
-            problems.append(
-                (line, f"a command word holding a backslash, {raw!r}: bash reads another text than the line shows")
-            )
-        if name in REFUSED_COMMANDS:
-            why = refused_use(name, words[at:])
+    texts = [word_text(word) for word in words]
+    if texts[0] is None:
+        problems.append((line, f"{describe(words[0])} in command position: {UNKNOWN_COMMAND}"))
+    for at, text in enumerate(texts):
+        if text is not None and (text == SUDO or text.endswith("/" + SUDO)):
+            why = sudo_fault(words, texts, at)
             if why is not None:
-                problems.append((line, f"{why}: {REFUSED_COMMANDS[name]}"))
-            else:
-                problems.extend(
-                    (line, what) for _, what in followed_problems(name, words[at:], source, library, followed)
-                )
-            break
-        if name not in WRAPPERS:
-            break
-        handed, why = handed_word(name, words[at:])
-        if why is not None:
-            problems.append((line, why))
-        if handed is None:
-            break
-        at += handed
+                problems.append((line, why))
     return problems
 
 
-def call_problems(
-    statement: dict, parent: dict | None, source: str, library: bool, followed: frozenset[str]
-) -> tuple[list[tuple[object, str]], bool]:
-    """The refused nodes of one statement whose command is a call, by line, and whether the call is an apt call: the
-    command words (command_problems), and for an apt call every departure from the form."""
-    call = statement.get("Cmd")
-    if not isinstance(call, dict) or call.get("Type") != "CallExpr":
-        return [], False
-    words = call.get("Args") or []
-    line = line_of(call)
-    problems = command_problems(words, line, source, library, followed)
-    tokens = sorted({match.group() for value in lits(call) for match in APT_TOKEN.finditer(value)})
-    if not tokens:
-        return problems, False
-    holding = f"a CallExpr holding {', '.join(f'`{token}`' for token in tokens)}"
-    if parent is not None and parent.get("Type") == "BinaryCmd":
-        problems.append((line, f"{holding} inside a BinaryCmd `{parent['Op']}`: {FORM_STATEMENT}"))
-    for field in set_fields(statement, STATEMENT_FIELDS):
-        problems.append((line, f"{holding} in a statement with {field}: {FORM_STATEMENT}"))
-    for field in set_fields(call, CALL_FIELDS):
-        problems.append((line, f"{holding} with {field}: an assignment before the command word"))
-    fault = form_fault(words)
-    if fault is not None:
-        problems.append((line, f"{holding} {fault}"))
-    return problems, True
-
-
-def walk(tree: dict, source: str, library: bool = False, followed: frozenset[str] = frozenset()) -> Walked:
-    """Every refused node of one script's tree, by line, and the number of apt calls it holds. `library`: the script
-    is a file the step sources, where functions named without a `/` are allowed. A `source` of a repository file not
-    yet followed, and a trap's action, are walked in turn, their problems named under the line that holds them."""
+def walk(tree: dict, source: str, text_names_apt: bool = False) -> Walked:
+    """One step body's tree under the round 12 rule: an apt step (apt_tokens, or `text_names_apt` from the text)
+    accepts only form statements at its top level, each named by line and node otherwise; every step is read for
+    command words with no known text and for comments that hide the next line. `source` names the script in
+    messages that have no line."""
+    tokens = apt_tokens(tree)
     problems: list[tuple[object, str]] = []
+    unknown: list[tuple[object, str]] = []
     apt_calls = 0
-    for node, parent in tree_nodes(tree):
+    if tokens or text_names_apt:
+        for statement in tree.get("Stmts") or []:
+            fault = statement_fault(statement)
+            if fault is None:
+                apt_calls += 1
+            else:
+                problems.append((line_of(statement), f"{fault}: {APT_STEP}"))
+    for node, _ in tree_nodes(tree):
         if "Hash" in node:
             if str(node.get("Text", "")).rstrip("\n").endswith("\\"):
                 problems.append((line_of(node), f"a comment ending in a backslash: {COMMENT_JOIN}"))
-        elif node.get("Type") == "FuncDecl":
-            fname = str((node.get("Name") or {}).get("Value", ""))
-            if not library:
-                problems.append((line_of(node), f"a FuncDecl `{fname}`: {FUNCTION_IN_STEP}"))
-            elif "/" in fname:
-                problems.append((line_of(node), f"a FuncDecl `{fname}`: {FUNCTION_BY_PATH}"))
-        elif "Cmd" in node:
-            found, apt = call_problems(node, parent, source, library, followed)
-            problems.extend(found)
-            apt_calls += apt
-    return Walked(problems, apt_calls)
+        elif node.get("Type") == "CallExpr":
+            unknown.extend(command_problems(node.get("Args") or [], line_of(node)))
+    return Walked(tokens, problems, unknown, apt_calls)
 
 
 def body_line(run: dict, line: object) -> object:
@@ -1439,13 +1402,20 @@ def body_line(run: dict, line: object) -> object:
     return run["line"] + line if run["header"].startswith("|") else run["line"]
 
 
+def script_line(script: str, line: object) -> str:
+    """The stripped text of a script line, for the exemption key; empty when the line is unknown."""
+    lines = script.splitlines()
+    return lines[line - 1].strip() if isinstance(line, int) and 0 < line <= len(lines) else ""
+
+
 def tree_problems(name: str, text: str) -> list[str]:
     """Every refusal the tree rule makes over one workflow, by `file:line`, job and step: a `shell:` other than bash
     (the tree reads the runner's bash), a `${{` in a run body (GitHub expands it before bash reads the text), a body
-    shfmt refuses, each refused node (walk) in a step that runs apt (a function in a step that runs no apt reaches no
-    apt call: each step is its own shell), and a step whose tree holds another number of apt calls than the text
-    holds bound forms. The bodies are PyYAML's (Parser), the lines the census's; a file the census or the parser gate
-    refuses is named there and not read here."""
+    shfmt refuses, each statement of an apt step that is not the form, each comment that hides a line, each command
+    word with no known text in any step unless UNKNOWN_COMMAND_EXEMPT names its step and line, an apt step whose
+    `if:` lacks the guard, and a step whose tree holds another number of form statements than the text holds bound
+    forms. The bodies are PyYAML's (Parser), the lines the census's; a file the census or the parser gate refuses
+    is named there and not read here."""
     if refused_characters(text) or parser_problems(name, text):
         return []
     document, _ = Parser.read(text)
@@ -1474,19 +1444,39 @@ def tree_problems(name: str, text: str) -> list[str]:
                 )
                 continue
             try:
-                walked = walk(script_tree(script, f"{name} {job} step {index}"), name)
+                walked = walk(script_tree(script, f"{name} {job} step {index}"), name, names_apt(script))
             except contract.ContractError as error:
                 problems.append(f"{where.format(run['line'])}: {error}")
                 continue
-            commands = "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#"))
-            if walked.apt_calls or APT_CALL.search(commands):  # an apt step: its whole body is held to the walk
-                problems.extend(f"{where.format(body_line(run, at))}: {what}" for at, what in walked.problems)
-            bounds = len(APT_BOUND.findall(commands))
+            problems.extend(f"{where.format(body_line(run, at))}: {what}" for at, what in walked.problems)
+            problems.extend(
+                f"{where.format(body_line(run, at))}: {what}"
+                for at, what in walked.unknown
+                if (name, label, script_line(script, at)) not in UNKNOWN_COMMAND_EXEMPT
+            )
+            if (walked.tokens or names_apt(script)) and APT_STEP_IF not in str(step.get("if") or ""):
+                problems.append(f"{where.format(text_step['line'])}: if: {step.get('if')!r}: {APT_STEP_GUARD}")
+            bounds = len(APT_BOUND.findall("\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))))
             if walked.apt_calls != bounds:
                 problems.append(
                     f"{where.format(run['line'])}: {walked.apt_calls} apt call(s) in the tree, {bounds} bound form(s) in the text; {TREE_COUNT}"
                 )
     return problems
+
+
+def unknown_exemption_stale(texts: dict[str, str]) -> list[str]:
+    """The UNKNOWN_COMMAND_EXEMPT rows whose workflow, step and exact line `texts` does not hold (a file the parser
+    gate refuses holds no step for this purpose)."""
+    held: set[tuple[str, str, str]] = set()
+    for name, text in texts.items():
+        if refused_characters(text) or parser_problems(name, text):
+            continue
+        document, _ = Parser.read(text)
+        for body in document["jobs"].values():
+            for index, step in enumerate(body["steps"]):
+                label = step.get("name") or f"step {index}"
+                held.update((name, label, line.strip()) for line in str(step.get("run", "")).splitlines())
+    return [f"{name}: {step}: {line}" for name, step, line in UNKNOWN_COMMAND_EXEMPT if (name, step, line) not in held]
 
 
 def tree_main(argv: list[str]) -> int:
@@ -1496,13 +1486,14 @@ def tree_main(argv: list[str]) -> int:
     parser.add_argument("--script", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        walked = walk(script_tree(args.script.read_text(), str(args.script)), str(args.script))
+        script = args.script.read_text()
+        walked = walk(script_tree(script, str(args.script)), str(args.script), names_apt(script))
     except (contract.ContractError, RuntimeError, OSError) as error:
         print(f"apt-bound-tree: {error}", file=sys.stderr)
         return 2
-    for line, what in walked.problems:
+    for line, what in walked.problems + walked.unknown:
         print(f"{args.script}:{line}: {what}")
-    return 1 if walked.problems else 0
+    return 1 if walked.problems or walked.unknown else 0
 
 
 class MirrorScriptTest(unittest.TestCase):
@@ -1883,10 +1874,10 @@ class AptBoundRuleTest(unittest.TestCase):
         self.assertEqual([(1, 2, "ab"), (3, 1, "c"), (4, 1, "d\\")], logical_lines("a\\\nb\nc\nd\\"))
 
     def test_every_apt_call_in_every_workflow_is_the_form_in_the_tree_of_its_step(self) -> None:
-        # Round 10: the real workflows, read from shfmt's tree under the contract. Every apt call is the exact form
-        # as a statement of its own, every apt step holds no function definition and no refused command word (the
-        # one `source` is of a repository file, walked in turn), and the tree holds as many apt calls as the text
-        # holds bound forms. A walk that found fewer calls than test.yaml's five would be a broken walk.
+        # Rounds 10 to 12: the real workflows, read from shfmt's tree under the contract. Every apt step holds
+        # nothing but form statements under the Linux guard, every command word of every step has a known text or
+        # an exemption row, and each tree holds as many form statements as its text holds bound forms. A walk that
+        # found fewer calls than test.yaml's five would be a broken walk.
         problems, calls = [], 0
         for name, text in workflow_texts().items():
             with self.subTest(workflow=name):
@@ -1896,8 +1887,9 @@ class AptBoundRuleTest(unittest.TestCase):
                     for step in job["steps"]:
                         if "run" not in step:
                             continue
+                        script = str(step["run"])
                         try:
-                            calls += walk(script_tree(str(step["run"]), name), name).apt_calls
+                            calls += walk(script_tree(script, name), name, names_apt(script)).apt_calls
                         except contract.ContractError:
                             pass  # a body shfmt refuses: tree_problems named it above
         self.assertEqual([], problems)
@@ -1943,382 +1935,289 @@ class AptBoundRuleTest(unittest.TestCase):
 
 
 class TreeRuleTest(unittest.TestCase):
-    """Round 10 (audit of 15c4afa8): the run bodies are read from shfmt's tree under the U105 contract. The two
-    auditor bypasses (`ci.run:`, `time\\` and a newline) and every construct that could hollow the form are refused
-    by line and node, the real workflows pass, and a parser or contract that cannot be read is a failure, never an
+    """Rounds 10 to 12: the run bodies are read from shfmt's tree under the U105 contract. Round 12 (audit of
+    21d53583, decisions row 2026-10-29T12:16Z): an apt step holds nothing but the form, so the auditors' constructs
+    (`builtin eval`, a `source` after a `cd`, an ANSI-C `apt` in a step no detector counted) and every other
+    statement are refused by line and node with no table of commands; a command word with no known text is refused
+    in every step; the real workflows pass; a parser or contract that cannot be read is a failure, never an
     absence."""
 
     FORM = "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
-    STEP = "x.yaml:{}: test: step 0 'Install tools': "
+    NAME = "Install apt packages"
+    GUARD = f"${{{{ steps.decide.outputs.should_test == 'true' && {APT_STEP_IF} }}}}"
+    STEP = "x.yaml:{}: test: step 0 'Install apt packages': "
 
     def setUp(self) -> None:
         self.temp = Path(tempfile.mkdtemp(prefix="apt-tree-"))
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.temp)], check=False))
 
     def body(self, script: str) -> list[tuple[object, str]]:
-        """The walk over one step body, as the step grammar reads it."""
-        return walk(script_tree(script, "x"), "x").problems
-
-    def step(self, script: str, **keys: str) -> tuple[str, int]:
-        """A workflow with one step `Install tools` holding `script` as its `run: |`: (text, the body's first line)."""
-        text = render({"test": [{"name": "Install tools", "timeout-minutes": "10", **keys, "run": script}]})
-        return text, text_steps(text)["test"][0]["runs"][0]["line"] + 1
-
-    def test_the_auditors_two_bypasses_are_refused_by_line_and_node(self) -> None:
-        # The `ci.run:` function and `ci.run: <form>`: the definition is a FuncDecl, the call is an apt call whose
-        # first word is the function, and the text counted no bound form where the tree holds one apt call.
-        text, first = self.step(f'ci.run:() {{ shift 3; "$@"; }}\nci.run: {self.FORM} update\n')
-        handed = f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"  # the body's `"$@"`
-        self.assertEqual(
-            [
-                self.STEP.format(first) + f"a FuncDecl `ci.run:`: {FUNCTION_IN_STEP}",
-                self.STEP.format(first) + handed,
-                self.STEP.format(first + 1)
-                + "a CallExpr holding `apt-get` word 1 is `ci.run:`, not `/usr/bin/timeout`",
-                self.STEP.format(first - 1) + f"1 apt call(s) in the tree, 0 bound form(s) in the text; {TREE_COUNT}",
-            ],
-            tree_problems("x.yaml", text),
+        """Every refusal the walk makes over one step body, in line order: the statements of an apt step that are
+        not the form, the comments that hide a line, the command words with no known text."""
+        walked = walk(script_tree(script, "x"), "x", names_apt(script))
+        return sorted(
+            walked.problems + walked.unknown, key=lambda found: (isinstance(found[0], str), found[0], found[1])
         )
-        # `time\` and a newline before `out() { ...; }`, in the bare and the path spellings: bash joins them into one
-        # function, and so does shfmt, so the FuncDecl is named by the name bash gives it, on its first line. The
-        # form after it is the form: the text and the tree agree on one call.
-        for name in ("time", "/usr/bin/time"):
-            with self.subTest(name=name):
-                text, first = self.step(f'{name}\\\nout() {{ shift 2; "$@"; }}\n{self.FORM} update\n')
-                self.assertEqual(
-                    [
-                        self.STEP.format(first) + f"a FuncDecl `{name}out`: {FUNCTION_IN_STEP}",
-                        self.STEP.format(first + 1) + handed,  # the body is on the line after the joined one
-                    ],
-                    tree_problems("x.yaml", text),
-                )
 
-    def test_every_mutation_of_the_form_is_refused_by_node(self) -> None:
+    def step(self, script: str, **keys: str) -> tuple[str, int, int]:
+        """A workflow with one guarded step `Install apt packages` holding `script` as its `run: |`: (text, the
+        body's first line, the step's dash line)."""
+        step = {"name": self.NAME, "timeout-minutes": "8", "if": self.GUARD, **keys, "run": script}
+        text = render({"test": [step]})
+        found = text_steps(text)["test"][0]
+        return text, found["runs"][0]["line"] + 1, found["line"]
+
+    def test_an_apt_step_holds_nothing_but_the_form(self) -> None:
+        # The auditors' constructs of rounds 10 to 12 and every other statement an apt step could hold, each refused
+        # by its line and node; no table of commands is consulted, so `builtin`, `eval`, `source` and `cd` are
+        # refused as what they are: statements that are not the form.
         form = self.FORM
-        apt = "a CallExpr holding `apt-get`"
-        slashed = "time\\out"  # bash reads `timeout`; the line shows a backslash
+        tail = form[len(TIMEOUT_PATH) + 1 :]
+        off = f": {APT_STEP}"
+        first = "a CallExpr whose word 1 is `{}`, not `/usr/bin/timeout`" + off
+        quoted = "a CallExpr whose word 1 is a word of {} part(s), not the bare literal `/usr/bin/timeout`" + off
+        unknown = f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"
         for case, script, expected in (
             (
-                "function timeout",
-                f"function timeout {{ :; }}\n{form} update\n",
-                [(1, f"a FuncDecl `timeout`: {FUNCTION_IN_STEP}")],
+                "the auditor's builtin eval",
+                f"builtin eval '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{form} update\n",
+                [(1, first.format("builtin"))],
             ),
             (
-                "timeout()",
+                "the auditor's quoted eval",
+                f"'eval' '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{form} update\n",
+                [(1, quoted.format("SglQuoted"))],
+            ),
+            (
+                "the auditor's cd then source",
+                f'cd "$RUNNER_TEMP"\nsource scripts/lib/github-release.sh\n{form} update\n',
+                [(1, first.format("cd")), (2, first.format("source"))],
+            ),
+            ("the auditor's quoted apt", "sudo 'apt' update\n", [(1, first.format("sudo"))]),
+            ("a second statement", f"{form} update\necho ok\n", [(2, first.format("echo"))]),
+            ("a statement before the form", f"echo ok\n{form} update\n", [(1, first.format("echo"))]),
+            (
+                "a function",
                 f'timeout() {{ shift 2; "$@"; }}\n{form} update\n',
-                [
-                    (1, f"a FuncDecl `timeout`: {FUNCTION_IN_STEP}"),
-                    (1, f"a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"),
-                ],
+                [(1, f"a FuncDecl `timeout`{off}"), (1, unknown)],
             ),
             (
                 "a path-named function",
                 f"/usr/bin/timeout() {{ :; }}\n{form} update\n",
-                [(1, f"a FuncDecl `/usr/bin/timeout`: {FUNCTION_IN_STEP}")],
+                [(1, f"a FuncDecl `/usr/bin/timeout`{off}")],
             ),
             (
-                "sudo as a function",
-                f"sudo() {{ :; }}\n{form} update\n",
-                [(1, f"a FuncDecl `sudo`: {FUNCTION_IN_STEP}")],
+                "the round 10 auditor's ci.run: function",
+                f'ci.run:() {{ shift 3; "$@"; }}\nci.run: {form} update\n',
+                [(1, f"a FuncDecl `ci.run:`{off}"), (1, unknown), (2, first.format("ci.run:"))],
             ),
             (
-                "alias timeout=",
-                f"shopt -s expand_aliases\nalias timeout=true\n{form} update\n",
-                [(2, f"`alias` as a command word: {REFUSED_COMMANDS['alias']}")],
+                "time, a backslash and a newline",
+                f'time\\\nout() {{ shift 2; "$@"; }}\n{form} update\n',
+                [(1, f"a FuncDecl `timeout`{off}"), (2, unknown)],
             ),
             (
-                "hash -p",
-                f"hash -p /tmp/x timeout\n{form} update\n",
-                [(1, f"`hash` as a command word: {REFUSED_COMMANDS['hash']}")],
+                "an if around the form",
+                f'if [[ "${{OS}}" == ubuntu-* ]]; then\n  {form} update\nfi\n',
+                [(1, f"an IfClause{off}")],
             ),
+            ("a block", f"{{ {form} update; }}\n", [(1, f"a Block{off}")]),
+            ("a subshell", f"( {form} update )\n", [(1, f"a Subshell{off}")]),
+            ("a loop", f"for i in 1; do {form} update; done\n", [(1, f"a ForClause{off}")]),
+            ("a case", f"case x in x) {form} update ;; esac\n", [(1, f"a CaseClause{off}")]),
+            ("a pipeline", f"{form} update | cat\n", [(1, f"a BinaryCmd `|`{off}")]),
+            ("a stderr pipeline", f"{form} update |& cat\n", [(1, f"a BinaryCmd `|&`{off}")]),
+            ("two forms joined by &&", f"{form} update && {form} install -y jq\n", [(1, f"a BinaryCmd `&&`{off}")]),
+            ("a redirection", f"{form} update 2> /dev/null\n", [(1, f"a CallExpr in a statement with Redirs{off}")]),
+            ("a negation", f"! {form} update\n", [(1, f"a CallExpr in a statement with Negated{off}")]),
+            ("a background job", f"{form} update &\n", [(1, f"a CallExpr in a statement with Background{off}")]),
+            ("an assignment before the word", f"A=1 {form} update\n", [(1, f"a CallExpr with Assigns{off}")]),
+            ("an assignment holding apt", 'cmd="sudo apt-get update"\n', [(1, f"a CallExpr with Assigns{off}")]),
+            ("apt in a substitution", 'x="$(sudo apt-get update)"\n', [(1, f"a CallExpr with Assigns{off}")]),
             (
-                "enable -f",
-                f"enable -f /tmp/x.so timeout\n{form} update\n",
-                [(1, f"`enable` as a command word: {REFUSED_COMMANDS['enable']}")],
+                "eval of a variable holding apt",
+                'cmd="sudo apt-get update"\neval "$cmd"\n',
+                [(1, f"a CallExpr with Assigns{off}"), (2, first.format("eval"))],
+            ),
+            ("exec", f"exec {form} update\n", [(1, first.format("exec"))]),
+            (
+                "alias, hash, enable, trap and source",
+                "alias timeout=true\nhash -p /tmp/x timeout\nenable -f /tmp/x.so timeout\n"
+                f"trap 'sudo apt-get update' RETURN\nsource /etc/hosts\n{form} update\n",
+                [
+                    (number, first.format(word))
+                    for number, word in enumerate(("alias", "hash", "enable", "trap", "source"), 1)
+                ],
             ),
             (
                 "PATH before a bare timeout",
                 f"PATH=/tmp/x:$PATH\n{form.replace('/usr/bin/', '')} update\n",
-                [(2, f"{apt} word 1 is `timeout`, not `/usr/bin/timeout`")],
-            ),
-            (
-                "eval of a variable holding apt",
-                'cmd="sudo apt-get update"\neval "$cmd"\n',
-                [
-                    (1, f"{apt} with Assigns: an assignment before the command word"),
-                    (1, f"{apt} has 0 word(s); word 1 of the form is `/usr/bin/timeout`"),
-                    (2, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}"),
-                ],
-            ),
-            ("eval alone", 'eval "$cmd"\n', [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")]),
-            (
-                "exec",
-                f"exec {form} update\n",
-                [
-                    (1, f"`exec` as a command word: {REFUSED_COMMANDS['exec']}"),
-                    (1, f"{apt} word 1 is `exec`, not `/usr/bin/timeout`"),
-                ],
-            ),
-            ("a DEBUG trap", "trap 'x' DEBUG\n", [(1, f"`trap` with the signal DEBUG: {REFUSED_COMMANDS['trap']}")]),
-            (
-                "a debug trap in lower case",
-                "trap x debug\n",
-                [(1, f"`trap` with the signal DEBUG: {REFUSED_COMMANDS['trap']}")],
-            ),
-            (
-                "a trap with a variable action",
-                'trap "$x" EXIT\n',
-                [(1, f"`trap` with an action that is not literal text: {REFUSED_COMMANDS['trap']}")],
-            ),
-            (
-                "a trap with a variable signal",
-                'trap x "$s"\n',
-                [(1, f"`trap` with a signal that is not a literal: {REFUSED_COMMANDS['trap']}")],
-            ),
-            (
-                "a trap whose action defines a function",
-                "trap '/usr/bin/timeout() { :; }' ERR\n",
-                [(1, f"in the trap's action: a FuncDecl `/usr/bin/timeout`: {FUNCTION_IN_STEP}")],
-            ),
-            (
-                "a trap whose action runs apt",
-                "trap 'sudo apt-get update' RETURN\n",
-                [
-                    (1, f"{apt} word 1 is `trap`, not `/usr/bin/timeout`"),  # the action's text names apt too
-                    (1, "in the trap's action: a CallExpr holding `apt-get` word 1 is `sudo`, not `/usr/bin/timeout`"),
-                ],
+                [(1, f"a CallExpr with Assigns{off}"), (2, first.format("timeout"))],
             ),
             (
                 "a comment ending in a backslash",
                 f"echo x # c \\\n{form} update\n",
-                [
-                    (1, f"a comment ending in a backslash: {COMMENT_JOIN}"),
-                    (1, f"{apt} word 1 is `echo`, not `/usr/bin/timeout`"),
-                ],
-            ),
-            ("a pipeline", f"{form} update | cat\n", [(1, f"{apt} inside a BinaryCmd `|`: {FORM_STATEMENT}")]),
-            ("a stderr pipeline", f"{form} update |& cat\n", [(1, f"{apt} inside a BinaryCmd `|&`: {FORM_STATEMENT}")]),
-            (
-                "two forms joined by &&",
-                f"{form} update && {form} install -y jq\n",
-                [
-                    (1, f"{apt} inside a BinaryCmd `&&`: {FORM_STATEMENT}"),
-                    (1, f"{apt} inside a BinaryCmd `&&`: {FORM_STATEMENT}"),
-                ],
+                [(1, f"a comment ending in a backslash: {COMMENT_JOIN}"), (1, first.format("echo"))],
             ),
             (
-                "a redirection",
-                f"{form} update 2> /dev/null\n",
-                [(1, f"{apt} in a statement with Redirs: {FORM_STATEMENT}")],
+                "a heredoc holding the form",
+                f"cat << EOF\n{form} update\nEOF\n",
+                [(1, f"a CallExpr in a statement with Redirs{off}")],
             ),
-            ("a negation", f"! {form} update\n", [(1, f"{apt} in a statement with Negated: {FORM_STATEMENT}")]),
+            ("apt in a quoted word", 'echo "apt-get update"\n', [(1, first.format("echo"))]),
+            ("apt by its path", "sudo /usr/bin/apt install x\n", [(1, first.format("sudo"))]),
+            ("a split spelling of apt-get", 'ap""t-get update\n', [(1, quoted.format("Lit, DblQuoted(), Lit"))]),
             (
-                "a background job",
-                f"{form} update &\n",
-                [(1, f"{apt} in a statement with Background: {FORM_STATEMENT}")],
-            ),
-            (
-                "an assignment before the word",
-                f"A=1 {form} update\n",
-                [(1, f"{apt} with Assigns: an assignment before the command word")],
+                "the form's path around another command",
+                f"{TIMEOUT_PATH} 5 sleep 1\n",
+                [(1, f"a CallExpr whose word 2 is `5`, not `--kill-after=10`{off}")],
             ),
             (
                 "a second -o",
                 f"{form} -o Acquire::Retries=0 update\n",
-                [(1, f"{apt} word 10 is `-o`, not the verb `update` or `install`")],
+                [(1, f"a CallExpr whose word 10 is `-o`, not the verb `update` or `install`{off}")],
             ),
             (
                 "an option after install",
                 f"{form} install -y -o Debug::NoLocking=true jq\n",
-                [(1, f"{apt} word 12 '-o' after `install -y` is not a package name")],
+                [(1, f"a CallExpr whose word 12 '-o' after `install -y` is not a package name{off}")],
             ),
             (
                 "a word after update",
                 f"{form} update jq\n",
-                [(1, f"{apt} word 11 'jq' follows `update`, which takes none")],
+                [(1, f"a CallExpr whose word 11 'jq' follows `update`, which takes none{off}")],
             ),
             (
                 "an expansion as a package",
                 f"{form} install -y jq $pkg\n",
-                [(1, f"{apt} word 13 a word of ParamExp part(s) after `install -y` is not a package name")],
-            ),
-            (
-                "the whole form in one quoted word",
-                f'"{form}" update\n',
-                [(1, f"{apt} word 1 is `{form}`, not `/usr/bin/timeout`")],
-            ),
-            (
-                "an ANSI-C verb",
-                f"{form} $'update'\n",
-                [(1, f"{apt} word 10 is a word of SglQuoted with Dollar part(s), not the verb `update` or `install`")],
-            ),
-            ("a bound under 120", f"{form.replace('180', '60')} update\n", [(1, f"{apt} word 3 `60` is not {FORM_N}")]),
-            (
-                "a bound that is not a number",
-                f"{form.replace('180', '$N')} update\n",
                 [
                     (
                         1,
-                        f"`/usr/bin/timeout` followed by a word of ParamExp part(s), which has no known text, before its command word",
-                    ),
-                    (1, f"{apt} word 3 is a word of ParamExp part(s), not the literal `{FORM_N}`"),
-                ],
-            ),
-            (
-                "no verb",
-                f"{form}\n",
-                [(1, f"{apt} has 9 word(s); word 10 of the form is the verb `update` or `install`")],
-            ),
-            (
-                "apt in a quoted word",
-                'echo "apt-get update"\n',
-                [(1, f"{apt} word 1 is `echo`, not `/usr/bin/timeout`")],
-            ),
-            (
-                "apt by its path",
-                "sudo /usr/bin/apt install x\n",
-                [(1, "a CallExpr holding `apt` word 1 is `sudo`, not `/usr/bin/timeout`")],
-            ),
-            (
-                "apt in a substitution",
-                'x="$(sudo apt-get update)"\n',
-                [
-                    (1, f"{apt} with Assigns: an assignment before the command word"),
-                    (1, f"{apt} has 0 word(s); word 1 of the form is `/usr/bin/timeout`"),
-                    (1, f"{apt} word 1 is `sudo`, not `/usr/bin/timeout`"),
-                ],
-            ),
-            (
-                "a backslash in the command word",
-                f"{form.replace('timeout', slashed)} update\n",
-                [
-                    (
-                        1,
-                        f"a command word holding a backslash, {'/usr/bin/' + slashed!r}: bash reads another text than the line shows",
-                    ),
-                ],
-            ),
-            (
-                "source of a file outside the repository",
-                "source /etc/hosts\n",
-                [(1, f"`source` of '/etc/hosts', which is no file of the repository: {REFUSED_COMMANDS['source']}")],
-            ),
-            (
-                "source of a path that leaves the repository",
-                "source ../x.sh\n",
-                [(1, f"`source` of '../x.sh', which is no file of the repository: {REFUSED_COMMANDS['source']}")],
-            ),
-            (
-                "source of a variable",
-                'source "$lib"\n',
-                [(1, f"`source` with 1 word(s) after it, not one literal path: {REFUSED_COMMANDS['source']}")],
-            ),
-            (
-                "dot with two words",
-                ". a b\n",
-                [(1, f"`.` with 2 word(s) after it, not one literal path: {REFUSED_COMMANDS['.']}")],
-            ),
-        ):
-            with self.subTest(case=case):
-                self.assertEqual(sorted(expected), sorted(self.body(script)), case)
-
-    def test_the_form_and_the_real_steps_pass_the_walk(self) -> None:
-        form = self.FORM
-        for case, script in (
-            ("update", f"{form} update\n"),
-            ("install", f"{form} install -y bats curl iproute2 parallel ruby\n"),
-            ("a semicolon", f"{form} update;\n"),
-            (
-                "inside an if",
-                f'if [[ "${{OS}}" == ubuntu-* ]]; then\n  {form} update\n  {form} install -y jq zsh\nfi\n',
-            ),
-            ("inside a block", f"{{ {form} update; }}\n"),
-            ("a comment above", f"# the index is fetched again\n{form} update\n"),
-            (
-                "the sourced library",
-                'source scripts/lib/github-release.sh\nchezmoi_version="$(github_release_tag twpayne/chezmoi)"\n',
-            ),
-            ("an EXIT trap", "trap 'rm -f x' EXIT\n"),
-            ("other words", "apt-mirrors.txt and drop-azure-apt-mirror.py are other words\n"),
-        ):
-            with self.subTest(case=case):
-                self.assertEqual([], self.body(script), case)
-        self.assertEqual(2, walk(script_tree(f"{form} update\n{form} install -y jq\n", "x"), "x").apt_calls)
-        self.assertEqual(0, walk(script_tree("echo apt-mirrors.txt\n", "x"), "x").apt_calls)
-
-    def test_a_word_is_read_in_three_quoting_forms_and_every_other_spelling_fails_closed(self) -> None:
-        # Round 11 (audit of 4d09be21): the auditor's three (`'eval'`, `sudo 'apt' update`, `install jq zsh`) and
-        # the other spellings of a word. A bare, single-quoted, double-quoted or split literal is its text; an
-        # expansion, an ANSI-C `$'...'` or a locale `$"..."` string has none and is refused where a command is read
-        # (the first word, the word a wrapper hands on, a wrapper's option value); the words after the verb are the
-        # form in order.
-        form = self.FORM
-        tail = form[len(TIMEOUT_PATH) + 1 :]
-        apt = "a CallExpr holding `apt-get`"
-        unknown = f"in command position: {UNKNOWN_COMMAND}"
-        off_form = "word 1 is `sudo`, not `/usr/bin/timeout`"
-        for case, script, expected in (
-            (
-                "the auditor's quoted eval",
-                "'eval' '/usr/bin/time''out() { shift 2; \"$@\"; }'\n",
-                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
-            ),
-            ("the auditor's quoted apt", "sudo 'apt' update\n", [(1, f"a CallExpr holding `apt` {off_form}")]),
-            (
-                "the auditor's install without -y",
-                f"{form} install jq zsh\n",
-                [(1, f"{apt} word 11 'jq' after `install` is not `-y`")],
-            ),
-            ("double-quoted apt", 'sudo "apt" update\n', [(1, f"a CallExpr holding `apt` {off_form}")]),
-            (
-                "ANSI-C apt",
-                "sudo $'apt' update\n",
-                [
-                    (
-                        1,
-                        "`sudo` followed by a word of SglQuoted with Dollar part(s), which has no known text, before its command word",
-                    ),
-                    (1, f"a CallExpr holding `apt` {off_form}"),
-                ],
-            ),
-            (
-                "a locale string as the command",
-                '$"apt-get" update\n',
-                [
-                    (1, f"a word of DblQuoted(Lit) with Dollar part(s) {unknown}"),
-                    (
-                        1,
-                        f"{apt} word 1 is a word of DblQuoted(Lit) with Dollar part(s), not the literal `/usr/bin/timeout`",
-                    ),
-                ],
-            ),
-            (
-                "an expansion as the command",
-                '"$cmd" update\n',
-                [(1, f"a word of DblQuoted(ParamExp) part(s) {unknown}")],
-            ),
-            (
-                "an expansion handed on by sudo",
-                'sudo "$cmd" update\n',
-                [
-                    (
-                        1,
-                        "`sudo` followed by a word of DblQuoted(ParamExp) part(s), which has no known text, before its command word",
+                        f"a CallExpr whose word 13 a word of ParamExp part(s) after `install -y` is not a package name{off}",
                     )
                 ],
             ),
             (
-                "an array as the command in a subshell",
-                '(cd "$dir" && "${check[@]}")\n',
-                [(1, f"a word of DblQuoted(ParamExp) part(s) {unknown}")],
+                "install without -y",
+                f"{form} install jq zsh\n",
+                [(1, f"a CallExpr whose word 11 'jq' after `install` is not `-y`{off}")],
             ),
             (
-                "an expansion as the value of sudo -u",
-                'sudo -u "$user" apt-get update\n',
+                "-yq",
+                f"{form} install -yq jq\n",
+                [(1, f"a CallExpr whose word 11 '-yq' after `install` is not `-y`{off}")],
+            ),
+            (
+                "-y and no package",
+                f"{form} install -y\n",
+                [(1, f"a CallExpr that has 11 word(s); word 12 of the form is a package name{off}")],
+            ),
+            (
+                "-y twice",
+                f"{form} install -y -y jq\n",
+                [(1, f"a CallExpr whose word 12 '-y' after `install -y` is not a package name{off}")],
+            ),
+            (
+                "an option after the packages",
+                f"{form} install -y jq --fix-missing\n",
+                [(1, f"a CallExpr whose word 13 '--fix-missing' after `install -y` is not a package name{off}")],
+            ),
+            (
+                "no verb",
+                f"{form}\n",
+                [(1, f"a CallExpr that has 9 word(s); word 10 of the form is the verb `update` or `install`{off}")],
+            ),
+            ("the whole form in one quoted word", f'"{form}" update\n', [(1, quoted.format("DblQuoted(Lit)"))]),
+            ("the path single-quoted", f"'{TIMEOUT_PATH}' {tail} update\n", [(1, quoted.format("SglQuoted"))]),
+            ("the path double-quoted", f'"{TIMEOUT_PATH}" {tail} update\n', [(1, quoted.format("DblQuoted(Lit)"))]),
+            (
+                "a quoted verb",
+                f"{form} 'update'\n",
                 [
-                    (1, "`sudo -u` with a value that is a word of DblQuoted(ParamExp) part(s), with no known text"),
-                    (1, f"{apt} {off_form}"),
+                    (
+                        1,
+                        f"a CallExpr whose word 10 is a word of SglQuoted part(s), not the verb `update` or `install`{off}",
+                    )
                 ],
+            ),
+            (
+                "an ANSI-C verb",
+                f"{form} $'update'\n",
+                [
+                    (
+                        1,
+                        f"a CallExpr whose word 10 is a word of SglQuoted with Dollar part(s), not the verb `update` or `install`{off}",
+                    )
+                ],
+            ),
+            (
+                "a backslash in the path",
+                f"{form.replace('timeout', 'time\\out')} update\n",
+                [(1, quoted.format("Lit with a backslash"))],
+            ),
+            (
+                "a bound under 120",
+                f"{form.replace('180', '60')} update\n",
+                [(1, f"a CallExpr whose word 3 `60` is not {FORM_N}{off}")],
+            ),
+            (
+                "a bound that is not a number",
+                f"{form.replace('180', '$N')} update\n",
+                [(1, f"a CallExpr whose word 3 is a word of ParamExp part(s), not the bare literal `{FORM_N}`{off}")],
+            ),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual(sorted(expected), self.body(script), case)
+
+    def test_the_form_and_the_real_apt_steps_pass(self) -> None:
+        form = self.FORM
+        for case, script, calls in (
+            ("update", f"{form} update\n", 1),
+            ("install", f"{form} install -y bats curl iproute2 parallel ruby\n", 1),
+            ("a semicolon", f"{form} update;\n", 1),
+            ("two calls", f"{form} update\n{form} install -y jq\n", 2),
+            ("a comment above", f"# the index is fetched again\n{form} update\n", 1),
+            ("a comment after", f"{form} update # once\n", 1),
+            ("other words, in a step that runs no apt", "echo apt-mirrors.txt and drop-azure-apt-mirror.py\n", 0),
+        ):
+            with self.subTest(case=case):
+                self.assertEqual([], self.body(script), case)
+                self.assertEqual(calls, walk(script_tree(script, "x"), "x", names_apt(script)).apt_calls)
+        # The apt steps of test.yaml, as PyYAML returns them: every statement the form, as many as the lines, each
+        # under the Linux guard.
+        document, _ = Parser.read(workflow_text(WORKFLOWS / "test.yaml"))
+        steps = {step.get("name"): step for step in document["jobs"]["test"]["steps"]}
+        for name in STEP_REST_BUDGET:
+            with self.subTest(step=name):
+                script = str(steps[name]["run"])
+                walked = walk(script_tree(script, name), name, names_apt(script))
+                self.assertEqual(
+                    ([], [], len(script.splitlines())), (walked.problems, walked.unknown, walked.apt_calls)
+                )
+                self.assertIn(APT_STEP_IF, str(steps[name]["if"]))
+
+    def test_a_command_word_with_no_known_text_is_refused_in_every_step(self) -> None:
+        # Rule (b), in steps that run no apt: the first word of every call and the word a `sudo` hands on must have a
+        # known text; an argument of any other command is that command's. The round 11 auditor's `sudo $'\x61pt'
+        # update`, in a step no detector counted, is refused here before anything decodes it.
+        unknown = f"in command position: {UNKNOWN_COMMAND}"
+        handed = "`sudo` followed by {}, which has no known text, before its command word"
+        param = "a word of DblQuoted(ParamExp) part(s)"
+        for case, script, expected in (
+            ("an expansion as the command", '"$cmd" --version\n', [(1, f"{param} {unknown}")]),
+            ("a bare expansion as the command", "$cmd --version\n", [(1, f"a word of ParamExp part(s) {unknown}")]),
+            (
+                "the auditor's ANSI-C apt after sudo",
+                "sudo $'\\x61pt' update\n",
+                [(1, handed.format("a word of SglQuoted with Dollar part(s)"))],
+            ),
+            ("an expansion handed on by sudo", 'sudo "$cmd" update\n', [(1, handed.format(param))]),
+            ("sudo by its path", '/usr/bin/sudo "$cmd" update\n', [(1, handed.format(param))]),
+            ("sudo after another word", 'env -i sudo "$cmd"\n', [(1, handed.format(param))]),
+            (
+                "an expansion as the value of sudo -u",
+                'sudo -u "$user" make x\n',
+                [(1, "`sudo -u` with a value that is a word of DblQuoted(ParamExp) part(s), with no known text")],
             ),
             (
                 "an option of sudo outside its row",
@@ -2326,191 +2225,200 @@ class TreeRuleTest(unittest.TestCase):
                 [(1, "`sudo` with the option `-s`, outside the options the rule reads for it")],
             ),
             (
-                "an attached value where timeout takes a separate one",
-                f"{TIMEOUT_PATH} -k10 150 make x\n",
-                [(1, "`/usr/bin/timeout` with the option `-k10`, outside the options the rule reads for it")],
+                "a locale string as the command",
+                '$"make" x\n',
+                [(1, f"a word of DblQuoted(Lit) with Dollar part(s) {unknown}")],
             ),
+            ("an array as the command in a subshell", '(cd "$dir" && "${check[@]}")\n', [(1, f"{param} {unknown}")]),
+            ("an expansion run inside a function", 'f() {\n  "$@"\n}\n', [(2, f"{param} {unknown}")]),
+            ("an expansion run inside a substitution", 'x="$("$cmd" -v)"\n', [(1, f"{param} {unknown}")]),
             (
-                "a split spelling of apt-get",
-                'ap""t-get update\n',
-                [(1, f"{apt} word 1 is `apt-get`, not `/usr/bin/timeout`")],
-            ),
-            (
-                "a backslash spelling handed on by sudo",
-                "sudo ap\\t-get update\n",
-                [
-                    (1, f"{apt} {off_form}"),
-                    (
-                        1,
-                        "a command word holding a backslash, 'ap\\\\t-get': bash reads another text than the line shows",
-                    ),
-                ],
-            ),
-            (
-                "eval through command",
-                'command eval "$x"\n',
-                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
-            ),
-            (
-                "eval through env, nice and nohup",
-                "env -i FOO=1 nice -n 5 nohup eval x\n",
-                [(1, f"`eval` as a command word: {REFUSED_COMMANDS['eval']}")],
-            ),
-            (
-                "the form with -yq",
-                f"{form} install -yq jq\n",
-                [(1, f"{apt} word 11 '-yq' after `install` is not `-y`")],
-            ),
-            (
-                "the form with -y and no package",
-                f"{form} install -y\n",
-                [(1, f"{apt} has 11 word(s); word 12 of the form is a package name")],
-            ),
-            (
-                "the form with an option after the packages",
-                f"{form} install -y jq --fix-missing\n",
-                [(1, f"{apt} word 13 '--fix-missing' after `install -y` is not a package name")],
-            ),
-            (
-                "the form with -y twice",
-                f"{form} install -y -y jq\n",
-                [(1, f"{apt} word 12 '-y' after `install -y` is not a package name")],
-            ),
-            (
-                "a trap with an expansion in a double-quoted action",
-                'trap "rm -f $x" EXIT\n',
-                [(1, f"`trap` with an action that is not literal text: {REFUSED_COMMANDS['trap']}")],
+                "a comment ending in a backslash",
+                "echo x # c \\\necho y\n",
+                [(1, f"a comment ending in a backslash: {COMMENT_JOIN}")],
             ),
         ):
             with self.subTest(case=case):
-                self.assertEqual(sorted(expected), sorted(self.body(script)), case)
-        # A word in a quoting form with a known text is that text: the form's path quoted is the form, a wrapper
-        # reaches a literal command through its options, and an argument of that command may be anything.
+                self.assertEqual(sorted(expected), self.body(script), case)
+        # What a step that runs no apt may do: a literal command word in any quoting form with any arguments, sudo
+        # handing on a literal through its options, a function, a trap, a source, a PATH set on the line.
         for case, script in (
-            ("the path single-quoted", f"'{TIMEOUT_PATH}' {tail} update\n"),
-            ("the path double-quoted", f'"{TIMEOUT_PATH}" {tail} update\n'),
-            ("quoted sudo, verb and packages", f"{form.replace(' sudo ', ' "sudo" ')} 'install' -y 'jq' \"zsh\"\n"),
             (
                 "sudo handing on a command with expansion arguments",
                 'sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi\n',
             ),
+            ("sudo handing an array to unshare", 'sudo unshare --net -- "${smoke[@]}" || smoke_failed\n'),
+            ("sudo with its options", "sudo -n -E -u root -g root HOME=/root make x\n"),
+            ("sudo alone", "sudo -n\n"),
             ("command -v", "command -v jq > /dev/null 2>&1 || brew install jq\n"),
             ("env, nice and nohup", 'env -i FOO=1 nice -n 5 nohup make "$target"\n'),
+            ("quoted and split command words", '\'make\' x\n"make" y\nma""ke z\n'),
             (
-                "timeout with its options spelled out",
-                f"{TIMEOUT_PATH} -k 10 --signal=TERM --preserve-status 150 make x\n",
+                "a function and a case",
+                'skippable() {\n  case "$1" in\n    *) return 1 ;;\n  esac\n}\nskippable "${path}" || exit 1\n',
             ),
-            ("a wrapper alone", "sudo -n\n"),
-            ("a double-quoted trap action", 'trap "rm -f x" EXIT\n'),
-            ("a quoted source path", "source 'scripts/lib/github-release.sh'\n"),
+            ("a PATH set on the line before a literal command", 'PATH="${claude_bin_dir}:${PATH}" claude --version\n'),
+            ("a trap and a source", "trap 'rm -f x' EXIT\nsource scripts/lib/github-release.sh\n"),
             ("an expansion as an argument", 'echo "${OS} is not supported" >&2\n'),
         ):
             with self.subTest(case=case):
                 self.assertEqual([], self.body(script), case)
-        self.assertEqual(1, walk(script_tree(f"'{TIMEOUT_PATH}' {tail} update\n", "x"), "x").apt_calls)
         self.assertEqual("ap t-get", word_text({"Parts": [{"Type": "Lit", "Value": "ap\\ t-get"}]}))
         self.assertEqual(
             'a"$b', word_text({"Parts": [{"Type": "DblQuoted", "Parts": [{"Type": "Lit", "Value": 'a\\"\\$b'}]}]})
         )
         self.assertEqual("", word_text({"Parts": [{"Type": "SglQuoted"}]}))
 
-    def test_the_auditors_round_11_mutations_are_refused_by_line_in_the_workflow(self) -> None:
-        # `sudo 'apt' update` as a step of its own: the text scan sees no apt token (the quote parts `apt` from
-        # `update`), the tree holds one apt call off the form, and the two counts disagree.
-        text, first = self.step("sudo 'apt' update\n")
-        self.assertEqual(
-            [
-                self.STEP.format(first) + "a CallExpr holding `apt` word 1 is `sudo`, not `/usr/bin/timeout`",
-                self.STEP.format(first - 1) + f"1 apt call(s) in the tree, 0 bound form(s) in the text; {TREE_COUNT}",
-            ],
-            tree_problems("x.yaml", text),
-        )
-        # `'eval'` defining a path-named `timeout` function above the form, and the install call without `-y`.
-        text, first = self.step(
-            f"'eval' '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{self.FORM} update\n{self.FORM} install jq zsh\n"
-        )
-        self.assertEqual(
-            [
-                self.STEP.format(first) + f"`eval` as a command word: {REFUSED_COMMANDS['eval']}",
-                self.STEP.format(first + 2) + "a CallExpr holding `apt-get` word 11 'jq' after `install` is not `-y`",
-            ],
-            tree_problems("x.yaml", text),
-        )
+    def test_an_unknown_command_exemption_needs_its_exact_step_and_line(self) -> None:
+        # A row applies to one step name and the whole stripped line, exactly; a row with no such line is stale.
+        line = '"${bun_bin}" --version'
+        table = {("x.yaml", "Tools", line): "bun_bin is `mise which bun`"}
+        step = {"name": "Tools", "run": f"bun_bin=x\n{line}\n"}
+        text = render({"test": [step]})
+        at = text_steps(text)["test"][0]["runs"][0]["line"] + 2
+        refused = f"x.yaml:{at}: test: step 0 'Tools': a word of DblQuoted(ParamExp) part(s) in command position: {UNKNOWN_COMMAND}"
+        with mock.patch.object(sys.modules[__name__], "UNKNOWN_COMMAND_EXEMPT", table):
+            self.assertEqual([], tree_problems("x.yaml", text))
+            self.assertEqual([], unknown_exemption_stale({"x.yaml": text}))
+            other = render({"test": [{**step, "name": "Other"}]})
+            self.assertEqual([refused.replace("'Tools'", "'Other'")], tree_problems("x.yaml", other))
+            self.assertEqual([f"x.yaml: Tools: {line}"], unknown_exemption_stale({"x.yaml": other}))
+            longer = render({"test": [{**step, "run": f"bun_bin=x\n{line} --help\n"}]})
+            self.assertEqual([refused], tree_problems("x.yaml", longer))
+        with mock.patch.object(sys.modules[__name__], "UNKNOWN_COMMAND_EXEMPT", {}):
+            self.assertEqual([refused], tree_problems("x.yaml", text))
+        # The real table: seven rows, each the line of a real step, and the real workflows pass with it alone.
+        self.assertEqual(7, len(UNKNOWN_COMMAND_EXEMPT))
+        self.assertEqual([], unknown_exemption_stale(workflow_texts()))
 
-    def test_a_sourced_repository_file_is_walked_under_the_library_grammar(self) -> None:
-        # The library may define functions named without a `/` (github-release.sh does) and set EXIT traps; a
-        # path-named function, a DEBUG trap, an `eval` and an apt call off the form in it are named under the
-        # sourcing line with the library's own line, and a file it sources is followed in turn, once.
-        root = self.temp / "repo"
-        (root / "lib").mkdir(parents=True)
-        (root / "lib/good.sh").write_text("f() { :; }\ntrap 'rm -f x' EXIT\nsource lib/good.sh\n")
-        (root / "lib/bad.sh").write_text(
-            '/usr/bin/timeout() { :; }\ntrap x DEBUG\neval "$c"\nsudo apt-get update\nsource lib/good.sh\n. lib/missing.sh\n'
-        )
-        with mock.patch.object(sys.modules[__name__], "ROOT", root):
-            self.assertEqual([], self.body("source lib/good.sh\n"))
+    def test_the_auditors_mutations_are_refused_by_line_in_the_workflow(self) -> None:
+        form = self.FORM
+        off = f": {APT_STEP}"
+        with self.subTest(case="builtin eval above the calls (audit of 21d53583)"):
+            text, first, _ = self.step(f"builtin eval '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{form} update\n")
+            self.assertEqual(
+                [self.STEP.format(first) + f"a CallExpr whose word 1 is `builtin`, not `/usr/bin/timeout`{off}"],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case="cd into RUNNER_TEMP, then source a repository path (audit of 21d53583)"):
+            text, first, _ = self.step(f'cd "$RUNNER_TEMP"\nsource scripts/lib/github-release.sh\n{form} update\n')
             self.assertEqual(
                 [
-                    (1, f"sources lib/bad.sh:1: a FuncDecl `/usr/bin/timeout`: {FUNCTION_BY_PATH}"),
-                    (1, f"sources lib/bad.sh:2: `trap` with the signal DEBUG: {REFUSED_COMMANDS['trap']}"),
-                    (1, f"sources lib/bad.sh:3: `eval` as a command word: {REFUSED_COMMANDS['eval']}"),
-                    (1, "sources lib/bad.sh:4: a CallExpr holding `apt-get` word 1 is `sudo`, not `/usr/bin/timeout`"),
-                    (
-                        1,
-                        f"sources lib/bad.sh:6: `.` of 'lib/missing.sh', which is no file of the repository: {REFUSED_COMMANDS['.']}",
-                    ),
+                    self.STEP.format(first) + f"a CallExpr whose word 1 is `cd`, not `/usr/bin/timeout`{off}",
+                    self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `source`, not `/usr/bin/timeout`{off}",
                 ],
-                self.body("source lib/bad.sh\n"),
+                tree_problems("x.yaml", text),
             )
-            # A function named without a slash in the step's own body is still refused there.
-            self.assertEqual([(1, f"a FuncDecl `f`: {FUNCTION_IN_STEP}")], self.body("f() { :; }\n"))
-        # The real library, from the real root, holds nothing the walk refuses.
-        self.assertEqual([], self.body("source scripts/lib/github-release.sh\n"))
-        self.assertEqual([], self.body(". scripts/lib/github-release.sh\n"))
+        with self.subTest(case="a new step running sudo $'\\x61pt' update (audit of 21d53583)"):
+            text = render({"test": [{"name": "Added", "run": "sudo $'\\x61pt' update\n"}]})
+            first = text_steps(text)["test"][0]["runs"][0]["line"] + 1
+            self.assertEqual(
+                [
+                    f"x.yaml:{first}: test: step 0 'Added': `sudo` followed by a word of SglQuoted with Dollar part(s), "
+                    "which has no known text, before its command word"
+                ],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case="a second statement in an apt step"):
+            text, first, _ = self.step(f"{form} update\necho ok\n")
+            self.assertEqual(
+                [self.STEP.format(first + 1) + f"a CallExpr whose word 1 is `echo`, not `/usr/bin/timeout`{off}"],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case="an apt step without the if: guard"):
+            text = render({"test": [{"name": self.NAME, "timeout-minutes": "8", "run": f"{form} update\n"}]})
+            dash = text_steps(text)["test"][0]["line"]
+            self.assertEqual([self.STEP.format(dash) + f"if: None: {APT_STEP_GUARD}"], tree_problems("x.yaml", text))
+            text = render(
+                {"test": [{"name": self.NAME, "if": "${{ matrix.os == 'ubuntu-24.04' }}", "run": f"{form} update\n"}]}
+            )
+            self.assertEqual(
+                [self.STEP.format(dash) + f"if: \"${{{{ matrix.os == 'ubuntu-24.04' }}}}\": {APT_STEP_GUARD}"],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case='"$cmd" --version in a step that runs no apt'):
+            text = render({"test": [{"name": "Tools", "run": 'cmd=/usr/bin/true\n"$cmd" --version\n'}]})
+            first = text_steps(text)["test"][0]["runs"][0]["line"] + 1
+            self.assertEqual(
+                [
+                    f"x.yaml:{first + 1}: test: step 0 'Tools': a word of DblQuoted(ParamExp) part(s) in command position: "
+                    f"{UNKNOWN_COMMAND}"
+                ],
+                tree_problems("x.yaml", text),
+            )
+        # Round 11's three, still refused: `sudo 'apt' update` as a step of its own, `'eval'` above the form, and
+        # `install jq zsh`; the text rule counts the last as a form, the tree does not, and the two counts disagree.
+        with self.subTest(case="sudo 'apt' update as a step (audit of 4d09be21)"):
+            text, first, _ = self.step("sudo 'apt' update\n")
+            self.assertEqual(
+                [self.STEP.format(first) + f"a CallExpr whose word 1 is `sudo`, not `/usr/bin/timeout`{off}"],
+                tree_problems("x.yaml", text),
+            )
+        with self.subTest(case="'eval' above the form and install without -y (audit of 4d09be21)"):
+            text, first, _ = self.step(
+                f"'eval' '/usr/bin/time''out() {{ shift 2; \"$@\"; }}'\n{form} update\n{form} install jq zsh\n"
+            )
+            self.assertEqual(
+                [
+                    self.STEP.format(first)
+                    + f"a CallExpr whose word 1 is a word of SglQuoted part(s), not the bare literal `/usr/bin/timeout`{off}",
+                    self.STEP.format(first + 2) + f"a CallExpr whose word 11 'jq' after `install` is not `-y`{off}",
+                    self.STEP.format(first - 1)
+                    + f"1 apt call(s) in the tree, 2 bound form(s) in the text; {TREE_COUNT}",
+                ],
+                tree_problems("x.yaml", text),
+            )
 
     def test_a_step_the_tree_cannot_read_as_bash_is_refused_with_its_cause(self) -> None:
         form = self.FORM
         with self.subTest(case="a shell other than bash"):
-            text, first = self.step(f"{form} update\n", shell="sh")
+            text, _, dash = self.step(f"{form} update\n", shell="sh")
             self.assertEqual(
-                [self.STEP.format(first - 4) + "shell: 'sh': the tree reads the runner's bash"],
+                [self.STEP.format(dash) + "shell: 'sh': the tree reads the runner's bash"],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="shell: bash"):
-            text, _ = self.step(f"{form} update\n", shell="bash")
+            text, _, _ = self.step(f"{form} update\n", shell="bash")
             self.assertEqual([], tree_problems("x.yaml", text))
         with self.subTest(case="an expression in the body"):
-            text, first = self.step(f"echo ${{{{ github.token }}}}\n{form} update\n")
+            text, first, _ = self.step(f"echo ${{{{ github.token }}}}\n{form} update\n")
             self.assertEqual(
                 [self.STEP.format(first) + "`${{` in the run body: GitHub expands it before bash reads the text"],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="a body shfmt refuses"):
-            text, first = self.step(f"if true; then\n{form} update\n")
+            text, first, _ = self.step(f"if true; then\n{form} update\n")
             (problem,) = tree_problems("x.yaml", text)
             self.assertTrue(
                 problem.startswith(self.STEP.format(first - 1) + "shfmt cannot parse x.yaml test step 0 (exited 1): "),
                 problem,
             )
         with self.subTest(case="a one-line run"):
-            text = render({"test": [{"name": "Install tools", "timeout-minutes": "10"}]}).replace(
-                "timeout-minutes: 10\n", f"timeout-minutes: 10\n        run: {form} update | cat\n"
+            text = render({"test": [{"name": self.NAME, "timeout-minutes": "8", "if": self.GUARD}]}).replace(
+                f"if: {self.GUARD}\n", f"if: {self.GUARD}\n        run: {form} update | cat\n"
             )
             line = text_steps(text)["test"][0]["runs"][0]["line"]
             self.assertEqual(
-                [self.STEP.format(line) + f"a CallExpr holding `apt-get` inside a BinaryCmd `|`: {FORM_STATEMENT}"],
+                [
+                    self.STEP.format(line) + f"a BinaryCmd `|`: {APT_STEP}",
+                    self.STEP.format(line) + f"0 apt call(s) in the tree, 1 bound form(s) in the text; {TREE_COUNT}",
+                ],
                 tree_problems("x.yaml", text),
             )
-        with self.subTest(case="a count the text and the tree disagree on"):
-            text, first = self.step(f"cat << EOF\n{form} update\nEOF\n")
+        with self.subTest(case="a heredoc holding the form"):
+            text, first, _ = self.step(f"cat << EOF\n{form} update\nEOF\n")
             self.assertEqual(
-                [self.STEP.format(first - 1) + f"0 apt call(s) in the tree, 1 bound form(s) in the text; {TREE_COUNT}"],
+                [
+                    self.STEP.format(first) + f"a CallExpr in a statement with Redirs: {APT_STEP}",
+                    self.STEP.format(first - 1)
+                    + f"0 apt call(s) in the tree, 1 bound form(s) in the text; {TREE_COUNT}",
+                ],
                 tree_problems("x.yaml", text),
             )
         with self.subTest(case="a file the census or the parser gate refuses is not read here"):
-            text, _ = self.step(f"{form} update | cat\n")
+            text, _, _ = self.step(f"{form} update | cat\n")
             self.assertEqual([], tree_problems("x.yaml", text.replace("name: x\n", 'name: "x\n')))
-            self.assertEqual([], tree_problems("x.yaml", text.replace("runs-on", "runs-on\u2028")))
+            self.assertEqual([], tree_problems("x.yaml", text.replace("runs-on", "runs-on" + chr(0x2028))))
 
     def test_a_contract_or_parser_that_cannot_be_read_is_a_failure_not_an_absence(self) -> None:
         # Standing order 21: the contract refusing the pinned shfmt, and a tree whose statements the walk cannot read
@@ -2542,8 +2450,7 @@ class TreeRuleTest(unittest.TestCase):
         )
         self.assertEqual(1, found.returncode, found.stderr)
         self.assertEqual(
-            f"{script}:1: a FuncDecl `timeout`: {FUNCTION_IN_STEP}\n"
-            f"{script}:2: a CallExpr holding `apt-get` inside a BinaryCmd `|`: {FORM_STATEMENT}\n",
+            f"{script}:1: a FuncDecl `timeout`: {APT_STEP}\n{script}:2: a BinaryCmd `|`: {APT_STEP}\n",
             found.stdout,
         )
         script.write_text("if true; then\n")
@@ -2609,8 +2516,8 @@ class BoundOrderTest(unittest.TestCase):
         problems, at = self.problems({"test": [*steps, later]})
         self.assertEqual(
             [
-                f"x.yaml:{at[3]}: test: step 3 'Setup for Codecov' repeats the name of step 2",
-                f"x.yaml:{at[2]}: test: step 2 'Setup for Codecov' has no timeout-minutes",
+                f"x.yaml:{at[3]}: test: step 3 'Install apt packages for Codecov' repeats the name of step 2",
+                f"x.yaml:{at[2]}: test: step 2 'Install apt packages for Codecov' has no timeout-minutes",
             ],
             problems,
         )
@@ -2624,14 +2531,15 @@ class BoundOrderTest(unittest.TestCase):
         steps[0]["timeout-minutes"] = "9"
         problems, at = self.problems({"test": steps})
         self.assertEqual(
-            [f"x.yaml:{at[0]}: test: step 0 'Install tools' has timeout-minutes 9, the formula gives 10"], problems
+            [f"x.yaml:{at[0]}: test: step 0 'Install apt packages' has timeout-minutes 9, the formula gives 8"],
+            problems,
         )
         steps = bounded_steps()
         steps[2]["name"] = "Upload coverage"
         problems, at = self.problems({"test": steps})
         self.assertEqual(
             [
-                "budget row 'Setup for Codecov' has no step that runs apt",
+                "budget row 'Install apt packages for Codecov' has no step that runs apt",
                 f"x.yaml:{at[2]}: test: step 2 'Upload coverage' runs apt with no STEP_REST_BUDGET row",
             ],
             problems,
@@ -2641,11 +2549,22 @@ class BoundOrderTest(unittest.TestCase):
         problems, at = self.problems({"test": steps})
         self.assertEqual(
             [
-                "budget row 'Run Python unit tests' has no step that runs apt",
+                "budget row 'Install apt packages for the unit tests' has no step that runs apt",
                 f"x.yaml:{at[1]}: test: step 1 'step 1' runs apt with no STEP_REST_BUDGET row",
             ],
             problems,
         )
+
+    def test_the_steps_that_lost_their_apt_calls_keep_the_formula_over_their_rest(self) -> None:
+        # Round 12: "Install tools" and "Run Python unit tests" run no apt; each keeps timeout-minutes at the formula
+        # over its measured rest alone (REST_ONLY_BUDGET), and the apt steps' rest is 0 (STEP_REST_BUDGET).
+        for name, rest in REST_ONLY_BUDGET.items():
+            with self.subTest(step=name):
+                step = self.step("test.yaml", "test", name)
+                self.assertIsNone(APT_CALL.search(step_text(step)))
+                self.assertEqual(step_minutes(0, rest), int(step["timeout-minutes"]))
+        self.assertEqual({0}, set(STEP_REST_BUDGET.values()))
+        self.assertEqual((8, 7, 4), tuple(int(step["timeout-minutes"]) for step in bounded_steps()))
 
 
 class ReaderCensusTest(unittest.TestCase):
@@ -3429,19 +3348,19 @@ class ReaderCensusTest(unittest.TestCase):
     INSTALL = "/usr/bin/timeout --kill-after=10 150 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl"
 
     def complex_key_document(self, command: str, key: str = '{?"x}') -> tuple[Path, int, int]:
-        """The audit's test.yaml: the "Setup for Codecov" step rewritten with its `run: |` holding `command` first,
+        """The audit's test.yaml: the Codecov apt step rewritten with its `run: |` holding `command` first,
         then `env: {key}` and its timeout-minutes, then a step `Phantom` whose one body line `CLOSE: end": value}`
         closes a quote. With the auditor's `{?"x}`, PyYAML takes `"x}` after the `?` indicator as a double-quoted key
         that runs to `end"`: the timeout-minutes and the Phantom step are text inside it, and the real step has `run`
         and `env` and no timeout-minutes. With a plain `{x: y}` the mapping closes on its line and every reader
         agrees. Returns (path, the Codecov step's dash line, the Phantom step's dash line)."""
         text = (WORKFLOWS / "test.yaml").read_text()
-        start = text.index("      - name: Setup for Codecov\n")
+        start = text.index("      - name: Install apt packages for Codecov\n")
         end = text.index(self.MARKER)
         (condition,) = [line for line in text[start:end].splitlines() if line.startswith("        if:")]
         rewritten = (
-            f"      - name: Setup for Codecov\n{condition}\n        run: |\n          {command}\n"
-            f"        env: {key}\n        timeout-minutes: 5\n"
+            f"      - name: Install apt packages for Codecov\n{condition}\n        run: |\n          {command}\n"
+            f"        env: {key}\n        timeout-minutes: 4\n"
             '      - name: Phantom\n        run: |\n          CLOSE: end": value}\n\n'
         )
         dash = text[:start].count("\n") + 1
@@ -3464,7 +3383,9 @@ class ReaderCensusTest(unittest.TestCase):
                 # The hole: both hand-written readers count the Phantom step and give the Codecov step its timeout.
                 self.assertEqual(len(read), len(found.steps["test"]))
                 codecov, swallowed = read[-3], read[-2]
-                self.assertEqual(("Setup for Codecov", "5"), (codecov["name"], codecov["timeout-minutes"]))
+                self.assertEqual(
+                    ("Install apt packages for Codecov", "4"), (codecov["name"], codecov["timeout-minutes"])
+                )
                 self.assertEqual(("Phantom", phantom), (swallowed["name"], found.steps["test"][-2]["line"]))
                 self.assertEqual(
                     [f"test.yaml:{dash + 4}: {env_refused}"], census_problems("test.yaml", text, parsed_steps(path))
@@ -3474,17 +3395,19 @@ class ReaderCensusTest(unittest.TestCase):
                 self.assertIsNone(error)
                 steps = document["jobs"]["test"]["steps"]
                 self.assertEqual(len(read) - 1, len(steps))
-                (parsed,) = [step for step in steps if step.get("name") == "Setup for Codecov"]
+                (parsed,) = [step for step in steps if step.get("name") == "Install apt packages for Codecov"]
                 self.assertNotIn("timeout-minutes", parsed)
                 self.assertEqual(command, parsed["run"].strip())
                 (key,) = parsed["env"]
-                self.assertTrue(key.startswith("x} timeout-minutes: 5 - name: Phantom run: | CLOSE: end"), key)
+                self.assertTrue(key.startswith("x} timeout-minutes: 4 - name: Phantom run: | CLOSE: end"), key)
                 parting = f"test.yaml:{dash}: test: step {len(read) - 3}"
                 extra = {
-                    # an unbounded call: the step holds timeout-minutes 5 to the reader, and the formula gives 2
-                    "sudo": [f"{parting} 'Setup for Codecov' has timeout-minutes 5, the formula gives 2"],
+                    # an unbounded call: the step holds timeout-minutes 4 to the reader, and the formula gives 1
+                    "sudo": [
+                        f"{parting} 'Install apt packages for Codecov' has timeout-minutes 4, the formula gives 1"
+                    ],
                     "/usr/bin/timeout": [],
-                    "sleep": ["budget row 'Setup for Codecov' has no step that runs apt"],
+                    "sleep": ["budget row 'Install apt packages for Codecov' has no step that runs apt"],
                 }[command.split()[0]]
                 self.assertEqual(
                     [

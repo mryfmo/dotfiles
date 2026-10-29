@@ -415,7 +415,7 @@ class PinnedLintToolsTest(unittest.TestCase):
         self.assertIn(
             "/usr/bin/timeout --kill-after=10 180 sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
             " install -y bats curl iproute2 parallel ruby\n",
-            install,
+            steps["Install apt packages"]["run"],
         )
 
 

@@ -930,16 +930,20 @@ stat: cannot stat '~/.cache/mise': No such file or directory (os error 2)
 2026-10-28T09:59:20 ~/.local/state/mise
 ```
 
-Credential scan of every output file of both attempts under `$TMPDIR/U116-out/` (top level and `attempt1-cwd-checkout/`) and of `$TMPDIR/U116-out-2/` (the brief requires `0` before any paste; no run needed `MISE_GITHUB_TOKEN`, so none was set). Round 1 ran `grep -c -F -f <(gh auth token) <file>`, which never read the token reader's status (verdict P2 on `e0a1526a`). Round 2 read that status but left the other producers unread: the `<(printf …)` pattern file and the `<(find … | sort)` file list, where a failing `find` or `sort` gives an empty list and `scan clean` (verdict P2 on `b5281d6b`, reproduced by the auditor). A shell pipeline has one producer per stage and each needs its own check; a scan in one process has none but the token reader, so round 3 changes the shape (standing orders 21 and 22): one Python script, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only producer is `gh auth token`. Its exit status, output and timeout are read; the directory walk, the file reads and the counting are library calls that raise on failure, and any exception is exit `2` before a clean line can print. The file list must hold exactly 36 entries, the count the round-2 block listed, so a missing directory or a short list refuses. The token stays in the process: it reaches no command line and no file. The script, then its output:
+Redaction and credential scan, round 4 (standing orders 21 and 22; the brief's amendment of 2026-10-29). Each of rounds 1 to 3 left one producer unread inside an evidence command: round 1 the token reader behind `grep -F -f` (verdict P2 on `e0a1526a`); round 2 the pattern writer and the `find` and `sort` file list behind process substitutions (verdict P2 on `b5281d6b`); round 3 the redact-list reader behind the process substitution in ACCEPTANCE 5 itself, a command the brief wrote (verdict P2 on `8b1b9088`). Three rounds of one class change the approach (standing order 22): producers leave the evidence commands instead of being checked one at a time. One script, `/tmp/U116-scan.py`, run as `python3 -I /tmp/U116-scan.py` from the worktree, whose only external command is `gh auth token`, with its exit status, output and timeout read. Two pattern classes: the token, and every non-comment, non-empty line of the coordinator's `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt`, read in-process, with the path and the pattern count printed and zero patterns a refusal. Two file sets: the 36 `.txt` outputs of both attempts under `$TMPDIR/U116-out/` (top level and `attempt1-cwd-checkout/`) and `$TMPDIR/U116-out-2/`, scanned for the token as in round 3 (no run needed `MISE_GITHUB_TOKEN`, so none was set); and the two documents that cite this scan, this file as committed (the worktree copy, which is the committed bytes once ACCEPTANCE 1 shows the tree clean) and the PR body `/tmp/dotfiles-wt/U116-pr-body.md`, scanned for both classes. The raw outputs are not scanned for the redact words: they hold the login name in the owner column of every `ls -la` listing and the home path in the `stat` lines and in the attempt-1 config warnings, which the substitution named at the top of this section replaces on paste; the positive control after the injected failures shows what the class finds there. The script prints one line per file with the count of each class applied to it, and `scan clean (38 files, 0 matches)` only when every count is 0; a `.txt` count other than 36, an empty pattern list or any exception is exit `2` before any clean line. Neither the script nor its invocation holds a process substitution, a command substitution or a pipeline. The script, then its output:
 
 ```python
 #!/usr/bin/env python3
-# Fail-closed credential scan, round 3 (standing orders 21 and 22). One
-# process with one producer, the token reader, whose exit status, output
-# and timeout are read. Every other step is a library call that raises on
-# failure; any exception is exit 2 before a clean line can print. A file
-# list shorter or longer than the known set is refused. The token stays in
-# this process: it reaches no command line and no file.
+# Fail-closed redaction and credential scan, round 4 (standing orders 21
+# and 22; brief amendment of 2026-10-29). One process whose only external
+# command is `gh auth token`, with its exit status, output and timeout
+# read. Two pattern classes: the token, and every non-comment, non-empty
+# line of the coordinator's redact list, read in-process. Two file sets:
+# the 36 .txt outputs of the dry runs (token class), and the two documents
+# that cite this scan (both classes). Any exception, an empty pattern list
+# or a .txt count other than the stated one is exit 2 before a clean line
+# can print. The token and the redact words stay in this process: they
+# reach no command line and no file.
 import os
 import subprocess
 import sys
@@ -950,6 +954,16 @@ import sys
 EXPECTED_FILES = 36
 
 DIRS = ("U116-out", "U116-out/attempt1-cwd-checkout", "U116-out-2")
+
+# The coordinator's list; the path is printed in this form, never expanded.
+REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
+
+# The committed evaluation file (the worktree copy; ACCEPTANCE 1 shows the
+# worktree clean, so these are the committed bytes) and the PR body.
+DOCUMENTS = (
+    "/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md",
+    "/tmp/dotfiles-wt/U116-pr-body.md",
+)
 
 
 def refuse(message):
@@ -975,10 +989,24 @@ def read_token():
     token = proc.stdout.strip().encode()
     if not token:
         refuse("gh auth token returned an empty token")
+    print("token from gh auth token patterns=1")
     return token
 
 
-def list_files():
+def read_redact_words():
+    words = []
+    with open(os.path.expanduser(REDACT_LIST), "rb") as handle:
+        for line in handle:
+            word = line.strip()
+            if word and not word.startswith(b"#"):
+                words.append(word)
+    print(f"redact list {REDACT_LIST} patterns={len(words)}")
+    if not words:
+        refuse(f"redact list {REDACT_LIST} holds no pattern")
+    return words
+
+
+def list_outputs():
     files = []
     for directory in DIRS:
         with os.scandir(directory) as entries:
@@ -991,23 +1019,37 @@ def list_files():
     return files
 
 
+def count_matches(path, classes):
+    with open(path, "rb") as handle:
+        data = handle.read()
+    line = path
+    total = 0
+    for name, patterns in classes:
+        count = sum(data.count(pattern) for pattern in patterns)
+        line += f" {name}={count}"
+        total += count
+    print(line)
+    return total
+
+
 def main():
     tmpdir = os.environ.get("TMPDIR")
     if not tmpdir:
         refuse("TMPDIR is unset")
+    token_class = ("token", [read_token()])
+    redact_class = ("redact", read_redact_words())
     os.chdir(tmpdir)
-    token = read_token()
-    files = list_files()
+    outputs = list_outputs()
     total = 0
-    for path in files:
-        with open(path, "rb") as handle:
-            count = handle.read().count(token)
-        print(f"{path} matches={count}")
-        total += count
+    for path in outputs:
+        total += count_matches(path, [token_class])  # raw outputs: token only
+    for path in DOCUMENTS:
+        total += count_matches(path, [token_class, redact_class])
+    files = len(outputs) + len(DOCUMENTS)
     if total:
-        print(f"scan FOUND ({len(files)} files, {total} matches)")
+        print(f"scan FOUND ({files} files, {total} matches)")
         sys.exit(1)
-    print(f"scan clean ({len(files)} files, 0 matches)")
+    print(f"scan clean ({files} files, 0 matches)")
 
 
 if __name__ == "__main__":
@@ -1018,65 +1060,165 @@ if __name__ == "__main__":
 ```
 
 ```text
-U116-out-2/00-real-mise-before.txt matches=0
-U116-out-2/00-scratch-mise-before.txt matches=0
-U116-out-2/a-version.txt matches=0
-U116-out-2/b-lock-dry.txt matches=0
-U116-out-2/c-lock-dry-4p.txt matches=0
-U116-out-2/d-lock-bump-json.txt matches=0
-U116-out-2/e-npm-pm.txt matches=0
-U116-out-2/f-min-age.txt matches=0
-U116-out-2/g-none-written.txt matches=0
-U116-out-2/g-real-mise-after.txt matches=0
-U116-out-2/g-scratch-files-written.txt matches=0
-U116-out-2/g-scratch-mise-after.txt matches=0
-U116-out-2/help-lock.txt matches=0
-U116-out/a-version.txt matches=0
-U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt matches=0
-U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt matches=0
-U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt matches=0
-U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt matches=0
-U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt matches=0
-U116-out/attempt1-cwd-checkout/g-real-after.txt matches=0
-U116-out/attempt1-cwd-checkout/g-scratch-after.txt matches=0
-U116-out/b-lock-dry-run.txt matches=0
-U116-out/c-lock-dry-run-4-platforms.txt matches=0
-U116-out/d-lock-bump-json.txt matches=0
-U116-out/e-npm-package-manager.txt matches=0
-U116-out/f-minimum-release-age.txt matches=0
-U116-out/g-real-after-bin-ls.txt matches=0
-U116-out/g-real-after-shell-ls.txt matches=0
-U116-out/g-real-after.txt matches=0
-U116-out/g-scratch-after.txt matches=0
-U116-out/help.txt matches=0
-U116-out/real-before.txt matches=0
-U116-out/real-dirs-mtime-after.txt matches=0
-U116-out/real-dirs-mtime-before.txt matches=0
-U116-out/scratch-tree.txt matches=0
-U116-out/token-check.txt matches=0
-scan clean (36 files, 0 matches)
+token from gh auth token patterns=1
+redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
+U116-out-2/00-real-mise-before.txt token=0
+U116-out-2/00-scratch-mise-before.txt token=0
+U116-out-2/a-version.txt token=0
+U116-out-2/b-lock-dry.txt token=0
+U116-out-2/c-lock-dry-4p.txt token=0
+U116-out-2/d-lock-bump-json.txt token=0
+U116-out-2/e-npm-pm.txt token=0
+U116-out-2/f-min-age.txt token=0
+U116-out-2/g-none-written.txt token=0
+U116-out-2/g-real-mise-after.txt token=0
+U116-out-2/g-scratch-files-written.txt token=0
+U116-out-2/g-scratch-mise-after.txt token=0
+U116-out-2/help-lock.txt token=0
+U116-out/a-version.txt token=0
+U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt token=0
+U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt token=0
+U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt token=0
+U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt token=0
+U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt token=0
+U116-out/attempt1-cwd-checkout/g-real-after.txt token=0
+U116-out/attempt1-cwd-checkout/g-scratch-after.txt token=0
+U116-out/b-lock-dry-run.txt token=0
+U116-out/c-lock-dry-run-4-platforms.txt token=0
+U116-out/d-lock-bump-json.txt token=0
+U116-out/e-npm-package-manager.txt token=0
+U116-out/f-minimum-release-age.txt token=0
+U116-out/g-real-after-bin-ls.txt token=0
+U116-out/g-real-after-shell-ls.txt token=0
+U116-out/g-real-after.txt token=0
+U116-out/g-scratch-after.txt token=0
+U116-out/help.txt token=0
+U116-out/real-before.txt token=0
+U116-out/real-dirs-mtime-after.txt token=0
+U116-out/real-dirs-mtime-before.txt token=0
+U116-out/scratch-tree.txt token=0
+U116-out/token-check.txt token=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md token=0 redact=0
+/tmp/dotfiles-wt/U116-pr-body.md token=0 redact=0
+scan clean (38 files, 0 matches)
 exit=0
 ```
 
-Injected failures (standing order 21), each exiting `2` before any clean line. First, `gh` replaced by an executable that exits `1`, first on `PATH`: `mkdir -p /tmp/U116-fake-gh && printf '#!/bin/sh\nexit 1\n' > /tmp/U116-fake-gh/gh && chmod +x /tmp/U116-fake-gh/gh && PATH=/tmp/U116-fake-gh:$PATH python3 -I /tmp/U116-scan.py; echo "exit=$?"`:
+Injected failures (standing order 21), each exiting `2` with its refusal line before any clean line. Injections 2, 3 and 5 run a copy of the script written by `sed … > copy`, and the `diff` against the original is the first lines of each paste, so the single changed line is visible and the original is never edited.
+
+First, `gh` replaced by an executable that exits `1`, first on `PATH`: `mkdir -p /tmp/U116-fake-gh && printf '#!/bin/sh\nexit 1\n' > /tmp/U116-fake-gh/gh && chmod +x /tmp/U116-fake-gh/gh && PATH=/tmp/U116-fake-gh:$PATH python3 -I /tmp/U116-scan.py; echo "exit=$?"`:
 
 ```text
 scan REFUSED: gh auth token exited 1
 exit=2
 ```
 
-Second, one of the three directories renamed away and renamed back: `mv "$TMPDIR/U116-out-2" "$TMPDIR/U116-out-2.away" && python3 -I /tmp/U116-scan.py; echo "exit=$?"; mv "$TMPDIR/U116-out-2.away" "$TMPDIR/U116-out-2"`. `os.scandir` raises and the exception's text is the refusal:
+Second, the redact list path pointed at a missing file: `sed 's|^REDACT_LIST = .*|REDACT_LIST = "/tmp/U116-no-such-list.txt"|' /tmp/U116-scan.py > /tmp/U116-scan-missing-list.py; diff /tmp/U116-scan.py /tmp/U116-scan-missing-list.py; test ! -e /tmp/U116-no-such-list.txt && echo "no such file"; python3 -I /tmp/U116-scan-missing-list.py; echo "exit=$?"`. `open` raises and the exception's text is the refusal:
 
 ```text
-scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: 'U116-out-2'
+24c24
+< REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
+---
+> REDACT_LIST = "/tmp/U116-no-such-list.txt"
+no such file
+token from gh auth token patterns=1
+scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: '/tmp/U116-no-such-list.txt'
 exit=2
 ```
 
-Third, the count constant set to 35 by `sed -i '' 's/^EXPECTED_FILES = 36$/EXPECTED_FILES = 35/' /tmp/U116-scan.py`, the scan run, then the edit reverted by the same command with the two numbers exchanged (`grep -n '^EXPECTED_FILES' /tmp/U116-scan.py` prints `15:EXPECTED_FILES = 36` afterwards):
+Third, the list replaced by a comment-only copy, the header line of the store's file alone: `grep '^#' ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt > /tmp/U116-redact-comment-only.txt; sed 's|^REDACT_LIST = .*|REDACT_LIST = "/tmp/U116-redact-comment-only.txt"|' /tmp/U116-scan.py > /tmp/U116-scan-comment-list.py; cat /tmp/U116-redact-comment-only.txt; diff /tmp/U116-scan.py /tmp/U116-scan-comment-list.py; python3 -I /tmp/U116-scan-comment-list.py; echo "exit=$?"`. The list reads, prints zero patterns and refuses:
 
 ```text
+# Words records-sync.sh refuses to publish (U101). Never copied.
+24c24
+< REDACT_LIST = "~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt"
+---
+> REDACT_LIST = "/tmp/U116-redact-comment-only.txt"
+token from gh auth token patterns=1
+redact list /tmp/U116-redact-comment-only.txt patterns=0
+scan REFUSED: redact list /tmp/U116-redact-comment-only.txt holds no pattern
+exit=2
+```
+
+Fourth, one of the three output directories renamed away and renamed back: `mv "$TMPDIR/U116-out-2" "$TMPDIR/U116-out-2.away" && python3 -I /tmp/U116-scan.py; echo "exit=$?"; mv "$TMPDIR/U116-out-2.away" "$TMPDIR/U116-out-2"; ls -d "$TMPDIR/U116-out-2" > /dev/null && echo "restored"`. `os.scandir` raises:
+
+```text
+token from gh auth token patterns=1
+redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
+scan REFUSED: FileNotFoundError: [Errno 2] No such file or directory: 'U116-out-2'
+exit=2
+restored
+```
+
+Fifth, the count constant off by one: `sed 's/^EXPECTED_FILES = 36$/EXPECTED_FILES = 35/' /tmp/U116-scan.py > /tmp/U116-scan-35.py; diff /tmp/U116-scan.py /tmp/U116-scan-35.py; python3 -I /tmp/U116-scan-35.py; echo "exit=$?"`:
+
+```text
+19c19
+< EXPECTED_FILES = 36
+---
+> EXPECTED_FILES = 35
+token from gh auth token patterns=1
+redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
 scan REFUSED: found 36 .txt files, expected 35
 exit=2
+```
+
+Positive control, not a failure injection but proof that the redact class matches real data: a copy in which the raw outputs are scanned for both classes, `sed 's/count_matches(path, \[token_class\])  # raw outputs: token only/count_matches(path, [token_class, redact_class])/' /tmp/U116-scan.py > /tmp/U116-scan-control.py; diff /tmp/U116-scan.py /tmp/U116-scan-control.py; python3 -I /tmp/U116-scan-control.py; echo "exit=$?"`. It finds 48 matches in 16 of the 36 outputs (the owner column of each `ls -la` listing, the home path in the `stat` lines and in the attempt-1 config warnings), reports `scan FOUND` and exits `1`; only counts leave the process, never the matched text. The two documents count 0 for both classes:
+
+```text
+110c110
+<         total += count_matches(path, [token_class])  # raw outputs: token only
+---
+>         total += count_matches(path, [token_class, redact_class])
+token from gh auth token patterns=1
+redact list ~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/redact-words.txt patterns=5
+U116-out-2/00-real-mise-before.txt token=0 redact=3
+U116-out-2/00-scratch-mise-before.txt token=0 redact=3
+U116-out-2/a-version.txt token=0 redact=0
+U116-out-2/b-lock-dry.txt token=0 redact=0
+U116-out-2/c-lock-dry-4p.txt token=0 redact=0
+U116-out-2/d-lock-bump-json.txt token=0 redact=0
+U116-out-2/e-npm-pm.txt token=0 redact=0
+U116-out-2/f-min-age.txt token=0 redact=0
+U116-out-2/g-none-written.txt token=0 redact=0
+U116-out-2/g-real-mise-after.txt token=0 redact=3
+U116-out-2/g-scratch-files-written.txt token=0 redact=0
+U116-out-2/g-scratch-mise-after.txt token=0 redact=3
+U116-out-2/help-lock.txt token=0 redact=0
+U116-out/a-version.txt token=0 redact=0
+U116-out/attempt1-cwd-checkout/b-lock-dry-run.txt token=0 redact=2
+U116-out/attempt1-cwd-checkout/c-lock-dry-run-4-platforms.txt token=0 redact=2
+U116-out/attempt1-cwd-checkout/d-lock-bump-json.txt token=0 redact=2
+U116-out/attempt1-cwd-checkout/e-npm-package-manager.txt token=0 redact=0
+U116-out/attempt1-cwd-checkout/f-minimum-release-age.txt token=0 redact=0
+U116-out/attempt1-cwd-checkout/g-real-after.txt token=0 redact=3
+U116-out/attempt1-cwd-checkout/g-scratch-after.txt token=0 redact=3
+U116-out/b-lock-dry-run.txt token=0 redact=0
+U116-out/c-lock-dry-run-4-platforms.txt token=0 redact=0
+U116-out/d-lock-bump-json.txt token=0 redact=0
+U116-out/e-npm-package-manager.txt token=0 redact=0
+U116-out/f-minimum-release-age.txt token=0 redact=0
+U116-out/g-real-after-bin-ls.txt token=0 redact=3
+U116-out/g-real-after-shell-ls.txt token=0 redact=3
+U116-out/g-real-after.txt token=0 redact=3
+U116-out/g-scratch-after.txt token=0 redact=3
+U116-out/help.txt token=0 redact=0
+U116-out/real-before.txt token=0 redact=3
+U116-out/real-dirs-mtime-after.txt token=0 redact=4
+U116-out/real-dirs-mtime-before.txt token=0 redact=5
+U116-out/scratch-tree.txt token=0 redact=0
+U116-out/token-check.txt token=0 redact=0
+/tmp/dotfiles-wt/U116/.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md token=0 redact=0
+/tmp/dotfiles-wt/U116-pr-body.md token=0 redact=0
+scan FOUND (38 files, 48 matches)
+exit=1
+```
+
+The amendment's check that no process substitution remains: `grep -c '<[(]' <file>` over this file and over the PR body, run from the worktree, the bracket keeping the pattern from matching itself. The prose above names the old forms in words, so the count covers each whole file, not the fenced blocks alone:
+
+```text
+.orchestration/orchestrate/regime-cutover/handoff/evaluations/U116-mise-lock.md:0
+/tmp/dotfiles-wt/U116-pr-body.md:0
 ```
 
 What the scratch home holds after attempt 2, `find "$TMPDIR/U116-home" -maxdepth 4` with `$TMPDIR` written back:

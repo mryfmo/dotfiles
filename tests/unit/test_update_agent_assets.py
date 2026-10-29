@@ -1432,6 +1432,107 @@ claude() {
                 self.assertIn(f"is not pinned to {ref}", result.stderr)
                 self.assertFalse([call for call in calls if call.startswith("plugin marketplace upgrade")], calls)
 
+    def run_ponytail_bootstrap(self, before: str | None, cache_version: str = "99.0.0", manifest_version=None):
+        # update_codex_ponytail with [marketplaces.ponytail] at its pinned ref, against a fake codex whose
+        # `marketplace upgrade` installs the enabled plugin's copy at CACHE_VERSION (what Codex does for a
+        # plugin the managed config enables) and whose `plugin remove` empties the cache. BEFORE is the
+        # version of the copy cached before the step, None for a fresh bootstrap; MANIFEST_VERSION, when given,
+        # is what that copy's plugin.json declares instead.
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]
+        work = Path(tempfile.mkdtemp(prefix="ponytail-bootstrap-"))
+        self.addCleanup(shutil.rmtree, work)
+        (work / "home/.codex").mkdir(parents=True)
+        (work / "home/.codex/config.toml").write_text(
+            f'[marketplaces.ponytail]\nref = "{pins["ref"]}"\nsource_type = "git"\nsource = "{pins["marketplace"]}"\n'
+        )
+        cache = work / "home/.codex/plugins/cache/ponytail/ponytail"
+        if before is not None:
+            (cache / before / ".codex-plugin").mkdir(parents=True)
+            manifest = {"name": "ponytail", "version": before if manifest_version is None else manifest_version}
+            (cache / before / ".codex-plugin/plugin.json").write_text(json.dumps(manifest))
+        record = work / "home/.codex/.tmp/marketplaces/ponytail/.codex-marketplace-install.json"
+        record_text = json.dumps({"source_type": "git", "source": pins["marketplace"], "revision": pins["ref"]})
+        fake = (
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; case "$1 $2 $3" in '
+            '"plugin marketplace upgrade") mkdir -p "${CACHE}/${CACHE_VERSION}/.codex-plugin" "${RECORD%/*}"; '
+            'printf \'{"name": "ponytail", "version": "%s"}\' "${CACHE_VERSION}" '
+            '> "${CACHE}/${CACHE_VERSION}/.codex-plugin/plugin.json"; printf "%s" "${RECORD_TEXT}" > "${RECORD}" ;; '
+            '"plugin remove "*) rm -rf "${CACHE}" ;; esac; }'
+        )
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; '
+                'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures',
+                "bash",
+                str(UPDATER),
+            ],
+            env=os.environ
+            | scratch_env(work / "home")
+            | {
+                "WORK": str(work),
+                "CACHE": str(cache),
+                "CACHE_VERSION": cache_version,
+                "RECORD": str(record),
+                "RECORD_TEXT": record_text,
+            },
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        return result, calls, cache, pins["pin"]
+
+    def test_a_fresh_ponytail_copy_the_marketplace_upgrade_installs_off_its_pin_is_judged_not_failed(self):
+        # Incident 2026-10-29: the marketplace ref pins the catalog snapshot only, and the catalog names upstream
+        # main as the plugin source, so on a fresh bootstrap the upgrade itself installed v5.3.3 against the 5.3.2
+        # pin. The copy was then read as "already installed", never judged, and the bootstrap failed.
+        result, calls, cache, pin = self.run_ponytail_bootstrap(before=None)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual(["plugin marketplace upgrade ponytail", "plugin remove ponytail@ponytail"], calls)
+        self.assertFalse(cache.exists())
+        self.assertIn("Codex Ponytail plugin was installed by the marketplace upgrade.", result.stdout)
+        self.assertNotIn("already installed", result.stdout)
+        self.assertIn(f"ponytail@ponytail is at 99.0.0, not its pin {pin}; the pin needs a review bump", result.stderr)
+        self.assertIn(
+            "landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex)", result.stderr
+        )
+        # A fresh copy that lands at the pin is simply installed and stays.
+        result, calls, cache, pin = self.run_ponytail_bootstrap(before=None, cache_version=pin)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("plugin marketplace upgrade ponytail", calls[0], calls)
+        self.assertFalse([call for call in calls if call.startswith(("plugin remove", "plugin add"))], calls)
+        self.assertTrue((cache / pin).is_dir())
+        self.assertIn("codex plugin ponytail@ponytail is at its pin (make doctor agrees).", result.stdout)
+
+    def test_a_ponytail_copy_cached_before_the_upgrade_and_off_its_pin_still_fails_the_run(self):
+        # Not a fresh install: the copy was there before the upgrade, so it keeps today's path: "already installed",
+        # make doctor's drift, the copy removed, the run failed.
+        result, calls, cache, _ = self.run_ponytail_bootstrap(before="98.0.0")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertIn("Codex Ponytail plugin is already installed.", result.stdout)
+        self.assertEqual(["plugin marketplace upgrade ponytail", "plugin remove ponytail@ponytail"], calls)
+        self.assertFalse(cache.exists())
+        self.assertNotIn("landed off its pin on a fresh install", result.stderr)
+        self.assertIn("did not reach its pin", result.stderr)
+
+    def test_a_ponytail_cache_that_cannot_be_read_before_the_upgrade_stops_it_and_names_the_path(self):
+        # Failure injection (standing order 21): a plugin.json without a version fails the reader. That is never
+        # "absent": no upgrade runs (it would install a copy nothing judges), the step fails naming the cache path.
+        result, calls, cache, _ = self.run_ponytail_bootstrap(before="5.3.2", manifest_version="")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertFalse([call for call in calls if call.startswith("plugin marketplace upgrade")], calls)
+        self.assertIn(
+            f"cannot read the cached copy of ponytail@ponytail under {cache} before upgrading its marketplace",
+            result.stderr,
+        )
+        self.assertNotIn("already installed", result.stdout)
+        self.assertFalse(cache.exists())  # converge_or_disable removes what it could not verify
+
     def test_a_foreign_marketplace_never_installs_or_updates_and_its_plugin_is_disabled(self):
         # Audit round 19: a marketplace of the recorded name from another repository can serve a release that
         # reports the pinned version. Its plugin is disabled at any version, and nothing is installed or updated.

@@ -1118,8 +1118,10 @@ function update_codex_superpowers() {
 #
 # @description Ensure the Ponytail Codex plugin marketplace is configured at its reviewed commit.
 # @description
-#   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins), so an
-#   existing marketplace follows the pin on `codex plugin marketplace upgrade`; a new one is added at it.
+#   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins). That ref pins
+#   the marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the plugin copy from the
+#   source the catalog names (upstream main for ponytail), so the copy can land on a release the pin has not
+#   reviewed; install_codex_ponytail judges a fresh copy and make doctor reports an existing one.
 #
 function ensure_codex_ponytail_marketplace() {
     local codex_config="${AGENT_CODEX_DIR%/}/config.toml"
@@ -1161,12 +1163,15 @@ function ensure_codex_ponytail_marketplace() {
 
 #
 # @description Install the Codex Ponytail plugin from its marketplace at the reviewed commit. Only ever
-#   called through converge_or_disable.
+#   called through converge_or_disable. The marketplace upgrade itself installs the copy of an enabled plugin,
+#   so the cache is read before it: a copy that was not there before is a fresh install and is judged
+#   (judge_fresh_codex_copy), whatever command wrote it; a copy that was there is left to make doctor's check.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When the fresh copy is off its pin; converge_or_disable removes it.
 # @exitcode 1 When the marketplace cannot be registered or is not pinned to the manifest's ref, the ref cannot
-#   be read, or the cached copy cannot be read.
+#   be read, or the cached copy cannot be read before or after the upgrade.
 #
 function install_codex_ponytail() {
-    local ref pinned codex_copy
+    local ref pinned codex_copy cached_before
 
     if ! ensure_codex_ponytail_marketplace; then
         printf 'ERROR: the Codex Ponytail marketplace registration failed.\n' >&2
@@ -1176,7 +1181,7 @@ function install_codex_ponytail() {
         printf 'ERROR: cannot read the pinned ref of %s.\n' "${CODEX_PONYTAIL_PLUGIN}" >&2
         return 1
     fi
-    # An upgrade fetches whatever [marketplaces.ponytail] names; without the manifest's ref there it would move
+    # An upgrade fetches the catalog [marketplaces.ponytail] names; without the manifest's ref there it would move
     # to the branch head. chezmoi apply writes the ref (the Codex modify script), so a missing or other ref stops here.
     pinned=0
     pin_record codex-marketplace-pinned "${AGENT_CODEX_DIR}/config.toml" "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" "${ref}" || pinned=$?
@@ -1184,23 +1189,38 @@ function install_codex_ponytail() {
         printf 'ERROR: [marketplaces.%s] in the Codex config is not pinned to %s; run chezmoi apply, then make update. The marketplace was not upgraded.\n' "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${ref}" >&2
         return 1
     fi
-    codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
-
+    # A read that fails is never "absent": the upgrade would then install a copy nothing judges.
     if ! codex_copy="$(codex_plugin_copy "${CODEX_PONYTAIL_PLUGIN}")"; then
-        printf 'ERROR: cannot read the cached copy of %s.\n' "${CODEX_PONYTAIL_PLUGIN}" >&2
+        printf 'ERROR: cannot read the cached copy of %s under %s before upgrading its marketplace; nothing was upgraded.\n' "${CODEX_PONYTAIL_PLUGIN}" "${AGENT_CODEX_DIR}/plugins/cache/${CODEX_PONYTAIL_PLUGIN#*@}/${CODEX_PONYTAIL_PLUGIN%@*}" >&2
         return 1
     fi
     case "${codex_copy}" in
-    absent)
-        codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
-        judge_fresh_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
-        ;;
-    "copy "?*) printf 'Codex Ponytail plugin is already installed.\n' ;;
+    absent) cached_before=0 ;;
+    "copy "?*) cached_before=1 ;;
     *)
         printf 'ERROR: unexpected cache state of %s: %s\n' "${CODEX_PONYTAIL_PLUGIN}" "${codex_copy}" >&2
         return 1
         ;;
     esac
+    codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
+    if [ "${cached_before}" -eq 1 ]; then
+        printf 'Codex Ponytail plugin is already installed.\n'
+        return 0
+    fi
+
+    if ! codex_copy="$(codex_plugin_copy "${CODEX_PONYTAIL_PLUGIN}")"; then
+        printf 'ERROR: cannot read the cached copy of %s after upgrading its marketplace.\n' "${CODEX_PONYTAIL_PLUGIN}" >&2
+        return 1
+    fi
+    case "${codex_copy}" in
+    absent) codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true ;;
+    "copy "?*) printf 'Codex Ponytail plugin was installed by the marketplace upgrade.\n' ;;
+    *)
+        printf 'ERROR: unexpected cache state of %s: %s\n' "${CODEX_PONYTAIL_PLUGIN}" "${codex_copy}" >&2
+        return 1
+        ;;
+    esac
+    judge_fresh_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
 }
 
 #

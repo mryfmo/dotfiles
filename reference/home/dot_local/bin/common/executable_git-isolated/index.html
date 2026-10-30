@@ -1939,6 +1939,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_records-sync/" class="md-nav__link">
         
   
@@ -4267,6 +4295,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/producer-status-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/producer-status-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
         
   
@@ -4881,6 +4937,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/orchestrator/records-sync/" class="md-nav__link">
         
   
@@ -5209,6 +5293,8 @@
 <span class="c1">#   file. The pin is the `claude.levers.sha256.&lt;name&gt;` line, which `scripts/generate-agent-configs.py` refreshes.</span>
 <span class="c1"># @set LEVER_MANIFEST The manifest the pin came from.</span>
 <span class="c1"># @set LEVER_DIR The physical directory of this file, beside the lever that sourced it.</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
 lever_self_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest<span class="w"> </span>home
 <span class="w">    </span><span class="c1"># The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.</span>
@@ -5226,7 +5312,7 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
 <span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
-<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span><span class="w">             </span><span class="c1"># producer-status: allow the if below takes an empty home as the checkout layout</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
 <span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/agent-config.yaml
 <span class="w">    </span><span class="k">else</span>
@@ -5245,9 +5331,9 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
@@ -5422,7 +5508,7 @@ git_env_scrub<span class="o">()</span><span class="w"> </span><span class="o">{<
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">names</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span>git_isolated_own_name<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span>git_env_scrubbed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="nb">unset</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">unset</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">who</span><span class="si">}</span><span class="s2">: refused: cannot remove </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> from the environment"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">        </span><span class="o">}</span>

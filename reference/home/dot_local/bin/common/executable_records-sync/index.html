@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../executable_provision-machine-key/">
+        <link rel="prev" href="../executable_read-lib/">
       
       
         <link rel="next" href="../executable_regime-env/">
@@ -1839,6 +1839,34 @@
     
   
     home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_read-lib.sh
   
 
     
@@ -4267,6 +4295,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/producer-status-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/producer-status-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/ci/run-on-lint-files/" class="md-nav__link">
         
   
@@ -4881,6 +4937,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/orchestrator/records-sync/" class="md-nav__link">
         
   
@@ -5184,8 +5268,8 @@
 <li><code>gh_plain</code></li>
 <li><code>git_scratch</code></li>
 <li><code>lever_self_check</code></li>
-<li><code>read_config</code></li>
 <li><code>refuse</code></li>
+<li><code>required_config</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -5276,7 +5360,7 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
 <span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
-<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span><span class="w">             </span><span class="c1"># producer-status: allow the if below takes an empty home as the checkout layout</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
 <span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/agent-config.yaml
 <span class="w">    </span><span class="k">else</span>
@@ -5295,9 +5379,9 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="c1"># producer-status: allow the regex test below refuses an empty digest</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
@@ -5310,7 +5394,6 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">    </span><span class="o">}</span>
 <span class="o">}</span>
 lever_self_check
-
 <span class="c1"># The isolated git and the environment scrub come from the library beside this script (U113). The scrub runs here,</span>
 <span class="c1"># before the first git: an exported GIT_AUTHOR_NAME would name the commit's author, GIT_CONFIG_* would add config,</span>
 <span class="c1"># includes and URL rewrites to every git command, and a proxy or certificate variable would steer the fetch and push.</span>
@@ -5322,6 +5405,13 @@ lever_self_check
 .<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
 <span class="c1"># shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes</span>
 git_env_scrub
+
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/read-lib.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"records-sync.sh: refused: read-lib.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/read-lib.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/read-lib.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/read-lib.sh"</span>
 
 <span class="nv">lever</span><span class="o">=</span><span class="s1">'records-sync.sh'</span>
 <span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: records-sync.sh [--base origin/main] [--program &lt;name&gt;] [--unit U&lt;n&gt; (default U20)]'</span>
@@ -5469,40 +5559,41 @@ check_path<span class="o">()</span><span class="w"> </span><span class="o">{</sp
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>check_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="s2"> is not a regular file"</span>
-<span class="w">    </span><span class="nv">words_real</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span>/redact-words.txt<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">words_real</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot resolve </span><span class="si">${</span><span class="nv">words</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">words_real</span><span class="o">=</span><span class="si">${</span><span class="nv">words_real</span><span class="si">}</span>/redact-words.txt
 <span class="k">else</span>
 <span class="w">    </span><span class="nv">words_real</span><span class="o">=</span><span class="s1">''</span>
 <span class="k">fi</span>
-<span class="c1"># The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*.</span>
-<span class="c1"># `git config --get` exits 1 for a key that is unset and with another status when the configuration cannot be read:</span>
-<span class="c1"># measured on git 2.56.0 (2026-10-28), 128 for an unparsable file, where the manual says 3. Any status other than 0</span>
-<span class="c1"># and 1 is a failure here, so the reader is right under both. An empty value is refused here, before any branch</span>
-<span class="c1"># exists, where commit-tree would otherwise refuse it later. The same reader serves origin's URL (audit of 0c7bf092).</span>
+<span class="c1"># @description Read one configuration key the sync needs through read_config (read-lib.sh, U112) and map its three</span>
+<span class="c1">#   outcomes: unset or empty is refused and a failed read fails, both before any branch, worktree or commit exists</span>
+<span class="c1">#   (a configured empty identity would otherwise be refused by commit-tree after the branch existed).</span>
 <span class="c1"># @arg $1 string The git function to read with (`git` reads the user configuration too, `git_isolated` does not).</span>
 <span class="c1"># @arg $2 string The configuration key.</span>
 <span class="c1"># @arg $3 string The variable that receives the value.</span>
-read_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>value<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
-<span class="w">    </span><span class="nv">value</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>config<span class="w"> </span>--get<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+required_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span>read_config<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/config.err"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git config </span><span class="nv">$2</span><span class="s2"> is empty"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span><span class="m">1</span><span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git config </span><span class="nv">$2</span><span class="s2"> is unset"</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>*<span class="o">)</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read git config </span><span class="nv">$2</span><span class="s2"> (git config exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">)"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">1</span><span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git config </span><span class="nv">$2</span><span class="s2"> is unset or empty"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read git config </span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
+
+<span class="nv">scratch</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/records-sync.XXXXXX"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'mktemp failed'</span>
+<span class="nb">trap</span><span class="w"> </span>cleanup<span class="w"> </span>EXIT
+<span class="c1"># The commit's identity is the operator's, read once here and handed to commit-tree as GIT_AUTHOR_*/GIT_COMMITTER_*;</span>
+<span class="c1"># git's stderr goes to a file in the scratch directory, which is why the reads follow mktemp. The same reader serves</span>
+<span class="c1"># origin's URL (audit of 0c7bf092).</span>
 <span class="nv">author_name</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">author_email</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">push_url</span><span class="o">=</span><span class="s1">''</span>
-read_config<span class="w"> </span>git<span class="w"> </span>user.name<span class="w"> </span>author_name<span class="w">   </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
-read_config<span class="w"> </span>git<span class="w"> </span>user.email<span class="w"> </span>author_email<span class="w"> </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
+required_config<span class="w"> </span>git<span class="w"> </span>user.name<span class="w"> </span>author_name<span class="w">   </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
+required_config<span class="w"> </span>git<span class="w"> </span>user.email<span class="w"> </span>author_email<span class="w"> </span><span class="c1"># git-isolated: allow the identity is read from the user configuration on purpose</span>
 <span class="c1"># U101: origin's URL, read once here: main is fetched from it and the sync pushed to it (below); https only.</span>
-read_config<span class="w"> </span>git_isolated<span class="w"> </span>remote.origin.url<span class="w"> </span>push_url
+required_config<span class="w"> </span>git_isolated<span class="w"> </span>remote.origin.url<span class="w"> </span>push_url
 <span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="c1"># lint-comparisons: allow the URL's scheme as configured, the push target itself</span>
 https://?*<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 *<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the push needs an https origin URL, not </span><span class="si">${</span><span class="nv">push_url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="k">esac</span>
-
-<span class="nv">scratch</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/records-sync.XXXXXX"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'mktemp failed'</span>
-<span class="nb">trap</span><span class="w"> </span>cleanup<span class="w"> </span>EXIT
 <span class="c1"># U101: the whole commit is built in a new repository in the scratch directory, which has no config, includes,</span>
 <span class="c1"># hooks or attributes of the checkout's: origin's main is fetched into it from the https URL, the copies are hashed</span>
 <span class="c1"># into it with --no-filters, and the tree, the commit and the push are made there. The checkout is only read: its</span>
@@ -5521,9 +5612,9 @@ git_scratch<span class="w"> </span>-c<span class="w"> </span>credential.helper<s
 <span class="c1"># Audit of 0c7bf092: `git ls-files` warns and exits 0 for a directory it cannot open, and a file it then leaves out</span>
 <span class="c1"># of the listing is absent from the store as far as this lever can see, which is a deletion. So the store is walked</span>
 <span class="c1"># first (find exits non-zero for a directory it cannot read, and each directory is checked readable and</span>
-<span class="c1"># searchable), and any warning of the listing refuses the run as well; neither output is shown (a store path may</span>
-<span class="c1"># hold a redact word).</span>
-find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print0<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/dirs"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/walk.err"</span><span class="w"> </span><span class="o">||</span>
+<span class="c1"># searchable), and any warning of either producer refuses the run as well (read_listing, U112); neither output is</span>
+<span class="c1"># shown (a store path may hold a redact word).</span>
+read_listing<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/dirs"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/walk.err"</span><span class="w"> </span>find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print0<span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"a directory under </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/ cannot be read or entered; nothing was created"</span>
 <span class="nv">dir</span><span class="o">=</span><span class="s1">''</span>
 <span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>dir<span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -5534,10 +5625,18 @@ find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><
 <span class="c1"># configuration the checkout reads would run inside it (and could write into the store before the copy). The isolated</span>
 <span class="c1"># git turns it off, with the hooks path and the user and system files; the repository level has no off switch, so the</span>
 <span class="c1"># checkout's own ignore rules and the default ignore file still shape the listing, which the stderr test below bounds.</span>
-git_isolated<span class="w"> </span>ls-files<span class="w"> </span>-z<span class="w"> </span>--cached<span class="w"> </span>--others<span class="w"> </span>--exclude-standard<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/listing.err"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s1">'git ls-files failed'</span>
-<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-s<span class="w"> </span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span>/listing.err<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
-<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"git ls-files warned while listing </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/ (its output is withheld); nothing was created"</span>
+<span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+read_listing<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/listing.err"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>git_isolated<span class="w"> </span>ls-files<span class="w"> </span>-z<span class="w"> </span>--cached<span class="w"> </span>--others<span class="w"> </span>--exclude-standard<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="m">0</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-s<span class="w"> </span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span>/listing.err<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"git ls-files warned while listing </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/ (its output is withheld); nothing was created"</span>
+<span class="w">    </span>fail<span class="w"> </span><span class="s1">'git ls-files failed'</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="k">esac</span>
 <span class="nv">files</span><span class="o">=()</span>
 <span class="nv">present</span><span class="o">=</span><span class="s1">$'\n'</span>
 <span class="nv">path</span><span class="o">=</span><span class="s1">''</span>

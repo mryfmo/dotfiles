@@ -174,28 +174,103 @@ class AuditCarryTest(unittest.TestCase):
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertTrue(run.stdout.endswith("'s at a.txt\n"), run.stdout)
 
-    def test_an_earlier_head_without_a_correct_row_or_no_earlier_head_is_not_carried(self):
-        self.ledger(ledger("2026-10-30T01:00:00Z", self.earlier, "incorrect", evidence="class=status P1"))
+    def test_a_head_the_ledger_already_judged_is_never_carried(self):
+        """Round 5 (P1): the head's own rows were skipped while the ledger was searched for an earlier `correct` head,
+        so an older `correct` head was carried over this head's own newer `incorrect` row. A `correct` or `incorrect`
+        row for this head (the body's unit or a fix unit of it) is exit 1 naming it, before any digest is read and
+        whatever the older rows say; the `--render` form still hands a re-audit the earlier head's findings."""
+        self.ledger(
+            ledger("2026-10-30T01:00:00Z", self.earlier),
+            ledger("2026-10-30T02:00:00Z", self.same, "incorrect (round 1)", evidence="class=status P1"),
+        )
         run = self.carry(self.same)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
             run.stdout,
-            f"audit-carry: not carried: the earlier audited head {self.earlier[:8]} has no correct row (its newest "
-            "audit row, 2026-10-30T01:00:00Z, is incorrect)\n",
+            f"audit-carry: not carried: head {self.same} already audited (its newest audit row, 2026-10-30T02:00:00Z, "
+            "is incorrect); a carry rests on an earlier head's audit, never on one over this head's own\n",
         )
-        # a later incorrect row for the earlier head voids its correct row
+        for name, ts, verdict, unit in (
+            ("a correct row of its own", "2026-10-30T00:30:00Z", "correct", "U7"),
+            ("an older incorrect row of its own", "2026-10-30T00:30:00Z", "incorrect", "U7"),
+            ("a fix unit's row", "2026-10-30T02:00:00Z", "incorrect (round 2)", "U7b"),
+            ("only the head's own row", None, "incorrect", "U7"),
+        ):
+            with self.subTest(name):
+                rows = () if ts is None else (ledger("2026-10-30T01:00:00Z", self.earlier),)
+                self.ledger(*rows, ledger(ts or "2026-10-30T01:00:00Z", self.same, verdict, unit=unit))
+                run = self.carry(self.same)
+                self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertIn(
+                    f"not carried: head {self.same} already audited (its newest audit row, "
+                    f"{ts or '2026-10-30T01:00:00Z'}, is {verdict.split(' ')[0]})",
+                    run.stdout,
+                )
+        self.ledger(
+            ledger("2026-10-30T01:00:00Z", self.earlier),
+            ledger("2026-10-30T02:00:00Z", self.same, "incorrect (round 1)", evidence="class=status P1"),
+        )
+        run = self.carry(self.same, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(f"The earlier audited head of this pull request is {self.earlier} ", run.stdout)
+
+    def test_the_newest_audited_head_is_carried_whatever_its_verdict(self):
+        """Round 5 (P1): the verdict carried is the earlier head's newest row, whatever it says; the lever searches for
+        no `correct` row. An `incorrect` earlier head with the same diff prints the carried line, and the row the
+        coordinator writes from it is one `pr-merge.sh` refuses naming that head (`tests.unit.test_pr_levers`,
+        `test_a_carry_from_an_incorrect_head_is_a_row_the_gate_refuses_naming_that_head`)."""
+        self.ledger(ledger("2026-10-30T01:00:00Z", self.earlier, "incorrect", evidence="class=status P1"))
+        run = self.carry(self.same)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(run.stdout, f"carried {self.earlier} {self.same} {self.digest(self.same)}\n")
+        # a later incorrect row for the earlier head is the verdict carried, and the line is the same
         self.ledger(
             ledger("2026-10-30T01:00:00Z", self.earlier),
             ledger("2026-10-30T01:30:00Z", self.earlier, "incorrect (re-audit)", evidence="class=status"),
         )
         run = self.carry(self.same)
-        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertIn("is incorrect)", run.stdout)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(run.stdout, f"carried {self.earlier} {self.same} {self.digest(self.same)}\n")
+
+    def test_the_earlier_head_is_the_newest_row_by_ts_not_by_file_position(self):
+        """Round 5 (P1): a ledger appended out of order (an older ts after a newer one) names the newest audit by its
+        ts column, parsed as a time; the file position decides nothing but a tie, and a ts the pattern passes but no
+        calendar holds is a malformed row, exit 2."""
+        self.git("switch", "-q", "feat")
+        third = self.commit({}, "a third head with the same diff")
+        self.git("switch", "-q", "main")
+        self.verdict(third, "- P1 (high) a.txt:1: the blocker")
+        digest = self.digest(self.same)
+        for name, rows, source in (
+            (
+                "the older row appended after the newer",
+                (ledger("2026-10-30T02:00:00Z", third, "incorrect"), ledger("2026-10-30T01:00:00Z", self.earlier)),
+                third,
+            ),
+            (
+                "the newer row appended after the older",
+                (ledger("2026-10-30T02:00:00Z", self.earlier), ledger("2026-10-30T01:00:00Z", third, "incorrect")),
+                self.earlier,
+            ),
+        ):
+            with self.subTest(name):
+                self.ledger(*rows)
+                run = self.carry(self.same)
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertEqual(run.stdout, f"carried {source} {self.same} {digest}\n")
+                run = self.carry(self.same, "--render")
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertIn(f"The earlier audited head of this pull request is {source} ", run.stdout)
+        self.ledger(ledger("2026-10-30T25:00:00Z", self.earlier))
+        run = self.carry(self.same)
+        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertIn("ledger.tsv:2: the ts '2026-10-30T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ", run.stderr)
+
+    def test_no_earlier_audited_head_is_not_carried(self):
         for name, rows in (
             ("no row at all", ()),
             ("a row of another pull request", (ledger("2026-10-30T01:00:00Z", self.earlier, pr="8"),)),
             ("a row of another unit", (ledger("2026-10-30T01:00:00Z", self.earlier, unit="U8"),)),
-            ("only the head's own row", (ledger("2026-10-30T01:00:00Z", self.same),)),
             ("only a carried row", (ledger("2026-10-30T01:00:00Z", self.earlier, "carried"),)),
         ):
             with self.subTest(name):

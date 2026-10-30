@@ -12,12 +12,16 @@
 #   `--records` must resolve (`pwd -P`) to exactly that store, so a ledger written anywhere else is never read. It reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
-#   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
+#   the full 40-hex sha it judged (a short sha never matches); newest by the row's ts column, the store's fixed UTC
+#   format compared as text (the later line at an equal ts), never by its place in the file (U122 round 5), and a row
+#   whose ts is outside that format is refused naming the line. It must start with the word `correct`, so a later
 #   `incorrect` or `blocked` row for the same head voids an earlier `correct`, or with the word `carried` (regime-cutover
 #   U122, standing order 38): then its evidence must hold `carried <earlier head> <this head> <sha256>`, the line
 #   `scripts/orchestrator/audit-carry.py` printed when this head's diff against its merge base equalled the earlier
-#   head's, the earlier head is another sha than this one, and the newest row for the earlier head must itself be
-#   `correct`; the verdict file and the dispositions the gate then reads are the earlier head's, since its findings
+#   head's, the earlier head is another sha than this one, and the newest row (by ts) for the earlier head must itself
+#   be `correct` (the digest lever carries the earlier head's verdict whatever it says, round 5, so a carry from an
+#   `incorrect` head is a row this gate refuses naming that head); the verdict file and the dispositions the gate then
+#   reads are the earlier head's, since its findings
 #   are this head's. That sha is always the current head: there is no silent carry-over (U71 audit round 10), so a
 #   head that `pr-update-branch.sh` moved gets a fresh audit or a `carried` row the coordinator wrote from the digest
 #   lever's output. The row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a
@@ -63,8 +67,9 @@
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a `carried` row
-#   whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose earlier head has no `correct`
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger row whose
+#   ts is outside `YYYY-MM-DDThh:mm:ssZ`, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
+#   for this head or whose earlier head has no `correct`
 #   row, no verdict file for the audited head, a P2 or P3 finding of it without its `residual` disposition row, a
 #   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
 #   checkout, or CI that is not green on the head.
@@ -201,7 +206,10 @@ gh_bounded() {
 }
 
 # @description Print `<ts>\t<unit>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
-#   when no row names that pair. A ledger whose first line is not the header is a refusal; a failed read exits 1.
+#   when no row names that pair. Newest by the ts column, never by the row's place in the file (U122 round 5: the last
+#   matching line stood for it, so an older row appended after a newer one decided): the store's ts is fixed-width
+#   UTC, so its text order is its time order, and the later line wins an equal ts. A row whose ts is outside that
+#   format is a refusal naming the line, as is a ledger whose first line is not the header; a failed read exits 1.
 #   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
 #   so two different all-digit shas would otherwise match (U71 audit round 1).
 # @arg $1 int The pull request number.
@@ -210,20 +218,26 @@ ledger_verdict() {
     local out status=0
     out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
         { sub(/\r$/, "") }
-        NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 1; exit 3 } next }
-        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $2 "\t" $5 "\t" $7 }
-        END { if (!bad && found != "") print found }
+        NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 3; exit 3 } next }
+        $1 !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z$/ {
+            bad = 4; at = NR "\t" $1; exit 4
+        }
+        ($3 "") == (pr "") && ($4 "") == (sha "") && (found == "" || ($1 "") >= (newest "")) {
+            newest = $1; found = $1 "\t" $2 "\t" $5 "\t" $7
+        }
+        END { if (bad == 4) print at; if (bad) exit bad; if (found != "") print found }
     ' "${ledger}") || status=$?
     case ${status} in
     0) printf '%s' "${out}" ;;
     3) refuse "${ledger} does not start with the ledger header (${ledger_header//$'\t'/ })" ;;
+    4) refuse "${ledger}:${out%%$'\t'*}: the ts '${out#*$'\t'}' is not YYYY-MM-DDThh:mm:ssZ" ;;
     *) fail "cannot read ${ledger}" ;;
     esac
 }
 
-# @description Refuse unless the newest ledger row for pull request ${pr} at sha $1 is `correct`, or is `carried`
-#   (U122, standing order 38) with an evidence that names this head and an earlier head whose own newest row is
-#   `correct`. One gate function decides both: a `carried` row whose earlier head has no `correct` row refuses, and
+# @description Refuse unless the newest ledger row (by ts) for pull request ${pr} at sha $1 is `correct`, or is `carried`
+#   (U122, standing order 38) with an evidence that names this head and an earlier head whose own newest row (by ts)
+#   is `correct`. One gate function decides both: a `carried` row whose earlier head has no `correct` row refuses, and
 #   the head whose verdict file and dispositions the merge then reads is the earlier one. The row's `unit` column
 #   must be the body's unit or a fix unit of it (`U<n>[a-z]`, standing order 24), and it names the verdict file and
 #   the disposition rows the merge reads (round 2: the body's unit opened `U71-<sha8>.md` for a `U71b` row).

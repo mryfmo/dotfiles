@@ -864,7 +864,7 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: dcd303233f6bae8ca7f18d61036ecc6175ecf52db6760c3ffc8ff600e69884f0
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
-      pr-merge.sh: b777e9249f8c35dde47e44d557b5d048c27e2c13e129cef54ea95e01e967ec6f
+      pr-merge.sh: 14a27497fdb22d7d959758d5e6579eea1c5e13fac2e2a04f42a75e2d2895d8be
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
       pr-audit.sh: e8a1011a5cf383f9d2bcd8eb6d61614b3629f29809849055ed24007b4197716b
       brief-check.py: 63fa7c6e6677fc2e871a9c9fb5cf0ac338141e5377696c321311a3cf980021ae

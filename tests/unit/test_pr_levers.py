@@ -1225,6 +1225,91 @@ class PrMergeTest(PrLeverTestCase):
                     ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
                 )
 
+    def test_the_newest_ledger_row_is_the_newest_by_ts_not_by_file_position(self):
+        """U122 round 5 (P1): `ledger_verdict` kept the last matching line of the file, so an older row appended after
+        a newer one (a late re-audit row, a sync that reordered rows) stood for the head's or the earlier head's newest
+        verdict. The newest row is the one with the latest ts column, the store's fixed format compared as text (the
+        later line at an equal ts), for the head's own rows and for a carried row's earlier head alike; a row whose ts
+        is outside that format is refused naming the line."""
+        digest = "d" * 64
+        carried = ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}")
+        self.verdict(head=SHA_B)
+        for name, rows, message in (
+            (
+                "the head's older correct row appended after its incorrect row",
+                (ledger_row(SHA_A, "incorrect (re-audit)", ts="2026-10-25T10:00:00Z"), ledger_row(SHA_A)),
+                f"at {SHA_A} (2026-10-25T10:00:00Z) is not correct: incorrect",
+            ),
+            (
+                "the earlier head's older correct row appended after its incorrect row",
+                (ledger_row(SHA_B, "incorrect (re-audit)", ts="2026-10-25T09:30:00Z"), carried, ledger_row(SHA_B)),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:30:00Z) is not correct: incorrect",
+            ),
+            (
+                "a ts outside the store's format",
+                (ledger_row(SHA_A), ledger_row(SHA_A, ts="yesterday")),
+                "ledger.tsv:3: the ts 'yesterday' is not YYYY-MM-DDThh:mm:ssZ",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertEqual(self.writes(), [])
+        # the mirror: an older incorrect row appended after the newer correct one changes nothing, in both places
+        for name, rows in (
+            ("the head's own rows", (ledger_row(SHA_A, ts="2026-10-25T10:00:00Z"), ledger_row(SHA_A, "incorrect"))),
+            (
+                "the earlier head's rows",
+                (ledger_row(SHA_B, ts="2026-10-25T09:30:00Z"), carried, ledger_row(SHA_B, "incorrect")),
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_a_carry_from_an_incorrect_head_is_a_row_the_gate_refuses_naming_that_head(self):
+        """U122 round 5 (P1): `audit-carry.py` carries the newest audited head's verdict whatever it says, so an
+        `incorrect` earlier head with the same diff gives the `carried` line the coordinator writes as a row; this
+        gate is where that row stops, refused because the earlier head's newest row is not `correct`, naming the
+        head. The line is the lever's own output, not a fixture's."""
+        carry = LEVERS / "audit-carry.py"
+        self.git("switch", "-q", "-c", "feat")
+        (self.repo / "a.txt").write_text("one\n")
+        self.git("add", "a.txt")
+        self.git("commit", "-q", "-m", "earlier")
+        earlier = self.git("rev-parse", "HEAD")
+        self.git("commit", "-q", "--allow-empty", "-m", "the same diff again")
+        head = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        self.ledger(ledger_row(earlier, "incorrect (round 1)"))
+        self.verdict(P2_LINE, head=earlier)
+        decided = subprocess.run(
+            [sys.executable, "-I", str(carry), str(self.records), "U71", "7", head, "--repo", str(self.repo)],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual((0, ""), (decided.returncode, decided.stderr), decided.stdout)
+        self.assertTrue(decided.stdout.startswith(f"carried {earlier} {head} "), decided.stdout)
+        self.ledger(
+            ledger_row(earlier, "incorrect (round 1)"),
+            ledger_row(head, "carried", ts="2026-10-25T10:00:00Z", evidence=decided.stdout.strip()),
+        )
+        self.github(head=head)
+        self.assert_refused(
+            self.merge(), f"rests on {earlier}, whose newest row (2026-10-25T09:00:00Z) is not correct: incorrect"
+        )
+        self.assertEqual(self.writes(), [])
+
     def test_a_fix_unit_s_row_names_its_own_verdict_file(self):
         """Round 2 (P2, standing order 24): a fix unit `U71b` writes `Program-Unit: regime-cutover/U71` in its body
         and keeps `U71b` in its ledger rows, so the verdict file and the disposition rows the gate reads are the row's

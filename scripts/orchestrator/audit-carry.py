@@ -39,9 +39,11 @@ finding's line, a disposition row's line, a hunk's start and count) goes through
 and line, exit 2 (round 3 P2: `int()` of a 5000-digit line raised out of the lever as exit 1, which `pr-audit.sh`
 read as "no earlier audited head").
 
-The data. The unit's earlier audited head is the newest `ledger.tsv` row (ts order) for the pull request whose unit is
+The data. The unit's earlier audited head is the newest `ledger.tsv` row by its ts column (parsed as a time and
+compared as one, never by its place in the file; the later line at an equal ts) for the pull request whose unit is
 the body's unit or a fix unit of it (`U<n>b`, standing order 24), whose verdict starts with `correct` or `incorrect`
-and whose head is not the current one; a `carried`, `blocked` or `-` row is no audit. Its table is every finding line
+and whose head is not the current one, whatever that verdict says; a `carried`, `blocked` or `-` row is no audit, and
+a head that has an audit row of its own is never carried (round 5 P1, below). Its table is every finding line
 of that head's verdict file (`verdicts/<row unit>-<sha8>.md`, named by the row's `unit` column, never the body's: a
 `U7b` row's verdict is `U7b-<sha8>.md`), the leading `## Findings` section read under FINDINGS_GRAMMAR below (one
 `- none` line, or one or more `- P<n> (<confidence>) <path>:<line>: <rationale>` lines; an empty section, `- none`
@@ -73,13 +75,18 @@ digest of a head is the sha256 over the sorted raw records of `git diff-tree -r 
 path), read in the scratch repository, the merge base with `--base` (default `refs/remotes/origin/main`, resolved to
 a sha in the checkout and fetched) computed there too; a record names objects, so a textconv driver, git's binary
 detection and the text of a patch header play no part in it (round 4). It is computed for the earlier audited head
-and for this head, each against its own merge base. When the two digests are equal and the earlier head's row is
-`correct`, it prints `carried <earlier> <head> <digest>` and exits 0: the coordinator writes that line as the evidence
-of a `ledger.tsv` row whose verdict is `carried`, which `pr-merge.sh` accepts in place of `correct` only while the
-earlier head's `correct` row and verdict file stand, and CI must still be green on the new head. Otherwise it prints
-why on stdout (no earlier audited head, an earlier head whose newest audit row is not `correct`, or the first path
-whose record differs between the two diffs) and exits 1, and a head that is audited afresh. A git failure (a fetch
-included) or a store that cannot be read as data is exit 2 on stderr, never "equal".
+and for this head, each against its own merge base. A head the ledger already judged is never carried: when a
+`correct` or `incorrect` row names this head (the body's unit or a fix unit of it), it prints `not carried: head <sha>
+already audited` and exits 1 before any digest is read (round 5 P1: the head's own rows were skipped and a `correct`
+row searched for, so an older `correct` head was carried over this head's own newer `incorrect` row). Otherwise, when
+the two digests are equal, it prints `carried <earlier> <head> <digest>` and exits 0 whatever the earlier head's
+newest verdict says: that verdict is the one carried, the coordinator writes the line as the evidence of a
+`ledger.tsv` row whose verdict is `carried`, and `pr-merge.sh` accepts that row in place of `correct` only while the
+earlier head's newest row by ts is `correct` and its verdict file stands, with CI green on the new head, so a carry
+from an `incorrect` head is a row the gate refuses naming that head. Otherwise it prints why on stdout (no earlier
+audited head, a head already audited, or the first path whose record differs between the two diffs) and exits 1, and
+a head that is audited afresh. A git failure (a fetch included) or a store that cannot be read as data is exit 2 on
+stderr, never "equal".
 """
 
 from __future__ import annotations
@@ -93,6 +100,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 
 LEDGER_HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
 LEDGER_REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
@@ -106,6 +114,7 @@ RULE = (
 )
 # The store's ts is fixed-width UTC, so the text order is the time order (rounds-check.py reads it the same way).
 TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # the same ts parsed as a time, the order every choice of a newest row is made in
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -192,7 +201,8 @@ def quote_c_style(path):
 
 @dataclass(frozen=True)
 class AuditedHead:
-    """The unit's earlier audited head: a ledger row whose verdict starts with `correct` or `incorrect`."""
+    """One audit row of the ledger, a verdict starting with `correct` or `incorrect`: the earlier audited head's, or
+    this head's own."""
 
     ts: str
     unit: str
@@ -279,6 +289,17 @@ def read_text(path):
         raise Malformed(f"{path}: not UTF-8: {error.reason}") from None
 
 
+def timestamp(ts):
+    """The ts column as a time, or None for a text outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar (hour 25):
+    the newest row is chosen by this value, never by the file position (round 5)."""
+    if not TS.match(ts):
+        return None
+    try:
+        return datetime.strptime(ts, TS_FORMAT)
+    except ValueError:
+        return None
+
+
 def parse_rows(name, text, header, required=()):
     """Every data line of one TSV text as (line number, fields): the header's width, a store ts, and no empty column
     among `required` (1-based). Split on the tab alone, so an empty field is still a field (U119 round 3)."""
@@ -294,7 +315,7 @@ def parse_rows(name, text, header, required=()):
         fields = line.rstrip("\r").split("\t")
         if len(fields) != len(header):
             raise Malformed(f"{name}:{line_number}: {len(fields)} columns, not {len(header)}")
-        if not TS.match(fields[0]):
+        if timestamp(fields[0]) is None:
             raise Malformed(f"{name}:{line_number}: the ts {fields[0]!r} is not YYYY-MM-DDThh:mm:ssZ")
         for column in required:
             if fields[column - 1] == "":
@@ -303,8 +324,9 @@ def parse_rows(name, text, header, required=()):
     return rows
 
 
-def previous_audited_head(ledger_name, rows, unit, pr, head):
-    """The newest audit row (ts order) of the pull request for `unit` or a fix unit of it at another head, or None."""
+def audit_rows(ledger_name, rows, unit, pr):
+    """Every audit row of the pull request for `unit` or a fix unit of it (`U<n>[a-z]`, standing order 24): a verdict
+    starting with `correct` or `incorrect`, at any head. A `carried`, `blocked` or `-` row is no audit."""
     own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
     found = []
     for line_number, (ts, row_unit, row_pr, sha, verdict, _verifier, _evidence) in rows:
@@ -313,10 +335,14 @@ def previous_audited_head(ledger_name, rows, unit, pr, head):
             continue
         if not SHA.match(sha):
             raise Malformed(f"{ledger_name}:{line_number}: the head_sha of an audit row is not 40 hex: {sha!r}")
-        if sha == head:
-            continue
         found.append(AuditedHead(ts, row_unit, sha, word.group(1), line_number))
-    return max(found, key=lambda row: (row.ts, row.line)) if found else None
+    return found
+
+
+def newest(audits):
+    """The audit row with the latest ts, parsed as a time (the later line at an equal ts), or None; the place of a
+    row in the file decides nothing else (round 5: an older row appended after a newer one is the older)."""
+    return max(audits, key=lambda row: (timestamp(row.ts), row.line)) if audits else None
 
 
 def findings_of(verdict_file):
@@ -546,10 +572,13 @@ def first_difference(head_records, previous_records):
     return "(no record: the digests differ outside every raw record)"
 
 
-def load_previous(store, unit, pr, head):
+def load_audits(store, unit, pr, head):
+    """(this head's newest audit row or None, the newest audit row at another head or None), from the store's ledger."""
     ledger = os.path.join(store, "ledger.tsv")
     rows = parse_rows(ledger, read_text(ledger), LEDGER_HEADER, required=LEDGER_REQUIRED)
-    return previous_audited_head(ledger, rows, unit, pr, head)
+    audits = audit_rows(ledger, rows, unit, pr)
+    own = newest([row for row in audits if row.head == head])
+    return own, newest([row for row in audits if row.head != head])
 
 
 def main(argv=None):
@@ -573,7 +602,13 @@ def main(argv=None):
     store = args.store.rstrip("/") or args.store
     scratch = None
     try:
-        previous = load_previous(store, args.unit, args.pr, args.head)
+        own, previous = load_audits(store, args.unit, args.pr, args.head)
+        if own is not None and not args.render:
+            print(
+                f"audit-carry: not carried: head {args.head} already audited (its newest audit row, {own.ts}, is "
+                f"{own.verdict}); a carry rests on an earlier head's audit, never on one over this head's own"
+            )
+            return 1
         if previous is None:
             why = f"no earlier audited head for pull request {args.pr} ({args.unit}) other than {args.head[:8]}"
             print(
@@ -594,12 +629,6 @@ def main(argv=None):
             )
             print(table.render())
             return 0
-        if previous.verdict != "correct":
-            print(
-                f"audit-carry: not carried: the earlier audited head {previous.head[:8]} has no correct row (its newest "
-                f"audit row, {previous.ts}, is {previous.verdict})"
-            )
-            return 1
         base = base_sha(root, args.base)
         scratch = scratch_repository()
         for sha in (base, previous.head, args.head):

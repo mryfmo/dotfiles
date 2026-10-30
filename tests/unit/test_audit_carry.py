@@ -7,6 +7,7 @@ one rule), with every store read that fails refusing as exit 2 naming the file a
 import hashlib
 import os
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -48,6 +49,7 @@ class AuditCarryTest(unittest.TestCase):
         self.root = Path(temp.name).resolve()
         self.repo = self.root / "repo"
         git_init(self.repo, "-b", "main", env=GIT_ENV)
+        self.clock = 0  # every fixture commit gets an explicit, strictly increasing date (round 5c)
         self.base = self.commit({"a.txt": "one\ntwo\n", "b.txt": "b\n", "sub/c.txt": "c\n"}, "base")
         self.git("update-ref", "refs/remotes/origin/main", "main")
         self.git("switch", "-q", "-c", "feat")
@@ -62,17 +64,22 @@ class AuditCarryTest(unittest.TestCase):
         self.verdict(self.earlier, "- P2 (high) a.txt:1: the first line shouts", "- P3 (low) a.txt:2: the second")
         self.dispositions(disposition(self.earlier))
 
-    def git(self, *args):
+    def git(self, *args, env=None):
         return subprocess.run(
-            ["git", *args], cwd=self.repo, env=GIT_ENV, check=True, capture_output=True, text=True
+            ["git", *args], cwd=self.repo, env=env or GIT_ENV, check=True, capture_output=True, text=True
         ).stdout.strip()
 
     def commit(self, files, message):
+        """One commit of `files` dated one second after the fixture's last, author and committer alike, so no
+        assertion on an ancestry walk (a merge base under grafts) depends on the wall clock (round 5c)."""
         for rel, text in files.items():
             (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.repo / rel).write_text(text)
+        self.clock += 1
+        date = f"{1761800000 + self.clock} +0000"
+        dated = GIT_ENV | {"GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date}
         self.git("add", "-A")
-        self.git("commit", "-q", "--allow-empty", "-m", message)
+        self.git("commit", "-q", "--allow-empty", "-m", message, env=dated)
         return self.git("rev-parse", "HEAD")
 
     def ledger(self, *rows, text=None):
@@ -752,11 +759,16 @@ class AuditCarryTest(unittest.TestCase):
         """Round 4 (P1): `.git/info/grafts` of the checkout naming both heads as the base's parents made each head its
         own merge base, so both diffs were empty and unequal trees printed `carried`; `--no-replace-objects` leaves
         grafts alone. The merge bases are computed in the scratch repository, which has no grafts file, from the
-        commits as they were fetched."""
-        (self.repo / ".git/info/grafts").write_text(f"{self.base} {self.earlier} {self.different}\n")
+        commits as they were fetched. Round 5c: with that graft alone the checkout's answer followed the commits'
+        dates (git's walk reached the base through the true ancestry first whenever the base was dated oldest, so
+        the test failed twice under load); the fixture commits are now dated explicitly, in order, and the graft also
+        makes this head a root, so the walk can reach it only through the base's grafted edge and the checkout
+        answers the head whatever the dates. The earlier head keeps its true parent (the render fetches it first and
+        the scratch needs the base from it), so its merge base in the checkout is the base, deterministically."""
+        (self.repo / ".git/info/grafts").write_text(f"{self.base} {self.earlier} {self.different}\n{self.different}\n")
         self.assertEqual(self.git("merge-base", "refs/remotes/origin/main", self.different), self.different)
-        empty = hashlib.sha256(b"").hexdigest()
-        self.assertEqual((self.diff_text_digest(self.different), self.diff_text_digest(self.earlier)), (empty, empty))
+        self.assertEqual(self.git("merge-base", "refs/remotes/origin/main", self.earlier), self.base)
+        self.assertEqual(self.diff_text_digest(self.different), hashlib.sha256(b"").hexdigest(), "an empty diff")
         run = self.carry(self.different)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
@@ -783,6 +795,53 @@ class AuditCarryTest(unittest.TestCase):
         run = self.carry(head)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertTrue(run.stdout.endswith("'s at a.txt\n"), run.stdout)
+
+    def test_a_file_replaced_by_a_symlink_renders_the_whole_file(self):
+        """Round 5c (P2): a typechange (raw status `T`: a regular file replaced by a symlink, or back) is one raw
+        record but two `--unified=0` sections, the deletion of the one kind then the creation of the other, so the
+        one-section-per-record count was exit 2 and the audit of that head had no block. Each record owns the sections
+        headed by its path, and a `T` record is `path: whole file`, both ways."""
+        self.git("switch", "-q", "-c", "link", self.earlier)
+        (self.repo / "b.txt").unlink()
+        os.symlink("a.txt", self.repo / "b.txt")
+        link = self.commit({}, "b.txt becomes a symlink")
+        (self.repo / "b.txt").unlink()
+        back = self.commit({"b.txt": "b\n"}, "b.txt is a regular file again")
+        self.git("switch", "-q", "main")
+        run = self.carry(link, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(f"since {self.earlier[:8]}:\n\nb.txt: whole file\n\n{RULE}\n", run.stdout)
+        run = self.carry(link)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.endswith("'s at b.txt\n"), run.stdout)
+        self.ledger(ledger("2026-10-30T01:00:00Z", self.earlier), ledger("2026-10-30T02:00:00Z", link))
+        self.verdict(link, "- P3 (low) b.txt:1: a symlink")
+        run = self.carry(back, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(f"since {link[:8]}:\n\nb.txt: whole file\n\n{RULE}\n", run.stdout)
+
+    def test_a_scratch_repository_whose_init_fails_is_removed(self):
+        """Round 5c (P3): `scratch_repository` made its directory with mkdtemp and `git init` ran before the path was
+        handed to main's cleanup, so an init that failed left an `audit-carry.*` directory under TMPDIR on every such
+        exit 2. The directory is removed before the failure is raised."""
+        fakes = self.root / "fakes"
+        fakes.mkdir()
+        real = shlex.quote(shutil.which("git", path=GIT_ENV["PATH"]))
+        (fakes / "git").write_text(
+            '#!/bin/sh\nfor arg; do [ "$arg" = init ] && { echo "git: init refused" >&2; exit 1; }; done\n'
+            f'exec {real} "$@"\n'
+        )
+        (fakes / "git").chmod(0o755)
+        tmp = self.root / "tmp"
+        tmp.mkdir()
+        env = GIT_ENV | {"PATH": f"{fakes}:{GIT_ENV['PATH']}", "TMPDIR": str(tmp)}
+        for args in ((), ("--render",)):
+            with self.subTest(args):
+                run = self.carry(self.same, *args, env=env)
+                self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+                self.assertTrue(run.stderr.startswith("audit-carry: git init -q --bare --template= "), run.stderr)
+                self.assertTrue(run.stderr.endswith(" exited 1: git: init refused\n"), run.stderr)
+                self.assertEqual(list(tmp.iterdir()), [], "the scratch directory is removed when git init fails")
 
     def test_a_path_holding_a_space_b_slash_is_named_from_the_raw_record(self):
         """Round 4 (P3): a binary file's section has no `+++` line, so its path was cut from the header at the last

@@ -24,8 +24,9 @@ included, runs through the repository's isolated git, `git-isolated.sh` beside t
 and flag arrays (`--no-replace-objects`, no hook, no fsmonitor, no attributes file, no commit graph, no transport),
 with this lever's two flags after them, `--no-replace-objects` (round 3 P1: a `refs/replace` of the head stood in for
 an audited tree and unequal diffs read as carried) and `-c core.quotePath=false` (round 2; since round 4 no path is
-read from a patch header, so the flag shapes nothing the lever reads); the three fetches re-open the local transport
-the library closes (`-c protocol.file.allow=always`, one command each, as the library documents for a caller). The
+read from a patch header: the lever builds each record's header from the record's path under that setting and reads
+the sections it owns by it); the three fetches re-open the local transport the library closes
+(`-c protocol.file.allow=always`, one command each, as the library documents for a caller). The
 fence: the lever fences nothing; `pr-audit.sh` writes the rendered block to a file of its run directory and wraps that
 file in its own per-run nonce tags, as it wraps the pull request body (round 3 P1: a filename holding a newline and
 four backticks closed the lever's fixed fence). Every path the block names is written in git's C-quoted form
@@ -51,10 +52,12 @@ beside a finding, or a line of another shape is a malformed verdict, as pr-merge
 `dispositions.tsv` rows (`ts unit head_sha priority path line disposition reference`; one table row per disposition
 row of the same unit, head, priority, path and line, `none` and `-` when the finding has none), plus every line range
 the diff between the two heads touches: the `-z` raw records of `git diff-tree -r <earlier> <head>` name the changed
-paths, and the `--unified=0` patch of the same two trees, one section per record in the records' order, gives each
-path its hunks (the new side of each as `path: start-end`; `0-0` is a deleted file). A record whose section has no
-hunk (a binary file, a text file holding a NUL byte, a mode change alone) is `path: whole file`, and a path is never
-read from a patch header (round 4 P2: a NUL byte made the changed line vanish; P3: the last ` b/` of a header was
+paths, and the `--unified=0` patch of the same two trees, its sections in the records' order and each record owning
+the sections headed by its path (one; two for a typechange), gives each path its hunks (the new side of each as
+`path: start-end`; `0-0` is a deleted file). A `T` record (a file replaced by a symlink, or back; round 5c P2: its two
+sections failed the one-per-record count as exit 2) and a record whose sections have no hunk (a binary file, a text
+file holding a NUL byte, a mode change alone) are `path: whole file`, and a path is never read from a patch header
+(round 4 P2: a NUL byte made the changed line vanish; P3: the last ` b/` of a header was
 taken as the path delimiter, so `dir b/payload.dat` was named `payload.dat`). The rows are modelled as frozen
 dataclasses (`CarriedFinding`, `ChangedRange`) and `CarriedTable.render()` writes the one block, plain text with a
 tab-separated table, that the audit prompt carries inside pr-audit.sh's tags.
@@ -443,12 +446,17 @@ def base_sha(root, base):
 def scratch_repository():
     """A fresh bare repository of this run under TMPDIR, made with no template: it holds the config `git init` writes
     and nothing of the checkout's, no `info/` directory, no grafts file, no replace ref, no hook, no attributes. Every
-    git command after the fetches runs here; main removes it on exit (round 4)."""
+    git command after the fetches runs here; main removes it on exit (round 4), and a `git init` that fails removes
+    the directory mkdtemp made before the failure is raised (round 5c P3: it was left under TMPDIR)."""
     try:
         path = tempfile.mkdtemp(prefix="audit-carry.")
     except OSError as error:
         raise Malformed(f"cannot make a scratch repository under {tempfile.gettempdir()}: {error.strerror}") from None
-    git(path, "init", "-q", "--bare", "--template=", "--initial-branch=main", path)
+    try:
+        git(path, "init", "-q", "--bare", "--template=", "--initial-branch=main", path)
+    except BaseException:
+        shutil.rmtree(path, ignore_errors=True)
+        raise
     return path
 
 
@@ -494,13 +502,14 @@ def raw_records(scratch, old, new):
 
 
 def patch_sections(patch, where):
-    """The `--unified=0` patch split at its `diff --git` lines: the lines of each section, in order. Every content
-    line of a unified patch carries a prefix (`+`, `-`, `@@`, `\\`) and git C-quotes a control character in a header's
-    name, so only a header starts a line with `diff --git `; text before the first header is a malformed patch."""
+    """The `--unified=0` patch split at its `diff --git` lines: the lines of each section, in order, the header first.
+    Every content line of a unified patch carries a prefix (`+`, `-`, `@@`, `\\`) and git C-quotes a control character
+    in a header's name, so only a header starts a line with `diff --git `; text before the first header is a
+    malformed patch."""
     sections = []
     for line in patch.split(b"\n"):
         if line.startswith(b"diff --git "):
-            sections.append([])
+            sections.append([line])
         elif sections:
             sections[-1].append(line)
         elif line:
@@ -508,12 +517,22 @@ def patch_sections(patch, where):
     return sections
 
 
+def section_header(name):
+    """The `diff --git` line git writes for a record's path without renames and with core.quotePath off: `a/<path>`
+    and `b/<path>`, each quoted whole (git's quote_two) when the path holds a quote, a backslash or a control
+    character. Built from the record's path and compared with a section's first line, so a path is still never read
+    from a header (round 4 P3) and a record owns every section git printed for it (round 5c P2)."""
+    return f"diff --git {quote_c_style('a/' + name)} {quote_c_style('b/' + name)}".encode("utf-8", "surrogateescape")
+
+
 def changed_ranges(scratch, previous, head):
     """Every hunk of the `--unified=0` patch between the two heads as a ChangedRange of the new side, in the order of
-    the raw records; the paths are the records', and the patch's sections are matched to the records by position
-    (git prints one `diff --git` section per record, in the records' order; another count is a malformed patch). A
-    record whose section has no hunk is one ChangedRange of the whole file (round 4). A hunk start or count outside
-    the number grammar is a malformed diff."""
+    the raw records; the paths are the records', and each record owns the run of patch sections headed by its path
+    (git prints the sections in the records' order, one per record, two for a typechange: the deletion of the old
+    kind of file, then the creation of the new; a record with no section, or a section no record owns, is a malformed
+    patch). A `T` record (a regular file replaced by a symlink or a gitlink, or back) is one ChangedRange of the whole
+    file, as is a record whose sections have no hunk (round 4). A hunk start or count outside the number grammar is a
+    malformed diff."""
     records = raw_records(scratch, previous, head)
     where = f"git diff-tree {previous[:8]} {head[:8]}"
     patch = git(
@@ -531,12 +550,22 @@ def changed_ranges(scratch, previous, head):
         head,
     )
     sections = patch_sections(patch, where)
-    if len(sections) != len(records):
-        raise Malformed(f"{where}: {len(sections)} patch sections for {len(records)} raw records")
     ranges = []
-    for (path, _record), lines in zip(records, sections):
+    position = 0
+    for path, record in records:
         name = path.decode("utf-8", errors="surrogateescape")
-        hunks = [hunk for line in lines if (hunk := HUNK.match(line))]
+        header = section_header(name)
+        owned = []
+        while position < len(sections) and sections[position][0] == header:
+            owned.append(sections[position][1:])
+            position += 1
+        if not owned:
+            found = sections[position][0][:80] if position < len(sections) else b"(no section left)"
+            raise Malformed(f"{where}: no patch section headed {header[:80]!r} for its raw record; found {found!r}")
+        if record.endswith(b" T"):
+            hunks = []
+        else:
+            hunks = [hunk for lines in owned for line in lines if (hunk := HUNK.match(line))]
         if not hunks:
             ranges.append(ChangedRange(name, None, None))
         for hunk in hunks:
@@ -544,6 +573,9 @@ def changed_ranges(scratch, previous, head):
             start = number(hunk_text, hunk.group(1).decode(), "hunk start")
             count = 1 if hunk.group(2) is None else number(hunk_text, hunk.group(2).decode(), "hunk count")
             ranges.append(ChangedRange(name, start, start + count - 1 if count else start))
+    if position != len(sections):
+        left = len(sections) - position
+        raise Malformed(f"{where}: {left} patch sections after the last raw record's; {sections[position][0][:80]!r}")
     return tuple(ranges)
 
 

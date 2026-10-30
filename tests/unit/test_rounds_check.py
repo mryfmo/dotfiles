@@ -1,6 +1,7 @@
 """Exercise scripts/orchestrator/rounds-check.py on fixture stores (regime-cutover U120, standing order 36): the round
-cap and the two-strike rule as exit codes and one-line reasons, the malformed-store refusals naming the file and line,
-`--all` over several units, and the git form the `regime` check runs on a pull request's head."""
+cap and the two-strike rule as exit codes and one-line reasons, the rows before the rule's effective date that are
+read but not counted, the malformed-store refusals naming the file and line, `--all` over several units, and the git
+form the `regime` check runs on a pull request's head."""
 
 import os
 import shutil
@@ -44,6 +45,17 @@ def tsv(header, rows):
 
 def three_incorrect(unit="U7"):
     return [audit(f"2026-10-30T0{n}:00:00Z", unit, "incorrect") for n in (1, 2, 3)]
+
+
+def four_earlier_incorrect(unit="U7"):
+    """Four incorrect rows of the day before the rule (no `class=`, as rows of that day have none)."""
+    return [
+        audit(f"2026-10-29T0{n}:00:00Z", unit, "incorrect", "findings=1 P2: the status is lost") for n in (1, 2, 3, 4)
+    ]
+
+
+def ignored(count):
+    return f"{count} earlier rows ignored (rule effective 2026-10-30)"
 
 
 class RoundsCheckTest(unittest.TestCase):
@@ -143,6 +155,58 @@ class RoundsCheckTest(unittest.TestCase):
                 self.assertEqual(1, run.returncode, run.stdout + run.stderr)
                 self.assertIn("0 mechanism rows; the fourth round", run.stdout)
 
+    def test_audit_rows_before_the_rule_date_are_read_but_not_counted(self):
+        run = self.check(self.store(four_earlier_incorrect()), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows, "
+            f"{ignored(4)}\n",
+            run.stdout,
+        )
+
+    def test_the_cap_counts_the_rows_from_the_rule_date_only(self):
+        rows = four_earlier_incorrect() + three_incorrect()[:2]
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(
+            f"U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows, {ignored(4)}",
+            run.stdout,
+        )
+        rows = four_earlier_incorrect() + three_incorrect()
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows, "
+            f"{ignored(4)}; the fourth round needs a mechanism-change row: {ROW_TO_WRITE.format(unit='U7')}\n",
+            run.stdout,
+        )
+        self.assertNotIn("7 audit rows", run.stdout, "the earlier rows are named as ignored, never counted")
+
+    def test_a_mechanism_row_before_the_rule_date_does_not_count(self):
+        decisions = [mechanism("2026-10-29T23:11:27Z", "U7", "allowlist of the guarded names")]
+        run = self.check(self.store(three_incorrect(), decisions), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(
+            f"U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows, {ignored(1)}; "
+            "the fourth round needs a mechanism-change row",
+            run.stdout,
+        )
+        # an earlier row naming two forms is ignored alike: no note asks the coordinator to repair it
+        decisions.append(mechanism("2026-10-29T23:12:00Z", "U7", "ast and allowlist"))
+        run = self.check(self.store(three_incorrect(), decisions), "U7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertNotIn("does not count", run.stdout)
+        # a row at the rule date's first second is counted: here it precedes the three rows, so the strikes refuse
+        decisions = [mechanism("2026-10-30T00:00:00Z", "U7", "allowlist of the guarded names")]
+        run = self.check(self.store(three_incorrect(), decisions), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(
+            "3 incorrect since the mechanism-change row of 2026-10-30T00:00:00Z (allowlist), 1 mechanism rows; "
+            "2 strikes since that row need another",
+            run.stdout,
+        )
+        self.assertNotIn("earlier rows ignored", run.stdout)
+
     def test_a_malformed_store_exits_2_naming_the_file_and_line(self):
         good = [audit("2026-10-30T01:00:00Z", "U7", "correct", "findings=0")]
         short = tsv(LEDGER_HEADER, good) + "2026-10-30T02:00:00Z\tU7\t7\tincorrect\n"
@@ -184,18 +248,23 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
         self.assertEqual("rounds-check: 3 units checked, 0 refused\n", run.stderr)
 
-    def test_an_incorrect_row_without_class_is_malformed_only_after_the_rule_date(self):
+    def test_an_incorrect_row_without_class_is_malformed_only_from_the_rule_date(self):
         old = audit("2026-10-29T23:59:59Z", "U7", "incorrect", "findings=1 P2: the status is lost")
         run = self.check(self.store([old]), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
-        self.assertIn("1 audit rows (1 incorrect)", run.stdout, "the older row counts")
-        new = audit("2026-10-30T00:00:01Z", "U7", "incorrect", "findings=1 P2: the status is lost")
-        run = self.check(self.store([old, new]), "U7")
-        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
         self.assertIn(
-            "ledger.tsv:3: an incorrect row after 2026-10-30T00:00:00Z whose evidence does not start with class=<word>",
-            run.stderr,
+            f"0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows, {ignored(1)}", run.stdout
         )
+        for ts in ("2026-10-30T00:00:00Z", "2026-10-30T00:00:01Z"):
+            with self.subTest(ts=ts):
+                new = audit(ts, "U7", "incorrect", "findings=1 P2: the status is lost")
+                run = self.check(self.store([old, new]), "U7")
+                self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+                self.assertIn(
+                    "ledger.tsv:3: an incorrect row from 2026-10-30T00:00:00Z on whose evidence does not start with "
+                    "class=<word>",
+                    run.stderr,
+                )
         for evidence in ("class=status findings=1", "class=status", "class=a-b_c;x"):
             with self.subTest(evidence=evidence):
                 rows = [old, audit("2026-10-30T00:00:01Z", "U7", "incorrect", evidence)]

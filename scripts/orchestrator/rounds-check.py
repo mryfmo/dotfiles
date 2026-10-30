@@ -4,7 +4,7 @@
 `rounds-check.py <store> U<n>` reads `<store>/ledger.tsv` and `<store>/decisions.tsv` as data and exits 0 when the
 unit's next audit is allowed, 1 with a one-line reason when it is not, and 2 when the store cannot be read as data (a
 missing file, a header that is not the store's, a row with the wrong column count, a ts outside `YYYY-MM-DDThh:mm:ssZ`,
-an `incorrect` row after 2026-10-30 whose evidence does not start with `class=<word>`, standing order 39), naming the
+an `incorrect` row from 2026-10-30 on whose evidence does not start with `class=<word>`, standing order 39), naming the
 file and line. `rounds-check.py --all <store>` checks every unit of the ledger, prints one line per refused unit and
 exits 1 when any is refused. With `--all <path> --base <commit> --head <commit>` the two files are read from the head
 commit's tree (`git cat-file blob`), as the `regime` check reads a pull request whose head is never checked out, and a
@@ -15,8 +15,12 @@ The rule (standing order 36). An audit row is a ledger row whose verdict is exac
 mechanism row for U<n> is a decisions row of phase `mechanism-change` whose decision starts with `U<n> ` or `U<n>:` and
 whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit is allowed when the
 unit has fewer than three audit rows, or when it has a mechanism row and fewer than two `incorrect` rows after its
-latest one; every other case is refused with the row the coordinator must write. The class judgement (the `class=`
-token) stays the coordinator's: this check counts rows and never reads a pull request.
+latest one; every other case is refused with the row the coordinator must write. The rule is forward-looking: an audit
+row or a mechanism row whose ts is before RULE_EFFECTIVE (2026-10-30T00:00:00Z, the day standing orders 36 and 39 were
+written) is read and validated for shape but counted for neither the cap nor the strikes, the earlier rounds being
+P-41's measurement and not a gate; the allowed and refused lines name how many such rows were ignored. The same date is
+the one from which an `incorrect` row needs its `class=` token. The class judgement (the `class=` token) stays the
+coordinator's: this check counts rows and never reads a pull request.
 """
 
 import argparse
@@ -33,7 +37,7 @@ MECHANISM_PHASE = "mechanism-change"
 FORMS = ("ast", "parser-module", "allowlist", "remove", "residual")
 ROUND_CAP = 3  # audit rows a unit may have before its next round needs a mechanism row
 STRIKES = 2  # incorrect rows after the latest mechanism row that need another one
-CLASS_REQUIRED_FROM = "2026-10-30T00:00:00Z"  # standing order 39; older rows are exempt by date
+RULE_EFFECTIVE = "2026-10-30T00:00:00Z"  # standing orders 36 and 39: rows before it are read and never counted
 # The store's ts is fixed-width UTC, so the text order is the time order and no row needs a parsed date.
 TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
@@ -84,7 +88,8 @@ class Malformed(Exception):
 @dataclass(frozen=True)
 class Store:
     """The two files read once: every audit row, every mechanism row, the mechanism-change rows that count for no
-    unit (no unit prefix, or none or several forms), and every unit the ledger names in first-seen order."""
+    unit (no unit prefix, or none or several forms) as (ts, unit or None, line, forms), and every unit the ledger names
+    in first-seen order."""
 
     audits: tuple
     mechanisms: tuple
@@ -92,21 +97,23 @@ class Store:
     units: tuple
 
     def verdict_for(self, unit):
-        """Allowed or Refused for the unit's next audit, from the counts alone."""
-        audits = sorted((row for row in self.audits if row.unit == unit), key=lambda row: row.ts)
-        mechanisms = sorted((row for row in self.mechanisms if row.unit == unit), key=lambda row: row.ts)
+        """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on."""
+        audits, earlier_audits = counted(row for row in self.audits if row.unit == unit)
+        mechanisms, earlier_mechanisms = counted(row for row in self.mechanisms if row.unit == unit)
+        earlier = earlier_audits + earlier_mechanisms
         latest = mechanisms[-1] if mechanisms else None
         strikes = sum(row.verdict == "incorrect" and (latest is None or row.ts > latest.ts) for row in audits)
         incorrect = sum(row.verdict == "incorrect" for row in audits)
         since = "the start" if latest is None else f"the mechanism-change row of {latest.ts} ({latest.form})"
+        ignored = f", {earlier} earlier rows ignored (rule effective {RULE_EFFECTIVE[:10]})" if earlier else ""
         counts = (
             f"{len(audits)} audit rows ({incorrect} incorrect), {strikes} incorrect since {since}, "
-            f"{len(mechanisms)} mechanism rows"
+            f"{len(mechanisms)} mechanism rows{ignored}"
         )
         discounted = [
             f"decisions.tsv:{line} is a mechanism-change row for {unit} naming {len(forms) or 'no'} form(s)"
-            for owner, line, forms in self.discounted
-            if owner == unit
+            for ts, owner, line, forms in self.discounted
+            if owner == unit and ts >= RULE_EFFECTIVE
         ]
         note = "".join(f"; {text}, so it does not count" for text in discounted)
         if len(audits) < ROUND_CAP:
@@ -118,6 +125,13 @@ class Store:
             need = f"{STRIKES} strikes since that row need another"
             return Refused(unit, f"{counts}{note}; {need}: write {ROW_TO_WRITE.format(unit=unit)}")
         return Allowed(unit, counts)
+
+
+def counted(rows):
+    """The rows from RULE_EFFECTIVE on in ts order, and how many earlier rows were left out of the count."""
+    rows = sorted(rows, key=lambda row: row.ts)
+    kept = [row for row in rows if row.ts >= RULE_EFFECTIVE]
+    return kept, len(rows) - len(kept)
 
 
 def parse_rows(name, text, header):
@@ -145,9 +159,9 @@ def audit_rows(name, rows):
     for number, (ts, unit, _pr, _head, verdict, _verifier, evidence) in rows:
         if verdict not in AUDIT_VERDICTS:
             continue
-        if verdict == "incorrect" and ts > CLASS_REQUIRED_FROM and not CLASS.match(evidence):
+        if verdict == "incorrect" and ts >= RULE_EFFECTIVE and not CLASS.match(evidence):
             raise Malformed(
-                f"{name}:{number}: an incorrect row after {CLASS_REQUIRED_FROM} whose evidence does not start with "
+                f"{name}:{number}: an incorrect row from {RULE_EFFECTIVE} on whose evidence does not start with "
                 "class=<word> (standing order 39)"
             )
         found.append(AuditRow(ts, unit, verdict, number))
@@ -155,7 +169,7 @@ def audit_rows(name, rows):
 
 
 def mechanism_rows(rows):
-    """The mechanism rows, and (unit or None, line, forms) for each mechanism-change row that is not one."""
+    """The mechanism rows, and (ts, unit or None, line, forms) for each mechanism-change row that is not one."""
     found, discounted = [], []
     for number, (ts, phase, decision, _why, _evidence, result) in rows:
         if phase != MECHANISM_PHASE:
@@ -163,7 +177,7 @@ def mechanism_rows(rows):
         owner = UNIT_PREFIX.match(decision)
         forms = tuple(form for form, token in FORM_TOKENS.items() if token.search(result))
         if owner is None or len(forms) != 1:
-            discounted.append((owner.group(1) if owner else None, number, forms))
+            discounted.append((ts, owner.group(1) if owner else None, number, forms))
             continue
         found.append(MechanismRow(ts, owner.group(1), forms[0], number))
     return tuple(found), tuple(discounted)

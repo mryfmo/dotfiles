@@ -18,16 +18,21 @@ records pull requests by their content, never by a branch name.
 The rule (standing order 36). An audit row is a ledger row whose verdict is exactly `correct` or `incorrect`. A
 mechanism row for U<n> is a decisions row of phase `mechanism-change` whose decision starts with `U<n> ` or `U<n>:` and
 whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit is refused when the
-unit has a mechanism row and two or more `incorrect` rows after its latest one, or has no mechanism row and three or
-more audit rows, each naming the row the coordinator must write; it is allowed otherwise. Neither test stands behind
-the other: a unit whose counted rows are one mechanism row and two `incorrect` rows after it is refused although it
-has fewer than three audit rows (round 3). The rule is forward-looking: an audit
+unit has a mechanism row and two or more `incorrect` rows of one class (the word of the `class=` token) after its
+latest one, or has no mechanism row and three or more audit rows, each naming the row the coordinator must write; it
+is allowed otherwise. The strikes are counted per class and the cap per row (round 7): two `incorrect` rows of
+unrelated classes after the mechanism row are one strike each and refuse nothing, while three audit rows of three
+classes and no mechanism row are the cap. Neither test stands behind the other: a unit whose counted rows are one
+mechanism row and two `incorrect` rows of one class after it is refused although it has fewer than three audit rows
+(round 3). The rule is forward-looking: an audit
 row or a mechanism row whose ts is before RULE_EFFECTIVE (2026-10-30T00:00:00Z, the day standing orders 36 and 39 were
 written) is read and validated for shape but counted for neither the cap nor the strikes, the earlier rounds being
 P-41's measurement and not a gate; the allowed and refused lines name how many such rows were ignored. The same date is
 the one from which an `incorrect` row needs its `class=` token. The class judgement (the `class=` token) stays the
-coordinator's: this check counts rows and never reads a pull request.
+coordinator's: this check compares the tokens' words for equality, judges none, and never reads a pull request.
 """
+
+from __future__ import annotations  # the `str | None` field annotation, read as text by every python3 the lever meets
 
 import argparse
 import os
@@ -42,14 +47,14 @@ AUDIT_VERDICTS = frozenset(("correct", "incorrect"))
 MECHANISM_PHASE = "mechanism-change"
 FORMS = ("ast", "parser-module", "allowlist", "remove", "residual")
 ROUND_CAP = 3  # audit rows a unit may have before its next round needs a mechanism row
-STRIKES = 2  # incorrect rows after the latest mechanism row that need another one
+STRIKES = 2  # incorrect rows of one class after the latest mechanism row that need another one
 RULE_EFFECTIVE = "2026-10-30T00:00:00Z"  # standing orders 36 and 39: rows before it are read and never counted
 # The store's ts is fixed-width UTC, so the text order is the time order and no row needs a parsed date.
 TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 UNIT_PREFIX = re.compile(r"^(U[0-9]+[a-z]?)[ :]")
-CLASS = re.compile(r"^class=\S+(\s|$)")
+CLASS = re.compile(r"^class=(\S+)(?:\s|$)")
 # A form is a whole token of the result: `allowlisted` or `ast-free` names none.
 FORM_TOKENS = {form: re.compile(rf"(?<![A-Za-z0-9-]){re.escape(form)}(?![A-Za-z0-9-])") for form in FORMS}
 ROW_TO_WRITE = 'decisions.tsv phase=mechanism-change decision="{unit} ..." result names one of ' + "|".join(FORMS)
@@ -58,12 +63,14 @@ OBJECT_ID = re.compile(r"^[0-9a-f]{40,64}$")
 
 @dataclass(frozen=True)
 class AuditRow:
-    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`."""
+    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`; `klass` is the word of the
+    evidence's `class=` token, None for a row without one (allowed before RULE_EFFECTIVE, and for `correct` rows)."""
 
     ts: str
     unit: str
     verdict: str
     line: int
+    klass: str | None = None
 
 
 @dataclass(frozen=True)
@@ -111,18 +118,24 @@ class Store:
         return tuple(dict.fromkeys((body_unit, *(unit for unit, number in self.pull_requests if number == pr))))
 
     def verdict_for(self, unit):
-        """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on."""
+        """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on: the cap
+        counts audit rows, the strikes count the `incorrect` rows after the latest mechanism row per class."""
         audits, earlier_audits = counted(row for row in self.audits if row.unit == unit)
         mechanisms, earlier_mechanisms = counted(row for row in self.mechanisms if row.unit == unit)
         earlier = earlier_audits + earlier_mechanisms
         latest = mechanisms[-1] if mechanisms else None
-        strikes = sum(row.verdict == "incorrect" and (latest is None or row.ts > latest.ts) for row in audits)
-        incorrect = sum(row.verdict == "incorrect" for row in audits)
+        incorrect = [row for row in audits if row.verdict == "incorrect"]
+        strikes = [row for row in incorrect if latest is None or row.ts > latest.ts]
+        per_class = {}  # class word -> strikes of that class, in first-seen (ts) order; a counted strike has a class
+        for row in strikes:
+            per_class[row.klass] = per_class.get(row.klass, 0) + 1
+        struck = [klass for klass, count in per_class.items() if count >= STRIKES]
+        classes = ", ".join(f"{klass}={count}" for klass, count in per_class.items()) or "none"
         since = "the start" if latest is None else f"the mechanism-change row of {latest.ts} ({latest.form})"
         ignored = f", {earlier} earlier rows ignored (rule effective {RULE_EFFECTIVE[:10]})" if earlier else ""
         counts = (
-            f"{len(audits)} audit rows ({incorrect} incorrect), {strikes} incorrect since {since}, "
-            f"{len(mechanisms)} mechanism rows{ignored}"
+            f"{len(audits)} audit rows ({len(incorrect)} incorrect), {len(strikes)} incorrect since {since} "
+            f"(classes: {classes}), {len(mechanisms)} mechanism rows{ignored}"
         )
         discounted = [
             f"decisions.tsv:{line} is a mechanism-change row for {unit} naming {len(forms) or 'no'} form(s)"
@@ -130,9 +143,13 @@ class Store:
             if owner == unit and ts >= RULE_EFFECTIVE
         ]
         note = "".join(f"; {text}, so it does not count" for text in discounted)
-        # the decision table of standing order 36: the strikes stand behind no cap and the cap behind no strikes
+        # the decision table of standing order 36: the strikes (per class) stand behind no cap and the cap (per row)
+        # behind no strikes
         refusals = (
-            (latest is not None and strikes >= STRIKES, f"{STRIKES} strikes since that row need another"),
+            (
+                latest is not None and bool(struck),
+                f"{STRIKES} strikes of class {' and '.join(struck)} since that row need another",
+            ),
             (latest is None and len(audits) >= ROUND_CAP, "the fourth round needs a mechanism-change row"),
         )
         need = next((need for refused, need in refusals if refused), None)
@@ -169,16 +186,18 @@ def parse_rows(name, text, header):
 
 
 def audit_rows(name, rows):
+    """Every audit row, with the word of its `class=` token; a post-date `incorrect` row without one is Malformed."""
     found = []
     for number, (ts, unit, _pr, _head, verdict, _verifier, evidence) in rows:
         if verdict not in AUDIT_VERDICTS:
             continue
-        if verdict == "incorrect" and ts >= RULE_EFFECTIVE and not CLASS.match(evidence):
+        klass = CLASS.match(evidence)
+        if verdict == "incorrect" and ts >= RULE_EFFECTIVE and klass is None:
             raise Malformed(
                 f"{name}:{number}: an incorrect row from {RULE_EFFECTIVE} on whose evidence does not start with "
                 "class=<word> (standing order 39)"
             )
-        found.append(AuditRow(ts, unit, verdict, number))
+        found.append(AuditRow(ts, unit, verdict, number, klass.group(1) if klass else None))
     return tuple(found)
 
 

@@ -90,7 +90,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows\n",
+            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
             run.stdout,
         )
 
@@ -99,7 +99,7 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(run.stdout.count("\n"), 1, "one line")
         self.assertIn(
-            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows",
+            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start (classes: status=3), 0 mechanism rows",
             run.stdout,
         )
         self.assertIn("the fourth round needs a mechanism-change row: " + ROW_TO_WRITE.format(unit="U7"), run.stdout)
@@ -112,7 +112,7 @@ class RoundsCheckTest(unittest.TestCase):
                 self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
                 self.assertIn(
                     "U7 allowed: 3 audit rows (3 incorrect), 0 incorrect since the mechanism-change row of "
-                    "2026-10-30T04:00:00Z (parser-module), 1 mechanism rows",
+                    "2026-10-30T04:00:00Z (parser-module) (classes: none), 1 mechanism rows",
                     run.stdout,
                 )
 
@@ -128,7 +128,8 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
             "U7 refused: 6 audit rows (5 incorrect), 2 incorrect since the mechanism-change row of 2026-10-30T04:00:00Z"
-            " (allowlist), 1 mechanism rows; 2 strikes since that row need another: " + ROW_TO_WRITE.format(unit="U7"),
+            " (allowlist) (classes: status=2), 1 mechanism rows; 2 strikes of class status since that row need another: "
+            + ROW_TO_WRITE.format(unit="U7"),
             run.stdout,
         )
         # a row at the mechanism row's own ts is not after it, so the strikes are back to one
@@ -145,7 +146,7 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
             "rounds-check: U7 allowed: 1 audit rows (1 incorrect), 1 incorrect since the mechanism-change row of "
-            "2026-10-30T04:00:00Z (remove), 1 mechanism rows\n",
+            "2026-10-30T04:00:00Z (remove) (classes: status=1), 1 mechanism rows\n",
             run.stdout,
         )
         rows.append(audit("2026-10-30T06:00:00Z", "U7", "incorrect"))
@@ -153,13 +154,96 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
             "rounds-check: U7 refused: 2 audit rows (2 incorrect), 2 incorrect since the mechanism-change row of "
-            "2026-10-30T04:00:00Z (remove), 1 mechanism rows; 2 strikes since that row need another: "
+            "2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes of class status since that "
+            "row need another: "
             f"{ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
         )
         run = self.check("--all", self.store(rows, decisions))
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertIn("rounds-check: U7 refused: 2 audit rows (2 incorrect)", run.stdout)
+
+    def test_two_incorrect_rows_of_different_classes_after_the_mechanism_row_are_one_strike_each(self):
+        """Round 7 (the Codex P2 on c3a9bfdc): the two strikes are two `incorrect` rows of one class (the word of the
+        `class=` token), so two rows of unrelated classes after the mechanism row refuse nothing; on c3a9bfdc the word
+        was discarded and their sum refused, asking for a mechanism-change row no class had earned."""
+        decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
+        rows = [
+            audit("2026-10-30T05:00:00Z", "U7", "incorrect", "class=gate-logic findings=1"),
+            audit("2026-10-30T06:00:00Z", "U7", "incorrect", "class=unit-key findings=1"),
+        ]
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the mechanism-change row of "
+            "2026-10-30T04:00:00Z (remove) (classes: gate-logic=1, unit-key=1), 1 mechanism rows\n",
+            run.stdout,
+        )
+        # a third class is a third single strike; a token's word is whole and case-kept (`Gate-logic` is another)
+        rows.append(audit("2026-10-30T07:00:00Z", "U7", "incorrect", "class=Gate-logic"))
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn("(classes: gate-logic=1, unit-key=1, Gate-logic=1), 1 mechanism rows\n", run.stdout)
+        # the same rows with the pull request form, and under --all: still allowed
+        run = self.check(self.store(rows, decisions), "U7", "--pr", "7")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        run = self.check("--all", self.store(rows, decisions))
+        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
+
+    def test_two_incorrect_rows_of_one_class_after_the_mechanism_row_refuse_naming_the_class(self):
+        decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
+        rows = [
+            audit("2026-10-30T05:00:00Z", "U7", "incorrect", "class=gate-logic findings=1"),
+            audit("2026-10-30T06:00:00Z", "U7", "incorrect", "class=unit-key findings=1"),
+            audit("2026-10-30T07:00:00Z", "U7", "correct", "findings=0"),
+            audit("2026-10-30T08:00:00Z", "U7", "incorrect", "class=unit-key findings=2"),
+        ]
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 refused: 4 audit rows (3 incorrect), 3 incorrect since the mechanism-change row of "
+            "2026-10-30T04:00:00Z (remove) (classes: gate-logic=1, unit-key=2), 1 mechanism rows; 2 strikes of class "
+            f"unit-key since that row need another: {ROW_TO_WRITE.format(unit='U7')}\n",
+            run.stdout,
+        )
+        # two classes at two strikes each are both named; a second mechanism row resets every class
+        rows.append(audit("2026-10-30T09:00:00Z", "U7", "incorrect", "class=gate-logic findings=1"))
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn("2 strikes of class gate-logic and unit-key since that row need another", run.stdout)
+        decisions.append(mechanism("2026-10-30T10:00:00Z", "U7", "allowlist"))
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(
+            "0 incorrect since the mechanism-change row of 2026-10-30T10:00:00Z (allowlist) (classes: none), "
+            "2 mechanism rows\n",
+            run.stdout,
+        )
+
+    def test_three_incorrect_rows_of_three_classes_and_no_mechanism_row_are_the_cap(self):
+        """The cap counts rows, not classes (standing order 36): three audit rows of three classes and no mechanism
+        row refuse as the fourth round, and the line names the classes one each."""
+        rows = [
+            audit("2026-10-30T01:00:00Z", "U7", "incorrect", "class=gate-logic findings=1"),
+            audit("2026-10-30T02:00:00Z", "U7", "incorrect", "class=unit-key findings=1"),
+            audit("2026-10-30T03:00:00Z", "U7", "incorrect", "class=status findings=1"),
+        ]
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start (classes: gate-logic=1, "
+            "unit-key=1, status=1), 0 mechanism rows; the fourth round needs a mechanism-change row: "
+            f"{ROW_TO_WRITE.format(unit='U7')}\n",
+            run.stdout,
+        )
+        # three `correct` rows, which carry no class, are the cap alike
+        rows = [audit(f"2026-10-30T0{n}:00:00Z", "U7", "correct", "findings=0") for n in (1, 2, 3)]
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn(
+            "3 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows; the fourth",
+            run.stdout,
+        )
 
     def test_the_pr_form_gates_on_every_unit_the_ledger_names_for_the_pull_request(self):
         """Round 6 (standing order 24): a fix or residual unit U7b writes `Program-Unit: .../U7` in its body and keeps
@@ -170,7 +254,7 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertEqual(run.stdout.count("\n"), 1, "one line per refused unit")
         self.assertIn(
-            "rounds-check: U7b refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows; "
+            "rounds-check: U7b refused: 3 audit rows (3 incorrect), 3 incorrect since the start (classes: status=3), 0 mechanism rows; "
             "the fourth round needs a mechanism-change row: " + ROW_TO_WRITE.format(unit="U7b"),
             run.stdout,
         )
@@ -179,7 +263,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(three_incorrect("U7b")), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows\n",
+            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows\n",
             run.stdout,
         )
         # a pull request whose rows name only the body unit behaves as before: three rows refuse, two allow
@@ -191,7 +275,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(three_incorrect()[:2]), "U7", "--pr", "7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertEqual(
-            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows\n",
+            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
             run.stdout,
         )
         self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
@@ -205,7 +289,7 @@ class RoundsCheckTest(unittest.TestCase):
                 run = self.check(self.store(rows), "U7", "--pr", "7")
                 self.assertEqual(0, run.returncode, run.stdout + run.stderr)
                 self.assertEqual(
-                    "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows\n",
+                    "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows\n",
                     run.stdout,
                 )
                 self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
@@ -219,9 +303,9 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertEqual(
             [
-                "rounds-check: U7 allowed: 1 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows",
-                "rounds-check: U7b allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows",
-                "rounds-check: U7c allowed: 1 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows",
+                "rounds-check: U7 allowed: 1 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows",
+                "rounds-check: U7b allowed: 2 audit rows (2 incorrect), 2 incorrect since the start (classes: status=2), 0 mechanism rows",
+                "rounds-check: U7c allowed: 1 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows",
             ],
             run.stdout.splitlines(),
         )
@@ -260,7 +344,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(four_earlier_incorrect()), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows, "
+            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows, "
             f"{ignored(4)}\n",
             run.stdout,
         )
@@ -270,14 +354,14 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            f"U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows, {ignored(4)}",
+            f"U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start (classes: status=2), 0 mechanism rows, {ignored(4)}",
             run.stdout,
         )
         rows = four_earlier_incorrect() + three_incorrect()
         run = self.check(self.store(rows), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows, "
+            "rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start (classes: status=3), 0 mechanism rows, "
             f"{ignored(4)}; the fourth round needs a mechanism-change row: {ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
         )
@@ -288,7 +372,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(three_incorrect(), decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            f"U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows, {ignored(1)}; "
+            f"U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start (classes: status=3), 0 mechanism rows, {ignored(1)}; "
             "the fourth round needs a mechanism-change row",
             run.stdout,
         )
@@ -302,8 +386,8 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(three_incorrect(), decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            "3 incorrect since the mechanism-change row of 2026-10-30T00:00:00Z (allowlist), 1 mechanism rows; "
-            "2 strikes since that row need another",
+            "3 incorrect since the mechanism-change row of 2026-10-30T00:00:00Z (allowlist) (classes: status=3), 1 mechanism rows; "
+            "2 strikes of class status since that row need another",
             run.stdout,
         )
         self.assertNotIn("earlier rows ignored", run.stdout)
@@ -354,7 +438,8 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store([old]), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertIn(
-            f"0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows, {ignored(1)}", run.stdout
+            f"0 audit rows (0 incorrect), 0 incorrect since the start (classes: none), 0 mechanism rows, {ignored(1)}",
+            run.stdout,
         )
         for ts in ("2026-10-30T00:00:00Z", "2026-10-30T00:00:01Z"):
             with self.subTest(ts=ts):

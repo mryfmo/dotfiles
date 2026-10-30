@@ -67,7 +67,8 @@ ROUND_CAP_EXIT = (
 )
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
-# fourth behind a mechanism-change row, two further `incorrect` rows behind another) and the lever flag that runs it.
+# fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
+# per class and the cap per row (round 7), and the lever flag that runs it.
 ROUND_CAP = (
     "A unit's third audit needs no row; its fourth needs a `decisions.tsv` row of phase `mechanism-change` whose "
     "decision starts with the unit id and whose result names one closing form (`ast`, `parser-module`, `allowlist`, "
@@ -75,6 +76,11 @@ ROUND_CAP = (
 )
 TWO_STRIKES = (
     "Two `incorrect` rows of one class are the two strikes, and the round after the second is analysis only, no code"
+)
+PER_CLASS = (
+    "The check counts the strikes per class (the word of each `incorrect` row's `class=` token since the latest "
+    "mechanism-change row) and the cap per row, so two `incorrect` rows of unrelated classes after that row are one "
+    "strike each and refuse nothing."
 )
 ROUND_CAP_CHECK = (
     "`scripts/orchestrator/rounds-check.py <store> U<n>` counts the rows; `pr-audit.sh <pr> --records <store>` runs it "
@@ -164,7 +170,7 @@ class HcomSeatSkillsTest(unittest.TestCase):
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")
-        for sentence in (ROUND_CAP, TWO_STRIKES, ROUND_CAP_CHECK, ROUND_CAP_CHECK + " " + ROUND_CAP_UNITS):
+        for sentence in (ROUND_CAP, TWO_STRIKES, PER_CLASS, ROUND_CAP_CHECK, ROUND_CAP_CHECK + " " + ROUND_CAP_UNITS):
             self.assertIn(sentence, gates)
         self.assertNotIn("three strikes", gates)
 

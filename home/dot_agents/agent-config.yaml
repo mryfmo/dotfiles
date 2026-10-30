@@ -852,7 +852,7 @@ claude:
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
-      git-isolated.sh: 302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb
+      git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
@@ -861,13 +861,14 @@ claude:
       pr-thread-resolve.sh: 8d66fae47de6e3c3148650bd7e8477ceb873bcf63f11d714d126f315461995ea
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: 52029014b9a569883eede28a9c77bc32acb6beaf69594940815aea0dba84cdb8
-      pr-threads-check.sh: a97318847d741004ac9f6e9477f991c6aa5aac20305a6aad2dbc4f3237d4b87c
-      records-sync.sh: cabf0b45cb032a3a42de43857c181db40b70638ad6d8016fac7c5bd2c3379afd
-      pr-merge.sh: 51b8d777aa4e3a80ad277e1aef77816966b781e25efb0f65ffb8ed4f1cec524d
+      pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
+      pr-threads-check.sh: dcd303233f6bae8ca7f18d61036ecc6175ecf52db6760c3ffc8ff600e69884f0
+      records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
+      pr-merge.sh: 7cdf04fa0dd62d9346ebebda8c9d6e8c1989eb2037eae49478d8321726d97151
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 1a90af6a529de26f54e357886e251a7286f155491547efaa7a5b1acdd8252736
+      pr-audit.sh: f0ed88b7744ae696f99b6f8f13dfcd4fb70711c3042019aa69ace00bb4593a13
       brief-check.py: 63fa7c6e6677fc2e871a9c9fb5cf0ac338141e5377696c321311a3cf980021ae
+      read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -54,6 +54,7 @@ FIXTURE = FIXTURES / "contract.sh"
 BACKQUOTES = FIXTURES / "contract-backquotes"
 CAPTURES = {FIXTURE: FIXTURES / "contract.json", BACKQUOTES: FIXTURES / "contract-backquotes.json"}
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
+PRODUCER_CHECK = ROOT / "scripts/ci/producer-status-check.sh"
 GIT_CHECK = ROOT / "scripts/ci/git-invocation-check.sh"
 HOOK = ROOT / "home/dot_claude/hooks/executable_enforce-uv.sh"
 LINT = ROOT / "scripts/lint-comparisons.py"
@@ -67,6 +68,7 @@ UNREADABLE_TREE = {"Type": "File", "Stmts": [{"Command": {"Type": "CallExpr"}}]}
 # the whole file). The extractor below reads them.
 WALKERS = {
     CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
+    PRODUCER_CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
     GIT_CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
     HOOK: ("jq", re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL)),
     LINT: ("python", None),
@@ -801,10 +803,15 @@ class ContractRunTest(unittest.TestCase):
         """One run of each walker over a small conforming input, under env."""
         script = self.temp / "lever.sh"
         script.write_text('#!/usr/bin/env bash\ndir=$(dirname "$0")\necho "$dir"\n')
+        reader = self.temp / "reader.sh"
+        reader.write_text('#!/usr/bin/env bash\nset -euo pipefail\ndir=$(pwd -P) || exit 1\necho "$dir"\n')
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "python script.py"}})
         return {
             "masked-dirname-check": subprocess.run(
                 ["bash", str(CHECK), str(script)], capture_output=True, text=True, check=False, env=env
+            ),
+            "producer-status-check": subprocess.run(
+                ["bash", str(PRODUCER_CHECK), str(reader)], capture_output=True, text=True, check=False, env=env
             ),
             "git-invocation-check": subprocess.run(
                 ["bash", str(GIT_CHECK), str(script)], capture_output=True, text=True, check=False, env=env
@@ -847,6 +854,7 @@ class ContractRunTest(unittest.TestCase):
         expected = {
             "enforce-uv": "lists 1 statement(s) but the walk saw none",
             "lint-comparisons": "saw no statement in 1 shell file(s)",
+            "producer-status-check": "saw none of the 1 top-level statement(s)",
             "apt-bound-tree": "lists 1 statement(s) but the walk saw none",
         }
         for name, message in expected.items():
@@ -879,6 +887,8 @@ class ContractRunTest(unittest.TestCase):
         results = self.walkers({**os.environ})
         check = results["masked-dirname-check"]
         self.assertEqual((0, "", ""), (check.returncode, check.stdout, check.stderr))
+        producer = results["producer-status-check"]
+        self.assertEqual((0, "", ""), (producer.returncode, producer.stdout, producer.stderr))
         hook = results["enforce-uv"]
         self.assertEqual(0, hook.returncode, hook.stderr)
         self.assertIn('"permissionDecision":"deny"', hook.stdout)

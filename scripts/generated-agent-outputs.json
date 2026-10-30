@@ -354,7 +354,7 @@
       "target": ".local/bin/common/git-isolated.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "302789fbfd7cefebeba68d098a8ea3c6eb21a6dc538b680f6f010114e3eec7eb"
+      "sha256": "06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9"
     },
     {
       "source": "home/dot_local/bin/common/executable_hcom-dispatch",
@@ -382,14 +382,14 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "1a90af6a529de26f54e357886e251a7286f155491547efaa7a5b1acdd8252736"
+      "sha256": "f0ed88b7744ae696f99b6f8f13dfcd4fb70711c3042019aa69ace00bb4593a13"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "52029014b9a569883eede28a9c77bc32acb6beaf69594940815aea0dba84cdb8"
+      "sha256": "92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-close.sh",
@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "51b8d777aa4e3a80ad277e1aef77816966b781e25efb0f65ffb8ed4f1cec524d"
+      "sha256": "7cdf04fa0dd62d9346ebebda8c9d6e8c1989eb2037eae49478d8321726d97151"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -424,7 +424,7 @@
       "target": ".local/bin/common/pr-threads-check.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "a97318847d741004ac9f6e9477f991c6aa5aac20305a6aad2dbc4f3237d4b87c"
+      "sha256": "dcd303233f6bae8ca7f18d61036ecc6175ecf52db6760c3ffc8ff600e69884f0"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",
@@ -434,11 +434,18 @@
       "sha256": "c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae"
     },
     {
+      "source": "home/dot_local/bin/common/executable_read-lib.sh",
+      "target": ".local/bin/common/read-lib.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_records-sync.sh",
       "target": ".local/bin/common/records-sync.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "cabf0b45cb032a3a42de43857c181db40b70638ad6d8016fac7c5bd2c3379afd"
+      "sha256": "234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-env",
@@ -629,6 +636,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "pr-update-branch.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "read-lib.sh"
     },
     {
       "source": "home/dot_local/bin/common",

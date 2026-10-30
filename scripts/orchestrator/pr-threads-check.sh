@@ -54,7 +54,7 @@ lever_self_check() {
     # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
     LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -73,9 +73,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -88,7 +88,6 @@ lever_self_check() {
     }
 }
 lever_self_check
-
 # The isolated git and the environment scrub come from the library beside this script (U113): the ancestry and the
 # commit dates below are read in the checkout by a git no caller variable or configuration steers.
 [[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
@@ -99,6 +98,13 @@ lever_self_check
 . "${LEVER_DIR}/git-isolated.sh"
 # shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
 git_env_scrub
+
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "pr-threads-check.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 lever='pr-threads-check.sh'
 usage='usage: pr-threads-check.sh <pr> --head <sha> [--records <dir>]'

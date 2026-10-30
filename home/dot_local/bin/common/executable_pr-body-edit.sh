@@ -50,7 +50,7 @@ lever_self_check() {
     # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
     LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -69,9 +69,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -84,7 +84,6 @@ lever_self_check() {
     }
 }
 lever_self_check
-
 # The isolated git and the environment scrub come from the library beside this script (U113): the toplevel and the
 # current branch are read by a git no caller variable or configuration steers.
 [[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
@@ -95,6 +94,13 @@ lever_self_check
 . "${LEVER_DIR}/git-isolated.sh"
 # shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
 git_env_scrub
+
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "pr-body-edit.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 lever='pr-body-edit.sh'
 usage='usage: pr-body-edit.sh --body-file <file>'
@@ -142,7 +148,7 @@ body_file_check() {
     fi
     for root in "${TMPDIR:-}" "${toplevel}"; do
         [[ -n ${root} && -d ${root} ]] || continue
-        root=$(cd "${root}" && pwd -P) || continue
+        root=$(cd "${root}" && pwd -P) || continue    # producer-status: allow a root that cannot be entered holds no body file; the refusal after the loop stands
         [[ ${body_path} == "${root}"/* ]] && return 0 # lint-comparisons: allow both sides are pwd -P forms
     done
     refuse "the body file is outside \$TMPDIR and the checkout: ${body_path}"
@@ -195,8 +201,8 @@ done <<< "${kept}"
 
 gh_bounded pr edit "${number}" --body-file "${body_path}" >&2 || fail "gh pr edit ${number} failed"
 if command -v sha256sum > /dev/null; then
-    digest=$(sha256sum < "${body_path}") || digest=''
+    digest=$(sha256sum < "${body_path}") || fail "the body was pushed; cannot hash ${body_path} for the report"
 else
-    digest=$(shasum -a 256 < "${body_path}") || digest=''
+    digest=$(shasum -a 256 < "${body_path}") || fail "the body was pushed; cannot hash ${body_path} for the report"
 fi
 echo "edited pr=${number} branch=${branch} program=${program} unit=${unit} sha256=${digest%% *}"

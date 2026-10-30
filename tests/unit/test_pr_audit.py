@@ -222,6 +222,7 @@ class PrAuditTest(unittest.TestCase):
         (tree / "scripts/orchestrator").mkdir(parents=True)
         (tree / "home/dot_agents/codex-audit").mkdir(parents=True)
         shutil.copy2(LEVER, tree / "scripts/orchestrator/pr-audit.sh")
+        shutil.copy2(ROOT / "scripts/orchestrator/read-lib.sh", tree / "scripts/orchestrator/read-lib.sh")
         shutil.copy2(LIBRARY, tree / "scripts/orchestrator/git-isolated.sh")  # the lever sources it from its directory
         shutil.copy2(MANIFEST, tree / "home/dot_agents/agent-config.yaml")
         (tree / "home/dot_agents/codex-audit/config.toml").write_text(edit(TEMPLATE.read_text()))

@@ -587,6 +587,21 @@ class PrCloseTest(PrLeverTestCase):
         self.assertEqual(self.writes(), [])
 
 
+# A fake sha256sum or shasum for PrBodyEditTest: it fails with exit 1 when its stdin is the file FAKE_HASH_FAIL names
+# (compared by device and inode, so the self-checks of the lever and its libraries hash through to the real tool), and
+# otherwise runs the real tool with its arguments; `shasum -a 256` stands in for a sha256sum the host lacks.
+HASH_FAKE = """#!{python}
+import os, sys
+want = os.environ.get("FAKE_HASH_FAIL")
+if want and os.path.exists(want):
+    named, given = os.stat(want), os.fstat(0)
+    if (named.st_dev, named.st_ino) == (given.st_dev, given.st_ino):
+        print("fake-hash: failing as asked", file=sys.stderr)
+        sys.exit(1)
+os.execv({real!r}, [{real!r}, *{args!r}, *sys.argv[1:]])
+"""
+
+
 class PrBodyEditTest(PrLeverTestCase):
     CURRENT = f"## Summary\n\ntext\n\n## Threat table\n\n| a | b |\n\nProgram-Unit: regime-cutover/U41b\n\n{FOOTER}\n"
     NEW = f"## Summary\n\nnew text\n\n## Threat table\n\n| a | b |\n\n## Added\n\nProgram-Unit: regime-cutover/U41\n\n{FOOTER}\n"
@@ -618,6 +633,56 @@ class PrBodyEditTest(PrLeverTestCase):
             run.stdout, r"^edited pr=9 branch=feat/x program=regime-cutover unit=U41 sha256=[0-9a-f]{64}\n$"
         )
         self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]])
+
+    def hash_fake(self, where, name):
+        """A fake `name` (sha256sum or shasum) under where, HASH_FAKE over the real tool; None when the host has
+        neither sha256sum nor shasum."""
+        real, args = shutil.which(name), []
+        if real is None:
+            real, args = shutil.which("shasum"), ["-a", "256"]
+        if real is None:
+            return None
+        fake = where / name
+        fake.write_text(HASH_FAKE.format(python=sys.executable, real=real, args=args))
+        fake.chmod(0o755)
+        return fake
+
+    def assert_failed_after_the_push(self, body, run):
+        """The lever exits 1 naming the pushed body and the hash, prints no receipt, and the one write happened."""
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(f"pr-body-edit.sh: the body was pushed; cannot hash {body} for the report", run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt line with an empty digest")
+        self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]], "the edit was pushed")
+
+    def test_a_sha256sum_that_fails_after_the_edit_is_a_failure_naming_the_push(self):
+        """Audit of aa32e0b3 (P2): on main the report's digest read ended in `|| digest=''`, so a sha256sum that failed
+        after `gh pr edit` printed a receipt ending `sha256=` with exit 0. The read now ends in `fail`, exit 1 naming
+        the pushed body; the fake fails for the body file alone, so the self-checks before it hash through."""
+        fakes = self.root / "fakes"
+        fakes.mkdir()
+        if self.hash_fake(fakes, "sha256sum") is None:
+            self.skipTest("no sha256sum or shasum on this host")
+        self.github()
+        body = self.body(self.NEW)
+        self.env |= {"PATH": f"{fakes}:{self.env['PATH']}", "FAKE_HASH_FAIL": str(body)}
+        self.assert_failed_after_the_push(body, self.run_lever("pr-body-edit.sh", "--body-file", str(body)))
+
+    def test_a_shasum_that_fails_after_the_edit_with_no_sha256sum_on_path_is_the_same_failure(self):
+        """The `else` branch of the digest read: PATH holds only the tools the lever and its libraries run, no
+        sha256sum among them, and shasum is the fake."""
+        if shutil.which("shasum") is None:
+            self.skipTest("no shasum on this host")
+        farm = self.root / "farm"
+        farm.mkdir()
+        for tool in ("bash", "sh", "git", "perl", "awk", "grep", "sed", "cat", "wc", "mktemp", "rm"):
+            (farm / tool).symlink_to(shutil.which(tool))
+        (farm / "python3").symlink_to(sys.executable)  # the fake gh's interpreter
+        (farm / "gh").symlink_to(FAKE_GH)
+        self.hash_fake(farm, "shasum")
+        self.github()
+        body = self.body(self.NEW)
+        self.env |= {"PATH": str(farm), "FAKE_HASH_FAIL": str(body)}
+        self.assert_failed_after_the_push(body, self.run_lever("pr-body-edit.sh", "--body-file", str(body)))
 
     def test_a_body_in_the_checkout_is_accepted_and_crlf_is_read_as_lf(self):
         self.github(current=self.CURRENT.replace("\n", "\r\n"))
@@ -1397,6 +1462,11 @@ import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
+# FAKE_GIT_WARN=<word>: the shape of `git config -f <mode-000 file>` on git 2.56.0 (research 01 section 1.2), a warning
+# on stderr and exit 1, the status of an unset key.
+if os.environ.get("FAKE_GIT_WARN") and os.environ["FAKE_GIT_WARN"] in sys.argv[1:]:
+    print("warning: unable to access 'config': Permission denied", file=sys.stderr)
+    sys.exit(1)
 # The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
 # repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push. The
 # local transport is re-opened for every call (U113: the library's `protocol.allow=never` refuses it, as it would
@@ -1687,8 +1757,16 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertNotIn("unset", run.stderr)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+        self.env["FAKE_GIT_WARN"] = "config"
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_WARN"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config user.name (git config exited 1); it wrote to its stderr", run.stderr)
+        self.assertNotIn("unset", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
         self.git("config", "user.email", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is unset or empty")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
         self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
@@ -1698,7 +1776,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("cannot read git config remote.origin.url (git config exited 3)", run.stderr)
         self.git("config", "remote.origin.url", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is unset or empty")
         self.git("config", "remote.origin.url", self.url)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])

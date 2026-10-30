@@ -51,13 +51,16 @@ def inert(relative: str) -> bool:
 
 def reviewed_content_sha256(copy: Path) -> str:
     """The content_sha256 definition written out plainly: sha256 over one line per file, `<relative path> NUL <sha256
-    hex of its bytes> LF`, for every file of COPY that is not inert, the top-level .git directory skipped, sorted by
-    the bytes of its relative POSIX path."""
+    hex of its bytes> LF`, for every file of COPY that is not inert, sorted by the bytes of its relative POSIX path.
+    The top-level .git is skipped only when it is a real directory; a regular file named .git is a file like any
+    other."""
+    git = copy / ".git"
+    skip_git = git.is_dir() and not git.is_symlink()
     relatives = sorted(
         (
             path.relative_to(copy).as_posix()
             for path in copy.rglob("*")
-            if path.is_file() and path.relative_to(copy).parts[0] != ".git"
+            if path.is_file() and not (skip_git and path.relative_to(copy).parts[0] == ".git")
         ),
         key=str.encode,
     )

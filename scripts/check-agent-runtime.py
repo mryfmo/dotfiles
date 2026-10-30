@@ -1054,8 +1054,7 @@ def codex_content_findings(plugin_id: str, pin, root: Path, copy, reference: Pat
         named = "the marketplace clone is not at the pinned ref, so the files that differ are not named"
     else:
         try:
-            skip = (*records.CODEX_COPY_SKIP, records.CODEX_MARKETPLACE_RECORD)
-            reviewed = records.codex_content(reference, skip).files
+            reviewed = records.codex_content(reference, (records.CODEX_MARKETPLACE_RECORD,)).files
         except RecordError as error:
             named = f"the marketplace clone at the pinned ref cannot name the files that differ ({error})"
         else:

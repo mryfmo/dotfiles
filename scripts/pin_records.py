@@ -387,9 +387,15 @@ def content_sha256(root: Path, entry: Any) -> str:
     return content_digest(regular_files(root, CLAUDE_CACHE_MARKERS), entry)
 
 
-def regular_files(root: Path, skip_top: Tuple[str, ...] = ()) -> List[Tuple[bytes, bytes]]:
-    """The regular files below the directory ROOT as (relative POSIX path, bytes), in the order the walk met them;
-    a top-level name in SKIP_TOP is not read.
+def regular_files(
+    root: Path, skip_top: Tuple[str, ...] = (), skip_top_dirs: Tuple[str, ...] = ()
+) -> List[Tuple[bytes, bytes]]:
+    """The regular files below the directory ROOT as (relative POSIX path, bytes), in the order the walk met them.
+
+    A top-level name in SKIP_TOP is not read, whatever it is (Claude Code's cache markers, regular files). A
+    top-level name in SKIP_TOP_DIRS is not read only when its lstat shows a real directory (the clone's .git); a
+    symlink or a regular file under that name is judged like any other entry, so a symlink there refuses naming it
+    and a regular file there is content. Both exceptions apply after the entry's lstat, never by name alone.
 
     The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry below it is
     lstat'ed (fstatat) and opened (openat, O_NOFOLLOW) relative to its parent's open directory, never by a path
@@ -419,6 +425,8 @@ def regular_files(root: Path, skip_top: Tuple[str, ...] = ()) -> List[Tuple[byte
             except OSError as error:
                 raise RecordError(root, relative, f"cannot lstat ({error})") from None
             if stat.S_ISDIR(status.st_mode):
+                if not prefix and name in skip_top_dirs:  # lint-comparisons: allow one entry name, not a path
+                    continue
                 try:
                     child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=dir_fd)
                 except OSError as error:
@@ -684,8 +692,9 @@ INERT = (
     ("i18n/**", "translated READMEs"),
     ("docs/**", "documentation"),
 )
-# The clone's bookkeeping, not plugin content: Codex writes the copy with git, so it carries one.
-CODEX_COPY_SKIP = (".git",)
+# The clone's bookkeeping, not plugin content: Codex writes the copy with git, so it carries one. Skipped only as
+# the real directory its lstat shows; a symlink or a regular file named .git is judged like any other entry.
+CODEX_COPY_SKIP_DIRS = (".git",)
 # Codex's install record beside the marketplace clone's checkout (load_marketplace_install reads it); a reference
 # read of that clone skips it too, so it is never named as a file the copy lacks.
 CODEX_MARKETPLACE_RECORD = ".codex-marketplace-install.json"
@@ -718,17 +727,19 @@ class CodexContent:
     files: Dict[str, str]
 
 
-def codex_content(copy: Path, skip_top: Tuple[str, ...] = CODEX_COPY_SKIP) -> CodexContent:
+def codex_content(copy: Path, skip_top: Tuple[str, ...] = ()) -> CodexContent:
     """The content_sha256 value of the Codex plugin copy COPY (a cache version directory, or a checkout of the
     plugin), with the per-file hashes it is made of.
 
     The hex SHA-256 over one line per file, `<relative POSIX path> NUL <sha256 hex of its bytes> LF`, for every
-    regular file of the copy whose path is not inert (INERT), sorted by the bytes of the path; a top-level name in
-    SKIP_TOP (the .git directory) is not read. A symlink or special file anywhere in the copy and a file that cannot
-    be read are errors (regular_files), and so is a copy with no pinned file: never an empty or partial value.
+    regular file of the copy whose path is not inert (INERT), sorted by the bytes of the path. The top-level .git is
+    not read when it is a real directory (CODEX_COPY_SKIP_DIRS); a symlink named .git is an error like any other
+    symlink and a regular file named .git is pinned. A top-level name in SKIP_TOP (the marketplace clone's install
+    record, for the reference read) is not read. A symlink or special file anywhere in the copy and a file that
+    cannot be read are errors (regular_files), and so is a copy with no pinned file: never an empty or partial value.
     """
     hashes = {}
-    for relative, data in regular_files(copy, skip_top):
+    for relative, data in regular_files(copy, skip_top, CODEX_COPY_SKIP_DIRS):
         path = os.fsdecode(relative)
         if not is_inert(path):
             hashes[path] = hashlib.sha256(data).hexdigest()

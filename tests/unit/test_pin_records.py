@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -125,6 +126,29 @@ class PinRecordsTest(unittest.TestCase):
         ):
             with self.subTest(path=relative):
                 self.assertEqual(expected, records.is_inert(relative))
+
+    def test_codex_content_skips_the_git_directory_only(self) -> None:
+        # Round-4 audit of df216825 (P2): the top-level .git was skipped by name before its lstat, so a symlink or a
+        # regular file named .git kept the value and the doctor silent. Only the clone's real .git directory is
+        # bookkeeping; anything else under that name is judged like any other entry.
+        files = {"hooks/x.js": b"x\n", ".codex-plugin/plugin.json": b"{}\n"}
+        plain = records.codex_content(self.plugin_tree("plain", files))
+        cloned = self.plugin_tree("cloned", {**files, ".git/HEAD": b"ref: refs/heads/main\n", ".git/objects/x": b"\0"})
+        self.assertEqual(plain, records.codex_content(cloned))
+        special = "is a symlink or special file; a content pin covers regular files only"
+        linked = self.plugin_tree("linked", files)
+        (linked / ".git").symlink_to(cloned / ".git")
+        self.refused(lambda: records.codex_content(linked), f"{linked}: .git: {special}")
+        dangling = self.plugin_tree("dangling", files)
+        (dangling / ".git").symlink_to("absent")
+        self.refused(lambda: records.codex_content(dangling), f"{dangling}: .git: {special}")
+        gitfile = b"gitdir: ../elsewhere\n"
+        filed = records.codex_content(self.plugin_tree("filed", {**files, ".git": gitfile}))
+        self.assertNotEqual(plain.sha256, filed.sha256)
+        self.assertEqual({**plain.files, ".git": hashlib.sha256(gitfile).hexdigest()}, filed.files)
+        # Below the top level .git is a path like any other.
+        nested = records.codex_content(self.plugin_tree("nested", {**files, "hooks/.git/HEAD": b"x\n"}))
+        self.assertIn("hooks/.git/HEAD", nested.files)
 
     def test_claude_installs(self) -> None:
         cache = f"{self.dir}/cache/crit/crit/1.8.14"

@@ -1943,6 +1943,35 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.restore_pinned_copy(copy, clone)
                 self.assertEqual([], self.plugin_findings(pins))
 
+    def test_doctor_judges_a_git_entry_of_a_codex_copy_by_what_it_is(self) -> None:
+        # Round-4 audit of df216825 (P2): the walk skipped the top-level name .git before its lstat, so a symlink or
+        # a regular file named .git kept the pin and the doctor silent. The exception is for the clone's real .git
+        # directory alone: a symlink there is the symlink finding naming .git, a regular file there is pinned.
+        pins = self.plugin_pins_fixture()
+        copy, clone = self.pinned_codex_copy(pins)
+        special = "is a symlink or special file; a content pin covers regular files only"
+        for name, target in (("to a directory", self.target_root), ("dangling", Path("absent"))):
+            with self.subTest(symlink=name):
+                (copy / ".git").symlink_to(target)
+                errors = self.pin_errors(pins)
+                self.assertEqual(1, len(errors), errors)
+                self.assertIn(f"Codex plugin tail@tail: {copy}: .git: {special}; cannot verify its content", errors[0])
+                self.restore_pinned_copy(copy, clone)
+                self.assertEqual([], self.plugin_findings(pins))
+        # A regular file named .git is content: another value, and .git is named as the file that differs. The
+        # tests' own reading of the definition agrees on the value.
+        (copy / ".git").write_bytes(b"gitdir: ../elsewhere\n")
+        errors = self.pin_errors(pins)
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn(f"copy {copy} has content {reviewed_content_sha256(copy)}, not its pin", errors[0])
+        self.assertIn("files that differ from the marketplace clone at the pinned ref: .git;", errors[0])
+        self.restore_pinned_copy(copy, clone)
+        # The clone's real .git directory is bookkeeping, not content: it and everything below it are skipped.
+        (copy / ".git/refs/heads").mkdir(parents=True)
+        (copy / ".git/HEAD").write_bytes(b"ref: refs/heads/main\n")
+        (copy / ".git/refs/heads/main").write_bytes(b"b" * 40 + b"\n")
+        self.assertEqual([], self.plugin_findings(pins))
+
     def test_the_codex_content_sha256_option_prints_the_value_of_a_copy(self) -> None:
         # The review bump's tool: the value of a copy from the one definition make doctor judges by, equal to the
         # tests' own reading of the definition on the fixture (every kind of file a copy holds) and after changes.

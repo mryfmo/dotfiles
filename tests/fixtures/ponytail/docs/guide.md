@@ -1,3 +1,3 @@
 # Ponytail guide fixture
 
-Project documentation Codex never loads: inert under the content pin.
+Project documentation outside every tree the manifest names, which Codex never loads: inert under the content pin.

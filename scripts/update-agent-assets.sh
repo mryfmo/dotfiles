@@ -1044,7 +1044,9 @@ function codex_plugin_copy() {
 # @description After a Codex plugin step, judge the copy it left cached by make doctor's own pin check
 #   (doctor_pin_check), the one judge of a pin, so the two never disagree: a copy the doctor rejects, for the
 #   version its manifest declares or for its content (content_sha256: every regular file of the copy except the
-#   inert kinds pin_records.py INERT names), is off its pin, whether the step installed it or found it cached.
+#   inert ones, inert being what the copy's manifest does not point at and Codex never loads by convention; the
+#   pin_records.py INERT globs apply outside the trees the manifest names only), is off its pin, whether the step
+#   installed it or found it cached.
 #   `codex plugin marketplace upgrade` rewrites the copy from upstream main (incident 2026-10-30), so a copy that
 #   was there before is no more reviewed than a fresh one and takes the same outcome:
 #   removed by converge_or_disable, a WARN, make doctor's drift until the review bump, not a run failure. The

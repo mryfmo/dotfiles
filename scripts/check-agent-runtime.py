@@ -966,8 +966,10 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
 
     The copy checked is the one Codex loads (pin_records.load_codex_copy documents Codex's rule), judged by the
     version its manifest declares, as the Claude copy of the same plugin is, and by its content when the pin records
-    content_sha256 (pin_records.codex_content: every regular file of the copy except the inert kinds pin_records.INERT
-    names; the codex.hooks.state trusted_hash pins cover the hook command strings only). The `ref` pins the
+    content_sha256 (pin_records.codex_content: every regular file of the copy except the inert ones, and inert is
+    what the copy's manifest does not point at and Codex never loads by convention: every file under a path the
+    manifest names is pinned, the pin_records.INERT globs apply only outside those trees; the codex.hooks.state
+    trusted_hash pins cover the hook command strings only). The `ref` pins the
     marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the copy from the source the
     catalog names (upstream main for ponytail), so the commit a copy came from is not compared with it; the
     marketplace's install record and the config.toml marketplace table must name the pinned source and ref.

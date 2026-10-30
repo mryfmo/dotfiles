@@ -2359,6 +2359,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_worktree-gc/" class="md-nav__link">
         
   
@@ -5021,6 +5049,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/orchestrator/worktree-gc/" class="md-nav__link">
         
   
@@ -5418,7 +5474,10 @@
 <span class="c1">#   a `Program-Unit: &lt;program&gt;/U&lt;n&gt;` line (regime-cutover U120, standing order 36): before anything else the checkout's</span>
 <span class="c1">#   `scripts/orchestrator/rounds-check.py &lt;store&gt; U&lt;n&gt;` reads the ledger and the decisions file, and a non-zero exit</span>
 <span class="c1">#   (the unit's next round needs a `mechanism-change` row, the store is malformed, or the check could not run) refuses</span>
-<span class="c1">#   the audit. A body without the line keeps the behaviour without the flag.</span>
+<span class="c1">#   the audit; then the unit's brief, the one file `&lt;store&gt;/briefs/U&lt;n&gt;-*.md`, is judged by the checkout's</span>
+<span class="c1">#   `scripts/orchestrator/brief-check.py` (regime-cutover U123, standing order 37), and a brief it refuses, a glob with</span>
+<span class="c1">#   zero or two files, or a check that could not run refuses the audit the same way, exit 3, before any model runs.</span>
+<span class="c1">#   A body without the line keeps the behaviour without the flag.</span>
 <span class="c1"># @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).</span>
 <span class="c1"># @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call and per `git fetch` (default 60).</span>
 <span class="c1"># @env PR_AUDIT_TIMEOUT Seconds for the `codex exec` run (default 3600).</span>
@@ -5438,8 +5497,9 @@
 <span class="c1">#   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe</span>
 <span class="c1">#   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could</span>
 <span class="c1">#   not be given a process group of its own.</span>
-<span class="c1"># @exitcode 3 Refused by the round cap: `rounds-check.py` exited non-zero for the body's unit (its reason is on stderr),</span>
-<span class="c1">#   or the check could not run; nothing was written (standing order 21: a check that cannot run never reads as allowed).</span>
+<span class="c1"># @exitcode 3 Refused by the round cap or the brief gate: `rounds-check.py` or `brief-check.py` exited non-zero for the</span>
+<span class="c1">#   body's unit (the check's lines are on stderr), the unit's brief is not one file, or a check could not run; nothing</span>
+<span class="c1">#   was written (standing order 21: a check that cannot run never reads as allowed).</span>
 <span class="c1"># @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   ~/.local/bin/common/pr-audit.sh 547 --records .orchestration/orchestrate/regime-cutover</span>
@@ -5585,8 +5645,9 @@ fail<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Print the round cap's refusal on stderr and exit 3; no audit ran and the EXIT trap removes the run</span>
-<span class="c1">#   directory, so nothing is left. Exit 3 tells this refusal, which a `decisions.tsv` row lifts, from a usage one.</span>
+<span class="c1"># @description Print the round cap's or the brief gate's refusal on stderr and exit 3; no audit ran and the EXIT trap</span>
+<span class="c1">#   removes the run directory, so nothing is left. Exit 3 tells this refusal, which a `decisions.tsv` row or a brief</span>
+<span class="c1">#   fix lifts, from a usage one.</span>
 <span class="c1"># @arg $@ string The reason.</span>
 refuse_round<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: refused: </span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -6252,6 +6313,25 @@ gh_bounded<span class="w"> </span>pr<span class="w"> </span>view<span class="w">
 <span class="w">    </span><span class="nv">rounds</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">python</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rounds_check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pr<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
 <span class="w">    </span><span class="o">((</span><span class="nv">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse_round<span class="w"> </span><span class="s2">"rounds-check.py exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2"> for </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">rounds</span><span class="k">:-</span><span class="nv">no</span><span class="p"> output</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">rounds</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="c1"># The brief gate (regime-cutover U123, standing order 37). The unit's brief is the one file</span>
+<span class="w">    </span><span class="c1"># `&lt;store&gt;/briefs/U&lt;n&gt;-*.md`: zero or two matches refuse naming the glob, since a brief the lever cannot name was</span>
+<span class="w">    </span><span class="c1"># never judged. The checkout's brief-check.py is the one judge of a brief, and its status decides (standing order</span>
+<span class="w">    </span><span class="c1"># 21): a check that could not run is the same refusal as a brief it refuses, never "clean". Every unit audited</span>
+<span class="w">    </span><span class="c1"># from here on has a brief written after U121 landed the check, so no date exemption is needed.</span>
+<span class="w">    </span><span class="nv">brief</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>candidate<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/briefs/</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">-"</span>*.md<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>refuse_round<span class="w"> </span><span class="s2">"the brief of </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> is not one file: </span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2"> both match </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/briefs/</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">-*.md"</span>
+<span class="w">        </span><span class="nv">brief</span><span class="o">=</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse_round<span class="w"> </span><span class="s2">"the brief of </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> is not one file: nothing matches </span><span class="si">${</span><span class="nv">records</span><span class="si">}</span><span class="s2">/briefs/</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">-*.md"</span>
+<span class="w">    </span><span class="nv">brief_check</span><span class="o">=</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span>/scripts/orchestrator/brief-check.py
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">brief_check</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse_round<span class="w"> </span><span class="s2">"no </span><span class="si">${</span><span class="nv">brief_check</span><span class="si">}</span><span class="s2"> in the checkout; the brief of </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> cannot be checked"</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">brief_report</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">python</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">brief_check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="o">((</span><span class="nv">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse_round<span class="w"> </span><span class="s2">"brief-check.py exited </span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2"> for </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> on </span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">brief_report</span><span class="k">:-</span><span class="nv">no</span><span class="p"> output</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: brief-check: </span><span class="si">${</span><span class="nv">brief</span><span class="si">}</span><span class="s2"> passes"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="k">fi</span>
 <span class="nv">contract</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span>-E<span class="w"> </span><span class="s1">$'^## Contract\r?$'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">run</span><span class="si">}</span><span class="s2">/body.md"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$?</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">run</span><span class="si">}</span><span class="s2">/body.md"</span><span class="w"> </span><span class="c1"># producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">contract</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"the body of pull request </span><span class="si">${</span><span class="nv">pr</span><span class="si">}</span><span class="s2"> has no '## Contract' section"</span>

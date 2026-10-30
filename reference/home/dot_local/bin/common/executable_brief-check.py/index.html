@@ -5153,15 +5153,18 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S python3 -I</span>
-<span class="s2">"""Refuse a brief that judges an open-ended input without naming the mechanism that closes it (regime-cutover U104).</span>
+<span class="s2">"""Refuse a brief that judges an open-ended input without naming its closing form and its trust boundary (regime-cutover</span>
+<span class="s2">U104, U121).</span>
 
 <span class="s2">`~/.local/bin/common/brief-check.py .orchestration/orchestrate/&lt;program&gt;/briefs/U&lt;n&gt;-&lt;slug&gt;.md`, run from the</span>
-<span class="s2">checkout, reads one brief and prints one line. Exit 0: the brief's GOAL, CHANGE and CONTEXT hold no trigger term, or</span>
-<span class="s2">its CLOSURE section names exactly one mechanism. Exit 1: a trigger term fired and the brief has no CLOSURE section, or</span>
-<span class="s2">the CLOSURE section is not one mechanism name (`ast`, `parser-module`, `allowlist` or `remove`, optionally followed by</span>
-<span class="s2">a colon and free text on the same line), or no GOAL, CHANGE or CONTEXT section was found at all, or one section</span>
-<span class="s2">heading appears twice. Exit 2: usage, or a file that cannot be read or decoded; an unreadable brief is never read as</span>
-<span class="s2">clean.</span>
+<span class="s2">checkout, reads one brief. Exit 0, printing nothing: the brief's GOAL, CHANGE and CONTEXT hold no trigger term, or</span>
+<span class="s2">its CLOSURE section names exactly one form and its TRUST section names what the unit trusts. Exit 1, one reason per</span>
+<span class="s2">line on stdout: a trigger term fired and there is no CLOSURE section, or CLOSURE names zero, two or more forms or a</span>
+<span class="s2">word outside `ast`, `parser-module`, `allowlist` and `remove`; a trigger term fired and there is no TRUST section, or</span>
+<span class="s2">it is under 40 characters, or it holds neither `trusted` nor `trusts`; CLOSURE names `allowlist` or `ast` while CHANGE</span>
+<span class="s2">holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or no GOAL, CHANGE or</span>
+<span class="s2">CONTEXT section was found at all. Exit 2, nothing on stdout: usage, a file that cannot be read or decoded, or a</span>
+<span class="s2">section heading that appears twice; a brief the check cannot read is never read as clean.</span>
 
 <span class="s2">The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the</span>
 <span class="s2">same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as</span>
@@ -5170,13 +5173,14 @@
 <span class="s2">stdout) when the digest differs from its pin, so a repository without `scripts/orchestrator/` runs the same checked</span>
 <span class="s2">copy and a rewritten copy judges no brief.</span>
 
-<span class="s2">Thirteen `treadmill` and `premise` rows in the program's decisions share one shape (handoff</span>
-<span class="s2">`02-audit-treadmill-analysis.md`): a hand-written reader over an open-ended input passed a fresh audit once per round</span>
-<span class="s2">until, three or more rounds in, the mechanism changed to an AST walk, one strict parser module, an exact-form</span>
-<span class="s2">allowlist, or removal. The trigger terms below are the words those briefs' GOAL, CHANGE and CONTEXT held. A section</span>
-<span class="s2">is a line that is exactly its upper-case name; its body runs to the next such line, and a brief has one of each, so a</span>
-<span class="s2">heading that appears twice is refused rather than merged (a merge would read `CLOSURE\nast\nCLOSURE\n` as `ast`).</span>
-<span class="s2">Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires nothing.</span>
+<span class="s2">The data shape: a brief is a sequence of upper-case section headings, each a line that is exactly its name (plus the</span>
+<span class="s2">`WORKER RULES (...)` line, whose body names shells, paths and hooks as rules, not as the thing judged), each followed</span>
+<span class="s2">by its text; `sections` parses it into one `dict[str, str]` and refuses a heading that appears twice (a merge would</span>
+<span class="s2">read `CLOSURE\nast\nCLOSURE\n` as `ast`). The trigger terms are one tuple of (term, reason) rows: the words the</span>
+<span class="s2">thirteen treadmill rows of the program's `handoff/02-audit-treadmill-analysis.md` and U109 and U112 held in GOAL,</span>
+<span class="s2">CHANGE and CONTEXT before three or more rounds found the form. The forms are one tuple of four. A later unit adds a</span>
+<span class="s2">term by adding a row. Only SCOPE, FORBIDDEN and the other sections name paths and limits, so a term there fires</span>
+<span class="s2">nothing.</span>
 <span class="s2">"""</span>
 
 import<span class="w"> </span>argparse
@@ -5246,17 +5250,21 @@ lever_self_check<span class="o">()</span>
 <span class="w">    </span><span class="s2">"VERIFY"</span>,
 <span class="w">    </span><span class="s2">"TIMEBOX"</span>,
 <span class="w">    </span><span class="s2">"FORBIDDEN"</span>,
+<span class="w">    </span><span class="s2">"CLOSURE"</span>,
+<span class="w">    </span><span class="s2">"TRUST"</span>,
 <span class="w">    </span><span class="s2">"REPORT"</span>,
 <span class="w">    </span><span class="s2">"STANDING"</span>,
-<span class="w">    </span><span class="s2">"CLOSURE"</span>,
 <span class="o">)</span>
-<span class="c1"># The sections whose text says what the unit judges; SCOPE and FORBIDDEN name paths and limits, not the mechanism.</span>
+<span class="c1"># The one heading that carries a parenthesised note: `WORKER RULES (standing orders ...)`.</span>
+<span class="nv">WORKER_RULES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"WORKER RULES"</span>
+<span class="c1"># The sections whose text says what the unit judges; SCOPE and FORBIDDEN name paths and limits, not the form.</span>
 <span class="nv">JUDGED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"GOAL"</span>,<span class="w"> </span><span class="s2">"CHANGE"</span>,<span class="w"> </span><span class="s2">"CONTEXT"</span><span class="o">)</span>
-<span class="c1"># One row per term, (term, why a brief holding it must name its closing mechanism). A later unit adds a row.</span>
+<span class="c1"># One row per term, (term, why a brief holding it must name its closing form and its trust boundary). A term is</span>
+<span class="c1"># matched as a whole word, any case; a space in a term also matches a hyphen (`fail-closed`); a term ending in `*`</span>
+<span class="c1"># matches every word that begins with it (`tokenize`, `tokenizer`, `tokenization`). A later unit adds a row.</span>
 <span class="nv">TRIGGERS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
 <span class="w">    </span><span class="o">(</span><span class="s2">"shell"</span>,<span class="w"> </span><span class="s2">"shell text has quoting, expansion and word-splitting forms no hand-written reader lists"</span><span class="o">)</span>,
-<span class="w">    </span><span class="o">(</span><span class="s2">"tokenize"</span>,<span class="w"> </span><span class="s2">"a hand-written tokenizer leaks on the next token form its author did not list"</span><span class="o">)</span>,
-<span class="w">    </span><span class="o">(</span><span class="s2">"tokenizer"</span>,<span class="w"> </span><span class="s2">"a hand-written tokenizer leaks on the next token form its author did not list"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"tokeniz*"</span>,<span class="w"> </span><span class="s2">"a hand-written tokenizer leaks on the next token form its author did not list"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"parse"</span>,<span class="w"> </span><span class="s2">"hand parsing of an open-ended input is the shape of every treadmill row"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"parser"</span>,<span class="w"> </span><span class="s2">"a hand-written parser is replaced by an AST walk or one strict parser module in the end"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"regex"</span>,<span class="w"> </span><span class="s2">"a regular expression over an open-ended input matches forms its author did not list"</span><span class="o">)</span>,
@@ -5271,58 +5279,161 @@ lever_self_check<span class="o">()</span>
 <span class="w">    </span><span class="o">(</span><span class="s2">"wget"</span>,<span class="w"> </span><span class="s2">"fetched content is open-ended input"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"heredoc"</span>,<span class="w"> </span><span class="s2">"here-document bodies carry every quoting and substitution form"</span><span class="o">)</span>,
 <span class="w">    </span><span class="o">(</span><span class="s2">"quote"</span>,<span class="w"> </span><span class="s2">"quoting rules differ by shell, by context and by the word's position"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"bound"</span>,<span class="w"> </span><span class="s2">"a bound over an open-ended input is a check whose cases its author listed (U109: 24 rounds)"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"refuse"</span>,<span class="w"> </span><span class="s2">"a refusal decides on evidence read from an open-ended input"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"fail closed"</span>,<span class="w"> </span><span class="s2">"a fail-closed read decides on a producer's output, an open-ended input (U112: 18 rounds)"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"untrusted"</span>,<span class="w"> </span><span class="s2">"untrusted input is open-ended by definition"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"sandbox"</span>,<span class="w"> </span><span class="s2">"a sandbox boundary is judged from paths, mounts and probes the reader did not list"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"lint"</span>,<span class="w"> </span><span class="s2">"a lint over text is a hand-written reader unless it walks the language's own tree"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"rule"</span>,<span class="w"> </span><span class="s2">"a rule over text has cases its author did not list"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"allowlist"</span>,<span class="w"> </span><span class="s2">"an allowlist closes only as an exact-form table; written as prose it is a denylist"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"denylist"</span>,<span class="w"> </span><span class="s2">"a denylist over an open-ended input never closes (research/04 entries 14 and 15)"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"walk"</span>,<span class="w"> </span><span class="s2">"a walk over a tree or a directory meets node kinds its author did not list"</span><span class="o">)</span>,
+<span class="w">    </span><span class="o">(</span><span class="s2">"census"</span>,<span class="w"> </span><span class="s2">"a census of a scope is complete only against a closed set"</span><span class="o">)</span>,
 <span class="o">)</span>
-<span class="nv">MECHANISMS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ast"</span>,<span class="w"> </span><span class="s2">"parser-module"</span>,<span class="w"> </span><span class="s2">"allowlist"</span>,<span class="w"> </span><span class="s2">"remove"</span><span class="o">)</span>
-<span class="c1"># The one regular expression over the brief (FORBIDDEN): the trigger terms as whole words, case-insensitive. One named</span>
-<span class="c1"># group per table row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds `ſhell`</span>
-<span class="c1"># and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.</span>
-<span class="nv">TRIGGER_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>
-<span class="w">    </span>r<span class="s2">"\b(?:"</span><span class="w"> </span>+<span class="w"> </span><span class="s2">"|"</span>.join<span class="o">(</span>f<span class="s2">"(?P&lt;{term}&gt;{re.escape(term)})"</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>term,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>TRIGGERS<span class="o">)</span><span class="w"> </span>+<span class="w"> </span>r<span class="s2">")\b"</span>,<span class="w"> </span>re.IGNORECASE
-<span class="o">)</span>
-<span class="nv">REASONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>dict<span class="o">(</span>TRIGGERS<span class="o">)</span>
+<span class="c1"># The four closing forms; a CLOSURE names exactly one.</span>
+<span class="nv">FORMS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ast"</span>,<span class="w"> </span><span class="s2">"parser-module"</span>,<span class="w"> </span><span class="s2">"allowlist"</span>,<span class="w"> </span><span class="s2">"remove"</span><span class="o">)</span>
+<span class="c1"># A CLOSURE naming one of these forms while CHANGE holds one of the phrases below is a denylist dressed as a form.</span>
+<span class="nv">DRESSED_FORMS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ast"</span>,<span class="w"> </span><span class="s2">"allowlist"</span><span class="o">)</span>
+<span class="nv">DRESSED_PHRASES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"denylist"</span>,<span class="w"> </span><span class="s2">"forbidden words"</span>,<span class="w"> </span><span class="s2">"list of commands"</span><span class="o">)</span>
+<span class="c1"># The TRUST section names what the unit trusts and does not read: at least this many characters, one of these words.</span>
+<span class="nv">TRUST_WORDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"trusted"</span>,<span class="w"> </span><span class="s2">"trusts"</span><span class="o">)</span>
+<span class="nv">TRUST_MINIMUM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">40</span>
+
+
+def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""One regex over the terms, each a whole word, any case, with one named group per row (`t&lt;index&gt;`).</span>
+
+<span class="s2">    One group per row, so the row whose reason is printed is the row the regex matched: `re.IGNORECASE` folds</span>
+<span class="s2">    `ſhell` and a Kelvin-sign `hooK` onto their terms, and neither spelling has a `.lower()` form the table holds.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="nv">alternatives</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>index,<span class="w"> </span>term<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>terms<span class="o">)</span>:
+<span class="w">        </span><span class="nv">stem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>term.endswith<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"[ -]"</span>.join<span class="o">(</span>re.escape<span class="o">(</span>part<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>term.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>.split<span class="o">(</span><span class="s2">" "</span><span class="o">))</span>
+<span class="w">        </span>alternatives.append<span class="o">(</span>rf<span class="s2">"(?P&lt;t{index}&gt;\b{body}"</span><span class="w"> </span>+<span class="w"> </span><span class="o">(</span><span class="s2">""</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>stem<span class="w"> </span><span class="k">else</span><span class="w"> </span>r<span class="s2">"\b"</span><span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="s2">")"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>re.compile<span class="o">(</span><span class="s2">"|"</span>.join<span class="o">(</span>alternatives<span class="o">)</span>,<span class="w"> </span>re.IGNORECASE<span class="o">)</span>
+
+
+<span class="nv">TRIGGER_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">([</span>term<span class="w"> </span><span class="k">for</span><span class="w"> </span>term,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>TRIGGERS<span class="o">])</span>
+<span class="c1"># The reason by the term as a reason line names it, without a stem's `*`.</span>
+<span class="nv">REASONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>term.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>:<span class="w"> </span>reason<span class="w"> </span><span class="k">for</span><span class="w"> </span>term,<span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>TRIGGERS<span class="o">}</span>
+<span class="nv">DRESSED_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">(</span>DRESSED_PHRASES<span class="o">)</span>
+<span class="nv">TRUST_WORD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>word_pattern<span class="o">(</span>TRUST_WORDS<span class="o">)</span>
+
+
+def<span class="w"> </span>matched_term<span class="o">(</span>pattern,<span class="w"> </span>terms,<span class="w"> </span>text<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The row of `terms` the first match in `text` belongs to, stripped of a stem `*`, or None."""</span>
+<span class="w">    </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern.search<span class="o">(</span>text<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>terms<span class="o">[</span>int<span class="o">(</span>match.lastgroup<span class="o">[</span><span class="m">1</span>:<span class="o">])]</span>.rstrip<span class="o">(</span><span class="s2">"*"</span><span class="o">)</span>
+
+
+class<span class="w"> </span>BriefError<span class="o">(</span>Exception<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The text is not a brief in the grammar, so nothing is judged (exit 2)."""</span>
+
+
+def<span class="w"> </span>heading<span class="o">(</span>line<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The section name when `line` is a heading, else None."""</span>
+<span class="w">    </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.rstrip<span class="o">()</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>SECTIONS:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>name
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>name.startswith<span class="o">(</span>WORKER_RULES<span class="w"> </span>+<span class="w"> </span><span class="s2">" ("</span><span class="o">)</span><span class="w"> </span>and<span class="w"> </span>name.endswith<span class="o">(</span><span class="s2">")"</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>WORKER_RULES
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
 
 
 def<span class="w"> </span>sections<span class="o">(</span>text<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""(name to body text, None), or (None, why) when one heading appears twice, naming it and both line numbers."""</span>
+<span class="w">    </span><span class="s2">"""The brief as name to body text; a heading that appears twice raises BriefError naming both lines."""</span>
 <span class="w">    </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
 <span class="w">    </span><span class="nv">heading_line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
 <span class="w">    </span><span class="nv">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>text.splitlines<span class="o">()</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
-<span class="w">        </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.rstrip<span class="o">()</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>SECTIONS:
+<span class="w">        </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>heading<span class="o">(</span>line<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>found:
-<span class="w">                </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>f<span class="s2">"{name} appears twice (lines {heading_line[name]} and {number}); a brief has one of each"</span>
+<span class="w">                </span>raise<span class="w"> </span>BriefError<span class="o">(</span>
+<span class="w">                    </span>f<span class="s2">"{name} appears twice (lines {heading_line[name]} and {number}); a brief has one of each"</span>
+<span class="w">                </span><span class="o">)</span>
 <span class="w">            </span><span class="nv">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>name
 <span class="w">            </span>found<span class="o">[</span>current<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">            </span>heading_line<span class="o">[</span>name<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>number
 <span class="w">        </span><span class="k">elif</span><span class="w"> </span>current<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">            </span>found<span class="o">[</span>current<span class="o">]</span>.append<span class="o">(</span>line<span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>name:<span class="w"> </span><span class="s2">"\n"</span>.join<span class="o">(</span>body<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>body<span class="w"> </span><span class="k">in</span><span class="w"> </span>found.items<span class="o">()}</span>,<span class="w"> </span>None
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>name:<span class="w"> </span><span class="s2">"\n"</span>.join<span class="o">(</span>body<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>body<span class="w"> </span><span class="k">in</span><span class="w"> </span>found.items<span class="o">()}</span>
 
 
 def<span class="w"> </span>first_trigger<span class="o">(</span>found<span class="o">)</span>:
 <span class="w">    </span><span class="s2">"""(section, term) of the first trigger term in a judged section, or None."""</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>JUDGED:
-<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>TRIGGER_WORD.search<span class="o">(</span>found.get<span class="o">(</span>name,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>match:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>name,<span class="w"> </span>match.lastgroup
+<span class="w">        </span><span class="nv">term</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>matched_term<span class="o">(</span>TRIGGER_WORD,<span class="w"> </span><span class="o">[</span>term<span class="w"> </span><span class="k">for</span><span class="w"> </span>term,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>TRIGGERS<span class="o">]</span>,<span class="w"> </span>found.get<span class="o">(</span>name,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>term<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>name,<span class="w"> </span>term
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>None
 
 
 def<span class="w"> </span>closure<span class="o">(</span>body<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""(mechanism, None) when the CLOSURE body is exactly one mechanism line, else (None, why it is not)."""</span>
+<span class="w">    </span><span class="s2">"""(form, []) when the CLOSURE body is exactly one form line, else (None, every fault of the body).</span>
+
+<span class="s2">    Every fault is collected, not the first: a line naming no form and a wrong count of forms are two faults of one</span>
+<span class="s2">    body, and a check that returned on the first hid the second until the next run (round 2 of U121).</span>
+<span class="s2">    """</span>
 <span class="w">    </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>line.strip<span class="o">()</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>body.splitlines<span class="o">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>line.strip<span class="o">()]</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>lines:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span><span class="s2">"CLOSURE is empty"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span><span class="o">[</span><span class="s2">"CLOSURE is empty"</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">faults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">    </span><span class="nv">named</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines:
 <span class="w">        </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">":"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span>.rstrip<span class="o">()</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>MECHANISMS:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>f<span class="s1">'CLOSURE line "{line}" names no mechanism ({", ".join(MECHANISMS)})'</span>
-<span class="w">        </span>named.append<span class="o">(</span>name<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>FORMS:
+<span class="w">            </span>named.append<span class="o">(</span>name<span class="o">)</span>
+<span class="w">        </span><span class="k">else</span>:
+<span class="w">            </span>faults.append<span class="o">(</span>f<span class="s1">'CLOSURE line "{line}" names no form ({", ".join(FORMS)})'</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>named<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>f<span class="s2">"CLOSURE names {len(named)} mechanisms ({', '.join(named)}), not one"</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>named<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span>None
+<span class="w">        </span><span class="nv">listed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">" ({', '.join(named)})"</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>named<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">""</span>
+<span class="w">        </span>faults.append<span class="o">(</span>f<span class="s2">"CLOSURE names {len(named)} forms{listed}, not one"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>named<span class="o">[</span><span class="m">0</span><span class="o">]</span>,<span class="w"> </span><span class="o">[])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>faults<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span>None,<span class="w"> </span>faults<span class="o">)</span>
+
+
+def<span class="w"> </span>trust<span class="o">(</span>body<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Every fault of the TRUST body; empty when it names what the unit trusts.</span>
+
+<span class="s2">    A body both under the minimum and without a trust word has two faults, and both are printed in one run.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">" "</span>.join<span class="o">(</span>body.split<span class="o">())</span>
+<span class="w">    </span><span class="nv">faults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>text<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span>TRUST_MINIMUM:
+<span class="w">        </span>faults.append<span class="o">(</span>f<span class="s2">"TRUST is {len(text)} characters, under {TRUST_MINIMUM}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>matched_term<span class="o">(</span>TRUST_WORD,<span class="w"> </span>TRUST_WORDS,<span class="w"> </span>text<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span>faults.append<span class="o">(</span><span class="s2">"TRUST names nothing as trusted (no word `trusted` or `trusts`)"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>faults
+
+
+def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The reasons the parsed brief is refused, one per line; empty when it passes."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>any<span class="o">(</span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>JUDGED<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">[</span><span class="s2">"no GOAL, CHANGE or CONTEXT section"</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">trigger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>first_trigger<span class="o">(</span>found<span class="o">)</span>
+<span class="w">    </span>form,<span class="w"> </span><span class="nv">faults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>closure<span class="o">(</span>found<span class="o">[</span><span class="s2">"CLOSURE"</span><span class="o">])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s2">"CLOSURE"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span>None,<span class="w"> </span><span class="o">[</span><span class="s2">"no CLOSURE section"</span><span class="o">])</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>trigger<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"CLOSURE"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>found:
+<span class="w">            </span>reasons.extend<span class="o">(</span>faults<span class="o">)</span><span class="w">  </span><span class="c1"># a CLOSURE the check cannot read is never read as clean</span>
+<span class="w">    </span><span class="k">else</span>:
+<span class="w">        </span>section,<span class="w"> </span><span class="nv">term</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>trigger
+<span class="w">        </span><span class="c1"># The term's reason is printed once, on the first CLOSURE fault; every further line names the term alone.</span>
+<span class="w">        </span><span class="nv">why</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>f<span class="s2">" ({REASONS[term]})"</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>fault<span class="w"> </span><span class="k">in</span><span class="w"> </span>faults:
+<span class="w">            </span>reasons.append<span class="o">(</span>f<span class="s1">'{section} holds "{term}"{why}; {fault}'</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">why</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span>
+<span class="w">        </span><span class="nv">trust_faults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>trust<span class="o">(</span>found<span class="o">[</span><span class="s2">"TRUST"</span><span class="o">])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s2">"TRUST"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">[</span><span class="s2">"no TRUST section"</span><span class="o">]</span>
+<span class="w">        </span>reasons.extend<span class="o">(</span>f<span class="s1">'{section} holds "{term}"; {fault}'</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>fault<span class="w"> </span><span class="k">in</span><span class="w"> </span>trust_faults<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>form<span class="w"> </span><span class="k">in</span><span class="w"> </span>DRESSED_FORMS:
+<span class="w">        </span><span class="nv">phrase</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>matched_term<span class="o">(</span>DRESSED_WORD,<span class="w"> </span>DRESSED_PHRASES,<span class="w"> </span>found.get<span class="o">(</span><span class="s2">"CHANGE"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>phrase<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span>reasons.append<span class="o">(</span>f<span class="s1">'CLOSURE names {form} and CHANGE holds "{phrase}": a denylist dressed as a form'</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>reasons
 
 
 def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</span><span class="o">=</span>None<span class="o">)</span>:
@@ -5335,27 +5446,15 @@ def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</sp
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>UnicodeDecodeError<span class="o">)</span><span class="w"> </span>as<span class="w"> </span>error:
 <span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: cannot read {args.brief}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
-<span class="w">    </span>found,<span class="w"> </span><span class="nv">repeated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sections<span class="o">(</span>text<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>found<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: {args.brief}: {repeated}"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>any<span class="o">(</span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>JUDGED<span class="o">)</span>:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: {args.brief} has no GOAL, CHANGE or CONTEXT section"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">trigger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>first_trigger<span class="o">(</span>found<span class="o">)</span>
-<span class="w">    </span>mechanism,<span class="w"> </span><span class="nv">fault</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>closure<span class="o">(</span>found<span class="o">[</span><span class="s2">"CLOSURE"</span><span class="o">])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s2">"CLOSURE"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span>None,<span class="w"> </span><span class="s2">"no CLOSURE section"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>trigger<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>fault<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span><span class="s2">"CLOSURE"</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>found:
-<span class="w">            </span>print<span class="o">(</span>f<span class="s2">"brief-check: {fault}"</span><span class="o">)</span><span class="w">  </span><span class="c1"># a CLOSURE the check cannot read is never read as clean</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span>print<span class="o">(</span><span class="s2">"brief-check: no trigger term in GOAL, CHANGE or CONTEXT"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span>name,<span class="w"> </span><span class="nv">term</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>trigger
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>mechanism<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s1">'brief-check: {name} holds "{term}" ({REASONS[term]}); {fault}'</span><span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>print<span class="o">(</span>f<span class="s1">'brief-check: {name} holds "{term}"; closure: {mechanism}'</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sections<span class="o">(</span>text<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>BriefError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: cannot read {args.brief}: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="nv">reasons</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>reason<span class="w"> </span><span class="k">in</span><span class="w"> </span>reasons:
+<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"brief-check: {args.brief}: {reason}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>reasons<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="m">0</span>
 
 
 <span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"__main__"</span>:

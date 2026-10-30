@@ -15,7 +15,18 @@
 #   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
 #   `incorrect` or `blocked` row for the same head voids an earlier `correct`. That sha is always the current head:
 #   there is no carry-over (U71 audit round 10), so a head that `pr-update-branch.sh` moved gets a fresh audit. The
-#   lever reads no local git objects or refs; it decides from `gh` reads and the ledger alone, and git only names the
+#   row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a `correct` verdict may
+#   carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of the body's unit and
+#   the current head (absent, a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
+#   and parses its `## Findings` list, the lines pr-audit.sh's reader writes (`- P<n> (<confidence>) <path>:<line>:
+#   <rationale>`, or `- none`). Every P2 or P3 line needs a row of the store's `dispositions.tsv` (header `ts unit
+#   head_sha priority path line disposition reference`) with the same unit, full head sha, path and line whose
+#   `disposition` is `residual` and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row
+#   names the later head that fixed the finding and never satisfies the gate for the head it judges. The first
+#   finding without such a row is named in the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line
+#   of another shape, a verdict file whose last line is not `Verdict: correct`, and a `dispositions.tsv` whose header
+#   or column count is wrong are refusals naming the line (standing order 21). The
+#   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`). CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
@@ -28,13 +39,15 @@
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
-# @option --records <dir> The program store holding `ledger.tsv` (required; must be the checkout's own store, above).
+# @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
+#   (required; must be the checkout's own store, above).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>`.
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, or CI that is not green on the
-#   head.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, no verdict file for the head, a
+#   P2 or P3 finding of it without its `residual` disposition row, a malformed verdict file or `dispositions.tsv`, or
+#   CI that is not green on the head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
@@ -112,8 +125,14 @@ lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
-# The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read.
-program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/U[0-9]+$'
+dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference'
+# The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read; the unit names the verdict file.
+program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
+# A `## Findings` list line as pr-audit.sh's reader writes it. The path holds no colon, so `:<line>:` is found once;
+# a path with one does not match and the line is refused as malformed, never read as another finding.
+finding_re='^- (P[0-3]) \((high|medium|low)\) ([^:]+):([1-9][0-9]*): '
+# The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
+residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
 # A verdict column that starts with the word `correct` (never `incorrect`): `correct`, `correct (…)`, `correct;…`.
 correct_re='^correct($|[[:space:](;,])'
@@ -172,12 +191,118 @@ require_correct_row() {
         refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is not correct: ${verdict}"
 }
 
-# @description Set `ledger` to the one store the merge may read (U71, bot P1 4370212009: a caller-chosen ledger.tsv
-#   could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv` of this main checkout,
-#   `<program>` taken from the pull request body's one `Program-Unit: <program>/U<n>` line. No directory from the
-#   checkout down and not the ledger is a symlink, each is owned by this user, and `--records` must resolve
-#   (`pwd -P`) to exactly that directory; anything else is a refusal.
+# @description Succeed when the TSV file $1 has a row whose first field is $2 (the idiom of pr-threads-check.sh).
+# @arg $1 path The file.
+# @arg $2 string The key.
+# @exitcode 0 Found. 1 Not found. 2 Unreadable, or awk could not read it.
+has_row() {
+    local status=0
+    [[ -r $1 ]] || return 2
+    ROW_KEY=$2 awk -F '\t' '$1 == ENVIRON["ROW_KEY"] { found = 1 } END { exit !found }' "$1" || status=$?
+    return "${status}"
+}
+
+# @description Refuse unless every P2 and P3 finding of the head's verdict file in the store has a holding `residual`
+#   row in `dispositions.tsv` (U119 round 2): the ledger row says `correct`, and since standing order 35 `correct` no
+#   longer means "no finding". Every read is checked; a failed read exits 1 (standing order 21).
+# @arg $1 string The 40-hex head the ledger row named.
+require_dispositions() {
+    local head=$1 verdict_file dispositions text line section=0 seen=0 last='' n=0 satisfied status
+    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit
+    verdict_file=${store}/verdicts/${unit}-${head:0:8}.md
+    [[ -f ${verdict_file} && ! -L ${verdict_file} && -O ${verdict_file} && -r ${verdict_file} ]] ||
+        refuse "${verdict_file} is not a readable regular file of this user; a merge needs the verdict file of the head, not only its ledger row"
+    text=$(cat -- "${verdict_file}") || fail "cannot read ${verdict_file}"
+    while IFS= read -r line; do
+        line=${line%$'\r'}
+        [[ -n ${line} ]] || continue
+        last=${line}
+        if [[ ${line} == '## '* ]]; then
+            section=0
+            if [[ ${line} == '## Findings' ]]; then
+                section=1
+                seen=1
+            fi
+            continue
+        fi
+        ((section == 0)) || findings+=("${line}")
+    done <<< "${text}"
+    ((seen == 1)) || refuse "${verdict_file} has no '## Findings' section"
+    [[ ${last} == 'Verdict: correct' ]] ||
+        refuse "the last line of ${verdict_file} is not 'Verdict: correct' although the ledger row for ${head} is: ${last}"
+    ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing (the reader writes '- none')"
+    for entry in ${findings[@]+"${findings[@]}"}; do
+        [[ ${entry} != '- none' ]] || continue
+        [[ ${entry} =~ ${finding_re} ]] ||
+            refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': ${entry}"
+        priority=${BASH_REMATCH[1]} path=${BASH_REMATCH[3]} lineno=${BASH_REMATCH[4]}
+        case ${priority} in
+        P0 | P1) refuse "${verdict_file} lists ${priority} at ${path}:${lineno} under a correct ledger row; a P0 or P1 blocks (standing order 35), so the row or the file is wrong" ;;
+        esac
+        pending+=("${priority}"$'\t'"${path}"$'\t'"${lineno}")
+    done
+    ((${#pending[@]} > 0)) || return 0
+    dispositions=${store}/dispositions.tsv
+    IFS=$'\t' read -r priority path lineno <<< "${pending[0]}"
+    [[ -f ${dispositions} && ! -L ${dispositions} && -O ${dispositions} && -r ${dispositions} ]] ||
+        refuse "${verdict_file} lists ${priority} at ${path}:${lineno} and ${dispositions} is not a readable regular file of this user; every P2 and P3 finding of a correct verdict needs its residual row before the merge"
+    text=$(cat -- "${dispositions}") || fail "cannot read ${dispositions}"
+    while IFS= read -r line; do
+        line=${line%$'\r'}
+        n=$((n + 1))
+        if ((n == 1)); then
+            [[ ${line} == "${dispositions_header}" ]] ||
+                refuse "${dispositions} does not start with the header (${dispositions_header//$'\t'/ }); line 1: ${line}"
+            continue
+        fi
+        IFS=$'\t' read -ra cols <<< "${line}"
+        ((${#cols[@]} == 8)) || refuse "${dispositions} line ${n} has ${#cols[@]} columns, not 8: ${line}"
+        case ${cols[6]} in
+        residual | fixed) ;;
+        *) refuse "${dispositions} line ${n}: disposition '${cols[6]}' is neither residual nor fixed" ;;
+        esac
+        rows+=("${line}")
+    done <<< "${text}"
+    for entry in ${pending[@]+"${pending[@]}"}; do
+        IFS=$'\t' read -r priority path lineno <<< "${entry}"
+        why="no ${dispositions} row for unit ${unit}, head ${head}, ${path}:${lineno}"
+        satisfied=0
+        for line in ${rows[@]+"${rows[@]}"}; do
+            IFS=$'\t' read -ra cols <<< "${line}"
+            [[ ${cols[1]} == "${unit}" && ${cols[2]} == "${head}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || continue
+            if [[ ${cols[6]} == fixed ]]; then
+                why="the row at ${cols[0]} says fixed in ${cols[7]}, which is not this head; merge the head that fixed it"
+                continue
+            fi
+            [[ ${cols[7]} =~ ${residual_re} ]] || {
+                why="the row at ${cols[0]} is residual but its reference is not 'unit=U<n> gate=<clause>': ${cols[7]}"
+                continue
+            }
+            residual_unit=${BASH_REMATCH[1]}
+            status=0
+            has_row "${store}/units.tsv" "${residual_unit}" || status=$?
+            case ${status} in
+            0)
+                satisfied=1
+                break
+                ;;
+            1) why="the row at ${cols[0]} is residual for ${residual_unit}, which is not a row of ${store}/units.tsv" ;;
+            *) fail "cannot read ${store}/units.tsv" ;;
+            esac
+        done
+        ((satisfied == 1)) ||
+            refuse "${verdict_file} lists ${priority} at ${path}:${lineno} without a holding disposition: ${why}; write the residual row (unit=U<n> gate=<clause>, U<n> a units.tsv row) or fix it in a new head"
+    done
+}
+
+# @description Set `ledger`, `store` and `unit` to the one store the merge may read (U71, bot P1 4370212009: a
+#   caller-chosen ledger.tsv could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/<program>/ledger.tsv`
+#   of this main checkout, `<program>` and `U<n>` taken from the pull request body's one `Program-Unit: <program>/U<n>`
+#   line. No directory from the checkout down and not the ledger is a symlink, each is owned by this user, and
+#   `--records` must resolve (`pwd -P`) to exactly that directory; anything else is a refusal.
 # @set ledger The canonical ledger path.
+# @set store The canonical store directory.
+# @set unit The body's unit id, which names the verdict file.
 resolve_store() {
     local body markers line program path given part
     body=$(gh_bounded pr view "${pr}" --json body --jq .body) || fail "cannot read the body of pull request ${pr}"
@@ -190,6 +315,7 @@ resolve_store() {
     [[ -n ${markers} && ${markers} != *$'\n'* && ${markers} =~ ${program_unit_re} ]] ||
         refuse "the body of pull request ${pr} must hold exactly one line 'Program-Unit: <program>/U<n>'; it holds: ${markers:-none}"
     program=${BASH_REMATCH[1]}
+    unit=${BASH_REMATCH[2]}
     path=${toplevel}
     for part in .orchestration orchestrate "${program}"; do
         path=${path}/${part}
@@ -199,6 +325,7 @@ resolve_store() {
     given=$(cd "${records}" 2> /dev/null && pwd -P) || refuse "--records ${records} is no directory"
     [[ ${given} == "${path}" ]] || # lint-comparisons: allow both sides are pwd -P forms
         refuse "--records ${records} is not the program's store ${path} (named by the body's Program-Unit line)"
+    store=${path}
     ledger=${path}/ledger.tsv
     [[ -f ${ledger} && ! -L ${ledger} && -O ${ledger} && -r ${ledger} ]] ||
         refuse "${ledger} is not a readable regular file of this user"
@@ -234,6 +361,7 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 resolve_store
 
 require_correct_row "${head}"
+require_dispositions "${head}"
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

@@ -21,6 +21,8 @@ setup() {
     assert_absent "${HOME}/.local/bin/server/ssh_agent.sh"
     assert_absent "${HOME}/.config/systemd/user/usage-snapshot.service"
     assert_absent "${HOME}/.config/systemd/user/usage-snapshot.timer"
+    assert_absent "${HOME}/.config/systemd/user/disk-gc.service"
+    assert_absent "${HOME}/.config/systemd/user/disk-gc.timer"
 }
 
 @test "[macos-client] second apply is idempotent and preserves an unmanaged sentinel" {

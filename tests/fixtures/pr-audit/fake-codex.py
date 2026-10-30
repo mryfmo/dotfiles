@@ -12,7 +12,7 @@ answered: curl exit 6 by default, `curl<n>` (curl exits n, e.g. `curl0` for a re
 curl that could not run) or `nocurl`. `exec`
 reads the prompt from stdin into `prompt` of the record, reads the `--output-schema` file into `schema` of the record
 (null when it cannot be read), and writes the verdict FAKE_CODEX_VERDICT_MODE names to its `-o` file: `conforming`
-(the default: a finding-free `correct` object of the lever's schema), `contradiction` (`verdict: correct` with one P2
+(the default: a finding-free `correct` object of the lever's schema), `contradiction` (`verdict: correct` with one P1
 finding), `invalid-json` (the old free-text last line), `unknown-enum` (a verdict outside the enum) or `none` (no file
 at all). FAKE_CODEX_VERDICT, when set, is written verbatim instead. It then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
@@ -146,11 +146,11 @@ elif argv[:1] == ["exec"]:
         except OSError:
             record["schema"] = None
     finding = {
-        "priority": "P2",
+        "priority": "P1",
         "confidence": "high",
         "path": "change.txt",
         "line": 1,
-        "rationale": "A gating finding.",
+        "rationale": "A blocking finding.",
     }
     verdicts = {
         "conforming": json.dumps(

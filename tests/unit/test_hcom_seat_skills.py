@@ -50,6 +50,12 @@ PRE_AUDIT_GATE = (
 )
 GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap before any audit"
 
+# U119 round 3 (audit of 8d442d49, P1): the audit route is the Codex lever, and the file the merge gate parses for its
+# `## Findings` list is that lever's verdict.md copied into the store; the retired omp-run route wrote no such heading.
+AUDIT_ROUTE = "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n>` run from your checkout for that head"
+AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
+AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"
+
 # A merge error is not a merge failure (U30 ADDENDUM 3, ACCEPTANCE 8; measured on PR #484).
 # U71: the merge lever does the re-read and the orchestrator never runs it twice.
 MERGE_ERROR = (
@@ -108,6 +114,18 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(PRE_AUDIT_GATE, gate)
         self.assertIn(GATE_FIX_FIRST, gate)
         self.assertIn("held with a HOLD line", gate)
+
+    def test_the_audit_route_is_the_codex_lever_whose_verdict_file_the_merge_gate_reads(self):
+        text = ORCHESTRATION.read_text()
+        verify = step(text, "The loop", 4)
+        self.assertIn(AUDIT_ROUTE, verify)
+        self.assertIn(AUDIT_COPY, verify)
+        self.assertIn(AUDIT_SHAPE, verify)
+        # the retired route stays as one history clause, never as the command to run
+        self.assertEqual(verify.count("omp-run.sh --role audit"), 1)
+        self.assertIn("Until U119 round 3 this step ran `omp-run.sh --role audit`", verify)
+        self.assertNotIn("omp-run.sh --role audit", step(text, "The loop", 6))
+        self.assertIn("a file without a `## Findings` section is refused by name", step(text, "The loop", 6))
 
     def test_a_merge_error_is_rechecked_and_never_retried(self):
         merge = step(ORCHESTRATION.read_text(), "The loop", 6)

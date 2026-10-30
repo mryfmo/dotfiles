@@ -253,6 +253,7 @@ LEVERS = (
     "pr-thread-resolve.sh",
     "pr-threads-check.sh",
     "pr-update-branch.sh",
+    "read-lib.sh",
     "records-sync.sh",
     "regime-env",
     "regime-init",

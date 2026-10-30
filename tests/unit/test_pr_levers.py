@@ -587,6 +587,21 @@ class PrCloseTest(PrLeverTestCase):
         self.assertEqual(self.writes(), [])
 
 
+# A fake sha256sum or shasum for PrBodyEditTest: it fails with exit 1 when its stdin is the file FAKE_HASH_FAIL names
+# (compared by device and inode, so the self-checks of the lever and its libraries hash through to the real tool), and
+# otherwise runs the real tool with its arguments; `shasum -a 256` stands in for a sha256sum the host lacks.
+HASH_FAKE = """#!{python}
+import os, sys
+want = os.environ.get("FAKE_HASH_FAIL")
+if want and os.path.exists(want):
+    named, given = os.stat(want), os.fstat(0)
+    if (named.st_dev, named.st_ino) == (given.st_dev, given.st_ino):
+        print("fake-hash: failing as asked", file=sys.stderr)
+        sys.exit(1)
+os.execv({real!r}, [{real!r}, *{args!r}, *sys.argv[1:]])
+"""
+
+
 class PrBodyEditTest(PrLeverTestCase):
     CURRENT = f"## Summary\n\ntext\n\n## Threat table\n\n| a | b |\n\nProgram-Unit: regime-cutover/U41b\n\n{FOOTER}\n"
     NEW = f"## Summary\n\nnew text\n\n## Threat table\n\n| a | b |\n\n## Added\n\nProgram-Unit: regime-cutover/U41\n\n{FOOTER}\n"
@@ -618,6 +633,56 @@ class PrBodyEditTest(PrLeverTestCase):
             run.stdout, r"^edited pr=9 branch=feat/x program=regime-cutover unit=U41 sha256=[0-9a-f]{64}\n$"
         )
         self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]])
+
+    def hash_fake(self, where, name):
+        """A fake `name` (sha256sum or shasum) under where, HASH_FAKE over the real tool; None when the host has
+        neither sha256sum nor shasum."""
+        real, args = shutil.which(name), []
+        if real is None:
+            real, args = shutil.which("shasum"), ["-a", "256"]
+        if real is None:
+            return None
+        fake = where / name
+        fake.write_text(HASH_FAKE.format(python=sys.executable, real=real, args=args))
+        fake.chmod(0o755)
+        return fake
+
+    def assert_failed_after_the_push(self, body, run):
+        """The lever exits 1 naming the pushed body and the hash, prints no receipt, and the one write happened."""
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(f"pr-body-edit.sh: the body was pushed; cannot hash {body} for the report", run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt line with an empty digest")
+        self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]], "the edit was pushed")
+
+    def test_a_sha256sum_that_fails_after_the_edit_is_a_failure_naming_the_push(self):
+        """Audit of aa32e0b3 (P2): on main the report's digest read ended in `|| digest=''`, so a sha256sum that failed
+        after `gh pr edit` printed a receipt ending `sha256=` with exit 0. The read now ends in `fail`, exit 1 naming
+        the pushed body; the fake fails for the body file alone, so the self-checks before it hash through."""
+        fakes = self.root / "fakes"
+        fakes.mkdir()
+        if self.hash_fake(fakes, "sha256sum") is None:
+            self.skipTest("no sha256sum or shasum on this host")
+        self.github()
+        body = self.body(self.NEW)
+        self.env |= {"PATH": f"{fakes}:{self.env['PATH']}", "FAKE_HASH_FAIL": str(body)}
+        self.assert_failed_after_the_push(body, self.run_lever("pr-body-edit.sh", "--body-file", str(body)))
+
+    def test_a_shasum_that_fails_after_the_edit_with_no_sha256sum_on_path_is_the_same_failure(self):
+        """The `else` branch of the digest read: PATH holds only the tools the lever and its libraries run, no
+        sha256sum among them, and shasum is the fake."""
+        if shutil.which("shasum") is None:
+            self.skipTest("no shasum on this host")
+        farm = self.root / "farm"
+        farm.mkdir()
+        for tool in ("bash", "sh", "git", "perl", "awk", "grep", "sed", "cat", "wc", "mktemp", "rm"):
+            (farm / tool).symlink_to(shutil.which(tool))
+        (farm / "python3").symlink_to(sys.executable)  # the fake gh's interpreter
+        (farm / "gh").symlink_to(FAKE_GH)
+        self.hash_fake(farm, "shasum")
+        self.github()
+        body = self.body(self.NEW)
+        self.env |= {"PATH": str(farm), "FAKE_HASH_FAIL": str(body)}
+        self.assert_failed_after_the_push(body, self.run_lever("pr-body-edit.sh", "--body-file", str(body)))
 
     def test_a_body_in_the_checkout_is_accepted_and_crlf_is_read_as_lf(self):
         self.github(current=self.CURRENT.replace("\n", "\r\n"))
@@ -811,6 +876,26 @@ def ledger_row(head, verdict="correct (fresh-context audit, findings=0)", pr=7, 
     return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\thttps://github.com/acme/widgets/pull/{pr}\n"
 
 
+DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
+UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
+# A `## Findings` line as pr-audit.sh's reader writes it (U119 round 2: a `correct` verdict may carry P2 and P3).
+P2_LINE = "- P2 (high) scripts/orchestrator/pr-merge.sh:236: the row is read, the findings are not"
+P3_LINE = "- P3 (medium) scripts/orchestrator/README.md:275: the lever row omits the verdict file"
+
+
+def disposition_row(
+    head=SHA_A,
+    path="scripts/orchestrator/pr-merge.sh",
+    line=236,
+    disposition="residual",
+    reference="unit=U72 gate=no merge of a correct verdict with an open P2 until U72 lands",
+    priority="P2",
+    unit="U71",
+    ts="2026-10-25T09:30:00Z",
+):
+    return f"{ts}\t{unit}\t{head}\t{priority}\t{path}\t{line}\t{disposition}\t{reference}\n"
+
+
 class PrMergeTest(PrLeverTestCase):
     """U71 (F010): the merge lever merges only a head with a `correct` ledger row for its full sha and green CI."""
 
@@ -821,10 +906,25 @@ class PrMergeTest(PrLeverTestCase):
         self.records.mkdir(parents=True)
         (self.repo / ".git/info/exclude").write_text(".orchestration/\n")
         self.ledger(ledger_row(SHA_A))
+        self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
 
     def ledger(self, *rows):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
+
+    def verdict(self, *findings, head=SHA_A, unit="U71", last="Verdict: correct", notes="none"):
+        """The store's `verdicts/U<n>-<sha8>.md`, the lever's verdict.md in the reader's shape (`- none` by default)."""
+        listed = "\n".join(findings or ("- none",))
+        (self.records / "verdicts").mkdir(exist_ok=True)
+        (self.records / f"verdicts/{unit}-{head[:8]}.md").write_text(
+            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\n{notes}\n\nBlocking: 0\n{last}\n"
+        )
+
+    def dispositions(self, *rows, header=DISPOSITIONS_HEADER):
+        (self.records / "dispositions.tsv").write_text(header + "".join(rows))
+
+    def units(self, *ids):
+        (self.records / "units.tsv").write_text(UNITS_HEADER + "".join(f"{i}\tR\tgate\t\t\t\t\t-\n" for i in ids))
 
     def github(
         self,
@@ -906,6 +1006,7 @@ class PrMergeTest(PrLeverTestCase):
         # U71 audit round 1 (P2): awk compared two numeric-looking shas as numbers, so these two matched.
         head, other = "1" * 40, "1" * 39 + "2"
         self.ledger(ledger_row(other))
+        self.verdict(head=head)
         self.github(head=head)
         self.assert_refused(self.merge(), f"has no row for pull request 7 at head {head}")
         self.calls.unlink()
@@ -955,7 +1056,8 @@ class PrMergeTest(PrLeverTestCase):
         (fake / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
         self.ledger()  # the real store holds no verdict for the head
         self.github()
-        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "is not the program's store")
+        # U119 round 3: a directory outside the checkout is named as such, before the exact-store comparison
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "outside the checkout")
         other = self.repo / ".orchestration/orchestrate/other-program"
         other.mkdir()
         (other / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
@@ -1050,6 +1152,403 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
+    def test_a_p2_or_p3_finding_of_the_correct_verdict_needs_its_residual_disposition_row(self):
+        # U119 round 2 (Codex thread 4419039271, P1): since standing order 35 a `correct` verdict may carry P2 and P3
+        # findings, which have no GitHub thread, so the row alone would merge them undispositioned.
+        for name, line, at in (
+            ("P2", P2_LINE, "scripts/orchestrator/pr-merge.sh:236"),
+            ("P3", P3_LINE, "scripts/orchestrator/README.md:275"),
+        ):
+            with self.subTest(name):
+                self.verdict(line)
+                self.calls.unlink(missing_ok=True)
+                (self.records / "dispositions.tsv").unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                self.assert_refused(run, f"lists {name} at {at} and ")
+                self.assertIn("dispositions.tsv is not a readable regular file", run.stderr)
+                self.calls.unlink()
+                self.dispositions()  # the header alone: no row for the finding
+                self.assert_refused(self.merge(), f"lists {name} at {at} without a holding disposition: no ")
+                self.assertNotIn(
+                    ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
+                )
+        # a residual row whose unit is a units.tsv row merges, at the one finding of each priority
+        self.verdict(P2_LINE, P3_LINE)
+        self.dispositions(
+            disposition_row(),
+            disposition_row(path="scripts/orchestrator/README.md", line=275, priority="P3", ts="2026-10-25T09:31:00Z"),
+        )
+        self.units("U71", "U72")
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the second finding without its row is named, the first having one
+        self.dispositions(disposition_row())
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P3 at scripts/orchestrator/README.md:275 without a holding disposition"
+        )
+
+    def test_a_disposition_row_holds_only_as_a_residual_of_a_units_row_for_this_unit_head_path_and_line(self):
+        self.verdict(P2_LINE)
+        self.units("U71", "U72")
+        for name, row, message in (
+            ("unit not in units.tsv", disposition_row(reference="unit=U99 gate=x"), "U99, which is not a row of"),
+            (
+                "fixed row",
+                disposition_row(disposition="fixed", reference=SHA_B),
+                f"says fixed in {SHA_B}, which is not this head",
+            ),
+            ("another head", disposition_row(head=SHA_B), "without a holding disposition: no "),
+            ("another unit", disposition_row(unit="U72"), "without a holding disposition: no "),
+            (
+                "another path",
+                disposition_row(path="scripts/orchestrator/pr-audit.sh"),
+                "without a holding disposition: no ",
+            ),
+            ("another line", disposition_row(line=237), "without a holding disposition: no "),
+            (
+                "reference without a gate",
+                disposition_row(reference="unit=U72"),
+                "reference is not 'unit=U<n> gate=<clause>'",
+            ),
+        ):
+            with self.subTest(name):
+                self.dispositions(row)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        # a fixed row beside the residual row changes nothing: any holding row satisfies the finding
+        self.dispositions(
+            disposition_row(disposition="fixed", reference=SHA_B), disposition_row(ts="2026-10-25T09:40:00Z")
+        )
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+        # standing order 21: a units.tsv that is missing, or cannot be read, is never "no row" (U119 round 3: a
+        # missing or symlinked file is a refusal naming it; a read that fails midway is a failure)
+        (self.records / "units.tsv").unlink()
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(self.merge(), "units.tsv is not a regular file of this user (a symlink or missing)")
+        if os.geteuid() != 0:
+            self.units("U71", "U72")
+            (self.records / "units.tsv").chmod(0)
+            self.calls.unlink()
+            self.github()
+            run = self.merge()
+            self.assertEqual(run.returncode, 1, run.stderr)
+            self.assertIn("cannot read", run.stderr)
+            self.assertIn("units.tsv", run.stderr)
+            self.assertEqual(run.stdout, "")
+        self.assertEqual(self.writes(), [])
+
+    def test_a_malformed_dispositions_file_is_refused_naming_the_line(self):
+        self.verdict(P2_LINE)
+        self.units("U71", "U72")
+        seven = disposition_row().rsplit("\t", 1)[0] + "\n"
+        for name, text, message in (
+            ("header", "ts\tunit\n" + disposition_row(), "does not start with the header (ts unit head_sha"),
+            ("empty file", "", "does not start with the header"),
+            ("seven columns", DISPOSITIONS_HEADER + seven, "line 2 has 7 columns, not 8"),
+            ("nine columns", DISPOSITIONS_HEADER + disposition_row()[:-1] + "\textra\n", "line 2 has 9 columns, not 8"),
+            ("blank line", DISPOSITIONS_HEADER + "\n" + disposition_row(), "line 2 has 0 columns, not 8"),
+            # U119 round 3 (audit of 8d442d49, P2): `read` with a tab IFS merged adjacent tabs, so a nine-column row
+            # with an empty first or last field passed as eight; the count is awk's now, and no column may be empty
+            (
+                "nine columns, the last empty",
+                DISPOSITIONS_HEADER + disposition_row()[:-1] + "\t\n",
+                "line 2 has 9 columns, not 8",
+            ),
+            (
+                "nine columns, the first empty",
+                DISPOSITIONS_HEADER + "\t" + disposition_row(),
+                "line 2 has 9 columns, not 8",
+            ),
+            (
+                "an empty reference",
+                DISPOSITIONS_HEADER + disposition_row(reference=""),
+                "line 2: column 8 (reference) is empty",
+            ),
+            ("an empty unit", DISPOSITIONS_HEADER + disposition_row(unit=""), "line 2: column 2 (unit) is empty"),
+            (
+                "unknown disposition",
+                DISPOSITIONS_HEADER + disposition_row(disposition="accepted"),
+                "line 2: disposition 'accepted' is neither residual nor fixed",
+            ),
+        ):
+            with self.subTest(name):
+                (self.records / "dispositions.tsv").write_text(text)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        # CRLF rows, as a file edited on another host may carry, read like LF rows
+        self.dispositions(disposition_row().replace("\n", "\r\n"), header=DISPOSITIONS_HEADER.replace("\n", "\r\n"))
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_the_verdict_file_of_the_head_is_required_and_read_as_the_reader_wrote_it(self):
+        self.github()
+        for name, prepare, message in (
+            ("missing", lambda: None, "a merge needs the verdict file"),
+            ("another head's file", lambda: self.verdict(head=SHA_B), "a merge needs the verdict file"),
+            ("another unit's file", lambda: self.verdict(unit="U72"), "a merge needs the verdict file"),
+            (
+                "P1 under a correct row",
+                lambda: self.verdict("- P1 (high) scripts/x.sh:3: boom"),
+                "lists P1 at scripts/x.sh:3 under a correct ledger row",
+            ),
+            (
+                "P0 under a correct row",
+                lambda: self.verdict("- P0 (low) scripts/x.sh:3: boom"),
+                "lists P0 at scripts/x.sh:3 under a correct ledger row",
+            ),
+            (
+                "a line of another shape",
+                lambda: self.verdict("- P2 scripts/x.sh:3 boom"),
+                "a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': - P2 scripts/x.sh:3 boom",
+            ),
+            (
+                "a path with a colon",
+                lambda: self.verdict("- P2 (high) a:b.sh:3: boom"),
+                "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace",
+            ),
+            ("prose in the section", lambda: self.verdict("none found"), "a Findings line is not"),
+            ("no list", lambda: self.verdict(""), "the Findings section lists nothing"),
+            (
+                "no section",
+                lambda: (self.records / f"verdicts/U71-{SHA_A[:8]}.md").write_text("## Notes\n\nVerdict: correct\n"),
+                "has no '## Findings' section",
+            ),
+            (
+                "verdict line disagrees",
+                lambda: self.verdict(last="Verdict: incorrect"),
+                "is not 'Verdict: correct' although the ledger row",
+            ),
+            ("no verdict line", lambda: self.verdict(last="Blocking: 0"), "is not 'Verdict: correct'"),
+        ):
+            with self.subTest(name):
+                shutil.rmtree(self.records / "verdicts", ignore_errors=True)
+                (self.records / "verdicts").mkdir()
+                prepare()
+                self.calls.unlink(missing_ok=True)
+                self.assert_refused(self.merge(), message)
+        shutil.rmtree(self.records / "verdicts")
+        (self.records / "verdicts").mkdir()
+        elsewhere = self.root / "elsewhere-verdict.md"
+        elsewhere.write_text("## Findings\n\n- none\n\nVerdict: correct\n")
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").symlink_to(elsewhere)
+        self.calls.unlink(missing_ok=True)
+        self.assert_refused(self.merge(), "a merge needs the verdict file")
+        # `- none`, the shape of a verdict without a finding, merges as before this gate; CRLF reads like LF
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.verdict()
+        path = self.records / f"verdicts/U71-{SHA_A[:8]}.md"
+        path.write_text(path.read_text().replace("\n", "\r\n"))
+        self.calls.unlink(missing_ok=True)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_a_findings_line_is_read_from_its_structure_never_at_its_first_colon(self):
+        # U119 round 4 (audit of dc08660f, P2): the gate took the first `:<digits>: ` of the line, so a reader-written
+        # path `file:1: real.sh` at line 9 was read as `file` line 1, and that other location's residual row satisfied
+        # it. The path is now the text before the line's last `:<line>: ` and may hold no colon and no whitespace.
+        self.units("U71", "U72")
+        # path `file` line 1, a rationale that begins with `real.sh:9`: only the row for file:1 holds
+        self.verdict("- P2 (high) file:1: real.sh:9 is the line it misreads")
+        self.dispositions(disposition_row(path="real.sh", line=9))
+        self.github()
+        self.assert_refused(self.merge(), "lists P2 at file:1 without a holding disposition: no ")
+        self.dispositions(disposition_row(path="file", line=1))
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the audit's line, path `file:1: real.sh` at line 9 as the reader writes it, and a rationale holding
+        # `:<digits>: `: each is refused naming the line, with rows for both readings present (red on dc08660f: the
+        # first merged on the row for file:1)
+        self.dispositions(
+            disposition_row(path="file", line=1), disposition_row(path="real.sh", line=9, ts="2026-10-25T09:31:00Z")
+        )
+        for line in ("- P2 (high) file:1: real.sh:9: boom", "- P2 (high) file:1: see real.sh:9: the same shape"):
+            with self.subTest(line):
+                self.verdict(line)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                self.assert_refused(
+                    run,
+                    "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its"
+                    f" path and line cannot be told from its rationale: {line}",
+                )
+                self.assertEqual(self.writes(), [])
+
+    def test_only_the_leading_findings_section_of_the_verdict_file_is_read(self):
+        # U119 round 4 (audit of dc08660f, P2): every `## Findings` line reopened the list, so a finding-free correct
+        # verdict whose Notes held one was refused as prose in the section, and a list line after it would have been a
+        # finding. The section runs from the first `## Findings` line to the next `## ` heading; the rest is text.
+        self.github()
+        self.verdict(
+            notes="## Findings\n\nnone found in a second pass\n\n- P2 (high) scripts/x.sh:3: text, not a finding"
+        )
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # a later `## Findings` with `- none` does not replace the leading list: its P2 still needs its row
+        self.verdict(P2_LINE, notes="## Findings\n\n- none")
+        self.dispositions()
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition: no "
+        )
+
+    def test_a_malformed_units_table_is_refused_naming_the_line(self):
+        # U119 round 3: the residual's unit is looked up in units.tsv, whose rows are read by the same grammar.
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        for name, text, message in (
+            ("header", "id\ttrack\nU72\tR\n", "units.tsv does not start with the header (id track state branch"),
+            ("empty file", "", "units.tsv does not start with the header"),
+            ("seven columns", UNITS_HEADER + "U72\tR\tgate\t\t\t\t-\n", "units.tsv line 2 has 7 columns, not 8"),
+            ("nine columns", UNITS_HEADER + "U72\tR\tgate\t\t\t\t\t-\t\n", "units.tsv line 2 has 9 columns, not 8"),
+            ("an empty id", UNITS_HEADER + "\tR\tgate\t\t\t\t\t-\n", "units.tsv line 2: column 1 (id) is empty"),
+        ):
+            with self.subTest(name):
+                (self.records / "units.tsv").write_text(text)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        # the fixture's rows, whose branch, pr, head_sha and brief columns are empty, are eight columns and merge
+        self.units("U71", "U72")
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_a_symlinked_verdicts_directory_or_units_table_is_refused(self):
+        # U119 round 3 (audit of 8d442d49, P2): only the verdict file was checked for a symlink, so a `verdicts/`
+        # or `units.tsv` symlink carried files from outside the store into the gate.
+        outside = self.root / "outside"
+        outside.mkdir()
+        shutil.move(str(self.records / "verdicts"), str(outside / "verdicts"))
+        (self.records / "verdicts").symlink_to(outside / "verdicts")
+        self.github()
+        run = self.merge()
+        self.assert_refused(run, "verdicts is not a directory of this user (a symlink or missing)")
+        self.assertNotIn(["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read")
+        (self.records / "verdicts").unlink()
+        shutil.move(str(outside / "verdicts"), str(self.records / "verdicts"))
+        # the residual's unit is judged against the store's own units.tsv, never a linked one that holds the row
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        (outside / "units.tsv").write_text(UNITS_HEADER + "U72\tR\tgate\t\t\t\t\t-\n")
+        (self.records / "units.tsv").symlink_to(outside / "units.tsv")
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(self.merge(), "units.tsv is not a regular file of this user (a symlink or missing)")
+        self.assertEqual(self.writes(), [])
+
+    def fake_tool(self, name, failing_on):
+        """Put a `name` first on PATH that prints a partial line and exits 1 when an argument holds `failing_on`, and
+        runs the real tool otherwise: a producer that fails midway (standing order 21)."""
+        real = shutil.which(name, path=os.defpath) or shutil.which(name)
+        self.assertTrue(real, f"no {name} on the host")
+        script = self.root / "bin" / name
+        script.write_text(
+            "#!/bin/bash\n"
+            'for arg in "$@"; do\n'
+            f"    case ${{arg}} in *{failing_on}*) echo partial; echo 'fake {name}: read failed' >&2; exit 1 ;; esac\n"
+            "done\n"
+            f'exec {real} "$@"\n'
+        )
+        script.chmod(0o755)
+
+    def test_a_read_of_the_verdict_file_or_a_table_that_fails_never_merges(self):
+        # U119 round 3 (audit of 8d442d49, P2): the `cat` of the verdict file and the awk reads of dispositions.tsv
+        # and units.tsv had no failure injection; a failed read is exit 1 naming the file, never "no finding" or
+        # "no row" (standing order 21).
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        self.units("U71", "U72")
+        for tool, failing_on, named in (
+            ("cat", "verdicts/", f"verdicts/U71-{SHA_A[:8]}.md"),
+            ("awk", "dispositions.tsv", "dispositions.tsv"),
+            ("awk", "units.tsv", "units.tsv"),
+        ):
+            with self.subTest(tool=tool, failing_on=failing_on):
+                self.fake_tool(tool, failing_on)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                (self.root / "bin" / tool).unlink()
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn(f"cannot read {self.records}/{named}", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+                self.assertEqual(self.writes(), [])
+        # the same files, the fakes gone: the merge goes through, so the fakes were what stopped it
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+        if os.geteuid() != 0:
+            # a verdict file this user cannot read is refused by name before any read
+            (self.records / f"verdicts/U71-{SHA_A[:8]}.md").chmod(0)
+            self.calls.unlink()
+            self.github()
+            self.assert_refused(self.merge(), f"verdicts/U71-{SHA_A[:8]}.md is not a readable regular file")
+
+    def test_the_gate_takes_no_cache_from_its_environment(self):
+        # U119 round 6 (audit of 4f9f958a, P2): the units.tsv cache was tested with `${units_rows+set}` before the
+        # gate assigned it, so a caller that exported `units_rows` with a U99 row passed a residual for U99 without
+        # units.tsv holding it. Every name the gate reads is assigned in the run before its first read, so an
+        # exported one is neither data nor a refusal.
+        self.verdict(P2_LINE)
+        self.units("U71", "U72")
+        planted = "U99\tR\tgate\t\t\t\t\t-"
+        self.dispositions(disposition_row(reference="unit=U99 gate=x"))
+        for name, env in (
+            ("units_rows", {"units_rows": planted}),
+            ("units_rows and its flag", {"units_rows": planted, "units_read": "1"}),
+        ):
+            with self.subTest(name):
+                self.env.update(env)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), "U99, which is not a row of")
+        # the dispositions rows and the gate's flags: a holding row or a satisfied flag in the environment is none
+        # in the store
+        self.dispositions()
+        self.env.update(
+            {
+                "dispositions_rows": disposition_row(),
+                "rows": disposition_row(),
+                "text": disposition_row(),
+                "pending": "",
+                "findings": "- none",
+                "satisfied": "1",
+                "seen": "1",
+                "section": "1",
+                "status": "0",
+            }
+        )
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition: no "
+        )
+        self.assertEqual(self.writes(), [])
+        # the same environment with the rows in the store merges: the environment is ignored, never read
+        self.dispositions(disposition_row(reference="unit=U72 gate=x"))
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
 
 class DispositionDriftTest(unittest.TestCase):
     def test_the_resolve_lever_and_the_merge_check_judge_by_the_same_function(self):
@@ -1068,6 +1567,11 @@ import os, subprocess, sys
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
     print("fake-git: failing as asked", file=sys.stderr)
     sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS", "1")))  # 1 is also `git config`'s status for an unset key
+# FAKE_GIT_WARN=<word>: the shape of `git config -f <mode-000 file>` on git 2.56.0 (research 01 section 1.2), a warning
+# on stderr and exit 1, the status of an unset key.
+if os.environ.get("FAKE_GIT_WARN") and os.environ["FAKE_GIT_WARN"] in sys.argv[1:]:
+    print("warning: unable to access 'config': Permission denied", file=sys.stderr)
+    sys.exit(1)
 # The fake network: FAKE_GIT_HTTPS_ORIGIN="<https url>=<bare repository>" maps the https origin onto the local bare
 # repository as a command-line insteadOf; a pushInsteadOf in any config git reads still outranks it for a push. The
 # local transport is re-opened for every call (U113: the library's `protocol.allow=never` refuses it, as it would
@@ -1358,8 +1862,16 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertNotIn("unset", run.stderr)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
+        self.env["FAKE_GIT_WARN"] = "config"
+        run = self.run_lever("records-sync.sh")
+        del self.env["FAKE_GIT_WARN"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read git config user.name (git config exited 1); it wrote to its stderr", run.stderr)
+        self.assertNotIn("unset", run.stderr)
+        self.assert_nothing_left()
+        self.assertEqual(self.gh_calls(), [])
         self.git("config", "user.email", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config user.email is unset or empty")
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])
         self.git("config", "--unset", "user.email")  # the unset case: test_the_push_url_and_the_identity_are_checked...
@@ -1369,7 +1881,7 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("cannot read git config remote.origin.url (git config exited 3)", run.stderr)
         self.git("config", "remote.origin.url", "")
-        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is empty")
+        self.assert_refused(self.run_lever("records-sync.sh"), "git config remote.origin.url is unset or empty")
         self.git("config", "remote.origin.url", self.url)
         self.assert_nothing_left()
         self.assertEqual(self.gh_calls(), [])

@@ -40,8 +40,8 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 # A Claude Code plugin whose listing and manifest give no version gets the marketplace commit as its version, which
 # moves with every commit to the marketplace; its pin is then the content it was reviewed at (content_sha256).
 CONTENT_PIN = re.compile(r"^sha256:[0-9a-f]{64}$")
-# The hooks_sha256 pin of a Codex plugin (codex_hooks_content): the hex digest alone, beside the version pin.
-HOOKS_PIN = re.compile(r"^[0-9a-f]{64}$")
+# The content_sha256 pin of a Codex plugin (codex_content): the hex digest alone, beside the version pin.
+CODEX_CONTENT_PIN = re.compile(r"^[0-9a-f]{64}$")
 # Claude Code's own bookkeeping at the top of a cache version directory, not plugin content: the cleanup marker
 # written into a superseded version (plugins loading reference, "Cleanup of previous versions") and the lock
 # directory a running session keeps there.
@@ -231,7 +231,7 @@ class Pin:
     marketplace: str
     pin: str
     ref: Optional[str] = None
-    hooks_sha256: Optional[str] = None
+    content_sha256: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -254,20 +254,20 @@ def load_plugin_pins(path: Path) -> PluginPins:
         for plugin_id, entry in table.items():
             where = f"{agent}.{plugin_id}."
             plugin_parts(path, where.rstrip("."), plugin_id)
-            allowed = {"marketplace", "pin", "ref", "hooks_sha256"} if agent == "codex" else {"marketplace", "pin"}
+            allowed = {"marketplace", "pin", "ref", "content_sha256"} if agent == "codex" else {"marketplace", "pin"}
             if not isinstance(entry, dict) or not set(entry) <= allowed:
                 raise RecordError(path, where.rstrip("."), f"may hold only {sorted(allowed)}")
             ref = optional(path, entry, "ref", str, where, ascii=True)
             if ref is not None and not COMMIT.fullmatch(ref):
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
-            hooks_sha256 = optional(path, entry, "hooks_sha256", str, where, ascii=True)
-            if hooks_sha256 is not None and not HOOKS_PIN.fullmatch(hooks_sha256):
-                raise RecordError(path, f"{where}hooks_sha256", "must be 64 lowercase hex")
+            content_sha256 = optional(path, entry, "content_sha256", str, where, ascii=True)
+            if content_sha256 is not None and not CODEX_CONTENT_PIN.fullmatch(content_sha256):
+                raise RecordError(path, f"{where}content_sha256", "must be 64 lowercase hex")
             agents[agent][plugin_id] = Pin(
                 field(path, entry, "marketplace", str, where, ascii=True),
                 content_pin(path, entry, where, agent),
                 ref,
-                hooks_sha256,
+                content_sha256,
             )
     extensions = field(path, data, "gh_extensions", dict)
     for repository, tag in extensions.items():
@@ -664,46 +664,81 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
     return CodexCopy(active, name, field(manifest_path, manifest, "version", str, ascii=True))
 
 
-# The executable content of a Codex plugin copy, pinned by hooks_sha256 in assets.codex-plugins: the files under
-# hooks/, which the hooks.json commands load (`node -e "require(... 'hooks/ponytail-activate.js')"`; the
-# codex.hooks.state trusted_hash pins cover those command strings, not the files they load), and the manifest that
-# names the hooks file. Not the skills and other files Codex reads as instructions.
-CODEX_HOOKS_DIR = "hooks"
-CODEX_PLUGIN_MANIFEST = ".codex-plugin/plugin.json"
+# What a Codex plugin copy is pinned by (content_sha256 in assets.codex-plugins): every regular file of the copy
+# except the inert kinds below. Enumerating what Codex executes (the hook commands, then the hooks/ tree and the
+# manifest) left the next surface unpinned each time (.mcp.json declares stdio MCP commands Codex enables), so
+# the pin covers everything and names only what cannot run. Each entry is (glob over the relative POSIX path, why
+# it is inert); `*` and `?` stay within one path component, `**` spans components.
+INERT = (
+    ("*.md", "instructions and docs Codex reads as text, never runs; the Claude copy's exposure today"),
+    ("**/*.md", "instructions and docs Codex reads as text, never runs; the Claude copy's exposure today"),
+    ("LICENSE*", "the licence text"),
+    ("**/*.svg", "an image"),
+    ("**/*.png", "an image"),
+    ("**/*.jpg", "an image"),
+    ("**/*.jpeg", "an image"),
+    ("**/*.gif", "an image"),
+    ("**/*.ico", "an image"),
+    (".gitignore", "git's ignore list, read by git only"),
+    (".github/**", "upstream CI, not loaded by Codex"),
+    ("i18n/**", "translated READMEs"),
+    ("docs/**", "documentation"),
+)
+# The clone's bookkeeping, not plugin content: Codex writes the copy with git, so it carries one.
+CODEX_COPY_SKIP = (".git",)
+# Codex's install record beside the marketplace clone's checkout (load_marketplace_install reads it); a reference
+# read of that clone skips it too, so it is never named as a file the copy lacks.
+CODEX_MARKETPLACE_RECORD = ".codex-marketplace-install.json"
+
+
+# The tokens of an INERT glob and what each matches in a relative POSIX path; a run of other characters is literal.
+GLOB_TOKENS = re.compile(r"\*\*/|\*\*|\*|\?|[^*?]+")
+GLOB_PARTS = {"**/": "(?:[^/]+/)*", "**": ".*", "*": "[^/]*", "?": "[^/]"}
+
+
+def inert_pattern(spec: str) -> re.Pattern[str]:
+    """The glob SPEC as a regular expression over a whole relative POSIX path: `*` and `?` match within one path
+    component, `**/` any number of leading components (none included) and a trailing `**` the rest of the path."""
+    parts = [GLOB_PARTS.get(token) or re.escape(token) for token in GLOB_TOKENS.findall(spec)]
+    return re.compile("".join(parts) + r"\Z")
+
+
+INERT_PATTERNS = tuple(inert_pattern(spec) for spec, _ in INERT)
+
+
+def is_inert(relative: str) -> bool:
+    """Whether the relative POSIX path RELATIVE is of an inert kind (INERT), so outside the content pin."""
+    return any(pattern.match(relative) for pattern in INERT_PATTERNS)
 
 
 @dataclass(frozen=True)
-class CodexHooks:
+class CodexContent:
     sha256: str
     # Relative POSIX path -> sha256 hex of its bytes, in the order the digest reads them.
     files: Dict[str, str]
 
 
-def codex_hooks_content(copy: Path) -> CodexHooks:
-    """The hooks_sha256 value of the Codex plugin copy COPY (a cache version directory, or a checkout of the
+def codex_content(copy: Path, skip_top: Tuple[str, ...] = CODEX_COPY_SKIP) -> CodexContent:
+    """The content_sha256 value of the Codex plugin copy COPY (a cache version directory, or a checkout of the
     plugin), with the per-file hashes it is made of.
 
-    The hex SHA-256 over one line per file, `<relative POSIX path> NUL <sha256 hex of its bytes> LF`: every regular
-    file under hooks/ (recursive, in the byte order of its path), then .codex-plugin/plugin.json. A missing hooks/ or
-    manifest is an error, never an empty value; so is a symlink or special file under hooks/ (regular_files).
+    The hex SHA-256 over one line per file, `<relative POSIX path> NUL <sha256 hex of its bytes> LF`, for every
+    regular file of the copy whose path is not inert (INERT), sorted by the bytes of the path; a top-level name in
+    SKIP_TOP (the .git directory) is not read. A symlink or special file anywhere in the copy and a file that cannot
+    be read are errors (regular_files), and so is a copy with no pinned file: never an empty or partial value.
     """
-    hooks_dir = copy / CODEX_HOOKS_DIR
-    if not present(hooks_dir):
-        raise RecordError(hooks_dir, "(directory)", "is missing")
-    hashes = {
-        f"{CODEX_HOOKS_DIR}/{os.fsdecode(relative)}": hashlib.sha256(data).hexdigest()
-        for relative, data in regular_files(hooks_dir)
-    }
+    hashes = {}
+    for relative, data in regular_files(copy, skip_top):
+        path = os.fsdecode(relative)
+        if not is_inert(path):
+            hashes[path] = hashlib.sha256(data).hexdigest()
+    if not hashes:
+        raise RecordError(copy, "(directory)", "holds no file the content pin covers")
     files = {path: hashes[path] for path in sorted(hashes, key=os.fsencode)}
-    manifest_path = copy / CODEX_PLUGIN_MANIFEST
-    manifest = regular_file_bytes(manifest_path)
-    if manifest is None:
-        raise RecordError(manifest_path, "(file)", "is missing")
-    files[CODEX_PLUGIN_MANIFEST] = hashlib.sha256(manifest).hexdigest()
     digest = hashlib.sha256()
     for path, file_hash in files.items():
         digest.update(os.fsencode(path) + b"\0" + file_hash.encode() + b"\n")
-    return CodexHooks(digest.hexdigest(), files)
+    return CodexContent(digest.hexdigest(), files)
 
 
 @dataclass(frozen=True)

@@ -60,7 +60,7 @@ with open(os.environ["CALLS"], "a") as log:
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from claude_plugin_fixture import CONTENT_VERSION, REVIEWED
-from codex_plugin_fixture import PONYTAIL, git_tree_id, install_ponytail_copy, reviewed_hooks_sha256
+from codex_plugin_fixture import PONYTAIL, install_ponytail_copy, reviewed_content_sha256
 from scratch_git import git_init
 
 OFFICIAL_CLONE = REVIEWED / "marketplaces/claude-plugins-official"
@@ -1166,7 +1166,7 @@ claude() {
                     )
                     self.assertIn(
                         f"superpowers@openai-curated landed at 99.0.0 and make doctor rejects that copy: version or "
-                        f"hook content off the pin {pin}",
+                        f"content off the pin {pin}",
                         result.stderr,
                     )
                     self.assertIn(
@@ -1433,6 +1433,22 @@ claude() {
                 self.assertIn(f"is not pinned to {ref}", result.stderr)
                 self.assertFalse([call for call in calls if call.startswith("plugin marketplace upgrade")], calls)
 
+    def repo_pinned_to_the_fixture(self, work: Path) -> Path:
+        """A scratch dotfiles source root (what DOTFILES_SOURCE_DIR names) holding scripts/ and the Codex modify
+        script, whose plugin-pins.json records the fixture's content_sha256 for ponytail@ponytail: the copies the
+        fake codex writes from tests/fixtures/ponytail are then at their pin, as a reviewed upstream copy is against
+        the recorded one. Every other pin and the updater itself are the repository's."""
+        repo = work / "repo"
+        shutil.copytree(ROOT / "scripts", repo / "scripts")
+        (repo / "home/dot_codex").mkdir(parents=True)
+        shutil.copy(ROOT / "home/dot_codex/modify_private_config.toml", repo / "home/dot_codex")
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        pins_path = repo / "scripts/plugin-pins.json"
+        pins = json.loads(pins_path.read_text())
+        pins["codex"]["ponytail@ponytail"]["content_sha256"] = reviewed_content_sha256(PONYTAIL)
+        pins_path.write_text(json.dumps(pins))
+        return repo
+
     def run_ponytail_bootstrap(
         self,
         before: str | None,
@@ -1445,8 +1461,9 @@ claude() {
         # update_codex_ponytail with [marketplaces.ponytail] at its pinned ref, against a fake codex whose
         # `marketplace upgrade` installs the enabled plugin's copy at CACHE_VERSION (what Codex does for a
         # plugin the managed config enables) and the marketplace clone at the ref, and whose `plugin remove`
-        # empties the cache. Every copy carries the reviewed hooks/ tree and manifest (tests/fixtures/ponytail,
-        # install_ponytail_copy), so a copy at the pinned version is at its pin. BEFORE is the version of the copy
+        # empties the cache. Every copy is the fixture tree (tests/fixtures/ponytail, install_ponytail_copy) and the
+        # scratch source root's pins record its content_sha256 (repo_pinned_to_the_fixture), so a copy at the pinned
+        # version is at its pin. BEFORE is the version of the copy
         # cached before the step, None for a fresh bootstrap; MANIFEST_VERSION, when given, is what that copy's
         # plugin.json declares instead. FROM_ANOTHER_COMMIT gives the copy (the cached one and the upgrade's) the
         # `.git` of a clone at a commit other than the pinned ref (the copy Codex writes from upstream main);
@@ -1455,6 +1472,7 @@ claude() {
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]
         work = Path(tempfile.mkdtemp(prefix="ponytail-bootstrap-"))
         self.addCleanup(shutil.rmtree, work)
+        repo = self.repo_pinned_to_the_fixture(work)
         (work / "home/.codex").mkdir(parents=True)
         (work / "home/.codex/config.toml").write_text(
             f'[marketplaces.ponytail]\nref = "{pins["ref"]}"\nsource_type = "git"\nsource = "{pins["marketplace"]}"\n'
@@ -1477,8 +1495,7 @@ claude() {
         fake = (
             'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; case "$1 $2 $3" in '
             '"plugin marketplace upgrade") for dir in "${CACHE}/${CACHE_VERSION}" "${RECORD%/*}"; do '
-            'mkdir -p "${dir}/hooks" "${dir}/.codex-plugin"; cp -R "${FIXTURE}/hooks/." "${dir}/hooks/"; '
-            'cp "${FIXTURE}/.codex-plugin/plugin.json" "${dir}/.codex-plugin/plugin.json"; done; '
+            'mkdir -p "${dir}"; cp -R "${FIXTURE}/." "${dir}/"; done; '
             '[ "${CACHE_VERSION}" = "${PIN}" ] || printf \'{"name": "ponytail", "version": "%s"}\' "${CACHE_VERSION}" '
             '> "${CACHE}/${CACHE_VERSION}/.codex-plugin/plugin.json"; '
             '[ -z "${HOOK_CHANGE}" ] || printf "changed\\n" >> "${CACHE}/${CACHE_VERSION}/${HOOK_CHANGE}"; '
@@ -1494,11 +1511,12 @@ claude() {
                 f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_ponytail; '
                 'printf "failures=%s\\n" "${PIN_FAILURES}"; fail_on_pin_failures',
                 "bash",
-                str(UPDATER),
+                str(repo / "scripts/update-agent-assets.sh"),
             ],
             env=os.environ
             | scratch_env(work / "home")
             | {
+                "DOTFILES_SOURCE_DIR": str(repo),
                 "WORK": str(work),
                 "CACHE": str(cache),
                 "CACHE_VERSION": cache_version,
@@ -1529,7 +1547,7 @@ claude() {
         self.assertIn("Codex Ponytail plugin was installed by the marketplace upgrade.", result.stdout)
         self.assertNotIn("already installed", result.stdout)
         self.assertIn(
-            f"ponytail@ponytail landed at 99.0.0 and make doctor rejects that copy: version or hook content off the "
+            f"ponytail@ponytail landed at 99.0.0 and make doctor rejects that copy: version or content off the "
             f"pin {pin}",
             result.stderr,
         )
@@ -1545,7 +1563,7 @@ claude() {
     def test_a_ponytail_copy_cached_before_the_upgrade_and_off_its_pin_is_removed_and_warned_not_failed(self):
         # U118 round 2: `codex plugin marketplace upgrade` rewrites the copy from upstream main whether one was cached
         # or not, so a copy that was there before is no more reviewed than a fresh one. Both take one outcome: judged
-        # by make doctor after the upgrade (version and hook content), removed when rejected, a WARN, the doctor's
+        # by make doctor after the upgrade (version and content), removed when rejected, a WARN, the doctor's
         # drift until the review bump, not a counted run failure. Round 1 left an existing copy to the doctor alone
         # and counted it, which is what turned the host's `make update` red.
         pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]["pin"]
@@ -1568,9 +1586,7 @@ claude() {
                 self.assertEqual(["plugin marketplace upgrade ponytail", "plugin remove ponytail@ponytail"], calls)
                 self.assertFalse(cache.exists())
                 self.assertIn(finding, result.stderr)  # make doctor's finding names what is off the pin
-                self.assertIn(
-                    f"make doctor rejects that copy: version or hook content off the pin {pin}", result.stderr
-                )
+                self.assertIn(f"make doctor rejects that copy: version or content off the pin {pin}", result.stderr)
                 self.assertIn("is off its pin and is proven disabled (Claude) or removed (Codex)", result.stderr)
                 self.assertNotIn("did not reach its pin", result.stderr)
                 self.assertNotIn("could not be checked or kept at their pin", result.stderr)
@@ -1686,7 +1702,7 @@ claude() {
         pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]["pin"]
         for doctor_exit, expected, message in (
             ("0", "rc=0", None),
-            ("1", "rc=11", f"ponytail@ponytail landed at {pin} and make doctor rejects that copy: version or hook"),
+            ("1", "rc=11", f"ponytail@ponytail landed at {pin} and make doctor rejects that copy: version or content"),
             ("2", "rc=1", "make doctor's pin check of codex plugin ponytail@ponytail could not run (exit 2)"),
             ("127", "rc=1", "make doctor's pin check of codex plugin ponytail@ponytail could not run (exit 127)"),
         ):
@@ -1716,34 +1732,20 @@ claude() {
                 else:
                     self.assertIn(message, result.stderr)
 
-    def test_the_ponytail_hook_pins_cover_the_reviewed_tree_at_the_pinned_ref(self):
-        # Trust boundary: the trusted_hash pins under codex.hooks.state trust Ponytail's hook commands only as
-        # reviewed, and hooks_sha256 the files those commands load. The fixture is upstream's hooks/ tree and
-        # .codex-plugin/plugin.json at the pinned ref (SOURCE.json names the commit, the version, the tree id and
-        # the blobs), so a mistyped pin or ref, a ref bump without the tree re-read, a pin that no longer hashes
-        # that tree, or a fixture file that is not upstream's fails here; and any other hook content is untrusted.
-        fixture = ROOT / "tests/fixtures/ponytail"
+    def test_the_ponytail_trusted_hashes_cover_upstreams_hooks_file(self):
+        # Trust boundary: the trusted_hash pins under codex.hooks.state trust Ponytail's three hook commands only as
+        # reviewed. tests/fixtures/ponytail/hooks/claude-codex-hooks.json is upstream's hooks file at the pinned ref
+        # verbatim (the rest of the fixture is synthetic), so a mistyped trusted_hash, or a hooks file that is not the
+        # one the pins were recorded from, fails here, and any other hook command is untrusted. The content_sha256
+        # pin's provenance is a scratch clone of upstream at the pinned ref (the PR body's Verification), no fixture.
         all_pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())
         pins = all_pins["codex"]["ponytail@ponytail"]
-        source = json.loads((fixture / "SOURCE.json").read_text())
-        hook_bytes = (fixture / source["path"]).read_bytes()
-        self.assertEqual(
-            {"repository": pins["marketplace"], "ref": pins["ref"], "version": pins["pin"]},
-            {k: source[k] for k in ("repository", "ref", "version")},
-        )
-        self.assertEqual(source["version"], all_pins["claude"]["ponytail@ponytail"]["pin"])
-        self.assertEqual(source["blob"], hashlib.sha1(b"blob %d\0" % len(hook_bytes) + hook_bytes).hexdigest())
-        manifest_bytes = (fixture / ".codex-plugin/plugin.json").read_bytes()
-        self.assertEqual(
-            source["tree"][".codex-plugin/plugin.json"],
-            hashlib.sha1(b"blob %d\0" % len(manifest_bytes) + manifest_bytes).hexdigest(),
-        )
-        self.assertEqual(source["version"], json.loads(manifest_bytes)["version"])
-        self.assertEqual(source["tree"]["hooks"], git_tree_id(fixture / "hooks"))
-        self.assertEqual(pins["hooks_sha256"], reviewed_hooks_sha256(fixture))
+        self.assertEqual(pins["pin"], all_pins["claude"]["ponytail@ponytail"]["pin"])
+        self.assertEqual(pins["pin"], json.loads((PONYTAIL / ".codex-plugin/plugin.json").read_text())["version"])
+        hook_bytes = (PONYTAIL / "hooks/claude-codex-hooks.json").read_bytes()
         home = Path(tempfile.mkdtemp(prefix="ponytail-hooks-"))
         self.addCleanup(shutil.rmtree, home)
-        installed = home / ".codex/plugins/cache/ponytail/ponytail" / pins["pin"] / source["path"]
+        installed = home / ".codex/plugins/cache/ponytail/ponytail" / pins["pin"] / "hooks/claude-codex-hooks.json"
         installed.parent.mkdir(parents=True)
         installed.write_bytes(hook_bytes)
         script = ROOT / "home/dot_codex/modify_private_config.toml"

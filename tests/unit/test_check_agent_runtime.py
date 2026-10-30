@@ -33,7 +33,7 @@ GOOD_SKILLS = {
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
 from claude_plugin_fixture import install_reviewed
-from codex_plugin_fixture import install_ponytail_copy, reviewed_hooks_sha256
+from codex_plugin_fixture import install_ponytail_copy, reviewed_content_sha256
 from scratch_git import git_init  # noqa: E402
 
 
@@ -1774,41 +1774,44 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(1, len(errors), errors)
         self.assertIn(f"Codex marketplace tail is at {'b' * 40}, not its pinned ref {'a' * 40}", errors[0])
 
-    # A Codex plugin copy's executable content: what the hooks.json commands load, plus the manifest that names the
-    # hooks file. README.md stands for the skills and other files Codex reads as instructions, which no pin covers.
-    HOOKED_TREE = {
+    # A Codex plugin copy's reviewed tree: the code and configuration the content pin covers, and the inert kinds
+    # beside them (instructions, an image, the translated README, the licence, upstream CI). No .mcp.json: Codex
+    # enables the stdio MCP commands one declares, so a copy that gains one is off its pin.
+    REVIEWED_TREE = {
         "hooks/ponytail-activate.js": b"console.log('reviewed')\n",
         "hooks/band/board.ts": b"export const board = 1\n",
         "hooks/claude-codex-hooks.json": b'{"hooks": {}}\n',
+        "plugin.json": b'{"name": "tail", "version": "5.0.0"}\n',
+        "scripts/x.sh": b"#!/bin/sh\n",
         "README.md": b"reviewed\n",
+        "i18n/README.ja.md": b"reviewed\n",
+        "assets/logo.svg": b"<svg/>\n",
+        "LICENSE": b"MIT\n",
+        ".github/workflows/test.yml": b"on: push\n",
     }
 
-    def hooked_codex_copy(self, pins: Path) -> tuple[Path, Path]:
-        """tail@tail at its pin with HOOKED_TREE, the same tree in the marketplace clone at the ref (the reference the
-        doctor names differing files against), and hooks_sha256 recorded from the tests' own reading of the
-        definition (codex_plugin_fixture.reviewed_hooks_sha256)."""
+    def pinned_codex_copy(self, pins: Path) -> tuple[Path, Path]:
+        """tail@tail at its pin with REVIEWED_TREE, the same tree in the marketplace clone at the ref (the reference
+        the doctor names differing files against), and content_sha256 recorded from the tests' own reading of the
+        definition (codex_plugin_fixture.reviewed_content_sha256)."""
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         copy = self.target_root / ".codex/plugins/cache/tail/tail/5.0.0"
         clone = self.target_root / ".codex/.tmp/marketplaces/tail"
         for root in (copy, clone):
-            for relative, data in self.HOOKED_TREE.items():
+            for relative, data in self.REVIEWED_TREE.items():
                 (root / relative).parent.mkdir(parents=True, exist_ok=True)
                 (root / relative).write_bytes(data)
         (clone / ".codex-plugin").mkdir(exist_ok=True)
         shutil.copy(copy / ".codex-plugin/plugin.json", clone / ".codex-plugin/plugin.json")
         data = json.loads(pins.read_text())
-        data["codex"]["tail@tail"]["hooks_sha256"] = reviewed_hooks_sha256(copy)
+        data["codex"]["tail@tail"]["content_sha256"] = reviewed_content_sha256(copy)
         pins.write_text(json.dumps(data))
         return copy, clone
 
-    def restore_hooked_copy(self, copy: Path, clone: Path) -> None:
-        """Put COPY back to the reviewed tree: HOOKED_TREE and the manifest the clone holds."""
-        for name in ("hooks", ".codex-plugin"):
-            if (copy / name).is_symlink():
-                (copy / name).unlink()
-            else:
-                shutil.rmtree(copy / name, ignore_errors=True)
-        for relative, data in self.HOOKED_TREE.items():
+    def restore_pinned_copy(self, copy: Path, clone: Path) -> None:
+        """Put COPY back to the reviewed tree: REVIEWED_TREE and the manifest the clone holds."""
+        shutil.rmtree(copy)
+        for relative, data in self.REVIEWED_TREE.items():
             (copy / relative).parent.mkdir(parents=True, exist_ok=True)
             (copy / relative).write_bytes(data)
         (copy / ".codex-plugin").mkdir(exist_ok=True)
@@ -1817,17 +1820,21 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def pin_errors(self, pins: Path) -> list[str]:
         return [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
 
-    def test_doctor_pins_the_hook_content_of_a_codex_copy(self) -> None:
-        # Round-2 audit of 18af4a8a (P1): the codex.hooks.state trusted_hash pins cover the hooks.json command text
-        # (`node -e "require(... 'hooks/ponytail-activate.js')"`), not the JavaScript it loads, so replacement hook
-        # code under the pinned version ran trusted. hooks_sha256 pins the files under hooks/ and the manifest; a
-        # copy off it is a finding naming the plugin, the copy and the files that differ from the marketplace clone
-        # at the pinned ref. The version finding stays beside it.
+    def test_doctor_pins_the_content_of_a_codex_copy(self) -> None:
+        # Round-3 audit of 925003c3 (P1): hooks_sha256 pinned hooks/ and the manifest, and a .mcp.json added to the
+        # copy declared stdio MCP commands Codex enabled while the doctor passed. Enumerating what Codex executes never
+        # closes, so content_sha256 pins every file but the inert kinds; a copy off it is a finding naming the plugin,
+        # the copy and the files that differ from the marketplace clone at the pinned ref. The version finding stays.
         pins = self.plugin_pins_fixture()
-        copy, clone = self.hooked_codex_copy(pins)
+        copy, clone = self.pinned_codex_copy(pins)
         self.assertEqual([], self.plugin_findings(pins))
         named = "files that differ from the marketplace clone at the pinned ref: "
         for name, changes, expected in (
+            (
+                ".mcp.json added",
+                {".mcp.json": b'{"mcpServers": {"x": {"command": "/usr/bin/true"}}}\n'},
+                ".mcp.json",
+            ),
             (
                 "hook code replaced",
                 {"hooks/ponytail-activate.js": b"console.log('replaced')\n"},
@@ -1842,21 +1849,41 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 },
                 ".codex-plugin/plugin.json, hooks/band/board.ts, hooks/extra.js",
             ),
+            (
+                "a script and another agent's manifest changed, a file kind of tomorrow added",
+                {
+                    "scripts/x.sh": b"#!/bin/sh\necho changed\n",
+                    "plugin.json": b"{}\n",
+                    "pi-extension/index.wasm": b"\0",
+                },
+                "pi-extension/index.wasm, plugin.json, scripts/x.sh",
+            ),
         ):
             with self.subTest(case=name):
                 for relative, data in changes.items():
+                    (copy / relative).parent.mkdir(parents=True, exist_ok=True)
                     (copy / relative).write_bytes(data)
                 errors = self.pin_errors(pins)
                 self.assertEqual(1, len(errors), errors)
-                self.assertTrue(errors[0].startswith(f"Codex plugin tail@tail copy {copy} has hook content "), errors)
+                self.assertTrue(errors[0].startswith(f"Codex plugin tail@tail copy {copy} has content "), errors)
                 self.assertIn(f"{named}{expected}; review those files", errors[0])
                 self.assertNotIn("claude-codex-hooks.json", errors[0])
-                self.restore_hooked_copy(copy, clone)
+                self.assertNotIn(".codex-marketplace-install.json", errors[0])
+                self.restore_pinned_copy(copy, clone)
                 self.assertEqual([], self.plugin_findings(pins))
-        # Only a non-hook file changed: instructions Codex reads, not code it runs; no finding, as on Claude today.
-        (copy / "README.md").write_bytes(b"edited\n")
+        # Only inert files changed or added: instructions, images and upstream CI, which Codex reads or ignores but
+        # never runs; no finding, as on Claude today. The copy's .git is the clone's bookkeeping, not content.
+        for relative, data in (
+            ("README.md", b"edited\n"),
+            ("i18n/README.ja.md", b"edited\n"),
+            ("assets/logo.svg", b"<svg><!-- edited --></svg>\n"),
+            ("docs/x.md", b"\n"),
+            (".git/HEAD", b"ref: refs/heads/main\n"),
+        ):
+            (copy / relative).parent.mkdir(parents=True, exist_ok=True)
+            (copy / relative).write_bytes(data)
         self.assertEqual([], self.plugin_findings(pins))
-        # Another version: the version finding, and the manifest named as the file off the hooks pin.
+        # Another version: the version finding, and the manifest named as the file off the content pin.
         (copy / ".codex-plugin/plugin.json").write_text(json.dumps({"name": "tail", "version": "5.1.0"}))
         errors = self.pin_errors(pins)
         self.assertEqual(2, len(errors), errors)
@@ -1864,7 +1891,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertIn(f"{named}.codex-plugin/plugin.json;", errors[1])
         (copy / ".codex-plugin/plugin.json").write_bytes((clone / ".codex-plugin/plugin.json").read_bytes())
         # The marketplace clone off its ref cannot serve as the reference: the finding says so and names nothing.
-        (copy / "hooks/ponytail-activate.js").write_bytes(b"console.log('replaced')\n")
+        (copy / ".mcp.json").write_bytes(b"{}\n")
         (clone / ".codex-marketplace-install.json").write_text(
             json.dumps({"source_type": "git", "source": "https://example.invalid/tail.git", "revision": "b" * 40})
         )
@@ -1874,10 +1901,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertIn(
             "the marketplace clone is not at the pinned ref, so the files that differ are not named", errors[1]
         )
-        self.assertNotIn("ponytail-activate.js", errors[1])
-        # Without hooks_sha256 in the pin the version pin alone judges the copy, as before this round.
+        self.assertNotIn(".mcp.json", errors[1])
+        # Without content_sha256 in the pin the version pin alone judges the copy, as before round 2.
         data = json.loads(pins.read_text())
-        del data["codex"]["tail@tail"]["hooks_sha256"]
+        del data["codex"]["tail@tail"]["content_sha256"]
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
         self.assertEqual([], self.plugin_findings(self.write_pins(pins, data)))
 
@@ -1885,55 +1912,72 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         pins.write_text(json.dumps(data))
         return pins
 
-    def test_doctor_reports_a_codex_copy_whose_hook_content_cannot_be_read(self) -> None:
-        # Standing order 21: a copy without hooks/ or without its manifest, or with a symlink under hooks/, is a
-        # finding, never an empty value that happens to differ and never a pass.
+    def test_doctor_reports_a_codex_copy_whose_content_cannot_be_read(self) -> None:
+        # Standing order 21: a symlink anywhere in the copy, under hooks/, at an inert path or in place of a
+        # directory, is a finding, never an empty value that happens to differ and never a pass.
         pins = self.plugin_pins_fixture()
-        copy, clone = self.hooked_codex_copy(pins)
+        copy, clone = self.pinned_codex_copy(pins)
+        special = "is a symlink or special file; a content pin covers regular files only"
         for name, change, expected in (
-            ("no hooks/", lambda: shutil.rmtree(copy / "hooks"), f"{copy / 'hooks'}: (directory): is missing"),
             (
                 "a symlink under hooks/",
                 lambda: (copy / "hooks/link.js").symlink_to("ponytail-activate.js"),
-                f"{copy / 'hooks'}: link.js: is a symlink or special file; a content pin covers regular files only",
+                f"{copy}: hooks/link.js: {special}",
+            ),
+            (
+                "a symlink at an inert path",
+                lambda: ((copy / "docs").mkdir(), (copy / "docs/README.md").symlink_to("../README.md")),
+                f"{copy}: docs/README.md: {special}",
             ),
             (
                 "hooks/ is a symlink",
                 lambda: (shutil.rmtree(copy / "hooks"), (copy / "hooks").symlink_to(self.target_root)),
-                f"{copy / 'hooks'}: (directory): is not a real directory",
+                f"{copy}: hooks: {special}",
             ),
         ):
             with self.subTest(case=name):
                 change()
                 errors = self.pin_errors(pins)
                 self.assertEqual(1, len(errors), errors)
-                self.assertIn(f"Codex plugin tail@tail: {expected}; cannot verify its hook content", errors[0])
-                self.restore_hooked_copy(copy, clone)
+                self.assertIn(f"Codex plugin tail@tail: {expected}; cannot verify its content", errors[0])
+                self.restore_pinned_copy(copy, clone)
                 self.assertEqual([], self.plugin_findings(pins))
 
-    def test_the_codex_hooks_sha256_option_prints_the_value_of_a_copy(self) -> None:
-        # The review bump's tool: the value of a reviewed copy, from the one definition make doctor judges by.
+    def test_the_codex_content_sha256_option_prints_the_value_of_a_copy(self) -> None:
+        # The review bump's tool: the value of a copy from the one definition make doctor judges by, equal to the
+        # tests' own reading of the definition on the fixture (every kind of file a copy holds) and after changes.
         copy = install_ponytail_copy(self.temp_dir / "copy")
 
         def run(path: Path) -> subprocess.CompletedProcess:
-            command = [sys.executable, "-I", str(CHECKER), "--codex-hooks-sha256", str(path)]
+            command = [sys.executable, "-I", str(CHECKER), "--codex-content-sha256", str(path)]
             return subprocess.run(command, text=True, capture_output=True, check=False)
 
         result = run(copy)
         self.assertEqual((0, ""), (result.returncode, result.stderr))
-        self.assertEqual(reviewed_hooks_sha256(copy) + "\n", result.stdout)
-        # The reviewed tree (tests/fixtures/ponytail) is what the recorded pin hashes.
-        recorded = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["ponytail@ponytail"]
-        self.assertEqual(recorded["hooks_sha256"] + "\n", result.stdout)
-        (copy / "hooks/ponytail-activate.js").write_bytes(b"replaced\n")
-        changed = run(copy)
-        self.assertEqual(0, changed.returncode, changed.stderr)
-        self.assertNotEqual(result.stdout, changed.stdout)
-        self.assertEqual(reviewed_hooks_sha256(copy) + "\n", changed.stdout)
-        shutil.rmtree(copy / "hooks")
+        self.assertEqual(reviewed_content_sha256(copy) + "\n", result.stdout)
+        # Inert files changed: the same value. A hook, .mcp.json, a script or a new file changed: another value each
+        # time, still the definition's.
+        for relative in ("README.md", "i18n/README.ja.md", "assets/logo.svg", ".github/workflows/test.yml", "LICENSE"):
+            (copy / relative).write_bytes(b"edited\n")
+        self.assertEqual(result.stdout, run(copy).stdout)
+        seen = {result.stdout}
+        for relative in ("hooks/ponytail-activate.js", ".mcp.json", "scripts/x.sh", "pi-extension/index.js"):
+            (copy / relative).parent.mkdir(parents=True, exist_ok=True)
+            (copy / relative).write_bytes(b"replaced\n")
+            changed = run(copy)
+            self.assertEqual((0, ""), (changed.returncode, changed.stderr))
+            self.assertNotIn(changed.stdout, seen)
+            self.assertEqual(reviewed_content_sha256(copy) + "\n", changed.stdout)
+            seen.add(changed.stdout)
+        (copy / "skills/link.md").symlink_to("../README.md")
         failed = run(copy)
         self.assertEqual((1, ""), (failed.returncode, failed.stdout))
-        self.assertIn(f"ERROR: {copy / 'hooks'}: (directory): is missing", failed.stderr)
+        self.assertIn(f"ERROR: {copy}: skills/link.md: is a symlink or special file", failed.stderr)
+        empty = self.temp_dir / "empty"
+        empty.mkdir()
+        failed = run(empty)
+        self.assertEqual((1, ""), (failed.returncode, failed.stdout))
+        self.assertIn(f"ERROR: {empty}: (directory): holds no file the content pin covers", failed.stderr)
 
     def test_doctor_reads_a_null_record_as_an_error(self) -> None:
         pins = self.plugin_pins_fixture()

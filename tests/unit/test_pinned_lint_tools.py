@@ -794,7 +794,7 @@ class LintFileSetTest(unittest.TestCase):
             "#!/usr/bin/env --split-string=sh",
             "#!/bin/dash",
             "#!/usr/bin/env -S zsh -f",
-            "#!/usr/bin/env deno",
+            "#!/usr/bin/env node",
             "#!/usr/bin/env",
             "#!",
         ):

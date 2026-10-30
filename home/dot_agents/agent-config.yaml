@@ -1390,14 +1390,17 @@ assets:
     note: >-
       each pin is the version both hosts ran on 2026-10-25 (the plugin.json of the copy under
       ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
-      version, as the Claude copy of the same plugin is, and, where hooks_sha256 is recorded, by its
-      executable content: the sha256 over one line per file, `<relative path> NUL <sha256 of its
-      bytes> LF`, for every regular file under hooks/ (recursive, in the byte order of its path) and
-      then .codex-plugin/plugin.json; `check-agent-runtime.py --codex-hooks-sha256 <copy dir>` prints
-      it for a review bump. The hooks/ files are what the hooks.json commands load (`node -e
-      "require(... 'hooks/ponytail-activate.js')"`); the trusted_hash pins under codex.hooks.state
-      cover those command strings, not the files. Skills and other non-hook files are instructions
-      Codex reads, not code it runs, and are not pinned, as on Claude. A plugin with a ref comes from a
+      version, as the Claude copy of the same plugin is, and, where content_sha256 is recorded, by its
+      content: the sha256 over one line per file, `<relative path> NUL <sha256 of its bytes> LF`, for
+      every regular file of the copy whose path is not inert (scripts/pin_records.py INERT: Markdown,
+      LICENSE*, images, .gitignore, .github/, i18n/ and docs/, which Codex reads as text or never
+      loads), sorted by the bytes of the path, the .git directory skipped; a symlink anywhere in the
+      copy is a finding. Everything else is pinned, .mcp.json (stdio MCP commands Codex enables),
+      the manifests, scripts/, commands/ and any file kind that appears tomorrow included; the
+      trusted_hash pins under codex.hooks.state cover the hook command strings only.
+      `check-agent-runtime.py --codex-content-sha256 <copy dir>` prints the value for a review bump.
+      Markdown is left out by the Claude-parity argument: instructions the Claude copy of the same
+      plugin runs unpinned today. A plugin with a ref comes from a
       git marketplace: the ref pins the marketplace catalog snapshot only (`ref` under
       [marketplaces.<name>], rendered from here, and `codex plugin marketplace upgrade` keeps the
       catalog on it), while the upgrade installs the plugin copy from the source the catalog names
@@ -1406,7 +1409,7 @@ assets:
       judge_codex_copy), whether it was cached before or not; one the doctor rejects is removed, a
       WARN, and make doctor's drift until the review bump, not a run failure. superpowers comes from
       the OpenAI-curated catalog, which takes no version, so make update only compares it. make
-      doctor fails when an installed version, a hook content or a marketplace revision differs from
+      doctor fails when an installed version, a copy's content or a marketplace revision differs from
       its pin. The crit plugin is the local copy `crit install codex-plugin` writes for the pinned
       crit release (assets.crit).
     plugins:
@@ -1415,10 +1418,10 @@ assets:
         marketplace: https://github.com/DietrichGebert/ponytail.git
         pin: 5.3.3
         ref: 7801d061243d7b753bad0e0b3c057cd250b11755
-        # hooks/ and .codex-plugin/plugin.json at 7801d061 (tag v5.3.3, 2026-10-29), read from a
-        # scratch clone on 2026-10-30 with check-agent-runtime.py --codex-hooks-sha256; the same value
-        # at main 96608e07 (README and logos only). The reviewed tree is tests/fixtures/ponytail.
-        hooks_sha256: fe0f341bf0339f790fefdfbd99de77de5b9fd225f558ceeea307f37dc5828d6e
+        # content_sha256 of the tree at 7801d061 (tag v5.3.3, 2026-10-29), read on 2026-10-30 from a
+        # scratch clone with check-agent-runtime.py --codex-content-sha256; the same value at main
+        # 96608e07 (README, i18n READMEs and two logos, all inert).
+        content_sha256: 1a472de05a21fd2927d07b402891f685787319260f153d0f0b39bb20da113461
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

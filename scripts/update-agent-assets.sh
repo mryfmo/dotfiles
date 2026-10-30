@@ -1043,10 +1043,10 @@ function codex_plugin_copy() {
 #
 # @description After a Codex plugin step, judge the copy it left cached by make doctor's own pin check
 #   (doctor_pin_check), the one judge of a pin, so the two never disagree: a copy the doctor rejects, for the
-#   version its manifest declares or for its hook content (hooks_sha256: the files under hooks/, which the
-#   hooks.json commands load, and the manifest that names them), is off its pin, whether the step installed it or
-#   found it cached. `codex plugin marketplace upgrade` rewrites the copy from upstream main (incident
-#   2026-10-30), so a copy that was there before is no more reviewed than a fresh one and takes the same outcome:
+#   version its manifest declares or for its content (content_sha256: every regular file of the copy except the
+#   inert kinds pin_records.py INERT names), is off its pin, whether the step installed it or found it cached.
+#   `codex plugin marketplace upgrade` rewrites the copy from upstream main (incident 2026-10-30), so a copy that
+#   was there before is no more reviewed than a fresh one and takes the same outcome:
 #   removed by converge_or_disable, a WARN, make doctor's drift until the review bump, not a run failure. The
 #   commit the copy came from is not compared with the marketplace `ref`, which pins the catalog snapshot only.
 # @arg $1 string Fully qualified Codex plugin ID.
@@ -1078,7 +1078,7 @@ function judge_codex_copy() {
     case "${check}" in
     0) return 0 ;;
     1)
-        printf 'WARN: codex plugin %s landed at %s and make doctor rejects that copy: version or hook content off the pin %s (its finding above names what differs); the pin needs a review bump: review that release and record its version and hooks_sha256 in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${codex_copy#copy }" "${pin}" >&2
+        printf 'WARN: codex plugin %s landed at %s and make doctor rejects that copy: version or content off the pin %s (its finding above names what differs); the pin needs a review bump: review that release and record its version and content_sha256 in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${codex_copy#copy }" "${pin}" >&2
         return "${PLUGIN_FRESH_OFF_PIN}"
         ;;
     *)
@@ -1151,10 +1151,10 @@ function update_codex_superpowers() {
 #   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins). That ref pins
 #   the marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the plugin copy from the
 #   source the catalog names (upstream main for ponytail), whatever the ref says, so the copy is judged by the
-#   version its manifest declares and by its hook content (hooks_sha256), by make doctor's check after each
+#   version its manifest declares and by its content (content_sha256), by make doctor's check after each
 #   update (judge_codex_copy) and at any time, never by the commit it came from. What a hook command may run is
-#   pinned by the codex.hooks.state trusted_hash pins (the hooks.json command strings); the files those commands
-#   load are pinned by hooks_sha256.
+#   pinned by the codex.hooks.state trusted_hash pins (the hooks.json command strings); every file of the copy
+#   but the inert kinds (instructions, images, upstream CI) is pinned by content_sha256.
 #
 function ensure_codex_ponytail_marketplace() {
     local codex_config="${AGENT_CODEX_DIR%/}/config.toml"

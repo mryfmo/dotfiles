@@ -961,17 +961,16 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
 
 
 def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]:
-    """Fail for a Codex plugin at another version than its pin, one whose hook content is off its hooks_sha256 pin,
-    or a git marketplace off its ref; warn for an enabled third-party plugin without a pin.
+    """Fail for a Codex plugin at another version than its pin, one whose content is off its content_sha256 pin, or
+    a git marketplace off its ref; warn for an enabled third-party plugin without a pin.
 
     The copy checked is the one Codex loads (pin_records.load_codex_copy documents Codex's rule), judged by the
-    version its manifest declares, as the Claude copy of the same plugin is, and by its executable content when the
-    pin records hooks_sha256 (pin_records.codex_hooks_content: the files under hooks/, which the hooks.json commands
-    load, and the manifest that names the hooks file; the codex.hooks.state trusted_hash pins cover the command
-    strings only). The `ref` pins the marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches
-    the copy from the source the catalog names (upstream main for ponytail), so the commit a copy came from is not
-    compared with it; the marketplace's install record and the config.toml marketplace table must name the pinned
-    source and ref.
+    version its manifest declares, as the Claude copy of the same plugin is, and by its content when the pin records
+    content_sha256 (pin_records.codex_content: every regular file of the copy except the inert kinds pin_records.INERT
+    names; the codex.hooks.state trusted_hash pins cover the hook command strings only). The `ref` pins the
+    marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the copy from the source the
+    catalog names (upstream main for ponytail), so the commit a copy came from is not compared with it; the
+    marketplace's install record and the config.toml marketplace table must name the pinned source and ref.
     """
     findings = []
     codex_dir = records.agent_home("codex", home)
@@ -988,7 +987,7 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
         except RecordError as error:
             findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify its pin")
             continue
-        # The marketplace clone at the pinned ref, when the install record proves it is there: the reference a hooks
+        # The marketplace clone at the pinned ref, when the install record proves it is there: the reference a content
         # finding names the differing files against. The verdict never depends on it, only the names.
         reference = None
         if pin.ref is not None:
@@ -1024,8 +1023,8 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
                 f"Codex plugin {plugin_id} is installed at {copy.version}, not its pin {pin.pin} "
                 "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
             )
-        if pin.hooks_sha256 is not None:
-            findings.extend(codex_hooks_findings(plugin_id, pin, root, copy, reference))
+        if pin.content_sha256 is not None:
+            findings.extend(codex_content_findings(plugin_id, pin, root, copy, reference))
     for plugin_id, on in sorted((config.plugins if config else {}).items()):
         third_party = plugin_id.partition("@")[2] not in UNPINNED_CODEX_MARKETPLACES
         if on and third_party and plugin_id not in pins:
@@ -1036,9 +1035,9 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
     return findings
 
 
-def codex_hooks_findings(plugin_id: str, pin, root: Path, copy, reference: Path | None) -> list[str]:
-    """The hooks_sha256 check of the Codex copy COPY under ROOT: its hooks/ files and manifest
-    (pin_records.codex_hooks_content) against the pin. A copy that cannot be read is a finding, never a pass.
+def codex_content_findings(plugin_id: str, pin, root: Path, copy, reference: Path | None) -> list[str]:
+    """The content_sha256 check of the Codex copy COPY under ROOT: its files (pin_records.codex_content) against
+    the pin. A copy that cannot be read is a finding, never a pass.
 
     Off the pin, the finding names the files that differ from REFERENCE, the marketplace clone at the pinned ref,
     read by the same function: the per-file hashes computed for the copy's value are kept and compared, nothing is
@@ -1046,21 +1045,22 @@ def codex_hooks_findings(plugin_id: str, pin, root: Path, copy, reference: Path 
     """
     copy_dir = records.confined(root, "(version directory)", root, copy.version_dir)
     try:
-        hooks = records.codex_hooks_content(copy_dir)
+        content = records.codex_content(copy_dir)
     except RecordError as error:
-        return [f"Codex plugin {plugin_id}: {error}; cannot verify its hook content against its pin hooks_sha256"]
-    if hooks.sha256 == pin.hooks_sha256:
+        return [f"Codex plugin {plugin_id}: {error}; cannot verify its content against its pin content_sha256"]
+    if content.sha256 == pin.content_sha256:
         return []
     if reference is None:
         named = "the marketplace clone is not at the pinned ref, so the files that differ are not named"
     else:
         try:
-            reviewed = records.codex_hooks_content(reference).files
+            skip = (*records.CODEX_COPY_SKIP, records.CODEX_MARKETPLACE_RECORD)
+            reviewed = records.codex_content(reference, skip).files
         except RecordError as error:
             named = f"the marketplace clone at the pinned ref cannot name the files that differ ({error})"
         else:
             differ = sorted(
-                path for path in set(hooks.files) | set(reviewed) if hooks.files.get(path) != reviewed.get(path)
+                path for path in set(content.files) | set(reviewed) if content.files.get(path) != reviewed.get(path)
             )
             if differ:
                 named = "files that differ from the marketplace clone at the pinned ref: " + ", ".join(differ)
@@ -1069,9 +1069,9 @@ def codex_hooks_findings(plugin_id: str, pin, root: Path, copy, reference: Path 
                     "no file differs from the marketplace clone at the pinned ref, so the pin itself is not that tree"
                 )
     return [
-        f"Codex plugin {plugin_id} copy {copy_dir} has hook content {hooks.sha256}, not its pin hooks_sha256 "
-        f"{pin.hooks_sha256} (assets.codex-plugins in home/dot_agents/agent-config.yaml); {named}; review those "
-        "files and record the value check-agent-runtime.py --codex-hooks-sha256 prints for a reviewed copy"
+        f"Codex plugin {plugin_id} copy {copy_dir} has content {content.sha256}, not its pin content_sha256 "
+        f"{pin.content_sha256} (assets.codex-plugins in home/dot_agents/agent-config.yaml); {named}; review those "
+        "files and record the value check-agent-runtime.py --codex-content-sha256 prints for a reviewed copy"
     ]
 
 
@@ -1418,18 +1418,18 @@ def main(argv: list[str] | None = None) -> int:
         help="run the doctor's pin check for one asset (claude|codex|gh and its id); exit 1 on any error",
     )
     parser.add_argument(
-        "--codex-hooks-sha256",
+        "--codex-content-sha256",
         metavar="COPY_DIR",
-        help="print the hooks_sha256 pin value of a Codex plugin copy (its hooks/ files and .codex-plugin/plugin.json)",
+        help="print the content_sha256 pin value of a Codex plugin copy (every file but the inert kinds)",
     )
     args = parser.parse_args(argv)
     if args.pin_check is not None:
         findings = asset_pin_findings(*args.pin_check)
         print_failures(findings)
         return 1 if [finding for finding in findings if not is_warning(finding)] else 0
-    if args.codex_hooks_sha256 is not None:
+    if args.codex_content_sha256 is not None:
         try:
-            print(records.codex_hooks_content(Path(args.codex_hooks_sha256)).sha256)
+            print(records.codex_content(Path(args.codex_content_sha256)).sha256)
         except RecordError as error:
             print(f"ERROR: {error}", file=sys.stderr)
             return 1

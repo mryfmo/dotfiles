@@ -63,7 +63,7 @@ MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
 # reads one way in PyYAML and another in GitHub, and none survives a byte comparison. A change to regime.yml updates
 # both constants in the same commit, once the property checks pass on the new text; a reviewer verifies the pin with
 # `shasum -a 256 .github/workflows/regime.yml` without reading the literal.
-WORKFLOW_SHA256 = "e32b3341b26543bb19da9087666e28e295eeb0eaac019cfb0a047dfb649ba6e0"
+WORKFLOW_SHA256 = "b9364371dd3268c8fbef213bd9e548c8ba014face1998c20d486c141e1d21896"
 WORKFLOW_BYTES = """\
 name: regime
 
@@ -116,6 +116,13 @@ jobs:
           # who wrote the pull request (U71, F152): only an owner, member or collaborator's Program-Unit line counts
           PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
         run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+      - name: Check the round cap over the records the pull request's head carries
+        # standing order 36 (U120): the base's rounds-check.py reads the head's ledger.tsv and decisions.tsv as data
+        # (git cat-file blob) and checks every unit; a head whose two files are its merge base's blobs is nothing to check
+        timeout-minutes: 2
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
 """
 BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_VARIABLE = "PR_BODY"
@@ -130,6 +137,8 @@ EXPRESSION = "${{"
 HEAD_REF = "refs/regime/pr-head"
 HEAD_REFSPEC = "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
 VERIFIER = "scripts/orchestrator/regime-ci.py"
+ROUNDS_CHECK = "scripts/orchestrator/rounds-check.py"  # U120: the round cap over the head's store, read as data
+STORE = ".orchestration/orchestrate/regime-cutover"
 UNSAFE_OPTION = "allow-unsafe-pr-checkout"
 READ_ONLY = {"contents": "read"}
 POSITION = {"Offset", "Line", "Col"}
@@ -230,6 +239,15 @@ SCRIPTS = (
             ),
         ),
     ),
+    Row(
+        f"python -I {ROUNDS_CHECK}",
+        (
+            call(
+                *("uv", "run", "--no-config", "--no-project", "python", "-I", ROUNDS_CHECK, "--all", STORE),
+                *("--base", dq(sub(rev_parse("HEAD"))), "--head", dq(var("HEAD_SHA"))),
+            ),
+        ),
+    ),
 )
 
 
@@ -256,6 +274,7 @@ INPUTS = (
         {"HEAD_SHA": HEAD_EXPRESSION, BODY_VARIABLE: BODY_CARRIER, "PR_AUTHOR_ASSOCIATION": AUTHOR_EXPRESSION},
         None,
     ),
+    Inputs("timeout-minutes: 2", {"HEAD_SHA": HEAD_EXPRESSION}, None),
 )
 
 
@@ -287,6 +306,12 @@ DOCUMENT = {
                 {"uses": SETUP_UV_ACTION, "with": INPUTS[1].options},
                 {"name": "Fetch the pull request's head as data", "env": INPUTS[2].env, "run": SCRIPT},
                 {"name": "Check the pull request with the base's verifier", "env": INPUTS[3].env, "run": SCRIPT},
+                {
+                    "name": "Check the round cap over the records the pull request's head carries",
+                    "timeout-minutes": 2,
+                    "env": INPUTS[4].env,
+                    "run": SCRIPT,
+                },
             ],
         }
     },
@@ -897,7 +922,7 @@ RUN_SCRIPTS = Invariant(
         "a default directory for the job": Mutation(
             set_in(regime_job, "defaults", {"run": {"working-directory": "/other"}}), "working-directory"
         ),
-        "a third run step": Mutation(add_step({"run": f"git checkout {HEAD_REF}\n"}), "3 run steps"),
+        "a fourth run step": Mutation(add_step({"run": f"git checkout {HEAD_REF}\n"}), "4 run steps"),
     },
 )
 # the round-4 audit's edit: bash reads BASH_ENV at the start of every non-interactive shell, so the verifier step ran
@@ -955,7 +980,7 @@ STEP_INPUTS = Invariant(
         "persist-credentials as a string": Mutation(
             set_in(checkout_options, "persist-credentials", "false"), "found 'false' (str), the table holds False"
         ),
-        "a fifth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "5 steps"),
+        "a sixth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "6 steps"),
     },
 )
 CANCEL_IN_PROGRESS = Invariant(
@@ -1211,7 +1236,12 @@ STRAY_RUN = f"        run: git checkout {HEAD_REF}\n"
 # file or refuses it), the round-6 audit's spelling, and the text-level changes no parsed check could ever see.
 RAW_EDITS = {
     "a duplicate run: key on the verifier step (the auditor's edit)": RawEdit(
-        swap("        run: uv run", f"{STRAY_RUN}        run: uv run"), 51, True
+        swap(
+            f"        run: uv run --no-config --no-project python -I {VERIFIER}",
+            f"{STRAY_RUN}        run: uv run --no-config --no-project python -I {VERIFIER}",
+        ),
+        51,
+        True,
     ),
     "a duplicate run: key on the fetch step": RawEdit(
         swap("        run: |\n", f"{STRAY_RUN}        run: |\n"), 41, True

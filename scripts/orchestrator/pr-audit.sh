@@ -103,6 +103,11 @@
 #   TMPDIR are removed; the run directory keeps `prompt.md`, `verdict.schema.json`, `codex.log`, `verdict.json` and
 #   `verdict.md`, or is removed whole when codex never started.
 # @arg $1 int The pull request number.
+# @option --records <store> The program store (`.orchestration/orchestrate/<program>`), required when the body carries
+#   a `Program-Unit: <program>/U<n>` line (regime-cutover U120, standing order 36): before anything else the checkout's
+#   `scripts/orchestrator/rounds-check.py <store> U<n>` reads the ledger and the decisions file, and a non-zero exit
+#   (the unit's next round needs a `mechanism-change` row, the store is malformed, or the check could not run) refuses
+#   the audit. A body without the line keeps the behaviour without the flag.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call and per `git fetch` (default 60).
 # @env PR_AUDIT_TIMEOUT Seconds for the `codex exec` run (default 3600).
@@ -116,13 +121,17 @@
 #   number the reader cannot represent are not), does not conform to the schema (a type, enum or bound), or names a
 #   verdict its findings contradict; or the schema uses a keyword or type the reader does not implement; or
 #   `verdict.md` could not be written (then none is left).
-# @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, the
+# @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, a program
+#   pull request (a `Program-Unit:` line) without `--records`, a store that is not a readable directory or not the
+#   body's program's, a malformed or doubled `Program-Unit:` line, the
 #   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
 #   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could
 #   not be given a process group of its own.
+# @exitcode 3 Refused by the round cap: `rounds-check.py` exited non-zero for the body's unit (its reason is on stderr),
+#   or the check could not run; nothing was written (standing order 21: a check that cannot run never reads as allowed).
 # @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.
 # @example
-#   ~/.local/bin/common/pr-audit.sh 547
+#   ~/.local/bin/common/pr-audit.sh 547 --records .orchestration/orchestrate/regime-cutover
 # The interpreter is /bin/bash in privileged mode (`-p`, U71b audit round 16): bash then imports no function from the
 # environment (a caller's exported `BASH_FUNC_jobs%%` or `BASH_FUNC_command%%` would otherwise replace a builtin
 # before the first line runs) and reads no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE. Measured on macOS's
@@ -235,7 +244,7 @@ caller_cwd=$(pwd -P) || {
 }
 
 lever='pr-audit.sh'
-usage='usage: pr-audit.sh <pr>'
+usage='usage: pr-audit.sh <pr> [--records <store>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 audit_timeout=${PR_AUDIT_TIMEOUT:-3600}
 probe_timeout=${PR_AUDIT_PROBE_TIMEOUT:-120}
@@ -255,6 +264,14 @@ refuse() {
 fail() {
     echo "${lever}: $*" >&2
     exit 1
+}
+
+# @description Print the round cap's refusal on stderr and exit 3; no audit ran and the EXIT trap removes the run
+#   directory, so nothing is left. Exit 3 tells this refusal, which a `decisions.tsv` row lifts, from a usage one.
+# @arg $@ string The reason.
+refuse_round() {
+    echo "${lever}: refused: $*" >&2
+    exit 3
 }
 
 # @description Run a command with its wait bounded by $1 seconds (perl `alarm`).
@@ -751,9 +768,25 @@ cleanup() {
     fi
 }
 
-[[ $# -eq 1 ]] || refuse "${usage}"
-pr=$1
+pr=''
+records=''
+while (($# > 0)); do
+    case $1 in
+    --records)
+        [[ $# -ge 2 && -n $2 && -z ${records} ]] || refuse "${usage}"
+        records=${2%/}
+        shift 2
+        ;;
+    *)
+        [[ -z ${pr} ]] || refuse "${usage}"
+        pr=$1
+        shift
+        ;;
+    esac
+done
+[[ -n ${pr} ]] || refuse "${usage}"
 [[ ${pr} =~ ^[1-9][0-9]{0,9}$ ]] || refuse "the pull request is not a decimal number: ${pr}"
+[[ -z ${records} || (-d ${records} && -r ${records}) ]] || refuse "the store ${records} is not a readable directory"
 for value in "${gh_timeout}" "${audit_timeout}" "${probe_timeout}" "${wait_tries}"; do
     [[ ${value} =~ ^[1-9][0-9]*$ ]] ||
         refuse 'PR_LEVER_GH_TIMEOUT, PR_AUDIT_TIMEOUT, PR_AUDIT_PROBE_TIMEOUT and PR_AUDIT_WAIT_TRIES must be positive integers'
@@ -844,6 +877,37 @@ mkdir "${work}" "${work}/home" "${work}/scratch-tmpdir" "${work}/cwd" "${codex_h
 
 gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/body.md" ||
     fail "cannot read the body of pull request ${pr}"
+# The round cap (regime-cutover U120, standing order 36). The body's `Program-Unit: <program>/U<n>` line is read as
+# regime-ci.py reads it (its own line, regime-init's name grammar, a CR tolerated); a line of another shape or a second
+# one refuses, so no program pull request is audited unchecked. The store must be `--records` and the program's own,
+# and the checkout's rounds-check.py must exit 0 for the unit before anything else runs; its status decides (standing
+# order 21): a check that could not run, or a malformed store, is the same refusal as a refused unit, never "allowed".
+body_text=$(cat -- "${run}/body.md") || fail "cannot read ${run}/body.md"
+unit=''
+program=''
+unit_lines=0
+while IFS= read -r line; do
+    line=${line%$'\r'}
+    [[ ${line} == 'Program-Unit:'* ]] || continue
+    [[ ${line} =~ ^Program-Unit:\ ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$ ]] ||
+        refuse "the body of pull request ${pr} carries a Program-Unit line outside <program>/U<n>: ${line}"
+    program=${BASH_REMATCH[1]}
+    unit=${BASH_REMATCH[2]}
+    unit_lines=$((unit_lines + 1))
+done <<< "${body_text}"
+((unit_lines <= 1)) || refuse "the body of pull request ${pr} carries ${unit_lines} Program-Unit lines, not one"
+if ((unit_lines == 1)); then
+    [[ -n ${records} ]] ||
+        refuse "pull request ${pr} is a program pull request (Program-Unit: ${program}/${unit}); --records <store> is required"
+    [[ ${records##*/} == "${program}" ]] || # lint-comparisons: allow the store's last component against the body's program name
+        refuse "the store ${records} is not the store of ${program}, the program the body names"
+    rounds_check=${repo}/scripts/orchestrator/rounds-check.py
+    [[ -f ${rounds_check} ]] || refuse_round "no ${rounds_check} in the checkout; the round cap of ${unit} cannot be checked"
+    status=0
+    rounds=$("${python}" -I -S "${rounds_check}" "${records}" "${unit}" 2>&1) || status=$?
+    ((status == 0)) || refuse_round "rounds-check.py exited ${status} for ${unit}: ${rounds:-no output}"
+    echo "${lever}: ${rounds}" >&2
+fi
 contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md"
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"
 

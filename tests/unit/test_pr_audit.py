@@ -43,7 +43,12 @@ FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FAKE_CODEX = ROOT / "tests/fixtures/pr-audit/fake-codex.py"
 INJECT_PYTHON = ROOT / "tests/fixtures/pr-audit/inject-python.sh"
 RULES = "## Audit\n\nThe standing audit rules.\n"
-BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
+BODY = "First paragraph.\n\n## Contract\n\nIt guarantees one thing.\n"
+# A program pull request's body (U120): the lever then needs `--records` and the round cap's leave for the unit.
+PROGRAM_BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
+ROUNDS_CHECK = ROOT / "scripts/orchestrator/rounds-check.py"
+LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+DECISIONS_HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n"
 
 
 def setUpModule():
@@ -754,17 +759,116 @@ class PrAuditTest(unittest.TestCase):
         for answer, message in (
             ({"head": "c" * 40}, "the head moved"),
             ({"base": "release"}, "not main"),
-            ({"body": "Program-Unit: regime-cutover/U7\n\nNo contract here.\n"}, "no '## Contract' section"),
+            ({"body": "No contract here.\n"}, "no '## Contract' section"),
         ):
             with self.subTest(message=message):
                 self.answer(**answer)
                 self.assert_refused(self.run_lever("7"), message)
 
     def test_usage_is_checked_before_any_call(self):
-        for args in ((), ("x7",), ("7", "8")):
+        for args in (
+            (),
+            ("x7",),
+            ("7", "8"),
+            ("7", "--records"),
+            ("--records", "", "7"),
+            ("7", "--records", "a", "--records", "b"),
+        ):
             with self.subTest(args=args):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
+
+    def with_store(self, ledger_rows=(), program="regime-cutover"):
+        """A fixture store of PROGRAM in scratch, and the checkout's own copy of rounds-check.py, which the lever runs
+        from `<checkout>/scripts/orchestrator/` (the store and the check come from the same checkout)."""
+        store = self.root / "records" / program
+        store.mkdir(parents=True, exist_ok=True)
+        (store / "ledger.tsv").write_text(LEDGER_HEADER + "".join("\t".join(row) + "\n" for row in ledger_rows))
+        (store / "decisions.tsv").write_text(DECISIONS_HEADER)
+        target = self.repo / "scripts/orchestrator/rounds-check.py"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROUNDS_CHECK, target)
+        return store
+
+    def incorrect_rows(self, count):
+        return [
+            (f"2026-10-30T0{n}:00:00Z", "U7", "7", self.head, "incorrect", "pr-audit.sh", "class=status")
+            for n in range(1, count + 1)
+        ]
+
+    def test_a_program_pull_request_is_audited_only_with_records_the_round_cap_allows(self):
+        """U120 (standing order 36): a body with a `Program-Unit:` line needs `--records`, and the checkout's
+        rounds-check.py must allow the unit's next round before anything else runs. Three incorrect rows without a
+        mechanism-change row refuse with exit 3 and the check's reason: no probe, no codex, nothing left."""
+        self.answer(body=PROGRAM_BODY)
+        self.assert_refused(self.run_lever("7"), "--records <store> is required")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        store = self.with_store()
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("pr-audit.sh: rounds-check: U7 allowed: 0 audit rows", run.stderr)
+        self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+        for path in self.tmp.iterdir():
+            shutil.rmtree(path)
+        (self.rec / "codex-calls").unlink()
+        run = self.run_lever("--records", str(self.with_store(self.incorrect_rows(3))), "7")
+        self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.assertIn(
+            "pr-audit.sh: refused: rounds-check.py exited 1 for U7: rounds-check: U7 refused: 3 audit rows (3 incorrect)",
+            run.stderr,
+        )
+        self.assertIn('write decisions.tsv phase=mechanism-change decision="U7 ..."', run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        # a body edited on github.com carries CRLF and still names the unit; a body without the line needs no flag
+        self.answer(body=PROGRAM_BODY.replace("\n", "\r\n"))
+        run = self.run_lever("7", "--records", str(self.with_store()))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("rounds-check: U7 allowed", run.stderr)
+        for path in self.tmp.iterdir():
+            shutil.rmtree(path)
+        self.answer()
+        run = self.run_lever("7")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("rounds-check", run.stderr)
+
+    def test_a_round_cap_check_that_cannot_run_or_read_its_store_refuses_the_audit(self):
+        """Standing order 21: the check's status decides. A store it cannot read, a python that fails on it, or no
+        script in the checkout is exit 3 naming the cause, never an audit; the store's shape and the body's line are
+        refused as usage (exit 2) before the check runs."""
+        self.answer(body=PROGRAM_BODY)
+        store = self.with_store()
+        (store / "ledger.tsv").unlink()
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(f"rounds-check.py exited 2 for U7: rounds-check: {store}/ledger.tsv: cannot read", run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        store = self.with_store()
+        run = self.run_lever(
+            "7", "--records", str(store), PATH=self.failing_tool("python3", "*rounds-check.py*", "exit 127")
+        )
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn("rounds-check.py exited 127 for U7", run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        (self.repo / "scripts/orchestrator/rounds-check.py").unlink()
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(f"no {self.repo}/scripts/orchestrator/rounds-check.py in the checkout", run.stderr)
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        store = self.with_store()
+        other = self.with_store(program="other-program")
+        self.assert_refused(self.run_lever("7", "--records", str(other)), "is not the store of regime-cutover")
+        self.assert_refused(self.run_lever("7", "--records", str(self.root / "absent")), "is not a readable directory")
+        for body, message in (
+            (PROGRAM_BODY.replace("U7", "U7b"), "a Program-Unit line outside <program>/U<n>"),
+            (PROGRAM_BODY.replace("regime-cutover/U7", "Regime-cutover/U7"), "a Program-Unit line outside"),
+            (PROGRAM_BODY + "Program-Unit: regime-cutover/U8\n", "carries 2 Program-Unit lines, not one"),
+        ):
+            with self.subTest(body=body):
+                self.answer(body=body)
+                self.assert_refused(self.run_lever("7", "--records", str(store)), message)
 
     def test_a_failed_run_or_a_failed_verdict_reader_exits_1_with_no_verdict(self):
         """Standing order 21: the reader's status decides; a reader that could not run yields no verdict."""
@@ -1963,9 +2067,11 @@ class PrAuditTest(unittest.TestCase):
             ("merge base", git("*merge-base*"), 1, "git merge-base"),
             ("probe runner", {"FAKE_CODEX_PROBE": "failrun"}, 2, "the sandbox read and write probe did not pass"),
             ("nonce", {"PATH": self.failing_tool("od", "*")}, 1, "cannot read /dev/urandom"),
+            # U120: the body is read twice, first for the Program-Unit line (`cat -- <body>`), then into the prompt
+            ("unit line body read", {"PATH": self.failing_tool("cat", "--\\ *body.md", "exit 1")}, 1, "cannot read"),
             (
                 "prompt body copy",
-                {"PATH": self.failing_tool("cat", "*body.md*", "exit 1")},
+                {"PATH": self.failing_tool("cat", "/*body.md", "exit 1")},
                 1,
                 "cannot write the prompt",
             ),

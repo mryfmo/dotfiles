@@ -197,11 +197,14 @@ class RegimeCiTest(unittest.TestCase):
         self.assertEqual({"fetch-depth": 0, "ref": base, "persist-credentials": False}, steps[0]["with"])
         self.assertEqual({"enable-cache": False}, steps[1]["with"])
         runs = [s for s in steps if "run" in s]
-        fetch, verify = runs
+        fetch, verify, rounds = runs
         self.assertIn('git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"', fetch["run"])
         self.assertIn('test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"', fetch["run"])
         line = 'uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
         self.assertEqual(line, verify["run"])
+        # U120 (standing order 36): the base's rounds-check.py reads the head's store as data, bounded by its own timeout
+        line = 'uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
+        self.assertEqual((line, 2), (rounds["run"], rounds["timeout-minutes"]))
         head = "${{ github.event.pull_request.head.sha }}"
         body = {"PR_BODY": "${{ github.event.pull_request.body }}"}  # the program marker's source (D-024-131)
         author = {"PR_AUTHOR_ASSOCIATION": "${{ github.event.pull_request.author_association }}"}  # U71, F152

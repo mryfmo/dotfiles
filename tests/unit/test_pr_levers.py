@@ -305,6 +305,14 @@ def invalid_dispositions(fixture):
         ("residual: unit=U29 gate=a P1 needs the operator", "P1", "is for P2 and P3; this is P1"),
         ("residual: operator=2026-10-24T00:00:00Z", "P1", "no decisions.tsv row"),
         ("filed: f=2 s=5 the product is the threshold", "P2", "f=2 s=5 weighs 10, not under 10"),
+        # U124 round 2: a score is read by its decimal string, so a decimal past bash's range (2^64 + 1, which `(( ))`
+        # wrapped to 1 and a weight of 9) is malformed, and 10 is a score (the product then reaches the threshold).
+        (
+            "filed: f=18446744073709551617 s=9 a decimal past bash's range",
+            "P1",
+            "f=18446744073709551617 is not a whole number from 1 to 10; got: filed: f=18446744073709551617 s=9",
+        ),
+        ("filed: f=10 s=1 ten is a score", "P2", "f=10 s=1 weighs 10, not under 10"),
     ]
 
 
@@ -817,11 +825,33 @@ class PrThreadsCheckTest(ThreadsFixture):
             (thread(1, replies=["residual: unit=U99 gate=x"]), "no units.tsv row U99"),
             (thread(1, replies=["residual: operator=2026-10-24T00:00:00Z"]), "no decisions.tsv row"),
             (thread(1, replies=["refuted: a.py:1", "@codex please re-check"]), "not a disposition"),
-            # U124: a `filed:` reply is read by value; a letter, a 0 or an 11 is malformed, and the reason is required.
-            (thread(1, severity="P1", replies=["filed: f=x s=3 a letter is no score"]), "this is f=x s=3"),
-            (thread(1, replies=["filed: f=0 s=3 zero is below the scale"]), "this is f=0 s=3"),
-            (thread(1, replies=["filed: f=11 s=1 eleven is above the scale"]), "this is f=11 s=1"),
-            (thread(1, replies=["filed: f=1 s=9"]), "not a disposition"),
+            # U124: a `filed:` reply is read by value; a letter, a 0, an 11 or a decimal past bash's range is malformed,
+            # a missing score or reason too, and the refusal names what is wrong and quotes the line (round 2).
+            (
+                thread(1, severity="P1", replies=["filed: f=x s=3 a letter is no score"]),
+                "f=x is not a whole number from 1 to 10; got: filed: f=x s=3 a letter is no score)",
+            ),
+            (thread(1, replies=["filed: f=0 s=3 zero is below the scale"]), "f=0 is not a whole number from 1 to 10"),
+            (
+                thread(1, replies=["filed: f=11 s=1 eleven is above the scale"]),
+                "f=11 is not a whole number from 1 to 10",
+            ),
+            (
+                thread(1, replies=["filed: f=1 s=01 a leading zero is outside the grammar"]),
+                "s=01 is not a whole number from 1 to 10",
+            ),
+            (
+                thread(1, severity="P1", replies=["filed: f=18446744073709551617 s=9 past bash's range"]),
+                "f=18446744073709551617 is not a whole number from 1 to 10",
+            ),
+            (
+                thread(1, replies=["filed: f=1 s=9"]),
+                "open (filed: reply needs f=<1..10> s=<1..10> <reason>; the reason is missing; got: filed: f=1 s=9)",
+            ),
+            (
+                thread(1, replies=["filed: f=1 a score is missing"]),
+                "reply needs f=<1..10> s=<1..10> <reason>; a score is missing; got: filed: f=1 a score is missing)",
+            ),
         ]
         for node, message in cases:
             with self.subTest(message=message, node=node["comments"]["nodes"][-1]["body"][:40]):

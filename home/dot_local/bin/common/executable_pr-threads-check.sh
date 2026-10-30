@@ -18,7 +18,9 @@
 #   or `filed: f=<n> s=<n> <reason>` (regime-cutover U124, the weighted finding rule of AGENTS.md "Audit") for a
 #   thread of any priority when both scores are whole numbers from 1 to 10 and their product, the finding's weight,
 #   is under WEIGHT_THRESHOLD below, the one place this file names that number; a weight at or above it is refused
-#   naming the product, and a score that is no such number is a malformed reply, refused.
+#   naming the product. Each score is accepted by its decimal string (`^(10|[1-9])$`) before any arithmetic, so a
+#   decimal past bash's range cannot wrap into one (U124 round 2); a `filed:` of any other shape (a score outside
+#   that grammar, a missing score, no reason) is a malformed reply, refused naming what is wrong and quoting the line.
 #   A residual without `--records` is a refusal. Any other newest reply, or none, is a refusal: the remedy is a
 #   `U<n>b` TASK or a `pr-thread-reply.sh` disposition, never a merge. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -174,12 +176,14 @@ has_row() {
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The first line of the newest reply.
 disposition() {
-    local created=$1 severity=$2 line=$3 fix fix_time status frequency severity_score weight
+    local created=$1 severity=$2 line=$3 fix fix_time status frequency severity_score weight why
     local fixed='^fixed: ([0-9a-f]{40})( |$)'
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
     local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
+    local filed_scores='^filed: f=[^[:space:]]+ s=[^[:space:]]+[[:space:]]*$'
+    local score_re='^(10|[1-9])$'
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
         git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
@@ -228,14 +232,26 @@ disposition() {
         1) echo "open (residual: no decisions.tsv row at ${fix})" ;;
         *) fail "cannot read ${records}/decisions.tsv" ;;
         esac
-    elif [[ ${line} =~ ${filed} ]]; then
-        frequency=${BASH_REMATCH[1]}
-        severity_score=${BASH_REMATCH[2]}
-        # Digits before any arithmetic: bash evaluates a name or a subscript inside `(( ))`, and the reply is text
-        # anyone with a GitHub account wrote.
-        if ! [[ ${frequency} =~ ^[0-9]+$ && ${severity_score} =~ ^[0-9]+$ ]] ||
-            ((frequency < 1 || frequency > 10 || severity_score < 1 || severity_score > 10)); then
-            echo "open (filed: f and s are whole numbers from 1 to 10; this is f=${frequency} s=${severity_score})"
+    elif [[ ${line} == filed:* ]]; then
+        # The shape, then each score by its decimal string (score_re) before any arithmetic: bash evaluates a name or
+        # a subscript inside `(( ))` and wraps a decimal past its range (U124 round 2: f=18446744073709551617 read as
+        # 1), and the reply is text anyone with a GitHub account wrote. A refusal names the fault and quotes the line.
+        why=''
+        if [[ ${line} =~ ${filed} ]]; then
+            frequency=${BASH_REMATCH[1]}
+            severity_score=${BASH_REMATCH[2]}
+            if ! [[ ${frequency} =~ ${score_re} ]]; then
+                why="f=${frequency} is not a whole number from 1 to 10"
+            elif ! [[ ${severity_score} =~ ${score_re} ]]; then
+                why="s=${severity_score} is not a whole number from 1 to 10"
+            fi
+        elif [[ ${line} =~ ${filed_scores} ]]; then
+            why='the reason is missing'
+        else
+            why='a score is missing'
+        fi
+        if [[ -n ${why} ]]; then
+            echo "open (filed: reply needs f=<1..10> s=<1..10> <reason>; ${why}; got: ${line})"
             return
         fi
         weight=$((frequency * severity_score))

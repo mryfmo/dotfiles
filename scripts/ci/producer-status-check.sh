@@ -802,10 +802,9 @@ ACCEPTED_ARITHMETIC = (
     (("pr-threads-check.sh",), r"""((open == 0))""", "the same counter"),
     (
         ("pr-threads-check.sh",),
-        r"""((frequency < 1 || frequency > 10 || severity_score < 1 || severity_score > 10))""",
-        "the two scores of a `filed:` reply, decimals by the regex before it (U124)",
+        r"""weight=$((frequency * severity_score))""",
+        "the two scores of a `filed:` reply, decimals 1 to 10 by the score_re match before it (U124), their product",
     ),
-    (("pr-threads-check.sh",), r"""weight=$((frequency * severity_score))""", "their product, the finding's weight"),
     (
         ("pr-threads-check.sh",),
         r"""((weight < WEIGHT_THRESHOLD))""",

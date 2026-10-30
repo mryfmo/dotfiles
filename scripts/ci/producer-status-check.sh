@@ -141,13 +141,13 @@
 #      callback is text bash runs).
 #      `binding`, the writes: a write to a guarded name is (a) an Assign node whose name is guarded, with or without
 #      a value, wherever it sits (a plain assignment, a command's prefix, `IFS= read -r x`, a declaration's argument,
-#      `export PATH=/tmp/x`, `declare -a GIT_ISOLATED_ENV=(x)`; shfmt writes no Value for `PATH=`, which writes the
+#      `export PATH=/x/bin`, `declare -a GIT_ISOLATED_ENV=(x)`; shfmt writes no Value for `PATH=`, which writes the
 #      empty string, nor for the bare name of `export PATH` or `declare +x -a GIT_ISOLATED_ENV`, each a write too);
 #      (b) the variable of a `for` or `select`, and an expansion that assigns its parameter (`${PATH=x}`,
 #      `${PATH:=x}`); (c) a word in any position (an argument of any command, a prefix's value, an array element, a
 #      `for` list, a `case` pattern, a test or arithmetic operand, a redirect target, a coprocess name, a heredoc body
 #      bash expands) whose leading literal parts spell an assignment to a guarded name (WRITES: `export
-#      'PATH=/tmp/x:$PATH'`, `env PATH=/tmp/x git ls-files`, `'GIT_ISOLATED_ENV=PATH=/tmp/x'`, `alias fail=true`) or
+#      'PATH=/x/bin:$PATH'`, `env PATH=/x/bin git ls-files`, `'GIT_ISOLATED_ENV=PATH=/x/bin'`, `alias fail=true`) or
 #      any of whose literal parts holds the name of a guarded variable as a token (every guarded name the shadow part
 #      does not read as a command word: `read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
 #      ref=PATH`, `(( PATH = 1 ))`, `${a[PATH=1]}`, `let 'PATH = 1'`, `unset 'a[PATH=1]'`, `bash -c 'cd /; PATH=x
@@ -434,7 +434,7 @@ GUARDED_NAMES = {
 }
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # A word's first literal part that spells an assignment to a guarded name: the name, an index and a `+` allowed, then
-# `=` (`PATH=/tmp/x:`, `PATH[0]=x`, `PATH+=:x`, `GIT_ISOLATED_ENV=PATH=/tmp/x`, `fail=true` as an `alias` word).
+# `=` (`PATH=/x/bin:`, `PATH[0]=x`, `PATH+=:x`, `GIT_ISOLATED_ENV=PATH=/x/bin`, `fail=true` as an `alias` word).
 WRITES = re.compile(
     "(" + "|".join(re.escape(name) for name in GUARDED_NAMES if IDENTIFIER.fullmatch(name)) + r")(?:\[[^]]*\])?\+?="
 )
@@ -1783,7 +1783,7 @@ class Walk:
 
     def assignment(self, assign, stmt):
         """A write by an Assign node, wherever it sits (a plain assignment, a command's prefix, a declaration's
-        argument: `PATH=/tmp/x`, `IFS= read -r x`, `export PATH=/tmp/x`, `declare -a GIT_ISOLATED_ENV=(x)`), with or
+        argument: `PATH=/x/bin`, `IFS= read -r x`, `export PATH=/x/bin`, `declare -a GIT_ISOLATED_ENV=(x)`), with or
         without a value: shfmt writes no Value for `PATH=`, which writes the empty string, nor for the bare name of
         `export PATH` or `declare +x -a GIT_ISOLATED_ENV`, read as writes too."""
         name = assign["Name"]["Value"]
@@ -1809,8 +1809,8 @@ class Walk:
 
     def word(self, word, stmt, arithmetic):
         """A write spelled by a word, in any position: its leading literal parts spell an assignment to a guarded
-        name (WRITES: `export 'PATH=/tmp/x:$PATH'`, `env PATH=/tmp/x git ls-files`, `PATH=/tmp/x:$PATH` as any
-        command's word, `'GIT_ISOLATED_ENV=PATH=/tmp/x'`, `alias fail=true`), or any literal part holds the name of a
+        name (WRITES: `export 'PATH=/x/bin:$PATH'`, `env PATH=/x/bin git ls-files`, `PATH=/x/bin:$PATH` as any
+        command's word, `'GIT_ISOLATED_ENV=PATH=/x/bin'`, `alias fail=true`), or any literal part holds the name of a
         guarded variable as a token (`read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
         ref=PATH`, `(( PATH = 1 ))`, `let 'PATH = 1'`, `${a[PATH=1]}`, `coproc PATH {…}`, `bash -c 'cd /; PATH=x git'`,
         a message naming it; an expansion among the parts contributes no text and hides none). Where bash evaluates

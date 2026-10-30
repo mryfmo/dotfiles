@@ -1937,8 +1937,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def test_doctor_pins_the_trees_the_manifest_points_at(self) -> None:
         # Round-7 audit of ce2f21de (P2): docs/** was inert by path, so a copy whose manifest declared
         # skills ./docs/skills/ loaded a skill the pin never saw and the doctor stayed silent while Codex 0.164.0
-        # enabled it. Inert is what the manifest does not point at and Codex never loads by convention: a path under
-        # a tree the manifest names is pinned whatever glob matches it; the globs apply outside those trees only.
+        # enabled it. Inert is what the manifest does not point at and Codex never loads by convention: a file a
+        # manifest reference reaches is pinned whatever glob matches it (round 8: reached is decided by filesystem
+        # identity, test_codex_content_membership_is_by_filesystem_identity); the globs apply only to the others.
         pins = self.plugin_pins_fixture()
         copy, clone = self.pinned_codex_copy(pins)
         declared = {

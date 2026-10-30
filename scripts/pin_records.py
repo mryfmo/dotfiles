@@ -17,9 +17,12 @@ tomllib (Python 3.11+).
 The Codex content pin (codex_content) covers every regular file of a plugin copy except the inert ones, and inert
 is what the manifest does not point at and Codex never loads by convention: the copy's .codex-plugin/plugin.json
 names the trees and files Codex loads (skills, hooks, the MCP config, apps, commands, the interface icons, and any
-other string that is a path inside the copy), everything under a path it names is pinned whatever glob matches it,
-and the inert globs (INERT) apply only outside those trees. A manifest that cannot be read or parsed refuses the
-whole value; it is never read as "no references".
+other string that is a path inside the copy), every file it reaches is pinned whatever glob matches it, and the
+inert globs (INERT) apply only to the files it does not reach. Whether a file is reached is decided by filesystem
+identity (the lstat st_dev and st_ino of the files each reference resolves to), never by comparing path text, so a
+reference spelt `./DOCS/skills/` on a case-insensitive filesystem pins docs/skills/ and a hard link to a referenced
+file is pinned under any name. A manifest that cannot be read or parsed refuses the whole value; it is never read
+as "no references".
 """
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ import sys
 from contextlib import redirect_stderr
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Tuple
 
 # One path component taken from record data (see confined): it starts with a letter or digit, so it is never
 # empty, `.`, `..` or absolute, and holds no separator.
@@ -398,7 +401,18 @@ def content_sha256(root: Path, entry: Any) -> str:
 def regular_files(
     root: Path, skip_top: Tuple[str, ...] = (), skip_top_dirs: Tuple[str, ...] = ()
 ) -> List[Tuple[bytes, bytes]]:
-    """The regular files below the directory ROOT as (relative POSIX path, bytes), in the order the walk met them.
+    """The regular files below the directory ROOT as (relative POSIX path, bytes), in the order the walk met them
+    (walk_files, read; SKIP_TOP and SKIP_TOP_DIRS as there)."""
+    return [(relative, data) for relative, _, data in walk_files(root, skip_top, skip_top_dirs, read=True)]
+
+
+def walk_files(
+    root: Path, skip_top: Tuple[str, ...] = (), skip_top_dirs: Tuple[str, ...] = (), read: bool = True
+) -> List[Tuple[bytes, Tuple[int, int], Optional[bytes]]]:
+    """The regular files below the directory ROOT as (relative POSIX path, identity, bytes), in the order the walk
+    met them. The identity is the file's lstat (st_dev, st_ino), what the filesystem knows the file as whatever
+    name reaches it (a hard link, another spelling of a component on a case-insensitive filesystem); the bytes are
+    None when READ is false (a walk that collects identities only).
 
     A top-level name in SKIP_TOP is not read, whatever it is (Claude Code's cache markers, regular files). A
     top-level name in SKIP_TOP_DIRS is not read only when its lstat shows a real directory (the clone's .git); a
@@ -417,7 +431,7 @@ def regular_files(
         if error.errno in (errno.ELOOP, errno.ENOTDIR):
             raise RecordError(root, "(directory)", "is not a real directory") from None
         raise RecordError(root, "(directory)", f"cannot open ({error})") from None
-    contents: List[Tuple[bytes, bytes]] = []
+    contents: List[Tuple[bytes, Tuple[int, int], Optional[bytes]]] = []
 
     def walk(dir_fd: int, prefix: str) -> None:
         try:
@@ -432,6 +446,7 @@ def regular_files(
                 status = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
             except OSError as error:
                 raise RecordError(root, relative, f"cannot lstat ({error})") from None
+            identity = (status.st_dev, status.st_ino)
             if stat.S_ISDIR(status.st_mode):
                 if not prefix and name in skip_top_dirs:  # lint-comparisons: allow one entry name, not a path
                     continue
@@ -443,18 +458,21 @@ def regular_files(
                     raise RecordError(root, relative, f"cannot open ({error})") from None
                 try:
                     opened = os.fstat(child)
-                    if (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
+                    if (opened.st_dev, opened.st_ino) != identity:
                         raise RecordError(root, relative, "changed while it was read")
                     walk(child, relative + "/")
                 finally:
                     os.close(child)
             elif stat.S_ISREG(status.st_mode):
+                if not read:
+                    contents.append((os.fsencode(relative), identity, None))
+                    continue
                 try:
                     fd = open_regular(name, status, dir_fd)
                     if fd is None:
                         raise RecordError(root, relative, "changed while it was read")
                     with os.fdopen(fd, "rb") as handle:
-                        contents.append((os.fsencode(relative), handle.read()))
+                        contents.append((os.fsencode(relative), identity, handle.read()))
                 except OSError as error:
                     raise RecordError(root, relative, f"cannot read ({error})") from None
             else:
@@ -687,10 +705,14 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
 # and Codex never loads by convention, a property of Codex's loading, not of the file type: an instruction file
 # (skills/**, AGENTS.md, any other Markdown) is injected into the model's context, so it is pinned with the
 # executable ones. A README is inert under its documentation extensions only (none, .md, .txt, .rst): a README.js
-# or README.sh is code and pinned. The globs below are the convention; they never apply under a path the copy's
-# manifest names (manifest_references): with `skills: ./docs/skills/` every file under docs/skills/ is pinned,
-# `docs/**` or not, because Codex loads it. Each entry is (glob over the relative POSIX path, why Codex never
-# loads it); `*` and `?` stay within one path component, `**` spans components.
+# or README.sh is code and pinned. The globs below are the convention; they never apply to a file the copy's
+# manifest points at (manifest_references): with `skills: ./docs/skills/` every file under docs/skills/ is pinned,
+# `docs/**` or not, because Codex loads it. Whether a file is one the manifest points at is decided by filesystem
+# identity, never by comparing path text: each reference is resolved by the filesystem inside the copy and the
+# lstat identity (st_dev, st_ino) of every regular file it reaches is collected, so `./DOCS/skills/` on a
+# case-insensitive filesystem reaches docs/skills/ and a hard link to a referenced file is referenced under any
+# name. Each entry is (glob over the relative POSIX path, why Codex never loads it); `*` and `?` stay within one
+# path component, `**` spans components.
 INERT = (
     ("README", "project documentation"),
     ("README.md", "project documentation"),
@@ -752,15 +774,10 @@ def inert_pattern(spec: str) -> re.Pattern[str]:
 INERT_PATTERNS = tuple(inert_pattern(spec) for spec, _ in INERT)
 
 
-def is_inert(relative: str, referenced: Tuple[str, ...] = ()) -> bool:
-    """Whether the relative POSIX path RELATIVE is outside the content pin: of an inert kind (INERT) and under no
-    path the copy's manifest names (REFERENCED, from manifest_references; `.` is the copy itself). A path the
-    manifest points at is never inert, whatever glob matches it."""
-    for root in referenced:
-        if root == "." or relative == root:  # lint-comparisons: allow normalized relative POSIX paths, one walk's
-            return False
-        if relative.startswith(root + "/"):  # lint-comparisons: allow normalized relative POSIX paths, one walk's
-            return False
+def is_inert(relative: str) -> bool:
+    """Whether the relative POSIX path RELATIVE is of an inert kind (INERT). The globs are the convention for a file
+    the manifest does not point at; codex_content asks only about such files, so a file the manifest points at
+    (by identity, manifest_references) is never inert, whatever glob matches it."""
     return any(pattern.match(relative) for pattern in INERT_PATTERNS)
 
 
@@ -815,12 +832,52 @@ def manifest_reference(copy: Path, manifest: Path, where: str, value: str, decla
     return normalized
 
 
-def manifest_references(copy: Path, raw: Optional[bytes]) -> Tuple[str, ...]:
-    """The paths inside COPY that its manifest (RAW, the bytes of CODEX_MANIFEST as the walk read them; None when
-    the copy has no manifest) points at, normalized, sorted and unique: every string under MANIFEST_PATH_FIELDS and
-    every other string value that is a path (manifest_reference). A missing, unreadable or unparsable manifest, or
-    one that is not a JSON object, refuses the whole value: Codex loads nothing without it, and "no references"
-    would turn every tree it names inert."""
+def reference_identities(
+    copy: Path, manifest: Path, where: str, value: str, normalized: str, skip_top: Tuple[str, ...] = ()
+) -> FrozenSet[Tuple[int, int]]:
+    """The lstat identities (st_dev, st_ino) of the regular files the manifest reference NORMALIZED (VALUE at WHERE
+    in MANIFEST, as manifest_reference returned it) reaches inside COPY, resolved by the filesystem: a referenced
+    regular file contributes its own identity, a referenced directory every regular file below it (walk_files, so a
+    symlink or special file below it refuses, as does a directory that cannot be listed), and a reference that
+    reaches nothing contributes none (referenced-empty: not an error by itself). `.` is the copy itself, walked
+    with the copy's own skips (SKIP_TOP and CODEX_COPY_SKIP_DIRS)."""
+    whole = normalized == "."  # lint-comparisons: allow one normpath form's test, the copy itself
+    target = copy if whole else copy.joinpath(*normalized.split("/"))
+    try:
+        status = os.lstat(target)
+    except (FileNotFoundError, NotADirectoryError):
+        return frozenset()
+    except OSError as error:
+        raise RecordError(manifest, where, f"{value!r}: cannot lstat ({error})") from None
+    if stat.S_ISREG(status.st_mode):
+        return frozenset({(status.st_dev, status.st_ino)})
+    if not stat.S_ISDIR(status.st_mode):
+        raise RecordError(manifest, where, f"{value!r} is a symlink or special file; refused")
+    try:
+        walked = walk_files(target, skip_top if whole else (), CODEX_COPY_SKIP_DIRS if whole else (), read=False)
+    except RecordError as error:
+        raise RecordError(manifest, where, f"{value!r}: {error}") from None
+    return frozenset(identity for _, identity, _ in walked)
+
+
+@dataclass(frozen=True)
+class ManifestReferences:
+    # The paths the manifest names, as the manifest spells them once normalized (manifest_reference), sorted and
+    # unique: a record of what it points at, never compared with a walked path.
+    named: Tuple[str, ...]
+    # Those of NAMED that reach no regular file (referenced-empty).
+    empty: Tuple[str, ...]
+    # The lstat identities of every regular file the references reach; membership is decided by these alone.
+    identities: FrozenSet[Tuple[int, int]]
+
+
+def manifest_references(copy: Path, raw: Optional[bytes], skip_top: Tuple[str, ...] = ()) -> ManifestReferences:
+    """What the manifest of COPY (RAW, the bytes of CODEX_MANIFEST as the walk read them; None when the copy has no
+    manifest) points at: every string under MANIFEST_PATH_FIELDS and every other string value that is a path
+    (manifest_reference), each resolved by the filesystem inside the copy to the identities of the regular files it
+    reaches (reference_identities). A missing, unreadable or unparsable manifest, or one that is not a JSON object,
+    refuses the whole value: Codex loads nothing without it, and "no references" would turn every tree it names
+    inert."""
     manifest = copy / CODEX_MANIFEST
     if raw is None:
         raise RecordError(manifest, "(file)", "is missing; the manifest names the trees the content pin covers")
@@ -830,13 +887,21 @@ def manifest_references(copy: Path, raw: Optional[bytes]) -> Tuple[str, ...]:
         raise RecordError(manifest, "(file)", f"not JSON: {error}") from None
     if not isinstance(data, dict):
         raise RecordError(manifest, "(top)", f"must be a JSON object, not {type(data).__name__}")
-    referenced = set()
+    named: Dict[str, bool] = {}
+    identities = set()
     for where, value in manifest_strings(data):
         declared = where in MANIFEST_PATH_FIELDS  # lint-comparisons: allow dotted manifest keys, not paths
-        path = manifest_reference(copy, manifest, where, value, declared)
-        if path is not None:
-            referenced.add(path)
-    return tuple(sorted(referenced))
+        normalized = manifest_reference(copy, manifest, where, value, declared)
+        if normalized is None:
+            continue
+        reached = reference_identities(copy, manifest, where, value, normalized, skip_top)
+        named[normalized] = named.get(normalized, False) or bool(reached)
+        identities.update(reached)
+    return ManifestReferences(
+        tuple(sorted(named)),
+        tuple(sorted(path for path, reached in named.items() if not reached)),
+        frozenset(identities),
+    )
 
 
 @dataclass(frozen=True)
@@ -844,8 +909,10 @@ class CodexContent:
     sha256: str
     # Relative POSIX path -> sha256 hex of its bytes, in the order the digest reads them.
     files: Dict[str, str]
-    # The paths the copy's manifest points at (manifest_references), under which nothing is inert.
+    # The paths the copy's manifest names (ManifestReferences.named): a record of what it points at.
     referenced: Tuple[str, ...] = ()
+    # Those of them that reach no regular file (ManifestReferences.empty).
+    referenced_empty: Tuple[str, ...] = ()
 
 
 def codex_content(copy: Path, skip_top: Tuple[str, ...] = ()) -> CodexContent:
@@ -853,33 +920,35 @@ def codex_content(copy: Path, skip_top: Tuple[str, ...] = ()) -> CodexContent:
     plugin), with the per-file hashes it is made of.
 
     The hex SHA-256 over one line per file, `<relative POSIX path> NUL <sha256 hex of its bytes> LF`, for every
-    regular file of the copy whose path is not inert, sorted by the bytes of the path. Inert is what the manifest
-    does not point at and Codex never loads by convention: the copy's manifest (CODEX_MANIFEST, parsed from the
-    bytes this walk hashes) names the trees Codex loads (manifest_references), every file under one is pinned, and
-    the INERT globs apply only outside them (is_inert). The top-level .git is not read when it is a real directory
+    regular file of the copy that is not inert, sorted by the bytes of the path. Inert is what the manifest does
+    not point at and Codex never loads by convention: the copy's manifest (CODEX_MANIFEST, parsed from the bytes
+    this walk hashes) names what Codex loads, each reference is resolved by the filesystem to the identities of the
+    regular files it reaches (manifest_references), a walked file whose lstat identity is among them is pinned
+    whatever glob matches its path, and only a file the manifest does not reach is tested against the INERT globs
+    (is_inert). No path text decides membership. The top-level .git is not read when it is a real directory
     (CODEX_COPY_SKIP_DIRS); a symlink named .git is an error like any other symlink and a regular file named .git
     is pinned. A top-level name in SKIP_TOP (the marketplace clone's install record, for the reference read) is not
-    read. A symlink or special file anywhere in the copy and a file that cannot be read are errors (regular_files),
+    read. A symlink or special file anywhere in the copy and a file that cannot be read are errors (walk_files),
     and so are a copy with no file at all, one without a manifest, one whose manifest cannot be parsed or names a
     path outside the copy, and one with no pinned file: never an empty or partial value.
     """
-    contents = regular_files(copy, skip_top, CODEX_COPY_SKIP_DIRS)
-    if not contents:
+    walked = walk_files(copy, skip_top, CODEX_COPY_SKIP_DIRS, read=True)
+    if not walked:
         raise RecordError(copy, "(directory)", "holds no file the content pin covers")
-    raw = next((data for relative, data in contents if relative == os.fsencode(CODEX_MANIFEST)), None)
-    referenced = manifest_references(copy, raw)
+    raw = next((data for relative, _, data in walked if relative == os.fsencode(CODEX_MANIFEST)), None)
+    references = manifest_references(copy, raw, skip_top)
     hashes = {}
-    for relative, data in contents:
+    for relative, identity, data in walked:
         path = os.fsdecode(relative)
-        if not is_inert(path, referenced):
-            hashes[path] = hashlib.sha256(data).hexdigest()
+        if identity in references.identities or not is_inert(path):
+            hashes[path] = hashlib.sha256(data or b"").hexdigest()
     if not hashes:
         raise RecordError(copy, "(directory)", "holds no file the content pin covers")
     files = {path: hashes[path] for path in sorted(hashes, key=os.fsencode)}
     digest = hashlib.sha256()
     for path, file_hash in files.items():
         digest.update(os.fsencode(path) + b"\0" + file_hash.encode() + b"\n")
-    return CodexContent(digest.hexdigest(), files, referenced)
+    return CodexContent(digest.hexdigest(), files, references.named, references.empty)
 
 
 @dataclass(frozen=True)

@@ -4,8 +4,8 @@ tests/fixtures/ponytail is synthetic: a dozen tiny files covering the kinds a pl
 configuration and instructions the content pin covers (a hook, .mcp.json, the manifests, a script, a skill) and
 the inert files it leaves out (the README, a document under docs/, an image, the translated README, upstream CI,
 the licence). Its manifest points `skills` at ./docs/skills/, so docs/skills/y/SKILL.md is pinned although it is
-under docs/ (the manifest names the tree, so Codex loads it), while docs/guide.md beside it stays inert;
-skills/x/SKILL.md is an instruction file outside every tree the manifest names and is pinned because Markdown is
+under docs/ (the reference reaches the file, so Codex loads it), while docs/guide.md beside it stays inert;
+skills/x/SKILL.md is an instruction file no manifest reference reaches and is pinned because Markdown is
 never inert by convention. hooks/claude-codex-hooks.json alone is upstream's file verbatim, because the
 codex.hooks.state trusted_hash pins are recorded from it. No recorded pin hashes this tree: the ponytail
 content_sha256 in scripts/plugin-pins.json is computed from a scratch clone of upstream at the pinned ref, and a
@@ -51,26 +51,35 @@ def strings(node: object) -> list[str]:
     return [node] if isinstance(node, str) else []
 
 
-def referenced(copy: Path) -> list[str]:
-    """The paths COPY's manifest points at, written out plainly: every string value anywhere in the manifest that
-    starts with ./ or names an existing path relative to the copy, as a normalized relative POSIX path (`.` is the
-    copy itself)."""
+def identity(path: Path) -> tuple[int, int]:
+    """What the filesystem knows PATH as, whatever name reaches it: its lstat (st_dev, st_ino)."""
+    status = os.lstat(path)
+    return (status.st_dev, status.st_ino)
+
+
+def referenced(copy: Path) -> set[tuple[int, int]]:
+    """The files COPY's manifest points at, by filesystem identity, written out plainly: every string value anywhere
+    in the manifest that starts with ./ or names an existing path relative to the copy is resolved by the
+    filesystem (so ./DOCS/skills/ reaches docs/skills/ where names are case-insensitive, and nothing where they
+    are not); a reference to a file contributes that file, one to a directory every file below it."""
     manifest = json.loads((copy / MANIFEST).read_text())
-    return [
-        posixpath.normpath(value)
-        for value in strings(manifest)
-        if value.startswith("./") or (value and not value.startswith("/") and os.path.lexists(copy / value))
-    ]
+    identities = set()
+    for value in strings(manifest):
+        if value.startswith("./") or (value and not value.startswith("/") and os.path.lexists(copy / value)):
+            target = copy / posixpath.normpath(value)
+            if target.is_file():
+                identities.add(identity(target))
+            elif target.is_dir():
+                identities.update(identity(path) for path in target.rglob("*") if path.is_file())
+    return identities
 
 
-def inert(relative: str, referenced: list[str] | tuple[str, ...] = ()) -> bool:
-    """The files Codex never loads, written out plainly: nothing under a path the manifest names (REFERENCED) is
-    inert; elsewhere a README with a documentation extension (none, .md, .txt, .rst) at any depth, everything
-    under docs/, i18n/ and .github/, a top-level LICENSE*, an image anywhere and the top-level .gitignore are.
-    Markdown as such is not inert: a skill, an AGENTS.md or any other instruction file is pinned; a README.js or
-    README.sh is code and pinned."""
-    if any(root == "." or relative == root or relative.startswith(root + "/") for root in referenced):
-        return False
+def inert(relative: str) -> bool:
+    """The files Codex never loads by convention, written out plainly: a README with a documentation extension
+    (none, .md, .txt, .rst) at any depth, everything under docs/, i18n/ and .github/, a top-level LICENSE*, an
+    image anywhere and the top-level .gitignore. Markdown as such is not inert: a skill, an AGENTS.md or any other
+    instruction file is pinned; a README.js or README.sh is code and pinned. The convention applies only to a
+    file the manifest does not point at (referenced, by identity); reviewed_content_sha256 asks it about those."""
     name = relative.rsplit("/", 1)[-1]
     return (
         name in READMES
@@ -83,9 +92,9 @@ def inert(relative: str, referenced: list[str] | tuple[str, ...] = ()) -> bool:
 
 def reviewed_content_sha256(copy: Path) -> str:
     """The content_sha256 definition written out plainly: sha256 over one line per file, `<relative path> NUL <sha256
-    hex of its bytes> LF`, for every file of COPY that is not inert given the trees its manifest names, sorted by the
-    bytes of its relative POSIX path. The top-level .git is skipped only when it is a real directory; a regular file
-    named .git is a file like any other."""
+    hex of its bytes> LF`, for every file of COPY its manifest points at (by identity) or that is not inert, sorted
+    by the bytes of its relative POSIX path. The top-level .git is skipped only when it is a real directory; a
+    regular file named .git is a file like any other."""
     git = copy / ".git"
     skip_git = git.is_dir() and not git.is_symlink()
     relatives = sorted(
@@ -96,10 +105,10 @@ def reviewed_content_sha256(copy: Path) -> str:
         ),
         key=str.encode,
     )
-    trees = referenced(copy)
+    pointed = referenced(copy)
     lines = [
         relative.encode() + b"\0" + hashlib.sha256((copy / relative).read_bytes()).hexdigest().encode() + b"\n"
         for relative in relatives
-        if not inert(relative, trees)
+        if identity(copy / relative) in pointed or not inert(relative)
     ]
     return hashlib.sha256(b"".join(lines)).hexdigest()

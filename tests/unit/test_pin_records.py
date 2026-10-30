@@ -105,7 +105,10 @@ class PinRecordsTest(unittest.TestCase):
         # inert executable code; a README is inert under its documentation extensions only. A glob's `*` stays within
         # one path component and `**` spans components, so LICENSE* and .gitignore are inert at the top only. Round 7
         # (audit of ce2f21de, P2): the globs applied by path alone, so a manifest with `skills: ./docs/skills/` loaded
-        # a skill the pin never saw; nothing under a path the manifest names is inert, whatever glob matches it.
+        # a skill the pin never saw; a file the manifest points at is never inert, whatever glob matches it. Round 8
+        # (audit of 54344a48, P2): whether the manifest points at a file is decided by filesystem identity, so
+        # is_inert reads a path alone and codex_content asks it only about the files no reference reaches
+        # (test_codex_content_membership_is_by_filesystem_identity).
         for relative, expected in (
             ("README.md", True),
             ("README", True),
@@ -149,29 +152,14 @@ class PinRecordsTest(unittest.TestCase):
         ):
             with self.subTest(path=relative):
                 self.assertEqual(expected, records.is_inert(relative))
-        referenced = ("docs/skills", "assets/codex-icon.png", "i18n")
-        for relative, expected in (
-            ("docs/skills/x/SKILL.md", False),
-            ("docs/skills/README.md", False),
-            ("docs/skills", False),
-            ("docs/guide.md", True),
-            ("docs/skillsx/SKILL.md", True),
-            ("assets/codex-icon.png", False),
-            ("assets/logo.png", True),
-            ("i18n/README.ja.md", False),
-            ("README.md", True),
-        ):
-            with self.subTest(path=relative, referenced=referenced):
-                self.assertEqual(expected, records.is_inert(relative, referenced))
-        # The manifest pointing at the copy itself (`./`) leaves nothing inert.
-        self.assertFalse(records.is_inert("README.md", (".",)))
 
     def test_codex_content_pins_the_trees_the_manifest_points_at(self) -> None:
         # Round-7 audit of ce2f21de (P2): docs/** was inert by path, so a manifest declaring skills ./docs/skills/
         # loaded an instruction file the pin never saw. Every path the manifest names, declared (skills, hooks, the
         # MCP config, apps, commands, the interface icons) or any other string that is a path inside the copy, is a
-        # tree the pin covers whole; the inert globs apply only outside those trees. A manifest that cannot be read
-        # or parsed, or that names a path outside the copy, refuses the value: never "no references".
+        # tree the pin covers whole; the inert globs apply only to the files outside those trees. A manifest that
+        # cannot be read or parsed, or that names a path outside the copy, refuses the value: never "no references".
+        # A reference that reaches no file is recorded as referenced-empty, not an error by itself.
         manifest = ".codex-plugin/plugin.json"
         base = {
             "hooks/x.js": b"x\n",
@@ -220,6 +208,8 @@ class PinRecordsTest(unittest.TestCase):
             ),
             pointed.referenced,
         )
+        self.assertEqual(("absent",), pointed.referenced_empty)
+        self.assertEqual((), plain.referenced_empty)
         self.assertEqual(
             {
                 manifest,
@@ -301,6 +291,93 @@ class PinRecordsTest(unittest.TestCase):
         empty = self.dir / "empty"
         empty.mkdir()
         self.refused(lambda: records.codex_content(empty), "holds no file the content pin covers")
+
+    def test_codex_content_membership_is_by_filesystem_identity(self) -> None:
+        # Round-8 audit of 54344a48 (P2): a reference was resolved by the filesystem but membership was decided by
+        # comparing path text, so `skills: ./DOCS/skills/` on a case-insensitive filesystem loaded docs/skills/x/SKILL.md
+        # (Codex listed the skill as enabled) while the text `docs/skills/x/SKILL.md` matched `docs/**` and stayed
+        # inert. Membership is now by lstat identity: each reference is resolved inside the copy and the (st_dev,
+        # st_ino) of every regular file it reaches is collected; a walked file with one of those identities is pinned
+        # under whatever name the walk met it, and only the others are tested against the inert globs.
+        manifest = ".codex-plugin/plugin.json"
+        base = {
+            "hooks/x.js": b"x\n",
+            "docs/skills/x/SKILL.md": b"# x\n",
+            "docs/guide.md": b"guide\n",
+            "skills/s/SKILL.md": b"# s\n",
+            "README.md": b"readme\n",
+        }
+
+        def tree(name: str, declared: dict) -> Path:
+            return self.plugin_tree(name, {**base, manifest: json.dumps(declared).encode()})
+
+        probe = self.dir / "probe"
+        probe.write_bytes(b"")
+        case_insensitive = os.path.lexists(self.dir / "PROBE")
+        # (a) The reference spelt in another case. Where names are case-insensitive it reaches docs/skills/ and the
+        # skill there is pinned, the guide beside it stays inert and the pinned set is the one `./docs/skills/`
+        # gives (the manifest's own line differs, nothing else); where they are case-sensitive it reaches nothing,
+        # is recorded as referenced-empty and the skill under docs/ stays inert.
+        spelt = records.codex_content(tree("upper", {"name": "tail", "version": "5.0.0", "skills": "./DOCS/skills/"}))
+        lower = records.codex_content(tree("lower", {"name": "tail", "version": "5.0.0", "skills": "./docs/skills/"}))
+        self.assertEqual(("DOCS/skills",), spelt.referenced)
+        self.assertEqual({"docs/skills/x/SKILL.md", "hooks/x.js", "skills/s/SKILL.md", manifest}, set(lower.files))
+        self.assertNotIn("docs/guide.md", spelt.files)
+
+        def without_manifest(content: records.CodexContent) -> dict:
+            return {p: h for p, h in content.files.items() if p != manifest}
+
+        if case_insensitive:
+            self.assertIn("docs/skills/x/SKILL.md", spelt.files)
+            self.assertEqual((), spelt.referenced_empty)
+            self.assertEqual(without_manifest(lower), without_manifest(spelt))
+        else:
+            self.assertNotIn("docs/skills/x/SKILL.md", spelt.files)
+            self.assertEqual(("DOCS/skills",), spelt.referenced_empty)
+            self.assertEqual({"hooks/x.js", "skills/s/SKILL.md", manifest}, set(spelt.files))
+        # (d) Only the spelling of a reference changes: the same files are pinned with the same hashes.
+        for name, value in (
+            ("plain", "docs/skills"),
+            ("dotted", "./docs/./skills//"),
+            ("nested", "./docs/skills/x/.."),
+        ):
+            with self.subTest(spelling=value):
+                respelt = records.codex_content(tree(name, {"name": "tail", "version": "5.0.0", "skills": value}))
+                self.assertEqual(("docs/skills",), respelt.referenced)
+                self.assertEqual(without_manifest(lower), without_manifest(respelt))
+        # (b) A hard link at an inert path to a referenced file has the referenced file's identity: pinned under the
+        # name the walk met it, with the referenced file's hash; a hard link between two files no reference reaches
+        # stays inert, and so does the inert path once the link is replaced by a file of its own.
+        linked = tree("linked", {"name": "tail", "version": "5.0.0", "skills": "./skills/"})
+        os.link(linked / "skills/s/SKILL.md", linked / "docs/alias.md")
+        os.link(linked / "docs/guide.md", linked / "docs/guide-copy.md")
+        content = records.codex_content(linked)
+        self.assertIn("docs/alias.md", content.files)
+        self.assertEqual(content.files["skills/s/SKILL.md"], content.files["docs/alias.md"])
+        self.assertEqual(1, sum(1 for p in content.files if p.startswith("docs/")))
+        self.assertNotIn("docs/guide-copy.md", content.files)
+        (linked / "docs/alias.md").unlink()
+        (linked / "docs/alias.md").write_bytes(b"# s\n")
+        self.assertNotIn("docs/alias.md", records.codex_content(linked).files)
+        # A referenced file contributes its own identity, and so does `.` for every file of the copy.
+        file_ref = records.codex_content(tree("file", {"name": "tail", "version": "5.0.0", "see": "./docs/guide.md"}))
+        self.assertIn("docs/guide.md", file_ref.files)
+        self.assertNotIn("README.md", file_ref.files)
+        self.assertEqual(set(base) | {manifest}, set(records.codex_content(tree("all", {"skills": "./"})).files))
+        # A reference that reaches nothing is referenced-empty, never an error; a directory it reaches that cannot be
+        # listed refuses, naming the manifest field (the copy walk itself refuses first in codex_content).
+        gone = records.codex_content(tree("gone", {"name": "tail", "version": "5.0.0", "skills": "./nowhere/"}))
+        self.assertEqual(("nowhere",), gone.referenced)
+        self.assertEqual(("nowhere",), gone.referenced_empty)
+        locked = tree("locked", {"name": "tail", "version": "5.0.0", "skills": "./skills/"})
+        (locked / "skills").chmod(0o000)
+        try:
+            self.refused(
+                lambda: records.reference_identities(locked, locked / manifest, "skills", "./skills/", "skills", ()),
+                f"{locked / manifest}: skills: './skills/': {locked / 'skills'}: (directory): cannot open",
+            )
+        finally:
+            (locked / "skills").chmod(0o755)
 
     def test_codex_content_skips_the_git_directory_only(self) -> None:
         # Round-4 audit of df216825 (P2): the top-level .git was skipped by name before its lstat, so a symlink or a

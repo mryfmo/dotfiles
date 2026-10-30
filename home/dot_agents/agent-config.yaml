@@ -1397,7 +1397,9 @@ assets:
       point at and Codex never loads by convention: the copy's .codex-plugin/plugin.json names the trees
       and files Codex loads (skills, hooks, the mcp/mcpServers config, apps, commands,
       interface.composerIcon and interface.logo, and any other string that is a path inside the copy),
-      everything under a path it names is pinned whatever glob matches it, and only outside those trees
+      every file a reference reaches (resolved by the filesystem and decided by identity, never by comparing
+      path text, so `./DOCS/skills/` on a case-insensitive filesystem pins docs/skills/) is pinned whatever
+      glob matches it, and only to the files no reference reaches
       do the scripts/pin_records.py INERT globs apply (a README, README.md, README.txt or README.rst at
       any depth, docs/, i18n/, LICENSE*, images, .gitignore and .github/). A manifest that cannot be read
       or parsed, or that names a path outside the copy, is a finding, never "no references". Inert is a

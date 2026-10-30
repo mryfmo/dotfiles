@@ -42,10 +42,16 @@
 #   (the shell reads nothing in the printed push line), a base that names a commit, the working directory a main
 #   checkout (not a linked worktree) with an `origin` remote whose URL is absolute (`scheme://`, `[user@]host:` or
 #   `/`-rooted: a relative URL copied into the fresh repository would resolve from there, not from the checkout; the
-#   program's origin is https), the root absolute, without a `.` or `..` component, resolved outside the checkout's
-#   working tree and git directory (`<checkout>/.git/hooks` is no root: a tree made there would write the checkout),
-#   and neither the checkout's path nor the root holding a newline (the alternates file is one path per line). A read
-#   that fails before anything is made (`git rev-parse`, `git config`) is a refusal with exit 2, never an absence
+#   program's origin is https), the root absolute, without a `.` or `..` component, and, resolved through its longest
+#   existing directory (`cd` and `pwd -P`), outside the checkout's working tree and git directory by identity: the
+#   device and inode (`stat`) of that directory and of each directory above it, up to `/`, differ from the checkout's
+#   and its git directory's, so no spelling of the checkout's path (a case alias on a case-insensitive volume, a
+#   symlink, a trailing slash) names it without being it (`<checkout>/.git/hooks` is no root: a tree made there would
+#   write the checkout; round 5 compared the resolved strings, and the audit made the tree through a case alias), and
+#   neither the checkout's path nor the root holding a newline, each in its resolved form (a symlink whose name holds
+#   none may point at a directory whose name holds one; the alternates file is one path per line). A read that fails
+#   before anything is made (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`, the `uname -s` that
+#   chooses `stat`'s format flag, `stat` itself) is a refusal with exit 2, never an absence
 #   (standing order 21). Then `mkdir <root>/<unit>` (no `-p`) reserves the target: success means this run owns the
 #   directory and may remove it on failure; failure (a directory or symlink there, or mkdir's own error) is a refusal
 #   that touched nothing, so two runs for one unit never both proceed and one run's cleanup never removes the other's
@@ -64,19 +70,20 @@
 #   name made, so `@{-1}` names the checkout's previous branch), over `[A-Za-z0-9._/-]`.
 # @arg $3 string The base, a revision the checkout resolves to a commit (`origin/main`).
 # @env DOTFILES_WT The directory the worker trees live in (default `${TMPDIR:-/tmp}/dotfiles-wt`): an absolute path
-#   without `.` or `..` components or a newline, outside the checkout and its git directory; made when absent, and
-#   printed as `pwd -P` resolves it.
+#   without `.` or `..` components or a newline, outside the checkout and its git directory by device and inode (its
+#   longest existing directory and each directory above it); made when absent, and printed as `pwd -P` resolves it,
+#   a resolved form holding a newline refused.
 # @stdout `worktree=<path>`, `branch=<branch>`, `head=<sha>` and `push=git -C <checkout> fetch <path> <branch> &&
 #   git -C <checkout> push <origin url> FETCH_HEAD:refs/heads/<branch>`, the line the coordinator runs from the main
 #   checkout, one per line; the paths and the URL are quoted for the shell (`printf %q`), the branch's character set
 #   needs none.
 # @exitcode 0 The repository exists at the base on the branch with the refusals and the upstream set.
 # @exitcode 2 Refused: usage, a unit, branch or base outside the grammar, a working directory that is not the main
-#   checkout or has no `origin` or a relative origin URL, a root inside the checkout or holding a `.`, `..` or a
-#   newline, a checkout path holding a newline, the target path present (the reservation failed), a read (`git
-#   rev-parse`, `git config`) that failed, or the manifest pin differing from this file, each before anything is
-#   made; or a step after the reservation that failed, after which the directory this run made is removed again and
-#   nothing else.
+#   checkout or has no `origin` or a relative origin URL, a root inside the checkout or its git directory by identity,
+#   or holding a `.`, `..` or a newline (its resolved form included), a checkout path holding a newline, the target
+#   path present (the reservation failed), a read (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`,
+#   `uname -s`, `stat`) that failed, or the manifest pin differing from this file, each before anything is made; or a
+#   step after the reservation that failed, after which the directory this run made is removed again and nothing else.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
 set -euo pipefail
@@ -183,20 +190,37 @@ git_run() {
     )
 }
 
-# @description Print $1, an absolute path without `.` or `..` components that may not exist yet, resolved through its
-#   longest existing leading directory (`cd` and `pwd -P`, so a symlink into the checkout is seen for what it is) with
-#   the rest appended as given, the directories `mkdir -p` would make.
+# @description Resolve $1, an absolute path without `.` or `..` components that may not exist yet, through its longest
+#   existing leading directory (`cd` and `pwd -P`, so a symlink into the checkout is seen for what it is): `root_prefix`
+#   is that directory's physical path and `resolved_root` is it with the rest appended as given, the directories
+#   `mkdir -p` would make. The results are variables, not output, so no producer stands between the resolution and its
+#   readers, and the prefix is the first directory of the identity walk below.
 # @arg $1 string The path.
-# @exitcode 1 The existing prefix cannot be entered.
+# @set root_prefix The physical path of the longest existing leading directory.
+# @set resolved_root The resolved path.
+# @exitcode 1 The existing prefix cannot be entered (`cd` or `pwd -P` failed).
 resolve_root() {
-    local candidate=$1 rest='' resolved
+    local candidate=$1 rest=''
     while [[ ! -d ${candidate} ]]; do
         rest=${candidate##*/}${rest:+/${rest}}
         candidate=${candidate%/*}
         [[ -n ${candidate} ]] || candidate=/
     done
-    resolved=$(cd "${candidate}" && pwd -P) || return 1
-    printf '%s\n' "${resolved%/}${rest:+/${rest}}"
+    root_prefix=$(cd "${candidate}" && pwd -P) || return 1
+    resolved_root=${root_prefix%/}${rest:+/${rest}}
+    [[ -n ${resolved_root} ]] || resolved_root=/
+}
+
+# @description Print the device and inode of $1, one line `<device> <inode>`, as `stat` prints them with the format
+#   flag `stat_args` chose for this system; a `stat` that fails or prints another shape is a failed read, never an
+#   identity (standing order 21).
+# @arg $1 string A path that exists.
+# @exitcode 1 The read failed or printed something other than two decimals.
+identity_of() {
+    local id
+    id=$(stat "${stat_args[@]}" -- "$1") || return 1
+    [[ ${id} =~ ^[0-9]+' '[0-9]+$ ]] || return 1
+    printf '%s\n' "${id}"
 }
 
 [[ $# == 3 ]] || refuse "${usage}"
@@ -248,11 +272,36 @@ root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
 [[ ${root} != */./* && ${root} != */../* && ${root} != */. && ${root} != */.. ]] || # lint-comparisons: allow a shape test (a . or .. component), no path identity is compared
     refuse "DOTFILES_WT ${root} has a . or .. component; give the resolved path"
 [[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT ${root//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
-root=$(resolve_root "${root}") || refuse "cannot resolve DOTFILES_WT ${root}"
+resolve_root "${root}" || refuse "cannot resolve DOTFILES_WT ${root}; its longest existing directory cannot be entered"
+root=${resolved_root}
+# The resolved form is checked again: a symlink whose own name holds no newline may point at a directory whose name
+# holds one, and the alternates file and the printed `worktree=` line are one path per line.
+[[ ${root} != *$'\n'* ]] || refuse "DOTFILES_WT resolves to ${root//$'\n'/\\n}, which holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
 # A root inside the checkout's working tree or git directory (`<checkout>/.git/hooks`) would have the tree made
-# write the checkout, which this lever never does.
-[[ ${root} != "${toplevel}" && ${root} != "${toplevel}"/* && ${root} != "${git_dir}" && ${root} != "${git_dir}"/* ]] || # lint-comparisons: allow both sides are pwd -P forms
-    refuse "DOTFILES_WT ${root} lies inside the checkout ${toplevel} or its git directory ${git_dir}; a worker tree is never made in the checkout"
+# write the checkout, which this lever never does. Containment is decided by identity, not by spelling: round 5
+# compared the resolved strings, and on a case-insensitive volume a case alias of the checkout path
+# (`<CHECKOUT>/.git/hooks`) was no prefix match, so the tree was made in the checkout's hooks directory. The device
+# and inode of the root's longest existing directory and of each directory above it, up to `/`, are read with `stat`
+# and compared with the checkout's and its git directory's; the components `mkdir -p` would make do not exist yet, so
+# none of them is a directory of the checkout. `stat`'s format flag is `-f` on macOS and `-c` on Linux; the system
+# name is read once, and a failed read refuses.
+os=$(uname -s) || refuse 'cannot read the operating system name (uname -s)'
+case ${os} in
+Darwin) stat_args=(-f '%d %i') ;;
+Linux) stat_args=(-c '%d %i') ;;
+*) refuse "no identity read for the system ${os}; stat's format flag is known for Darwin and Linux" ;;
+esac
+checkout_id=$(identity_of "${toplevel}") || refuse "cannot read the identity (device and inode) of the checkout ${toplevel}"
+git_dir_id=$(identity_of "${git_dir}") || refuse "cannot read the identity (device and inode) of the git directory ${git_dir}"
+dir=${root_prefix}
+while :; do
+    dir_id=$(identity_of "${dir}") || refuse "cannot read the identity (device and inode) of ${dir}, which DOTFILES_WT ${root} lies under"
+    [[ ${dir_id} != "${checkout_id}" && ${dir_id} != "${git_dir_id}" ]] || # lint-comparisons: allow compares (device, inode) identities, not paths
+        refuse "DOTFILES_WT ${root} lies inside the checkout ${toplevel} or its git directory ${git_dir} (${dir} has the identity ${dir_id} of one of them); a worker tree is never made in the checkout"
+    [[ ${dir} != / ]] || break # lint-comparisons: allow the walk ends at the filesystem root, a shape test; no path identity is compared
+    dir=${dir%/*}
+    [[ -n ${dir} ]] || dir=/
+done
 path=${root%/}/${unit}
 
 # @description Remove the directory this run reserved when a later step failed, so a tree without the refusals is

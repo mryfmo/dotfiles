@@ -7,8 +7,8 @@ the last repeating), so a test can inject a failure into one read or write, befo
 what is left; it holds the call named by `FAKE_GIT_WAIT_ON` until the fifo `FAKE_GIT_WAIT_FIFO` is opened for writing
 (touching `FAKE_GIT_WAITING` first), so two runs can be ordered around one step; and it runs the shell command
 `FAKE_GIT_AFTER` after the call named by `FAKE_GIT_AFTER_ON`, so a directory git made can be made read-only before the
-lever writes into it. The steps that are not git (`mkdir`, `chmod`, `rm`) are failed by PATH shims (`shim`). Nothing
-reads the real `~/.local/bin` or writes outside the scratch root.
+lever writes into it. The steps that are not git (`mkdir`, `chmod`, `rm`, `uname`, `stat`) are failed by PATH shims
+(`shim`). Nothing reads the real `~/.local/bin` or writes outside the scratch root.
 """
 
 import os
@@ -723,6 +723,110 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertIn(f"refused: the checkout path {self.root}/check\\nout holds a newline", run.stderr)
         self.assertFalse((self.root / "wt").exists())
         self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
+
+    def test_a_case_alias_of_the_checkout_path_is_refused_by_identity(self):
+        """On a case-insensitive volume `<CHECKOUT>/.git/hooks`, the checkout's hooks directory with the case of the
+        checkout's name swapped, resolves to a string that is no prefix match of the checkout's path, and round 5's
+        string comparison let it through: the verdict on ee3145aa (P2 :254) made U7 inside the checkout's hooks
+        directory with exit 0. Containment is decided by the device and inode of the resolved root's longest existing
+        directory and of each directory above it, so the alias, and an absent directory under it, are refused with
+        exit 2 before anything is made, the hooks directory and the checkout as they were. Skipped where the scratch
+        volume is case-sensitive: no alias names the checkout there."""
+        alias = self.checkout.with_name(self.checkout.name.swapcase())
+        hooks = alias / ".git/hooks"
+        if not hooks.is_dir() or not os.path.samefile(hooks, self.checkout / ".git/hooks"):
+            self.skipTest(f"{self.root} is on a case-sensitive volume: {hooks} names no directory of the checkout")
+        before = (self.checkout_state(), self.listing(self.checkout))
+        inside = f"lies inside the checkout {self.checkout} or its git directory {self.checkout / '.git'}"
+        for root in (str(hooks), str(alias / "trees/absent")):
+            with self.subTest(root=root):
+                run = self.run_lever("U7", "feat/u7", "origin/main", DOTFILES_WT=root)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("worker-worktree.sh: refused: DOTFILES_WT ", run.stderr)
+                self.assertIn(inside, run.stderr)
+                self.assertNotIn("removed again", run.stderr)
+                self.assertEqual((self.checkout_state(), self.listing(self.checkout)), before)
+                self.assertFalse((self.checkout / ".git/hooks/U7").exists())
+        self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
+
+    def test_a_symlink_to_a_directory_whose_name_holds_a_newline_is_refused_after_resolution(self):
+        """`DOTFILES_WT` naming a symlink whose own name holds no newline, pointing at a directory whose name holds
+        one (the verdict on ee3145aa, P3 :251: exit 0 and a `worktree=` receipt split across two lines), is refused
+        with exit 2 after the resolution, naming the resolved path with the newline escaped, before anything is made:
+        nothing under the target, no `git init`, the checkout as it was. The same for an absent directory under the
+        link."""
+        target = self.root / "trees\nx"
+        target.mkdir()
+        link = self.root / "trees-link"
+        link.symlink_to(target)
+        before = self.checkout_state()
+        for root, resolved in ((str(link), f"{self.root}/trees\\nx"), (str(link / "wt"), f"{self.root}/trees\\nx/wt")):
+            with self.subTest(root=root):
+                run = self.run_lever("U7", "feat/u7", "origin/main", DOTFILES_WT=root)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"worker-worktree.sh: refused: DOTFILES_WT resolves to {resolved}, which holds a newline; "
+                    "the alternates file is one path per line",
+                    run.stderr,
+                )
+                self.assertNotIn("removed again", run.stderr)
+                self.assertEqual(self.listing(target), [])
+                self.assertEqual(self.checkout_state(), before)
+        self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
+
+    def test_a_failing_resolver_or_identity_read_is_a_refusal_that_makes_nothing(self):
+        """Standing order 21 for the reads that place the root (the verdict on ee3145aa, P2 test :686): the resolver's
+        `cd` into a directory without permissions, the `uname -s` that chooses `stat`'s format flag (failing, or naming
+        a system the lever knows no flag for), and `stat` on the checkout, on its git directory and on a directory the
+        root lies under (failing, or printing something that is no device and inode) each refuse with exit 2 naming
+        the read, before anything is made: no root directory, no `git init`, the checkout byte-identical."""
+        before = self.checkout_state()
+        failing_tool = 'echo "fake-$0: failing $* as asked" >&2; exit 1'
+        identity = "cannot read the identity (device and inode) of"
+        rows = [
+            ({"PATH": self.shim("uname", "-s", failing_tool)}, "cannot read the operating system name (uname -s)"),
+            (
+                {"PATH": self.shim("uname", "-s", "echo Plan9; exit 0")},
+                "no identity read for the system Plan9; stat's format flag is known for Darwin and Linux",
+            ),
+            ({"PATH": self.shim("stat", str(self.checkout), failing_tool)}, f"{identity} the checkout {self.checkout}"),
+            (
+                {"PATH": self.shim("stat", str(self.checkout), "echo not-an-identity; exit 0")},
+                f"{identity} the checkout {self.checkout}",
+            ),
+            (
+                {"PATH": self.shim("stat", f"{self.checkout}/.git", failing_tool)},
+                f"{identity} the git directory {self.checkout}/.git",
+            ),
+            (
+                # the path is the last argument; the shim's own pattern cannot anchor the end, so the action tests it
+                {"PATH": self.shim("stat", "", f'case "$4" in {self.root}) {failing_tool} ;; esac')},
+                f"{identity} {self.root}, which DOTFILES_WT {self.root}/wt lies under",
+            ),
+        ]
+        if os.geteuid() != 0:  # root enters a directory without permissions
+            locked = self.root / "locked"
+            locked.mkdir()
+            locked.chmod(0)
+            self.addCleanup(locked.chmod, 0o755)
+            rows.append(
+                (
+                    {"DOTFILES_WT": str(locked / "wt")},
+                    f"cannot resolve DOTFILES_WT {locked}/wt; its longest existing directory cannot be entered",
+                )
+            )
+        for env, message in rows:
+            with self.subTest(message=message):
+                run = self.run_lever("U7", "feat/u7", "origin/main", **env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"worker-worktree.sh: refused: {message}", run.stderr)
+                self.assertNotIn("removed again", run.stderr)
+                self.assertFalse((self.root / "wt").exists())
+                self.assertEqual(self.checkout_state(), before)
+        self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
+        self.assert_refusals_in_place(self.root / "wt/U7", "feat/u7")
 
     def test_a_relative_origin_url_is_refused_before_anything_is_made(self):
         """A relative `remote.origin.url` (`../origin.git`; the verdict on e1f3b4cf, P2 :247) resolves from the

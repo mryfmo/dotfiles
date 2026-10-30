@@ -382,7 +382,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "8806719001f039c4dc82525f963f734207d17dc6a5529c7774814770b08736e5"
+      "sha256": "59e81d90da76b7371666efca122c5b0c3b1a2d87314dac87fa600d8ad06b42b5"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "15a84ed82ba5c367fec9744dac697ed352809d46f41ccdc504a9ec67f92f2410"
+      "sha256": "4d01968fb158acec1e212d9fe2101d86b6314b328daffff91a9bd3d4cbfb883c"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -561,6 +561,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "README.md"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "audit-carry.py"
     },
     {
       "source": "home/dot_local/bin/common",

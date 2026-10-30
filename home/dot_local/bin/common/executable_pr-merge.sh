@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct` and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -13,11 +13,17 @@
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
 #   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
-#   `incorrect` or `blocked` row for the same head voids an earlier `correct`. That sha is always the current head:
-#   there is no carry-over (U71 audit round 10), so a head that `pr-update-branch.sh` moved gets a fresh audit. The
-#   row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a `correct` verdict may
-#   carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of the body's unit and
-#   the current head (absent, a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
+#   `incorrect` or `blocked` row for the same head voids an earlier `correct`, or with the word `carried` (regime-cutover
+#   U122, standing order 38): then its evidence must hold `carried <earlier head> <this head> <sha256>`, the line
+#   `scripts/orchestrator/audit-carry.py` printed when this head's diff against its merge base equalled the earlier
+#   head's, the earlier head is another sha than this one, and the newest row for the earlier head must itself be
+#   `correct`; the verdict file and the dispositions the gate then reads are the earlier head's, since its findings
+#   are this head's. That sha is always the current head: there is no silent carry-over (U71 audit round 10), so a
+#   head that `pr-update-branch.sh` moved gets a fresh audit or a `carried` row the coordinator wrote from the digest
+#   lever's output. The row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a
+#   `correct` verdict may carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of
+#   the body's unit and the audited head (absent, a symlink or unreadable is a refusal: a merge needs the verdict
+#   file, not only the row)
 #   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
 #   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
 #   (`- P<n> (<confidence>) <path>:<line>: <rationale>`, the path the text before the line's last `:<line>: `, which
@@ -52,12 +58,14 @@
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the checkout's own store, above; a directory outside the checkout is refused).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>`.
+# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, no verdict file for the head, a
-#   P2 or P3 finding of it without its `residual` disposition row, a malformed verdict file, `dispositions.tsv` or
-#   `units.tsv`, a store path that is a symlink or outside the checkout, or CI that is not green on the head.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a `carried` row
+#   whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose earlier head has no `correct`
+#   row, no verdict file for the audited head, a P2 or P3 finding of it without its `residual` disposition row, a
+#   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
+#   checkout, or CI that is not green on the head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
@@ -159,6 +167,11 @@ residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
 # A verdict column that starts with the word `correct` (never `incorrect`): `correct`, `correct (…)`, `correct;…`.
 correct_re='^correct($|[[:space:](;,])'
+# A verdict column that starts with the word `carried` (U122), and the evidence such a row must hold: the line
+# audit-carry.py prints, `carried <earlier head> <this head> <sha256 of the diff>`, as a whole word sequence anywhere
+# in the column (the coordinator may write a note after it).
+carried_re='^carried($|[[:space:](;,])'
+carried_evidence_re='(^|[[:space:]])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})($|[[:space:]])'
 
 # @description Print the refusal on stderr and exit 2; nothing was merged.
 # @arg $@ string The reason.
@@ -180,7 +193,7 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Print `<ts>\t<verdict>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
+# @description Print `<ts>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
 #   when no row names that pair. A ledger whose first line is not the header is a refusal; a failed read exits 1.
 #   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
 #   so two different all-digit shas would otherwise match (U71 audit round 1).
@@ -191,7 +204,7 @@ ledger_verdict() {
     out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
         { sub(/\r$/, "") }
         NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 1; exit 3 } next }
-        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $5 }
+        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $5 "\t" $7 }
         END { if (!bad && found != "") print found }
     ' "${ledger}") || status=$?
     case ${status} in
@@ -201,17 +214,43 @@ ledger_verdict() {
     esac
 }
 
-# @description Refuse unless the newest ledger row for pull request ${pr} at sha $1 is `correct`.
+# @description Refuse unless the newest ledger row for pull request ${pr} at sha $1 is `correct`, or is `carried`
+#   (U122, standing order 38) with an evidence that names this head and an earlier head whose own newest row is
+#   `correct`. One gate function decides both: a `carried` row whose earlier head has no `correct` row refuses, and
+#   the head whose verdict file and dispositions the merge then reads is the earlier one.
 # @arg $1 string The 40-hex sha the verdict must name.
 # @set verdict_ts The row's ts.
-require_correct_row() {
-    local row verdict
+# @set audited_head The head whose verdict file and dispositions hold for $1: $1 itself, or the carried row's earlier head.
+require_verdict_row() {
+    local row rest verdict evidence earlier named earlier_row earlier_verdict
     row=$(ledger_verdict "${pr}" "$1") || exit $?
     [[ -n ${row} ]] || refuse "${ledger} has no row for pull request ${pr} at head ${1} (a short sha never matches)"
     verdict_ts=${row%%$'\t'*}
-    verdict=${row#*$'\t'}
-    [[ ${verdict} =~ ${correct_re} ]] ||
+    rest=${row#*$'\t'}
+    verdict=${rest%%$'\t'*}
+    evidence=${rest#*$'\t'}
+    audited_head=$1
+    if [[ ${verdict} =~ ${correct_re} ]]; then
+        return 0
+    fi
+    [[ ${verdict} =~ ${carried_re} ]] ||
         refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is not correct: ${verdict}"
+    [[ ${evidence} =~ ${carried_evidence_re} ]] ||
+        refuse "the carried ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) names no 'carried <earlier head> <head> <sha256>' in its evidence, the line audit-carry.py printed: ${evidence}"
+    earlier=${BASH_REMATCH[2]}
+    named=${BASH_REMATCH[3]}
+    [[ ${named} == "$1" ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) carries ${named}, not this head ${1}"
+    [[ ${earlier} != "$1" ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) carries ${1} from itself; a carried head rests on an earlier audited head"
+    earlier_row=$(ledger_verdict "${pr}" "${earlier}") || exit $?
+    [[ -n ${earlier_row} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, which has no row for pull request ${pr}; a carried head needs the earlier head's correct row"
+    earlier_verdict=${earlier_row#*$'\t'}
+    earlier_verdict=${earlier_verdict%%$'\t'*}
+    [[ ${earlier_verdict} =~ ${correct_re} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, whose newest row (${earlier_row%%$'\t'*}) is not correct: ${earlier_verdict}"
+    audited_head=${earlier}
 }
 
 # @description Print the data rows of the TSV file $1, CR stripped and the header dropped, when its first line is the
@@ -457,8 +496,8 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${head}"
 resolve_store
 
-require_correct_row "${head}"
-require_dispositions "${head}"
+require_verdict_row "${head}"
+require_dispositions "${audited_head}"
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

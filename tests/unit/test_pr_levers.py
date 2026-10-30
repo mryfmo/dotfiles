@@ -872,8 +872,11 @@ class PrThreadsCheckTest(ThreadsFixture):
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 
 
-def ledger_row(head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z"):
-    return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\thttps://github.com/acme/widgets/pull/{pr}\n"
+def ledger_row(
+    head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z", evidence=None
+):
+    evidence = evidence or f"https://github.com/acme/widgets/pull/{pr}"
+    return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\t{evidence}\n"
 
 
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
@@ -1140,6 +1143,82 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(self.merge(), f"has no row for pull request 7 at head {SHA_B}")
         self.assert_refused(self.merge("--carry-from", SHA_A), "usage:")
         self.assertEqual(self.writes(), [])
+
+    def test_a_carried_row_merges_only_on_the_earlier_head_s_correct_row_and_verdict_file(self):
+        """U122 (standing order 38): a `carried` row for the head, whose evidence is the line audit-carry.py printed
+        (`carried <earlier> <head> <sha256>`), merges like a `correct` row when the earlier head's newest row is
+        `correct`; the verdict file and the dispositions the gate reads are then the earlier head's. A carried row whose
+        earlier head has no correct row, whose evidence names no digest or another head, or that a newer `incorrect`
+        row voids, refuses before CI is read."""
+        digest = "d" * 64
+        earlier = ledger_row(SHA_B)
+        carried = ledger_row(
+            SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest} (audit-carry.py)"
+        )
+        self.ledger(earlier, carried)
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()  # the carried head has no verdict file of its own
+        self.verdict(head=SHA_B)
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the earlier head's findings bind the carried head: its P2 needs the residual row written for the earlier head
+        self.verdict(P2_LINE, head=SHA_B)
+        self.units("U71", "U72")
+        self.dispositions()
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(),
+            f"verdicts/U71-{SHA_B[:8]}.md lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition",
+        )
+        self.dispositions(disposition_row(head=SHA_B))
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0, "the earlier head's residual row holds for the carried head")
+        self.verdict(head=SHA_B)
+        for name, rows, message in (
+            ("no row for the earlier head", (carried,), f"rests on {SHA_B}, which has no row for pull request 7"),
+            (
+                "earlier head not correct",
+                (ledger_row(SHA_B, "incorrect (round 1)"), carried),
+                "is not correct: incorrect",
+            ),
+            (
+                "earlier head voided by a later row",
+                (earlier, ledger_row(SHA_B, "incorrect (re-audit)", ts="2026-10-25T09:30:00Z"), carried),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:30:00Z) is not correct: incorrect",
+            ),
+            (
+                "no digest in the evidence",
+                (earlier, ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried from {SHA_B}")),
+                "names no 'carried <earlier head> <head> <sha256>' in its evidence",
+            ),
+            (
+                "another head carried",
+                (earlier, ledger_row(SHA_A, "carried", evidence=f"carried {SHA_B} {SHA_B} {digest}")),
+                f"carries {SHA_B}, not this head {SHA_A}",
+            ),
+            (
+                "carried from itself",
+                (earlier, ledger_row(SHA_A, "carried", evidence=f"carried {SHA_A} {SHA_A} {digest}")),
+                f"carries {SHA_A} from itself",
+            ),
+            (
+                "a newer incorrect row for the carried head",
+                (earlier, carried, ledger_row(SHA_A, "incorrect (fresh audit)", ts="2026-10-25T11:00:00Z")),
+                "(2026-10-25T11:00:00Z) is not correct: incorrect",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertNotIn(
+                    ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
+                )
 
     def test_the_lever_reads_no_local_git_objects(self):
         # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.

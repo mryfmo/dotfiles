@@ -487,7 +487,7 @@
       "target": ".local/bin/common/worker-worktree.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "8daad92b7f86e5f0dd9258b14dd1baa2d5afa95341a8093f5342b45ea1b7530c"
+      "sha256": "0687bbdbeef93001d396b4071f56d94b51eed8e1f04621dc6e97e6362d67736f"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",

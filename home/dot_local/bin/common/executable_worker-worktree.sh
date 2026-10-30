@@ -6,7 +6,7 @@
 #   first line of every TASK, and on 2026-10-30 six owners pushed anyway; the one stopped was the one whose push
 #   route had no key. This lever makes the order a refusal of the tool. Run it from the main checkout:
 #   `worker-worktree.sh <unit> <branch> <base>` runs `git worktree add -b <branch> <root>/<unit> <base>`, the root
-#   being `$DOTFILES_WT` when set, else `/tmp/dotfiles-wt`, and then, in that worktree's own configuration only
+#   being `$DOTFILES_WT` when set, else `${TMPDIR:-/tmp}/dotfiles-wt`, and then, in that worktree's own configuration only
 #   (`git config --worktree`, which needs `extensions.worktreeConfig`, set to true in the checkout's config when it
 #   is not yet; `core.worktree` set there is refused, since a linked worktree would read it once the extension is on):
 #   - `remote.origin.pushurl` is `refused://never-push-from-a-worker-worktree`, so `git push`, `git push origin
@@ -33,7 +33,7 @@
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the worktree is `<root>/<unit>`.
 # @arg $2 string The branch to create, a name `git check-ref-format --branch` accepts, not yet a local branch.
 # @arg $3 string The base, a revision naming a commit (`origin/main`).
-# @env DOTFILES_WT The directory the worktrees live in (default `/tmp/dotfiles-wt`); made when absent.
+# @env DOTFILES_WT The directory the worktrees live in (default `${TMPDIR:-/tmp}/dotfiles-wt`); made when absent.
 # @stdout `worktree=<path>`, `branch=<branch>`, `head=<sha>` and `push=git -C <toplevel> push <origin url>
 #   <head>:refs/heads/<branch>`, the line the coordinator runs from the main checkout, one per line.
 # @exitcode 0 The worktree exists at the base on the branch with the three refusals set.
@@ -151,7 +151,7 @@ case ${status} in
 *) fail "cannot read core.worktree from the checkout's config: ${core_worktree}" ;;
 esac
 
-root=${DOTFILES_WT:-/tmp/dotfiles-wt}
+root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
 [[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path"
 path=${root}/${unit}
 [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; an existing worktree is never touched"

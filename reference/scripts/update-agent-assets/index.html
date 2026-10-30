@@ -5306,11 +5306,11 @@
 <li><code>ensure_gh_extensions</code></li>
 <li><code>ensure_herdr_integrations</code></li>
 <li><code>ensure_mise_npm_agent_cli</code></li>
-<li><code>fail_on_claude_pin_failures</code></li>
+<li><code>fail_on_pin_failures</code></li>
 <li><code>has_command</code></li>
 <li><code>install_codex_ponytail</code></li>
 <li><code>install_codex_superpowers</code></li>
-<li><code>judge_fresh_codex_copy</code></li>
+<li><code>judge_codex_copy</code></li>
 <li><code>judge_installed_version</code></li>
 <li><code>main</code></li>
 <li><code>move_claude_plugin_to_pin</code></li>
@@ -6087,9 +6087,10 @@
 <span class="c1">#   read, a check that cannot run) it is disabled (disable_plugin) before the failure is returned and counted.</span>
 <span class="c1">#   One rule decides what fails the run: unreviewed code that could be active, or an active state that cannot</span>
 <span class="c1">#   be verified. So two outcomes are a WARN, not a failure: a step that could not verify a plugin that was</span>
-<span class="c1">#   neither installed nor enabled (PLUGIN_SKIPPED), and a fresh install that landed off its pin and is</span>
-<span class="c1">#   proven disabled (PLUGIN_FRESH_OFF_PIN; make doctor still reports it as drift). Both agents take the same</span>
-<span class="c1">#   path: a Claude plugin is disabled at user scope, a Codex copy removed (disable_plugin), and either is proven.</span>
+<span class="c1">#   neither installed nor enabled (PLUGIN_SKIPPED), and an install that landed off its pin and is proven</span>
+<span class="c1">#   disabled (PLUGIN_FRESH_OFF_PIN: a fresh Claude install, or any Codex copy the doctor rejects after the</span>
+<span class="c1">#   step; make doctor still reports it as drift). Both agents take the same path: a Claude plugin is disabled</span>
+<span class="c1">#   at user scope, a Codex copy removed (disable_plugin), and either is proven.</span>
 <span class="c1">#   The step runs in a subshell, so an `exit` or a `set -u` abort inside it comes back here too.</span>
 <span class="c1"># @arg $1 string Agent: claude or codex.</span>
 <span class="c1"># @arg $2 string Fully qualified plugin ID.</span>
@@ -6098,7 +6099,7 @@
 <span class="c1"># @exitcode 2 When the step skipped the plugin (PLUGIN_SKIPPED: nothing installed or enabled to verify)</span>
 <span class="c1">#   and the doctor's check passes, or a fresh off-pin install is proven disabled: a WARN, not counted, and the</span>
 <span class="c1">#   caller records nothing.</span>
-<span class="c1"># @exitcode 1 Otherwise, after the disable; counted in CLAUDE_PIN_FAILURES, so the run fails.</span>
+<span class="c1"># @exitcode 1 Otherwise, after the disable; counted in PIN_FAILURES, so the run fails.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>converge_or_disable<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
@@ -6114,11 +6115,11 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PLUGIN_FRESH_OFF_PIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># make doctor keeps reporting this copy as drift: that is the signal for the review bump.</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>disable_plugin<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: %s plugin %s landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex), so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: %s plugin %s is off its pin and is proven disabled (Claude) or removed (Codex), so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s plugin %s landed off its pin and cannot be proven disabled.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">        </span><span class="nv">PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PLUGIN_SKIPPED</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -6130,7 +6131,7 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s plugin %s did not reach its pin (step exit %s, make doctor pin check exit %s); disabling it.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span>disable_plugin<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">    </span><span class="nv">PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
@@ -6146,22 +6147,23 @@
 <span class="c1"># Plugin IDs converged in this run, space-delimited (bash 3.2 has no associative arrays), and the</span>
 <span class="c1"># count of plugins whose convergence failed for any reason; main fails the run when it is not zero.</span>
 <span class="nv">CLAUDE_CONVERGED</span><span class="o">=</span><span class="s2">" "</span>
-<span class="nv">CLAUDE_PIN_FAILURES</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">PIN_FAILURES</span><span class="o">=</span><span class="m">0</span>
 <span class="c1"># The exit statuses a plugin step returns for the two outcomes converge_or_disable reports as a WARN: a plugin</span>
-<span class="c1"># it could not verify and found neither installed nor enabled, and a fresh install that landed off its pin.</span>
-<span class="c1"># Any other non-zero status is a failure.</span>
+<span class="c1"># it could not verify and found neither installed nor enabled, and an install that landed off its pin and can</span>
+<span class="c1"># be proven disabled or removed (a fresh Claude install; a Codex copy, cached before the step or not). Any other</span>
+<span class="c1"># non-zero status is a failure.</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PLUGIN_SKIPPED</span><span class="o">=</span><span class="m">10</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PLUGIN_FRESH_OFF_PIN</span><span class="o">=</span><span class="m">11</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Count a failed step (a plugin setup step, a pin check, an asset manifest record) and keep</span>
-<span class="c1">#   going, so the run still reaches the convergence of every pinned plugin and fail_on_claude_pin_failures</span>
+<span class="c1">#   going, so the run still reaches the convergence of every pinned plugin and fail_on_pin_failures</span>
 <span class="c1">#   still fails it at the end. A step that runs in a subshell returns its failure instead, which stops the run.</span>
 <span class="c1"># @arg $1 string What failed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>record_claude_failure<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s failed; continuing so every pinned plugin is still checked, and the run will fail.\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">    </span><span class="nv">PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -6175,12 +6177,13 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Fail the run when any Claude Code plugin could not be checked or kept at its pin (counted by converge_claude_step).</span>
-<span class="c1"># @exitcode 1 When CLAUDE_PIN_FAILURES is not zero.</span>
+<span class="c1"># @description Fail the run when any plugin, Claude Code or Codex, could not be checked or kept at its pin</span>
+<span class="c1">#   (counted by converge_or_disable and record_claude_failure for either agent).</span>
+<span class="c1"># @exitcode 1 When PIN_FAILURES is not zero.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>fail_on_claude_pin_failures<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s Claude Code plugin(s) could not be checked or kept at their pin; see the errors above.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="k">function</span><span class="w"> </span>fail_on_pin_failures<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PIN_FAILURES</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: %s plugin(s) (Claude Code or Codex) could not be checked or kept at their pin; see the errors above.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PIN_FAILURES</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
@@ -6199,7 +6202,7 @@
 <span class="w">    </span>has_command<span class="w"> </span>claude<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">ids</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>pin_record<span class="w"> </span>plugin-ids<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_PLUGIN_PINS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read the Claude Code plugin pins from %s; no plugin was checked against its pin.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_PLUGIN_PINS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">CLAUDE_PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">        </span><span class="nv">PIN_FAILURES</span><span class="o">=</span><span class="k">$((</span><span class="nv">PIN_FAILURES</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Claude Code plugin pins"</span>
@@ -6235,7 +6238,10 @@
 <span class="c1">#</span>
 <span class="c1"># @description Re-apply only the managed Codex config files, so their modify scripts hash the</span>
 <span class="c1">#   plugin hooks this run has just installed (Codex runs a hook only when its trust hash is current).</span>
-<span class="c1">#   Runs last and unattended: `chezmoi apply --force`, no prompt, no network.</span>
+<span class="c1">#   Runs last and unattended: `chezmoi apply --force`, no prompt, no network. Inside a chezmoi run</span>
+<span class="c1">#   (`CHEZMOI=1`, exported to every script chezmoi runs) the outer apply holds the persistent state lock,</span>
+<span class="c1">#   so the nested apply would only time out on it: the refresh is skipped with a note, and the standalone</span>
+<span class="c1">#   `./scripts/update-agent-assets.sh` run that `make update` makes right after the apply does it.</span>
 <span class="c1"># @exitcode 0 Always; a failed refresh only warns, and the next apply retries it.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>refresh_codex_hook_trust<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -6243,6 +6249,10 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">pattern</span><span class="o">=</span><span class="s1">'/\.codex/([a-z0-9_]+\.)?config\.toml$'</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">targets</span><span class="o">=()</span>
 
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CHEZMOI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex hook trust: not refreshed inside chezmoi apply (it holds the state lock); the standalone ./scripts/update-agent-assets.sh run of make update refreshes it.\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>chezmoi<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -6378,17 +6388,23 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description After a Codex plugin step installed a copy where none was cached, judge it by make doctor's own</span>
-<span class="c1">#   pin check (doctor_pin_check), the one judge of a pin: a fresh copy the doctor rejects, for its version or</span>
-<span class="c1">#   for the commit it was installed from, is a fresh install off its pin. A version compared here alone let a</span>
-<span class="c1">#   copy at the pinned version from another commit pass, and the doctor then failed the run (incident</span>
-<span class="c1">#   2026-10-29, round 2). An already cached copy is left to make doctor's check alone.</span>
+<span class="c1"># @description After a Codex plugin step, judge the copy it left cached by make doctor's own pin check</span>
+<span class="c1">#   (doctor_pin_check), the one judge of a pin, so the two never disagree: a copy the doctor rejects, for the</span>
+<span class="c1">#   version its manifest declares or for its content (content_sha256: every regular file of the copy except the</span>
+<span class="c1">#   inert ones, inert being what the copy's manifest does not point at and Codex never loads by convention: a file</span>
+<span class="c1">#   a manifest reference reaches, by filesystem identity, is pinned and the pin_records.py INERT globs apply only</span>
+<span class="c1">#   to the files no reference reaches), is off its pin, whether the step</span>
+<span class="c1">#   installed it or found it cached.</span>
+<span class="c1">#   `codex plugin marketplace upgrade` rewrites the copy from upstream main (incident 2026-10-30), so a copy that</span>
+<span class="c1">#   was there before is no more reviewed than a fresh one and takes the same outcome:</span>
+<span class="c1">#   removed by converge_or_disable, a WARN, make doctor's drift until the review bump, not a run failure. The</span>
+<span class="c1">#   commit the copy came from is not compared with the marketplace `ref`, which pins the catalog snapshot only.</span>
 <span class="c1"># @arg $1 string Fully qualified Codex plugin ID.</span>
-<span class="c1"># @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the fresh copy; converge_or_disable removes it.</span>
+<span class="c1"># @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the copy; converge_or_disable removes it.</span>
 <span class="c1"># @exitcode 1 When the copy or the pin cannot be read, or the doctor's check cannot run (any status but its</span>
 <span class="c1">#   0 or 1); never a pass.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>judge_fresh_codex_copy<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="k">function</span><span class="w"> </span>judge_codex_copy<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>pin<span class="w"> </span>codex_copy<span class="w"> </span><span class="nv">check</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>plugin_pin<span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>pin<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -6412,11 +6428,11 @@
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span><span class="m">1</span><span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: codex plugin %s landed at %s against its pin %s and make doctor rejects that fresh copy (its finding above names the version or the commit off the pin); the pin needs a review bump: review that release and record its version and ref in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="p">#copy </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: codex plugin %s landed at %s and make doctor rejects that copy: version or content off the pin %s (its finding above names what differs); the pin needs a review bump: review that release and record its version and content_sha256 in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="p">#copy </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PLUGIN_FRESH_OFF_PIN</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: make doctor'</span><span class="s2">"'"</span><span class="s1">'s pin check of codex plugin %s could not run (exit %s), so its fresh copy at %s is unjudged.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="p">#copy </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: make doctor'</span><span class="s2">"'"</span><span class="s1">'s pin check of codex plugin %s could not run (exit %s), so its copy at %s is unjudged.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">check</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="p">#copy </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
@@ -6451,7 +6467,7 @@
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Superpowers plugin installed.\n'</span>
-<span class="w">        </span>judge_fresh_codex_copy<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>judge_codex_copy<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -6480,12 +6496,16 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Ensure the Ponytail Codex plugin marketplace is configured at its reviewed commit.</span>
+<span class="c1"># @description Ensure the Ponytail Codex plugin marketplace is configured at its reviewed catalog commit.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins). That ref pins</span>
 <span class="c1">#   the marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the plugin copy from the</span>
-<span class="c1">#   source the catalog names (upstream main for ponytail), so the copy can land on a release the pin has not</span>
-<span class="c1">#   reviewed; install_codex_ponytail judges a fresh copy and make doctor reports an existing one.</span>
+<span class="c1">#   source the catalog names (upstream main for ponytail), whatever the ref says, so the copy is judged by the</span>
+<span class="c1">#   version its manifest declares and by its content (content_sha256), by make doctor's check after each</span>
+<span class="c1">#   update (judge_codex_copy) and at any time, never by the commit it came from. What a hook command may run is</span>
+<span class="c1">#   pinned by the codex.hooks.state trusted_hash pins (the hooks.json command strings); every file of the copy</span>
+<span class="c1">#   but the inert ones (READMEs, docs/, i18n/, images, upstream CI: what Codex never loads) is pinned by</span>
+<span class="c1">#   content_sha256, instruction files (skills, AGENTS.md) included.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>ensure_codex_ponytail_marketplace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">codex_config</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_CODEX_DIR</span><span class="p">%/</span><span class="si">}</span><span class="s2">/config.toml"</span>
@@ -6526,11 +6546,12 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the Codex Ponytail plugin from its marketplace at the reviewed commit. Only ever</span>
-<span class="c1">#   called through converge_or_disable. The marketplace upgrade itself installs the copy of an enabled plugin,</span>
-<span class="c1">#   so the cache is read before it: a copy that was not there before is a fresh install and is judged</span>
-<span class="c1">#   (judge_fresh_codex_copy), whatever command wrote it; a copy that was there is left to make doctor's check.</span>
-<span class="c1"># @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the fresh copy; converge_or_disable removes it.</span>
+<span class="c1"># @description Install the Codex Ponytail plugin from its marketplace at the reviewed catalog commit. Only ever</span>
+<span class="c1">#   called through converge_or_disable. The marketplace upgrade itself installs or rewrites the copy of an</span>
+<span class="c1">#   enabled plugin from the source the catalog names (upstream main), so the cache is read before it (a copy that</span>
+<span class="c1">#   cannot be read stops the upgrade: it would install a copy nothing judges) and the copy is judged after it</span>
+<span class="c1">#   (judge_codex_copy), whether it was cached before or not; `already installed` only says which.</span>
+<span class="c1"># @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the copy; converge_or_disable removes it.</span>
 <span class="c1"># @exitcode 1 When the marketplace cannot be registered or is not pinned to the manifest's ref, the ref cannot</span>
 <span class="c1">#   be read, or the cached copy cannot be read before or after the upgrade.</span>
 <span class="c1">#</span>
@@ -6567,10 +6588,6 @@
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="w">    </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>upgrade<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cached_before</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Ponytail plugin is already installed.\n'</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">codex_copy</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>codex_plugin_copy<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read the cached copy of %s after upgrading its marketplace.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -6578,13 +6595,19 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>absent<span class="o">)</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>add<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span><span class="s2">"copy "</span>?*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Ponytail plugin was installed by the marketplace upgrade.\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="s2">"copy "</span>?*<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cached_before</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Ponytail plugin is already installed.\n'</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Ponytail plugin was installed by the marketplace upgrade.\n'</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: unexpected cache state of %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_copy</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span>judge_fresh_codex_copy<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>judge_codex_copy<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -7567,7 +7590,7 @@
 <span class="w">    </span>retire_agmsg_shim
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>claude<span class="w"> </span><span class="s2">"npm:@anthropic-ai/claude-code"</span>
 <span class="w">    </span><span class="c1"># Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned</span>
-<span class="w">    </span><span class="c1"># plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).</span>
+<span class="w">    </span><span class="c1"># plugin is checked; its own failures are counted and fail the run at the end (fail_on_pin_failures).</span>
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail
@@ -7590,7 +7613,7 @@
 <span class="w">    </span><span class="c1"># After every plugin update above, so the trust hashes follow the plugin content of this run.</span>
 <span class="w">    </span>refresh_codex_hook_trust
 <span class="w">    </span><span class="c1"># Last, so every other step still ran: a plugin that may stay enabled off its pin fails the whole run.</span>
-<span class="w">    </span>fail_on_claude_pin_failures
+<span class="w">    </span>fail_on_pin_failures
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

@@ -991,7 +991,8 @@ class PrMergeTest(PrLeverTestCase):
         (fake / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
         self.ledger()  # the real store holds no verdict for the head
         self.github()
-        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "is not the program's store")
+        # U119 round 3: a directory outside the checkout is named as such, before the exact-store comparison
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "outside the checkout")
         other = self.repo / ".orchestration/orchestrate/other-program"
         other.mkdir()
         (other / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
@@ -1163,14 +1164,22 @@ class PrMergeTest(PrLeverTestCase):
         self.calls.unlink()
         self.github()
         self.assertEqual(self.merge().returncode, 0)
-        # standing order 21: a units.tsv that cannot be read is a failure, never "no row"
+        # standing order 21: a units.tsv that is missing, or cannot be read, is never "no row" (U119 round 3: a
+        # missing or symlinked file is a refusal naming it; a read that fails midway is a failure)
         (self.records / "units.tsv").unlink()
         self.calls.unlink()
         self.github()
-        run = self.merge()
-        self.assertEqual(run.returncode, 1, run.stderr)
-        self.assertIn("cannot read", run.stderr)
-        self.assertIn("units.tsv", run.stderr)
+        self.assert_refused(self.merge(), "units.tsv is not a regular file of this user (a symlink or missing)")
+        if os.geteuid() != 0:
+            self.units("U71", "U72")
+            (self.records / "units.tsv").chmod(0)
+            self.calls.unlink()
+            self.github()
+            run = self.merge()
+            self.assertEqual(run.returncode, 1, run.stderr)
+            self.assertIn("cannot read", run.stderr)
+            self.assertIn("units.tsv", run.stderr)
+            self.assertEqual(run.stdout, "")
         self.assertEqual(self.writes(), [])
 
     def test_a_malformed_dispositions_file_is_refused_naming_the_line(self):
@@ -1183,6 +1192,24 @@ class PrMergeTest(PrLeverTestCase):
             ("seven columns", DISPOSITIONS_HEADER + seven, "line 2 has 7 columns, not 8"),
             ("nine columns", DISPOSITIONS_HEADER + disposition_row()[:-1] + "\textra\n", "line 2 has 9 columns, not 8"),
             ("blank line", DISPOSITIONS_HEADER + "\n" + disposition_row(), "line 2 has 0 columns, not 8"),
+            # U119 round 3 (audit of 8d442d49, P2): `read` with a tab IFS merged adjacent tabs, so a nine-column row
+            # with an empty first or last field passed as eight; the count is awk's now, and no column may be empty
+            (
+                "nine columns, the last empty",
+                DISPOSITIONS_HEADER + disposition_row()[:-1] + "\t\n",
+                "line 2 has 9 columns, not 8",
+            ),
+            (
+                "nine columns, the first empty",
+                DISPOSITIONS_HEADER + "\t" + disposition_row(),
+                "line 2 has 9 columns, not 8",
+            ),
+            (
+                "an empty reference",
+                DISPOSITIONS_HEADER + disposition_row(reference=""),
+                "line 2: column 8 (reference) is empty",
+            ),
+            ("an empty unit", DISPOSITIONS_HEADER + disposition_row(unit=""), "line 2: column 2 (unit) is empty"),
             (
                 "unknown disposition",
                 DISPOSITIONS_HEADER + disposition_row(disposition="accepted"),
@@ -1258,6 +1285,99 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_a_malformed_units_table_is_refused_naming_the_line(self):
+        # U119 round 3: the residual's unit is looked up in units.tsv, whose rows are read by the same grammar.
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        for name, text, message in (
+            ("header", "id\ttrack\nU72\tR\n", "units.tsv does not start with the header (id track state branch"),
+            ("empty file", "", "units.tsv does not start with the header"),
+            ("seven columns", UNITS_HEADER + "U72\tR\tgate\t\t\t\t-\n", "units.tsv line 2 has 7 columns, not 8"),
+            ("nine columns", UNITS_HEADER + "U72\tR\tgate\t\t\t\t\t-\t\n", "units.tsv line 2 has 9 columns, not 8"),
+            ("an empty id", UNITS_HEADER + "\tR\tgate\t\t\t\t\t-\n", "units.tsv line 2: column 1 (id) is empty"),
+        ):
+            with self.subTest(name):
+                (self.records / "units.tsv").write_text(text)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        # the fixture's rows, whose branch, pr, head_sha and brief columns are empty, are eight columns and merge
+        self.units("U71", "U72")
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_a_symlinked_verdicts_directory_or_units_table_is_refused(self):
+        # U119 round 3 (audit of 8d442d49, P2): only the verdict file was checked for a symlink, so a `verdicts/`
+        # or `units.tsv` symlink carried files from outside the store into the gate.
+        outside = self.root / "outside"
+        outside.mkdir()
+        shutil.move(str(self.records / "verdicts"), str(outside / "verdicts"))
+        (self.records / "verdicts").symlink_to(outside / "verdicts")
+        self.github()
+        run = self.merge()
+        self.assert_refused(run, "verdicts is not a directory of this user (a symlink or missing)")
+        self.assertNotIn(["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read")
+        (self.records / "verdicts").unlink()
+        shutil.move(str(outside / "verdicts"), str(self.records / "verdicts"))
+        # the residual's unit is judged against the store's own units.tsv, never a linked one that holds the row
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        (outside / "units.tsv").write_text(UNITS_HEADER + "U72\tR\tgate\t\t\t\t\t-\n")
+        (self.records / "units.tsv").symlink_to(outside / "units.tsv")
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(self.merge(), "units.tsv is not a regular file of this user (a symlink or missing)")
+        self.assertEqual(self.writes(), [])
+
+    def fake_tool(self, name, failing_on):
+        """Put a `name` first on PATH that prints a partial line and exits 1 when an argument holds `failing_on`, and
+        runs the real tool otherwise: a producer that fails midway (standing order 21)."""
+        real = shutil.which(name, path=os.defpath) or shutil.which(name)
+        self.assertTrue(real, f"no {name} on the host")
+        script = self.root / "bin" / name
+        script.write_text(
+            "#!/bin/bash\n"
+            'for arg in "$@"; do\n'
+            f"    case ${{arg}} in *{failing_on}*) echo partial; echo 'fake {name}: read failed' >&2; exit 1 ;; esac\n"
+            "done\n"
+            f'exec {real} "$@"\n'
+        )
+        script.chmod(0o755)
+
+    def test_a_read_of_the_verdict_file_or_a_table_that_fails_never_merges(self):
+        # U119 round 3 (audit of 8d442d49, P2): the `cat` of the verdict file and the awk reads of dispositions.tsv
+        # and units.tsv had no failure injection; a failed read is exit 1 naming the file, never "no finding" or
+        # "no row" (standing order 21).
+        self.verdict(P2_LINE)
+        self.dispositions(disposition_row())
+        self.units("U71", "U72")
+        for tool, failing_on, named in (
+            ("cat", "verdicts/", f"verdicts/U71-{SHA_A[:8]}.md"),
+            ("awk", "dispositions.tsv", "dispositions.tsv"),
+            ("awk", "units.tsv", "units.tsv"),
+        ):
+            with self.subTest(tool=tool, failing_on=failing_on):
+                self.fake_tool(tool, failing_on)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                (self.root / "bin" / tool).unlink()
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn(f"cannot read {self.records}/{named}", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+                self.assertEqual(self.writes(), [])
+        # the same files, the fakes gone: the merge goes through, so the fakes were what stopped it
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+        if os.geteuid() != 0:
+            # a verdict file this user cannot read is refused by name before any read
+            (self.records / f"verdicts/U71-{SHA_A[:8]}.md").chmod(0)
+            self.calls.unlink()
+            self.github()
+            self.assert_refused(self.merge(), f"verdicts/U71-{SHA_A[:8]}.md is not a readable regular file")
 
 
 class DispositionDriftTest(unittest.TestCase):

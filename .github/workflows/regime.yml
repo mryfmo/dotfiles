@@ -48,11 +48,19 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           # who wrote the pull request (U71, F152): only an owner, member or collaborator's Program-Unit line counts
           PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
-        run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+        # the base sha is read into a variable with its producer's status checked (standing order 21): a git that
+        # prints a sha and exits non-zero ends the step before the verifier runs
+        run: |
+          set -euo pipefail
+          base=$(git rev-parse HEAD) || exit 1
+          uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "${base}" --head "${HEAD_SHA}"
       - name: Check the round cap over the records the pull request's head carries
         # standing order 36 (U120): the base's rounds-check.py reads the head's ledger.tsv and decisions.tsv as data
         # (git cat-file blob) and checks every unit; a head whose two files are its merge base's blobs is nothing to check
         timeout-minutes: 2
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+        run: |
+          set -euo pipefail
+          base=$(git rev-parse HEAD) || exit 1
+          uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "${base}" --head "${HEAD_SHA}"

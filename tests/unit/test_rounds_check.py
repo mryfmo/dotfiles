@@ -136,6 +136,31 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
 
+    def test_a_mechanism_row_then_two_incorrect_rows_refuse_whatever_the_total_count(self):
+        # round 3: the two strikes are counted on their own, not behind the cap; on 05a48d78 the below-three shortcut
+        # allowed a unit whose only counted rows were a mechanism row and two incorrect rows after it
+        decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
+        rows = [audit("2026-10-30T05:00:00Z", "U7", "incorrect")]
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 allowed: 1 audit rows (1 incorrect), 1 incorrect since the mechanism-change row of "
+            "2026-10-30T04:00:00Z (remove), 1 mechanism rows\n",
+            run.stdout,
+        )
+        rows.append(audit("2026-10-30T06:00:00Z", "U7", "incorrect"))
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 refused: 2 audit rows (2 incorrect), 2 incorrect since the mechanism-change row of "
+            "2026-10-30T04:00:00Z (remove), 1 mechanism rows; 2 strikes since that row need another: "
+            f"{ROW_TO_WRITE.format(unit='U7')}\n",
+            run.stdout,
+        )
+        run = self.check("--all", self.store(rows, decisions))
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn("rounds-check: U7 refused: 2 audit rows (2 incorrect)", run.stdout)
+
     def test_a_result_naming_two_forms_or_none_is_not_a_mechanism_row(self):
         for result in ("ast and allowlist", "an allowlisted ast-free reader", "", "residual-ish"):
             with self.subTest(result=result):

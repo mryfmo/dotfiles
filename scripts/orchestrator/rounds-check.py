@@ -13,9 +13,11 @@ records pull requests by their content, never by a branch name.
 
 The rule (standing order 36). An audit row is a ledger row whose verdict is exactly `correct` or `incorrect`. A
 mechanism row for U<n> is a decisions row of phase `mechanism-change` whose decision starts with `U<n> ` or `U<n>:` and
-whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit is allowed when the
-unit has fewer than three audit rows, or when it has a mechanism row and fewer than two `incorrect` rows after its
-latest one; every other case is refused with the row the coordinator must write. The rule is forward-looking: an audit
+whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit is refused when the
+unit has a mechanism row and two or more `incorrect` rows after its latest one, or has no mechanism row and three or
+more audit rows, each naming the row the coordinator must write; it is allowed otherwise. Neither test stands behind
+the other: a unit whose counted rows are one mechanism row and two `incorrect` rows after it is refused although it
+has fewer than three audit rows (round 3). The rule is forward-looking: an audit
 row or a mechanism row whose ts is before RULE_EFFECTIVE (2026-10-30T00:00:00Z, the day standing orders 36 and 39 were
 written) is read and validated for shape but counted for neither the cap nor the strikes, the earlier rounds being
 P-41's measurement and not a gate; the allowed and refused lines name how many such rows were ignored. The same date is
@@ -116,15 +118,15 @@ class Store:
             if owner == unit and ts >= RULE_EFFECTIVE
         ]
         note = "".join(f"; {text}, so it does not count" for text in discounted)
-        if len(audits) < ROUND_CAP:
+        # the decision table of standing order 36: the strikes stand behind no cap and the cap behind no strikes
+        refusals = (
+            (latest is not None and strikes >= STRIKES, f"{STRIKES} strikes since that row need another"),
+            (latest is None and len(audits) >= ROUND_CAP, "the fourth round needs a mechanism-change row"),
+        )
+        need = next((need for refused, need in refusals if refused), None)
+        if need is None:
             return Allowed(unit, counts)
-        if latest is None:
-            need = "the fourth round needs a mechanism-change row"
-            return Refused(unit, f"{counts}{note}; {need}: write {ROW_TO_WRITE.format(unit=unit)}")
-        if strikes >= STRIKES:
-            need = f"{STRIKES} strikes since that row need another"
-            return Refused(unit, f"{counts}{note}; {need}: write {ROW_TO_WRITE.format(unit=unit)}")
-        return Allowed(unit, counts)
+        return Refused(unit, f"{counts}{note}; {need}: write {ROW_TO_WRITE.format(unit=unit)}")
 
 
 def counted(rows):

@@ -152,7 +152,7 @@ git_names=$(compgen -e) || {
 }
 while IFS= read -r git_name; do
     [[ ${git_name} == GIT_* || ${git_name} == PERL* || ${git_name} == PYTHON* ]] || continue
-    unset "${git_name}" 2> /dev/null || {
+    unset -v "${git_name}" 2> /dev/null || {
         echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
         exit 2
     }
@@ -182,7 +182,7 @@ lever_self_check() {
     # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
     LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -201,9 +201,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -216,7 +216,6 @@ lever_self_check() {
     }
 }
 lever_self_check
-
 # The isolated git comes from the library beside this script (U113), sourced after the scrub above (its self-check runs
 # sed and a hash tool, which the PERL* removal must precede) and after this lever's own self-check. Its git_env_scrub
 # is not called: the scrub above already removed every GIT_* name, with PERL* and PYTHON*.
@@ -226,6 +225,15 @@ lever_self_check
 }
 # shellcheck source=scripts/orchestrator/git-isolated.sh
 . "${LEVER_DIR}/git-isolated.sh"
+
+# The readers (read-lib.sh, U112) are sourced here, after the scrub above and the self-check: the library's own
+# self-check runs sed and a hash tool, which no caller's PERL* may reach, and under `-p` it inherits no function.
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "pr-audit.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 # The caller's cwd, against which a relative store path the caller's environment names is resolved (U71b audit round
 # 8), the way the tool that reads the variable resolves it.
@@ -595,7 +603,9 @@ codex_scratch() {
     report_survivors
     # A failed supervisor marks its reason; a status of 125 without the mark is codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
-        reason=$(cat -- "${mark}") || fail "cannot read ${mark}"
+        reason=''
+        read_file "${mark}" reason || fail "cannot read ${mark}"
+        reason=${reason%$'\n'}
         refuse "codex's supervisor failed (${reason}); no verdict was taken from this run"
     fi
     return "${status}"
@@ -617,7 +627,8 @@ signal_pending_number=''
 report_survivors() {
     local file=${work}/group-mark.survivors survivors
     [[ -s ${file} ]] || return 0
-    survivors=$(cat -- "${file}") || survivors="cannot read ${file}"
+    read_file "${file}" survivors || survivors="cannot read ${file}"
+    survivors=${survivors%$'\n'}
     echo "${lever}: warning: processes started under codex's supervisor are still running after it stopped" \
         "(best-effort detection; they keep the audit sandbox they inherited):" >&2
     printf '%s\n' "${survivors}" >&2
@@ -776,20 +787,28 @@ login_real=$(physical "${login}") ||
 template=${LEVER_MANIFEST%/*}/codex-audit/config.toml
 [[ -f ${template} && ! -L ${template} && -r ${template} ]] ||
     refuse "no readable audit config ${template} (run scripts/generate-agent-configs.py and chezmoi apply)"
-template_text=$(cat -- "${template}") || fail "cannot read ${template}"
-selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] ||
+template_status=0
+read_file "${template}" template_text || template_status=$?
+case ${template_status} in
+0) ;;
+1) refuse "${template} is empty" ;;
+*) fail "cannot read ${template}" ;;
+esac
+# read_file keeps the final newline the command substitution dropped; the line loop below sees the same lines as before.
+template_text=${template_text%$'\n'}
+selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${selected} == 1 ]] || refuse "${template} does not make the permission profile audit the default"
-sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] ||
+sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${sandbox_keys} == 0 ]] || refuse "${template} names sandbox_mode, which replaces the permission profile"
-profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
+profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${profiles} == 1 ]] || refuse "${template} defines no single [permissions.audit] profile"
-template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] ||
+template_entries=$(grep -c -E '"(read|write|deny)"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] || # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
     fail "cannot search ${template}"
 [[ ${template_entries} -gt 0 ]] || refuse "${template} has no filesystem entries"
 # The allowlist (U71b audit round 4): nothing is readable unless an entry opens it.
-root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
+root_denies=$(grep -c -x '":root" = "deny"' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 ((root_denies == 1)) || refuse "${template} does not deny :root once; the audit profile must be an allowlist"
 # No project instructions (U71b audit round 21): the rules arrive in the prompt, so codex loads no AGENTS.md from its
 # cwd or an ancestor. Each setting must stand once before the first table, where it is a top-level key.
@@ -844,7 +863,7 @@ mkdir "${work}" "${work}/home" "${work}/scratch-tmpdir" "${work}/cwd" "${codex_h
 
 gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/body.md" ||
     fail "cannot read the body of pull request ${pr}"
-contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md"
+contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"
 
 # The audited tree: a fresh repository that borrows the checkout's objects for the fetch and holds only the two fetched
@@ -860,7 +879,7 @@ for ((try = 1; try <= wait_tries; try++)); do
     bounded "${gh_timeout}" env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -c 'credential.helper=!gh auth git-credential' \
         -C "${clone}" fetch -q --no-tags "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' || # git-isolated: allow bounded exec of the library's own arrays
         fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"
-    head=$(git_isolated -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head=''
+    head=$(git_isolated -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head='' # producer-status: allow the head test after the loop refuses an empty head
     [[ ${head} != "${want}" ]] || break
     ((try == wait_tries)) || sleep "${wait_seconds}"
 done
@@ -902,14 +921,17 @@ while IFS= read -r line; do
             config+=${line}$'\n'
             continue
             ;;
-        \$AUDIT_TREE) paths=$(spellings "${clone}") ;;
-        \$AUDIT_CWD) paths=$(spellings "${work}/cwd") ;;
-        \$CODEX_HOME) paths=$(spellings "${codex_home}") ;;
-        \$CODEX_LOGIN_HOME) paths=$(spellings "${login_home}") && paths+=$'\n'${login_real} ;;
-        \~/*) paths=$(spellings "${home_dir}/${key#\~/}") ;;
-        /*) paths=$(spellings "${key}") ;;
+        \$AUDIT_TREE) paths=$(spellings "${clone}") || exit 2 ;;
+        \$AUDIT_CWD) paths=$(spellings "${work}/cwd") || exit 2 ;;
+        \$CODEX_HOME) paths=$(spellings "${codex_home}") || exit 2 ;;
+        \$CODEX_LOGIN_HOME)
+            paths=$(spellings "${login_home}") || exit 2
+            paths+=$'\n'${login_real}
+            ;;
+        \~/*) paths=$(spellings "${home_dir}/${key#\~/}") || exit 2 ;;
+        /*) paths=$(spellings "${key}") || exit 2 ;;
         *) refuse "${template} names ${key}, which is not ~/<path>, /<path>, a \$ token of the lever or a Codex :name" ;;
-        esac || exit 2
+        esac
         while IFS= read -r path; do
             [[ ${seen} != *$'\n'"${access} ${path}"$'\n'* ]] || continue # lint-comparisons: allow set membership of spellings
             for other in read write deny; do

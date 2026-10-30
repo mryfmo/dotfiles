@@ -24,6 +24,8 @@
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
 # @set LEVER_DIR The physical directory of this file, beside the lever that sourced it.
+set -euo pipefail
+
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -41,7 +43,7 @@ lever_self_check() {
     # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
     LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -60,9 +62,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -237,7 +239,7 @@ git_env_scrub() {
     for name in ${names}; do
         git_isolated_own_name "${who}" "${name}"
         git_env_scrubbed "${name}" "$@" || continue
-        unset "${name}" 2> /dev/null || {
+        unset -v "${name}" 2> /dev/null || {
             echo "${who}: refused: cannot remove ${name} from the environment" >&2
             exit 2
         }

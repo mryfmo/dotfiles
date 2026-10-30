@@ -36,6 +36,7 @@ LEVERS = (
     "pr-merge.sh",
     "omp-run.sh",
     "pr-audit.sh",
+    "read-lib.sh",
     "brief-check.py",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"

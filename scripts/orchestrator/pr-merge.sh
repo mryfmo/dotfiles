@@ -12,9 +12,14 @@
 #   `--records` must resolve (`pwd -P`) to exactly that store, so a ledger written anywhere else is never read. It reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
-#   the full 40-hex sha it judged (a short sha never matches); newest by the row's ts column, the store's fixed UTC
-#   format compared as text (the later line at an equal ts), never by its place in the file (U122 round 5), and a row
-#   whose ts is outside that format is refused naming the line. It must start with the word `correct`, so a later
+#   the full 40-hex sha it judged (a short sha never matches); newest by the row's ts column parsed as a time (the
+#   later line at an equal ts), never by its place in the file (U122 round 5). The ledger is read by the checkout's
+#   `scripts/orchestrator/ledger.py`, the one reader of the ledger (U122 round 6: this lever's own awk checked the ts
+#   for its shape alone, so a `carried` row dated hour 25 outranked a valid `incorrect` row), run as `python3 -I -S`
+#   with its status read, as `pr-audit.sh` runs the checkout's readers: a store it cannot read as data (a header that
+#   is not the store's, a row with another column count or an empty `ts`, `unit`, `pr`, `head_sha` or `verdict`
+#   cell, a ts `strptime` does not read as `YYYY-MM-DDThh:mm:ssZ`) is refused naming the file and line, and no
+#   python3 on PATH or no reader in the checkout is a refusal too. It must start with the word `correct`, so a later
 #   `incorrect` or `blocked` row for the same head voids an earlier `correct`, or with the word `carried` (regime-cutover
 #   U122, standing order 38): then its evidence must hold `carried <earlier head> <this head> <sha256>`, the line
 #   `scripts/orchestrator/audit-carry.py` printed when this head's diff against its merge base equalled the earlier
@@ -67,8 +72,10 @@
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger row whose
-#   ts is outside `YYYY-MM-DDThh:mm:ssZ`, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger the
+#   checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar, a wrong
+#   header or column count, an empty required cell), no python3 or no `scripts/orchestrator/ledger.py` in the
+#   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
 #   for this head or whose earlier head has no `correct`
 #   row, no verdict file for the audited head, a P2 or P3 finding of it without its `residual` disposition row, a
 #   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
@@ -155,7 +162,6 @@ git_env_scrub
 lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
-ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
 dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference'
 # `units.tsv` as the `hcom-orchestration` SKILL ("Rows") has it; a residual reference's unit must be an `id` of it.
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
@@ -206,32 +212,22 @@ gh_bounded() {
 }
 
 # @description Print `<ts>\t<unit>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
-#   when no row names that pair. Newest by the ts column, never by the row's place in the file (U122 round 5: the last
-#   matching line stood for it, so an older row appended after a newer one decided): the store's ts is fixed-width
-#   UTC, so its text order is its time order, and the later line wins an equal ts. A row whose ts is outside that
-#   format is a refusal naming the line, as is a ledger whose first line is not the header; a failed read exits 1.
-#   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
-#   so two different all-digit shas would otherwise match (U71 audit round 1).
+#   when no row names that pair, as the checkout's `scripts/orchestrator/ledger.py` answers it (`ledger.py <store>
+#   verdict <pr> <head>`, run as `python3 -I -S` with its status read; U122 round 6). Newest by the ts column parsed as
+#   a time, never by the row's place in the file (round 5), and the ledger is read whole as data first: a ts the
+#   calendar does not hold (hour 25; round 6 P1: this lever's own awk checked the shape alone, so such a `carried` row
+#   outranked a valid `incorrect` one), a header that is not the store's, a column count other than the header's or
+#   an empty required cell is the reader's exit 2, a refusal naming the file and line; any other failure of the reader
+#   exits 1. The reader compares every cell as text, so two different all-digit shas never match (U71 audit round 1).
 # @arg $1 int The pull request number.
 # @arg $2 string The 40-hex head sha.
 ledger_verdict() {
     local out status=0
-    out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
-        { sub(/\r$/, "") }
-        NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 3; exit 3 } next }
-        $1 !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z$/ {
-            bad = 4; at = NR "\t" $1; exit 4
-        }
-        ($3 "") == (pr "") && ($4 "") == (sha "") && (found == "" || ($1 "") >= (newest "")) {
-            newest = $1; found = $1 "\t" $2 "\t" $5 "\t" $7
-        }
-        END { if (bad == 4) print at; if (bad) exit bad; if (found != "") print found }
-    ' "${ledger}") || status=$?
+    out=$("${python}" -I -S "${ledger_reader}" "${store}" verdict "$1" "$2" 2>&1) || status=$?
     case ${status} in
-    0) printf '%s' "${out}" ;;
-    3) refuse "${ledger} does not start with the ledger header (${ledger_header//$'\t'/ })" ;;
-    4) refuse "${ledger}:${out%%$'\t'*}: the ts '${out#*$'\t'}' is not YYYY-MM-DDThh:mm:ssZ" ;;
-    *) fail "cannot read ${ledger}" ;;
+    0) [[ ${out} == none ]] || printf '%s' "${out}" ;;
+    2) refuse "${out#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger}: ${out:-no output}" ;;
     esac
 }
 
@@ -514,6 +510,7 @@ shift
 [[ $# -eq 2 && $1 == --records && -n $2 ]] || refuse "${usage}"
 records=$2
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
+python=$(command -v python3) || refuse 'no python3 found (it runs the ledger reader, scripts/orchestrator/ledger.py)'
 # The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
 # worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
 toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
@@ -526,6 +523,10 @@ git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator keeps its store"
+# The one reader of the ledger (U122 round 6), run from the checkout the store is in, as pr-audit.sh runs the
+# checkout's rounds-check.py and audit-carry.py; the lever's awk reader is gone with it.
+ledger_reader=${toplevel}/scripts/orchestrator/ledger.py
+[[ -f ${ledger_reader} ]] || refuse "no ${ledger_reader} in the checkout; the ledger is read through it alone"
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"

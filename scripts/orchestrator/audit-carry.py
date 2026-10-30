@@ -6,8 +6,9 @@ store stands behind two forms; the store's rows are the coordinator's records an
 nothing is read from a pull request.
 
 Where git runs (round 4). The lever reads two things in the coordinator's checkout and nothing else there: the root of
-the directory `--repo` names (`git rev-parse --show-toplevel`, read as a status) and, for the carry decision, the sha
-of `--base`. It makes a scratch repository of its own for the run (`git init --bare --template=` under the run's
+the directory `--repo` names (`git rev-parse --show-toplevel`, read as a status and captured behind a sentinel, so a
+root whose name ends in a newline is kept whole; round 6 P3) and, for the carry decision, the sha of `--base`. It
+makes a scratch repository of its own for the run (`git init --bare --template=` under the run's
 TMPDIR, removed on exit), fetches the base, the earlier audited head and this head from the checkout by sha
 (`git fetch <root> <sha>:refs/audit-carry/<sha>`, one command per sha, each status read; a sha the checkout does not
 hold is exit 2) and runs every later git command there: the merge bases, the raw records the digest is taken over and
@@ -24,8 +25,8 @@ included, runs through the repository's isolated git, `git-isolated.sh` beside t
 and flag arrays (`--no-replace-objects`, no hook, no fsmonitor, no attributes file, no commit graph, no transport),
 with this lever's two flags after them, `--no-replace-objects` (round 3 P1: a `refs/replace` of the head stood in for
 an audited tree and unequal diffs read as carried) and `-c core.quotePath=false` (round 2; since round 4 no path is
-read from a patch header: the lever builds each record's header from the record's path under that setting and reads
-the sections it owns by it); the three fetches re-open the local transport the library closes
+read from a patch header, and since round 6 no header is rebuilt from a path either: each record's patch is read on
+its own, below); the three fetches re-open the local transport the library closes
 (`-c protocol.file.allow=always`, one command each, as the library documents for a caller). The
 fence: the lever fences nothing; `pr-audit.sh` writes the rendered block to a file of its run directory and wraps that
 file in its own per-run nonce tags, as it wraps the pull request body (round 3 P1: a filename holding a newline and
@@ -40,11 +41,13 @@ finding's line, a disposition row's line, a hunk's start and count) goes through
 and line, exit 2 (round 3 P2: `int()` of a 5000-digit line raised out of the lever as exit 1, which `pr-audit.sh`
 read as "no earlier audited head").
 
-The data. The unit's earlier audited head is the newest `ledger.tsv` row by its ts column (parsed as a time and
-compared as one, never by its place in the file; the later line at an equal ts) for the pull request whose unit is
-the body's unit or a fix unit of it (`U<n>b`, standing order 24), whose verdict starts with `correct` or `incorrect`
-and whose head is not the current one, whatever that verdict says; a `carried`, `blocked` or `-` row is no audit, and
-a head that has an audit row of its own is never carried (round 5 P1, below). Its table is every finding line
+The data. The ledger is read by `ledger.py` beside this file, the one reader of `ledger.tsv` (round 6, the
+mechanism-change row: three readers had each read it by a grammar of their own); it answers the two questions this
+lever asks. The unit's earlier audited head is the newest row by its ts column (parsed as a time and compared as one,
+never by its place in the file; the later line at an equal ts) for the pull request whose unit is the body's unit or
+a fix unit of it (`U<n>b`, standing order 24), whose verdict starts with `correct` or `incorrect` and whose head is
+not the current one, whatever that verdict says; a `carried`, `blocked` or `-` row is no audit, and a head that has
+an audit row of its own is never carried (round 5 P1, below). Its table is every finding line
 of that head's verdict file (`verdicts/<row unit>-<sha8>.md`, named by the row's `unit` column, never the body's: a
 `U7b` row's verdict is `U7b-<sha8>.md`), the leading `## Findings` section read under FINDINGS_GRAMMAR below (one
 `- none` line, or one or more `- P<n> (<confidence>) <path>:<line>: <rationale>` lines; an empty section, `- none`
@@ -52,13 +55,14 @@ beside a finding, or a line of another shape is a malformed verdict, as pr-merge
 `dispositions.tsv` rows (`ts unit head_sha priority path line disposition reference`; one table row per disposition
 row of the same unit, head, priority, path and line, `none` and `-` when the finding has none), plus every line range
 the diff between the two heads touches: the `-z` raw records of `git diff-tree -r <earlier> <head>` name the changed
-paths, and the `--unified=0` patch of the same two trees, its sections in the records' order and each record owning
-the sections headed by its path (one; two for a typechange), gives each path its hunks (the new side of each as
-`path: start-end`; `0-0` is a deleted file). A `T` record (a file replaced by a symlink, or back; round 5c P2: its two
-sections failed the one-per-record count as exit 2) and a record whose sections have no hunk (a binary file, a text
-file holding a NUL byte, a mode change alone) are `path: whole file`, and a path is never read from a patch header
-(round 4 P2: a NUL byte made the changed line vanish; P3: the last ` b/` of a header was
-taken as the path delimiter, so `dir b/payload.dat` was named `payload.dat`). The rows are modelled as frozen
+paths and the two sides of each (mode and object), and each record's `--unified=0` patch is read on its own, between
+two one-entry trees `git mktree` writes from those sides (round 6 P2), giving the path its hunks (the new side of
+each as `path: start-end`; `0-0` is a deleted file). A `T` record (a file replaced by a symlink, or back; round 5c
+P2) and a record whose patch has no hunk (a binary file, a text file holding a NUL byte, a mode change alone) are
+`path: whole file`, and a path is never read from a patch header nor a header rebuilt from a path (round 4 P2: a NUL
+byte made the changed line vanish; P3: the last ` b/` of a header was taken as the path delimiter, so `dir
+b/payload.dat` was named `payload.dat`; round 6 P2: the rebuilt header octal-escaped a byte outside UTF-8 that git
+had written as it was, so a path holding 0xff was exit 2). The rows are modelled as frozen
 dataclasses (`CarriedFinding`, `ChangedRange`) and `CarriedTable.render()` writes the one block, plain text with a
 tab-separated table, that the audit prompt carries inside pr-audit.sh's tags.
 
@@ -67,7 +71,8 @@ stderr line when the unit has no earlier audited head (the prompt then carries n
 line when the store cannot be read as data (a missing or unreadable ledger, verdict file or `dispositions.tsv`, a
 header that is not the store's, a row with another column count or an empty required column (`ts unit pr head_sha
 verdict` of the ledger, every column of a disposition row), a disposition outside `residual` and `fixed`, a Findings
-section outside the grammar, a ts outside `YYYY-MM-DDThh:mm:ssZ`, a number outside the grammar) or git cannot answer
+section outside the grammar, a ts `strptime` does not read as `YYYY-MM-DDThh:mm:ssZ` (hour 25 included), a number
+outside the grammar) or git cannot answer
 (standing order 21: a failed read is never "no earlier findings"). `pr-audit.sh <pr> --records <store>` runs this
 form against the run's own repository and refuses the audit on exit 2. The render form fetches the two heads only;
 `--base` is not read.
@@ -96,6 +101,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import os
 import re
 import shutil
@@ -103,10 +109,29 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime
 
-LEDGER_HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
-LEDGER_REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
+HERE = os.path.dirname(os.path.realpath(__file__))
+
+
+def beside(name):
+    """The module `<name>.py` beside this file, loaded from that path alone: the lever runs under `python3 -I`, which
+    puts no script directory on sys.path, and a module found by a search would not be the one beside it. A missing
+    file is exit 2 naming it, as a missing library is."""
+    path = os.path.join(HERE, f"{name}.py")
+    if not os.path.isfile(path):
+        print(
+            f"audit-carry: {path}: no {name}.py beside the lever; the ledger is read through it alone", file=sys.stderr
+        )
+        sys.exit(2)
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+ledger = beside("ledger")  # the one reader of ledger.tsv (round 6); its Malformed is this lever's exit 2
+
 DISPOSITIONS_HEADER = ("ts", "unit", "head_sha", "priority", "path", "line", "disposition", "reference")
 DISPOSITIONS = frozenset(("residual", "fixed"))
 NO_ROW = "none"  # the disposition of a finding without a dispositions.tsv row; its reference is "-"
@@ -115,9 +140,6 @@ RULE = (
     "A finding carried here with disposition residual or fixed is re-raised only when it names a changed line of "
     "this head; name the carried row you are re-raising."
 )
-# The store's ts is fixed-width UTC, so the text order is the time order (rounds-check.py reads it the same way).
-TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
-TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # the same ts parsed as a time, the order every choice of a newest row is made in
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -125,8 +147,6 @@ OBJECT_ID = re.compile(r"^[0-9a-f]{40,64}$")
 # The one grammar of every integer the lever reads: 1 to 7 decimal digits, no leading zero (a line of a file, a hunk
 # start or count); `int()` is never applied to a text outside it.
 NUMBER = re.compile(r"^(0|[1-9][0-9]{0,6})$")
-# A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
-AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
 # The grammar of a verdict file's leading `## Findings` section, stated once here and once in pr-merge.sh
 # (findings_grammar), which reads the same files: `tests.unit.test_pr_levers` runs both readers over one fixture set.
 # A line as pr-audit.sh's reader writes it, read as pr-merge.sh reads it (U119 round 4): the path is the text before
@@ -159,16 +179,21 @@ C_QUOTED = {byte[0]: letter.decode() for letter, byte in C_ESCAPES.items()}
 # shebang), sources the library (its sha256 self-check against the manifest pin runs first, so a rewritten copy stops
 # this lever as it stops the shell levers), scrubs the caller's `GIT_*` and transport names, and runs `git_isolated`
 # with the lever's two flags after the library's arrays.
-LIBRARY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "git-isolated.sh")
+LIBRARY = os.path.join(HERE, "git-isolated.sh")
 GIT_SHELL = 'set -eu\n. "$1"\nshift\ngit_env_scrub\ngit_isolated --no-replace-objects -c core.quotePath=false "$@"\n'
+# The same shell with a sentinel after a git that exited 0 (round 6 P3): the caller removes the `x` and the one
+# newline git wrote and keeps every other byte, a trailing newline of a directory's name included; `rstrip` stripped
+# that newline from the checkout's name and the root was "no directory".
+GIT_SHELL_SENTINEL = GIT_SHELL + "printf x\n"
 # The library closes every transport (`protocol.allow=never`); a fetch from the checkout's path re-opens the local one
 # for that command alone, after the library's arrays, as the library documents for a caller.
 LOCAL_TRANSPORT = ("-c", "protocol.file.allow=always")
 SCRATCH_REF = "refs/audit-carry/"
 
 
-class Malformed(Exception):
-    """The store or git cannot be read as data; the message names the file and the line, or the command."""
+class Malformed(ledger.Malformed):
+    """The store or git cannot be read as data; the message names the file and the line, or the command. The ledger
+    reader's own Malformed is the base, so main refuses on either alike."""
 
 
 def number(where, text, what):
@@ -203,18 +228,6 @@ def quote_c_style(path):
 
 
 @dataclass(frozen=True)
-class AuditedHead:
-    """One audit row of the ledger, a verdict starting with `correct` or `incorrect`: the earlier audited head's, or
-    this head's own."""
-
-    ts: str
-    unit: str
-    head: str
-    verdict: str  # the row's first word
-    line: int
-
-
-@dataclass(frozen=True)
 class CarriedFinding:
     """One finding of the earlier head's verdict file with one of its dispositions.tsv rows, or `none` and `-`."""
 
@@ -246,7 +259,7 @@ class ChangedRange:
 
 @dataclass(frozen=True)
 class CarriedTable:
-    previous: AuditedHead
+    previous: ledger.Row  # the earlier audited head's newest audit row
     head: str
     findings: tuple
     changed: tuple
@@ -256,13 +269,14 @@ class CarriedTable:
         the changed lines and the one rule; no fence of its own, every path C-quoted (round 3)."""
         rows = [row.row() for row in self.findings] or ["(none)"]
         ranges = [row.row() for row in self.changed] or ["(none)"]
-        earlier, head = self.previous.head[:8], self.head[:8]
+        earlier, head = self.previous.head_sha[:8], self.head[:8]
         return "\n".join(
             (
                 HEADING,
                 "",
-                f"The earlier audited head of this pull request is {self.previous.head} (ledger row {self.previous.ts}, "
-                f"verdict {self.previous.verdict}). The table joins each finding of its verdict file with its "
+                f"The earlier audited head of this pull request is {self.previous.head_sha} (ledger row "
+                f"{self.previous.ts_text}, verdict {self.previous.word}). The table joins each finding of its verdict "
+                "file with its "
                 f"dispositions.tsv rows of the same priority, path and line (`{NO_ROW}` and `-`: no row); the list "
                 f"after it names the lines of this head {head} that `git diff {earlier}..{head} --unified=0` touches "
                 "(`path: start-end`, the new side; `0-0` a deleted file; `path: whole file` a changed path without a "
@@ -292,20 +306,10 @@ def read_text(path):
         raise Malformed(f"{path}: not UTF-8: {error.reason}") from None
 
 
-def timestamp(ts):
-    """The ts column as a time, or None for a text outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar (hour 25):
-    the newest row is chosen by this value, never by the file position (round 5)."""
-    if not TS.match(ts):
-        return None
-    try:
-        return datetime.strptime(ts, TS_FORMAT)
-    except ValueError:
-        return None
-
-
 def parse_rows(name, text, header, required=()):
-    """Every data line of one TSV text as (line number, fields): the header's width, a store ts, and no empty column
-    among `required` (1-based). Split on the tab alone, so an empty field is still a field (U119 round 3)."""
+    """Every data line of one TSV text as (line number, fields): the header's width, a store ts (read by the ledger
+    reader's `timestamp`, the one form), and no empty column among `required` (1-based). Split on the tab alone, so
+    an empty field is still a field (U119 round 3)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
@@ -318,34 +322,13 @@ def parse_rows(name, text, header, required=()):
         fields = line.rstrip("\r").split("\t")
         if len(fields) != len(header):
             raise Malformed(f"{name}:{line_number}: {len(fields)} columns, not {len(header)}")
-        if timestamp(fields[0]) is None:
-            raise Malformed(f"{name}:{line_number}: the ts {fields[0]!r} is not YYYY-MM-DDThh:mm:ssZ")
+        if ledger.timestamp(fields[0]) is None:
+            raise Malformed(f"{name}:{line_number}: the ts {fields[0]!r} is not {ledger.TS_FORM}")
         for column in required:
             if fields[column - 1] == "":
                 raise Malformed(f"{name}:{line_number}: column {column} ({header[column - 1]}) is empty")
         rows.append((line_number, fields))
     return rows
-
-
-def audit_rows(ledger_name, rows, unit, pr):
-    """Every audit row of the pull request for `unit` or a fix unit of it (`U<n>[a-z]`, standing order 24): a verdict
-    starting with `correct` or `incorrect`, at any head. A `carried`, `blocked` or `-` row is no audit."""
-    own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
-    found = []
-    for line_number, (ts, row_unit, row_pr, sha, verdict, _verifier, _evidence) in rows:
-        word = AUDIT_VERDICT.match(verdict)
-        if row_pr != pr or word is None or not own.match(row_unit):
-            continue
-        if not SHA.match(sha):
-            raise Malformed(f"{ledger_name}:{line_number}: the head_sha of an audit row is not 40 hex: {sha!r}")
-        found.append(AuditedHead(ts, row_unit, sha, word.group(1), line_number))
-    return found
-
-
-def newest(audits):
-    """The audit row with the latest ts, parsed as a time (the later line at an equal ts), or None; the place of a
-    row in the file decides nothing else (round 5: an older row appended after a newer one is the older)."""
-    return max(audits, key=lambda row: (timestamp(row.ts), row.line)) if audits else None
 
 
 def findings_of(verdict_file):
@@ -389,7 +372,7 @@ def carried_findings(store, previous):
     """Every finding of the earlier head's verdict file joined with its dispositions.tsv rows by the gate key of
     pr-merge.sh, (unit, head_sha, priority, path, line); a row of another priority at the same location is another
     finding's (round 3 P1)."""
-    verdict_file = os.path.join(store, "verdicts", f"{previous.unit}-{previous.head[:8]}.md")
+    verdict_file = os.path.join(store, "verdicts", f"{previous.unit}-{previous.head_sha[:8]}.md")
     listed = findings_of(verdict_file)
     if not listed:
         return ()
@@ -402,21 +385,24 @@ def carried_findings(store, previous):
         rows.append(((fields[1], fields[2], fields[3], fields[4], row_line), fields[6], fields[7]))
     joined = []
     for priority, path, line in listed:
-        key = (previous.unit, previous.head, priority, path, line)
+        key = (previous.unit, previous.head_sha, priority, path, line)
         matched = [(disposition, reference) for row_key, disposition, reference in rows if row_key == key]
         for disposition, reference in matched or [(NO_ROW, "-")]:
             joined.append(CarriedFinding(priority, path, line, disposition, reference))
     return tuple(joined)
 
 
-def git(repo, *args):
+def git(repo, *args, input=None, sentinel=False):
     """One git read through the isolated-git library, its status checked; a failure (the library's refusal, a git
-    that exited non-zero or a shell that cannot run) is Malformed naming the command, never an empty answer."""
+    that exited non-zero or a shell that cannot run) is Malformed naming the command, never an empty answer. `input`
+    is git's stdin (bytes); with `sentinel` the shell prints `x` after a git that exited 0, so the caller keeps every
+    byte git wrote but its last newline."""
     if not os.path.isfile(LIBRARY):
         raise Malformed(f"{LIBRARY}: no isolated-git library beside the lever; git runs only through it")
-    command = ["/bin/bash", "-p", "-c", GIT_SHELL, "git-isolated", LIBRARY, *args]
+    shell = GIT_SHELL_SENTINEL if sentinel else GIT_SHELL
+    command = ["/bin/bash", "-p", "-c", shell, "git-isolated", LIBRARY, *args]
     try:
-        out = subprocess.run(command, cwd=repo, capture_output=True, check=False)
+        out = subprocess.run(command, cwd=repo, input=input, capture_output=True, check=False)
     except OSError as error:
         raise Malformed(f"git {' '.join(args)}: cannot run: {error.strerror}") from None
     if out.returncode:
@@ -427,8 +413,13 @@ def git(repo, *args):
 
 def repo_root(repo):
     """The root of the checkout `repo` is in, read once as a status: the directory the scratch repository fetches
-    from, so a run from a subdirectory still names the whole checkout (round 2)."""
-    root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").rstrip("\n")
+    from, so a run from a subdirectory still names the whole checkout (round 2). The path is every byte before the
+    sentinel but the one newline git wrote after it (round 6 P3: `rstrip('\\n')` took a trailing newline of the
+    directory's own name with it, and a checkout so named was "no directory")."""
+    out = git(repo, "rev-parse", "--show-toplevel", sentinel=True)
+    if not out.endswith(b"\nx"):
+        raise Malformed(f"git rev-parse --show-toplevel in {repo} named no directory: {out[:80]!r}")
+    root = os.fsdecode(out[:-2])
     if not root or not os.path.isdir(root):
         raise Malformed(f"git rev-parse --show-toplevel in {repo} named no directory: {root!r}")
     return root
@@ -501,81 +492,77 @@ def raw_records(scratch, old, new):
     return records
 
 
-def patch_sections(patch, where):
-    """The `--unified=0` patch split at its `diff --git` lines: the lines of each section, in order, the header first.
-    Every content line of a unified patch carries a prefix (`+`, `-`, `@@`, `\\`) and git C-quotes a control character
-    in a header's name, so only a header starts a line with `diff --git `; text before the first header is a
-    malformed patch."""
-    sections = []
-    for line in patch.split(b"\n"):
-        if line.startswith(b"diff --git "):
-            sections.append([line])
-        elif sections:
-            sections[-1].append(line)
-        elif line:
-            raise Malformed(f"{where}: text before the first `diff --git` header: {line[:80]!r}")
-    return sections
+def tree_entry(mode, obj):
+    """The `git mktree` line of one side of a raw record, its entry named `x`, or nothing for an absent side (mode
+    `000000`: the side of an added or deleted path, an empty tree). The type follows the mode as git's own does: a
+    gitlink is a commit, a directory a tree, anything else a blob."""
+    if mode == b"000000":
+        return b""
+    kind = b"commit" if mode == b"160000" else b"tree" if mode == b"040000" else b"blob"
+    return mode + b" " + kind + b" " + obj + b"\tx\n"
 
 
-def section_header(name):
-    """The `diff --git` line git writes for a record's path without renames and with core.quotePath off: `a/<path>`
-    and `b/<path>`, each quoted whole (git's quote_two) when the path holds a quote, a backslash or a control
-    character. Built from the record's path and compared with a section's first line, so a path is still never read
-    from a header (round 4 P3) and a record owns every section git printed for it (round 5c P2)."""
-    return f"diff --git {quote_c_style('a/' + name)} {quote_c_style('b/' + name)}".encode("utf-8", "surrogateescape")
+def one_entry_trees(scratch, sides):
+    """One tree per side, written by one `git mktree --batch --missing` (a blank line closes each tree, an empty
+    tree being a blank line alone; `--missing` because a gitlink's commit is not in the scratch repository), as the
+    tree ids in the sides' order; an answer of another shape is a malformed diff."""
+    if not sides:
+        return []
+    out = git(scratch, "mktree", "--batch", "--missing", input=b"".join(tree_entry(*side) + b"\n" for side in sides))
+    ids = out.decode(errors="replace").split("\n")
+    if ids.pop() != "" or len(ids) != len(sides) or not all(OBJECT_ID.match(tree) for tree in ids):
+        raise Malformed(f"git mktree --batch named {len(ids)} trees for {len(sides)} record sides: {out[:80]!r}")
+    return ids
 
 
 def changed_ranges(scratch, previous, head):
     """Every hunk of the `--unified=0` patch between the two heads as a ChangedRange of the new side, in the order of
-    the raw records; the paths are the records', and each record owns the run of patch sections headed by its path
-    (git prints the sections in the records' order, one per record, two for a typechange: the deletion of the old
-    kind of file, then the creation of the new; a record with no section, or a section no record owns, is a malformed
-    patch). A `T` record (a regular file replaced by a symlink or a gitlink, or back) is one ChangedRange of the whole
-    file, as is a record whose sections have no hunk (round 4). A hunk start or count outside the number grammar is a
-    malformed diff."""
+    the raw records: the paths are the records', and each record's patch is read on its own, `git diff-tree -p`
+    between two one-entry trees written from the record's two sides (round 6 P2), so no patch header is parsed, no
+    pathspec is matched (a path is a prefix of another when a file becomes a directory) and no header is rebuilt from
+    the path (round 5c built `diff --git a/<path> b/<path>` under core.quotePath=false and matched it against git's,
+    and the two spelt a byte outside UTF-8 differently, `\\377` against the byte itself, so a path holding 0xff was
+    exit 2). A `T` record (a regular file replaced by a symlink or a gitlink, or back) is one ChangedRange of the
+    whole file, as is a record whose patch has no hunk (round 4). A hunk start or count outside the number grammar is
+    a malformed diff."""
     records = raw_records(scratch, previous, head)
     where = f"git diff-tree {previous[:8]} {head[:8]}"
-    patch = git(
-        scratch,
-        "diff-tree",
-        "-r",
-        "-p",
-        "--unified=0",
-        "--no-color",
-        "--no-renames",
-        "--no-textconv",
-        "--no-ext-diff",
-        "--ignore-submodules=none",
-        previous,
-        head,
-    )
-    sections = patch_sections(patch, where)
+    sides = []
+    for _path, record in records:
+        if not record.endswith(b" T"):
+            fields = RAW_RECORD.match(record)
+            sides.extend(((fields.group(1), fields.group(3)), (fields.group(2), fields.group(4))))
+    trees = one_entry_trees(scratch, sides)
     ranges = []
     position = 0
     for path, record in records:
         name = path.decode("utf-8", errors="surrogateescape")
-        header = section_header(name)
-        owned = []
-        while position < len(sections) and sections[position][0] == header:
-            owned.append(sections[position][1:])
-            position += 1
-        if not owned:
-            found = sections[position][0][:80] if position < len(sections) else b"(no section left)"
-            raise Malformed(f"{where}: no patch section headed {header[:80]!r} for its raw record; found {found!r}")
         if record.endswith(b" T"):
-            hunks = []
-        else:
-            hunks = [hunk for lines in owned for line in lines if (hunk := HUNK.match(line))]
+            ranges.append(ChangedRange(name, None, None))
+            continue
+        old, new = trees[position], trees[position + 1]
+        position += 2
+        patch = git(
+            scratch,
+            "diff-tree",
+            "-p",
+            "--unified=0",
+            "--no-color",
+            "--no-renames",
+            "--no-textconv",
+            "--no-ext-diff",
+            "--ignore-submodules=none",
+            old,
+            new,
+        )
+        hunks = [hunk for line in patch.split(b"\n") if (hunk := HUNK.match(line))]
         if not hunks:
             ranges.append(ChangedRange(name, None, None))
         for hunk in hunks:
-            hunk_text = f"{where} hunk {hunk.group(0).decode()}"
+            hunk_text = f"{where} {quote_c_style(name)} hunk {hunk.group(0).decode()}"
             start = number(hunk_text, hunk.group(1).decode(), "hunk start")
             count = 1 if hunk.group(2) is None else number(hunk_text, hunk.group(2).decode(), "hunk count")
             ranges.append(ChangedRange(name, start, start + count - 1 if count else start))
-    if position != len(sections):
-        left = len(sections) - position
-        raise Malformed(f"{where}: {left} patch sections after the last raw record's; {sections[position][0][:80]!r}")
     return tuple(ranges)
 
 
@@ -605,12 +592,10 @@ def first_difference(head_records, previous_records):
 
 
 def load_audits(store, unit, pr, head):
-    """(this head's newest audit row or None, the newest audit row at another head or None), from the store's ledger."""
-    ledger = os.path.join(store, "ledger.tsv")
-    rows = parse_rows(ledger, read_text(ledger), LEDGER_HEADER, required=LEDGER_REQUIRED)
-    audits = audit_rows(ledger, rows, unit, pr)
-    own = newest([row for row in audits if row.head == head])
-    return own, newest([row for row in audits if row.head != head])
+    """(this head's newest audit row or None, the newest audit row at another head or None), the two questions the
+    ledger reader answers from the store's ledger."""
+    rows = ledger.read_ledger(os.path.join(store, "ledger.tsv"))
+    return rows.already_audited(unit, head, pr), rows.newest_audit_at_another_head(unit, head, pr)
 
 
 def main(argv=None):
@@ -637,8 +622,8 @@ def main(argv=None):
         own, previous = load_audits(store, args.unit, args.pr, args.head)
         if own is not None and not args.render:
             print(
-                f"audit-carry: not carried: head {args.head} already audited (its newest audit row, {own.ts}, is "
-                f"{own.verdict}); a carry rests on an earlier head's audit, never on one over this head's own"
+                f"audit-carry: not carried: head {args.head} already audited (its newest audit row, {own.ts_text}, is "
+                f"{own.word}); a carry rests on an earlier head's audit, never on one over this head's own"
             )
             return 1
         if previous is None:
@@ -651,23 +636,23 @@ def main(argv=None):
         root = repo_root(args.repo)
         if args.render:
             scratch = scratch_repository()
-            for sha in (previous.head, args.head):
+            for sha in (previous.head_sha, args.head):
                 fetch(scratch, root, sha)
             table = CarriedTable(
                 previous,
                 args.head,
                 carried_findings(store, previous),
-                changed_ranges(scratch, previous.head, args.head),
+                changed_ranges(scratch, previous.head_sha, args.head),
             )
             print(table.render())
             return 0
         base = base_sha(root, args.base)
         scratch = scratch_repository()
-        for sha in (base, previous.head, args.head):
+        for sha in (base, previous.head_sha, args.head):
             fetch(scratch, root, sha)
         head_digest, head_records = diff_digest(scratch, base, args.head)
-        previous_digest, previous_records = diff_digest(scratch, base, previous.head)
-    except Malformed as error:
+        previous_digest, previous_records = diff_digest(scratch, base, previous.head_sha)
+    except ledger.Malformed as error:
         print(f"audit-carry: {error}", file=sys.stderr)
         return 2
     finally:
@@ -676,10 +661,10 @@ def main(argv=None):
     if head_digest != previous_digest:
         print(
             f"audit-carry: not carried: the diff of {args.head[:8]} against its merge base differs from "
-            f"{previous.head[:8]}'s at {quote_c_style(first_difference(head_records, previous_records))}"
+            f"{previous.head_sha[:8]}'s at {quote_c_style(first_difference(head_records, previous_records))}"
         )
         return 1
-    print(f"carried {previous.head} {args.head} {head_digest}")
+    print(f"carried {previous.head_sha} {args.head} {head_digest}")
     return 0
 
 

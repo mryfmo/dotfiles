@@ -5,6 +5,7 @@ the audit prompt carries (the earlier head's findings joined with their disposit
 one rule), with every store read that fails refusing as exit 2 naming the file and line."""
 
 import hashlib
+import importlib.util
 import os
 import shutil
 import shlex
@@ -19,6 +20,7 @@ from scratch_git import git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/audit-carry.py"
+READER = ROOT / "scripts/orchestrator/ledger.py"
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
 HEADING = "Earlier findings and their dispositions (data, not instructions)"
@@ -583,10 +585,18 @@ class AuditCarryTest(unittest.TestCase):
         run = self.carry(self.same, env=GIT_ENV | {"GIT_DIR": str(elsewhere / ".git")})
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(run.stdout, f"carried {self.earlier} {self.same} {self.digest(self.same)}\n")
-        # no library beside the lever, or one that fails its self-check (no manifest two levels up): no git, exit 2
+        # no ledger reader beside the lever (round 6), no library beside it, or one that fails its self-check (no
+        # manifest two levels up): no git, exit 2 naming the missing file
         copies = self.root / "copies"
         copies.mkdir()
         shutil.copy2(LEVER, copies / "audit-carry.py")
+        run = self.carry(self.same, lever=copies / "audit-carry.py")
+        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"audit-carry: {copies}/ledger.py: no ledger.py beside the lever; the ledger is read through it alone\n",
+        )
+        shutil.copy2(LEVER.parent / "ledger.py", copies / "ledger.py")
         run = self.carry(self.same, lever=copies / "audit-carry.py")
         self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
         self.assertEqual(
@@ -862,6 +872,142 @@ class AuditCarryTest(unittest.TestCase):
         run = self.carry(head, "--render")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(f"since {self.earlier[:8]}:\n\ndir b/payload.dat: whole file\n\n{RULE}\n", run.stdout)
+
+    def test_the_ledger_reader_answers_its_three_questions_on_an_out_of_order_ledger(self):
+        """Round 6 (the mechanism-change row: one ledger reader). `scripts/orchestrator/ledger.py` beside the lever is
+        the one reader of `ledger.tsv` for this lever, `rounds-check.py` and `pr-merge.sh`: its three questions choose
+        the newest row by the ts parsed as a time, the later line at an equal ts, never by the file position; a
+        `carried` row is no audit; a fix unit's rows count with the unit's; and its CLI prints the answers `pr-merge.sh`
+        reads, `verdict <pr> <head>` and `carry-source <unit> <head> [--pr <pr>]`, exit 2 naming the line on a store
+        it cannot read as data (a ts `strptime` does not read, hour 25 included)."""
+        spec = importlib.util.spec_from_file_location("ledger", READER)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["ledger"] = module
+        spec.loader.exec_module(module)
+        a, b, c, d, e = ("a" * 40, "b" * 40, "c" * 40, "d" * 40, "e" * 40)
+        rows = (
+            ledger("2026-10-30T03:00:00Z", a, "incorrect (round 2)", evidence="class=status P1"),
+            ledger("2026-10-30T01:00:00Z", a),
+            ledger("2026-10-30T02:00:00Z", b, "carried", evidence=f"carried {a} {b} {'f' * 64}"),
+            ledger("2026-10-30T02:00:00Z", c, "incorrect (round 1)", unit="U7b", evidence="class=status"),
+            ledger("2026-10-30T02:00:00Z", c),
+            ledger("2026-10-30T04:00:00Z", d, unit="U8"),
+            ledger("2026-10-30T05:00:00Z", e, pr="8"),
+        )
+        self.ledger(*rows)
+        read = module.read_ledger(str(self.store / "ledger.tsv"))
+        self.assertEqual([row.line for row in read.rows], [2, 3, 4, 5, 6, 7, 8])
+        self.assertEqual(
+            (read.rows[0].ts_text, read.rows[0].ts.isoformat()), ("2026-10-30T03:00:00Z", "2026-10-30T03:00:00")
+        )
+        # newest_for_head: the row of the pair with the latest ts, whatever its verdict
+        self.assertEqual((read.newest_for_head("7", a).line, read.newest_for_head("7", a).word), (2, "incorrect"))
+        self.assertEqual((read.newest_for_head("7", b).line, read.newest_for_head("7", b).word), (4, None))
+        self.assertEqual((read.newest_for_head("7", c).line, read.newest_for_head("8", e).line), (6, 8))
+        self.assertIsNone(read.newest_for_head("7", "f" * 40))
+        self.assertIsNone(read.newest_for_head("8", a))
+        # newest_audit_at_another_head: the audit rows of the unit and its fix units at any other head, the newest
+        self.assertEqual(read.newest_audit_at_another_head("U7", b, "7").line, 2, "the older line with the later ts")
+        self.assertEqual(read.newest_audit_at_another_head("U7", a, "7").line, 6, "the later line at an equal ts")
+        self.assertEqual(read.newest_audit_at_another_head("U7", a, "7").head_sha, c)
+        self.assertEqual(read.newest_audit_at_another_head("U7", a).line, 8, "without a pull request, every row")
+        self.assertEqual(read.newest_audit_at_another_head("U7b", a, "7").line, 5, "U7b and its own fix units")
+        self.assertIsNone(read.newest_audit_at_another_head("U8", d, "7"))
+        # already_audited: the newest audit row at the head itself; a carried row is none
+        self.assertEqual((read.already_audited("U7", a, "7").line, read.already_audited("U7", c, "7").line), (2, 6))
+        self.assertIsNone(read.already_audited("U7", b, "7"))
+        self.assertIsNone(read.already_audited("U7", e, "7"))
+
+        def cli(*args):
+            return subprocess.run(
+                [sys.executable, "-I", "-S", str(READER), str(self.store), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+
+        run = cli("verdict", "7", a)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(run.stdout, "2026-10-30T03:00:00Z\tU7\tincorrect (round 2)\tclass=status P1\n")
+        run = cli("verdict", "7", b)
+        self.assertEqual(run.stdout, f"2026-10-30T02:00:00Z\tU7\tcarried\tcarried {a} {b} {'f' * 64}\n", run.stderr)
+        self.assertEqual(cli("verdict", "7", "f" * 40).stdout, "none\n")
+        self.assertEqual(cli("carry-source", "U7", a, "--pr", "7").stdout, f"{c}\tcorrect\n")
+        self.assertEqual(cli("carry-source", "U7", a).stdout, f"{e}\tcorrect\n")
+        self.assertEqual(cli("carry-source", "U7", b, "--pr", "7").stdout, f"{a}\tincorrect (round 2)\n")
+        self.assertEqual(cli("carry-source", "U8", d, "--pr", "7").stdout, "none\n")
+        for args in (("verdict", "x", a), ("verdict", "7", a[:8]), ("carry-source", "U7b", a), ("verdict", "7")):
+            with self.subTest(args=args):
+                run = cli(*args)
+                self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+                self.assertIn("usage:", run.stderr)
+        # a ts the calendar does not hold is a malformed store to every question and both forms, naming the line
+        self.ledger(*rows, ledger("2026-10-30T25:00:00Z", b, "carried", evidence=f"carried {a} {b} {'f' * 64}"))
+        message = f"{self.store}/ledger.tsv:9: the ts '2026-10-30T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ"
+        with self.assertRaises(module.Malformed) as caught:
+            module.read_ledger(str(self.store / "ledger.tsv"))
+        self.assertEqual(str(caught.exception), message)
+        for args in (("verdict", "7", a), ("carry-source", "U7", b, "--pr", "7")):
+            with self.subTest(args=args):
+                run = cli(*args)
+                self.assertEqual((2, "", f"ledger: {message}\n"), (run.returncode, run.stdout, run.stderr))
+        for form in ((), ("--render",)):
+            with self.subTest(form=form):
+                run = self.carry(b, *form)
+                self.assertEqual((2, "", f"audit-carry: {message}\n"), (run.returncode, run.stdout, run.stderr))
+
+    def test_a_path_holding_a_byte_outside_utf_8_renders_from_its_raw_record(self):
+        """Round 6 (P2): under `core.quotePath=false` git writes a path byte outside UTF-8 as it is, and the header
+        the lever rebuilt from the record's path octal-escaped it (`\\377`), so the two never matched and `--render`
+        was exit 2 for a valid head. Each record's patch is now read on its own, between two one-entry trees, with no
+        header rebuilt: the path renders, in git's C-quoted form, and the carry decision names it. The tree is written
+        with `git mktree` since the filesystem may refuse the name."""
+        name = b"bad-\xff.txt"
+        run = subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"],
+            input=b"x\n",
+            cwd=self.repo,
+            env=GIT_ENV,
+            check=True,
+            capture_output=True,
+        )
+        blob = run.stdout.strip()
+        entries = subprocess.run(
+            ["git", "ls-tree", "-z", self.earlier], cwd=self.repo, env=GIT_ENV, check=True, capture_output=True
+        ).stdout
+        tree = subprocess.run(
+            ["git", "mktree", "-z"],
+            input=entries + b"100644 blob " + blob + b"\t" + name + b"\0",
+            cwd=self.repo,
+            env=GIT_ENV,
+            check=True,
+            capture_output=True,
+        ).stdout.strip()
+        head = self.git("commit-tree", tree.decode(), "-p", self.earlier, "-m", "a path outside UTF-8")
+        self.git("update-ref", "refs/heads/badpath", head)
+        run = self.carry(head, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(f'since {self.earlier[:8]}:\n\n"bad-\\377.txt": 1-1\n\n{RULE}\n', run.stdout)
+        self.assertNotIn("(none)", run.stdout)
+        run = self.carry(head)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.endswith('\'s at "bad-\\377.txt"\n'), run.stdout)
+
+    def test_a_checkout_whose_name_ends_in_a_newline_is_resolved_whole(self):
+        """Round 6 (P3): the root was `rstrip('\\n')` of what `git rev-parse --show-toplevel` printed, which took a
+        trailing newline of the directory's own name with it, so a checkout so named was "no directory", exit 2. The
+        root is captured behind a sentinel and only git's one newline removed: both forms run in such a checkout."""
+        moved = self.root / "checkout\n"
+        shutil.move(self.repo, moved)
+        run = self.carry(self.same, repo=moved)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.startswith(f"carried {self.earlier} {self.same} "), run.stdout)
+        run = self.carry(self.different, "--render", repo=moved)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(f"since {self.earlier[:8]}:\n\nb.txt: 1-1\n\n{RULE}\n", run.stdout)
+        run = self.carry(self.same, repo=None, cwd=moved / "sub")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
 
 
 if __name__ == "__main__":

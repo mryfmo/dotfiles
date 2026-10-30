@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "14a27497fdb22d7d959758d5e6579eea1c5e13fac2e2a04f42a75e2d2895d8be"
+      "sha256": "78acaeb9c3533dc96789b32f923570d3f906710d337de4caddead0418a9e8951"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -603,6 +603,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "hcom-seat"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ledger.py"
     },
     {
       "source": "home/dot_local/bin/common",

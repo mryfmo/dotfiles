@@ -909,10 +909,15 @@ class PrMergeTest(PrLeverTestCase):
 
     def setUp(self):
         super().setUp()
-        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits.
+        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits, and the checkout's
+        # ledger reader, `scripts/orchestrator/ledger.py`, which the lever runs from the checkout it merges in (U122
+        # round 6) as pr-audit.sh runs the checkout's rounds-check.py.
         self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
         self.records.mkdir(parents=True)
-        (self.repo / ".git/info/exclude").write_text(".orchestration/\n")
+        self.reader = self.repo / "scripts/orchestrator/ledger.py"
+        self.reader.parent.mkdir(parents=True)
+        shutil.copy2(LEVERS / "ledger.py", self.reader)
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
@@ -1008,7 +1013,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(self.merge().returncode, 0, "the newest row decides")
         self.calls.unlink()
         (self.records / "ledger.tsv").write_text("ts\tunit\n" + ledger_row(SHA_A))
-        self.assert_refused(self.merge(), "does not start with the ledger header")
+        self.assert_refused(self.merge(), "ledger.tsv:1: the header is 'ts\\tunit', not")
 
     def test_an_all_digit_sha_matches_only_itself(self):
         # U71 audit round 1 (P2): awk compared two numeric-looking shas as numbers, so these two matched.
@@ -1309,6 +1314,67 @@ class PrMergeTest(PrLeverTestCase):
             self.merge(), f"rests on {earlier}, whose newest row (2026-10-25T09:00:00Z) is not correct: incorrect"
         )
         self.assertEqual(self.writes(), [])
+
+    def test_a_carried_row_dated_hour_25_is_a_malformed_store_to_the_gate_and_the_digest_lever_alike(self):
+        """U122 round 6 (P1): the gate's own awk checked the ts for its shape alone, so a `carried` row dated
+        2026-10-25T25:00:00Z outranked the head's valid `incorrect` row (a P1 under it) and the gate merged on the
+        earlier head's `correct` row, while audit-carry.py had refused that ledger since round 5. One reader,
+        `scripts/orchestrator/ledger.py` of the checkout (`strptime` alone decides a ts), reads the ledger for both:
+        the row is a malformed store, exit 2 naming the line, to the gate and to the digest lever alike, as are a
+        column count other than the header's and an empty required cell; a reader missing from the checkout is a
+        refusal naming it, never a merge on an unread ledger."""
+        digest = "d" * 64
+        self.verdict(head=SHA_B)
+        self.ledger(
+            ledger_row(SHA_A, "incorrect (round 2, P1)", ts="2026-10-25T10:00:00Z"),
+            ledger_row(SHA_B),
+            ledger_row(SHA_A, "carried", ts="2026-10-25T25:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"),
+        )
+        self.github()
+        message = "ledger.tsv:4: the ts '2026-10-25T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ"
+        self.assert_refused(self.merge(), message)
+        carry = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(LEVERS / "audit-carry.py"),
+                str(self.records),
+                "U71",
+                "7",
+                SHA_A,
+                "--repo",
+                str(self.repo),
+            ],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual((2, ""), (carry.returncode, carry.stdout), carry.stderr)
+        self.assertIn(f"audit-carry: {self.records}/{message}", carry.stderr)
+        for name, text, message in (
+            (
+                "six columns",
+                LEDGER_HEADER + f"2026-10-25T09:00:00Z\tU71\t7\t{SHA_A}\tcorrect\tcodex exec\n",
+                "ledger.tsv:2: 6 columns, not 7",
+            ),
+            (
+                "an empty unit cell",
+                LEDGER_HEADER + ledger_row(SHA_A, unit=""),
+                "ledger.tsv:2: column 2 (unit) is empty",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                (self.records / "ledger.tsv").write_text(text)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        self.calls.unlink(missing_ok=True)
+        self.ledger(ledger_row(SHA_A))
+        self.reader.unlink()
+        self.github()
+        self.assert_refused(self.merge(), f"no {self.reader} in the checkout")
 
     def test_a_fix_unit_s_row_names_its_own_verdict_file(self):
         """Round 2 (P2, standing order 24): a fix unit `U71b` writes `Program-Unit: regime-cutover/U71` in its body

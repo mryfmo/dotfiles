@@ -769,8 +769,8 @@ ACCEPTED_ARITHMETIC = (
     (("pr-audit.sh",), r"""(($# > 0));""", "the argument count of the option loop (the round cap, U120)"),
     (
         ("pr-audit.sh",),
-        r"""[[ $# -ge 2 && -n $2 && -z ${records} ]]""",
-        "an option that takes a value needs two words, and `--records` is given once",
+        r"""[[ $# -ge 2 && -n $2 && ${records_given} == 0 ]]""",
+        "an option that takes a value needs two words, and `--records` is given once (its own sentinel, U120 round 5)",
     ),
     (("pr-audit.sh",), r"""unit_lines=$((unit_lines + 1))""", "a counter of the body's Program-Unit lines"),
     (("pr-audit.sh",), r"""((unit_lines <= 1))""", "the same counter, at most one line"),

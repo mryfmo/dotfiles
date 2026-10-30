@@ -56,6 +56,21 @@ AUDIT_ROUTE = "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n>` ru
 AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
 AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"
 
+# U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
+# fourth behind a mechanism-change row, two further `incorrect` rows behind another) and the lever flag that runs it.
+ROUND_CAP = (
+    "A unit's third audit needs no row; its fourth needs a `decisions.tsv` row of phase `mechanism-change` whose "
+    "decision starts with the unit id and whose result names one closing form (`ast`, `parser-module`, `allowlist`, "
+    "`remove`, or `residual` with the gate clause), and after that row every two further `incorrect` rows need another."
+)
+TWO_STRIKES = (
+    "Two `incorrect` rows of one class are the two strikes, and the round after the second is analysis only, no code"
+)
+ROUND_CAP_CHECK = (
+    "`scripts/orchestrator/rounds-check.py <store> U<n>` counts the rows; `pr-audit.sh <pr> --records <store>` runs it "
+    "before anything else and refuses the round while it exits non-zero"
+)
+
 # A merge error is not a merge failure (U30 ADDENDUM 3, ACCEPTANCE 8; measured on PR #484).
 # U71: the merge lever does the re-read and the orchestrator never runs it twice.
 MERGE_ERROR = (
@@ -126,6 +141,12 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn("Until U119 round 3 this step ran `omp-run.sh --role audit`", verify)
         self.assertNotIn("omp-run.sh --role audit", step(text, "The loop", 6))
         self.assertIn("a file without a `## Findings` section is refused by name", step(text, "The loop", 6))
+
+    def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
+        gates = section(ORCHESTRATION.read_text(), "Gates")
+        for sentence in (ROUND_CAP, TWO_STRIKES, ROUND_CAP_CHECK):
+            self.assertIn(sentence, gates)
+        self.assertNotIn("three strikes", gates)
 
     def test_a_merge_error_is_rechecked_and_never_retried(self):
         merge = step(ORCHESTRATION.read_text(), "The loop", 6)

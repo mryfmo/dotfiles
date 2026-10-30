@@ -783,11 +783,15 @@ cleanup() {
 
 pr=''
 records=''
+# The duplicate-flag sentinel is its own boolean (U120 round 5): a first value of `/` once normalised to the empty
+# string and let a second `--records` pass.
+records_given=0
 while (($# > 0)); do
     case $1 in
     --records)
-        [[ $# -ge 2 && -n $2 && -z ${records} ]] || refuse "${usage}"
-        records=${2%/}
+        [[ $# -ge 2 && -n $2 && ${records_given} == 0 ]] || refuse "${usage}"
+        records=$2
+        records_given=1
         shift 2
         ;;
     *)
@@ -799,7 +803,14 @@ while (($# > 0)); do
 done
 [[ -n ${pr} ]] || refuse "${usage}"
 [[ ${pr} =~ ^[1-9][0-9]{0,9}$ ]] || refuse "the pull request is not a decimal number: ${pr}"
-[[ -z ${records} || (-d ${records} && -r ${records}) ]] || refuse "the store ${records} is not a readable directory"
+if [[ -n ${records} ]]; then
+    # The store by its physical path, once (U120 round 5): `.` from inside it, a trailing `/.` and a path relative
+    # to the checkout then all end in the program's name, and `/` (no last component, no ledger) is no store.
+    [[ -d ${records} && -r ${records} ]] || refuse "the store ${records} is not a readable directory"
+    canonical=$(cd -- "${records}" && pwd -P) || refuse "cannot resolve the store ${records}"
+    records=${canonical}
+    [[ -f ${records}/ledger.tsv ]] || refuse "the store ${records} is not a directory holding ledger.tsv"
+fi
 for value in "${gh_timeout}" "${audit_timeout}" "${probe_timeout}" "${wait_tries}"; do
     [[ ${value} =~ ^[1-9][0-9]*$ ]] ||
         refuse 'PR_LEVER_GH_TIMEOUT, PR_AUDIT_TIMEOUT, PR_AUDIT_PROBE_TIMEOUT and PR_AUDIT_WAIT_TRIES must be positive integers'

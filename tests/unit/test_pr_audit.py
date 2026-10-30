@@ -199,10 +199,10 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual([c for c in self.codex_calls() if c["argv"][:1] == ["exec"]], [], "no audit ran")
         self.assertEqual(list(self.tmp.iterdir()), [], "no run directory is left")
 
-    def run_lever(self, *args, lever=LEVER, **env):
+    def run_lever(self, *args, lever=LEVER, cwd=None, **env):
         return subprocess.run(
             [str(lever), *args],
-            cwd=self.repo,
+            cwd=cwd or self.repo,
             env={**self.env, **env},
             capture_output=True,
             text=True,
@@ -801,10 +801,11 @@ class PrAuditTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
 
-    def with_store(self, ledger_rows=(), program="regime-cutover"):
-        """A fixture store of PROGRAM in scratch, and the checkout's own copy of rounds-check.py, which the lever runs
-        from `<checkout>/scripts/orchestrator/` (the store and the check come from the same checkout)."""
-        store = self.root / "records" / program
+    def with_store(self, ledger_rows=(), program="regime-cutover", root=None):
+        """A fixture store of PROGRAM in scratch (or under ROOT), and the checkout's own copy of rounds-check.py,
+        which the lever runs from `<checkout>/scripts/orchestrator/` (the store and the check come from the same
+        checkout)."""
+        store = (root or self.root / "records") / program
         store.mkdir(parents=True, exist_ok=True)
         (store / "ledger.tsv").write_text(LEDGER_HEADER + "".join("\t".join(row) + "\n" for row in ledger_rows))
         (store / "decisions.tsv").write_text(DECISIONS_HEADER)
@@ -857,15 +858,15 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("rounds-check", run.stderr)
 
     def test_a_round_cap_check_that_cannot_run_or_read_its_store_refuses_the_audit(self):
-        """Standing order 21: the check's status decides. A store it cannot read, a python that fails on it, or no
-        script in the checkout is exit 3 naming the cause, never an audit; the store's shape and the body's line are
-        refused as usage (exit 2) before the check runs."""
+        """Standing order 21: the check's status decides. A store it cannot read as data, a python that fails on it,
+        or no script in the checkout is exit 3 naming the cause, never an audit; the store's shape and the body's line
+        are refused as usage (exit 2) before the check runs."""
         self.answer(body=PROGRAM_BODY)
         store = self.with_store()
-        (store / "ledger.tsv").unlink()
+        (store / "ledger.tsv").write_text("ts\tunit\n")
         run = self.run_lever("7", "--records", str(store))
         self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
-        self.assertIn(f"rounds-check.py exited 2 for U7: rounds-check: {store}/ledger.tsv: cannot read", run.stderr)
+        self.assertIn(f"rounds-check.py exited 2 for U7: rounds-check: {store}/ledger.tsv:1: the header is", run.stderr)
         self.assertEqual(self.codex_calls(), [], "no probe and no audit")
         self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
         store = self.with_store()
@@ -892,6 +893,38 @@ class PrAuditTest(unittest.TestCase):
             with self.subTest(body=body):
                 self.answer(body=body)
                 self.assert_refused(self.run_lever("7", "--records", str(store)), message)
+
+    def test_the_store_is_named_by_its_canonical_path_and_a_second_records_flag_refuses(self):
+        """U120 round 5: the store is canonicalised once, so `.` from inside it, a trailing `/.` and a path relative
+        to the checkout all name the program's store; `/` is no store (no `ledger.tsv`), and `--records` twice is
+        usage whatever the first value (a first value of `/` once emptied the duplicate sentinel)."""
+        self.answer(body=PROGRAM_BODY)
+        store = self.with_store(root=self.repo / ".orchestration/orchestrate")
+        for args, cwd in (
+            ((".",), store),
+            ((f"{store}/.",), None),
+            ((".orchestration/orchestrate/regime-cutover/",), None),
+        ):
+            with self.subTest(args=args):
+                run = self.run_lever("7", "--records", *args, cwd=cwd)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn("pr-audit.sh: rounds-check: U7 allowed: 0 audit rows", run.stderr)
+                self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink()
+                (self.rec / "gh-calls").unlink()
+        self.assert_refused(self.run_lever("7", "--records", "/", "--records", str(store)), "usage:")
+        self.assertFalse((self.rec / "gh-calls").exists())
+        for body in (PROGRAM_BODY, BODY):
+            with self.subTest(body=body):
+                self.answer(body=body)
+                self.assert_refused(
+                    self.run_lever("7", "--records", "/"), "the store / is not a directory holding ledger.tsv"
+                )
+                self.assertFalse((self.rec / "gh-calls").exists())
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
 
     def test_a_failed_run_or_a_failed_verdict_reader_exits_1_with_no_verdict(self):
         """Standing order 21: the reader's status decides; a reader that could not run yields no verdict."""

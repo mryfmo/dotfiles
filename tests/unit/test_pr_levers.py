@@ -62,10 +62,37 @@ def setUpModule():
         sys.stderr.write(f"test_pr_levers: --jq runs through {JQ} ({jq_version(JQ)})\n")
 
 
-def thread(first_id, resolved=False, created="2026-10-24T01:00:00Z", severity="P2", replies=(), node="T"):
-    """One reviewThreads node: the first comment, then the replies (each a body)."""
-    comments = [{"databaseId": first_id, "createdAt": created, "body": BADGE.format(severity, severity) + "\nbody"}]
-    comments += [{"databaseId": first_id + n + 1, "createdAt": created, "body": body} for n, body in enumerate(replies)]
+def thread(
+    first_id,
+    resolved=False,
+    created="2026-10-24T01:00:00Z",
+    severity="P2",
+    replies=(),
+    node="T",
+    association="OWNER",
+    login="coordinator",
+):
+    """One reviewThreads node: the first comment (the reviewer's, association NONE), then the replies (each a body,
+    written by `login` with `association`; U124 round 3: the levers read the newest reply's, never the first's)."""
+    comments = [
+        {
+            "databaseId": first_id,
+            "createdAt": created,
+            "body": BADGE.format(severity, severity) + "\nbody",
+            "authorAssociation": "NONE",
+            "author": {"login": "chatgpt-codex-connector"},
+        }
+    ]
+    comments += [
+        {
+            "databaseId": first_id + n + 1,
+            "createdAt": created,
+            "body": body,
+            "authorAssociation": association,
+            "author": {"login": login},
+        }
+        for n, body in enumerate(replies)
+    ]
     return {
         "id": f"{node}{first_id}",
         "isResolved": resolved,
@@ -313,6 +340,9 @@ def invalid_dispositions(fixture):
             "f=18446744073709551617 is not a whole number from 1 to 10; got: filed: f=18446744073709551617 s=9",
         ),
         ("filed: f=10 s=1 ten is a score", "P2", "f=10 s=1 weighs 10, not under 10"),
+        # U124 round 3: the listing's @tsv writes a tab as `\t`; the reason is judged on the decoded line, so a
+        # tab-only reason is a missing reason in both levers (the old levers read the two characters as a reason).
+        ("filed: f=1 s=1 \t", "P1", "the reason is missing; got: filed: f=1 s=1 \t)"),
     ]
 
 
@@ -362,6 +392,28 @@ class PrThreadResolveTest(ThreadsFixture):
             with self.subTest(reply=reply):
                 self.calls.unlink(missing_ok=True)
                 self.answer(self.listing(thread(4365170609, severity=severity, replies=[reply])), RESOLVED)
+                self.assertEqual(self.resolve("480", "4365170609").returncode, 0)
+                self.assertEqual(len(self.writes()), 1)
+
+    def test_a_reply_outside_the_maintainers_is_refused(self):
+        """U124 round 3: a disposition holds only when its author's `authorAssociation` is OWNER, MEMBER or
+        COLLABORATOR (`maintainer_associations`); an outsider's `filed:` or `fixed:` on a P1 thread resolves nothing,
+        whatever its text, and a maintainer's `filed:` of any of the three associations resolves."""
+        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+            for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
+                with self.subTest(reply=reply, association=association):
+                    self.calls.unlink(missing_ok=True)
+                    node = thread(4365170609, severity="P1", replies=[reply], association=association, login="drive-by")
+                    self.answer(self.listing(node), RESOLVED)
+                    self.assert_refused(
+                        self.resolve("480", "4365170609"),
+                        f"(newest reply by drive-by, association {association}: not a maintainer)",
+                    )
+        for association in ("OWNER", "MEMBER", "COLLABORATOR"):
+            with self.subTest(association=association):
+                self.calls.unlink(missing_ok=True)
+                node = thread(4365170609, severity="P1", replies=["filed: f=1 s=1 a rating"], association=association)
+                self.answer(self.listing(node), RESOLVED)
                 self.assertEqual(self.resolve("480", "4365170609").returncode, 0)
                 self.assertEqual(len(self.writes()), 1)
 
@@ -792,11 +844,17 @@ class PrThreadsCheckTest(ThreadsFixture):
     def test_resolved_and_disposed_threads_pass(self):
         run = self.check(
             thread(1, resolved=True, replies=["refuted: a.py:1"]),
-            thread(2, replies=[f"fixed: {self.head}"]),
-            thread(3, replies=["refuted: https://docs.github.com/en/rest/pulls/comments says so"]),
+            thread(2, replies=[f"fixed: {self.head}"], association="MEMBER"),
+            thread(
+                3,
+                replies=["refuted: https://docs.github.com/en/rest/pulls/comments says so"],
+                association="COLLABORATOR",
+            ),
             thread(4, severity="P3", replies=["residual: unit=U29 gate=no Linux make update until U29"]),
             thread(5, severity="P1", replies=["residual: operator=2026-10-24T12:53:00Z"]),
             thread(6, severity="P1", replies=["filed: f=1 s=9 no run, test, incident or user has produced the case"]),
+            # U124 round 3: a reason of the two characters backslash and t is a reason (the decode is exact).
+            thread(7, severity="P1", replies=["filed: f=1 s=1 \\t"]),
         )
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertEqual(
@@ -808,7 +866,8 @@ class PrThreadsCheckTest(ThreadsFixture):
                 "thread comment=4 severity=P3 state=residual U29",
                 "thread comment=5 severity=P1 state=residual operator=2026-10-24T12:53:00Z",
                 "thread comment=6 severity=P1 state=filed f=1 s=9 weight=9",
-                "summary threads=6 open=0",
+                "thread comment=7 severity=P1 state=filed f=1 s=1 weight=1",
+                "summary threads=7 open=0",
             ],
         )
         self.assertEqual(self.writes(), [], "read-only")
@@ -848,6 +907,16 @@ class PrThreadsCheckTest(ThreadsFixture):
                 thread(1, replies=["filed: f=1 s=9"]),
                 "open (filed: reply needs f=<1..10> s=<1..10> <reason>; the reason is missing; got: filed: f=1 s=9)",
             ),
+            # U124 round 3: the reason is judged on the reply's own text; a tab-only or a space-only reason is missing
+            # (the listing's @tsv had turned the tab into the two characters `\t`, which the old regex took as a reason).
+            (
+                thread(1, severity="P1", replies=["filed: f=1 s=1 \t"]),
+                "open (filed: reply needs f=<1..10> s=<1..10> <reason>; the reason is missing; got: filed: f=1 s=1 \t)",
+            ),
+            (
+                thread(1, severity="P1", replies=["filed: f=1 s=1   "]),
+                "open (filed: reply needs f=<1..10> s=<1..10> <reason>; the reason is missing; got: filed: f=1 s=1   )",
+            ),
             (
                 thread(1, replies=["filed: f=1 a score is missing"]),
                 "reply needs f=<1..10> s=<1..10> <reason>; a score is missing; got: filed: f=1 a score is missing)",
@@ -874,6 +943,30 @@ class PrThreadsCheckTest(ThreadsFixture):
                 self.assertIn("state=open (resolved without a valid disposition: ", run.stdout)
                 self.assertIn(reason, run.stdout)
                 self.assertTrue(run.stdout.endswith("summary threads=1 open=1\n"))
+
+    def test_a_reply_outside_the_maintainers_leaves_the_thread_open(self):
+        """U124 round 3: the newest reply's author must be a maintainer (`authorAssociation` OWNER, MEMBER or
+        COLLABORATOR); an outsider's `filed:` or `fixed:` on a P1 thread, resolved or not, is open naming the author."""
+        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+            for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
+                for resolved in (False, True):
+                    with self.subTest(reply=reply, association=association, resolved=resolved):
+                        node = thread(
+                            1,
+                            resolved=resolved,
+                            severity="P1",
+                            replies=[reply],
+                            association=association,
+                            login="drive-by",
+                        )
+                        run = self.check(node)
+                        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                        self.assertIn("state=open (", run.stdout)
+                        self.assertIn(
+                            f"newest reply by drive-by, association {association}: not a maintainer)", run.stdout
+                        )
+                        self.assertTrue(run.stdout.endswith("summary threads=1 open=1\n"))
+        self.assertEqual(self.writes(), [], "read-only")
 
     def test_a_fix_outside_the_head_is_open(self):
         self.git("switch", "-q", "-c", "side", self.old)

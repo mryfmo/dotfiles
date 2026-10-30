@@ -664,7 +664,7 @@ done""",
     ),
     (
         ("pr-threads-check.sh",),
-        r"""IFS=$'\t' read -r first resolved created severity count reply;""",
+        r"""IFS=$'\t' read -r first resolved created severity count association login reply;""",
         "a tab IFS for the one `read` of gh's TSV rows, restored after it",
     ),
     (

@@ -9,7 +9,11 @@
 #   is a refusal, never a partial read) and requires `--head` to be the pull request's current `headRefOid` and
 #   a commit in this checkout (`git fetch` first). Every thread, resolved or not (GitHub's `isResolved` alone
 #   proves nothing, U28b F1), passes only when the first line of its newest reply is a disposition of
-#   `preferences.md` standing order 22, checked here:
+#   `preferences.md` standing order 22 and that reply's author is a maintainer of the repository: GitHub's
+#   `authorAssociation` of the comment is `OWNER`, `MEMBER` or `COLLABORATOR` (`maintainer_associations` below, named
+#   once; U124 round 3). A newest reply by anyone else leaves the thread `open (newest reply by <login>, association
+#   <value>: not a maintainer)` whatever its text, since the forms are public and the reply is text anyone with a
+#   GitHub account wrote. The forms, checked here:
 #   `fixed: <sha>` when `<sha>` is `--head` or an ancestor of it and was committed after the thread's first
 #   comment (so a thread opened after the head cannot be `fixed`); `refuted: <text>` citing a URL or a
 #   `file:line`; `residual: unit=U<n> gate=<clause>` when the finding is P2 or P3 (the `![P<n> Badge]` of its
@@ -21,6 +25,9 @@
 #   naming the product. Each score is accepted by its decimal string (`^(10|[1-9])$`) before any arithmetic, so a
 #   decimal past bash's range cannot wrap into one (U124 round 2); a `filed:` of any other shape (a score outside
 #   that grammar, a missing score, no reason) is a malformed reply, refused naming what is wrong and quoting the line.
+#   The reason must hold a character that is not whitespace, judged on the reply's own text: the listing's `@tsv`
+#   writes a tab as the two characters `\t`, and `disposition` decodes the line before it reads it, so a tab-only
+#   reason is a missing reason, not a reason of two characters (U124 round 3).
 #   A residual without `--records` is a refusal. Any other newest reply, or none, is a refusal: the remedy is a
 #   `U<n>b` TASK or a `pr-thread-reply.sh` disposition, never a merge. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -126,13 +133,14 @@ threads_query='query($owner: String!, $name: String!, $pr: Int!) {
       headRefOid
       reviewThreads(first: 100) {
         pageInfo { hasNextPage }
-        nodes { isResolved comments(first: 100) { totalCount nodes { databaseId createdAt body } } }
+        nodes { isResolved comments(first: 100) { totalCount nodes { databaseId createdAt body authorAssociation author { login } } } }
       }
     }
   }
 }'
 # `head <sha> <hasNextPage>`, then per thread `<first id> <resolved> <created epoch> <P0-P3 or -> <count> <newest
-# reply's first line>` (TSV; the reply is last because it may be empty).
+# reply's authorAssociation or -> <its author's login or -> <newest reply's first line>` (TSV; the reply is last
+# because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes).
 # shellcheck disable=SC2016 # jq source, not shell
 threads_jq='.data.repository.pullRequest
   | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
@@ -140,7 +148,8 @@ threads_jq='.data.repository.pullRequest
       ($c.nodes[0].createdAt | fromdateiso8601 | tostring),
       ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
       ($c.totalCount | tostring),
-      (($c.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
+      (($c.nodes[1:] | last) as $reply | ($reply.authorAssociation // "-"), ($reply.author.login // "-"),
+        (($reply.body // "") | split("\n") | (.[0] // "") | rtrimstr("\r")))] | @tsv)'
 
 # @description Print the refusal on stderr and exit 2.
 # @arg $@ string The reason.
@@ -174,9 +183,13 @@ has_row() {
 # @description Print the disposition a thread's newest reply carries, or `open (<why>)`.
 # @arg $1 int The created epoch of the thread's first comment.
 # @arg $2 string Its severity, P0-P3 or `-`.
-# @arg $3 string The first line of the newest reply.
+# @arg $3 string The `authorAssociation` of the newest reply's author (GitHub's enum), or `-` without a reply.
+# @arg $4 string The newest reply's author login, or `-`.
+# @arg $5 string The first line of the newest reply as the listing's `@tsv` escaped it; decoded here before any read.
 disposition() {
-    local created=$1 severity=$2 line=$3 fix fix_time status frequency severity_score weight why
+    local created=$1 severity=$2 association=$3 login=$4 line='' fix fix_time status frequency severity_score weight why
+    # The associations GitHub gives a maintainer's comment (U124 round 3); a reply by anyone else closes nothing.
+    local maintainer_associations='^(OWNER|MEMBER|COLLABORATOR)$'
     local fixed='^fixed: ([0-9a-f]{40})( |$)'
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
@@ -184,6 +197,15 @@ disposition() {
     local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
     local filed_scores='^filed: f=[^[:space:]]+ s=[^[:space:]]+[[:space:]]*$'
     local score_re='^(10|[1-9])$'
+    # `@tsv` wrote a tab as `\t`, a carriage return as `\r` and a backslash as `\\`, and nothing else starts with a
+    # backslash in its output; `%b` reads those three back, so the regexes below see the reply's own characters and
+    # a tab-only reason is whitespace, not the two characters `\t` (U124 round 3). An empty reply is left as the
+    # empty string above: `printf -v` with nothing to print leaves its variable unset.
+    [[ -z $5 ]] || printf -v line '%b' "$5"
+    if [[ -n ${line} && ! ${association} =~ ${maintainer_associations} ]]; then
+        echo "open (newest reply by ${login}, association ${association}: not a maintainer)"
+        return
+    fi
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
         git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
@@ -304,7 +326,7 @@ listing=$(gh_bounded api graphql -f "query=${threads_query}" -f "owner=${repo%%/
 threads=0
 open=0
 seen_head=0
-while IFS=$'\t' read -r first resolved created severity count reply; do
+while IFS=$'\t' read -r first resolved created severity count association login reply; do
     if [[ ${first} == head ]]; then
         [[ ${resolved} == "${head}" ]] || refuse "the head of pull request ${pr} is ${resolved}, not ${head}"
         [[ ${created} == false ]] || refuse "pull request ${pr} has more than 100 review threads; check it by hand"
@@ -317,7 +339,7 @@ while IFS=$'\t' read -r first resolved created severity count reply; do
     ((count <= 100)) || refuse "the thread of comment ${first} has more than 100 comments; check it by hand"
     threads=$((threads + 1))
     # A resolved thread is judged like an open one (U28b F1): GitHub's isResolved says someone clicked, not why.
-    state=$(disposition "${created}" "${severity}" "${reply}") || exit $?
+    state=$(disposition "${created}" "${severity}" "${association}" "${login}" "${reply}") || exit $?
     if [[ ${resolved} == true ]]; then
         case ${state} in
         open*) state="open (resolved without a valid disposition: ${state#open (}" ;;

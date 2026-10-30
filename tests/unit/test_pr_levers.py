@@ -1503,6 +1503,52 @@ class PrMergeTest(PrLeverTestCase):
             self.github()
             self.assert_refused(self.merge(), f"verdicts/U71-{SHA_A[:8]}.md is not a readable regular file")
 
+    def test_the_gate_takes_no_cache_from_its_environment(self):
+        # U119 round 6 (audit of 4f9f958a, P2): the units.tsv cache was tested with `${units_rows+set}` before the
+        # gate assigned it, so a caller that exported `units_rows` with a U99 row passed a residual for U99 without
+        # units.tsv holding it. Every name the gate reads is assigned in the run before its first read, so an
+        # exported one is neither data nor a refusal.
+        self.verdict(P2_LINE)
+        self.units("U71", "U72")
+        planted = "U99\tR\tgate\t\t\t\t\t-"
+        self.dispositions(disposition_row(reference="unit=U99 gate=x"))
+        for name, env in (
+            ("units_rows", {"units_rows": planted}),
+            ("units_rows and its flag", {"units_rows": planted, "units_read": "1"}),
+        ):
+            with self.subTest(name):
+                self.env.update(env)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), "U99, which is not a row of")
+        # the dispositions rows and the gate's flags: a holding row or a satisfied flag in the environment is none
+        # in the store
+        self.dispositions()
+        self.env.update(
+            {
+                "dispositions_rows": disposition_row(),
+                "rows": disposition_row(),
+                "text": disposition_row(),
+                "pending": "",
+                "findings": "- none",
+                "satisfied": "1",
+                "seen": "1",
+                "section": "1",
+                "status": "0",
+            }
+        )
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition: no "
+        )
+        self.assertEqual(self.writes(), [])
+        # the same environment with the rows in the store merges: the environment is ignored, never read
+        self.dispositions(disposition_row(reference="unit=U72 gate=x"))
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
 
 class DispositionDriftTest(unittest.TestCase):
     def test_the_resolve_lever_and_the_merge_check_judge_by_the_same_function(self):

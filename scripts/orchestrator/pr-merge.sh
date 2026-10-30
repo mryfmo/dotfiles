@@ -253,16 +253,21 @@ table_rows() {
 
 # @description Succeed when the store's `units.tsv` has a row whose `id` is $1. The table is read once per run and
 #   checked as every table is (its header, each row's column count, a non-empty `id`); a symlink or a missing file is
-#   a refusal naming it and a failed read exits 1 (standing order 21), never "no row".
+#   a refusal naming it and a failed read exits 1 (standing order 21), never "no row". The cache and its flag are
+#   locals of require_dispositions, assigned empty there before this function runs (U119 round 6, audit of 4f9f958a):
+#   a `units_rows` the caller exported was taken as the table already read, so a row it held passed the lookup
+#   without being in `units.tsv`. Nothing this function reads comes from outside this run.
 # @arg $1 string The unit id.
-# @set units_rows The table's data rows, read once.
+# @set units_rows The table's data rows, read once; the caller's local.
+# @set units_read Non-empty once `units_rows` holds the table; the caller's local.
 # @exitcode 0 Found. 1 Not found.
 unit_row_exists() {
     local row
-    if [[ -z ${units_rows+set} ]]; then
+    if [[ -z ${units_read} ]]; then
         [[ ! -L ${units_file} && -f ${units_file} && -O ${units_file} ]] ||
             refuse "${units_file} is not a regular file of this user (a symlink or missing); a residual's unit is judged against it"
         units_rows=$(table_rows "${units_file}" "${units_header}" '1') || exit $?
+        units_read=1
     fi
     while IFS= read -r row; do
         [[ ${row%%$'\t'*} == "$1" ]] && return 0
@@ -284,11 +289,14 @@ pending_fields() {
 
 # @description Refuse unless every P2 and P3 finding of the head's verdict file in the store has a holding `residual`
 #   row in `dispositions.tsv` (U119 round 2): the ledger row says `correct`, and since standing order 35 `correct` no
-#   longer means "no finding". Every read is checked; a failed read exits 1 (standing order 21).
+#   longer means "no finding". Every read is checked; a failed read exits 1 (standing order 21). Every name the gate
+#   reads is a local assigned here before its first read, the `units.tsv` cache of unit_row_exists included, so a
+#   caller's environment holds nothing the gate takes for its own data (U119 round 6).
 # @arg $1 string The 40-hex head the ledger row named.
 require_dispositions() {
     local head=$1 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
     local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit
+    local units_rows='' units_read=''
     verdicts_dir=${store}/verdicts
     [[ ! -L ${verdicts_dir} && -d ${verdicts_dir} && -O ${verdicts_dir} ]] ||
         refuse "${verdicts_dir} is not a directory of this user (a symlink or missing); the verdict file is read from the checkout's own store"

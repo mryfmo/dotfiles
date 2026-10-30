@@ -1,5 +1,5 @@
-"""Exercise brief-check.py (regime-cutover U104) on scratch briefs, as a subprocess under `python -I`, and its installed
-copy under a scratch HOME as the hcom-orchestration SKILL spells the command (round 3)."""
+"""Exercise brief-check.py (regime-cutover U104, U121) on scratch briefs, as a subprocess under `python -I`, and its
+installed copy under a scratch HOME as the hcom-orchestration SKILL spells the command (U104 round 3)."""
 
 import builtins
 import contextlib
@@ -23,35 +23,55 @@ MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 SKILL = ROOT / "home/dot_agents/skills/hcom-orchestration/SKILL.md"
 # An installation reached through a symlink: `~/.local` a link, or `common` itself (round 5).
 SYMLINKED_INSTALLS = (".local", ".local/bin/common")
-# The trigger table as the brief fixed it; a later unit that adds a row adds it here too.
+# The trigger table as the briefs fixed it (U104's rows, then U121's), each as a brief would write it, with the term
+# the reason line names; a later unit that adds a row adds it here too.
 TRIGGERS = (
-    "shell",
-    "tokenize",
-    "tokenizer",
-    "parse",
-    "parser",
-    "regex",
-    "hook",
-    "worktree",
-    "config",
-    "path",
-    "process",
-    "signal",
-    "supervisor",
-    "curl",
-    "wget",
-    "heredoc",
-    "quote",
+    ("shell", "shell"),
+    ("tokenize", "tokeniz"),
+    ("tokenizer", "tokeniz"),
+    ("tokenization", "tokeniz"),
+    ("parse", "parse"),
+    ("parser", "parser"),
+    ("regex", "regex"),
+    ("hook", "hook"),
+    ("worktree", "worktree"),
+    ("config", "config"),
+    ("path", "path"),
+    ("process", "process"),
+    ("signal", "signal"),
+    ("supervisor", "supervisor"),
+    ("curl", "curl"),
+    ("wget", "wget"),
+    ("heredoc", "heredoc"),
+    ("quote", "quote"),
+    ("bound", "bound"),
+    ("refuse", "refuse"),
+    ("fail closed", "fail closed"),
+    ("fail-closed", "fail closed"),
+    ("untrusted", "untrusted"),
+    ("sandbox", "sandbox"),
+    ("lint", "lint"),
+    ("rule", "rule"),
+    ("allowlist", "allowlist"),
+    ("denylist", "denylist"),
+    ("walk", "walk"),
+    ("census", "census"),
 )
-MECHANISMS = ("ast", "parser-module", "allowlist", "remove")
+FORMS = ("ast", "parser-module", "allowlist", "remove")
 SKILL_SENTENCE = (
     "Run `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md` from the "
     "checkout and send no TASK while it exits non-zero; a brief whose unit judges an open-ended input names the "
     "closing mechanism in a `CLOSURE` section (`ast`, `parser-module`, `allowlist` or `remove`)."
 )
+TRUST_SENTENCE = (
+    "Such a brief also carries a `TRUST` section of at least 40 characters naming what the unit trusts and does not "
+    "read (an earlier step of the same job, the adopted lever set, a pinned image), which the PR body's Contract "
+    "repeats as its `Trusted:` sentence; the check refuses a brief without one."
+)
 # The command inside the sentence's first code span, the spelling the orchestrator seat runs.
 SKILL_COMMAND = SKILL_SENTENCE.split("`")[1]
 CLEAN_GOAL = "The six dead installer functions leave the installers and nothing else changes."
+TRUST = "The unit trusts the pinned lever set under ~/.local/bin/common and reads no earlier job step."
 
 
 def brief(**bodies):
@@ -60,6 +80,11 @@ def brief(**bodies):
     for name, body in bodies.items():
         text += f"{name}\n{body}\n\n"
     return text
+
+
+def closed(goal="A shell reader.", closure="ast", trust=TRUST, **bodies):
+    """A brief that holds a trigger term and names both its form and its trust boundary."""
+    return brief(GOAL=goal, CLOSURE=closure, TRUST=trust, **bodies)
 
 
 class BriefCheckTest(unittest.TestCase):
@@ -77,115 +102,220 @@ class BriefCheckTest(unittest.TestCase):
         target.write_text(text)
         return self.check(str(target))
 
-    def test_each_trigger_term_in_goal_without_closure_exits_1_naming_the_section_and_term(self):
-        for term in TRIGGERS:
-            with self.subTest(term=term):
-                result = self.check_text(brief(GOAL=f"This unit reads the {term} of every seat.", SCOPE="one file"))
-                self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
-                self.assertIn(f'brief-check: GOAL holds "{term}"', result.stdout)
-                self.assertIn("no CLOSURE section", result.stdout)
+    def assert_passes(self, result):
+        """Exit 0 and nothing on either stream: a passing brief prints no line."""
+        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
 
-    def test_a_spelling_the_regex_folds_onto_a_term_prints_that_term_s_decision_line_never_a_traceback(self):
-        # Round 1: `ſhell` matched under `re.IGNORECASE`, then `"ſhell".lower()` missed the reasons table and the
-        # script died with a KeyError traceback. The reason now comes from the table row the regex matched.
+    def assert_refused(self, result, *reasons):
+        """Exit 1, nothing on stderr, and on stdout exactly one line per expected reason, each holding its text."""
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        lines = result.stdout.splitlines()
+        self.assertEqual(len(reasons), len(lines), result.stdout)
+        for line, reason in zip(lines, reasons):
+            self.assertTrue(line.startswith(f"brief-check: {self.dir / 'U0-scratch.md'}: "), line)
+            self.assertIn(reason, line)
+
+    def assert_refused_exactly(self, result, *reasons):
+        """Exit 1, nothing on stderr, and stdout exactly these reason lines in this order, nothing more or fewer."""
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        prefix = f"brief-check: {self.dir / 'U0-scratch.md'}: "
+        self.assertEqual([prefix + reason for reason in reasons], result.stdout.splitlines())
+
+    def test_each_trigger_term_in_goal_without_closure_or_trust_exits_1_with_one_reason_per_line(self):
+        for spelling, term in TRIGGERS:
+            with self.subTest(term=spelling):
+                result = self.check_text(brief(GOAL=f"This unit reads the {spelling} of every seat.", SCOPE="x"))
+                self.assert_refused(result, f'GOAL holds "{term}" (', f'GOAL holds "{term}"; no TRUST section')
+                self.assertIn("; no CLOSURE section", result.stdout.splitlines()[0])
+
+    def test_each_trigger_term_with_a_form_and_a_trust_boundary_exits_0_printing_nothing(self):
+        for spelling, _ in TRIGGERS:
+            with self.subTest(term=spelling):
+                self.assert_passes(self.check_text(closed(goal=f"This unit reads the {spelling} of every seat.")))
+
+    def test_a_spelling_the_regex_folds_onto_a_term_prints_that_term_s_reason_line_never_a_traceback(self):
+        # U104 round 1: `ſhell` matched under `re.IGNORECASE`, then `"ſhell".lower()` missed the reasons table and the
+        # script died with a KeyError traceback. The reason comes from the table row the regex matched.
         for spelling, term in (("\u017fhell", "shell"), ("hoo\u212a", "hook"), ("wor\u212atree", "worktree")):
             with self.subTest(spelling=spelling):
                 result = self.check_text(brief(GOAL=f"A {spelling} reader."))
-                self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
-                prefix = f'brief-check: GOAL holds "{term}" ('
-                self.assertEqual(prefix, result.stdout[: len(prefix)], result.stdout)
-                self.assertIn("; no CLOSURE section\n", result.stdout)
-                result = self.check_text(brief(GOAL=f"A {spelling} reader.", CLOSURE="ast"))
-                self.assertEqual(
-                    (0, f'brief-check: GOAL holds "{term}"; closure: ast\n'), (result.returncode, result.stdout)
-                )
+                self.assert_refused(result, f'GOAL holds "{term}" (', f'GOAL holds "{term}"; no TRUST section')
+                self.assert_passes(self.check_text(closed(goal=f"A {spelling} reader.")))
 
     def test_a_term_in_change_or_context_fires_and_a_capitalised_or_backticked_term_counts(self):
         for section, body in (
             ("CHANGE", "1. Rewrite the Parser."),
             ("CONTEXT", "- The old `regex` matched three forms."),
             ("GOAL", "A SHELL reader."),
+            ("CHANGE", "2. The read is `fail-closed`."),
         ):
-            with self.subTest(section=section):
+            with self.subTest(section=section, body=body):
                 result = self.check_text(brief(**({"GOAL": CLEAN_GOAL} | {section: body})))
-                self.assertEqual(1, result.returncode, result.stdout)
-                self.assertIn(f"brief-check: {section} holds", result.stdout)
+                self.assert_refused(result, f"{section} holds", f"{section} holds")
 
-    def test_a_term_inside_scope_or_forbidden_alone_fires_nothing(self):
-        for section in ("SCOPE", "FORBIDDEN", "ACCEPTANCE", "VERIFY", "REPORT", "STANDING"):
+    def test_a_term_inside_scope_forbidden_or_the_worker_rules_alone_fires_nothing(self):
+        body = "No regex over the brief; one shell file under the path scripts/; no hook, no config edit, no lint."
+        for section in ("SCOPE", "FORBIDDEN", "ACCEPTANCE", "VERIFY", "TIMEBOX", "REPORT", "STANDING", "TRUST"):
             with self.subTest(section=section):
-                body = "No regex over the brief; one shell file under the path scripts/; no hook, no config edit."
-                result = self.check_text(brief(**{"GOAL": CLEAN_GOAL, section: body}))
-                self.assertEqual(
-                    (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n"),
-                    (result.returncode, result.stdout),
-                    result.stderr,
-                )
+                self.assert_passes(self.check_text(brief(**{"GOAL": CLEAN_GOAL, section: body})))
+        # The worker-rules block follows CONTEXT in the store's briefs; its heading carries a parenthesised note.
+        text = (
+            brief(GOAL=CLEAN_GOAL, CONTEXT="Nothing open-ended.") + f"WORKER RULES (standing orders 27, 29)\n{body}\n"
+        )
+        self.assert_passes(self.check_text(text))
+        text = brief(GOAL=CLEAN_GOAL, CONTEXT="Nothing open-ended.") + f"WORKER RULES\n{body}\n"
+        self.assert_refused(self.check_text(text), "CONTEXT holds", "CONTEXT holds")
 
     def test_a_term_matches_as_a_whole_word_only(self):
-        goal = "Pathological configs: the parsers' shells and hooks; a quoted heredocs list, signals, processes."
-        result = self.check_text(brief(GOAL=goal))
-        self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
-        self.assertIn("no trigger term", result.stdout)
+        goal = (
+            "Pathological configs: the parsers' shells and hooks; a quoted heredocs list, signals, processes, "
+            "rules, bounds, walks, unbounded sandboxes, failing closed linters, refused censuses, a trusted allowlisted."
+        )
+        self.assert_passes(self.check_text(brief(GOAL=goal)))
 
-    def test_a_closure_naming_each_mechanism_passes_with_or_without_free_text(self):
-        for mechanism in MECHANISMS:
-            for body in (mechanism, f"{mechanism}: shfmt --to-json walks every word, so no reader is written here."):
+    def test_a_closure_naming_each_form_passes_with_or_without_free_text(self):
+        for form in FORMS:
+            for body in (form, f"{form}: shfmt --to-json walks every word, so no reader is written here."):
                 with self.subTest(closure=body):
-                    result = self.check_text(brief(GOAL="A shell reader.", CLOSURE=body))
-                    self.assertEqual(
-                        (0, f'brief-check: GOAL holds "shell"; closure: {mechanism}\n'),
-                        (result.returncode, result.stdout),
-                        result.stderr,
-                    )
+                    self.assert_passes(self.check_text(closed(closure=body)))
 
-    def test_a_closure_naming_two_mechanisms_an_unknown_word_or_nothing_exits_1(self):
-        for body, message in (
-            ("ast\nremove", "CLOSURE names 2 mechanisms (ast, remove), not one"),
-            ("ast: the walk\nallowlist: the forms", "CLOSURE names 2 mechanisms (ast, allowlist), not one"),
-            ("hardening", 'CLOSURE line "hardening" names no mechanism (ast, parser-module, allowlist, remove)'),
-            ("AST", 'CLOSURE line "AST" names no mechanism'),
-            ("- ast", 'CLOSURE line "- ast" names no mechanism'),
-            ("ast\nA second line of prose.", 'CLOSURE line "A second line of prose." names no mechanism'),
-            ("", "CLOSURE is empty"),
-            ("\n   \n", "CLOSURE is empty"),
+    def test_a_closure_naming_two_forms_an_unknown_word_or_nothing_exits_1(self):
+        # A line naming no form and a count of forms other than one are two faults of one body, both printed.
+        for body, messages in (
+            ("ast\nremove", ("CLOSURE names 2 forms (ast, remove), not one",)),
+            ("ast: the walk\nallowlist: the forms", ("CLOSURE names 2 forms (ast, allowlist), not one",)),
+            (
+                "hardening",
+                (
+                    'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+                    "CLOSURE names 0 forms, not one",
+                ),
+            ),
+            ("AST", ('CLOSURE line "AST" names no form', "CLOSURE names 0 forms, not one")),
+            ("- ast", ('CLOSURE line "- ast" names no form', "CLOSURE names 0 forms, not one")),
+            ("ast\nA second line of prose.", ('CLOSURE line "A second line of prose." names no form',)),
+            ("", ("CLOSURE is empty",)),
+            ("\n   \n", ("CLOSURE is empty",)),
         ):
             with self.subTest(closure=body):
-                result = self.check_text(brief(GOAL="A shell reader.", CLOSURE=body))
-                self.assertEqual(1, result.returncode, result.stdout)
-                self.assertIn('brief-check: GOAL holds "shell"', result.stdout)
-                self.assertIn(message, result.stdout)
+                result = self.check_text(closed(closure=body))
+                self.assert_refused(result, 'GOAL holds "shell" (', *('GOAL holds "shell"; ' for _ in messages[1:]))
+                for line, message in zip(result.stdout.splitlines(), messages):
+                    self.assertIn(message, line)
 
     def test_a_malformed_closure_exits_1_even_without_a_trigger_term(self):
         # A section the check owns and cannot read is never read as clean (preferences.md standing order 21).
         result = self.check_text(brief(GOAL=CLEAN_GOAL, CLOSURE="hardening"))
-        self.assertEqual(
-            (1, 'brief-check: CLOSURE line "hardening" names no mechanism (ast, parser-module, allowlist, remove)\n'),
-            (result.returncode, result.stdout),
-            result.stderr,
+        self.assert_refused_exactly(
+            result,
+            'CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+            "CLOSURE names 0 forms, not one",
         )
-        result = self.check_text(brief(GOAL=CLEAN_GOAL, CLOSURE="remove: the feature leaves"))
-        self.assertEqual(
-            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n"),
-            (result.returncode, result.stdout),
-            result.stderr,
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, CLOSURE="remove: the feature leaves")))
+
+    def test_a_missing_short_or_unnamed_trust_section_exits_1_beside_a_sound_closure(self):
+        for text, messages in (
+            (brief(GOAL="A shell reader.", CLOSURE="ast"), ("no TRUST section",)),
+            (
+                closed(trust=""),
+                ("TRUST is 0 characters, under 40", "TRUST names nothing as trusted (no word `trusted` or `trusts`)"),
+            ),
+            (closed(trust="The unit trusts the levers."), ("TRUST is 27 characters, under 40",)),
+            (
+                closed(trust="The unit reads the brief alone and never the adopted lever set or an earlier job step."),
+                ("TRUST names nothing as trusted (no word `trusted` or `trusts`)",),
+            ),
+            (
+                closed(trust="A trustworthy image is used; the untrusted bus text is never read by this unit."),
+                ("TRUST names",),
+            ),
+        ):
+            with self.subTest(text=text[-80:]):
+                self.assert_refused(self.check_text(text), *(f'GOAL holds "shell"; {message}' for message in messages))
+        for trust in (
+            TRUST,
+            "Trusted: the pinned image `ghcr.io/x/y@sha256:...` and the adopted lever set; the bus text is data.",
+            "What the unit TRUSTS is the earlier apt step of the same job; it reads no mirror list itself.",
+            "  Trusts\n\n  the pinned levers under ~/.local/bin/common and nothing else.  ",
+        ):
+            with self.subTest(trust=trust):
+                self.assert_passes(self.check_text(closed(trust=trust)))
+
+    def test_a_trust_section_is_not_required_without_a_trigger_term(self):
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE="six installers", CHANGE="1. Delete them.")))
+
+    def test_a_denylist_dressed_as_an_allowlist_or_an_ast_walk_exits_1(self):
+        for form in ("allowlist", "ast"):
+            for change, phrase in (
+                ("1. Keep a denylist of the words the lint refuses.", "denylist"),
+                ("1. The check holds the Forbidden Words in one tuple.", "forbidden words"),
+                ("1. Compare each line against a list of commands.", "list of commands"),
+            ):
+                with self.subTest(form=form, change=change):
+                    result = self.check_text(closed(closure=form, CHANGE=change))
+                    self.assert_refused(
+                        result, f'CLOSURE names {form} and CHANGE holds "{phrase}": a denylist dressed as a form'
+                    )
+        # The same CHANGE under `remove` or `parser-module` is not dressed, and the phrases elsewhere do not count.
+        for form in ("remove", "parser-module"):
+            with self.subTest(form=form):
+                self.assert_passes(self.check_text(closed(closure=form, CHANGE="1. Drop the denylist.")))
+        self.assert_passes(self.check_text(closed(closure="allowlist", FORBIDDEN="No denylist, no list of commands.")))
+        self.assert_passes(self.check_text(closed(closure="allowlist", CHANGE="1. Exact forms; denylists go.")))
+
+    def test_every_reason_is_printed_so_one_run_names_each_missing_part(self):
+        text = brief(GOAL="A shell reader.", CHANGE="1. A denylist of words.", CLOSURE="allowlist\nast")
+        result = self.check_text(text)
+        self.assert_refused(
+            result,
+            'GOAL holds "shell" (shell text has quoting, expansion and word-splitting forms no hand-written reader '
+            "lists); CLOSURE names 2 forms (allowlist, ast), not one",
+            'GOAL holds "shell"; no TRUST section',
+        )
+        result = self.check_text(brief(GOAL="A shell reader.", CHANGE="1. A denylist of words.", CLOSURE="allowlist"))
+        self.assert_refused(
+            result,
+            'GOAL holds "shell"; no TRUST section',
+            'CLOSURE names allowlist and CHANGE holds "denylist": a denylist dressed as a form',
         )
 
-    def test_no_trigger_term_and_no_closure_exits_0(self):
-        result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE="six installers", CHANGE="1. Delete them."))
-        self.assertEqual(
-            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n"), (result.returncode, result.stdout)
+    def test_a_trust_section_both_short_and_without_a_trust_word_prints_both_faults_in_one_run(self):
+        # Round 2 (P2): the length check returned first, so `Nothing here.` printed one reason and the missing word
+        # surfaced only after the section was lengthened; the Contract promises every reason in one run.
+        self.assert_refused_exactly(
+            self.check_text(closed(trust="Nothing here.")),
+            'GOAL holds "shell"; TRUST is 13 characters, under 40',
+            'GOAL holds "shell"; TRUST names nothing as trusted (no word `trusted` or `trusts`)',
         )
+
+    def test_a_closure_with_a_stray_line_and_two_forms_prints_both_faults_in_one_run(self):
+        # The same shape in CLOSURE: the stray line hid the count fault until the stray line was fixed.
+        self.assert_refused_exactly(
+            self.check_text(closed(closure="ast\nremove\nhardening")),
+            'GOAL holds "shell" (shell text has quoting, expansion and word-splitting forms no hand-written reader '
+            'lists); CLOSURE line "hardening" names no form (ast, parser-module, allowlist, remove)',
+            'GOAL holds "shell"; CLOSURE names 2 forms (ast, remove), not one',
+        )
+
+    def test_the_check_writes_nothing_and_leaves_the_brief_byte_identical(self):
+        # The Contract: the script reads the one brief and writes nothing, so a run over a store edits no brief.
+        target = self.dir / "U0-scratch.md"
+        text = brief(GOAL="A shell reader.")
+        target.write_text(text)
+        before = (target.read_bytes(), target.stat().st_mtime_ns, sorted(path.name for path in self.dir.iterdir()))
+        self.assertEqual(1, self.check(str(target)).returncode)
+        self.assertEqual(
+            before, (target.read_bytes(), target.stat().st_mtime_ns, sorted(path.name for path in self.dir.iterdir()))
+        )
+        self.assertEqual(text.encode(), before[0])
 
     def test_a_section_line_is_the_exact_upper_case_name(self):
         # `GOAL:` and `## GOAL` are prose, not section lines, so the title and such lines fire nothing.
-        result = self.check_text("GOAL: a shell reader\n## GOAL\nshell\n" + brief(GOAL=CLEAN_GOAL))
-        self.assertEqual(
-            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n"), (result.returncode, result.stdout)
-        )
+        self.assert_passes(self.check_text("GOAL: a shell reader\n## GOAL\nshell\n" + brief(GOAL=CLEAN_GOAL)))
 
-    def test_a_repeated_section_heading_exits_1_naming_the_heading_and_both_lines(self):
-        # Round 1 merged the bodies, so `GOAL\nshell\nCLOSURE\nast\nCLOSURE\n` read the empty second CLOSURE as `ast`.
+    def test_a_repeated_section_heading_exits_2_naming_the_heading_and_both_lines(self):
+        # U104 round 1 merged the bodies, so `GOAL\nshell\nCLOSURE\nast\nCLOSURE\n` read the empty second CLOSURE as
+        # `ast`. A brief outside the grammar is not judged at all (exit 2, nothing on stdout), as an unreadable one.
         for text, message in (
             ("GOAL\nshell\nCLOSURE\nast\nCLOSURE\n", "CLOSURE appears twice (lines 3 and 5)"),
             ("GOAL\nshell\nCLOSURE\nast\nCLOSURE\nremove\n", "CLOSURE appears twice (lines 3 and 5)"),
@@ -194,12 +324,14 @@ class BriefCheckTest(unittest.TestCase):
                 "GOAL appears twice (lines 3 and 9)",
             ),
             ("SCOPE  \none file\nSCOPE\n", "SCOPE appears twice (lines 1 and 3)"),
+            ("GOAL\nx\nWORKER RULES (a)\n- y\nWORKER RULES (b)\n", "WORKER RULES appears twice (lines 3 and 5)"),
         ):
             with self.subTest(text=text[:40]):
                 result = self.check_text(text)
-                self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+                self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
                 self.assertEqual(
-                    f"brief-check: {self.dir / 'U0-scratch.md'}: {message}; a brief has one of each\n", result.stdout
+                    f"brief-check: cannot read {self.dir / 'U0-scratch.md'}: {message}; a brief has one of each\n",
+                    result.stderr,
                 )
 
     def test_an_unreadable_or_undecodable_file_and_a_usage_error_exit_2_with_nothing_on_stdout(self):
@@ -219,9 +351,7 @@ class BriefCheckTest(unittest.TestCase):
     def test_a_brief_with_no_sections_at_all_exits_1_with_a_message(self):
         for text in ("", "# U0 A title\n\nA paragraph that mentions a shell reader.\n", "SCOPE\none shell file\n"):
             with self.subTest(text=text[:20]):
-                result = self.check_text(text)
-                self.assertEqual(1, result.returncode, result.stdout)
-                self.assertIn("has no GOAL, CHANGE or CONTEXT section", result.stdout)
+                self.assert_refused(self.check_text(text), "no GOAL, CHANGE or CONTEXT section")
 
     def test_the_script_runs_by_its_own_name_under_python_isolated_mode(self):
         # The SKILL sentence runs the file directly, so it is executable and its shebang runs `python3 -I` from PATH:
@@ -231,11 +361,7 @@ class BriefCheckTest(unittest.TestCase):
 
     def test_the_checkout_script_passes_its_self_check_against_the_checkout_manifest(self):
         # Round 3: the script is a pinned lever; run from the checkout it reads home/dot_agents/agent-config.yaml.
-        result = self.check_text(brief(GOAL=CLEAN_GOAL))
-        self.assertEqual(
-            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
-            (result.returncode, result.stdout, result.stderr),
-        )
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL)))
         # A checkout-shaped copy beside a manifest whose pin differs is refused naming that manifest, so the
         # checkout branch of the manifest choice is the one exercised here, not the cwd.
         checkout = self.dir / "checkout"
@@ -256,11 +382,13 @@ class BriefCheckTest(unittest.TestCase):
         physical = (checkout / "scripts/orchestrator").resolve()
         self.assertIn(f"differs from the pin in {physical}/../../home/dot_agents/agent-config.yaml", result.stderr)
 
-    def test_the_orchestration_skill_step_1_runs_the_check_before_the_task_line(self):
+    def test_the_orchestration_skill_step_1_runs_the_check_before_the_task_line_and_names_the_trust_section(self):
         text = SKILL.read_text()
         step = next(line for line in text.splitlines() if line.startswith("1. Brief."))
         self.assertIn(SKILL_SENTENCE, step)
         self.assertLess(step.index("briefs/U<n>-<slug>.md` with GOAL"), step.index(SKILL_SENTENCE))
+        self.assertIn(TRUST_SENTENCE, step)
+        self.assertLess(step.index(SKILL_SENTENCE), step.index(TRUST_SENTENCE))
 
 
 class InstalledBriefCheckTest(unittest.TestCase):
@@ -354,13 +482,14 @@ class InstalledBriefCheckTest(unittest.TestCase):
         self.assertFalse((self.checkout / "scripts").exists())
         result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
         self.assertEqual(
-            (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
+            (0, "", ""),
             (result.returncode, result.stdout, result.stderr),
         )
         result = self.run_skill_command(brief(GOAL="A shell reader."))
         self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
-        self.assertIn('brief-check: GOAL holds "shell"', result.stdout)
+        self.assertIn('GOAL holds "shell"', result.stdout)
         self.assertIn("no CLOSURE section", result.stdout)
+        self.assertIn("no TRUST section", result.stdout)
 
     def test_a_copy_whose_deployed_pin_differs_refuses_and_judges_nothing(self):
         self.zero_pin()
@@ -373,23 +502,19 @@ class InstalledBriefCheckTest(unittest.TestCase):
         interpreter planted there answered before the self-check (exit 0 on `GOAL\\nshell\\n` with a zeroed pin).
 
         The plant is what uv honours: a `.python-version` naming the path of a venv (a shell script fails uv's
-        interpreter probe) whose `sitecustomize` prints a clean decision line and exits 0 whenever the script run is
+        interpreter probe) whose `sitecustomize` exits 0 silently, the clean decision, whenever the script run is
         brief-check.py, beside a `pyproject.toml`, with PYTHONPATH and PYTHONSTARTUP naming planted files. The
         shebang runs `python3 -I` from PATH, so none of it is consulted.
         """
         text = brief(GOAL="A shell reader.")
         clean = self.run_skill_command(text)
         self.assertEqual((1, ""), (clean.returncode, clean.stderr), clean.stdout)
-        self.assertIn('brief-check: GOAL holds "shell"', clean.stdout)
+        self.assertIn('GOAL holds "shell"', clean.stdout)
         venv = self.root / "venv"
         subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True, capture_output=True)
         site = next(venv.glob("lib/python3*/site-packages"))
         (site / "sitecustomize.py").write_text(
-            "import os, sys\n"
-            'if sys.argv and sys.argv[0].endswith("brief-check.py"):\n'
-            '    sys.stdout.write("brief-check: no trigger term in GOAL, CHANGE or CONTEXT\\n")\n'
-            "    sys.stdout.flush()\n"
-            "    os._exit(0)\n"
+            'import os, sys\nif sys.argv and sys.argv[0].endswith("brief-check.py"):\n    os._exit(0)\n'
         )
         (self.checkout / ".python-version").write_text(f"{venv}/bin/python\n")
         (self.checkout / "pyproject.toml").write_text(
@@ -522,7 +647,7 @@ class InstalledBriefCheckTest(unittest.TestCase):
                 self.assertFalse((physical.parent.parent / "home").exists())
                 result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
                 self.assertEqual(
-                    (0, "brief-check: no trigger term in GOAL, CHANGE or CONTEXT\n", ""),
+                    (0, "", ""),
                     (result.returncode, result.stdout, result.stderr),
                 )
 

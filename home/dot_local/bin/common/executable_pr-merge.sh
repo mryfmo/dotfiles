@@ -32,7 +32,8 @@
 #   (`hcom-orchestration` SKILL step 4, U119 round 3), copied into the store; a verdict of the retired omp-run.sh
 #   audit route has no `## Findings` heading, is refused by name, and belongs to a merged unit, never to a merge
 #   head. Every P2 or P3 line needs a row of the store's `dispositions.tsv` (header `ts unit head_sha priority path
-#   line disposition reference`) with the same unit, full head sha, path and line whose `disposition` is `residual`
+#   line disposition reference`) with the same unit, full head sha, priority, path and line (the finding's whole
+#   identity, the key `audit-carry.py` joins by as well; U122 round 3) whose `disposition` is `residual`
 #   and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later head that
 #   fixed the finding and never satisfies the gate for the head it judges. The first finding without such a row is
 #   named in the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line of another shape or whose path
@@ -423,11 +424,11 @@ require_dispositions() {
     done <<< "${text}"
     for entry in ${pending[@]+"${pending[@]}"}; do
         pending_fields "${entry}"
-        why="no ${dispositions} row for unit ${row_unit}, head ${head}, ${path}:${lineno}"
+        why="no ${dispositions} row for unit ${row_unit}, head ${head}, ${priority} at ${path}:${lineno}"
         satisfied=0
         for line in ${rows[@]+"${rows[@]}"}; do
             IFS=$'\t' read -ra cols <<< "${line}"
-            [[ ${cols[1]} == "${row_unit}" && ${cols[2]} == "${head}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
+            [[ ${cols[1]} == "${row_unit}" && ${cols[2]} == "${head}" && ${cols[3]} == "${priority}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
                 continue
             if [[ ${cols[6]} == fixed ]]; then
                 why="the row at ${cols[0]} says fixed in ${cols[7]}, which is not this head; merge the head that fixed it"

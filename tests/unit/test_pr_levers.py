@@ -1411,7 +1411,9 @@ class PrMergeTest(PrLeverTestCase):
             self.merge(), "lists P3 at scripts/orchestrator/README.md:275 without a holding disposition"
         )
 
-    def test_a_disposition_row_holds_only_as_a_residual_of_a_units_row_for_this_unit_head_path_and_line(self):
+    def test_a_disposition_row_holds_only_as_a_residual_of_a_units_row_for_this_unit_head_priority_path_and_line(self):
+        """The key is the finding's whole identity (U122 round 3): a P3 row at the P2's path and line is another
+        finding's row and does not hold, as `audit-carry.py` joins by the same five columns."""
         self.verdict(P2_LINE)
         self.units("U71", "U72")
         for name, row, message in (
@@ -1429,6 +1431,7 @@ class PrMergeTest(PrLeverTestCase):
                 "without a holding disposition: no ",
             ),
             ("another line", disposition_row(line=237), "without a holding disposition: no "),
+            ("another priority", disposition_row(priority="P3"), "without a holding disposition: no "),
             (
                 "reference without a gate",
                 disposition_row(reference="unit=U72"),

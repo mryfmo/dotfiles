@@ -1154,7 +1154,8 @@ function update_codex_superpowers() {
 #   version its manifest declares and by its content (content_sha256), by make doctor's check after each
 #   update (judge_codex_copy) and at any time, never by the commit it came from. What a hook command may run is
 #   pinned by the codex.hooks.state trusted_hash pins (the hooks.json command strings); every file of the copy
-#   but the inert kinds (instructions, images, upstream CI) is pinned by content_sha256.
+#   but the inert ones (READMEs, docs/, i18n/, images, upstream CI: what Codex never loads) is pinned by
+#   content_sha256, instruction files (skills, AGENTS.md) included.
 #
 function ensure_codex_ponytail_marketplace() {
     local codex_config="${AGENT_CODEX_DIR%/}/config.toml"

@@ -1392,15 +1392,16 @@ assets:
       ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
       version, as the Claude copy of the same plugin is, and, where content_sha256 is recorded, by its
       content: the sha256 over one line per file, `<relative path> NUL <sha256 of its bytes> LF`, for
-      every regular file of the copy whose path is not inert (scripts/pin_records.py INERT: Markdown,
-      LICENSE*, images, .gitignore, .github/, i18n/ and docs/, which Codex reads as text or never
-      loads), sorted by the bytes of the path, the .git directory skipped; a symlink anywhere in the
-      copy is a finding. Everything else is pinned, .mcp.json (stdio MCP commands Codex enables),
-      the manifests, scripts/, commands/ and any file kind that appears tomorrow included; the
-      trusted_hash pins under codex.hooks.state cover the hook command strings only.
-      `check-agent-runtime.py --codex-content-sha256 <copy dir>` prints the value for a review bump.
-      Markdown is left out by the Claude-parity argument: instructions the Claude copy of the same
-      plugin runs unpinned today. A plugin with a ref comes from a
+      every regular file of the copy whose path is not inert (scripts/pin_records.py INERT: README*
+      at any depth, docs/, i18n/, LICENSE*, images, .gitignore and .github/), sorted by the bytes of
+      the path, the .git directory skipped; a symlink anywhere in the copy is a finding. Inert is
+      what the runtime never reads, a property of Codex's loading, not of the file type: instruction
+      files (skills/, AGENTS.md, any other Markdown) are injected into the model and are pinned with
+      .mcp.json (stdio MCP commands Codex enables), the manifests, scripts/, commands/ and any file
+      kind that appears tomorrow; the trusted_hash pins under codex.hooks.state cover the hook
+      command strings only. `check-agent-runtime.py --codex-content-sha256 <copy dir>` prints the
+      value for a review bump. The Claude copy of the same plugin is pinned by version only; that
+      asymmetry remains and is no reason to leave a file unpinned here. A plugin with a ref comes from a
       git marketplace: the ref pins the marketplace catalog snapshot only (`ref` under
       [marketplaces.<name>], rendered from here, and `codex plugin marketplace upgrade` keeps the
       catalog on it), while the upgrade installs the plugin copy from the source the catalog names
@@ -1419,9 +1420,9 @@ assets:
         pin: 5.3.3
         ref: 7801d061243d7b753bad0e0b3c057cd250b11755
         # content_sha256 of the tree at 7801d061 (tag v5.3.3, 2026-10-29), read on 2026-10-30 from a
-        # scratch clone with check-agent-runtime.py --codex-content-sha256; the same value at main
-        # 96608e07 (README, i18n READMEs and two logos, all inert).
-        content_sha256: 1a472de05a21fd2927d07b402891f685787319260f153d0f0b39bb20da113461
+        # scratch clone with check-agent-runtime.py --codex-content-sha256 (142 files pinned, 72 inert);
+        # the same value at main 96608e07 (README, i18n READMEs and two logos, all inert).
+        content_sha256: 6b410ab1d0f3b03cc3b03d046317aafc81111050083a612361151a6ce06eb591
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

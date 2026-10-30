@@ -673,13 +673,18 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
 
 
 # What a Codex plugin copy is pinned by (content_sha256 in assets.codex-plugins): every regular file of the copy
-# except the inert kinds below. Enumerating what Codex executes (the hook commands, then the hooks/ tree and the
+# except the inert ones below. Enumerating what Codex executes (the hook commands, then the hooks/ tree and the
 # manifest) left the next surface unpinned each time (.mcp.json declares stdio MCP commands Codex enables), so
-# the pin covers everything and names only what cannot run. Each entry is (glob over the relative POSIX path, why
-# it is inert); `*` and `?` stay within one path component, `**` spans components.
+# the pin covers everything and names only what Codex never loads. Inert is what the runtime never reads, a
+# property of Codex's loading, not of the file type: an instruction file (skills/**, AGENTS.md, any other
+# Markdown) is injected into the model's context, so it is pinned with the executable ones. Each entry is (glob
+# over the relative POSIX path, why Codex never loads it); `*` and `?` stay within one path component, `**`
+# spans components.
 INERT = (
-    ("*.md", "instructions and docs Codex reads as text, never runs; the Claude copy's exposure today"),
-    ("**/*.md", "instructions and docs Codex reads as text, never runs; the Claude copy's exposure today"),
+    ("README*", "project documentation"),
+    ("**/README*", "project documentation"),
+    ("docs/**", "project documentation"),
+    ("i18n/**", "translated project documentation"),
     ("LICENSE*", "the licence text"),
     ("**/*.svg", "an image"),
     ("**/*.png", "an image"),
@@ -688,9 +693,7 @@ INERT = (
     ("**/*.gif", "an image"),
     ("**/*.ico", "an image"),
     (".gitignore", "git's ignore list, read by git only"),
-    (".github/**", "upstream CI, not loaded by Codex"),
-    ("i18n/**", "translated READMEs"),
-    ("docs/**", "documentation"),
+    (".github/**", "upstream CI, read by GitHub only"),
 )
 # The clone's bookkeeping, not plugin content: Codex writes the copy with git, so it carries one. Skipped only as
 # the real directory its lstat shows; a symlink or a regular file named .git is judged like any other entry.

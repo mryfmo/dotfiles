@@ -1,13 +1,13 @@
 """A small Codex plugin copy for the tests that need one make doctor can judge by its content.
 
-tests/fixtures/ponytail is synthetic: a dozen tiny files covering the kinds a plugin copy holds, the code and
-configuration the content pin covers (a hook, .mcp.json, the manifests, a script) and the inert kinds it leaves
-out (Markdown, an image, the translated README, upstream CI, the licence). hooks/claude-codex-hooks.json alone is
-upstream's file verbatim, because the codex.hooks.state trusted_hash pins are recorded from it. No recorded pin
-hashes this tree: the ponytail content_sha256 in scripts/plugin-pins.json is computed from a scratch clone of
-upstream at the pinned ref, and a test that needs a copy at that pin records reviewed_content_sha256 of the copy it
-builds. reviewed_content_sha256 is this module's own reading of the pin's definition, independent of
-scripts/pin_records.py.
+tests/fixtures/ponytail is synthetic: a dozen tiny files covering the kinds a plugin copy holds, the code,
+configuration and instructions the content pin covers (a hook, .mcp.json, the manifests, a script, a skill) and
+the inert files it leaves out (the README, a document under docs/, an image, the translated README, upstream CI,
+the licence). hooks/claude-codex-hooks.json alone is upstream's file verbatim, because the codex.hooks.state
+trusted_hash pins are recorded from it. No recorded pin hashes this tree: the ponytail content_sha256 in
+scripts/plugin-pins.json is computed from a scratch clone of upstream at the pinned ref, and a test that needs a
+copy at that pin records reviewed_content_sha256 of the copy it builds. reviewed_content_sha256 is this module's
+own reading of the pin's definition, independent of scripts/pin_records.py.
 """
 
 from __future__ import annotations
@@ -37,11 +37,12 @@ def install_ponytail_copy(copy: Path, version: str | None = None, change: dict[s
 
 
 def inert(relative: str) -> bool:
-    """The inert kinds, written out plainly: Markdown anywhere, a top-level LICENSE*, an image anywhere, the top-level
-    .gitignore, and everything under .github/, i18n/ and docs/."""
+    """The files Codex never loads, written out plainly: a README* at any depth, everything under docs/, i18n/ and
+    .github/, a top-level LICENSE*, an image anywhere and the top-level .gitignore. Markdown as such is not inert:
+    a skill, an AGENTS.md or any other instruction file is pinned."""
     name = relative.rsplit("/", 1)[-1]
     return (
-        name.endswith(".md")
+        name.startswith("README")
         or ("/" not in relative and name.startswith("LICENSE"))
         or name.endswith(IMAGES)
         or relative == ".gitignore"

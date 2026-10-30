@@ -1,3 +1,3 @@
 # Ponytail fixture
 
-A synthetic plugin copy for the tests; Markdown is inert under the content pin.
+A synthetic plugin copy for the tests; the README is documentation Codex never loads, inert under the content pin.

@@ -98,11 +98,18 @@ class PinRecordsTest(unittest.TestCase):
         self.assertIsNone(records.load_plugin_pins(self.write("pins.json", good)).claude["crit@crit"].content_sha256)
 
     def test_inert_kinds_of_a_codex_copy(self) -> None:
-        # The content pin leaves out only what Codex never runs; a glob's `*` stays within one path component and
-        # `**` spans components, so LICENSE* and .gitignore are inert at the top only and .md anywhere.
+        # The content pin leaves out only what Codex never loads, a property of Codex's loading, not of the file
+        # type: a README at any depth, docs/, i18n/, the licence, images, .gitignore and upstream CI. Instruction
+        # files (a skill, AGENTS.md, any other Markdown) are injected into the model and are pinned. A glob's `*`
+        # stays within one path component and `**` spans components, so LICENSE* and .gitignore are inert at the
+        # top only.
         for relative, expected in (
             ("README.md", True),
-            ("skills/ponytail/SKILL.md", True),
+            ("README", True),
+            ("skills/x/README.md", True),
+            ("docs/guide.md", True),
+            ("docs/x.js", True),
+            ("i18n/README.ja.md", True),
             ("LICENSE", True),
             ("LICENSE.txt", True),
             ("assets/logo.svg", True),
@@ -110,8 +117,13 @@ class PinRecordsTest(unittest.TestCase):
             ("logo.png", True),
             (".gitignore", True),
             (".github/workflows/test.yml", True),
-            ("i18n/README.ja.md", True),
-            ("docs/x.js", True),
+            ("skills/x/SKILL.md", False),
+            ("skills/x/reference.md", False),
+            ("skills/x/scripts/run.sh", False),
+            ("AGENTS.md", False),
+            ("after-install.md", False),
+            ("INSTALL.md", False),
+            ("commands/x.md", False),
             (".mcp.json", False),
             (".codex-plugin/plugin.json", False),
             ("hooks/x.js", False),
@@ -120,7 +132,7 @@ class PinRecordsTest(unittest.TestCase):
             ("x/.gitignore", False),
             (".github", False),
             ("docs", False),
-            ("README.md.js", False),
+            ("readme.md", False),
             ("logo.svg.sh", False),
             (".cursor/rules/ponytail.mdc", False),
         ):

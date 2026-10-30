@@ -1,3 +1,3 @@
 # Ponytail fixture (ja)
 
-Translated README: inert under the content pin.
+Translated README, documentation Codex never loads: inert under the content pin.

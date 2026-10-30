@@ -873,10 +873,15 @@ LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 
 
 def ledger_row(
-    head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z", evidence=None
+    head,
+    verdict="correct (fresh-context audit, findings=0)",
+    pr=7,
+    ts="2026-10-25T09:00:00Z",
+    evidence=None,
+    unit="U71",
 ):
     evidence = evidence or f"https://github.com/acme/widgets/pull/{pr}"
-    return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\t{evidence}\n"
+    return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\tcodex exec\t{evidence}\n"
 
 
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
@@ -1219,6 +1224,140 @@ class PrMergeTest(PrLeverTestCase):
                 self.assertNotIn(
                     ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
                 )
+
+    def test_a_fix_unit_s_row_names_its_own_verdict_file(self):
+        """Round 2 (P2, standing order 24): a fix unit `U71b` writes `Program-Unit: regime-cutover/U71` in its body
+        and keeps `U71b` in its ledger rows, so the verdict file and the disposition rows the gate reads are the row's
+        unit's (`verdicts/U71b-<sha8>.md`), for a `correct` row and for the earlier head of a `carried` row alike
+        (30c05715 opened `U71-<sha8>.md` and refused a correct carry). A row of another unit than the body's or a
+        `U<n>[a-z]` fix unit of it is refused naming both units."""
+        digest = "d" * 64
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.ledger(ledger_row(SHA_A, unit="U71b"))
+        self.verdict(P2_LINE, unit="U71b")
+        self.units("U71", "U72")
+        self.dispositions(disposition_row(unit="U71b"))
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the disposition rows are the row's unit's as well: a U71 row does not hold for the U71b verdict
+        self.dispositions(disposition_row(unit="U71"))
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(),
+            f"verdicts/U71b-{SHA_A[:8]}.md lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding "
+            f"disposition: no {self.records}/dispositions.tsv row for unit U71b, head {SHA_A}",
+        )
+        # carried from a U71b head: the earlier row's unit names the verdict file the carried head rests on
+        self.ledger(
+            ledger_row(SHA_B, unit="U71b"),
+            ledger_row(
+                SHA_A, "carried", unit="U71b", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"
+            ),
+        )
+        (self.records / f"verdicts/U71b-{SHA_A[:8]}.md").unlink()
+        self.verdict(head=SHA_B, unit="U71b")
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertFalse((self.records / f"verdicts/U71-{SHA_B[:8]}.md").exists(), "no file of the body's unit")
+        for name, rows, message in (
+            (
+                "a correct row of another unit",
+                (ledger_row(SHA_A, unit="U72"),),
+                f"at {SHA_A} (2026-10-25T09:00:00Z) is unit U72, not the body's unit U71 or a fix unit of it",
+            ),
+            ("a fix unit of another unit", (ledger_row(SHA_A, unit="U7b"),), "is unit U7b, not the body's unit U71"),
+            (
+                "a carried row resting on another unit's head",
+                (
+                    ledger_row(SHA_B, unit="U72"),
+                    ledger_row(
+                        SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"
+                    ),
+                ),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:00:00Z) is unit U72, not the body's unit U71",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.verdict(unit="U72")
+                self.verdict(unit="U7b")
+                self.verdict(head=SHA_B, unit="U72")
+                self.github()
+                self.assert_refused(self.merge(), message)
+
+    def test_the_merge_gate_and_audit_carry_read_the_findings_grammar_alike(self):
+        """Round 2 (P2): the two readers of a verdict file's leading `## Findings` section, this lever (bash,
+        `findings_grammar`) and `scripts/orchestrator/audit-carry.py` (Python, `FINDINGS_GRAMMAR`), accept and refuse
+        the same sections: `- none` alone or finding lines alone are read; an empty section, `- none` beside a
+        finding, `- none` twice, a line of another shape and a path with a colon or whitespace are malformed verdicts
+        for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings)."""
+        carry = LEVERS / "audit-carry.py"
+        self.git("switch", "-q", "-c", "feat")
+        (self.repo / "a.txt").write_text("one\n")
+        self.git("add", "a.txt")
+        self.git("commit", "-q", "-m", "earlier")
+        earlier = self.git("rev-parse", "HEAD")
+        (self.repo / "a.txt").write_text("two\n")
+        self.git("commit", "-q", "-a", "-m", "head")
+        head = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        self.units("U71", "U72")
+        self.dispositions(disposition_row())
+        merge_file = self.records / f"verdicts/U71-{SHA_A[:8]}.md"
+        carry_file = self.records / f"verdicts/U71-{earlier[:8]}.md"
+        tail = "\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nVerdict: correct\n"
+        for name, section, accepted in (
+            ("- none", "- none", True),
+            ("one finding line", P2_LINE, True),
+            ("an empty section", "", False),
+            ("- none beside a finding", f"- none\n{P2_LINE}", False),
+            ("- none twice", "- none\n- none", False),
+            ("a line of another shape", "- P2 (high) a.txt: no line", False),
+            ("a path with a colon", "- P2 (high) file:1: real.sh:9: boom", False),
+            ("a path with whitespace", "- P2 (high) a b.txt:1: boom", False),
+        ):
+            with self.subTest(name):
+                text = f"## Findings\n\n{section}".rstrip("\n") + tail
+                merge_file.write_text(text)
+                carry_file.write_text(text)
+                self.ledger(ledger_row(SHA_A))
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                merged = self.merge()
+                self.ledger(ledger_row(earlier))
+                rendered = subprocess.run(
+                    [
+                        sys.executable,
+                        "-I",
+                        str(carry),
+                        str(self.records),
+                        "U71",
+                        "7",
+                        head,
+                        "--render",
+                        "--repo",
+                        str(self.repo),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    env=self.env,
+                    check=False,
+                    timeout=60,
+                )
+                if accepted:
+                    self.assertEqual((0, 0), (merged.returncode, rendered.returncode), merged.stderr + rendered.stderr)
+                    self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+                else:
+                    self.assert_refused(merged, f"{merge_file}:")
+                    self.assertEqual((2, ""), (rendered.returncode, rendered.stdout), rendered.stderr)
+                    self.assertIn(f"audit-carry: {carry_file}", rendered.stderr)
 
     def test_the_lever_reads_no_local_git_objects(self):
         # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.

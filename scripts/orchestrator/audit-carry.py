@@ -8,31 +8,38 @@ nothing is read from a pull request.
 The data. The unit's earlier audited head is the newest `ledger.tsv` row (ts order) for the pull request whose unit is
 the body's unit or a fix unit of it (`U<n>b`, standing order 24), whose verdict starts with `correct` or `incorrect`
 and whose head is not the current one; a `carried`, `blocked` or `-` row is no audit. Its table is every finding line
-of that head's verdict file (`verdicts/<unit>-<sha8>.md`, the leading `## Findings` section in the reader's line form
-`- P<n> (<confidence>) <path>:<line>: <rationale>` or `- none`) joined with its `dispositions.tsv` rows (`ts unit
-head_sha priority path line disposition reference`; one table row per disposition row, `none` and `-` when the finding
-has none), plus every line range the diff between the two heads touches (`git diff --unified=0 <earlier>..<head>`,
-the new side of each hunk as `path: start-end`; `0-0` is a deleted file). The rows are modelled as frozen dataclasses
-(`CarriedFinding`, `ChangedRange`) and `CarriedTable.render()` writes the one fenced block the audit prompt carries.
+of that head's verdict file (`verdicts/<row unit>-<sha8>.md`, named by the row's `unit` column, never the body's: a
+`U7b` row's verdict is `U7b-<sha8>.md`), the leading `## Findings` section read under FINDINGS_GRAMMAR below (one
+`- none` line, or one or more `- P<n> (<confidence>) <path>:<line>: <rationale>` lines; an empty section, `- none`
+beside a finding, or a line of another shape is a malformed verdict, as pr-merge.sh reads it), joined with its
+`dispositions.tsv` rows (`ts unit head_sha priority path line disposition reference`; one table row per disposition
+row, `none` and `-` when the finding has none), plus every line range the diff between the two heads touches (`git diff
+--unified=0 <earlier>..<head>`, the new side of each hunk as `path: start-end`; `0-0` is a deleted file; a path git
+quotes, one holding a byte outside ASCII, a quote, a backslash or a control character, is read back to its name). The
+rows are modelled as frozen dataclasses (`CarriedFinding`, `ChangedRange`) and `CarriedTable.render()` writes the one
+fenced block the audit prompt carries.
 
 `audit-carry.py <store> U<n> <pr> <head> --render [--repo <path>]` prints that block and exits 0; exits 1 with one
 stderr line when the unit has no earlier audited head (the prompt then carries no block); exits 2 naming the file and
 line when the store cannot be read as data (a missing or unreadable ledger, verdict file or `dispositions.tsv`, a
-header that is not the store's, a row with another column count or an empty column, a disposition outside `residual`
-and `fixed`, a Findings line of another shape, a ts outside `YYYY-MM-DDThh:mm:ssZ`) or git cannot answer (standing
-order 21: a failed read is never "no earlier findings"). `pr-audit.sh <pr> --records <store>` runs this form in the
-run's own repository and refuses the audit on exit 2.
+header that is not the store's, a row with another column count or an empty required column (`ts unit pr head_sha
+verdict` of the ledger, every column of a disposition row), a disposition outside `residual` and `fixed`, a Findings
+section outside the grammar, a ts outside `YYYY-MM-DDThh:mm:ssZ`) or git cannot answer (standing order 21: a failed
+read is never "no earlier findings"). `pr-audit.sh <pr> --records <store>` runs this form in the run's own repository
+and refuses the audit on exit 2.
 
-`audit-carry.py <store> U<n> <pr> <head> [--repo <path>] [--base <ref>]` decides whether the head is carried: the
-sha256 of `git diff --no-color <merge-base>..<sha> -- .` is computed for the earlier audited head and for this head,
-each against its own merge base with `--base` (default `refs/remotes/origin/main`), in the checkout `--repo` (default
-the current directory). When the two digests are equal and the earlier head's row is `correct`, it prints
-`carried <earlier> <head> <digest>` and exits 0: the coordinator writes that line as the evidence of a `ledger.tsv` row
-whose verdict is `carried`, which `pr-merge.sh` accepts in place of `correct` only while the earlier head's `correct`
-row and verdict file stand, and CI must still be green on the new head. Otherwise it prints why on stdout (no earlier
-audited head, an earlier head whose newest audit row is not `correct`, or the first path at which the two diffs
-differ) and exits 1, and a head that is audited afresh. A git failure or a store that cannot be read as data is exit 2
-on stderr, never "equal".
+`audit-carry.py <store> U<n> <pr> <head> [--repo <path>] [--base <ref>]` decides whether the head is carried. Every
+git command runs at the root of the checkout `--repo` names (default the current directory), resolved once with
+`git rev-parse --show-toplevel` and read as a status (round 2: a run from a subdirectory limited `git diff -- .` to
+that subtree and carried a head whose full diff differed), and the digest is the sha256 of the whole tree's
+`git diff --no-color <merge-base>..<sha>`, computed for the earlier audited head and for this head, each against its
+own merge base with `--base` (default `refs/remotes/origin/main`). When the two digests are equal and the earlier
+head's row is `correct`, it prints `carried <earlier> <head> <digest>` and exits 0: the coordinator writes that line
+as the evidence of a `ledger.tsv` row whose verdict is `carried`, which `pr-merge.sh` accepts in place of `correct`
+only while the earlier head's `correct` row and verdict file stand, and CI must still be green on the new head.
+Otherwise it prints why on stdout (no earlier audited head, an earlier head whose newest audit row is not `correct`,
+or the first path at which the two diffs differ) and exits 1, and a head that is audited afresh. A git failure or a
+store that cannot be read as data is exit 2 on stderr, never "equal".
 """
 
 from __future__ import annotations
@@ -46,6 +53,7 @@ import sys
 from dataclasses import dataclass
 
 LEDGER_HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
+LEDGER_REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
 DISPOSITIONS_HEADER = ("ts", "unit", "head_sha", "priority", "path", "line", "disposition", "reference")
 DISPOSITIONS = frozenset(("residual", "fixed"))
 NO_ROW = "none"  # the disposition of a finding without a dispositions.tsv row; its reference is "-"
@@ -63,11 +71,29 @@ SHA = re.compile(r"^[0-9a-f]{40}$")
 OBJECT_ID = re.compile(r"^[0-9a-f]{40,64}$")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
-# A `## Findings` list line as pr-audit.sh's reader writes it, read as pr-merge.sh reads it (U119 round 4): the path
-# is the text before the line's last `:<line>: ` and holds no colon and no whitespace.
+# The grammar of a verdict file's leading `## Findings` section, stated once here and once in pr-merge.sh
+# (findings_grammar), which reads the same files: `tests.unit.test_pr_levers` runs both readers over one fixture set.
+# A line as pr-audit.sh's reader writes it, read as pr-merge.sh reads it (U119 round 4): the path is the text before
+# the line's last `:<line>: ` and holds no colon and no whitespace.
+FINDINGS_GRAMMAR = (
+    "the leading '## Findings' section is one '- none' line, or one or more lines "
+    "'- P<n> (<confidence>) <path>:<line>: <rationale>' with a path free of colons and whitespace"
+)
 FINDING = re.compile(r"^- (P[0-3]) \((high|medium|low)\) (.+):([1-9][0-9]*): ")
 PATH = re.compile(r"^[^\s:]+$")
-HUNK = re.compile(r"^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
+HUNK = re.compile(rb"^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
+# git's C-style quoting of a path in a diff header (quote_c_style): the named escapes and `\ooo` for every other byte.
+C_ESCAPES = {
+    b"a": b"\a",
+    b"b": b"\b",
+    b"f": b"\f",
+    b"n": b"\n",
+    b"r": b"\r",
+    b"t": b"\t",
+    b"v": b"\v",
+    b"\\": b"\\",
+    b'"': b'"',
+}
 
 
 class Malformed(Exception):
@@ -200,9 +226,10 @@ def previous_audited_head(ledger_name, rows, unit, pr, head):
 
 
 def findings_of(verdict_file):
-    """The (priority, path, line) of every line of the file's leading `## Findings` section; `- none` lists none."""
+    """The (priority, path, line) of every line of the file's leading `## Findings` section under FINDINGS_GRAMMAR:
+    `- none` lists none, and a section that is neither `- none` alone nor finding lines alone is malformed."""
     seen = section = False
-    listed = []
+    listed, nones = [], 0
     for number, line in enumerate(read_text(verdict_file).split("\n"), 1):
         line = line.rstrip("\r")
         if not line:
@@ -216,16 +243,22 @@ def findings_of(verdict_file):
             section = False
             continue
         if line == "- none":
+            nones += 1
             continue
         match = FINDING.match(line)
         if match is None or not PATH.match(match.group(3)):
-            raise Malformed(
-                f"{verdict_file}:{number}: not a Findings line '- P<n> (<confidence>) <path>:<line>: <rationale>' "
-                f"with a path free of colons and whitespace: {line}"
-            )
+            raise Malformed(f"{verdict_file}:{number}: not a Findings line; {FINDINGS_GRAMMAR}: {line}")
         listed.append((match.group(1), match.group(3), int(match.group(4))))
     if not seen:
         raise Malformed(f"{verdict_file}: no '## Findings' section; the reader of pr-audit.sh writes one")
+    if not listed and nones == 0:
+        raise Malformed(f"{verdict_file}: the Findings section lists nothing; {FINDINGS_GRAMMAR}")
+    if listed and nones:
+        raise Malformed(
+            f"{verdict_file}: the Findings section lists '- none' beside a finding line; {FINDINGS_GRAMMAR}"
+        )
+    if nones > 1:
+        raise Malformed(f"{verdict_file}: the Findings section lists '- none' more than once; {FINDINGS_GRAMMAR}")
     return listed
 
 
@@ -267,24 +300,65 @@ def git(repo, *args):
     return out.stdout
 
 
-def changed_ranges(repo, previous, head):
-    """Every hunk of `git diff --unified=0 <previous>..<head>` as a ChangedRange of the new side, in diff order."""
-    text = git(repo, "diff", "--no-color", "--no-ext-diff", "--unified=0", f"{previous}..{head}").decode(
-        "utf-8", errors="replace"
-    )
-    ranges, path = [], None
-    for line in text.split("\n"):
-        if line.startswith("diff --git "):
-            path = None
-        elif line.startswith("--- a/"):
-            path = line[6:].split("\t")[0]
-        elif line.startswith("+++ b/"):
-            path = line[6:].split("\t")[0]
-        elif (hunk := HUNK.match(line)) and path is not None:
-            start = int(hunk.group(1))
-            count = 1 if hunk.group(2) is None else int(hunk.group(2))
-            ranges.append(ChangedRange(path, start, start + count - 1 if count else start))
-    return tuple(ranges)
+def repo_root(repo):
+    """The root of the checkout `repo` is in, read once as a status: every later git command runs there, so a run
+    from a subdirectory diffs the whole tree (round 2)."""
+    root = git(repo, "rev-parse", "--show-toplevel").decode("utf-8", errors="replace").rstrip("\n")
+    if not root or not os.path.isdir(root):
+        raise Malformed(f"git rev-parse --show-toplevel in {repo} named no directory: {root!r}")
+    return root
+
+
+def unquote(name):
+    """A path of a diff header as bytes: git C-quotes a name holding a quote, a backslash or a control character
+    (`"a\\"b.txt"`, octal for the bytes) whatever core.quotePath says, and a name holding a space gets a tab after it;
+    the quoted form is read back to the bytes it names."""
+    if name.endswith(b"\t"):
+        name = name[:-1]
+    if not (len(name) >= 2 and name.startswith(b'"') and name.endswith(b'"')):
+        return name
+    out, body, i = bytearray(), name[1:-1], 0
+    while i < len(body):
+        if body[i : i + 1] != b"\\":
+            out += body[i : i + 1]
+            i += 1
+            continue
+        escaped = body[i + 1 : i + 2]
+        if escaped in C_ESCAPES:
+            out += C_ESCAPES[escaped]
+            i += 2
+            continue
+        octal = body[i + 1 : i + 4]
+        if len(octal) == 3 and all(48 <= byte <= 55 for byte in octal):
+            out.append(int(octal, 8))
+            i += 4
+            continue
+        raise Malformed(f"git diff: a quoted path holds an escape the reader does not know: {name!r}")
+    return bytes(out)
+
+
+def header_path(lines):
+    """The path of one `diff --git` section as git names it, from its `+++` line (the `---` line of a deleted file)
+    before the first hunk, unquoted and without the pinned `a/` or `b/` prefix; a section with neither line (a mode
+    change or a binary file) is named from the `b/` side of its header."""
+    old = new = None
+    for line in lines[1:]:
+        if line.startswith(b"@@"):
+            break
+        if line.startswith(b"--- ") and line[4:] != b"/dev/null":
+            old = line[4:]
+        elif line.startswith(b"+++ ") and line[4:] != b"/dev/null":
+            new = line[4:]
+    name = new if new is not None else old
+    if name is None:
+        header = lines[0]
+        if header.endswith(b'"') and b' "b/' in header:
+            name = header[header.rfind(b' "b/') + 1 :]
+        elif b" b/" in header:
+            name = header[header.rfind(b" b/") + 1 :]
+        else:
+            return header.decode("utf-8", errors="replace")
+    return unquote(name)[2:].decode("utf-8", errors="replace")
 
 
 def diff_sections(diff):
@@ -295,30 +369,43 @@ def diff_sections(diff):
         if line.startswith(b"diff --git ") or not groups:
             groups.append([])
         groups[-1].append(line)
-    sections = []
-    for lines in groups:
-        if lines == [b""]:
-            continue
-        path = None
-        for line in lines:
-            if line.startswith(b"+++ b/"):
-                path = line[6:].split(b"\t")[0]
-                break
-            if line.startswith(b"--- a/") and path is None:
-                path = line[6:].split(b"\t")[0]
-        if path is None:
-            header = lines[0]
-            path = header[header.rfind(b" b/") + 3 :] if b" b/" in header else header
-        sections.append((path.decode("utf-8", errors="replace"), b"\n".join(lines).rstrip(b"\n")))
-    return sections
+    return [(header_path(lines), b"\n".join(lines).rstrip(b"\n")) for lines in groups if lines != [b""]]
 
 
-def diff_digest(repo, base, sha):
-    """The sha256 of the diff of `sha` against its merge base with `base`, and the diff's per-path sections."""
-    merge_base = git(repo, "merge-base", base, sha).decode(errors="replace").strip()
+def changed_ranges(root, previous, head):
+    """Every hunk of `git diff --unified=0 <previous>..<head>` as a ChangedRange of the new side, in diff order. The
+    header prefixes are pinned and core.quotePath is off, so a path outside ASCII is named as it is; what git still
+    quotes is unquoted by header_path."""
+    diff = git(
+        root,
+        "-c",
+        "core.quotePath=false",
+        "diff",
+        "--no-color",
+        "--no-ext-diff",
+        "--src-prefix=a/",
+        "--dst-prefix=b/",
+        "--unified=0",
+        f"{previous}..{head}",
+    )
+    ranges = []
+    for path, section in diff_sections(diff):
+        for line in section.split(b"\n"):
+            if hunk := HUNK.match(line):
+                start = int(hunk.group(1))
+                count = 1 if hunk.group(2) is None else int(hunk.group(2))
+                ranges.append(ChangedRange(path, start, start + count - 1 if count else start))
+    return tuple(ranges)
+
+
+def diff_digest(root, base, sha):
+    """The sha256 of the whole tree's diff of `sha` against its merge base with `base`, and its per-path sections."""
+    merge_base = git(root, "merge-base", base, sha).decode(errors="replace").strip()
     if not OBJECT_ID.match(merge_base):
         raise Malformed(f"git merge-base {base} {sha} named no object: {merge_base!r}")
-    diff = git(repo, "diff", "--no-color", "--no-ext-diff", f"{merge_base}..{sha}", "--", ".")
+    diff = git(
+        root, "diff", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", f"{merge_base}..{sha}"
+    )
     return hashlib.sha256(diff).hexdigest(), diff_sections(diff)
 
 
@@ -330,14 +417,14 @@ def first_difference(head_sections, previous_sections):
             return path
     current = dict(head_sections)
     for path, _section in previous_sections:
-        if path not in current:
+        if path not in current:  # lint-comparisons: allow a diff header path, matched as the text git wrote
             return path
     return "(no file section: the diffs differ outside every `diff --git` section)"
 
 
 def load_previous(store, unit, pr, head):
     ledger = os.path.join(store, "ledger.tsv")
-    rows = parse_rows(ledger, read_text(ledger), LEDGER_HEADER)
+    rows = parse_rows(ledger, read_text(ledger), LEDGER_HEADER, required=LEDGER_REQUIRED)
     return previous_audited_head(ledger, rows, unit, pr, head)
 
 
@@ -348,7 +435,9 @@ def main(argv=None):
     parser.add_argument("pr", help="the pull request's decimal number")
     parser.add_argument("head", help="the current head, 40 hex")
     parser.add_argument("--render", action="store_true", help="print the prompt block instead of deciding the carry")
-    parser.add_argument("--repo", default=".", help="the repository git reads (default: the current directory)")
+    parser.add_argument(
+        "--repo", default=".", help="a directory of the checkout git reads, at its root or below (default: the cwd)"
+    )
     parser.add_argument("--base", default="refs/remotes/origin/main", help="the base ref of each merge base")
     args = parser.parse_args(argv)
     if not UNIT.match(args.unit):
@@ -367,12 +456,13 @@ def main(argv=None):
                 file=sys.stderr if args.render else sys.stdout,
             )
             return 1
+        root = repo_root(args.repo)
         if args.render:
             table = CarriedTable(
                 previous,
                 args.head,
                 carried_findings(store, previous),
-                changed_ranges(args.repo, previous.head, args.head),
+                changed_ranges(root, previous.head, args.head),
             )
             print(table.render())
             return 0
@@ -382,8 +472,8 @@ def main(argv=None):
                 f"audit row, {previous.ts}, is {previous.verdict})"
             )
             return 1
-        head_digest, head_sections = diff_digest(args.repo, args.base, args.head)
-        previous_digest, previous_sections = diff_digest(args.repo, args.base, previous.head)
+        head_digest, head_sections = diff_digest(root, args.base, args.head)
+        previous_digest, previous_sections = diff_digest(root, args.base, previous.head)
     except Malformed as error:
         print(f"audit-carry: {error}", file=sys.stderr)
         return 2

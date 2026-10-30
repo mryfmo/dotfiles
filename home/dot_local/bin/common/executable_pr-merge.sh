@@ -21,9 +21,10 @@
 #   are this head's. That sha is always the current head: there is no silent carry-over (U71 audit round 10), so a
 #   head that `pr-update-branch.sh` moved gets a fresh audit or a `carried` row the coordinator wrote from the digest
 #   lever's output. The row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a
-#   `correct` verdict may carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of
-#   the body's unit and the audited head (absent, a symlink or unreadable is a refusal: a merge needs the verdict
-#   file, not only the row)
+#   `correct` verdict may carry P2 and P3 findings, so the lever also opens the store's `verdicts/<unit>-<sha8>.md` of
+#   the audited head, `<unit>` the ledger row's `unit` column (round 2: the body's unit or a `U<n>b` fix unit of it,
+#   standing order 24; a `U71b` row's verdict is `U71b-<sha8>.md`, and a row of any other unit is refused) (absent,
+#   a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
 #   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
 #   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
 #   (`- P<n> (<confidence>) <path>:<line>: <rationale>`, the path the text before the line's last `:<line>: `, which
@@ -162,6 +163,11 @@ program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
 # the line, never read as a shorter path and an earlier line that another location's row could satisfy.
 finding_re='^- (P[0-3]) \((high|medium|low)\) (.+):([1-9][0-9]*): '
 path_re='^[^[:space:]:]+$'
+# The grammar of the leading `## Findings` section, stated once here and once in audit-carry.py (FINDINGS_GRAMMAR),
+# which reads the same files: one `- none` line, or one or more finding_re lines whose path matches path_re; an empty
+# section, `- none` beside a finding line, or `- none` twice is a malformed verdict (round 2). The two readers are
+# run over one fixture set by tests.unit.test_pr_levers.
+findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) <path>:<line>: <rationale>' with a path free of colons and whitespace"
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -193,7 +199,7 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Print `<ts>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
+# @description Print `<ts>\t<unit>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
 #   when no row names that pair. A ledger whose first line is not the header is a refusal; a failed read exits 1.
 #   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
 #   so two different all-digit shas would otherwise match (U71 audit round 1).
@@ -204,7 +210,7 @@ ledger_verdict() {
     out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
         { sub(/\r$/, "") }
         NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 1; exit 3 } next }
-        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $5 "\t" $7 }
+        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $2 "\t" $5 "\t" $7 }
         END { if (!bad && found != "") print found }
     ' "${ledger}") || status=$?
     case ${status} in
@@ -217,19 +223,27 @@ ledger_verdict() {
 # @description Refuse unless the newest ledger row for pull request ${pr} at sha $1 is `correct`, or is `carried`
 #   (U122, standing order 38) with an evidence that names this head and an earlier head whose own newest row is
 #   `correct`. One gate function decides both: a `carried` row whose earlier head has no `correct` row refuses, and
-#   the head whose verdict file and dispositions the merge then reads is the earlier one.
+#   the head whose verdict file and dispositions the merge then reads is the earlier one. The row's `unit` column
+#   must be the body's unit or a fix unit of it (`U<n>[a-z]`, standing order 24), and it names the verdict file and
+#   the disposition rows the merge reads (round 2: the body's unit opened `U71-<sha8>.md` for a `U71b` row).
 # @arg $1 string The 40-hex sha the verdict must name.
 # @set verdict_ts The row's ts.
 # @set audited_head The head whose verdict file and dispositions hold for $1: $1 itself, or the carried row's earlier head.
+# @set audited_unit The unit of the row that judged audited_head, which names its verdict file.
 require_verdict_row() {
-    local row rest verdict evidence earlier named earlier_row earlier_verdict
+    local row rest verdict evidence earlier named earlier_row earlier_verdict own_unit_re
+    own_unit_re="^${unit}[a-z]?\$"
     row=$(ledger_verdict "${pr}" "$1") || exit $?
     [[ -n ${row} ]] || refuse "${ledger} has no row for pull request ${pr} at head ${1} (a short sha never matches)"
     verdict_ts=${row%%$'\t'*}
     rest=${row#*$'\t'}
+    audited_unit=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
     verdict=${rest%%$'\t'*}
     evidence=${rest#*$'\t'}
     audited_head=$1
+    [[ ${audited_unit} =~ ${own_unit_re} ]] ||
+        refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is unit ${audited_unit}, not the body's unit ${unit} or a fix unit of it (U<n>[a-z]); the row's unit names the verdict file"
     if [[ ${verdict} =~ ${correct_re} ]]; then
         return 0
     fi
@@ -246,10 +260,14 @@ require_verdict_row() {
     earlier_row=$(ledger_verdict "${pr}" "${earlier}") || exit $?
     [[ -n ${earlier_row} ]] ||
         refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, which has no row for pull request ${pr}; a carried head needs the earlier head's correct row"
-    earlier_verdict=${earlier_row#*$'\t'}
-    earlier_verdict=${earlier_verdict%%$'\t'*}
+    rest=${earlier_row#*$'\t'}
+    audited_unit=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
+    earlier_verdict=${rest%%$'\t'*}
     [[ ${earlier_verdict} =~ ${correct_re} ]] ||
         refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, whose newest row (${earlier_row%%$'\t'*}) is not correct: ${earlier_verdict}"
+    [[ ${audited_unit} =~ ${own_unit_re} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, whose newest row (${earlier_row%%$'\t'*}) is unit ${audited_unit}, not the body's unit ${unit} or a fix unit of it (U<n>[a-z]); the row's unit names the verdict file"
     audited_head=${earlier}
 }
 
@@ -332,14 +350,15 @@ pending_fields() {
 #   reads is a local assigned here before its first read, the `units.tsv` cache of unit_row_exists included, so a
 #   caller's environment holds nothing the gate takes for its own data (U119 round 6).
 # @arg $1 string The 40-hex head the ledger row named.
+# @arg $2 string The unit of that ledger row, which names the verdict file and the disposition rows (round 2).
 require_dispositions() {
-    local head=$1 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
-    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit
+    local head=$1 row_unit=$2 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
+    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit none_seen='' listed=''
     local units_rows='' units_read=''
     verdicts_dir=${store}/verdicts
     [[ ! -L ${verdicts_dir} && -d ${verdicts_dir} && -O ${verdicts_dir} ]] ||
         refuse "${verdicts_dir} is not a directory of this user (a symlink or missing); the verdict file is read from the checkout's own store"
-    verdict_file=${verdicts_dir}/${unit}-${head:0:8}.md
+    verdict_file=${verdicts_dir}/${row_unit}-${head:0:8}.md
     [[ ! -L ${verdict_file} && -f ${verdict_file} && -O ${verdict_file} && -r ${verdict_file} ]] ||
         refuse "${verdict_file} is not a readable regular file of this user; a merge needs the verdict file of the head, not only its ledger row"
     text=$(cat -- "${verdict_file}") || fail "cannot read ${verdict_file}"
@@ -365,9 +384,14 @@ require_dispositions() {
         refuse "${verdict_file} has no '## Findings' section; the gate reads the verdict.md pr-audit.sh writes (a '## Findings' list of '- P<n> (<confidence>) <path>:<line>: <rationale>' or '- none', then 'Blocking: <n>' and the last line 'Verdict: <value>'); a verdict of the retired omp-run.sh audit route has no such section and no merge head has one"
     [[ ${last} == 'Verdict: correct' ]] ||
         refuse "the last line of ${verdict_file} is not 'Verdict: correct' although the ledger row for ${head} is: ${last}"
-    ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing (the reader writes '- none')"
+    ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing; ${findings_grammar}"
     for entry in ${findings[@]+"${findings[@]}"}; do
-        [[ ${entry} != '- none' ]] || continue
+        if [[ ${entry} == '- none' ]]; then
+            [[ -z ${none_seen} ]] || refuse "${verdict_file}: the Findings section lists '- none' more than once; ${findings_grammar}"
+            none_seen=1
+            continue
+        fi
+        listed=1
         [[ ${entry} =~ ${finding_re} ]] ||
             refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': ${entry}"
         priority=${BASH_REMATCH[1]} path=${BASH_REMATCH[3]} lineno=${BASH_REMATCH[4]}
@@ -378,6 +402,7 @@ require_dispositions() {
         esac
         pending+=("${priority}"$'\t'"${path}"$'\t'"${lineno}")
     done
+    [[ -z ${none_seen} || -z ${listed} ]] || refuse "${verdict_file}: the Findings section lists '- none' beside a finding line; ${findings_grammar}"
     ((${#pending[@]} > 0)) || return 0
     dispositions=${store}/dispositions.tsv
     pending_fields "${pending[0]}"
@@ -398,11 +423,11 @@ require_dispositions() {
     done <<< "${text}"
     for entry in ${pending[@]+"${pending[@]}"}; do
         pending_fields "${entry}"
-        why="no ${dispositions} row for unit ${unit}, head ${head}, ${path}:${lineno}"
+        why="no ${dispositions} row for unit ${row_unit}, head ${head}, ${path}:${lineno}"
         satisfied=0
         for line in ${rows[@]+"${rows[@]}"}; do
             IFS=$'\t' read -ra cols <<< "${line}"
-            [[ ${cols[1]} == "${unit}" && ${cols[2]} == "${head}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
+            [[ ${cols[1]} == "${row_unit}" && ${cols[2]} == "${head}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
                 continue
             if [[ ${cols[6]} == fixed ]]; then
                 why="the row at ${cols[0]} says fixed in ${cols[7]}, which is not this head; merge the head that fixed it"
@@ -435,7 +460,7 @@ require_dispositions() {
 # @set ledger The canonical ledger path.
 # @set store The canonical store directory.
 # @set units_file The store's `units.tsv`, read by unit_row_exists.
-# @set unit The body's unit id, which names the verdict file.
+# @set unit The body's unit id; a ledger row for the pull request must be it or a `U<n>[a-z]` fix unit of it, and the row's unit names the verdict file (require_verdict_row).
 resolve_store() {
     local body markers line program path given part
     body=$(gh_bounded pr view "${pr}" --json body --jq .body) || fail "cannot read the body of pull request ${pr}"
@@ -497,7 +522,7 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 resolve_store
 
 require_verdict_row "${head}"
-require_dispositions "${audited_head}"
+require_dispositions "${audited_head}" "${audited_unit}"
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

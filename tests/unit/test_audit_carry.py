@@ -45,7 +45,7 @@ class AuditCarryTest(unittest.TestCase):
         self.root = Path(temp.name).resolve()
         self.repo = self.root / "repo"
         git_init(self.repo, "-b", "main", env=GIT_ENV)
-        self.base = self.commit({"a.txt": "one\ntwo\n", "b.txt": "b\n"}, "base")
+        self.base = self.commit({"a.txt": "one\ntwo\n", "b.txt": "b\n", "sub/c.txt": "c\n"}, "base")
         self.git("update-ref", "refs/remotes/origin/main", "main")
         self.git("switch", "-q", "-c", "feat")
         self.earlier = self.commit({"a.txt": "ONE\ntwo\n"}, "earlier head")
@@ -66,6 +66,7 @@ class AuditCarryTest(unittest.TestCase):
 
     def commit(self, files, message):
         for rel, text in files.items():
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.repo / rel).write_text(text)
         self.git("add", "-A")
         self.git("commit", "-q", "--allow-empty", "-m", message)
@@ -83,20 +84,24 @@ class AuditCarryTest(unittest.TestCase):
     def dispositions(self, *rows, text=None):
         (self.store / "dispositions.tsv").write_text(DISPOSITIONS_HEADER + "".join(rows) if text is None else text)
 
-    def carry(self, head, *args, env=None):
+    def carry(self, head, *args, env=None, repo="checkout", cwd=None):
+        """Run the lever on the fixture store; `--repo` names the fixture checkout unless `repo` is another path, or
+        None for no flag (the lever then reads the cwd)."""
+        flag = () if repo is None else ("--repo", str(self.repo if repo == "checkout" else repo))
         return subprocess.run(
-            [sys.executable, "-I", str(LEVER), str(self.store), "U7", "7", head, "--repo", str(self.repo), *args],
+            [sys.executable, "-I", str(LEVER), str(self.store), "U7", "7", head, *flag, *args],
             capture_output=True,
             text=True,
             timeout=60,
             check=False,
             env=env or GIT_ENV,
+            cwd=cwd,
         )
 
     def digest(self, head):
         base = self.git("merge-base", "refs/remotes/origin/main", head)
         diff = subprocess.run(
-            ["git", "diff", "--no-color", f"{base}..{head}", "--", "."],
+            ["git", "diff", "--no-color", f"{base}..{head}"],
             cwd=self.repo,
             env=GIT_ENV,
             check=True,
@@ -180,7 +185,8 @@ class AuditCarryTest(unittest.TestCase):
         self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
         self.assertEqual(
             run.stderr,
-            f"audit-carry: git merge-base refs/remotes/origin/main {self.same} exited 1: git: injected failure\n",
+            "audit-carry: git rev-parse --show-toplevel exited 1: git: injected failure\n",
+            "the root is read first, as a status",
         )
         run = self.carry("0" * 40)
         self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
@@ -200,6 +206,28 @@ class AuditCarryTest(unittest.TestCase):
         run = self.carry(self.same)
         self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
         self.assertIn(f"audit-carry: {self.store}/ledger.tsv: cannot read", run.stderr)
+
+    def test_an_empty_required_ledger_cell_is_a_malformed_row_never_no_earlier_head(self):
+        """Round 2 (P2): the ledger reader required no column, so a row with an empty `pr` or `unit` cell matched no
+        pull request and became exit 1, "no earlier audited head" (an audit without the earlier findings, a head
+        audited afresh), instead of the documented malformed-store refusal. `ts unit pr head_sha verdict` are
+        required: an empty one is exit 2 naming the line, in both forms."""
+        for name, row, message in (
+            ("pr", ledger("2026-10-30T01:00:00Z", self.earlier, pr=""), "ledger.tsv:2: column 3 (pr) is empty"),
+            ("unit", ledger("2026-10-30T01:00:00Z", self.earlier, unit=""), "ledger.tsv:2: column 2 (unit) is empty"),
+            ("verdict", ledger("2026-10-30T01:00:00Z", self.earlier, ""), "ledger.tsv:2: column 5 (verdict) is empty"),
+            ("head_sha", ledger("2026-10-30T01:00:00Z", ""), "ledger.tsv:2: column 4 (head_sha) is empty"),
+        ):
+            for form in ((), ("--render",)):
+                with self.subTest(name, form=form):
+                    self.ledger(row, ledger("2026-10-30T01:00:00Z", self.earlier, "incorrect"))
+                    run = self.carry(self.same, *form)
+                    self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+                    self.assertIn(f"audit-carry: {self.store}/{message}", run.stderr)
+        # the verifier and evidence columns may be empty: the row is still read
+        self.ledger(ledger("2026-10-30T01:00:00Z", self.earlier, evidence="").replace("\tpr-audit.sh\t", "\t\t"))
+        run = self.carry(self.same)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
 
     def test_the_usage_is_checked_first(self):
         for args in (("U7b", "7", self.same), ("U7", "x", self.same), ("U7", "7", self.same[:8])):
@@ -272,6 +300,63 @@ class AuditCarryTest(unittest.TestCase):
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn("P2\ta.txt\t1\tnone\t-\n", run.stdout, "the U7 disposition row is not U7b's")
 
+    def test_the_digest_covers_the_whole_tree_from_any_directory_of_the_checkout(self):
+        """Round 2 (P1): `git diff -- .` from a subdirectory diffed that subtree alone, so a run from `sub/` carried a
+        head whose change outside `sub/` differed from the earlier head's. The root is resolved once and every git
+        command runs there: the same answer from the root, from `--repo <root>/sub` and from a cwd inside the tree."""
+        sub = self.repo / "sub"
+        expected = (
+            f"audit-carry: not carried: the diff of {self.different[:8]} against its merge base differs from "
+            f"{self.earlier[:8]}'s at b.txt\n"
+        )
+        for name, kwargs in (
+            ("--repo names the subdirectory", {"repo": sub}),
+            ("the cwd is the subdirectory, no --repo", {"repo": None, "cwd": sub}),
+            ("the cwd is the root, no --repo", {"repo": None, "cwd": self.repo}),
+        ):
+            with self.subTest(name):
+                run = self.carry(self.different, **kwargs)
+                self.assertEqual((1, "", expected), (run.returncode, run.stderr, run.stdout))
+                run = self.carry(self.same, **kwargs)
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertEqual(run.stdout, f"carried {self.earlier} {self.same} {self.digest(self.same)}\n")
+                run = self.carry(self.different, "--render", **kwargs)
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertIn("````text\nb.txt: 1-1\n````", run.stdout)
+        # a directory outside any checkout cannot name a root: exit 2 naming the command, never "equal"
+        outside = self.root / "outside"
+        outside.mkdir()
+        run = self.carry(self.same, repo=outside)
+        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertIn("audit-carry: git rev-parse --show-toplevel exited 128", run.stderr)
+
+    def test_render_names_a_changed_path_git_would_quote(self):
+        """Round 2 (P2): git quotes a path outside ASCII (`"\\346\\227\\245..."`) and one holding a quote, so the
+        header was not read and the changed lines said `(none)`, keeping a carried residual at that path from being
+        re-raised. The path is named as it is, and a path with a space (git appends a tab) as well."""
+        self.git("switch", "-q", "-c", "quoted", self.earlier)
+        head = self.commit(
+            {"日本語.txt": "一\n", 'a"b.txt': "q\n", "with space.txt": "s\n", "back\\slash.txt": "b\n"}, "quoted"
+        )
+        self.git("switch", "-q", "main")
+        self.verdict(self.earlier, "- P2 (high) 日本語.txt:1: the first line", "- P3 (low) a.txt:2: the second")
+        self.dispositions(disposition(self.earlier, path="日本語.txt"))
+        run = self.carry(head, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn("P2\t日本語.txt\t1\tresidual\tunit=U9 gate=until U9 lands\n", run.stdout)
+        self.assertIn(
+            '````text\na"b.txt: 1-1\nback\\slash.txt: 1-1\nwith space.txt: 1-1\n日本語.txt: 1-1\n````', run.stdout
+        )
+        self.assertNotIn("(none)", run.stdout)
+        # the carry decision names the same path when it is where the diffs differ
+        self.git("switch", "-q", "-c", "quoted2", self.earlier)
+        other = self.commit({"日本語.txt": "二\n"}, "quoted another way")
+        self.git("switch", "-q", "main")
+        self.ledger(ledger("2026-10-30T01:00:00Z", head))
+        run = self.carry(other)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.endswith("'s at 日本語.txt\n"), run.stdout)
+
     def test_render_without_an_earlier_head_exits_1_and_prints_no_block(self):
         self.ledger()
         run = self.carry(self.same, "--render")
@@ -300,6 +385,28 @@ class AuditCarryTest(unittest.TestCase):
                 "a path with a colon",
                 lambda: self.verdict(self.earlier, "- P2 (high) file:1: real.sh:9: boom"),
                 f"{verdict_file}:3: not a Findings line",
+            ),
+            (
+                "an empty Findings section",
+                lambda: verdict_file.write_text(
+                    "## Findings\n\n## Reproduced\n\n- none\n\nBlocking: 0\nVerdict: correct\n"
+                ),
+                f"{verdict_file}: the Findings section lists nothing; the leading '## Findings' section is one '- none' line",
+            ),
+            (
+                "a Findings section that is only a heading",
+                lambda: verdict_file.write_text("## Findings\n\nBlocking: 0\nVerdict: correct\n"),
+                f"{verdict_file}:3: not a Findings line",
+            ),
+            (
+                "- none beside a finding line",
+                lambda: self.verdict(self.earlier, "- none", "- P2 (high) a.txt:1: shouts"),
+                f"{verdict_file}: the Findings section lists '- none' beside a finding line",
+            ),
+            (
+                "- none twice",
+                lambda: self.verdict(self.earlier, "- none", "- none"),
+                f"{verdict_file}: the Findings section lists '- none' more than once",
             ),
             (
                 "missing dispositions.tsv",

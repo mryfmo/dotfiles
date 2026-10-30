@@ -982,14 +982,16 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(self.codex_calls(), [], "no probe and no audit")
 
     def second_head(self):
-        """Move refs/pull/7/head to a second commit on feat and answer gh with it; the first head is the earlier one."""
-        self.git("checkout", "-q", "feat")
+        """Move refs/pull/7/head to a commit on `feat2`, a branch from the base that never held the first head, and
+        answer gh with it: the first head is the earlier audited one and no ancestor of this one (round 2: a second
+        commit on `feat` kept it an ancestor, so the rebased case the threat table names was not exercised)."""
+        self.git("checkout", "-q", "-b", "feat2", self.main)
         (self.repo / "change.txt").write_text("changed again\n")
         (self.repo / "added.txt").write_text("new\n")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "head 2")
         head = self.git("rev-parse", "HEAD")
-        self.git("push", "-q", "-f", "origin", "feat:refs/pull/7/head")
+        self.git("push", "-q", "-f", "origin", "feat2:refs/pull/7/head")
         self.git("checkout", "-q", "main")
         self.answer(head=head, body=PROGRAM_BODY)
         return head
@@ -1035,7 +1037,15 @@ class PrAuditTest(unittest.TestCase):
             prompt,
         )
         self.assertIn(f"Changed lines of {head[:8]} since {earlier[:8]}:", prompt)
+        # the earlier head is no ancestor of this one (a rebased branch): the two-dot diff between the two heads is
+        # still rendered from the borrowed objects, before the repack, and names every line that differs between
+        # them, the lines the base moved included (over-inclusive for the carried rule, never under-inclusive)
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", earlier, head], cwd=self.repo, env=self.env, check=False
+        )
+        self.assertEqual(ancestor.returncode, 1, "the fixture's earlier head must not be an ancestor of the head")
         self.assertIn("added.txt: 1-1\nchange.txt: 1-1\n", prompt)
+        self.assertRegex(prompt, r"\nAGENTS\.md: [0-9]+-[0-9]+\nadded\.txt: 1-1\n")
         self.assertIn(CARRIED_RULE, prompt)
         self.assertLess(prompt.index("</pr-body-"), prompt.index(CARRIED_HEADING))
         self.assertLess(prompt.index(CARRIED_RULE), prompt.index("Run tests or scripts that need no network"))

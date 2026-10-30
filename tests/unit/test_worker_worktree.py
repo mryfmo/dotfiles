@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from scratch_git import git_init, quiet_git_env  # noqa: E402
+from scratch_git import git_clone, git_init, quiet_git_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LEVER = ROOT / "scripts/orchestrator/worker-worktree.sh"
@@ -27,7 +27,8 @@ import json, os, sys
 with open(os.environ["FAKE_GIT_CALLS"], "a", encoding="utf-8") as calls:
     calls.write(json.dumps(sys.argv[1:]) + "\\n")
 if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in " ".join(sys.argv[1:]):
-    sys.exit("fake-git: failing as asked")
+    print("fake-git: failing as asked", file=sys.stderr)
+    sys.exit(int(os.environ.get("FAKE_GIT_FAIL_STATUS") or 1))
 os.execv(os.environ["REAL_GIT"], ["git", *sys.argv[1:]])
 """
 
@@ -162,13 +163,19 @@ class WorkerWorktreeTest(unittest.TestCase):
 
     def test_refusals_make_nothing(self):
         """Every input is checked before anything is made: exit 2, no worktree, no branch, no root directory, and
-        `extensions.worktreeConfig` not yet set in the checkout."""
+        `extensions.worktreeConfig` not yet set in the checkout. The branch is the normalized name
+        `check-ref-format --branch` prints (`@{-1}` names the previous branch, here one that exists), a name with a
+        character the shell would read (`;`) is refused, and a `show-ref` that fails (exit 128 from the PATH shim)
+        is a refusal naming the read, never an absent branch."""
         linked = self.root / "linked"
         self.git("worktree", "add", "-q", "--detach", str(linked), "origin/main")
         self.git("branch", "taken", "origin/main")
+        self.git("checkout", "-q", "taken")
+        self.git("checkout", "-q", "main")
         before = self.worktrees()
         held = self.root / "held/U9"
         held.mkdir(parents=True)
+        read_failed = {"FAKE_GIT_FAIL": "show-ref", "FAKE_GIT_FAIL_STATUS": "128"}
         for argv, cwd, env, message in (
             ((), None, {}, "usage: worker-worktree.sh <unit> <branch> <base>"),
             (("U7", "feat/u7"), None, {}, "usage:"),
@@ -177,9 +184,12 @@ class WorkerWorktreeTest(unittest.TestCase):
             (("U7/x", "feat/u7", "origin/main"), None, {}, "the unit U7/x is not U<n>"),
             (("U7", "", "origin/main"), None, {}, "the branch is empty"),
             (("U7", "feat..u7", "origin/main"), None, {}, "the branch feat..u7 is not a name git accepts"),
+            (("U7", "feat/u7;true", "origin/main"), None, {}, "the branch feat/u7;true has a character outside"),
             (("U7", "feat/u7", ""), None, {}, "the base is empty"),
             (("U7", "feat/u7", "nowhere"), None, {}, "the base nowhere names no commit"),
             (("U7", "taken", "origin/main"), None, {}, "the branch taken exists"),
+            (("U7", "@{-1}", "origin/main"), None, {}, "the branch taken exists"),
+            (("U7", "feat/u7", "origin/main"), None, read_failed, "cannot read refs/heads/feat/u7 in"),
             (("U9", "feat/u9", "origin/main"), None, {"DOTFILES_WT": str(held.parent)}, f"{held} exists"),
             (("U7", "feat/u7", "origin/main"), None, {"DOTFILES_WT": "wt"}, "DOTFILES_WT wt is not an absolute path"),
             (("U7", "feat/u7", "origin/main"), linked, {}, "is a linked worktree"),
@@ -242,6 +252,83 @@ class WorkerWorktreeTest(unittest.TestCase):
         run = self.run_lever("U7", "feat/u7", "origin/main")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=self.root / "wt/U7"), self.main)
+
+    def test_a_worktree_add_that_fails_after_making_its_tree_leaves_nothing(self):
+        """A post-checkout hook that exits 1 makes `git worktree add` exit non-zero after the tree and the branch
+        exist (measured on git 2.56). The run is exit 1 naming the add, and the tree and the branch are removed
+        again: a failed add leaves no worktree without the refusals behind either."""
+        before = self.worktrees()
+        hooks = self.checkout / ".git/hooks"
+        hooks.mkdir(exist_ok=True)
+        (hooks / "post-checkout").write_text("#!/bin/sh\necho 'post-checkout: refused' >&2\nexit 1\n")
+        (hooks / "post-checkout").chmod(0o755)
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertIn("worker-worktree.sh: git worktree add", run.stderr)
+        self.assertIn(f"removing the half-made worktree {self.root / 'wt/U7'} and the branch feat/u7", run.stderr)
+        self.assertFalse((self.root / "wt/U7").exists())
+        self.assertFalse((self.checkout / ".git/worktrees/U7").exists())
+        self.assertEqual(self.worktrees(), before)
+        self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
+
+    def test_a_pushurl_the_checkout_already_holds_is_refused_before_anything_is_made(self):
+        """git pushes to every pushurl of a remote, and a worktree's own scope cannot shadow one set in the
+        checkout's config (measured on git 2.56: `git push origin` reached the origin before the refusal URL
+        failed), so such a checkout is refused before anything is made. A worktree the lever made reads exactly one
+        pushurl, the refusal, and a plain push fails on its scheme before the remote's refs are read: the hook, which
+        runs after that read, never runs."""
+        before = self.worktrees()
+        self.git("config", "remote.origin.pushurl", str(self.origin))
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"refused: remote.origin.pushurl is set in the checkout's config ({self.origin})", run.stderr)
+        self.assertFalse((self.root / "wt").exists())
+        self.assertEqual(self.worktrees(), before)
+        self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
+        self.git("config", "--unset", "remote.origin.pushurl")
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        path = self.root / "wt/U7"
+        self.assertEqual(self.git("config", "--get-all", "remote.origin.pushurl", cwd=path), PUSHURL)
+        (path / "work.txt").write_text("work\n")
+        self.git("add", "work.txt", cwd=path)
+        self.git("commit", "-q", "-m", "work", cwd=path)
+        status, _, err = self.git_status("push", "origin", "HEAD", cwd=path)
+        self.assertNotEqual(status, 0)
+        self.assertIn("refused", err)
+        self.assertNotIn(HOOK_MESSAGE, err)
+        self.assertIsNone(self.origin_branch("feat/u7"), err)
+
+    def test_the_printed_push_line_round_trips_through_the_shell_for_a_spaced_checkout(self):
+        """The coordinator pastes the push line into a shell: a checkout path and an origin URL holding a space are
+        quoted, so `eval` of the line with `<head>` replaced pushes the worker's head from the main checkout."""
+        origin = self.root / "origin two.git"
+        checkout = self.root / "check out"
+        git_clone(self.origin, origin, "--bare", env=self.env, cwd=self.root)
+        git_clone(origin, checkout, env=self.env, cwd=self.root)
+        root = self.root / "wt two"
+        run = self.run_lever("U7", "feat/u7", "origin/main", cwd=checkout, DOTFILES_WT=str(root))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        line = next(line for line in run.stdout.splitlines() if line.startswith("push="))
+        self.assertEqual(
+            line, f"push=git -C {self.root}/check\\ out push {self.root}/origin\\ two.git <head>:refs/heads/feat/u7"
+        )
+        path = root / "U7"
+        (path / "work.txt").write_text("work\n")
+        self.git("add", "work.txt", cwd=path)
+        self.git("commit", "-q", "-m", "work", cwd=path)
+        head = self.git("rev-parse", "HEAD", cwd=path)
+        command = line.removeprefix("push=").replace("<head>", head)
+        run = subprocess.run(
+            ["bash", "-c", 'eval "$1"', "_", command],
+            cwd=self.root / "home",
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.git("rev-parse", "--verify", "refs/heads/feat/u7", cwd=origin), head)
 
 
 if __name__ == "__main__":

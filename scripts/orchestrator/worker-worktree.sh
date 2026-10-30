@@ -22,26 +22,33 @@
 #   the worker's head from the main checkout, whose objects the worktree shares: `git -C <toplevel> push <origin url>
 #   <head>:refs/heads/<branch>`, the line this lever prints with the worktree's path, branch and head.
 #   Every input is checked before anything is made (exit 2, nothing created): the unit `U<n>` or `U<n><letter>`, a
-#   branch `git check-ref-format --branch` accepts that is not yet a local branch, a base that names a commit, the
-#   working directory a main checkout (not a linked worktree) with an `origin` remote, and `<root>/<unit>` absent; an
-#   existing worktree is never touched. When a step after `git worktree add` fails, the tree and the branch this run
-#   made are removed again (`git worktree remove --force`, `git branch -D`, on the lever's own fresh tree only), so a
-#   worktree without the refusals is never left behind: exit 1 names the step.
+#   branch `git check-ref-format --branch` accepts, taken as the normalized name it prints, over `[A-Za-z0-9._/-]`
+#   (the shell reads nothing in the printed push line) and not yet a local branch, a base that names a commit, the
+#   working directory a main checkout (not a linked worktree) with an `origin` remote whose `pushurl` no scope sets
+#   (git pushes to every pushurl of a remote, and the worktree's scope cannot shadow one), and `<root>/<unit>` absent;
+#   an existing worktree is never touched. A read that fails (`git show-ref`, `git config`) is a refusal, never an
+#   absence (standing order 21). When a step after `git worktree add` fails, or the add itself exits non-zero after
+#   making the tree or the branch (a failing post-checkout hook), the tree and the branch this run made are removed
+#   again (`git worktree remove --force`, `git branch -D`, on the lever's own fresh tree only, each when it exists),
+#   so a worktree without the refusals is never left behind: exit 1 names the step.
 #   Trusted: the worker is a non-adversarial actor whose reflex the refusals stop, not an attacker. A worker that
 #   rewrites its own `config.worktree` or hooks directory can restore the push path; the worktree is the worker's,
 #   and the refusal removes the path a push takes by habit, which is the failure that happened.
 # @arg $1 string The unit, `U<n>` or `U<n><letter>` (`U7`, `U7b`); the worktree is `<root>/<unit>`.
-# @arg $2 string The branch to create, a name `git check-ref-format --branch` accepts, not yet a local branch.
+# @arg $2 string The branch to create: a name `git check-ref-format --branch` accepts (its normalized output is the
+#   name made, so `@{-1}` names the previous branch), over `[A-Za-z0-9._/-]`, not yet a local branch.
 # @arg $3 string The base, a revision naming a commit (`origin/main`).
 # @env DOTFILES_WT The directory the worktrees live in (default `${TMPDIR:-/tmp}/dotfiles-wt`); made when absent.
 # @stdout `worktree=<path>`, `branch=<branch>`, `head=<sha>` and `push=git -C <toplevel> push <origin url>
-#   <head>:refs/heads/<branch>`, the line the coordinator runs from the main checkout, one per line.
+#   <head>:refs/heads/<branch>`, the line the coordinator runs from the main checkout after replacing `<head>`, one
+#   per line; the path and the URL are quoted for the shell (`printf %q`), the branch's character set needs none.
 # @exitcode 0 The worktree exists at the base on the branch with the three refusals set.
 # @exitcode 1 A git step after the checks failed; a tree made by this run was removed again, and the message names
 #   the step.
 # @exitcode 2 Refused before anything was made: usage, a unit, branch or base outside the grammar, a branch that
-#   exists, a working directory that is not the main checkout or has no `origin`, `core.worktree` set, the target
-#   path present, or the manifest pin differing from this file.
+#   exists, a working directory that is not the main checkout or has no `origin`, `core.worktree` or
+#   `remote.origin.pushurl` set in a scope the worktree would read, the target path present, a read (`git show-ref`,
+#   `git config`) that failed, or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/worker-worktree.sh U123 feat/refusals-not-sentences origin/main
 set -euo pipefail
@@ -126,7 +133,12 @@ branch=$2
 base=$3
 [[ ${unit} =~ ^U[0-9]+[a-z]?$ ]] || refuse "the unit ${unit} is not U<n> or U<n><letter>"
 [[ -n ${branch} ]] || refuse "the branch is empty"
-git check-ref-format --branch "${branch}" > /dev/null 2>&1 || refuse "the branch ${branch} is not a name git accepts"
+# check-ref-format --branch prints the name it accepts, normalized (`@{-1}` becomes the branch it denotes), and that
+# name is the one checked for existence and made. The character set then excludes what a shell would read in the
+# printed push line (`;`, a space, a quote), beyond what git accepts.
+normalized=$(git check-ref-format --branch "${branch}" 2> /dev/null) || refuse "the branch ${branch} is not a name git accepts"
+branch=${normalized}
+[[ ${branch} =~ ^[A-Za-z0-9._/-]+$ ]] || refuse "the branch ${branch} has a character outside [A-Za-z0-9._/-]"
 [[ -n ${base} ]] || refuse "the base is empty"
 
 toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the main checkout'
@@ -138,9 +150,23 @@ common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || 
 [[ -d ${common}/objects ]] || refuse "${common} holds no objects directory"
 origin_url=$(git remote get-url origin 2> /dev/null) || refuse "no origin remote in ${toplevel}"
 git rev-parse --verify --quiet "${base}^{commit}" > /dev/null || refuse "the base ${base} names no commit; run git fetch origin"
-if git show-ref --verify --quiet "refs/heads/${branch}"; then
-    refuse "the branch ${branch} exists; a unit's branch is new"
-fi
+# show-ref exits 1 for a ref that is absent and otherwise for a read that failed (standing order 21): only 1 is absence.
+status=0
+git show-ref --verify --quiet "refs/heads/${branch}" || status=$?
+case ${status} in
+0) refuse "the branch ${branch} exists; a unit's branch is new" ;;
+1) ;;
+*) refuse "cannot read refs/heads/${branch} in ${toplevel}: git show-ref exited ${status}" ;;
+esac
+# A pushurl in any scope the worktree reads (the checkout's config, the global one) stays active beside the refusal
+# URL, since git pushes to every pushurl of a remote and a worktree scope cannot shadow one, so it is refused.
+status=0
+inherited_pushurl=$(git config --get-all remote.origin.pushurl 2>&1) || status=$?
+case ${status} in
+0) refuse "remote.origin.pushurl is set in the checkout's config (${inherited_pushurl//$'\n'/, }); a worktree reads it beside the refusal URL, so unset it before a worker worktree is made" ;;
+1) ;;
+*) refuse "cannot read remote.origin.pushurl from the checkout's config: ${inherited_pushurl}" ;;
+esac
 # core.worktree in the common config would be read by every linked worktree once extensions.worktreeConfig is on
 # (git-worktree(1), CONFIGURATION FILE), so it is refused rather than moved.
 status=0
@@ -157,23 +183,38 @@ path=${root}/${unit}
 [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; an existing worktree is never touched"
 
 # @description Remove the tree and the branch this run made when a later step failed, so a worktree without the
-#   refusals is never left. Runs on EXIT; a completed run has nothing to remove.
+#   refusals is never left. Runs on EXIT; a completed run has nothing to remove. Each of the two is removed when it
+#   exists: a `git worktree add` that failed midway may have made the branch and not the tree.
 created=0
 completed=0
 cleanup() {
     [[ ${created} == 1 && ${completed} == 0 ]] || return 0
     echo "${lever}: removing the half-made worktree ${path} and the branch ${branch}" >&2
-    git -C "${toplevel}" worktree remove --force "${path}" ||
-        echo "${lever}: git worktree remove ${path} failed; remove it by hand" >&2
-    git -C "${toplevel}" branch -D "${branch}" > /dev/null ||
-        echo "${lever}: git branch -D ${branch} failed; delete it by hand" >&2
+    if [[ -e ${path} || -L ${path} ]]; then
+        git -C "${toplevel}" worktree remove --force "${path}" ||
+            echo "${lever}: git worktree remove ${path} failed; remove it by hand" >&2
+    fi
+    if git -C "${toplevel}" show-ref --verify --quiet "refs/heads/${branch}"; then
+        git -C "${toplevel}" branch -D "${branch}" > /dev/null ||
+            echo "${lever}: git branch -D ${branch} failed; delete it by hand" >&2
+    fi
 }
 trap cleanup EXIT
 
 mkdir -p "${root}" || fail "cannot make ${root}"
 git config extensions.worktreeConfig true || fail "cannot set extensions.worktreeConfig in the checkout's config"
-git worktree add --quiet -b "${branch}" "${path}" "${base}" || fail "git worktree add ${path} from ${base} failed"
-created=1
+status=0
+git worktree add --quiet -b "${branch}" "${path}" "${base}" || status=$?
+# A post-checkout hook that fails makes `git worktree add` exit non-zero after the tree and the branch exist, so what
+# this run made is read from the tree and the ref, not from the status: a failed add never leaves either behind.
+if [[ -e ${path} || -L ${path} ]]; then
+    created=1
+else
+    ref_status=0
+    git show-ref --verify --quiet "refs/heads/${branch}" || ref_status=$?
+    [[ ${ref_status} == 1 ]] || created=1
+fi
+[[ ${status} == 0 ]] || fail "git worktree add ${path} from ${base} exited ${status}"
 wt_git=$(git -C "${path}" rev-parse --path-format=absolute --git-dir) || fail "cannot read the git directory of ${path}"
 [[ ${wt_git} == "${common}"/worktrees/* ]] || # lint-comparisons: allow both sides are git's absolute forms
     fail "the git directory ${wt_git} of ${path} is not under ${common}/worktrees/"
@@ -181,16 +222,26 @@ hooks=${wt_git}/hooks
 mkdir "${hooks}" || fail "cannot make ${hooks}"
 printf '#!/bin/sh\necho "%s" >&2\nexit 1\n' "${hook_message}" > "${hooks}/pre-push" || fail "cannot write ${hooks}/pre-push"
 chmod 755 "${hooks}/pre-push" || fail "cannot make ${hooks}/pre-push executable"
+# A pushurl already in the worktree's scope would stand beside the refusal URL (git pushes to every pushurl), so the
+# scope is cleared first; git config exits 5 when the key to unset is absent, the state of a fresh worktree.
+status=0
+git -C "${path}" config --worktree --unset-all remote.origin.pushurl || status=$?
+[[ ${status} == 0 || ${status} == 5 ]] || fail "cannot clear remote.origin.pushurl in the config.worktree of ${path}: git config exited ${status}"
 git -C "${path}" config --worktree remote.origin.pushurl "${pushurl}" || fail "cannot set remote.origin.pushurl in ${path}"
 git -C "${path}" config --worktree credential.helper '' || fail "cannot set credential.helper in ${path}"
 git -C "${path}" config --worktree core.hooksPath "${hooks}" || fail "cannot set core.hooksPath in ${path}"
-# The refusals are read back from the worktree's own view, so a config git wrote elsewhere never reads as set.
-set_pushurl=$(git -C "${path}" config --get remote.origin.pushurl) || fail "remote.origin.pushurl is not set in ${path}"
-[[ ${set_pushurl} == "${pushurl}" ]] || fail "remote.origin.pushurl in ${path} is ${set_pushurl}, not ${pushurl}"
+# The refusals are read back from the worktree's own view, so a config git wrote elsewhere never reads as set: the
+# worktree scope holds the refusal URL alone, and every scope the worktree reads adds up to that one value.
+set_pushurl=$(git -C "${path}" config --worktree --get-all remote.origin.pushurl) || fail "remote.origin.pushurl is not set in the config.worktree of ${path}"
+[[ ${set_pushurl} == "${pushurl}" ]] || fail "remote.origin.pushurl in the config.worktree of ${path} is ${set_pushurl//$'\n'/, }, not ${pushurl} alone"
+seen_pushurl=$(git -C "${path}" config --get-all remote.origin.pushurl) || fail "remote.origin.pushurl is not set in ${path}"
+[[ ${seen_pushurl} == "${pushurl}" ]] || fail "${path} reads remote.origin.pushurl as ${seen_pushurl//$'\n'/, }, not ${pushurl} alone"
 set_hooks=$(git -C "${path}" config --get core.hooksPath) || fail "core.hooksPath is not set in ${path}"
 [[ ${set_hooks} == "${hooks}" ]] || fail "core.hooksPath in ${path} is ${set_hooks}, not ${hooks}" # lint-comparisons: allow the value written one line above, read back
 head=$(git -C "${path}" rev-parse --verify HEAD) || fail "cannot read the head of ${path}"
 completed=1
 
 printf 'worktree=%s\nbranch=%s\nhead=%s\n' "${path}" "${branch}" "${head}"
-printf 'push=git -C %s push %s <head>:refs/heads/%s\n' "${toplevel}" "${origin_url}" "${branch}"
+# The path and the URL are quoted for the shell the coordinator pastes the line into; the branch's character set needs
+# no quoting, and `<head>` stays the placeholder the coordinator replaces with the worker's final head.
+printf 'push=git -C %q push %q <head>:refs/heads/%s\n' "${toplevel}" "${origin_url}" "${branch}"

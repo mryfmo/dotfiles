@@ -13,7 +13,9 @@
 #   `fixed: <sha>` names a commit of this checkout that is the pull request's head or an ancestor of it and was
 #   committed after the thread's first comment; `refuted:` cites a URL or a `file:line`; `residual: unit=U<n>`
 #   answers a P2 or P3 finding and `units.tsv` in `--records` has the row; `residual: operator=<ts>` has its
-#   `decisions.tsv` row in `--records`. So a resolution never hides a finding the merge check would refuse. The
+#   `decisions.tsv` row in `--records`; `filed: f=<n> s=<n> <reason>` (regime-cutover U124) answers a finding of
+#   any priority whose two scores are whole numbers from 1 to 10 with a product under WEIGHT_THRESHOLD, the same
+#   number pr-threads-check.sh reads. So a resolution never hides a finding the merge check would refuse. The
 #   one write is the `resolveReviewThread` mutation on that thread id. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
@@ -99,6 +101,9 @@ git_env_scrub
 lever='pr-thread-resolve.sh'
 usage='usage: pr-thread-resolve.sh <pr> <comment-id> [--records <dir>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
+# The weighted finding rule (AGENTS.md "Audit", regime-cutover U124): a `filed:` reply holds when frequency times
+# severity is under this number, the one pr-threads-check.sh names.
+WEIGHT_THRESHOLD=10
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   repository(owner: $owner, name: $name) {
@@ -158,11 +163,12 @@ has_row() {
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The first line of the newest reply.
 disposition() {
-    local created=$1 severity=$2 line=$3 fix fix_time status
+    local created=$1 severity=$2 line=$3 fix fix_time status frequency severity_score weight
     local fixed='^fixed: ([0-9a-f]{40})( |$)'
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
+    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
         git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
@@ -211,6 +217,22 @@ disposition() {
         1) echo "open (residual: no decisions.tsv row at ${fix})" ;;
         *) fail "cannot read ${records}/decisions.tsv" ;;
         esac
+    elif [[ ${line} =~ ${filed} ]]; then
+        frequency=${BASH_REMATCH[1]}
+        severity_score=${BASH_REMATCH[2]}
+        # Digits before any arithmetic: bash evaluates a name or a subscript inside `(( ))`, and the reply is text
+        # anyone with a GitHub account wrote.
+        if ! [[ ${frequency} =~ ^[0-9]+$ && ${severity_score} =~ ^[0-9]+$ ]] ||
+            ((frequency < 1 || frequency > 10 || severity_score < 1 || severity_score > 10)); then
+            echo "open (filed: f and s are whole numbers from 1 to 10; this is f=${frequency} s=${severity_score})"
+            return
+        fi
+        weight=$((frequency * severity_score))
+        ((weight < WEIGHT_THRESHOLD)) || {
+            echo "open (filed: f=${frequency} s=${severity_score} weighs ${weight}, not under ${WEIGHT_THRESHOLD}; fix it, or answer refuted: or residual:)"
+            return
+        }
+        echo "filed f=${frequency} s=${severity_score} weight=${weight}"
     elif [[ -z ${line} ]]; then
         echo 'open (no reply)'
     else

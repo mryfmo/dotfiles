@@ -223,6 +223,7 @@ class PrThreadReplyTest(PrLeverTestCase):
             "refuted: https://docs.github.com/en/rest says so",
             "residual: unit=U29 gate=no Linux make update until U29",
             "residual: operator=2026-10-24T12:53:00Z",
+            "filed: f=1 s=9 no run, test, incident or user has produced the case",
         ):
             with self.subTest(line=line):
                 self.calls.unlink(missing_ok=True)
@@ -244,6 +245,8 @@ class PrThreadReplyTest(PrLeverTestCase):
         prose.write_text("I think this is fine.\n")
         bare_refutation = self.tmp / "bare.md"
         bare_refutation.write_text("refuted: it is fine\n")
+        letter_score = self.tmp / "letter.md"
+        letter_score.write_text("filed: f=x s=3 a letter is no score\n")
         cases = {
             ("480",): "usage:",
             ("48O", "4365170609", "--body-file", str(good)): "not a decimal number",
@@ -254,6 +257,7 @@ class PrThreadReplyTest(PrLeverTestCase):
             ("480", "4365170609", "--body-file", str(empty)): "1 to 65536 bytes",
             ("480", "4365170609", "--body-file", str(prose)): "not a disposition",
             ("480", "4365170609", "--body-file", str(bare_refutation)): "not a disposition",
+            ("480", "4365170609", "--body-file", str(letter_score)): "not a disposition",
         }
         self.answer()
         for args, message in cases.items():
@@ -300,6 +304,7 @@ def invalid_dispositions(fixture):
         ("residual: unit=U99 gate=no such unit", "P2", "no units.tsv row U99"),
         ("residual: unit=U29 gate=a P1 needs the operator", "P1", "is for P2 and P3; this is P1"),
         ("residual: operator=2026-10-24T00:00:00Z", "P1", "no decisions.tsv row"),
+        ("filed: f=2 s=5 the product is the threshold", "P2", "f=2 s=5 weighs 10, not under 10"),
     ]
 
 
@@ -344,6 +349,7 @@ class PrThreadResolveTest(ThreadsFixture):
             ("refuted: https://docs.github.com/en/rest says so", "P2"),
             ("residual: unit=U29 gate=no Linux make update until U29", "P3"),
             ("residual: operator=2026-10-24T12:53:00Z", "P1"),
+            ("filed: f=1 s=9 no run, test, incident or user has produced the case", "P1"),
         ):
             with self.subTest(reply=reply):
                 self.calls.unlink(missing_ok=True)
@@ -782,6 +788,7 @@ class PrThreadsCheckTest(ThreadsFixture):
             thread(3, replies=["refuted: https://docs.github.com/en/rest/pulls/comments says so"]),
             thread(4, severity="P3", replies=["residual: unit=U29 gate=no Linux make update until U29"]),
             thread(5, severity="P1", replies=["residual: operator=2026-10-24T12:53:00Z"]),
+            thread(6, severity="P1", replies=["filed: f=1 s=9 no run, test, incident or user has produced the case"]),
         )
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertEqual(
@@ -792,7 +799,8 @@ class PrThreadsCheckTest(ThreadsFixture):
                 "thread comment=3 severity=P2 state=refuted",
                 "thread comment=4 severity=P3 state=residual U29",
                 "thread comment=5 severity=P1 state=residual operator=2026-10-24T12:53:00Z",
-                "summary threads=5 open=0",
+                "thread comment=6 severity=P1 state=filed f=1 s=9 weight=9",
+                "summary threads=6 open=0",
             ],
         )
         self.assertEqual(self.writes(), [], "read-only")
@@ -809,6 +817,11 @@ class PrThreadsCheckTest(ThreadsFixture):
             (thread(1, replies=["residual: unit=U99 gate=x"]), "no units.tsv row U99"),
             (thread(1, replies=["residual: operator=2026-10-24T00:00:00Z"]), "no decisions.tsv row"),
             (thread(1, replies=["refuted: a.py:1", "@codex please re-check"]), "not a disposition"),
+            # U124: a `filed:` reply is read by value; a letter, a 0 or an 11 is malformed, and the reason is required.
+            (thread(1, severity="P1", replies=["filed: f=x s=3 a letter is no score"]), "this is f=x s=3"),
+            (thread(1, replies=["filed: f=0 s=3 zero is below the scale"]), "this is f=0 s=3"),
+            (thread(1, replies=["filed: f=11 s=1 eleven is above the scale"]), "this is f=11 s=1"),
+            (thread(1, replies=["filed: f=1 s=9"]), "not a disposition"),
         ]
         for node, message in cases:
             with self.subTest(message=message, node=node["comments"]["nodes"][-1]["body"][:40]):

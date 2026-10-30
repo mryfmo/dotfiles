@@ -14,7 +14,11 @@
 #   comment (so a thread opened after the head cannot be `fixed`); `refuted: <text>` citing a URL or a
 #   `file:line`; `residual: unit=U<n> gate=<clause>` when the finding is P2 or P3 (the `![P<n> Badge]` of its
 #   first comment; no badge counts as P1) and `units.tsv` in `--records` has the row `U<n>`; or
-#   `residual: operator=<ts>` when `decisions.tsv` in `--records` has a row at `<ts>`, the only residual for a P1.
+#   `residual: operator=<ts>` when `decisions.tsv` in `--records` has a row at `<ts>`, the only residual for a P1;
+#   or `filed: f=<n> s=<n> <reason>` (regime-cutover U124, the weighted finding rule of AGENTS.md "Audit") for a
+#   thread of any priority when both scores are whole numbers from 1 to 10 and their product, the finding's weight,
+#   is under WEIGHT_THRESHOLD below, the one place this file names that number; a weight at or above it is refused
+#   naming the product, and a score that is no such number is a malformed reply, refused.
 #   A residual without `--records` is a refusal. Any other newest reply, or none, is a refusal: the remedy is a
 #   `U<n>b` TASK or a `pr-thread-reply.sh` disposition, never a merge. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -109,6 +113,10 @@ git_env_scrub
 lever='pr-threads-check.sh'
 usage='usage: pr-threads-check.sh <pr> --head <sha> [--records <dir>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
+# The weighted finding rule (AGENTS.md "Audit", regime-cutover U124): a `filed:` reply holds when frequency times
+# severity is under this number. AGENTS.md names the same number once in its verdict bullet, and
+# tests/unit/test_review_rules.py keeps the two equal.
+WEIGHT_THRESHOLD=10
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   repository(owner: $owner, name: $name) {
@@ -166,11 +174,12 @@ has_row() {
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The first line of the newest reply.
 disposition() {
-    local created=$1 severity=$2 line=$3 fix fix_time status
+    local created=$1 severity=$2 line=$3 fix fix_time status frequency severity_score weight
     local fixed='^fixed: ([0-9a-f]{40})( |$)'
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
+    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
         git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
@@ -219,6 +228,22 @@ disposition() {
         1) echo "open (residual: no decisions.tsv row at ${fix})" ;;
         *) fail "cannot read ${records}/decisions.tsv" ;;
         esac
+    elif [[ ${line} =~ ${filed} ]]; then
+        frequency=${BASH_REMATCH[1]}
+        severity_score=${BASH_REMATCH[2]}
+        # Digits before any arithmetic: bash evaluates a name or a subscript inside `(( ))`, and the reply is text
+        # anyone with a GitHub account wrote.
+        if ! [[ ${frequency} =~ ^[0-9]+$ && ${severity_score} =~ ^[0-9]+$ ]] ||
+            ((frequency < 1 || frequency > 10 || severity_score < 1 || severity_score > 10)); then
+            echo "open (filed: f and s are whole numbers from 1 to 10; this is f=${frequency} s=${severity_score})"
+            return
+        fi
+        weight=$((frequency * severity_score))
+        ((weight < WEIGHT_THRESHOLD)) || {
+            echo "open (filed: f=${frequency} s=${severity_score} weighs ${weight}, not under ${WEIGHT_THRESHOLD}; fix it, or answer refuted: or residual:)"
+            return
+        }
+        echo "filed f=${frequency} s=${severity_score} weight=${weight}"
     elif [[ -z ${line} ]]; then
         echo 'open (no reply)'
     else

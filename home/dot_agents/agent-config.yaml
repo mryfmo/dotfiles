@@ -859,12 +859,12 @@ claude:
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
-      pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
-      pr-thread-resolve.sh: 8d66fae47de6e3c3148650bd7e8477ceb873bcf63f11d714d126f315461995ea
+      pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
+      pr-thread-resolve.sh: 4072938cb48ec85a6bbf563b39de3a1e283df58f817d241b4cc8e25b83b6e2e5
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
-      pr-threads-check.sh: dcd303233f6bae8ca7f18d61036ecc6175ecf52db6760c3ffc8ff600e69884f0
+      pr-threads-check.sh: daf279b4181c4887b015125f6572e839f111cd6cdbb661a699e2b4ae78353fd6
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
       pr-merge.sh: 15a84ed82ba5c367fec9744dac697ed352809d46f41ccdc504a9ec67f92f2410
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c

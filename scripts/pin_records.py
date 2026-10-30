@@ -40,6 +40,8 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 # A Claude Code plugin whose listing and manifest give no version gets the marketplace commit as its version, which
 # moves with every commit to the marketplace; its pin is then the content it was reviewed at (content_sha256).
 CONTENT_PIN = re.compile(r"^sha256:[0-9a-f]{64}$")
+# The hooks_sha256 pin of a Codex plugin (codex_hooks_content): the hex digest alone, beside the version pin.
+HOOKS_PIN = re.compile(r"^[0-9a-f]{64}$")
 # Claude Code's own bookkeeping at the top of a cache version directory, not plugin content: the cleanup marker
 # written into a superseded version (plugins loading reference, "Cleanup of previous versions") and the lock
 # directory a running session keeps there.
@@ -229,6 +231,7 @@ class Pin:
     marketplace: str
     pin: str
     ref: Optional[str] = None
+    hooks_sha256: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -251,16 +254,20 @@ def load_plugin_pins(path: Path) -> PluginPins:
         for plugin_id, entry in table.items():
             where = f"{agent}.{plugin_id}."
             plugin_parts(path, where.rstrip("."), plugin_id)
-            allowed = {"marketplace", "pin", "ref"} if agent == "codex" else {"marketplace", "pin"}
+            allowed = {"marketplace", "pin", "ref", "hooks_sha256"} if agent == "codex" else {"marketplace", "pin"}
             if not isinstance(entry, dict) or not set(entry) <= allowed:
                 raise RecordError(path, where.rstrip("."), f"may hold only {sorted(allowed)}")
             ref = optional(path, entry, "ref", str, where, ascii=True)
             if ref is not None and not COMMIT.fullmatch(ref):
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
+            hooks_sha256 = optional(path, entry, "hooks_sha256", str, where, ascii=True)
+            if hooks_sha256 is not None and not HOOKS_PIN.fullmatch(hooks_sha256):
+                raise RecordError(path, f"{where}hooks_sha256", "must be 64 lowercase hex")
             agents[agent][plugin_id] = Pin(
                 field(path, entry, "marketplace", str, where, ascii=True),
                 content_pin(path, entry, where, agent),
                 ref,
+                hooks_sha256,
             )
     extensions = field(path, data, "gh_extensions", dict)
     for repository, tag in extensions.items():
@@ -375,11 +382,20 @@ def content_sha256(root: Path, entry: Any) -> str:
     """The content pin (content_digest) of the plugin directory ROOT with its catalog entry ENTRY.
 
     File order on disk, mtimes, modes and empty directories do not count, and CLAUDE_CACHE_MARKERS at the top level
-    are not read. The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry
-    below it is lstat'ed (fstatat) and opened (openat, O_NOFOLLOW) relative to its parent's open directory, never by
-    a path walked again. So no symlink is followed anywhere below the root (the root included), and each directory
-    and file read is the one its lstat showed (same device and inode). A symlink, or anything that is neither a
-    regular file nor a directory, refuses: it is not reviewable content.
+    are not read (regular_files).
+    """
+    return content_digest(regular_files(root, CLAUDE_CACHE_MARKERS), entry)
+
+
+def regular_files(root: Path, skip_top: Tuple[str, ...] = ()) -> List[Tuple[bytes, bytes]]:
+    """The regular files below the directory ROOT as (relative POSIX path, bytes), in the order the walk met them;
+    a top-level name in SKIP_TOP is not read.
+
+    The walk is fd-relative end to end: the root is opened with O_DIRECTORY|O_NOFOLLOW, and every entry below it is
+    lstat'ed (fstatat) and opened (openat, O_NOFOLLOW) relative to its parent's open directory, never by a path
+    walked again. So no symlink is followed anywhere below the root (the root included), and each directory and file
+    read is the one its lstat showed (same device and inode). A symlink, or anything that is neither a regular file
+    nor a directory, refuses: it is not reviewable content.
     """
     try:
         root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -396,7 +412,7 @@ def content_sha256(root: Path, entry: Any) -> str:
             raise RecordError(root, prefix or ".", f"cannot list ({error})") from None
         for name in names:
             relative = f"{prefix}{name}"
-            if not prefix and name in CLAUDE_CACHE_MARKERS:
+            if not prefix and name in skip_top:
                 continue
             try:
                 status = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
@@ -434,7 +450,27 @@ def content_sha256(root: Path, entry: Any) -> str:
         walk(root_fd, "")
     finally:
         os.close(root_fd)
-    return content_digest(contents, entry)
+    return contents
+
+
+def regular_file_bytes(path: Path) -> Optional[bytes]:
+    """The bytes of the regular file PATH, None when absent; a symlink, a directory or a special file is an error."""
+    try:
+        status = os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except OSError as error:
+        raise RecordError(path, "(file)", f"cannot lstat ({error})") from None
+    if not stat.S_ISREG(status.st_mode):
+        raise RecordError(path, "(file)", "is a symlink, a directory or a special file, not a regular file")
+    try:
+        fd = open_regular(path, status)
+        if fd is None:
+            raise RecordError(path, "(file)", "changed while it was read")
+        with os.fdopen(fd, "rb") as handle:
+            return handle.read()
+    except OSError as error:
+        raise RecordError(path, "(file)", f"cannot read ({error})") from None
 
 
 def open_regular(name: Any, status: os.stat_result, dir_fd: Optional[int] = None) -> Optional[int]:
@@ -626,6 +662,48 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
     if name != plugin:
         raise RecordError(manifest_path, "name", f"{name!r} is not {plugin!r}")
     return CodexCopy(active, name, field(manifest_path, manifest, "version", str, ascii=True))
+
+
+# The executable content of a Codex plugin copy, pinned by hooks_sha256 in assets.codex-plugins: the files under
+# hooks/, which the hooks.json commands load (`node -e "require(... 'hooks/ponytail-activate.js')"`; the
+# codex.hooks.state trusted_hash pins cover those command strings, not the files they load), and the manifest that
+# names the hooks file. Not the skills and other files Codex reads as instructions.
+CODEX_HOOKS_DIR = "hooks"
+CODEX_PLUGIN_MANIFEST = ".codex-plugin/plugin.json"
+
+
+@dataclass(frozen=True)
+class CodexHooks:
+    sha256: str
+    # Relative POSIX path -> sha256 hex of its bytes, in the order the digest reads them.
+    files: Dict[str, str]
+
+
+def codex_hooks_content(copy: Path) -> CodexHooks:
+    """The hooks_sha256 value of the Codex plugin copy COPY (a cache version directory, or a checkout of the
+    plugin), with the per-file hashes it is made of.
+
+    The hex SHA-256 over one line per file, `<relative POSIX path> NUL <sha256 hex of its bytes> LF`: every regular
+    file under hooks/ (recursive, in the byte order of its path), then .codex-plugin/plugin.json. A missing hooks/ or
+    manifest is an error, never an empty value; so is a symlink or special file under hooks/ (regular_files).
+    """
+    hooks_dir = copy / CODEX_HOOKS_DIR
+    if not present(hooks_dir):
+        raise RecordError(hooks_dir, "(directory)", "is missing")
+    hashes = {
+        f"{CODEX_HOOKS_DIR}/{os.fsdecode(relative)}": hashlib.sha256(data).hexdigest()
+        for relative, data in regular_files(hooks_dir)
+    }
+    files = {path: hashes[path] for path in sorted(hashes, key=os.fsencode)}
+    manifest_path = copy / CODEX_PLUGIN_MANIFEST
+    manifest = regular_file_bytes(manifest_path)
+    if manifest is None:
+        raise RecordError(manifest_path, "(file)", "is missing")
+    files[CODEX_PLUGIN_MANIFEST] = hashlib.sha256(manifest).hexdigest()
+    digest = hashlib.sha256()
+    for path, file_hash in files.items():
+        digest.update(os.fsencode(path) + b"\0" + file_hash.encode() + b"\n")
+    return CodexHooks(digest.hexdigest(), files)
 
 
 @dataclass(frozen=True)

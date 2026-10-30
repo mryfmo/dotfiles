@@ -740,9 +740,10 @@ function disable_plugin() {
 #   read, a check that cannot run) it is disabled (disable_plugin) before the failure is returned and counted.
 #   One rule decides what fails the run: unreviewed code that could be active, or an active state that cannot
 #   be verified. So two outcomes are a WARN, not a failure: a step that could not verify a plugin that was
-#   neither installed nor enabled (PLUGIN_SKIPPED), and a fresh install that landed off its pin and is
-#   proven disabled (PLUGIN_FRESH_OFF_PIN; make doctor still reports it as drift). Both agents take the same
-#   path: a Claude plugin is disabled at user scope, a Codex copy removed (disable_plugin), and either is proven.
+#   neither installed nor enabled (PLUGIN_SKIPPED), and an install that landed off its pin and is proven
+#   disabled (PLUGIN_FRESH_OFF_PIN: a fresh Claude install, or any Codex copy the doctor rejects after the
+#   step; make doctor still reports it as drift). Both agents take the same path: a Claude plugin is disabled
+#   at user scope, a Codex copy removed (disable_plugin), and either is proven.
 #   The step runs in a subshell, so an `exit` or a `set -u` abort inside it comes back here too.
 # @arg $1 string Agent: claude or codex.
 # @arg $2 string Fully qualified plugin ID.
@@ -767,7 +768,7 @@ function converge_or_disable() {
     if [ "${status}" -eq "${PLUGIN_FRESH_OFF_PIN}" ]; then
         # make doctor keeps reporting this copy as drift: that is the signal for the review bump.
         if disable_plugin "${agent}" "${plugin_id}"; then
-            printf 'WARN: %s plugin %s landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex), so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n' "${agent}" "${plugin_id}" >&2
+            printf 'WARN: %s plugin %s is off its pin and is proven disabled (Claude) or removed (Codex), so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n' "${agent}" "${plugin_id}" >&2
             return 2
         fi
         printf 'ERROR: %s plugin %s landed off its pin and cannot be proven disabled.\n' "${agent}" "${plugin_id}" >&2
@@ -801,8 +802,9 @@ function converge_claude_plugin() {
 CLAUDE_CONVERGED=" "
 PIN_FAILURES=0
 # The exit statuses a plugin step returns for the two outcomes converge_or_disable reports as a WARN: a plugin
-# it could not verify and found neither installed nor enabled, and a fresh install that landed off its pin.
-# Any other non-zero status is a failure.
+# it could not verify and found neither installed nor enabled, and an install that landed off its pin and can
+# be proven disabled or removed (a fresh Claude install; a Codex copy, cached before the step or not). Any other
+# non-zero status is a failure.
 readonly PLUGIN_SKIPPED=10
 readonly PLUGIN_FRESH_OFF_PIN=11
 
@@ -1039,18 +1041,20 @@ function codex_plugin_copy() {
 }
 
 #
-# @description After a Codex plugin step installed a copy where none was cached, judge it by make doctor's own
-#   pin check (doctor_pin_check), the one judge of a pin, so the two never disagree: a fresh copy the doctor
-#   rejects, for the version its manifest declares, is a fresh install off its pin. The commit the copy came
-#   from is not compared with the marketplace `ref` (incident 2026-10-30: that ref pins the catalog snapshot
-#   only, and the upgrade installs the copy from upstream main). An already cached copy is left to make
-#   doctor's check alone.
+# @description After a Codex plugin step, judge the copy it left cached by make doctor's own pin check
+#   (doctor_pin_check), the one judge of a pin, so the two never disagree: a copy the doctor rejects, for the
+#   version its manifest declares or for its hook content (hooks_sha256: the files under hooks/, which the
+#   hooks.json commands load, and the manifest that names them), is off its pin, whether the step installed it or
+#   found it cached. `codex plugin marketplace upgrade` rewrites the copy from upstream main (incident
+#   2026-10-30), so a copy that was there before is no more reviewed than a fresh one and takes the same outcome:
+#   removed by converge_or_disable, a WARN, make doctor's drift until the review bump, not a run failure. The
+#   commit the copy came from is not compared with the marketplace `ref`, which pins the catalog snapshot only.
 # @arg $1 string Fully qualified Codex plugin ID.
-# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the fresh copy; converge_or_disable removes it.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the copy; converge_or_disable removes it.
 # @exitcode 1 When the copy or the pin cannot be read, or the doctor's check cannot run (any status but its
 #   0 or 1); never a pass.
 #
-function judge_fresh_codex_copy() {
+function judge_codex_copy() {
     local plugin_id="$1" pin codex_copy check=0
 
     if ! pin="$(plugin_pin codex "${plugin_id}" pin)"; then
@@ -1074,11 +1078,11 @@ function judge_fresh_codex_copy() {
     case "${check}" in
     0) return 0 ;;
     1)
-        printf 'WARN: codex plugin %s landed at %s against its pin %s and make doctor rejects that fresh copy (its finding above names the version off the pin); the pin needs a review bump: review that release and record its version in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${codex_copy#copy }" "${pin}" >&2
+        printf 'WARN: codex plugin %s landed at %s and make doctor rejects that copy: version or hook content off the pin %s (its finding above names what differs); the pin needs a review bump: review that release and record its version and hooks_sha256 in assets.codex-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${codex_copy#copy }" "${pin}" >&2
         return "${PLUGIN_FRESH_OFF_PIN}"
         ;;
     *)
-        printf 'ERROR: make doctor'"'"'s pin check of codex plugin %s could not run (exit %s), so its fresh copy at %s is unjudged.\n' "${plugin_id}" "${check}" "${codex_copy#copy }" >&2
+        printf 'ERROR: make doctor'"'"'s pin check of codex plugin %s could not run (exit %s), so its copy at %s is unjudged.\n' "${plugin_id}" "${check}" "${codex_copy#copy }" >&2
         return 1
         ;;
     esac
@@ -1113,7 +1117,7 @@ function install_codex_superpowers() {
             printf '%s\n' "${codex_output}" >&2
         fi
         printf 'Codex Superpowers plugin installed.\n'
-        judge_fresh_codex_copy "${CODEX_SUPERPOWERS_PLUGIN}"
+        judge_codex_copy "${CODEX_SUPERPOWERS_PLUGIN}"
     else
         if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
             printf '%s\n' "${codex_output}" >&2
@@ -1147,8 +1151,10 @@ function update_codex_superpowers() {
 #   chezmoi apply writes `ref` into [marketplaces.ponytail] (rendered from assets.codex-plugins). That ref pins
 #   the marketplace catalog snapshot only: `codex plugin marketplace upgrade` fetches the plugin copy from the
 #   source the catalog names (upstream main for ponytail), whatever the ref says, so the copy is judged by the
-#   version its manifest declares (install_codex_ponytail for a fresh copy, make doctor for an existing one),
-#   never by the commit it came from. What its hooks may run is decided by the codex.hooks.state trusted_hash pins.
+#   version its manifest declares and by its hook content (hooks_sha256), by make doctor's check after each
+#   update (judge_codex_copy) and at any time, never by the commit it came from. What a hook command may run is
+#   pinned by the codex.hooks.state trusted_hash pins (the hooks.json command strings); the files those commands
+#   load are pinned by hooks_sha256.
 #
 function ensure_codex_ponytail_marketplace() {
     local codex_config="${AGENT_CODEX_DIR%/}/config.toml"
@@ -1190,11 +1196,11 @@ function ensure_codex_ponytail_marketplace() {
 
 #
 # @description Install the Codex Ponytail plugin from its marketplace at the reviewed catalog commit. Only ever
-#   called through converge_or_disable. The marketplace upgrade itself installs the copy of an enabled plugin
-#   from the source the catalog names (upstream main), so the cache is read before it: a copy that was not there
-#   before is a fresh install and is judged by version (judge_fresh_codex_copy), whatever command wrote it; a
-#   copy that was there is left to make doctor's check.
-# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the fresh copy; converge_or_disable removes it.
+#   called through converge_or_disable. The marketplace upgrade itself installs or rewrites the copy of an
+#   enabled plugin from the source the catalog names (upstream main), so the cache is read before it (a copy that
+#   cannot be read stops the upgrade: it would install a copy nothing judges) and the copy is judged after it
+#   (judge_codex_copy), whether it was cached before or not; `already installed` only says which.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When make doctor rejects the copy; converge_or_disable removes it.
 # @exitcode 1 When the marketplace cannot be registered or is not pinned to the manifest's ref, the ref cannot
 #   be read, or the cached copy cannot be read before or after the upgrade.
 #
@@ -1231,10 +1237,6 @@ function install_codex_ponytail() {
         ;;
     esac
     codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
-    if [ "${cached_before}" -eq 1 ]; then
-        printf 'Codex Ponytail plugin is already installed.\n'
-        return 0
-    fi
 
     if ! codex_copy="$(codex_plugin_copy "${CODEX_PONYTAIL_PLUGIN}")"; then
         printf 'ERROR: cannot read the cached copy of %s after upgrading its marketplace.\n' "${CODEX_PONYTAIL_PLUGIN}" >&2
@@ -1242,13 +1244,19 @@ function install_codex_ponytail() {
     fi
     case "${codex_copy}" in
     absent) codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true ;;
-    "copy "?*) printf 'Codex Ponytail plugin was installed by the marketplace upgrade.\n' ;;
+    "copy "?*)
+        if [ "${cached_before}" -eq 1 ]; then
+            printf 'Codex Ponytail plugin is already installed.\n'
+        else
+            printf 'Codex Ponytail plugin was installed by the marketplace upgrade.\n'
+        fi
+        ;;
     *)
         printf 'ERROR: unexpected cache state of %s: %s\n' "${CODEX_PONYTAIL_PLUGIN}" "${codex_copy}" >&2
         return 1
         ;;
     esac
-    judge_fresh_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
+    judge_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
 }
 
 #

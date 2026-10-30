@@ -250,7 +250,9 @@ def render_plugin_pins(manifest: dict[str, Any]) -> str:
         for plugin_id, plugin in assets.get(asset, {}).get("plugins", {}).items():
             if "@" not in plugin_id or not plugin.get("pin") or plugin["pin"] == "unknown":
                 fail(f"assets.{asset}.plugins.{plugin_id} must be <plugin>@<marketplace> with a recorded pin")
-            pins[agent][plugin_id] = {key: plugin[key] for key in ("marketplace", "pin", "ref") if key in plugin}
+            pins[agent][plugin_id] = {
+                key: plugin[key] for key in ("marketplace", "pin", "ref", "hooks_sha256") if key in plugin
+            }
     extension = assets.get("gh-extensions", {})
     pins["gh_extensions"] = (
         {extension["upstream"].removeprefix("https://github.com/"): extension["pin"]} if extension else {}

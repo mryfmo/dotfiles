@@ -2,7 +2,11 @@
   "repository": "https://github.com/DietrichGebert/ponytail.git",
   "ref": "7801d061243d7b753bad0e0b3c057cd250b11755",
   "version": "5.3.3",
+  "tree": {
+    "hooks": "3779201caece8408fcb1573fb9804b9a25c2ae01",
+    ".codex-plugin/plugin.json": "95885d85afe831638b7e723b04ea575774fd7930"
+  },
   "path": "hooks/claude-codex-hooks.json",
   "blob": "4acacf0b01fb899f3130a55e87bc73ad8b03d52c",
-  "fetched": "2026-10-29, read-only: gh api repos/DietrichGebert/ponytail/contents/<path>?ref=<ref> (blob sha and content; the same blob at 09c434ab) and .codex-plugin/plugin.json?ref=<ref> (version)"
+  "fetched": "2026-10-30, read-only: git archive <ref> hooks .codex-plugin from a scratch clone (the hooks/ tree id and the manifest blob are the same at main 96608e07; the hook file's blob the same at 09c434ab); hooks_sha256 in scripts/plugin-pins.json is the digest of this tree"
 }

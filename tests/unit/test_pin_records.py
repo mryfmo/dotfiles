@@ -68,6 +68,13 @@ class PinRecordsTest(unittest.TestCase):
             ("short ref", lambda d: d["codex"]["tail@tail"].update(ref="abc"), "codex.tail@tail.ref"),
             ("short content pin", lambda d: d["claude"]["crit@crit"].update(pin="sha256:ab"), "claude.crit@crit.pin"),
             ("codex content pin", lambda d: d["codex"]["tail@tail"].update(pin="sha256:" + "a" * 64), "tail@tail.pin"),
+            ("short hooks pin", lambda d: d["codex"]["tail@tail"].update(hooks_sha256="ab"), "tail@tail.hooks_sha256"),
+            (
+                "prefixed hooks pin",
+                lambda d: d["codex"]["tail@tail"].update(hooks_sha256="sha256:" + "a" * 64),
+                "hooks_sha256",
+            ),
+            ("claude hooks pin", lambda d: d["claude"]["crit@crit"].update(hooks_sha256="a" * 64), "claude.crit@crit"),
             ("bad repository", lambda d: d["gh_extensions"].update({"gh-poi": "v1"}), "gh_extensions.gh-poi"),
         ):
             with self.subTest(case=name):
@@ -75,6 +82,11 @@ class PinRecordsTest(unittest.TestCase):
                 change(data)
                 self.refused(lambda: records.load_plugin_pins(self.write("pins.json", data)), field)
         self.refused(lambda: records.load_plugin_pins(self.dir / "absent.json"), "is missing")
+        good["codex"]["tail@tail"]["hooks_sha256"] = "a" * 64
+        self.assertEqual(
+            "a" * 64, records.load_plugin_pins(self.write("pins.json", good)).codex["tail@tail"].hooks_sha256
+        )
+        self.assertIsNone(records.load_plugin_pins(self.write("pins.json", good)).claude["crit@crit"].hooks_sha256)
 
     def test_claude_installs(self) -> None:
         cache = f"{self.dir}/cache/crit/crit/1.8.14"

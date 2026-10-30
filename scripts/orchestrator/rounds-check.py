@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Allow or refuse a unit's next audit round by the round cap and the two-strike rule (regime-cutover U120, order 36).
 
-`rounds-check.py <store> U<n>` reads `<store>/ledger.tsv` and `<store>/decisions.tsv` as data and exits 0 when the
-unit's next audit is allowed, 1 with a one-line reason when it is not, and 2 when the store cannot be read as data (a
-missing file, a header that is not the store's, a row with the wrong column count, a ts outside `YYYY-MM-DDThh:mm:ssZ`,
-an `incorrect` row from 2026-10-30 on whose evidence does not start with `class=<word>`, standing order 39), naming the
+`rounds-check.py <store> U<n>` reads `<store>/ledger.tsv` (through `ledger.py` beside this file, the one reader of the
+ledger since U122 round 6) and `<store>/decisions.tsv` as data and exits 0 when the unit's next audit is allowed, 1
+with a one-line reason when it is not, and 2 when the store cannot be read as data (a missing file, a header that is
+not the store's, a row with the wrong column count, a ts `strptime` does not read as `YYYY-MM-DDThh:mm:ssZ` (hour 25
+included), an empty required ledger cell, an `incorrect` row from 2026-10-30 on whose evidence does not start with
+`class=<word>`, standing order 39), naming the
 file and line. `rounds-check.py <store> U<n> --pr <pr>` is the lever's form (round 6): a pull request's audit is gated
 on a set of units, the body's unit and the `unit` of every ledger row whose `pr` cell is the pull request's number,
 because a fix or residual unit (`U<n>b`) writes its parent `U<n>` in the body and keeps `U<n>b` in its rows (standing
@@ -35,13 +37,37 @@ coordinator's: this check compares the tokens' words for equality, judges none, 
 from __future__ import annotations  # the `str | None` field annotation, read as text by every python3 the lever meets
 
 import argparse
+import importlib.util
 import os
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 
-LEDGER_HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
+HERE = os.path.dirname(os.path.realpath(__file__))
+
+
+def beside(name):
+    """The module `<name>.py` beside this file, loaded from that path alone: the check runs under `python3 -I`, which
+    puts no script directory on sys.path, and a module found by a search would not be the one beside it. A missing
+    file is exit 2 naming it."""
+    path = os.path.join(HERE, f"{name}.py")
+    if not os.path.isfile(path):
+        print(
+            f"rounds-check: {path}: no {name}.py beside the check; the ledger is read through it alone", file=sys.stderr
+        )
+        sys.exit(2)
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+ledger = beside("ledger")  # the one reader of ledger.tsv (U122 round 6); its Malformed is this check's exit 2
+
+# The decisions file keeps a reader of its own here; its ts is read by the ledger reader's `timestamp`, the one form.
 DECISIONS_HEADER = ("ts", "phase", "decision", "why", "evidence", "result")
 AUDIT_VERDICTS = frozenset(("correct", "incorrect"))
 MECHANISM_PHASE = "mechanism-change"
@@ -49,8 +75,7 @@ FORMS = ("ast", "parser-module", "allowlist", "remove", "residual")
 ROUND_CAP = 3  # audit rows a unit may have before its next round needs a mechanism row
 STRIKES = 2  # incorrect rows of one class after the latest mechanism row that need another one
 RULE_EFFECTIVE = "2026-10-30T00:00:00Z"  # standing orders 36 and 39: rows before it are read and never counted
-# The store's ts is fixed-width UTC, so the text order is the time order and no row needs a parsed date.
-TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+RULE_EFFECTIVE_AT = ledger.timestamp(RULE_EFFECTIVE)  # the same instant as every row's ts is compared, a datetime
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 UNIT_PREFIX = re.compile(r"^(U[0-9]+[a-z]?)[ :]")
@@ -63,10 +88,11 @@ OBJECT_ID = re.compile(r"^[0-9a-f]{40,64}$")
 
 @dataclass(frozen=True)
 class AuditRow:
-    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`; `klass` is the word of the
-    evidence's `class=` token, None for a row without one (allowed before RULE_EFFECTIVE, and for `correct` rows)."""
+    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`; `ts` is the row's ts parsed
+    (the ledger reader's datetime, the order every count is made in); `klass` is the word of the evidence's `class=`
+    token, None for a row without one (allowed before RULE_EFFECTIVE, and for `correct` rows)."""
 
-    ts: str
+    ts: datetime
     unit: str
     verdict: str
     line: int
@@ -75,9 +101,11 @@ class AuditRow:
 
 @dataclass(frozen=True)
 class MechanismRow:
-    """A decisions row of phase `mechanism-change` for `unit` whose result names exactly one closing form."""
+    """A decisions row of phase `mechanism-change` for `unit` whose result names exactly one closing form; `ts` is
+    parsed, `ts_text` the cell as written, for the lines that name the row."""
 
-    ts: str
+    ts: datetime
+    ts_text: str
     unit: str
     form: str
     line: int
@@ -95,8 +123,9 @@ class Refused:
     reason: str
 
 
-class Malformed(Exception):
-    """The store cannot be read as data; the message names the file and the line."""
+class Malformed(ledger.Malformed):
+    """The store cannot be read as data; the message names the file and the line (the ledger reader's own Malformed
+    is the base, so main refuses on either alike)."""
 
 
 @dataclass(frozen=True)
@@ -131,7 +160,7 @@ class Store:
             per_class[row.klass] = per_class.get(row.klass, 0) + 1
         struck = [klass for klass, count in per_class.items() if count >= STRIKES]
         classes = ", ".join(f"{klass}={count}" for klass, count in per_class.items()) or "none"
-        since = "the start" if latest is None else f"the mechanism-change row of {latest.ts} ({latest.form})"
+        since = "the start" if latest is None else f"the mechanism-change row of {latest.ts_text} ({latest.form})"
         ignored = f", {earlier} earlier rows ignored (rule effective {RULE_EFFECTIVE[:10]})" if earlier else ""
         counts = (
             f"{len(audits)} audit rows ({len(incorrect)} incorrect), {len(strikes)} incorrect since {since} "
@@ -140,7 +169,7 @@ class Store:
         discounted = [
             f"decisions.tsv:{line} is a mechanism-change row for {unit} naming {len(forms) or 'no'} form(s)"
             for ts, owner, line, forms in self.discounted
-            if owner == unit and ts >= RULE_EFFECTIVE
+            if owner == unit and ts >= RULE_EFFECTIVE_AT
         ]
         note = "".join(f"; {text}, so it does not count" for text in discounted)
         # the decision table of standing order 36: the strikes (per class) stand behind no cap and the cap (per row)
@@ -161,12 +190,14 @@ class Store:
 def counted(rows):
     """The rows from RULE_EFFECTIVE on in ts order, and how many earlier rows were left out of the count."""
     rows = sorted(rows, key=lambda row: row.ts)
-    kept = [row for row in rows if row.ts >= RULE_EFFECTIVE]
+    kept = [row for row in rows if row.ts >= RULE_EFFECTIVE_AT]
     return kept, len(rows) - len(kept)
 
 
 def parse_rows(name, text, header):
-    """Every data line of one TSV text as (line number, fields), each line with the header's width and a store ts."""
+    """Every data line of one TSV text as (line number, parsed ts, fields), each line with the header's width and a
+    ts the ledger reader's `timestamp` reads (the decisions file's own reader; the ledger's is `ledger.parse_ledger`).
+    """
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
@@ -179,51 +210,53 @@ def parse_rows(name, text, header):
         fields = line.split("\t")
         if len(fields) != len(header):
             raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(header)}")
-        if not TS.match(fields[0]):
-            raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not YYYY-MM-DDThh:mm:ssZ")
-        rows.append((number, fields))
+        at = ledger.timestamp(fields[0])
+        if at is None:
+            raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {ledger.TS_FORM}")
+        rows.append((number, at, fields))
     return rows
 
 
 def audit_rows(name, rows):
-    """Every audit row, with the word of its `class=` token; a post-date `incorrect` row without one is Malformed."""
+    """Every audit row of the ledger reader's rows, with the word of its `class=` token; a post-date `incorrect` row
+    without one is Malformed."""
     found = []
-    for number, (ts, unit, _pr, _head, verdict, _verifier, evidence) in rows:
-        if verdict not in AUDIT_VERDICTS:
+    for row in rows:
+        if row.verdict not in AUDIT_VERDICTS:
             continue
-        klass = CLASS.match(evidence)
-        if verdict == "incorrect" and ts >= RULE_EFFECTIVE and klass is None:
+        klass = CLASS.match(row.evidence)
+        if row.verdict == "incorrect" and row.ts >= RULE_EFFECTIVE_AT and klass is None:
             raise Malformed(
-                f"{name}:{number}: an incorrect row from {RULE_EFFECTIVE} on whose evidence does not start with "
+                f"{name}:{row.line}: an incorrect row from {RULE_EFFECTIVE} on whose evidence does not start with "
                 "class=<word> (standing order 39)"
             )
-        found.append(AuditRow(ts, unit, verdict, number, klass.group(1) if klass else None))
+        found.append(AuditRow(row.ts, row.unit, row.verdict, row.line, klass.group(1) if klass else None))
     return tuple(found)
 
 
 def mechanism_rows(rows):
     """The mechanism rows, and (ts, unit or None, line, forms) for each mechanism-change row that is not one."""
     found, discounted = [], []
-    for number, (ts, phase, decision, _why, _evidence, result) in rows:
+    for number, at, (ts, phase, decision, _why, _evidence, result) in rows:
         if phase != MECHANISM_PHASE:
             continue
         owner = UNIT_PREFIX.match(decision)
         forms = tuple(form for form, token in FORM_TOKENS.items() if token.search(result))
         if owner is None or len(forms) != 1:
-            discounted.append((ts, owner.group(1) if owner else None, number, forms))
+            discounted.append((at, owner.group(1) if owner else None, number, forms))
             continue
-        found.append(MechanismRow(ts, owner.group(1), forms[0], number))
+        found.append(MechanismRow(at, ts, owner.group(1), forms[0], number))
     return tuple(found), tuple(discounted)
 
 
 def load_store(read, ledger_name, decisions_name):
     """The Store from one reader of the two files; `read(name)` returns the text or raises Malformed."""
-    ledger = parse_rows(ledger_name, read("ledger.tsv"), LEDGER_HEADER)
+    rows = ledger.parse_ledger(ledger_name, read("ledger.tsv")).rows
     decisions = parse_rows(decisions_name, read("decisions.tsv"), DECISIONS_HEADER)
     mechanisms, discounted = mechanism_rows(decisions)
-    units = tuple(dict.fromkeys(fields[1] for _number, fields in ledger))
-    pull_requests = tuple((fields[1], fields[2]) for _number, fields in ledger)
-    return Store(audit_rows(ledger_name, ledger), mechanisms, discounted, units, pull_requests)
+    units = tuple(dict.fromkeys(row.unit for row in rows))
+    pull_requests = tuple((row.unit, row.pr) for row in rows)
+    return Store(audit_rows(ledger_name, rows), mechanisms, discounted, units, pull_requests)
 
 
 def directory_reader(store):
@@ -311,7 +344,7 @@ def main(argv=None):
             read = directory_reader(store)
             names = [os.path.join(store, name) for name in ("ledger.tsv", "decisions.tsv")]
         loaded = load_store(read, *names)
-    except Malformed as error:
+    except ledger.Malformed as error:
         print(f"rounds-check: {error}", file=sys.stderr)
         return 2
     if args.all:

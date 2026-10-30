@@ -65,12 +65,15 @@ ROUND_CAP_EXIT = (
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
     "mechanism-change row and run it again."
 )
-# U123 round 3 (audit of 8cdb0f9c, P2 SKILL.md:26): step 1 creates the worker's worktree with the lever and says why
-# a worker worktree cannot push; until this test the step-4 selector was cited for it and passed against main's skill.
+# U123 round 3 (audit of 8cdb0f9c, P2 SKILL.md:26): step 1 creates the worker's tree with the lever and says why
+# a worker tree cannot push; until this test the step-4 selector was cited for it and passed against main's skill.
+# Round 4: the tree is a repository of its own, and the coordinator fetches its head by path.
 WORKER_WORKTREE = (
-    "Create the worktree with `~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main`; a worker worktree "
-    "cannot push (its own config holds a refused `pushurl`, an empty credential helper and a `pre-push` hook that "
-    "exits 1), and you push its head from your checkout with the `push=` line the lever prints."
+    "Create the worker tree with `~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main`: a worker tree "
+    "is a repository of its own that cannot push (its config holds a refused `pushurl`, an empty credential helper "
+    "and a `pre-push` hook that exits 1; nothing of your checkout's configuration reaches it, and `git worktree list` "
+    "does not list it), and the coordinator fetches its head by path and pushes from the checkout with the `push=` "
+    "line the lever prints."
 )
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the

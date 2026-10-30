@@ -3,8 +3,8 @@
 Each test builds a bare `origin` and a main checkout pushed to it, and runs the lever from that checkout with
 `DOTFILES_WT` under the scratch root. A `git` wrapper on PATH records every argv and fails the calls named by
 `FAKE_GIT_FAIL` (one or more substrings of the argv, newline-separated; `FAKE_GIT_FAIL_STATUS` the exit status of each,
-the last repeating), so a test can inject a failure into one read or write, before or after `git worktree add`, and
-assert what is left. Nothing reads the real `~/.local/bin` or writes outside the scratch root.
+the last repeating), so a test can inject a failure into one read or write, before or after `git init`, and assert
+what is left. Nothing reads the real `~/.local/bin` or writes outside the scratch root.
 """
 
 import os
@@ -53,17 +53,18 @@ class WorkerWorktreeTest(unittest.TestCase):
         bindir.mkdir()
         (bindir / "git").write_text(GIT_WRAPPER)
         (bindir / "git").chmod(0o755)
-        gitconfig = self.root / "gitconfig"
-        gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
+        self.gitconfig = self.root / "gitconfig"
+        self.gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
         (self.root / "home").mkdir()
         self.git_calls = self.root / "git-calls"
+        self.lever_calls = ""
         self.env = quiet_git_env(
             {
                 "PATH": f"{bindir}:{os.environ['PATH']}",
                 "HOME": str(self.root / "home"),
                 "LC_ALL": "C",
                 "REAL_GIT": shutil.which("git"),
-                "GIT_CONFIG_GLOBAL": str(gitconfig),
+                "GIT_CONFIG_GLOBAL": str(self.gitconfig),
                 "GIT_CONFIG_NOSYSTEM": "1",
                 "FAKE_GIT_CALLS": str(self.git_calls),
                 "DOTFILES_WT": str(self.root / "wt"),
@@ -92,9 +93,11 @@ class WorkerWorktreeTest(unittest.TestCase):
         return run.returncode, run.stdout.strip(), run.stderr
 
     def run_lever(self, *args, cwd=None, **env):
-        """Run the lever from CWD (default the checkout) with ENV over the scratch env; a None value unsets the name."""
+        """Run the lever from CWD (default the checkout) with ENV over the scratch env; a None value unsets the name.
+        The git calls of every lever run accumulate in `self.lever_calls`, apart from the test's own."""
         merged = {key: value for key, value in {**self.env, **env}.items() if value is not None}
-        return subprocess.run(
+        self.git_calls.write_text("")
+        run = subprocess.run(
             [str(LEVER), *args],
             cwd=cwd or self.checkout,
             env=merged,
@@ -102,60 +105,107 @@ class WorkerWorktreeTest(unittest.TestCase):
             text=True,
             timeout=120,
         )
+        self.lever_calls += self.git_calls.read_text()
+        return run
 
     def worktrees(self):
         return self.git("worktree", "list", "--porcelain")
+
+    def checkout_state(self):
+        """Everything of the checkout a lever run could have touched: its refs, its config bytes, its hooks and its
+        worktree list. The lever must leave each byte-identical."""
+        hooks = self.checkout / ".git/hooks"
+        return (
+            self.git("for-each-ref"),
+            (self.checkout / ".git/config").read_bytes(),
+            sorted(hook.name for hook in hooks.iterdir()) if hooks.exists() else None,
+            self.worktrees(),
+        )
 
     def origin_branch(self, branch):
         """The sha `origin` holds for BRANCH, or None."""
         status, sha, _ = self.git_status("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", cwd=self.origin)
         return sha if status == 0 else None
 
-    def test_a_worker_worktree_cannot_push_and_the_coordinator_pushes_its_head_from_the_main_checkout(self):
-        """Standing order 29 as a refusal of the tool: the worktree's own config holds the refused pushurl, the empty
-        credential helper and a hooks directory under its git directory with the pre-push hook; a plain `git push`
-        fails on the pushurl's scheme before any ref is read, a push that spells the URL is refused by the hook, and
-        the main checkout, whose config is untouched, pushes the worker's head."""
+    def git_dir(self, path):
+        return Path(self.git("rev-parse", "--path-format=absolute", "--git-dir", cwd=path))
+
+    def assert_refusals_in_place(self, path, branch):
+        """The worker tree is a repository of its own whose config holds the refusals and the push shape, with the
+        lever's hooks directory holding the one `pre-push` hook, and whose objects are the checkout's."""
+        git_dir = self.git_dir(path)
+        self.assertEqual(git_dir, path / ".git")
+        self.assertEqual(
+            (git_dir / "objects/info/alternates").read_text(),
+            f"{self.git('rev-parse', '--path-format=absolute', '--git-path', 'objects')}\n",
+        )
+        for key, value in (
+            ("remote.origin.url", str(self.origin)),
+            ("remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"),
+            ("remote.origin.pushurl", PUSHURL),
+            ("credential.helper", ""),
+            ("core.hooksPath", str(git_dir / "hooks-lever")),
+            ("remote.pushDefault", "origin"),
+            ("push.default", "current"),
+            (f"branch.{branch}.remote", "origin"),
+            (f"branch.{branch}.merge", f"refs/heads/{branch}"),
+        ):
+            with self.subTest(key=key):
+                # the empty helper value leaves nothing after the tab, which strip() removes: partition, not split;
+                # the origin is the path git opened, `.git/config` relative to the tree
+                origin, _, got = self.git("config", "--show-origin", "--get-all", key, cwd=path).partition("\t")
+                self.assertEqual(
+                    ((path / origin.removeprefix("file:")).resolve(), got), (git_dir / "config", value), key
+                )
+        hook = git_dir / "hooks-lever/pre-push"
+        self.assertEqual([entry.name for entry in hook.parent.iterdir()], ["pre-push"])
+        self.assertTrue(os.access(hook, os.X_OK), hook)
+        self.assertIn(HOOK_MESSAGE, hook.read_text())
+        self.assertNotIn(str(path), self.worktrees(), "git worktree list of the checkout does not list a worker tree")
+
+    def commit_work(self, path):
+        (path / "work.txt").write_text("work\n")
+        self.git("add", "work.txt", cwd=path)
+        self.git("commit", "-q", "-m", "work", cwd=path)
+        return self.git("rev-parse", "HEAD", cwd=path)
+
+    def test_a_worker_tree_cannot_push_and_the_coordinator_pushes_its_head_from_the_main_checkout(self):
+        """Standing order 29 as a refusal of the tool: the worker tree is a fresh repository borrowing the checkout's
+        objects, its own config holds the refused pushurl, the empty credential helper, a hooks directory with the
+        pre-push hook and the push shape (`remote.pushDefault`, `push.default`, the branch's upstream); a plain
+        `git push` fails on the pushurl's scheme before any remote is contacted, a push that spells the URL is refused
+        by the hook, `git fetch origin` works, and the main checkout, which the lever never writes, fetches the
+        worker's head by path and pushes it."""
+        before = self.checkout_state()
         run = self.run_lever("U7", "feat/u7", "origin/main")
-        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
         path = self.root / "wt/U7"
         self.assertEqual(
             run.stdout,
             f"worktree={path}\nbranch=feat/u7\nhead={self.main}\n"
-            f"push=git -C {self.checkout} push {self.origin} <head>:refs/heads/feat/u7\n",
+            f"push=git -C {self.checkout} fetch {path} feat/u7 && "
+            f"git -C {self.checkout} push {self.origin} FETCH_HEAD:refs/heads/feat/u7\n",
         )
+        self.assertEqual(self.checkout_state(), before)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
         self.assertEqual(self.git("rev-parse", "--abbrev-ref", "HEAD", cwd=path), "feat/u7")
-        self.assertIn(f"worktree {path}\n", self.worktrees())
-        # the refusals and the branch's upstream live in the worktree's own config.worktree and git directory
-        wt_git = Path(self.git("rev-parse", "--path-format=absolute", "--git-dir", cwd=path))
-        self.assertEqual(wt_git.parent.parent, self.checkout / ".git")
-        for key, value in (
-            ("remote.origin.pushurl", PUSHURL),
-            ("credential.helper", ""),
-            ("core.hooksPath", str(wt_git / "hooks")),
-            ("branch.feat/u7.remote", "origin"),
-            ("branch.feat/u7.merge", "refs/heads/feat/u7"),
-        ):
-            with self.subTest(key=key):
-                # the empty helper value leaves nothing after the tab, which strip() removes: partition, not split
-                origin, _, got = self.git("config", "--show-origin", "--get", key, cwd=path).partition("\t")
-                self.assertEqual((origin, got), (f"file:{wt_git}/config.worktree", value))
-                self.assertEqual(
-                    self.git_status("config", "--get", key)[:2], (1, ""), "the main checkout keeps its config"
-                )
-        hook = wt_git / "hooks/pre-push"
-        self.assertTrue(os.access(hook, os.X_OK), hook)
-        self.assertIn(HOOK_MESSAGE, hook.read_text())
-        self.assertEqual(self.git("config", "--get", "extensions.worktreeConfig"), "true")
+        self.assertEqual(self.git("rev-parse", "origin/main", cwd=path), self.main)
+        self.assertEqual((path / "README").read_text(), "main\n")
+        self.assert_refusals_in_place(path, "feat/u7")
+        for key in ("remote.origin.pushurl", "credential.helper", "core.hooksPath", "branch.feat/u7.remote"):
+            self.assertEqual(self.git_status("config", "--get", key)[:2], (1, ""), "the main checkout keeps its config")
+        # the worker's tests fetch main: origin is the checkout's origin, and origin/main moves with it
+        (self.checkout / "README").write_text("main two\n")
+        self.git("commit", "-q", "-am", "main two")
+        self.git("push", "-q", "origin", "main")
+        moved = self.git("rev-parse", "HEAD")
+        self.git("fetch", "-q", "origin", cwd=path)
+        self.assertEqual(self.git("rev-parse", "origin/main", cwd=path), moved)
         # the worker's push forms: every one fails, nothing reaches origin
-        (path / "work.txt").write_text("work\n")
-        self.git("add", "work.txt", cwd=path)
-        self.git("commit", "-q", "-m", "work", cwd=path)
-        head = self.git("rev-parse", "HEAD", cwd=path)
+        head = self.commit_work(path)
         for argv, message in (
-            # the pushurl's scheme has no remote helper: refused before any ref is read, so the hook is not reached;
-            # the bare push reaches it through the upstream the worktree's own config names (round 3)
+            # the pushurl's scheme has no remote helper: refused before any remote is contacted, so the hook is not
+            # reached; the bare push goes to origin through remote.pushDefault and push.default=current
             (("push",), "refused"),
             (("push", "origin", "HEAD"), "refused"),
             (("push", "-u", "origin", "feat/u7"), "refused"),
@@ -170,30 +220,25 @@ class WorkerWorktreeTest(unittest.TestCase):
                 self.assertNotEqual(status, 0, out)
                 self.assertIn(message, err)
                 self.assertIsNone(self.origin_branch("feat/u7"), err)
-        # the coordinator's line: from the main checkout, which shares the objects
-        self.git("push", str(self.origin), f"{head}:refs/heads/feat/u7")
+        # the coordinator's line, as printed: fetched by path into the checkout, pushed from there
+        command = next(line for line in run.stdout.splitlines() if line.startswith("push=")).removeprefix("push=")
+        pushed = subprocess.run(["bash", "-c", command], env=self.env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(pushed.returncode, 0, pushed.stderr)
         self.assertEqual(self.origin_branch("feat/u7"), head)
-        # the lever removed nothing: the cleanup runs only after a failed step
-        calls = self.git_calls.read_text()
-        self.assertNotIn('"remove"', calls)
-        self.assertNotIn('"-D"', calls)
+        # the lever ran no worktree command and removed nothing: the cleanup runs only after a failed step
+        self.assertNotIn('"worktree"', self.lever_calls)
+        self.assertNotIn('"-D"', self.lever_calls)
 
     def test_refusals_make_nothing(self):
-        """Every input is checked before anything is made: exit 2, no worktree, no branch, no root directory, and
-        `extensions.worktreeConfig` not yet set in the checkout. The branch is the normalized name
-        `check-ref-format --branch` prints (`@{-1}` names the previous branch, here one that exists), a name with a
-        character the shell would read (`;`) is refused, and a read that fails (exit 128 from the PATH shim: the git
-        directory, the common directory, `show-ref`, the pushurl and `core.worktree` reads) is a refusal naming the
-        read, never an absence and never exit 1."""
+        """Every input is checked before anything is made: exit 2, no `git init`, no root directory, and the
+        checkout byte-identical. A name with a character the shell would read (`;`) is refused, and a read that
+        fails (exit 128 from the PATH shim: the git directory, the common directory, the objects directory and the
+        origin URL reads) is a refusal naming the read, never an absence and never exit 1."""
         linked = self.root / "linked"
         self.git("worktree", "add", "-q", "--detach", str(linked), "origin/main")
-        self.git("branch", "taken", "origin/main")
-        self.git("checkout", "-q", "taken")
-        self.git("checkout", "-q", "main")
-        before = self.worktrees()
+        before = self.checkout_state()
         held = self.root / "held/U9"
         held.mkdir(parents=True)
-        read_failed = failing("show-ref")
         for argv, cwd, env, message in (
             ((), None, {}, "usage: worker-worktree.sh <unit> <branch> <base>"),
             (("U7", "feat/u7"), None, {}, "usage:"),
@@ -205,9 +250,6 @@ class WorkerWorktreeTest(unittest.TestCase):
             (("U7", "feat/u7;true", "origin/main"), None, {}, "the branch feat/u7;true has a character outside"),
             (("U7", "feat/u7", ""), None, {}, "the base is empty"),
             (("U7", "feat/u7", "nowhere"), None, {}, "the base nowhere names no commit"),
-            (("U7", "taken", "origin/main"), None, {}, "the branch taken exists"),
-            (("U7", "@{-1}", "origin/main"), None, {}, "the branch taken exists"),
-            (("U7", "feat/u7", "origin/main"), None, read_failed, "cannot read refs/heads/feat/u7 in"),
             (
                 ("U7", "feat/u7", "origin/main"),
                 None,
@@ -223,14 +265,14 @@ class WorkerWorktreeTest(unittest.TestCase):
             (
                 ("U7", "feat/u7", "origin/main"),
                 None,
-                failing("config --get-all remote.origin.pushurl"),
-                "cannot read remote.origin.pushurl from the checkout's config",
+                failing("rev-parse --path-format=absolute --git-path objects"),
+                "cannot read the objects directory of",
             ),
             (
                 ("U7", "feat/u7", "origin/main"),
                 None,
-                failing("config --get core.worktree"),
-                "cannot read core.worktree from the checkout's config",
+                failing("config --get remote.origin.url"),
+                "cannot read remote.origin.url from the checkout's config",
             ),
             (("U9", "feat/u9", "origin/main"), None, {"DOTFILES_WT": str(held.parent)}, f"{held} exists"),
             (("U7", "feat/u7", "origin/main"), None, {"DOTFILES_WT": "wt"}, "DOTFILES_WT wt is not an absolute path"),
@@ -242,113 +284,78 @@ class WorkerWorktreeTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn("worker-worktree.sh: refused: ", run.stderr)
                 self.assertIn(message, run.stderr)
+                self.assertNotIn("removed again", run.stderr)
                 self.assertFalse((self.root / "wt").exists())
-                self.assertEqual(self.worktrees(), before)
-                self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
-        self.git("config", "core.worktree", str(self.checkout))
-        run = self.run_lever("U7", "feat/u7", "origin/main")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("refused: core.worktree is set in the checkout's config", run.stderr)
-        self.git("config", "--unset", "core.worktree")
+                self.assertEqual(self.checkout_state(), before)
         self.git("remote", "remove", "origin")
         run = self.run_lever("U7", "feat/u7", "main")
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"refused: no origin remote in {self.checkout}", run.stderr)
         self.assertFalse((self.root / "wt").exists())
-        self.assertEqual(self.worktrees(), before)
-        self.assertEqual(self.git_status("config", "--get", "extensions.worktreeConfig")[0], 1)
+        self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
 
-    def test_a_failing_step_after_the_add_leaves_no_half_made_worktree(self):
-        """Standing order 21: a git step that fails after `git worktree add` is exit 1 naming it, and the tree and
-        branch this run made are removed again, so no worktree without the refusals is left: each write, the scope
-        clearing, and each read after the add (the git directory, every config readback, the head). A failed add or a
-        failed `extensions.worktreeConfig` write makes nothing, and the empty hooks directory is removed again."""
-        before = self.worktrees()
+    def test_a_failing_step_after_the_init_leaves_no_repository_and_the_checkout_unchanged(self):
+        """Standing order 21: a git step that fails after `git init` is exit 2 naming it, and the repository this
+        run made is removed again, so no tree without the refusals is left and the checkout is byte-identical: the
+        init itself, the git-directory read, each config write, the fetch, the checkout, each readback and the head.
+        The same run without the injected failure then succeeds."""
+        before = self.checkout_state()
         path = self.root / "wt/U7"
-        staging = lambda: sorted((self.checkout / ".git").glob("worker-worktree-hooks.*"))  # noqa: E731
         for env, message in (
-            (failing("config --worktree remote.origin.pushurl", status=1), "cannot set remote.origin.pushurl"),
-            (failing("config --worktree credential.helper", status=1), "cannot set credential.helper"),
-            (failing("config --worktree core.hooksPath", status=1), "cannot set core.hooksPath"),
-            (failing("config --worktree branch.feat/u7.remote", status=1), "cannot set branch.feat/u7.remote"),
-            (failing("config --worktree branch.feat/u7.merge", status=1), "cannot set branch.feat/u7.merge"),
-            (
-                failing(f"-C {path} config --worktree --unset-all remote.origin.pushurl"),
-                "cannot clear remote.origin.pushurl in the config.worktree",
-            ),
+            (failing("init --quiet --template=", status=1), f"git init {path} exited 1"),
             (
                 failing(f"-C {path} rev-parse --path-format=absolute --git-dir"),
                 f"cannot read the git directory of {path}",
             ),
-            (
-                failing(f"-C {path} config --worktree --get-all remote.origin.pushurl"),
-                "remote.origin.pushurl is not set in the config.worktree",
-            ),
-            (
-                failing(f"-C {path} config --get-all remote.origin.pushurl"),
-                f"remote.origin.pushurl is not set in {path}",
-            ),
-            (failing(f"-C {path} config --get core.hooksPath"), "core.hooksPath is not set"),
-            (failing(f"-C {path} config --get branch.feat/u7.remote"), "branch.feat/u7.remote is not set"),
-            (failing(f"-C {path} config --get branch.feat/u7.merge"), "branch.feat/u7.merge is not set"),
+            (failing("config core.hooksPath", status=1), "cannot set core.hooksPath"),
+            (failing("config remote.origin.url", status=1), "cannot set remote.origin.url"),
+            (failing("config remote.origin.fetch", status=1), "cannot set remote.origin.fetch"),
+            (failing("config remote.origin.pushurl", status=1), "cannot set remote.origin.pushurl"),
+            (failing("config credential.helper", status=1), "cannot set credential.helper"),
+            (failing("config remote.pushDefault", status=1), "cannot set remote.pushDefault"),
+            (failing("config push.default", status=1), "cannot set push.default"),
+            (failing("fetch --quiet", status=1), f"git fetch {self.main} from {self.checkout} exited 1"),
+            (failing("checkout --quiet --no-track -b feat/u7", status=1), "git checkout -b feat/u7 origin/main"),
+            (failing("config branch.feat/u7.remote origin", status=1), "cannot set branch.feat/u7.remote"),
+            (failing("config branch.feat/u7.merge refs/heads/feat/u7", status=1), "cannot set branch.feat/u7.merge"),
+            (failing("config --get-all remote.origin.pushurl"), f"remote.origin.pushurl is not set in {path}"),
+            (failing("config --get core.hooksPath"), "core.hooksPath is not set"),
+            (failing("config --get branch.feat/u7.remote"), "branch.feat/u7.remote is not set"),
+            (failing("config --get branch.feat/u7.merge"), "branch.feat/u7.merge is not set"),
             (failing(f"-C {path} rev-parse --verify HEAD"), "cannot read the head of"),
         ):
             with self.subTest(failing=env["FAKE_GIT_FAIL"]):
                 run = self.run_lever("U7", "feat/u7", "origin/main", **env)
-                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-                self.assertIn(f"worker-worktree.sh: {message}", run.stderr)
-                self.assertIn(f"removing the half-made worktree {path} and the branch feat/u7", run.stderr)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"worker-worktree.sh: refused: {message}", run.stderr)
+                self.assertIn(f"the repository {path} this run made is removed again", run.stderr)
                 self.assertFalse(path.exists())
-                self.assertFalse((self.checkout / ".git/worktrees/U7").exists())
-                self.assertEqual(staging(), [])
-                self.assertEqual(self.worktrees(), before)
-                self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
-        for env, message in (
-            (failing("worktree add", status=1), "git worktree add"),
-            (failing("config extensions.worktreeConfig", status=1), "cannot set extensions.worktreeConfig"),
-        ):
-            with self.subTest(failing=env["FAKE_GIT_FAIL"]):
-                run = self.run_lever("U7", "feat/u7", "origin/main", **env)
-                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-                self.assertIn(message, run.stderr)
-                self.assertNotIn("removing", run.stderr)
-                self.assertFalse(path.exists())
-                self.assertEqual(staging(), [])
-                self.assertEqual(self.worktrees(), before)
-                self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
+                self.assertFalse(path.is_symlink())
+                self.assertEqual(self.checkout_state(), before)
         # the same run without the injected failure then succeeds: nothing of the failed runs stands in its way
         run = self.run_lever("U7", "feat/u7", "origin/main")
-        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((run.returncode, run.stderr), (0, ""))
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
+        self.assert_refusals_in_place(path, "feat/u7")
+        self.assertEqual(self.checkout_state(), before)
 
-    def test_a_failed_show_ref_in_the_cleanup_is_named_and_the_branch_deleted_all_the_same(self):
-        """The cleanup reads the branch's existence by value: exit 1 is absence, 0 presence, and any other status is a
-        failed read, named on stderr, after which the branch this run made is deleted anyway (round 2 read every
-        non-zero status as absence and left the branch behind)."""
-        before = self.worktrees()
-        run = self.run_lever(
-            "U7",
-            "feat/u7",
-            "origin/main",
-            FAKE_GIT_FAIL=f"config --worktree credential.helper\n-C {self.checkout} show-ref",
-            FAKE_GIT_FAIL_STATUS="1\n128",
-        )
-        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-        self.assertIn("worker-worktree.sh: cannot set credential.helper", run.stderr)
-        self.assertIn(f"cannot read refs/heads/feat/u7 in {self.checkout}: git show-ref exited 128", run.stderr)
-        self.assertFalse((self.root / "wt/U7").exists())
-        self.assertEqual(self.worktrees(), before)
-        self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
-
-    def test_no_hook_of_the_source_checkout_runs_while_the_worktree_is_made(self):
-        """`git worktree add` runs with `-c core.hooksPath` naming the lever's own, still empty, hooks directory, so no
-        hook of the source checkout runs during creation: a post-checkout hook that locks the new tree, writes a
-        marker and exits 1 (round 2 removed the tree after such a hook, and the lock beat the removal) and a
-        reference-transaction hook that writes a marker both stay silent; the run is exit 0 with the refusals in
-        place, no lock and no marker, and the checkout keeps its hooks."""
-        hooks = self.checkout / ".git/hooks"
-        hooks.mkdir(exist_ok=True)
+    def test_no_hook_of_the_checkout_runs_while_the_tree_is_made(self):
+        """The worker tree is a repository of its own, made under a closed global configuration with the lever's own
+        hooks directory in its config before the fetch and the checkout: a `hook.<name>.event` post-checkout hook of
+        the checkout (git 2.56) that locks the tree, writes a marker and exits 1, and the `core.hooksPath` hooks of
+        the checkout (a post-checkout that does the same, a reference-transaction that writes a marker) all stay
+        silent, the run is exit 0 with the refusals in place, and the checkout keeps its hooks and config."""
         marker = self.root / "hook-ran"
+        locker = self.root / "locker.sh"
+        locker.write_text(
+            f'#!/bin/sh\ngit worktree lock "$PWD" 2> /dev/null\necho config-hook >> {marker}\n'
+            "echo 'config-hook: refused' >&2\nexit 1\n"
+        )
+        locker.chmod(0o755)
+        self.git("config", "hook.locker.command", str(locker))
+        self.git("config", "hook.locker.event", "post-checkout")
+        hooks = self.root / "checkout-hooks"
+        hooks.mkdir()
         (hooks / "post-checkout").write_text(
             f'#!/bin/sh\ngit worktree lock "$PWD" 2> /dev/null\necho post-checkout >> {marker}\n'
             "echo 'post-checkout: refused' >&2\nexit 1\n"
@@ -356,35 +363,132 @@ class WorkerWorktreeTest(unittest.TestCase):
         (hooks / "reference-transaction").write_text(f"#!/bin/sh\necho reference-transaction >> {marker}\nexit 0\n")
         for hook in ("post-checkout", "reference-transaction"):
             (hooks / hook).chmod(0o755)
+        self.git("config", "core.hooksPath", str(hooks))
+        before = self.checkout_state()
         run = self.run_lever("U7", "feat/u7", "origin/main")
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
         self.assertNotIn("locked", self.worktrees())
+        self.assertEqual(self.checkout_state(), before)
         path = self.root / "wt/U7"
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
-        wt_git = Path(self.git("rev-parse", "--path-format=absolute", "--git-dir", cwd=path))
-        self.assertEqual(self.git("config", "--worktree", "--get", "remote.origin.pushurl", cwd=path), PUSHURL)
-        self.assertEqual(self.git("config", "--get", "core.hooksPath", cwd=path), str(wt_git / "hooks"))
-        self.assertEqual([hook.name for hook in (wt_git / "hooks").iterdir()], ["pre-push"])
-        self.assertTrue(all((hooks / hook).exists() for hook in ("post-checkout", "reference-transaction")))
-        self.assertEqual(sorted((self.checkout / ".git").glob("worker-worktree-hooks.*")), [])
-        (path / "work.txt").write_text("work\n")
-        self.git("add", "work.txt", cwd=path)
-        self.git("commit", "-q", "-m", "work", cwd=path)
+        self.assert_refusals_in_place(path, "feat/u7")
+        self.assertEqual(self.git_status("config", "--get", "hook.locker.event", cwd=path)[:2], (1, ""))
+        self.commit_work(path)
         status, _, err = self.git_status("push", "origin", "HEAD", cwd=path)
         self.assertNotEqual(status, 0)
         self.assertIn("refused", err)
         self.assertIsNone(self.origin_branch("feat/u7"), err)
 
+    def test_a_required_smudge_filter_of_the_checkout_does_not_run_while_the_tree_is_made(self):
+        """A `.gitattributes` of the tree names a filter the checkout's config makes required and failing: the fresh
+        repository has no filter config, so creation succeeds with the blob checked out as it is, the filter's
+        command never runs, and the checkout keeps its config (observed on git 2.56: creation succeeds)."""
+        marker = self.root / "smudge-ran"
+        (self.checkout / ".gitattributes").write_text("* filter=fail\n")
+        self.git("add", ".gitattributes")
+        self.git("commit", "-q", "-m", "attributes")
+        self.git("push", "-q", "origin", "main")
+        self.git("fetch", "-q", "origin")
+        base = self.git("rev-parse", "origin/main")
+        self.git("config", "filter.fail.smudge", f"sh -c 'echo smudge >> {marker}; exit 1'")
+        self.git("config", "filter.fail.required", "true")
+        self.assertEqual(self.git("check-attr", "filter", "README"), "README: filter: fail")
+        before = self.checkout_state()
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertFalse(marker.exists())
+        path = self.root / "wt/U7"
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), base)
+        self.assertEqual((path / "README").read_text(), "main\n")
+        self.assertEqual(self.git_status("config", "--get", "filter.fail.smudge", cwd=path)[:2], (1, ""))
+        self.assert_refusals_in_place(path, "feat/u7")
+        self.assertEqual(self.checkout_state(), before)
+
+    def test_the_checkout_s_configuration_does_not_reach_the_worker_tree(self):
+        """A pushurl, `core.worktree` and a push shape the checkout's config holds (rounds 2 and 3 refused the first
+        two; round 4 removes the premise) are not read by the fresh repository: creation succeeds, the worker tree
+        reads one pushurl, the refusal, and a plain push fails on its scheme before any remote is contacted."""
+        self.git("config", "remote.origin.pushurl", str(self.origin))
+        self.git("config", "core.worktree", str(self.checkout))
+        self.git("config", "remote.pushDefault", "upstream")
+        self.git("config", "push.default", "nothing")
+        before = self.checkout_state()
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        self.assertEqual(self.checkout_state(), before)
+        path = self.root / "wt/U7"
+        self.assertEqual(self.git("config", "--get-all", "remote.origin.pushurl", cwd=path), PUSHURL)
+        self.assertEqual(self.git_status("config", "--get", "core.worktree", cwd=path)[:2], (1, ""))
+        self.assert_refusals_in_place(path, "feat/u7")
+        self.commit_work(path)
+        for argv in (("push",), ("push", "origin", "HEAD")):
+            with self.subTest(argv=argv):
+                status, _, err = self.git_status(*argv, cwd=path)
+                self.assertNotEqual(status, 0)
+                self.assertIn("refused", err)
+                self.assertNotIn(HOOK_MESSAGE, err)
+                self.assertIsNone(self.origin_branch("feat/u7"), err)
+
+    def test_the_worker_s_own_push_configuration_does_not_reopen_the_push_path(self):
+        """A worker's global config with `remote.pushDefault=upstream` and `push.default=nothing` (the verdict on
+        5183f849, P2 and P3: inherited, these sent a bare push to the real remote or made it fail on a configuration
+        error): the fresh repository's own `remote.pushDefault=origin` and `push.default=current` win, so a bare
+        `git push` fails on the refused scheme before any remote is contacted and the hook never runs, and a push
+        that spells the URL is refused by the hook."""
+        run = self.run_lever("U7", "feat/u7", "origin/main")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+        path = self.root / "wt/U7"
+        with self.gitconfig.open("a") as gitconfig:
+            gitconfig.write("[remote]\n\tpushDefault = upstream\n[push]\n\tdefault = nothing\n")
+        self.git("remote", "add", "upstream", str(self.origin), cwd=path)
+        self.assertEqual(self.git("config", "--get", "remote.pushDefault", cwd=path), "origin")
+        self.assertEqual(self.git("config", "--get", "push.default", cwd=path), "current")
+        self.commit_work(path)
+        for argv in (("push",), ("push", "origin", "HEAD"), ("push", "-u", "origin", "feat/u7")):
+            with self.subTest(argv=argv):
+                status, _, err = self.git_status(*argv, cwd=path)
+                self.assertNotEqual(status, 0)
+                self.assertIn("remote helper 'refused'", err)
+                self.assertNotIn(HOOK_MESSAGE, err)
+                self.assertIsNone(self.origin_branch("feat/u7"), err)
+        status, _, err = self.git_status("push", str(self.origin), "HEAD:refs/heads/feat/u7", cwd=path)
+        self.assertNotEqual(status, 0)
+        self.assertIn(HOOK_MESSAGE, err)
+        self.assertIsNone(self.origin_branch("feat/u7"), err)
+
+    def test_a_branch_the_checkout_holds_is_no_conflict_and_the_name_is_the_normalized_one(self):
+        """The branch is made in the fresh repository, so a branch of the same name in the checkout is no longer
+        refused and is never touched; the name made is the one `check-ref-format --branch` prints, so `@{-1}` names
+        the checkout's previous branch."""
+        self.git("branch", "taken", "origin/main")
+        self.git("checkout", "-q", "taken")
+        (self.checkout / "taken.txt").write_text("taken\n")
+        self.git("add", "taken.txt")
+        self.git("commit", "-q", "-m", "taken")
+        self.git("checkout", "-q", "main")
+        before = self.checkout_state()
+        for unit, branch in (("U7", "taken"), ("U8", "@{-1}")):
+            with self.subTest(branch=branch):
+                run = self.run_lever(unit, branch, "origin/main")
+                self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
+                path = self.root / "wt" / unit
+                self.assertIn(f"worktree={path}\nbranch=taken\nhead={self.main}\n", run.stdout)
+                self.assertEqual(self.git("rev-parse", "--abbrev-ref", "HEAD", cwd=path), "taken")
+                self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
+                self.assert_refusals_in_place(path, "taken")
+                self.assertEqual(self.checkout_state(), before)
+
     def test_the_environment_of_the_caller_does_not_redirect_the_lever_s_git(self):
-        """`GIT_CONFIG` would send the `extensions.worktreeConfig` write into another file, `GIT_CONFIG_PARAMETERS` and
-        a `GIT_CONFIG_COUNT` entry would add a pushurl and a `core.worktree` every read sees, and `GIT_DIR`,
-        `GIT_WORK_TREE` and `GIT_COMMON_DIR` would point every command at another repository: the lever runs git with
-        each removed, so the scratch file is unchanged, the checkout's config carries the extension, and the
-        worktree's own config carries the refusals."""
+        """`GIT_CONFIG` would send a config write into another file, `GIT_CONFIG_PARAMETERS` and a `GIT_CONFIG_COUNT`
+        entry would add a pushurl and a `core.worktree` every read sees, and `GIT_DIR`, `GIT_WORK_TREE` and
+        `GIT_COMMON_DIR` would point every command at another repository: the lever runs git with each removed, so
+        the scratch file is unchanged, the checkout and the origin are untouched, and the fresh repository's own
+        config carries the refusals."""
         scratch = self.root / "elsewhere.gitconfig"
         scratch.write_text("[elsewhere]\n\tkey = value\n")
         count = int(self.env["GIT_CONFIG_COUNT"])
+        before = self.checkout_state()
         run = self.run_lever(
             "U7",
             "feat/u7",
@@ -397,24 +501,17 @@ class WorkerWorktreeTest(unittest.TestCase):
             GIT_WORK_TREE=str(self.root / "home"),
             GIT_COMMON_DIR=str(self.origin),
         )
-        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stderr)
         self.assertEqual(scratch.read_text(), "[elsewhere]\n\tkey = value\n")
-        self.assertEqual(self.git("config", "--get", "extensions.worktreeConfig"), "true")
+        self.assertEqual(self.checkout_state(), before)
+        self.assertIsNone(self.origin_branch("feat/u7"))
         path = self.root / "wt/U7"
-        wt_git = Path(self.git("rev-parse", "--path-format=absolute", "--git-dir", cwd=path))
-        self.assertEqual(wt_git.parent.parent, self.checkout / ".git")
-        for key, value in (
-            ("remote.origin.pushurl", PUSHURL),
-            ("credential.helper", ""),
-            ("core.hooksPath", str(wt_git / "hooks")),
-        ):
-            with self.subTest(key=key):
-                origin, _, got = self.git("config", "--show-origin", "--get", key, cwd=path).partition("\t")
-                self.assertEqual((origin, got), (f"file:{wt_git}/config.worktree", value))
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
+        self.assert_refusals_in_place(path, "feat/u7")
 
     def test_the_default_root_is_dotfiles_wt_under_tmpdir(self):
         """With `DOTFILES_WT` unset the root is `dotfiles-wt` under `TMPDIR`, the value the lever's `@env` line, the
-        README row and the PR body's Contract state: under a scratch `TMPDIR` the worktree is made there."""
+        README row and the PR body's Contract state: under a scratch `TMPDIR` the repository is made there."""
         tmpdir = self.root / "scratch-tmp"
         tmpdir.mkdir()
         run = self.run_lever("U7", "feat/u7", "origin/main", DOTFILES_WT=None, TMPDIR=str(tmpdir))
@@ -422,40 +519,13 @@ class WorkerWorktreeTest(unittest.TestCase):
         path = tmpdir / "dotfiles-wt/U7"
         self.assertIn(f"worktree={path}\n", run.stdout)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=path), self.main)
-        self.assertEqual(self.git("config", "--worktree", "--get", "remote.origin.pushurl", cwd=path), PUSHURL)
+        self.assertEqual(self.git("config", "--get", "remote.origin.pushurl", cwd=path), PUSHURL)
         self.assertFalse((self.root / "wt").exists())
-
-    def test_a_pushurl_the_checkout_already_holds_is_refused_before_anything_is_made(self):
-        """git pushes to every pushurl of a remote, and a worktree's own scope cannot shadow one set in the
-        checkout's config (measured on git 2.56: `git push origin` reached the origin before the refusal URL
-        failed), so such a checkout is refused before anything is made. A worktree the lever made reads exactly one
-        pushurl, the refusal, and a plain push fails on its scheme before the remote's refs are read: the hook, which
-        runs after that read, never runs."""
-        before = self.worktrees()
-        self.git("config", "remote.origin.pushurl", str(self.origin))
-        run = self.run_lever("U7", "feat/u7", "origin/main")
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(f"refused: remote.origin.pushurl is set in the checkout's config ({self.origin})", run.stderr)
-        self.assertFalse((self.root / "wt").exists())
-        self.assertEqual(self.worktrees(), before)
-        self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)
-        self.git("config", "--unset", "remote.origin.pushurl")
-        run = self.run_lever("U7", "feat/u7", "origin/main")
-        self.assertEqual(run.returncode, 0, run.stderr)
-        path = self.root / "wt/U7"
-        self.assertEqual(self.git("config", "--get-all", "remote.origin.pushurl", cwd=path), PUSHURL)
-        (path / "work.txt").write_text("work\n")
-        self.git("add", "work.txt", cwd=path)
-        self.git("commit", "-q", "-m", "work", cwd=path)
-        status, _, err = self.git_status("push", "origin", "HEAD", cwd=path)
-        self.assertNotEqual(status, 0)
-        self.assertIn("refused", err)
-        self.assertNotIn(HOOK_MESSAGE, err)
-        self.assertIsNone(self.origin_branch("feat/u7"), err)
 
     def test_the_printed_push_line_round_trips_through_the_shell_for_a_spaced_checkout(self):
-        """The coordinator pastes the push line into a shell: a checkout path and an origin URL holding a space are
-        quoted, so `eval` of the line with `<head>` replaced pushes the worker's head from the main checkout."""
+        """The coordinator pastes the push line into a shell: a checkout path, a worker tree path and an origin URL
+        holding a space are quoted, so `eval` of the line fetches the worker's head by path into the main checkout
+        and pushes it from there."""
         origin = self.root / "origin two.git"
         checkout = self.root / "check out"
         git_clone(self.origin, origin, "--bare", env=self.env, cwd=self.root)
@@ -465,16 +535,14 @@ class WorkerWorktreeTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         line = next(line for line in run.stdout.splitlines() if line.startswith("push="))
         self.assertEqual(
-            line, f"push=git -C {self.root}/check\\ out push {self.root}/origin\\ two.git <head>:refs/heads/feat/u7"
+            line,
+            f"push=git -C {self.root}/check\\ out fetch {self.root}/wt\\ two/U7 feat/u7 && "
+            f"git -C {self.root}/check\\ out push {self.root}/origin\\ two.git FETCH_HEAD:refs/heads/feat/u7",
         )
         path = root / "U7"
-        (path / "work.txt").write_text("work\n")
-        self.git("add", "work.txt", cwd=path)
-        self.git("commit", "-q", "-m", "work", cwd=path)
-        head = self.git("rev-parse", "HEAD", cwd=path)
-        command = line.removeprefix("push=").replace("<head>", head)
+        head = self.commit_work(path)
         run = subprocess.run(
-            ["bash", "-c", 'eval "$1"', "_", command],
+            ["bash", "-c", 'eval "$1"', "_", line.removeprefix("push=")],
             cwd=self.root / "home",
             env=self.env,
             capture_output=True,

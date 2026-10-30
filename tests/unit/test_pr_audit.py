@@ -813,7 +813,8 @@ class PrAuditTest(unittest.TestCase):
 
     def with_store(self, ledger_rows=(), program="regime-cutover", root=None, brief=CLEAN_BRIEF):
         """A fixture store of PROGRAM in scratch (or under ROOT) holding the unit's brief `briefs/U7-fixture.md`
-        (BRIEF None writes none), and the checkout's own copies of rounds-check.py, brief-check.py, audit-carry.py and
+        (BRIEF None writes none), and the checkout's own copies of rounds-check.py, brief-check.py, audit-carry.py, the
+        ledger.py reader both import, and
         the isolated-git library the carry lever runs git through, which the lever runs from
         `<checkout>/scripts/orchestrator/` (the store, the checks and the library come from the same checkout; the
         checks' and the library's self-checks read the checkout's manifest two levels up)."""
@@ -825,7 +826,7 @@ class PrAuditTest(unittest.TestCase):
         (store / "decisions.tsv").write_text(DECISIONS_HEADER)
         if brief is not None:
             (store / "briefs/U7-fixture.md").write_text(brief)
-        for name in ("rounds-check.py", "brief-check.py", "audit-carry.py", "git-isolated.sh"):
+        for name in ("rounds-check.py", "brief-check.py", "audit-carry.py", "ledger.py", "git-isolated.sh"):
             target = self.repo / "scripts/orchestrator" / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / "scripts/orchestrator" / name, target)

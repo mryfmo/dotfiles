@@ -382,7 +382,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "c18037da40a291968b6dafc80bdaeb3069410d4978fd8ebb345cd6f6eea7e347"
+      "sha256": "61729f9eadf6e8bc8cf5231ae259a2f6ee83bbdb67d234568da412db3cb225c8"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "15a84ed82ba5c367fec9744dac697ed352809d46f41ccdc504a9ec67f92f2410"
+      "sha256": "78acaeb9c3533dc96789b32f923570d3f906710d337de4caddead0418a9e8951"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -572,6 +572,11 @@
     {
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
+      "glob": "audit-carry.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
       "glob": "brief-check.py"
     },
     {
@@ -598,6 +603,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "hcom-seat"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ledger.py"
     },
     {
       "source": "home/dot_local/bin/common",

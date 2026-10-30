@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct` and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -12,12 +12,28 @@
 #   `--records` must resolve (`pwd -P`) to exactly that store, so a ledger written anywhere else is never read. It reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
 #   draft and based on `main`. The verdict is the newest `ledger.tsv` row whose `pr` is `<pr>` and whose `head_sha` is
-#   the full 40-hex sha it judged (a short sha never matches): it must start with the word `correct`, so a later
-#   `incorrect` or `blocked` row for the same head voids an earlier `correct`. That sha is always the current head:
-#   there is no carry-over (U71 audit round 10), so a head that `pr-update-branch.sh` moved gets a fresh audit. The
-#   row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a `correct` verdict may
-#   carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of the body's unit and
-#   the current head (absent, a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
+#   the full 40-hex sha it judged (a short sha never matches); newest by the row's ts column parsed as a time (the
+#   later line at an equal ts), never by its place in the file (U122 round 5). The ledger is read by the checkout's
+#   `scripts/orchestrator/ledger.py`, the one reader of the ledger (U122 round 6: this lever's own awk checked the ts
+#   for its shape alone, so a `carried` row dated hour 25 outranked a valid `incorrect` row), run as `python3 -I -S`
+#   with its status read, as `pr-audit.sh` runs the checkout's readers: a store it cannot read as data (a header that
+#   is not the store's, a row with another column count or an empty `ts`, `unit`, `pr`, `head_sha` or `verdict`
+#   cell, a ts `strptime` does not read as `YYYY-MM-DDThh:mm:ssZ`) is refused naming the file and line, and no
+#   python3 on PATH or no reader in the checkout is a refusal too. It must start with the word `correct`, so a later
+#   `incorrect` or `blocked` row for the same head voids an earlier `correct`, or with the word `carried` (regime-cutover
+#   U122, standing order 38): then its evidence must hold `carried <earlier head> <this head> <sha256>`, the line
+#   `scripts/orchestrator/audit-carry.py` printed when this head's diff against its merge base equalled the earlier
+#   head's, the earlier head is another sha than this one, and the newest row (by ts) for the earlier head must itself
+#   be `correct` (the digest lever carries the earlier head's verdict whatever it says, round 5, so a carry from an
+#   `incorrect` head is a row this gate refuses naming that head); the verdict file and the dispositions the gate then
+#   reads are the earlier head's, since its findings
+#   are this head's. That sha is always the current head: there is no silent carry-over (U71 audit round 10), so a
+#   head that `pr-update-branch.sh` moved gets a fresh audit or a `carried` row the coordinator wrote from the digest
+#   lever's output. The row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a
+#   `correct` verdict may carry P2 and P3 findings, so the lever also opens the store's `verdicts/<unit>-<sha8>.md` of
+#   the audited head, `<unit>` the ledger row's `unit` column (round 2: the body's unit or a `U<n>b` fix unit of it,
+#   standing order 24; a `U71b` row's verdict is `U71b-<sha8>.md`, and a row of any other unit is refused) (absent,
+#   a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
 #   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
 #   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
 #   (`- P<n> (<confidence>) <path>:<line>: <rationale>`, the path the text before the line's last `:<line>: `, which
@@ -25,7 +41,8 @@
 #   (`hcom-orchestration` SKILL step 4, U119 round 3), copied into the store; a verdict of the retired omp-run.sh
 #   audit route has no `## Findings` heading, is refused by name, and belongs to a merged unit, never to a merge
 #   head. Every P2 or P3 line needs a row of the store's `dispositions.tsv` (header `ts unit head_sha priority path
-#   line disposition reference`) with the same unit, full head sha, path and line whose `disposition` is `residual`
+#   line disposition reference`) with the same unit, full head sha, priority, path and line (the finding's whole
+#   identity, the key `audit-carry.py` joins by as well; U122 round 3) whose `disposition` is `residual`
 #   and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later head that
 #   fixed the finding and never satisfies the gate for the head it judges. The first finding without such a row is
 #   named in the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line of another shape or whose path
@@ -52,12 +69,17 @@
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the checkout's own store, above; a directory outside the checkout is refused).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>`.
+# @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` row for the head, no verdict file for the head, a
-#   P2 or P3 finding of it without its `residual` disposition row, a malformed verdict file, `dispositions.tsv` or
-#   `units.tsv`, a store path that is a symlink or outside the checkout, or CI that is not green on the head.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger the
+#   checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar, a wrong
+#   header or column count, an empty required cell), no python3 or no `scripts/orchestrator/ledger.py` in the
+#   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
+#   for this head or whose earlier head has no `correct`
+#   row, no verdict file for the audited head, a P2 or P3 finding of it without its `residual` disposition row, a
+#   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
+#   checkout, or CI that is not green on the head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
@@ -140,7 +162,6 @@ git_env_scrub
 lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
-ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
 dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference'
 # `units.tsv` as the `hcom-orchestration` SKILL ("Rows") has it; a residual reference's unit must be an `id` of it.
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
@@ -154,11 +175,21 @@ program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
 # the line, never read as a shorter path and an earlier line that another location's row could satisfy.
 finding_re='^- (P[0-3]) \((high|medium|low)\) (.+):([1-9][0-9]*): '
 path_re='^[^[:space:]:]+$'
+# The grammar of the leading `## Findings` section, stated once here and once in audit-carry.py (FINDINGS_GRAMMAR),
+# which reads the same files: one `- none` line, or one or more finding_re lines whose path matches path_re; an empty
+# section, `- none` beside a finding line, or `- none` twice is a malformed verdict (round 2). The two readers are
+# run over one fixture set by tests.unit.test_pr_levers.
+findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) <path>:<line>: <rationale>' with a path free of colons and whitespace"
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
 # A verdict column that starts with the word `correct` (never `incorrect`): `correct`, `correct (…)`, `correct;…`.
 correct_re='^correct($|[[:space:](;,])'
+# A verdict column that starts with the word `carried` (U122), and the evidence such a row must hold: the line
+# audit-carry.py prints, `carried <earlier head> <this head> <sha256 of the diff>`, as a whole word sequence anywhere
+# in the column (the coordinator may write a note after it).
+carried_re='^carried($|[[:space:](;,])'
+carried_evidence_re='(^|[[:space:]])carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})($|[[:space:]])'
 
 # @description Print the refusal on stderr and exit 2; nothing was merged.
 # @arg $@ string The reason.
@@ -180,38 +211,75 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Print `<ts>\t<verdict>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
-#   when no row names that pair. A ledger whose first line is not the header is a refusal; a failed read exits 1.
-#   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
-#   so two different all-digit shas would otherwise match (U71 audit round 1).
+# @description Print `<ts>\t<unit>\t<verdict>\t<evidence>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
+#   when no row names that pair, as the checkout's `scripts/orchestrator/ledger.py` answers it (`ledger.py <store>
+#   verdict <pr> <head>`, run as `python3 -I -S` with its status read; U122 round 6). Newest by the ts column parsed as
+#   a time, never by the row's place in the file (round 5), and the ledger is read whole as data first: a ts the
+#   calendar does not hold (hour 25; round 6 P1: this lever's own awk checked the shape alone, so such a `carried` row
+#   outranked a valid `incorrect` one), a header that is not the store's, a column count other than the header's or
+#   an empty required cell is the reader's exit 2, a refusal naming the file and line; any other failure of the reader
+#   exits 1. The reader compares every cell as text, so two different all-digit shas never match (U71 audit round 1).
 # @arg $1 int The pull request number.
 # @arg $2 string The 40-hex head sha.
 ledger_verdict() {
     local out status=0
-    out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
-        { sub(/\r$/, "") }
-        NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 1; exit 3 } next }
-        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $5 }
-        END { if (!bad && found != "") print found }
-    ' "${ledger}") || status=$?
+    out=$("${python}" -I -S "${ledger_reader}" "${store}" verdict "$1" "$2" 2>&1) || status=$?
     case ${status} in
-    0) printf '%s' "${out}" ;;
-    3) refuse "${ledger} does not start with the ledger header (${ledger_header//$'\t'/ })" ;;
-    *) fail "cannot read ${ledger}" ;;
+    0) [[ ${out} == none ]] || printf '%s' "${out}" ;;
+    2) refuse "${out#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger}: ${out:-no output}" ;;
     esac
 }
 
-# @description Refuse unless the newest ledger row for pull request ${pr} at sha $1 is `correct`.
+# @description Refuse unless the newest ledger row (by ts) for pull request ${pr} at sha $1 is `correct`, or is `carried`
+#   (U122, standing order 38) with an evidence that names this head and an earlier head whose own newest row (by ts)
+#   is `correct`. One gate function decides both: a `carried` row whose earlier head has no `correct` row refuses, and
+#   the head whose verdict file and dispositions the merge then reads is the earlier one. The row's `unit` column
+#   must be the body's unit or a fix unit of it (`U<n>[a-z]`, standing order 24), and it names the verdict file and
+#   the disposition rows the merge reads (round 2: the body's unit opened `U71-<sha8>.md` for a `U71b` row).
 # @arg $1 string The 40-hex sha the verdict must name.
 # @set verdict_ts The row's ts.
-require_correct_row() {
-    local row verdict
+# @set audited_head The head whose verdict file and dispositions hold for $1: $1 itself, or the carried row's earlier head.
+# @set audited_unit The unit of the row that judged audited_head, which names its verdict file.
+require_verdict_row() {
+    local row rest verdict evidence earlier named earlier_row earlier_verdict own_unit_re
+    own_unit_re="^${unit}[a-z]?\$"
     row=$(ledger_verdict "${pr}" "$1") || exit $?
     [[ -n ${row} ]] || refuse "${ledger} has no row for pull request ${pr} at head ${1} (a short sha never matches)"
     verdict_ts=${row%%$'\t'*}
-    verdict=${row#*$'\t'}
-    [[ ${verdict} =~ ${correct_re} ]] ||
+    rest=${row#*$'\t'}
+    audited_unit=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
+    verdict=${rest%%$'\t'*}
+    evidence=${rest#*$'\t'}
+    audited_head=$1
+    [[ ${audited_unit} =~ ${own_unit_re} ]] ||
+        refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is unit ${audited_unit}, not the body's unit ${unit} or a fix unit of it (U<n>[a-z]); the row's unit names the verdict file"
+    if [[ ${verdict} =~ ${correct_re} ]]; then
+        return 0
+    fi
+    [[ ${verdict} =~ ${carried_re} ]] ||
         refuse "the newest ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) is not correct: ${verdict}"
+    [[ ${evidence} =~ ${carried_evidence_re} ]] ||
+        refuse "the carried ${ledger} row for pull request ${pr} at ${1} (${verdict_ts}) names no 'carried <earlier head> <head> <sha256>' in its evidence, the line audit-carry.py printed: ${evidence}"
+    earlier=${BASH_REMATCH[2]}
+    named=${BASH_REMATCH[3]}
+    [[ ${named} == "$1" ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) carries ${named}, not this head ${1}"
+    [[ ${earlier} != "$1" ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) carries ${1} from itself; a carried head rests on an earlier audited head"
+    earlier_row=$(ledger_verdict "${pr}" "${earlier}") || exit $?
+    [[ -n ${earlier_row} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, which has no row for pull request ${pr}; a carried head needs the earlier head's correct row"
+    rest=${earlier_row#*$'\t'}
+    audited_unit=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
+    earlier_verdict=${rest%%$'\t'*}
+    [[ ${earlier_verdict} =~ ${correct_re} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, whose newest row (${earlier_row%%$'\t'*}) is not correct: ${earlier_verdict}"
+    [[ ${audited_unit} =~ ${own_unit_re} ]] ||
+        refuse "the carried ${ledger} row (${verdict_ts}) rests on ${earlier}, whose newest row (${earlier_row%%$'\t'*}) is unit ${audited_unit}, not the body's unit ${unit} or a fix unit of it (U<n>[a-z]); the row's unit names the verdict file"
+    audited_head=${earlier}
 }
 
 # @description Print the data rows of the TSV file $1, CR stripped and the header dropped, when its first line is the
@@ -293,14 +361,15 @@ pending_fields() {
 #   reads is a local assigned here before its first read, the `units.tsv` cache of unit_row_exists included, so a
 #   caller's environment holds nothing the gate takes for its own data (U119 round 6).
 # @arg $1 string The 40-hex head the ledger row named.
+# @arg $2 string The unit of that ledger row, which names the verdict file and the disposition rows (round 2).
 require_dispositions() {
-    local head=$1 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
-    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit
+    local head=$1 row_unit=$2 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
+    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit none_seen='' listed=''
     local units_rows='' units_read=''
     verdicts_dir=${store}/verdicts
     [[ ! -L ${verdicts_dir} && -d ${verdicts_dir} && -O ${verdicts_dir} ]] ||
         refuse "${verdicts_dir} is not a directory of this user (a symlink or missing); the verdict file is read from the checkout's own store"
-    verdict_file=${verdicts_dir}/${unit}-${head:0:8}.md
+    verdict_file=${verdicts_dir}/${row_unit}-${head:0:8}.md
     [[ ! -L ${verdict_file} && -f ${verdict_file} && -O ${verdict_file} && -r ${verdict_file} ]] ||
         refuse "${verdict_file} is not a readable regular file of this user; a merge needs the verdict file of the head, not only its ledger row"
     text=$(cat -- "${verdict_file}") || fail "cannot read ${verdict_file}"
@@ -326,9 +395,14 @@ require_dispositions() {
         refuse "${verdict_file} has no '## Findings' section; the gate reads the verdict.md pr-audit.sh writes (a '## Findings' list of '- P<n> (<confidence>) <path>:<line>: <rationale>' or '- none', then 'Blocking: <n>' and the last line 'Verdict: <value>'); a verdict of the retired omp-run.sh audit route has no such section and no merge head has one"
     [[ ${last} == 'Verdict: correct' ]] ||
         refuse "the last line of ${verdict_file} is not 'Verdict: correct' although the ledger row for ${head} is: ${last}"
-    ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing (the reader writes '- none')"
+    ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing; ${findings_grammar}"
     for entry in ${findings[@]+"${findings[@]}"}; do
-        [[ ${entry} != '- none' ]] || continue
+        if [[ ${entry} == '- none' ]]; then
+            [[ -z ${none_seen} ]] || refuse "${verdict_file}: the Findings section lists '- none' more than once; ${findings_grammar}"
+            none_seen=1
+            continue
+        fi
+        listed=1
         [[ ${entry} =~ ${finding_re} ]] ||
             refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': ${entry}"
         priority=${BASH_REMATCH[1]} path=${BASH_REMATCH[3]} lineno=${BASH_REMATCH[4]}
@@ -339,6 +413,7 @@ require_dispositions() {
         esac
         pending+=("${priority}"$'\t'"${path}"$'\t'"${lineno}")
     done
+    [[ -z ${none_seen} || -z ${listed} ]] || refuse "${verdict_file}: the Findings section lists '- none' beside a finding line; ${findings_grammar}"
     ((${#pending[@]} > 0)) || return 0
     dispositions=${store}/dispositions.tsv
     pending_fields "${pending[0]}"
@@ -359,11 +434,11 @@ require_dispositions() {
     done <<< "${text}"
     for entry in ${pending[@]+"${pending[@]}"}; do
         pending_fields "${entry}"
-        why="no ${dispositions} row for unit ${unit}, head ${head}, ${path}:${lineno}"
+        why="no ${dispositions} row for unit ${row_unit}, head ${head}, ${priority} at ${path}:${lineno}"
         satisfied=0
         for line in ${rows[@]+"${rows[@]}"}; do
             IFS=$'\t' read -ra cols <<< "${line}"
-            [[ ${cols[1]} == "${unit}" && ${cols[2]} == "${head}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
+            [[ ${cols[1]} == "${row_unit}" && ${cols[2]} == "${head}" && ${cols[3]} == "${priority}" && ${cols[4]} == "${path}" && ${cols[5]} == "${lineno}" ]] || # lint-comparisons: allow the path column is matched as the text the reader wrote, never resolved
                 continue
             if [[ ${cols[6]} == fixed ]]; then
                 why="the row at ${cols[0]} says fixed in ${cols[7]}, which is not this head; merge the head that fixed it"
@@ -396,7 +471,7 @@ require_dispositions() {
 # @set ledger The canonical ledger path.
 # @set store The canonical store directory.
 # @set units_file The store's `units.tsv`, read by unit_row_exists.
-# @set unit The body's unit id, which names the verdict file.
+# @set unit The body's unit id; a ledger row for the pull request must be it or a `U<n>[a-z]` fix unit of it, and the row's unit names the verdict file (require_verdict_row).
 resolve_store() {
     local body markers line program path given part
     body=$(gh_bounded pr view "${pr}" --json body --jq .body) || fail "cannot read the body of pull request ${pr}"
@@ -435,6 +510,7 @@ shift
 [[ $# -eq 2 && $1 == --records && -n $2 ]] || refuse "${usage}"
 records=$2
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
+python=$(command -v python3) || refuse 'no python3 found (it runs the ledger reader, scripts/orchestrator/ledger.py)'
 # The checkout the lever runs in, by its physical path, and it must be the main checkout: a linked worktree (a
 # worker's clone) holds a copy of the store that is not the orchestrator's record (U71, bot P1 4370212009).
 toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
@@ -447,6 +523,10 @@ git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
 common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_dir}"
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator keeps its store"
+# The one reader of the ledger (U122 round 6), run from the checkout the store is in, as pr-audit.sh runs the
+# checkout's rounds-check.py and audit-carry.py; the lever's awk reader is gone with it.
+ledger_reader=${toplevel}/scripts/orchestrator/ledger.py
+[[ -f ${ledger_reader} ]] || refuse "no ${ledger_reader} in the checkout; the ledger is read through it alone"
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"
@@ -457,8 +537,8 @@ IFS=$'\t' read -r state base head draft <<< "${view}"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${head}"
 resolve_store
 
-require_correct_row "${head}"
-require_dispositions "${head}"
+require_verdict_row "${head}"
+require_dispositions "${audited_head}" "${audited_unit}"
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

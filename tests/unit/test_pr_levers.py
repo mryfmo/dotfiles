@@ -1008,8 +1008,16 @@ class PrThreadsCheckTest(ThreadsFixture):
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 
 
-def ledger_row(head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z"):
-    return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\thttps://github.com/acme/widgets/pull/{pr}\n"
+def ledger_row(
+    head,
+    verdict="correct (fresh-context audit, findings=0)",
+    pr=7,
+    ts="2026-10-25T09:00:00Z",
+    evidence=None,
+    unit="U71",
+):
+    evidence = evidence or f"https://github.com/acme/widgets/pull/{pr}"
+    return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\tcodex exec\t{evidence}\n"
 
 
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
@@ -1037,10 +1045,15 @@ class PrMergeTest(PrLeverTestCase):
 
     def setUp(self):
         super().setUp()
-        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits.
+        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits, and the checkout's
+        # ledger reader, `scripts/orchestrator/ledger.py`, which the lever runs from the checkout it merges in (U122
+        # round 6) as pr-audit.sh runs the checkout's rounds-check.py.
         self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
         self.records.mkdir(parents=True)
-        (self.repo / ".git/info/exclude").write_text(".orchestration/\n")
+        self.reader = self.repo / "scripts/orchestrator/ledger.py"
+        self.reader.parent.mkdir(parents=True)
+        shutil.copy2(LEVERS / "ledger.py", self.reader)
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
@@ -1136,7 +1149,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(self.merge().returncode, 0, "the newest row decides")
         self.calls.unlink()
         (self.records / "ledger.tsv").write_text("ts\tunit\n" + ledger_row(SHA_A))
-        self.assert_refused(self.merge(), "does not start with the ledger header")
+        self.assert_refused(self.merge(), "ledger.tsv:1: the header is 'ts\\tunit', not")
 
     def test_an_all_digit_sha_matches_only_itself(self):
         # U71 audit round 1 (P2): awk compared two numeric-looking shas as numbers, so these two matched.
@@ -1277,6 +1290,362 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(self.merge("--carry-from", SHA_A), "usage:")
         self.assertEqual(self.writes(), [])
 
+    def test_a_carried_row_merges_only_on_the_earlier_head_s_correct_row_and_verdict_file(self):
+        """U122 (standing order 38): a `carried` row for the head, whose evidence is the line audit-carry.py printed
+        (`carried <earlier> <head> <sha256>`), merges like a `correct` row when the earlier head's newest row is
+        `correct`; the verdict file and the dispositions the gate reads are then the earlier head's. A carried row whose
+        earlier head has no correct row, whose evidence names no digest or another head, or that a newer `incorrect`
+        row voids, refuses before CI is read."""
+        digest = "d" * 64
+        earlier = ledger_row(SHA_B)
+        carried = ledger_row(
+            SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest} (audit-carry.py)"
+        )
+        self.ledger(earlier, carried)
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()  # the carried head has no verdict file of its own
+        self.verdict(head=SHA_B)
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the earlier head's findings bind the carried head: its P2 needs the residual row written for the earlier head
+        self.verdict(P2_LINE, head=SHA_B)
+        self.units("U71", "U72")
+        self.dispositions()
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(),
+            f"verdicts/U71-{SHA_B[:8]}.md lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition",
+        )
+        self.dispositions(disposition_row(head=SHA_B))
+        self.calls.unlink()
+        self.github()
+        self.assertEqual(self.merge().returncode, 0, "the earlier head's residual row holds for the carried head")
+        self.verdict(head=SHA_B)
+        for name, rows, message in (
+            ("no row for the earlier head", (carried,), f"rests on {SHA_B}, which has no row for pull request 7"),
+            (
+                "earlier head not correct",
+                (ledger_row(SHA_B, "incorrect (round 1)"), carried),
+                "is not correct: incorrect",
+            ),
+            (
+                "earlier head voided by a later row",
+                (earlier, ledger_row(SHA_B, "incorrect (re-audit)", ts="2026-10-25T09:30:00Z"), carried),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:30:00Z) is not correct: incorrect",
+            ),
+            (
+                "no digest in the evidence",
+                (earlier, ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried from {SHA_B}")),
+                "names no 'carried <earlier head> <head> <sha256>' in its evidence",
+            ),
+            (
+                "another head carried",
+                (earlier, ledger_row(SHA_A, "carried", evidence=f"carried {SHA_B} {SHA_B} {digest}")),
+                f"carries {SHA_B}, not this head {SHA_A}",
+            ),
+            (
+                "carried from itself",
+                (earlier, ledger_row(SHA_A, "carried", evidence=f"carried {SHA_A} {SHA_A} {digest}")),
+                f"carries {SHA_A} from itself",
+            ),
+            (
+                "a newer incorrect row for the carried head",
+                (earlier, carried, ledger_row(SHA_A, "incorrect (fresh audit)", ts="2026-10-25T11:00:00Z")),
+                "(2026-10-25T11:00:00Z) is not correct: incorrect",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertNotIn(
+                    ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
+                )
+
+    def test_the_newest_ledger_row_is_the_newest_by_ts_not_by_file_position(self):
+        """U122 round 5 (P1): `ledger_verdict` kept the last matching line of the file, so an older row appended after
+        a newer one (a late re-audit row, a sync that reordered rows) stood for the head's or the earlier head's newest
+        verdict. The newest row is the one with the latest ts column, the store's fixed format compared as text (the
+        later line at an equal ts), for the head's own rows and for a carried row's earlier head alike; a row whose ts
+        is outside that format is refused naming the line."""
+        digest = "d" * 64
+        carried = ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}")
+        self.verdict(head=SHA_B)
+        for name, rows, message in (
+            (
+                "the head's older correct row appended after its incorrect row",
+                (ledger_row(SHA_A, "incorrect (re-audit)", ts="2026-10-25T10:00:00Z"), ledger_row(SHA_A)),
+                f"at {SHA_A} (2026-10-25T10:00:00Z) is not correct: incorrect",
+            ),
+            (
+                "the earlier head's older correct row appended after its incorrect row",
+                (ledger_row(SHA_B, "incorrect (re-audit)", ts="2026-10-25T09:30:00Z"), carried, ledger_row(SHA_B)),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:30:00Z) is not correct: incorrect",
+            ),
+            (
+                "a ts outside the store's format",
+                (ledger_row(SHA_A), ledger_row(SHA_A, ts="yesterday")),
+                "ledger.tsv:3: the ts 'yesterday' is not YYYY-MM-DDThh:mm:ssZ",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertEqual(self.writes(), [])
+        # the mirror: an older incorrect row appended after the newer correct one changes nothing, in both places
+        for name, rows in (
+            ("the head's own rows", (ledger_row(SHA_A, ts="2026-10-25T10:00:00Z"), ledger_row(SHA_A, "incorrect"))),
+            (
+                "the earlier head's rows",
+                (ledger_row(SHA_B, ts="2026-10-25T09:30:00Z"), carried, ledger_row(SHA_B, "incorrect")),
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_a_carry_from_an_incorrect_head_is_a_row_the_gate_refuses_naming_that_head(self):
+        """U122 round 5 (P1): `audit-carry.py` carries the newest audited head's verdict whatever it says, so an
+        `incorrect` earlier head with the same diff gives the `carried` line the coordinator writes as a row; this
+        gate is where that row stops, refused because the earlier head's newest row is not `correct`, naming the
+        head. The line is the lever's own output, not a fixture's."""
+        carry = LEVERS / "audit-carry.py"
+        self.git("switch", "-q", "-c", "feat")
+        (self.repo / "a.txt").write_text("one\n")
+        self.git("add", "a.txt")
+        self.git("commit", "-q", "-m", "earlier")
+        earlier = self.git("rev-parse", "HEAD")
+        self.git("commit", "-q", "--allow-empty", "-m", "the same diff again")
+        head = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        self.ledger(ledger_row(earlier, "incorrect (round 1)"))
+        self.verdict(P2_LINE, head=earlier)
+        decided = subprocess.run(
+            [sys.executable, "-I", str(carry), str(self.records), "U71", "7", head, "--repo", str(self.repo)],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual((0, ""), (decided.returncode, decided.stderr), decided.stdout)
+        self.assertTrue(decided.stdout.startswith(f"carried {earlier} {head} "), decided.stdout)
+        self.ledger(
+            ledger_row(earlier, "incorrect (round 1)"),
+            ledger_row(head, "carried", ts="2026-10-25T10:00:00Z", evidence=decided.stdout.strip()),
+        )
+        self.github(head=head)
+        self.assert_refused(
+            self.merge(), f"rests on {earlier}, whose newest row (2026-10-25T09:00:00Z) is not correct: incorrect"
+        )
+        self.assertEqual(self.writes(), [])
+
+    def test_a_carried_row_dated_hour_25_is_a_malformed_store_to_the_gate_and_the_digest_lever_alike(self):
+        """U122 round 6 (P1): the gate's own awk checked the ts for its shape alone, so a `carried` row dated
+        2026-10-25T25:00:00Z outranked the head's valid `incorrect` row (a P1 under it) and the gate merged on the
+        earlier head's `correct` row, while audit-carry.py had refused that ledger since round 5. One reader,
+        `scripts/orchestrator/ledger.py` of the checkout (`strptime` alone decides a ts), reads the ledger for both:
+        the row is a malformed store, exit 2 naming the line, to the gate and to the digest lever alike, as are a
+        column count other than the header's and an empty required cell; a reader missing from the checkout is a
+        refusal naming it, never a merge on an unread ledger."""
+        digest = "d" * 64
+        self.verdict(head=SHA_B)
+        self.ledger(
+            ledger_row(SHA_A, "incorrect (round 2, P1)", ts="2026-10-25T10:00:00Z"),
+            ledger_row(SHA_B),
+            ledger_row(SHA_A, "carried", ts="2026-10-25T25:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"),
+        )
+        self.github()
+        message = "ledger.tsv:4: the ts '2026-10-25T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ"
+        self.assert_refused(self.merge(), message)
+        carry = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(LEVERS / "audit-carry.py"),
+                str(self.records),
+                "U71",
+                "7",
+                SHA_A,
+                "--repo",
+                str(self.repo),
+            ],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual((2, ""), (carry.returncode, carry.stdout), carry.stderr)
+        self.assertIn(f"audit-carry: {self.records}/{message}", carry.stderr)
+        for name, text, message in (
+            (
+                "six columns",
+                LEDGER_HEADER + f"2026-10-25T09:00:00Z\tU71\t7\t{SHA_A}\tcorrect\tcodex exec\n",
+                "ledger.tsv:2: 6 columns, not 7",
+            ),
+            (
+                "an empty unit cell",
+                LEDGER_HEADER + ledger_row(SHA_A, unit=""),
+                "ledger.tsv:2: column 2 (unit) is empty",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                (self.records / "ledger.tsv").write_text(text)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        self.calls.unlink(missing_ok=True)
+        self.ledger(ledger_row(SHA_A))
+        self.reader.unlink()
+        self.github()
+        self.assert_refused(self.merge(), f"no {self.reader} in the checkout")
+
+    def test_a_fix_unit_s_row_names_its_own_verdict_file(self):
+        """Round 2 (P2, standing order 24): a fix unit `U71b` writes `Program-Unit: regime-cutover/U71` in its body
+        and keeps `U71b` in its ledger rows, so the verdict file and the disposition rows the gate reads are the row's
+        unit's (`verdicts/U71b-<sha8>.md`), for a `correct` row and for the earlier head of a `carried` row alike
+        (30c05715 opened `U71-<sha8>.md` and refused a correct carry). A row of another unit than the body's or a
+        `U<n>[a-z]` fix unit of it is refused naming both units."""
+        digest = "d" * 64
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.ledger(ledger_row(SHA_A, unit="U71b"))
+        self.verdict(P2_LINE, unit="U71b")
+        self.units("U71", "U72")
+        self.dispositions(disposition_row(unit="U71b"))
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the disposition rows are the row's unit's as well: a U71 row does not hold for the U71b verdict
+        self.dispositions(disposition_row(unit="U71"))
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(),
+            f"verdicts/U71b-{SHA_A[:8]}.md lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding "
+            f"disposition: no {self.records}/dispositions.tsv row for unit U71b, head {SHA_A}",
+        )
+        # carried from a U71b head: the earlier row's unit names the verdict file the carried head rests on
+        self.ledger(
+            ledger_row(SHA_B, unit="U71b"),
+            ledger_row(
+                SHA_A, "carried", unit="U71b", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"
+            ),
+        )
+        (self.records / f"verdicts/U71b-{SHA_A[:8]}.md").unlink()
+        self.verdict(head=SHA_B, unit="U71b")
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertFalse((self.records / f"verdicts/U71-{SHA_B[:8]}.md").exists(), "no file of the body's unit")
+        for name, rows, message in (
+            (
+                "a correct row of another unit",
+                (ledger_row(SHA_A, unit="U72"),),
+                f"at {SHA_A} (2026-10-25T09:00:00Z) is unit U72, not the body's unit U71 or a fix unit of it",
+            ),
+            ("a fix unit of another unit", (ledger_row(SHA_A, unit="U7b"),), "is unit U7b, not the body's unit U71"),
+            (
+                "a carried row resting on another unit's head",
+                (
+                    ledger_row(SHA_B, unit="U72"),
+                    ledger_row(
+                        SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"
+                    ),
+                ),
+                f"rests on {SHA_B}, whose newest row (2026-10-25T09:00:00Z) is unit U72, not the body's unit U71",
+            ),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.verdict(unit="U72")
+                self.verdict(unit="U7b")
+                self.verdict(head=SHA_B, unit="U72")
+                self.github()
+                self.assert_refused(self.merge(), message)
+
+    def test_the_merge_gate_and_audit_carry_read_the_findings_grammar_alike(self):
+        """Round 2 (P2): the two readers of a verdict file's leading `## Findings` section, this lever (bash,
+        `findings_grammar`) and `scripts/orchestrator/audit-carry.py` (Python, `FINDINGS_GRAMMAR`), accept and refuse
+        the same sections: `- none` alone or finding lines alone are read; an empty section, `- none` beside a
+        finding, `- none` twice, a line of another shape and a path with a colon or whitespace are malformed verdicts
+        for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings)."""
+        carry = LEVERS / "audit-carry.py"
+        self.git("switch", "-q", "-c", "feat")
+        (self.repo / "a.txt").write_text("one\n")
+        self.git("add", "a.txt")
+        self.git("commit", "-q", "-m", "earlier")
+        earlier = self.git("rev-parse", "HEAD")
+        (self.repo / "a.txt").write_text("two\n")
+        self.git("commit", "-q", "-a", "-m", "head")
+        head = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        self.units("U71", "U72")
+        self.dispositions(disposition_row())
+        merge_file = self.records / f"verdicts/U71-{SHA_A[:8]}.md"
+        carry_file = self.records / f"verdicts/U71-{earlier[:8]}.md"
+        tail = "\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nVerdict: correct\n"
+        for name, section, accepted in (
+            ("- none", "- none", True),
+            ("one finding line", P2_LINE, True),
+            ("an empty section", "", False),
+            ("- none beside a finding", f"- none\n{P2_LINE}", False),
+            ("- none twice", "- none\n- none", False),
+            ("a line of another shape", "- P2 (high) a.txt: no line", False),
+            ("a path with a colon", "- P2 (high) file:1: real.sh:9: boom", False),
+            ("a path with whitespace", "- P2 (high) a b.txt:1: boom", False),
+        ):
+            with self.subTest(name):
+                text = f"## Findings\n\n{section}".rstrip("\n") + tail
+                merge_file.write_text(text)
+                carry_file.write_text(text)
+                self.ledger(ledger_row(SHA_A))
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                merged = self.merge()
+                self.ledger(ledger_row(earlier))
+                rendered = subprocess.run(
+                    [
+                        sys.executable,
+                        "-I",
+                        str(carry),
+                        str(self.records),
+                        "U71",
+                        "7",
+                        head,
+                        "--render",
+                        "--repo",
+                        str(self.repo),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    env=self.env,
+                    check=False,
+                    timeout=60,
+                )
+                if accepted:
+                    self.assertEqual((0, 0), (merged.returncode, rendered.returncode), merged.stderr + rendered.stderr)
+                    self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+                else:
+                    self.assert_refused(merged, f"{merge_file}:")
+                    self.assertEqual((2, ""), (rendered.returncode, rendered.stdout), rendered.stderr)
+                    self.assertIn(f"audit-carry: {carry_file}", rendered.stderr)
+
     def test_the_lever_reads_no_local_git_objects(self):
         # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.
         common = self.repo / ".git"
@@ -1329,7 +1698,9 @@ class PrMergeTest(PrLeverTestCase):
             self.merge(), "lists P3 at scripts/orchestrator/README.md:275 without a holding disposition"
         )
 
-    def test_a_disposition_row_holds_only_as_a_residual_of_a_units_row_for_this_unit_head_path_and_line(self):
+    def test_a_disposition_row_holds_only_as_a_residual_of_a_units_row_for_this_unit_head_priority_path_and_line(self):
+        """The key is the finding's whole identity (U122 round 3): a P3 row at the P2's path and line is another
+        finding's row and does not hold, as `audit-carry.py` joins by the same five columns."""
         self.verdict(P2_LINE)
         self.units("U71", "U72")
         for name, row, message in (
@@ -1347,6 +1718,7 @@ class PrMergeTest(PrLeverTestCase):
                 "without a holding disposition: no ",
             ),
             ("another line", disposition_row(line=237), "without a holding disposition: no "),
+            ("another priority", disposition_row(priority="P3"), "without a holding disposition: no "),
             (
                 "reference without a gate",
                 disposition_row(reference="unit=U72"),

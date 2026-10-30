@@ -280,7 +280,7 @@ class RoundsCheckTest(unittest.TestCase):
         )
         self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
         # a pr cell that is not the pull request's number is not counted, whatever it looks like
-        for cell in ("70", "8", "#7", " 7", "07", "7 ", "-", ""):
+        for cell in ("70", "8", "#7", " 7", "07", "7 ", "-"):
             with self.subTest(cell=cell):
                 rows = [
                     (ts, unit, cell, head, verdict, who, why)
@@ -293,6 +293,14 @@ class RoundsCheckTest(unittest.TestCase):
                     run.stdout,
                 )
                 self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
+        # an empty pr cell is no "other pull request": the one ledger reader (U122 round 6, `ledger.py`) requires the
+        # ts, unit, pr, head_sha and verdict cells, so the row is a malformed store, exit 2 naming the line
+        rows = [
+            (ts, unit, "", head, verdict, who, why) for ts, unit, _pr, head, verdict, who, why in three_incorrect("U7b")
+        ]
+        run = self.check(self.store(rows), "U7", "--pr", "7")
+        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertIn("ledger.tsv:2: column 3 (pr) is empty", run.stderr)
         # every unit of the set allowed: one allowed line each, the body's first; a unit's rows of another pull request
         # still count for it once the set names it, and a unit named twice is checked once
         rows = three_incorrect("U7b")[:1] + [audit("2026-10-30T02:00:00Z", "U7", "correct", "findings=0")]

@@ -677,12 +677,19 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
 # manifest) left the next surface unpinned each time (.mcp.json declares stdio MCP commands Codex enables), so
 # the pin covers everything and names only what Codex never loads. Inert is what the runtime never reads, a
 # property of Codex's loading, not of the file type: an instruction file (skills/**, AGENTS.md, any other
-# Markdown) is injected into the model's context, so it is pinned with the executable ones. Each entry is (glob
-# over the relative POSIX path, why Codex never loads it); `*` and `?` stay within one path component, `**`
-# spans components.
+# Markdown) is injected into the model's context, so it is pinned with the executable ones. A README is inert
+# under its documentation extensions only (none, .md, .txt, .rst): a README.js or README.sh is code and pinned.
+# Each entry is (glob over the relative POSIX path, why Codex never loads it); `*` and `?` stay within one path
+# component, `**` spans components.
 INERT = (
-    ("README*", "project documentation"),
-    ("**/README*", "project documentation"),
+    ("README", "project documentation"),
+    ("README.md", "project documentation"),
+    ("README.txt", "project documentation"),
+    ("README.rst", "project documentation"),
+    ("**/README", "project documentation"),
+    ("**/README.md", "project documentation"),
+    ("**/README.txt", "project documentation"),
+    ("**/README.rst", "project documentation"),
     ("docs/**", "project documentation"),
     ("i18n/**", "translated project documentation"),
     ("LICENSE*", "the licence text"),

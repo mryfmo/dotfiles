@@ -99,14 +99,19 @@ class PinRecordsTest(unittest.TestCase):
 
     def test_inert_kinds_of_a_codex_copy(self) -> None:
         # The content pin leaves out only what Codex never loads, a property of Codex's loading, not of the file
-        # type: a README at any depth, docs/, i18n/, the licence, images, .gitignore and upstream CI. Instruction
-        # files (a skill, AGENTS.md, any other Markdown) are injected into the model and are pinned. A glob's `*`
-        # stays within one path component and `**` spans components, so LICENSE* and .gitignore are inert at the
-        # top only.
+        # type: a README with a documentation extension (none, .md, .txt, .rst) at any depth, docs/, i18n/, the
+        # licence, images, .gitignore and upstream CI. Instruction files (a skill, AGENTS.md, any other Markdown) are
+        # injected into the model and are pinned. Round 6: README* matched a README of any extension, so a
+        # hooks/README.js was inert executable code; a README is inert under its documentation extensions only. A
+        # glob's `*` stays within one path component and `**` spans components, so LICENSE* and .gitignore are inert
+        # at the top only.
         for relative, expected in (
             ("README.md", True),
             ("README", True),
+            ("README.txt", True),
+            ("README.rst", True),
             ("skills/x/README.md", True),
+            ("skills/x/README", True),
             ("docs/guide.md", True),
             ("docs/x.js", True),
             ("i18n/README.ja.md", True),
@@ -133,6 +138,11 @@ class PinRecordsTest(unittest.TestCase):
             (".github", False),
             ("docs", False),
             ("readme.md", False),
+            ("README.js", False),
+            ("hooks/README.js", False),
+            ("skills/x/README.sh", False),
+            ("README.md.sh", False),
+            ("READMEx", False),
             ("logo.svg.sh", False),
             (".cursor/rules/ponytail.mdc", False),
         ):

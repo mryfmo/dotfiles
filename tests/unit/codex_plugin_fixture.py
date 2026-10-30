@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PONYTAIL = ROOT / "tests/fixtures/ponytail"
 MANIFEST = ".codex-plugin/plugin.json"
 IMAGES = (".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico")
+READMES = ("README", "README.md", "README.txt", "README.rst")
 
 
 def install_ponytail_copy(copy: Path, version: str | None = None, change: dict[str, bytes] | None = None) -> Path:
@@ -37,12 +38,13 @@ def install_ponytail_copy(copy: Path, version: str | None = None, change: dict[s
 
 
 def inert(relative: str) -> bool:
-    """The files Codex never loads, written out plainly: a README* at any depth, everything under docs/, i18n/ and
-    .github/, a top-level LICENSE*, an image anywhere and the top-level .gitignore. Markdown as such is not inert:
-    a skill, an AGENTS.md or any other instruction file is pinned."""
+    """The files Codex never loads, written out plainly: a README with a documentation extension (none, .md, .txt,
+    .rst) at any depth, everything under docs/, i18n/ and .github/, a top-level LICENSE*, an image anywhere and the
+    top-level .gitignore. Markdown as such is not inert: a skill, an AGENTS.md or any other instruction file is
+    pinned; a README.js or README.sh is code and pinned."""
     name = relative.rsplit("/", 1)[-1]
     return (
-        name.startswith("README")
+        name in READMES
         or ("/" not in relative and name.startswith("LICENSE"))
         or name.endswith(IMAGES)
         or relative == ".gitignore"

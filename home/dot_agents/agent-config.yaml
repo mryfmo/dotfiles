@@ -1392,9 +1392,10 @@ assets:
       ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
       version, as the Claude copy of the same plugin is, and, where content_sha256 is recorded, by its
       content: the sha256 over one line per file, `<relative path> NUL <sha256 of its bytes> LF`, for
-      every regular file of the copy whose path is not inert (scripts/pin_records.py INERT: README*
-      at any depth, docs/, i18n/, LICENSE*, images, .gitignore and .github/), sorted by the bytes of
-      the path, the .git directory skipped; a symlink anywhere in the copy is a finding. Inert is
+      every regular file of the copy whose path is not inert (scripts/pin_records.py INERT: a README,
+      README.md, README.txt or README.rst at any depth, docs/, i18n/, LICENSE*, images, .gitignore and
+      .github/), sorted by the bytes of the path, the .git directory skipped; a symlink anywhere in the
+      copy is a finding. Inert is
       what the runtime never reads, a property of Codex's loading, not of the file type: instruction
       files (skills/, AGENTS.md, any other Markdown) are injected into the model and are pinned with
       .mcp.json (stdio MCP commands Codex enables), the manifests, scripts/, commands/ and any file

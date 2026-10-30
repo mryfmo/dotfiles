@@ -852,7 +852,7 @@ claude:
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
-      worker-worktree.sh: 51f74c0b895ef0d03f685d21a75fcecb3c8facd08f316ec29dcc25d9d14e06d7
+      worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2

@@ -777,6 +777,7 @@ claude:
       - Bash(~/.local/bin/common/hcom-dispatch *)
       - Bash(~/.local/bin/common/bus-history.sh *)
       - Bash(~/.local/bin/common/worktree-gc.sh *)
+      - Bash(~/.local/bin/common/worker-worktree.sh *)
       - Bash(~/.local/bin/common/regime-init *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
@@ -851,6 +852,7 @@ claude:
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
+      worker-worktree.sh: 8daad92b7f86e5f0dd9258b14dd1baa2d5afa95341a8093f5342b45ea1b7530c
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
@@ -866,7 +868,7 @@ claude:
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
       pr-merge.sh: 15a84ed82ba5c367fec9744dac697ed352809d46f41ccdc504a9ec67f92f2410
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 8806719001f039c4dc82525f963f734207d17dc6a5529c7774814770b08736e5
+      pr-audit.sh: c18037da40a291968b6dafc80bdaeb3069410d4978fd8ebb345cd6f6eea7e347
       brief-check.py: 63fa7c6e6677fc2e871a9c9fb5cf0ac338141e5377696c321311a3cf980021ae
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or

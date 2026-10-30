@@ -382,7 +382,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "8806719001f039c4dc82525f963f734207d17dc6a5529c7774814770b08736e5"
+      "sha256": "c18037da40a291968b6dafc80bdaeb3069410d4978fd8ebb345cd6f6eea7e347"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -481,6 +481,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_worker-worktree.sh",
+      "target": ".local/bin/common/worker-worktree.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "8daad92b7f86e5f0dd9258b14dd1baa2d5afa95341a8093f5342b45ea1b7530c"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",
@@ -681,6 +688,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "seat-login-preflight"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "worker-worktree.sh"
     },
     {
       "source": "home/dot_local/bin/common",

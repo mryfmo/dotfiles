@@ -235,6 +235,7 @@ MANAGED_ALLOW = [
     "Bash(~/.local/bin/common/hcom-dispatch *)",
     "Bash(~/.local/bin/common/bus-history.sh *)",
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
+    "Bash(~/.local/bin/common/worker-worktree.sh *)",
     "Bash(~/.local/bin/common/regime-init *)",
     "Bash(hcom list *)",
 ]
@@ -260,6 +261,7 @@ LEVERS = (
     "regime-start",
     "regime-stop",
     "seat-login-preflight",
+    "worker-worktree.sh",
     "worktree-gc.sh",
 )
 

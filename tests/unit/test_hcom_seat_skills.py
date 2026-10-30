@@ -52,9 +52,19 @@ GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap befo
 
 # U119 round 3 (audit of 8d442d49, P1): the audit route is the Codex lever, and the file the merge gate parses for its
 # `## Findings` list is that lever's verdict.md copied into the store; the retired omp-run route wrote no such heading.
-AUDIT_ROUTE = "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n>` run from your checkout for that head"
+# U120 round 6: the documented line carries `--records` (the lever refuses a program pull request without it) and the
+# step names exit 3, the round cap's refusal, beside exit 2 and exit 1.
+AUDIT_ROUTE = (
+    "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n> --records .orchestration/orchestrate/<program>` run "
+    "from your checkout for that head"
+)
 AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
 AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"
+ROUND_CAP_EXIT = (
+    "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
+    "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
+    "mechanism-change row and run it again."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows behind another) and the lever flag that runs it.
@@ -69,6 +79,10 @@ TWO_STRIKES = (
 ROUND_CAP_CHECK = (
     "`scripts/orchestrator/rounds-check.py <store> U<n>` counts the rows; `pr-audit.sh <pr> --records <store>` runs it "
     "before anything else and refuses the round while it exits non-zero"
+)
+ROUND_CAP_UNITS = (
+    "for the body's unit or any unit the ledger names for that pull request (the lever passes `--pr <pr>`: a fix or "
+    "residual unit `U<n>b` writes its parent `U<n>` in the body, standing order 24, and keeps `U<n>b` in its rows)"
 )
 
 # A merge error is not a merge failure (U30 ADDENDUM 3, ACCEPTANCE 8; measured on PR #484).
@@ -134,8 +148,14 @@ class HcomSeatSkillsTest(unittest.TestCase):
         text = ORCHESTRATION.read_text()
         verify = step(text, "The loop", 4)
         self.assertIn(AUDIT_ROUTE, verify)
+        self.assertNotIn("pr-audit.sh <n>` run", verify, "the documented line carries --records")
         self.assertIn(AUDIT_COPY, verify)
         self.assertIn(AUDIT_SHAPE, verify)
+        # the three exits, each named once in the step, the round cap's beside the other two
+        self.assertIn("Exit 2 is a refusal named on stderr", verify)
+        self.assertIn("exit 1 is a failed read, fetch or codex run", verify)
+        self.assertIn(ROUND_CAP_EXIT, verify)
+        self.assertEqual(verify.count("Exit 3"), 1)
         # the retired route stays as one history clause, never as the command to run
         self.assertEqual(verify.count("omp-run.sh --role audit"), 1)
         self.assertIn("Until U119 round 3 this step ran `omp-run.sh --role audit`", verify)
@@ -144,7 +164,7 @@ class HcomSeatSkillsTest(unittest.TestCase):
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")
-        for sentence in (ROUND_CAP, TWO_STRIKES, ROUND_CAP_CHECK):
+        for sentence in (ROUND_CAP, TWO_STRIKES, ROUND_CAP_CHECK, ROUND_CAP_CHECK + " " + ROUND_CAP_UNITS):
             self.assertIn(sentence, gates)
         self.assertNotIn("three strikes", gates)
 

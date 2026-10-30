@@ -926,6 +926,55 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(self.codex_calls(), [], "no probe and no audit")
         self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
 
+    def test_a_fix_unit_s_rows_gate_the_parent_unit_s_pull_request(self):
+        """U120 round 6 (standing order 24): a fix or residual unit `U7b` writes `Program-Unit: regime-cutover/U7` in
+        its body and keeps `U7b` in its ledger rows, so the lever hands the check `--pr <pr>` and the check gates the
+        body's unit and every unit the ledger names for the pull request: three incorrect U7b rows for pull request 7
+        refuse with exit 3 naming U7b (on f03b01af the check ran for U7 alone, found zero rows and the audit ran). The
+        same rows under another pull request's number gate nothing of this one."""
+        self.answer(body=PROGRAM_BODY)
+        rows = [
+            (ts, "U7b", pr, head, verdict, who, why)
+            for ts, _unit, pr, head, verdict, who, why in self.incorrect_rows(3)
+        ]
+        run = self.run_lever("7", "--records", str(self.with_store(rows)))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(
+            "pr-audit.sh: refused: rounds-check.py exited 1 for U7: rounds-check: U7b refused: 3 audit rows (3 incorrect)",
+            run.stderr,
+        )
+        self.assertIn('write decisions.tsv phase=mechanism-change decision="U7b ..."', run.stderr)
+        self.assertIn("rounds-check: pull request 7 is gated on 2 units (U7, U7b), 1 refused", run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        rows = [(ts, unit, "8", head, verdict, who, why) for ts, unit, _pr, head, verdict, who, why in rows]
+        run = self.run_lever("7", "--records", str(self.with_store(rows)))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("pr-audit.sh: rounds-check: U7 allowed: 0 audit rows", run.stderr)
+        self.assertIn("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused", run.stderr)
+        self.assertNotIn("U7b", run.stderr)
+        self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+
+    @unittest.skipIf(os.geteuid() == 0, "root enters a directory without search permission")
+    def test_a_store_that_cannot_be_entered_refuses_before_any_call(self):
+        """U120 round 6: the store's canonicalisation (`cd -- <store> && pwd -P`) is a producer whose status decides
+        (standing order 21). A store directory that is readable but not searchable (mode 0444) passes the `-d` and
+        `-r` tests and refuses `cd`, the one failure a builtin can be handed: exit 2 naming the store, no gh, no codex,
+        no run directory. The `-r` test keeps the readable-directory refusal ahead of it, so the two messages differ."""
+        self.answer(body=PROGRAM_BODY)
+        store = self.with_store()
+        store.chmod(0o444)
+        self.addCleanup(store.chmod, 0o755)
+        self.assertTrue(os.access(store, os.R_OK) and not os.access(store, os.X_OK), "readable, not searchable")
+        for body in (PROGRAM_BODY, BODY):
+            with self.subTest(body=body):
+                self.answer(body=body)
+                run = self.run_lever("7", "--records", str(store))
+                self.assert_refused(run, f"pr-audit.sh: refused: cannot resolve the store {store}")
+                self.assertNotIn("is not a readable directory", run.stderr)
+                self.assertFalse((self.rec / "gh-calls").exists(), "refused before the first gh call")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+
     def test_a_failed_run_or_a_failed_verdict_reader_exits_1_with_no_verdict(self):
         """Standing order 21: the reader's status decides; a reader that could not run yields no verdict."""
         reader = self.failing_tool("python3", "*verdict.md*", "exit 1")

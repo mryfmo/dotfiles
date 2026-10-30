@@ -161,6 +161,82 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertIn("rounds-check: U7 refused: 2 audit rows (2 incorrect)", run.stdout)
 
+    def test_the_pr_form_gates_on_every_unit_the_ledger_names_for_the_pull_request(self):
+        """Round 6 (standing order 24): a fix or residual unit U7b writes `Program-Unit: .../U7` in its body and keeps
+        U7b in its ledger rows, so `--pr 7` checks the body's unit and the unit of every ledger row whose pr cell is
+        7, one line per refused unit and a summary on stderr; a check of U7 alone read three incorrect U7b rows as
+        zero (on f03b01af the flag is usage, exit 2)."""
+        run = self.check(self.store(three_incorrect("U7b")), "U7", "--pr", "7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(run.stdout.count("\n"), 1, "one line per refused unit")
+        self.assertIn(
+            "rounds-check: U7b refused: 3 audit rows (3 incorrect), 3 incorrect since the start, 0 mechanism rows; "
+            "the fourth round needs a mechanism-change row: " + ROW_TO_WRITE.format(unit="U7b"),
+            run.stdout,
+        )
+        self.assertEqual("rounds-check: pull request 7 is gated on 2 units (U7, U7b), 1 refused\n", run.stderr)
+        # the body unit alone, for a caller without a pull request, is checked as before
+        run = self.check(self.store(three_incorrect("U7b")), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows\n",
+            run.stdout,
+        )
+        # a pull request whose rows name only the body unit behaves as before: three rows refuse, two allow
+        run = self.check(self.store(three_incorrect()), "U7", "--pr", "7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(run.stdout.count("\n"), 1, "one line")
+        self.assertIn("rounds-check: U7 refused: 3 audit rows (3 incorrect), 3 incorrect since the start", run.stdout)
+        self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 1 refused\n", run.stderr)
+        run = self.check(self.store(three_incorrect()[:2]), "U7", "--pr", "7")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(
+            "rounds-check: U7 allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows\n",
+            run.stdout,
+        )
+        self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
+        # a pr cell that is not the pull request's number is not counted, whatever it looks like
+        for cell in ("70", "8", "#7", " 7", "07", "7 ", "-", ""):
+            with self.subTest(cell=cell):
+                rows = [
+                    (ts, unit, cell, head, verdict, who, why)
+                    for ts, unit, _pr, head, verdict, who, why in three_incorrect("U7b")
+                ]
+                run = self.check(self.store(rows), "U7", "--pr", "7")
+                self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+                self.assertEqual(
+                    "rounds-check: U7 allowed: 0 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows\n",
+                    run.stdout,
+                )
+                self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
+        # every unit of the set allowed: one allowed line each, the body's first; a unit's rows of another pull request
+        # still count for it once the set names it, and a unit named twice is checked once
+        rows = three_incorrect("U7b")[:1] + [audit("2026-10-30T02:00:00Z", "U7", "correct", "findings=0")]
+        rows.append(("2026-10-30T03:00:00Z", "U7b", "8", "b" * 40, "incorrect", "pr-audit.sh", "class=status"))
+        rows.append(("2026-10-30T04:00:00Z", "U7c", "7", "c" * 40, "blocked", "pr-audit.sh", "-"))
+        rows.append(("2026-10-30T05:00:00Z", "U7c", "7", "c" * 40, "correct", "pr-audit.sh", "findings=0"))
+        run = self.check(self.store(rows), "U7", "--pr", "7")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(
+            [
+                "rounds-check: U7 allowed: 1 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows",
+                "rounds-check: U7b allowed: 2 audit rows (2 incorrect), 2 incorrect since the start, 0 mechanism rows",
+                "rounds-check: U7c allowed: 1 audit rows (0 incorrect), 0 incorrect since the start, 0 mechanism rows",
+            ],
+            run.stdout.splitlines(),
+        )
+        self.assertEqual("rounds-check: pull request 7 is gated on 3 units (U7, U7b, U7c), 0 refused\n", run.stderr)
+        # two refused units are two lines; a malformed row refuses as today, before any verdict
+        rows = three_incorrect("U7b") + three_incorrect("U7")
+        run = self.check(self.store(rows), "U7", "--pr", "7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(["U7", "U7b"], [line.split()[1] for line in run.stdout.splitlines()])
+        self.assertEqual("rounds-check: pull request 7 is gated on 2 units (U7, U7b), 2 refused\n", run.stderr)
+        rows[1] = audit("2026-10-30T02:00:00Z", "U7b", "incorrect", "findings=1")
+        run = self.check(self.store(rows), "U7", "--pr", "7")
+        self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertIn("ledger.tsv:3: an incorrect row from 2026-10-30T00:00:00Z on", run.stderr)
+
     def test_a_result_naming_two_forms_or_none_is_not_a_mechanism_row(self):
         for result in ("ast and allowlist", "an allowlisted ast-free reader", "", "residual-ish"):
             with self.subTest(result=result):
@@ -311,6 +387,13 @@ class RoundsCheckTest(unittest.TestCase):
             (store, "U7b-"),
             ("--all", store, "--base", "main"),
             (store, "U7", "--base", "main", "--head", "x"),
+            (store, "--pr", "7"),
+            ("--all", store, "--pr", "7"),
+            (store, "U7", "--pr", "x"),
+            (store, "U7", "--pr", "0"),
+            (store, "U7", "--pr", "-7"),
+            (store, "U7", "--pr", "7 "),
+            (store, "U7", "--pr"),
         ):
             with self.subTest(args=args):
                 run = self.check(*args)

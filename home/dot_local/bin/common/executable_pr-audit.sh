@@ -912,8 +912,12 @@ gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/bod
 # The round cap (regime-cutover U120, standing order 36). The body's `Program-Unit: <program>/U<n>` line is read as
 # regime-ci.py reads it (its own line, regime-init's name grammar, a CR tolerated); a line of another shape or a second
 # one refuses, so no program pull request is audited unchecked. The store must be `--records` and the program's own,
-# and the checkout's rounds-check.py must exit 0 for the unit before anything else runs; its status decides (standing
-# order 21): a check that could not run, or a malformed store, is the same refusal as a refused unit, never "allowed".
+# and the checkout's rounds-check.py must exit 0 before anything else runs. The check is gated on a set of units (round
+# 6): the body's unit and the unit of every ledger row whose pr cell is this pull request's number, because a fix or
+# residual unit U<n>b writes its parent U<n> in the body and keeps U<n>b in its rows (standing order 24), so `--pr`
+# hands the check the number and the check reads the rows; a check of the body's unit alone read three incorrect U<n>b
+# rows as zero. Its status decides (standing order 21): a check that could not run, or a malformed store, is the same
+# refusal as a refused unit, never "allowed".
 body_text=$(cat -- "${run}/body.md") || fail "cannot read ${run}/body.md"
 unit=''
 program=''
@@ -936,7 +940,7 @@ if ((unit_lines == 1)); then
     rounds_check=${repo}/scripts/orchestrator/rounds-check.py
     [[ -f ${rounds_check} ]] || refuse_round "no ${rounds_check} in the checkout; the round cap of ${unit} cannot be checked"
     status=0
-    rounds=$("${python}" -I -S "${rounds_check}" "${records}" "${unit}" 2>&1) || status=$?
+    rounds=$("${python}" -I -S "${rounds_check}" "${records}" "${unit}" --pr "${pr}" 2>&1) || status=$?
     ((status == 0)) || refuse_round "rounds-check.py exited ${status} for ${unit}: ${rounds:-no output}"
     echo "${lever}: ${rounds}" >&2
 fi

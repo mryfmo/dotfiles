@@ -5,7 +5,11 @@
 unit's next audit is allowed, 1 with a one-line reason when it is not, and 2 when the store cannot be read as data (a
 missing file, a header that is not the store's, a row with the wrong column count, a ts outside `YYYY-MM-DDThh:mm:ssZ`,
 an `incorrect` row from 2026-10-30 on whose evidence does not start with `class=<word>`, standing order 39), naming the
-file and line. `rounds-check.py --all <store>` checks every unit of the ledger, prints one line per refused unit and
+file and line. `rounds-check.py <store> U<n> --pr <pr>` is the lever's form (round 6): a pull request's audit is gated
+on a set of units, the body's unit and the `unit` of every ledger row whose `pr` cell is the pull request's number,
+because a fix or residual unit (`U<n>b`) writes its parent `U<n>` in the body and keeps `U<n>b` in its rows (standing
+order 24); every unit of the set is checked, one line per refused unit and a summary line on stderr, and one refused
+unit refuses. `rounds-check.py --all <store>` checks every unit of the ledger, prints one line per refused unit and
 exits 1 when any is refused. With `--all <path> --base <commit> --head <commit>` the two files are read from the head
 commit's tree (`git cat-file blob`), as the `regime` check reads a pull request whose head is never checked out, and a
 head whose two files are the blobs of its merge base with the base is nothing to check (exit 0): the check runs on the
@@ -43,6 +47,7 @@ RULE_EFFECTIVE = "2026-10-30T00:00:00Z"  # standing orders 36 and 39: rows befor
 # The store's ts is fixed-width UTC, so the text order is the time order and no row needs a parsed date.
 TS = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
+PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 UNIT_PREFIX = re.compile(r"^(U[0-9]+[a-z]?)[ :]")
 CLASS = re.compile(r"^class=\S+(\s|$)")
 # A form is a whole token of the result: `allowlisted` or `ast-free` names none.
@@ -90,13 +95,20 @@ class Malformed(Exception):
 @dataclass(frozen=True)
 class Store:
     """The two files read once: every audit row, every mechanism row, the mechanism-change rows that count for no
-    unit (no unit prefix, or none or several forms) as (ts, unit or None, line, forms), and every unit the ledger names
-    in first-seen order."""
+    unit (no unit prefix, or none or several forms) as (ts, unit or None, line, forms), every unit the ledger names
+    in first-seen order, and the (unit, pr) cells of every ledger row in file order."""
 
     audits: tuple
     mechanisms: tuple
     discounted: tuple
     units: tuple
+    pull_requests: tuple
+
+    def units_for(self, pr, body_unit):
+        """The units a pull request's audit is gated on: the body's unit, then the unit of every ledger row whose `pr`
+        cell is exactly the pull request's number (standing order 24: a fix or residual unit `U<n>b` writes its parent
+        `U<n>` in the body and keeps `U<n>b` in its rows), each once, in first-seen order."""
+        return tuple(dict.fromkeys((body_unit, *(unit for unit, number in self.pull_requests if number == pr))))
 
     def verdict_for(self, unit):
         """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on."""
@@ -191,7 +203,8 @@ def load_store(read, ledger_name, decisions_name):
     decisions = parse_rows(decisions_name, read("decisions.tsv"), DECISIONS_HEADER)
     mechanisms, discounted = mechanism_rows(decisions)
     units = tuple(dict.fromkeys(fields[1] for _number, fields in ledger))
-    return Store(audit_rows(ledger_name, ledger), mechanisms, discounted, units)
+    pull_requests = tuple((fields[1], fields[2]) for _number, fields in ledger)
+    return Store(audit_rows(ledger_name, ledger), mechanisms, discounted, units, pull_requests)
 
 
 def directory_reader(store):
@@ -252,6 +265,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("store", help="the program store directory, or its repository path with --base and --head")
     parser.add_argument("unit", nargs="?", help="the unit whose next audit is asked for, U<n>")
+    parser.add_argument("--pr", help="with a unit: the pull request whose ledger rows name the units it is gated on")
     parser.add_argument("--all", action="store_true", help="check every unit of the ledger")
     parser.add_argument("--base", help="with --all: the base commit; the head's files are read from git")
     parser.add_argument("--head", help="with --all: the head commit whose tree holds the store")
@@ -262,6 +276,8 @@ def main(argv=None):
         parser.error("--base and --head go together, with --all")
     if args.unit is not None and not UNIT.match(args.unit):
         parser.error(f"the unit {args.unit!r} is not U<n>")
+    if args.pr is not None and (args.all or not PULL_REQUEST.match(args.pr)):
+        parser.error("--pr takes the pull request's decimal number, with a unit")
     store = args.store.rstrip("/") or args.store
     try:
         if args.head is not None:
@@ -279,17 +295,27 @@ def main(argv=None):
     except Malformed as error:
         print(f"rounds-check: {error}", file=sys.stderr)
         return 2
-    if not args.all:
-        verdict = loaded.verdict_for(args.unit)
+    if args.all:
+        units = loaded.units
+        summary = f"{len(units)} units checked"
+    elif args.pr is not None:
+        units = loaded.units_for(args.pr, args.unit)
+        summary = f"pull request {args.pr} is gated on {len(units)} units ({', '.join(units)})"
+    else:
+        units = (args.unit,)
+        summary = None
+    verdicts = [loaded.verdict_for(unit) for unit in units]
+    refused = [verdict for verdict in verdicts if isinstance(verdict, Refused)]
+    # one line per refused unit when any is refused; the allowed lines, one per unit, only when none is (--all, which
+    # may check a hundred units, prints no allowed line at all)
+    for verdict in refused or (() if args.all else verdicts):
         if isinstance(verdict, Refused):
             print(f"rounds-check: {verdict.unit} refused: {verdict.reason}")
-            return 1
-        print(f"rounds-check: {verdict.unit} allowed: {verdict.counts}")
-        return 0
-    refused = [verdict for verdict in map(loaded.verdict_for, loaded.units) if isinstance(verdict, Refused)]
-    for verdict in refused:
-        print(f"rounds-check: {verdict.unit} refused: {verdict.reason}")
-    print(f"rounds-check: {len(loaded.units)} units checked, {len(refused)} refused", file=sys.stderr)
+        else:
+            print(f"rounds-check: {verdict.unit} allowed: {verdict.counts}")
+    if summary is not None:
+        sys.stdout.flush()  # the lever reads both streams through one pipe: the unit lines come before the summary
+        print(f"rounds-check: {summary}, {len(refused)} refused", file=sys.stderr)
     return 1 if refused else 0
 
 

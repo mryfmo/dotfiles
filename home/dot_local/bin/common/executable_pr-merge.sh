@@ -270,6 +270,18 @@ unit_row_exists() {
     return 1
 }
 
+# @description Set `priority`, `path` and `lineno` from a pending entry of require_dispositions (U119 round 5),
+#   `<priority>\t<path>\t<lineno>`, by parameter expansion and no `IFS` write: the fields are the lever's own matched
+#   text (finding_re, path_re), so none is empty and the path holds no tab.
+# @arg $1 string The entry.
+# @set priority path lineno The three fields.
+pending_fields() {
+    priority=${1%%$'\t'*}
+    lineno=${1##*$'\t'}
+    path=${1#*$'\t'}
+    path=${path%$'\t'*}
+}
+
 # @description Refuse unless every P2 and P3 finding of the head's verdict file in the store has a holding `residual`
 #   row in `dispositions.tsv` (U119 round 2): the ledger row says `correct`, and since standing order 35 `correct` no
 #   longer means "no finding". Every read is checked; a failed read exits 1 (standing order 21).
@@ -321,7 +333,7 @@ require_dispositions() {
     done
     ((${#pending[@]} > 0)) || return 0
     dispositions=${store}/dispositions.tsv
-    IFS=$'\t' read -r priority path lineno <<< "${pending[0]}"
+    pending_fields "${pending[0]}"
     [[ ! -L ${dispositions} && -f ${dispositions} && -O ${dispositions} && -r ${dispositions} ]] ||
         refuse "${verdict_file} lists ${priority} at ${path}:${lineno} and ${dispositions} is not a readable regular file of this user; every P2 and P3 finding of a correct verdict needs its residual row before the merge"
     # Every column of a disposition row is required, so a validated row holds no adjacent tabs and `read` splits it
@@ -338,7 +350,7 @@ require_dispositions() {
         rows+=("${line}")
     done <<< "${text}"
     for entry in ${pending[@]+"${pending[@]}"}; do
-        IFS=$'\t' read -r priority path lineno <<< "${entry}"
+        pending_fields "${entry}"
         why="no ${dispositions} row for unit ${unit}, head ${head}, ${path}:${lineno}"
         satisfied=0
         for line in ${rows[@]+"${rows[@]}"}; do

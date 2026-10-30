@@ -152,7 +152,7 @@ case ${status} in
 esac
 
 root=${DOTFILES_WT:-${TMPDIR:-/tmp}/dotfiles-wt}
-[[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path"
+[[ ${root} == /* ]] || refuse "DOTFILES_WT ${root} is not an absolute path" # lint-comparisons: allow a shape test (absolute or not), no path identity is compared
 path=${root}/${unit}
 [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; an existing worktree is never touched"
 

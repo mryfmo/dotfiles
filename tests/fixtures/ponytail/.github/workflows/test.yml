@@ -1,0 +1,2 @@
+# Upstream CI, not loaded by Codex: inert under the content pin.
+on: push

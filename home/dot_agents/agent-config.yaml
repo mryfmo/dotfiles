@@ -1390,20 +1390,50 @@ assets:
     verify: installed-version
     note: >-
       each pin is the version both hosts ran on 2026-10-25 (the plugin.json of the copy under
-      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d). A plugin with a ref comes
-      from a git marketplace that the Codex config fetches at that commit (`ref` under
-      [marketplaces.<name>], rendered from here; `codex plugin marketplace upgrade` stays on it),
-      and ponytail's hooks are trusted only at the trusted_hash pins under codex.hooks.state.
-      superpowers comes from the OpenAI-curated catalog, which takes no version, so make update
-      only compares it. make doctor fails when an installed version or a marketplace revision
-      differs from its pin. The crit plugin is the local copy `crit install codex-plugin` writes
-      for the pinned crit release (assets.crit).
+      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
+      version, as the Claude copy of the same plugin is, and, where content_sha256 is recorded, by its
+      content: the sha256 over one line per file, `<relative path> NUL <sha256 of its bytes> LF`, for
+      every regular file of the copy whose path is not inert, sorted by the bytes of the path, the .git
+      directory skipped; a symlink anywhere in the copy is a finding. Inert is what the manifest does not
+      point at and Codex never loads by convention: the copy's .codex-plugin/plugin.json names the trees
+      and files Codex loads (skills, hooks, the mcp/mcpServers config, apps, commands,
+      interface.composerIcon and interface.logo, and any other string that is a path inside the copy),
+      every file a reference reaches (resolved by the filesystem and decided by identity, never by comparing
+      path text, so `./DOCS/skills/` on a case-insensitive filesystem pins docs/skills/) is pinned whatever
+      glob matches it, and only to the files no reference reaches
+      do the scripts/pin_records.py INERT globs apply (a README, README.md, README.txt or README.rst at
+      any depth, docs/, i18n/, LICENSE*, images, .gitignore and .github/). A manifest that cannot be read
+      or parsed, or that names a path outside the copy, is a finding, never "no references". Inert is a
+      property of Codex's loading, not of the file type: instruction files (skills/, AGENTS.md, any
+      other Markdown) are injected into the model and are pinned with .mcp.json (stdio MCP commands
+      Codex enables), the manifests, scripts/, commands/ and any file kind that appears tomorrow; the
+      trusted_hash pins under codex.hooks.state cover the hook command strings only.
+      `check-agent-runtime.py --codex-content-sha256 <copy dir>` prints the
+      value for a review bump. The Claude copy of the same plugin is pinned by version only; that
+      asymmetry remains and is no reason to leave a file unpinned here. A plugin with a ref comes from a
+      git marketplace: the ref pins the marketplace catalog snapshot only (`ref` under
+      [marketplaces.<name>], rendered from here, and `codex plugin marketplace upgrade` keeps the
+      catalog on it), while the upgrade installs the plugin copy from the source the catalog names
+      (upstream main for ponytail), whatever the ref says, so the copy's commit is not compared with
+      it. After each update the copy is judged by make doctor's check (scripts/update-agent-assets.sh
+      judge_codex_copy), whether it was cached before or not; one the doctor rejects is removed, a
+      WARN, and make doctor's drift until the review bump, not a run failure. superpowers comes from
+      the OpenAI-curated catalog, which takes no version, so make update only compares it. make
+      doctor fails when an installed version, a copy's content or a marketplace revision differs from
+      its pin. The crit plugin is the local copy `crit install codex-plugin` writes for the pinned
+      crit release (assets.crit).
     plugins:
       superpowers@openai-curated: {marketplace: openai-curated, pin: 6.3.0}
       ponytail@ponytail:
         marketplace: https://github.com/DietrichGebert/ponytail.git
         pin: 5.3.3
         ref: 7801d061243d7b753bad0e0b3c057cd250b11755
+        # content_sha256 of the tree at 7801d061 (tag v5.3.3, 2026-10-29), read on 2026-10-30 from a
+        # scratch clone with check-agent-runtime.py --codex-content-sha256 (144 files pinned, 70 inert:
+        # the manifest names ./skills/, ./hooks/claude-codex-hooks.json, ./assets/codex-icon.png and
+        # ./assets/logo.png, so the two icons are pinned); the same value at main 96608e07 (README, i18n
+        # READMEs and two logo SVGs, all inert).
+        content_sha256: 78475e2fae09d418815fdeeb8d4bcdbdc18b2002ce2a6389f868961498bec3bd
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

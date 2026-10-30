@@ -31,6 +31,7 @@
   },
   "codex": {
     "ponytail@ponytail": {
+      "content_sha256": "78475e2fae09d418815fdeeb8d4bcdbdc18b2002ce2a6389f868961498bec3bd",
       "marketplace": "https://github.com/DietrichGebert/ponytail.git",
       "pin": "5.3.3",
       "ref": "7801d061243d7b753bad0e0b3c057cd250b11755"

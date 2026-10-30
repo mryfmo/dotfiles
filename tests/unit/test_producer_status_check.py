@@ -59,10 +59,12 @@ allowlist: GUARDED_NAMES is one closed set of every name the lint trusts by its 
 a write is any Assign to one, a loop variable, an assigning expansion, a word in any position whose literal parts spell
 an assignment to one or name a guarded variable, a declaration word with no known text, an attribute option, or an
 unknown word where bash evaluates arithmetic, and ACCEPTED_WRITES holds the exact statement texts of the adopted set
-(28 rows); `test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting, and round 20
-matches a guarded name in the concatenation of a word's literal parts (`printf -v PA"TH" x` had passed) and reads every
+(28 rows, two of them the pr-merge.sh disposition gate's, U119 round 5);
+`test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting, and round 20 matches a
+guarded name in the concatenation of a word's literal parts (`printf -v PA"TH" x` had passed) and reads every
 arithmetic operand that is not digits and operators alone as a write (`y=$1; (( y, 1 ))` had passed: bash evaluates
-a name there recursively), accepted only by the exact statement texts of ACCEPTED_ARITHMETIC (44 rows).
+a name there recursively), accepted only by the exact statement texts of ACCEPTED_ARITHMETIC (52 rows, eight of them
+that gate's).
 """
 
 from __future__ import annotations
@@ -2342,13 +2344,13 @@ class ProducerStatusCheckTest(unittest.TestCase):
         adopted = set(namespace["LEVERS"]) | set(namespace["LIBRARIES"])  # type: ignore[arg-type]
         rows = namespace["ACCEPTED_WRITES"]
         assert isinstance(rows, tuple)
-        self.assertEqual(26, len(rows))
+        self.assertEqual(28, len(rows))
         for files, text, reason in rows:
             self.assertLessEqual(set(files), adopted, text)
             self.assertTrue(text and reason, text)
         arithmetic = namespace["ACCEPTED_ARITHMETIC"]
         assert isinstance(arithmetic, tuple)
-        self.assertEqual(44, len(arithmetic))
+        self.assertEqual(52, len(arithmetic))
         for files, text, reason in arithmetic:
             self.assertLessEqual(set(files), adopted | {CHECK.name}, text)
             self.assertTrue(text and reason, text)

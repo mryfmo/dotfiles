@@ -471,10 +471,11 @@ ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # git-isolated.sh and the five levers) that writes a guarded name, as (the file names it is accepted in, the statement
 # text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a
 # changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row
-# names it. Measured on head fb2774e9 (U112 round 20); nothing else writes a guarded name there. This Python sits in a
-# command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,
-# so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
-# Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
+# names it. Measured on head fb2774e9 (U112 round 20), plus the rows of the pr-merge.sh disposition gate (U119 round
+# 5); nothing else writes a guarded name there. This Python sits in a command substitution around a heredoc: bash 3.2
+# scans the body for quotes and backticks before the heredoc is read, so a row text must keep them balanced as bash
+# counts them (a text holding both kinds of quote is a double-quoted Python string with the inner double quotes
+# escaped), else the lint refuses to start and the enforced-set test fails.
 LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
 LIBRARIES = ("read-lib.sh", "git-isolated.sh")
 ACCEPTED_WRITES = (
@@ -651,6 +652,17 @@ done""",
         "a tab IFS for the one `read` of gh's TSV row, restored after it",
     ),
     (
+        ("pr-merge.sh",),
+        r"""IFS= read -r row;""",
+        "an empty IFS for the one `read` of a units.tsv row, restored after it (the disposition gate, U119)",
+    ),
+    (
+        ("pr-merge.sh",),
+        r'''IFS=$'\t' read -ra cols <<< "${line}"''',
+        "a tab IFS for the `read` of a validated dispositions.tsv row into its eight columns, restored after it (the "
+        "disposition gate, U119)",
+    ),
+    (
         ("pr-threads-check.sh",),
         r"""IFS=$'\t' read -r first resolved created severity count reply;""",
         "a tab IFS for the one `read` of gh's TSV rows, restored after it",
@@ -663,9 +675,10 @@ done""",
 )
 # The accepted arithmetic: the exact text of each statement of the adopted set that holds an operand bash evaluates as
 # arithmetic which is not inert (ARITHMETIC_INERT), as (the file names, the statement text, why), measured on head
-# fb2774e9 (U112 round 20) with this table empty. Every operand there is a name the statement itself assigned a decimal
-# to, a count of `$#` or `${#array[@]}`, or the signal number a trap passes; a row holds in its file alone, and a
-# changed character is a finding until a row names it. The same quoting rule as ACCEPTED_WRITES applies.
+# fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5).
+# Every operand there is a name the statement itself assigned a decimal to, a count of `$#` or `${#array[@]}`, or the
+# signal number a trap passes; a row holds in its file alone, and a changed character is a finding until a row names
+# it. The same quoting rule as ACCEPTED_WRITES applies.
 ACCEPTED_ARITHMETIC = (
     (("producer-status-check.sh",), r"""(($# == 0));""", "this lint refuses an empty argument list"),
     (("read-lib.sh",), r"""(($# >= 1))""", "a reader's argument count"),
@@ -759,6 +772,18 @@ ACCEPTED_ARITHMETIC = (
         r"""((merge_status == 0))""",
         "the status of `gh pr merge`, assigned `$?` by the statement before it",
     ),
+    (("pr-merge.sh",), r"""((seen == 0));""", "a flag the Findings loop of the disposition gate sets to 1 (U119)"),
+    (("pr-merge.sh",), r"""((section == 1))""", "a flag the same loop sets to 1 or 0"),
+    (("pr-merge.sh",), r"""((seen == 1))""", "the same flag, after the loop"),
+    (("pr-merge.sh",), r"""((${#findings[@]} > 0))""", "the count of the Findings lines collected"),
+    (("pr-merge.sh",), r"""((${#pending[@]} > 0))""", "the count of the P2 and P3 findings collected"),
+    (("pr-merge.sh",), r"""n=$((n + 1))""", "a counter of the dispositions.tsv lines"),
+    (
+        ("pr-merge.sh",),
+        r"""((status == 0));""",
+        "the status of unit_row_exists, assigned 0 or `$?` by the statements before it",
+    ),
+    (("pr-merge.sh",), r"""((satisfied == 1))""", "a flag the disposition loop sets to 1"),
     (("pr-threads-check.sh",), r"""((fix_time < created));""", "two epoch seconds `date` printed"),
     (("pr-threads-check.sh",), r"""((seen_head))""", "a flag the listing loop sets to 1"),
     (("pr-threads-check.sh",), r"""((count <= 100))""", "the comment count of a thread, a field of gh's TSV row"),

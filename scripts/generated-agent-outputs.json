@@ -382,7 +382,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "1119b489ed1b04ecda12ec90cabbb2a1c9fa2f816b178fbc32097561f488e68b"
+      "sha256": "f0ed88b7744ae696f99b6f8f13dfcd4fb70711c3042019aa69ace00bb4593a13"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "33a1a580f4f7c04755b7fadd70b48b87f5eada4d8da5b425f3344a4d0f1f871c"
+      "sha256": "15a84ed82ba5c367fec9744dac697ed352809d46f41ccdc504a9ec67f92f2410"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",

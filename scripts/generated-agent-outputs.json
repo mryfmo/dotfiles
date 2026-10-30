@@ -382,7 +382,7 @@
       "target": ".local/bin/common/pr-audit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "f0ed88b7744ae696f99b6f8f13dfcd4fb70711c3042019aa69ace00bb4593a13"
+      "sha256": "8806719001f039c4dc82525f963f734207d17dc6a5529c7774814770b08736e5"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
@@ -671,6 +671,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "regime-stop"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "rounds-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

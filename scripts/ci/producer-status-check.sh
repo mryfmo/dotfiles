@@ -472,10 +472,10 @@ ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a
 # changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row
 # names it. Measured on head fb2774e9 (U112 round 20), plus the rows of the pr-merge.sh disposition gate (U119 round
-# 5); nothing else writes a guarded name there. This Python sits in a command substitution around a heredoc: bash 3.2
-# scans the body for quotes and backticks before the heredoc is read, so a row text must keep them balanced as bash
-# counts them (a text holding both kinds of quote is a double-quoted Python string with the inner double quotes
-# escaped), else the lint refuses to start and the enforced-set test fails.
+# 5) and of the pr-audit.sh round cap (U120 round 4); nothing else writes a guarded name there. This Python sits in a
+# command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,
+# so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
+# Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
 LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
 LIBRARIES = ("read-lib.sh", "git-isolated.sh")
 ACCEPTED_WRITES = (
@@ -675,7 +675,8 @@ done""",
 )
 # The accepted arithmetic: the exact text of each statement of the adopted set that holds an operand bash evaluates as
 # arithmetic which is not inert (ARITHMETIC_INERT), as (the file names, the statement text, why), measured on head
-# fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5).
+# fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5)
+# and of the pr-audit.sh round cap (U120 round 4).
 # Every operand there is a name the statement itself assigned a decimal to, a count of `$#` or `${#array[@]}`, or the
 # signal number a trap passes; a row holds in its file alone, and a changed character is a finding until a row names
 # it. The same quoting rule as ACCEPTED_WRITES applies.
@@ -765,6 +766,15 @@ ACCEPTED_ARITHMETIC = (
         r"""((status != 0))""",
         "the status of the sandbox probe, assigned `$?` by the statement before it",
     ),
+    (("pr-audit.sh",), r"""(($# > 0));""", "the argument count of the option loop (the round cap, U120)"),
+    (
+        ("pr-audit.sh",),
+        r"""[[ $# -ge 2 && -n $2 && ${records_given} == 0 ]]""",
+        "an option that takes a value needs two words, and `--records` is given once (its own sentinel, U120 round 5)",
+    ),
+    (("pr-audit.sh",), r"""unit_lines=$((unit_lines + 1))""", "a counter of the body's Program-Unit lines"),
+    (("pr-audit.sh",), r"""((unit_lines <= 1))""", "the same counter, at most one line"),
+    (("pr-audit.sh",), r"""((unit_lines == 1));""", "the same counter, one line names a program pull request"),
     (("pr-merge.sh",), r"""[[ $# -ge 1 ]]""", "the lever's argument count"),
     (("pr-merge.sh",), r"""[[ $# -eq 2 && $1 == --records && -n $2 ]]""", "the lever's argument count and words"),
     (

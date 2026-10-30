@@ -151,7 +151,9 @@ class WorkflowSecurityTest(unittest.TestCase):
         text = (WORKFLOWS / "regime.yml").read_text()
         self.assertNotIn("pull_request.base.sha", text)
         self.assertIn("ref: refs/heads/${{ github.base_ref }}", [line.strip() for line in text.splitlines()])
-        self.assertIn('--base "$(git rev-parse HEAD)"', text)
+        # the tip's sha, read with its producer's status checked (standing order 21, U120 round 3)
+        self.assertIn("base=$(git rev-parse HEAD) || exit 1", text)
+        self.assertIn('--base "${base}"', text)
 
     def test_workflows_have_exact_top_level_permissions(self):
         actual = {path.name: top_level_permissions(path.read_text()) for path in sorted(WORKFLOWS.glob("*.y*ml"))}

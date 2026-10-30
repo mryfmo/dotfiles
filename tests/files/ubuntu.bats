@@ -23,6 +23,8 @@ assert_link_target() {
     assert_absent "${HOME}/.local/bin/server/ssh_agent.sh"
     [ -f "${HOME}/.config/systemd/user/usage-snapshot.service" ]
     [ -f "${HOME}/.config/systemd/user/usage-snapshot.timer" ]
+    [ -f "${HOME}/.config/systemd/user/disk-gc.service" ]
+    [ -f "${HOME}/.config/systemd/user/disk-gc.timer" ]
 }
 
 # bats test_tags=ubuntu:client

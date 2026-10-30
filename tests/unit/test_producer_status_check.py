@@ -59,7 +59,10 @@ allowlist: GUARDED_NAMES is one closed set of every name the lint trusts by its 
 a write is any Assign to one, a loop variable, an assigning expansion, a word in any position whose literal parts spell
 an assignment to one or name a guarded variable, a declaration word with no known text, an attribute option, or an
 unknown word where bash evaluates arithmetic, and ACCEPTED_WRITES holds the exact statement texts of the adopted set
-(28 rows); `test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting.
+(28 rows); `test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting, and round 20
+matches a guarded name in the concatenation of a word's literal parts (`printf -v PA"TH" x` had passed) and reads every
+arithmetic operand that is not digits and operators alone as a write (`y=$1; (( y, 1 ))` had passed: bash evaluates
+a name there recursively), accepted only by the exact statement texts of ACCEPTED_ARITHMETIC (44 rows).
 """
 
 from __future__ import annotations
@@ -1598,8 +1601,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
         shadowed = (*range(5, 7), *range(8, 20), *range(24, 29), *twice, 42)
         # Round 18: a write to a guarded name is `binding`: the assignments of 20 to 23, the `fail=true` word of the
         # alias at 6, and `export PATH`, `export "${GIT_ISOLATED_ENV[@]}"` outside git-isolated.sh, `export -f refuse`
-        # and `readonly -f fail` (30, 45, 46, 47), accepted before, are writes now.
-        bound = (6, 20, 21, 22, 23, 30, 45, 46, 47)
+        # and `readonly -f fail` (30, 45, 46, 47), accepted before, are writes now. Round 20: the subscripts `[fail]`
+        # and `[git]` of 21 and 23 are arithmetic operands bash evaluates for an indexed array (twice each).
+        bound = (6, 20, 21, 21, 22, 23, 23, 30, 45, 46, 47)
         expected = [(line, "shadow") for line in shadowed] + [(line, "binding") for line in bound]
         result = self.assert_findings(rebinders, expected)
         names = NAMES
@@ -2031,11 +2035,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "unset PATH\n"  # 23: the name as a word, in any command
             "mapfile -t PATH\n"  # 24
             "local -n ref=PATH\n"  # 25: the name, and the nameref option (twice)
-            "((PATH = 1))\n"  # 26: arithmetic
-            "let 'PATH = 1'\n"  # 27
-            "x=${a[PATH=1]}\n"  # 28
+            "((PATH = 1))\n"  # 26: arithmetic: the name, and the operand (twice since round 20)
+            "let 'PATH = 1'\n"  # 27: twice
+            "x=${a[PATH=1]}\n"  # 28: twice
             ': "${PATH:=/tmp/x}"\n'  # 29: an assigning expansion
-            "[[ $y -eq 1 ]]\n"  # 30: an unknown word where bash evaluates arithmetic
+            "[[ $y -eq 1 ]]\n"  # 30: an operand where bash evaluates arithmetic (an expansion; a name since round 20)
             "a[$y]=1\n"  # 31
             "declare -i n\n"  # 32: the integer attribute
             "bash -c 'cd /; PATH=/tmp/x git ls-files'\n"  # 33: text handed to another program
@@ -2045,13 +2049,13 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "coproc PATH { :; }\n"  # 37
             "unset 'a[PATH=1]'\n"  # 38
             "PATH= git ls-files\n"  # 39: a prefix with no Value (and the producer, rule b)
-            "BASH_ALIASES[fail]=true\n"  # 40
+            "BASH_ALIASES[fail]=true\n"  # 40: the name, and the subscript as an arithmetic operand (twice since round 20)
             "export -f refuse\n"  # 41
             "alias fail=true\n"  # 42: spells a write (and the alias, rule f's shadow reading)
             "g() { local status=0; declare -r y=1; local -- z; }\n"  # 43: accepted from here to 46
             "export GIT_CONFIG_NOSYSTEM=1\n"  # 44
-            "[[ $# -eq 1 ]]\n"  # 45: a parameter bash alone sets
-            "((count == 1))\n"  # 46: a bare name in arithmetic is a known word
+            "[[ $# -eq 1 ]]\n"  # 45: a finding since round 20: a row's shape, but not in a row's file
+            "((count == 1))\n"  # 46
             "IFS= read -r line\n"  # 47: a lever's text, but not in a lever's file
             "IFS=$'\\t' read -r state base <<< \"${view}\"\n"  # 48
             'env "${GIT_ISOLATED_ENV[@]}" true\n'  # 49: accepted from here on: an external command's argument
@@ -2059,8 +2063,8 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "printf -v \"$3\" '%s' ''\n"  # 51
             "x=$(a) || exit 1\n"  # 52
         )
-        twice = (4, 19, 21, 25)
-        expected = [(line, "binding") for line in (*range(3, 43), *twice, 47, 48)]
+        twice = (4, 19, 21, 25, 26, 27, 28, 40)
+        expected = [(line, "binding") for line in (*range(3, 43), *twice, 45, 46, 47, 48)]
         expected += [(39, "producer"), (42, "shadow")]
         result = self.assert_findings(writes, expected)
         path = "a write to `PATH` (the directories bash searches for `git`, `find`, `ls` and every other command word)"
@@ -2068,7 +2072,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "a word spelling its name (an argument of `read`, `printf -v`, `unset` or `mapfile`, a nameref's value, an "
             "arithmetic operand, text handed to another program, a message)"
         )
-        unknown = "a write to any guarded name: a word with no known text where bash evaluates arithmetic"
+        unknown = (
+            "a write to any guarded name: an operand where bash evaluates arithmetic that is not digits and operators "
+            "alone (a name, which bash evaluates recursively, a parameter, an expansion)"
+        )
         for line, message in (
             (3, f"{path}: an assignment with no value, or the bare name, in an assignment"),
             (
@@ -2103,7 +2110,11 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 29,
                 f"{path}: an expansion that assigns its parameter (`${{name=…}}`, `${{name:=…}}`), in the command `:`",
             ),
-            (30, f"{unknown}, in a `[[ ]]` test"),
+            (
+                30,
+                f"{unknown}, in a `[[ ]]` test; the statement is not an accepted arithmetic statement of the adopted "
+                "levers and libraries (ACCEPTED_ARITHMETIC)",
+            ),
             (31, f"{unknown}, in an assignment"),
             (32, "a write to any guarded name: the option `-i` of `declare`, under which a later assignment"),
             (33, f"{path}: {named}, in the command `bash`"),
@@ -2133,6 +2144,114 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("read-lib.sh", "f() {\n    LEVER_DIR=${dir2}\n}\n", [(4, "binding")]),
             ("other.sh", "f() {\n    LEVER_DIR=${dir}\n}\n", [(4, "binding")]),
             ("read-lib.sh", "f() { LEVER_DIR=${dir}; }\n", [(3, "binding")]),  # the `;` is part of the statement's text
+        ):
+            with self.subTest(name=name, body=body):
+                result = self.run_check(self.script(name, body))
+                self.assertEqual("", result.stderr)
+                self.assertEqual(sorted(findings_expected), findings(result), result.stdout)
+
+    def test_the_round_20_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the fb2774e9 audit, which that head read as clean: a guarded name was matched in each literal
+        part of a word alone, so `printf -v PA"TH" "$1"` spelled PATH across two parts and passed while /bin/bash 3.2
+        set PATH and ran the spoofed git (measured below); and only an operand with no known text was a write where
+        bash evaluates arithmetic, so `y=$1; (( y, 1 ))` passed while bash evaluated `y` recursively, read `PATH=1`
+        as an assignment and ran the spoofed git (measured below, with `[[ y -eq 1 ]]`, `a[y]=1`, `let 'y + 1'` and
+        `declare -i n; n=y`). Round 20 matches the name in the concatenation of every literal part, quotes removed and
+        in order, and in each part alone, and reads every arithmetic operand that is not digits, operators and
+        whitespace alone as a write, accepted only by the exact statement texts of ACCEPTED_ARITHMETIC in their files
+        (the 44 statements measured on the adopted set); `$#` and `${#name}` are rows there, not a reading of which
+        parameters are numbers."""
+        spoof = self.temp / "1"  # `PATH=1` names this directory, relative to the cwd the scripts run in
+        spoof.mkdir()
+        (spoof / "git").write_text("#!/bin/sh\necho spoofed\n")
+        (spoof / "git").chmod(0o755)
+        read = 'listing=$(git ls-files) || exit 1\necho "ran ${listing}"\n'
+        for binding, argument in (
+            ('printf -v PA"TH" "$1"\n', "1"),  # the auditor's line
+            ("y=$1; (( y, 1 ))\n", "PATH=1"),  # the auditor's line
+            ("y=$1; [[ y -eq 1 ]]\n", "PATH=1"),
+            ("y=$1; a[y]=1\n", "PATH=1"),
+            ("y=$1; let 'y + 1'\n", "PATH=1"),
+            ("declare -i n; y=$1; n=y\n", "PATH=1"),
+        ):
+            with self.subTest(binding=binding):
+                script = self.script("spoofed.sh", binding + read)
+                ran = subprocess.run(
+                    ["/bin/bash", str(script), argument], cwd=self.temp, capture_output=True, text=True, check=False
+                )
+                self.assertEqual((0, "ran spoofed\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured
+        probes = (
+            'printf -v PA"TH" "$1"\n'  # 3: the auditor's line: the name across two literal parts
+            'PA"TH"=x\n'  # 4: the leading parts were joined before; the token is now found in the joined text too
+            "printf -v PA'TH' x\n"  # 5
+            "'PA'TH=1\n"  # 6
+            "y=$1; (( y, 1 ))\n"  # 7: the auditor's line: a bare name bash evaluates recursively
+            "[[ y -eq 1 ]]\n"  # 8
+            "a[y]=1\n"  # 9
+            "let 'y + 1'\n"  # 10
+            "declare -i n; n=y\n"  # 11: the `-i` option (round 18); the tree shows no arithmetic in `n=y` itself
+            "exit $((128 + $2))\n"  # 12: a row's text, but not in a row's file
+            "[[ ${template_entries} -gt 0 ]]\n"  # 13
+            "[[ $# -eq 1 ]]\n"  # 14
+            "((count == 1))\n"  # 15
+            "((${#a[@]}))\n"  # 16: a length is a parameter, not a number this walk reads
+            "for ((i = 0; i < 3; i++)); do :; done\n"  # 17: a C-style `for`
+            "x=${a[i]}\n"  # 18: a subscript
+            "x=${s:1:n}\n"  # 19: a slice
+            "[[ -v 'a[y]' ]]\n"  # 20: a name test's subscript
+            "((1 + 2))\n"  # 21: accepted from here on: digits, operators and whitespace alone
+            "x=${a[@]}\n"  # 22
+            "x=${a[*]}\n"  # 23
+            "let '1 + 2'\n"  # 24
+            "exit $((128 + 2))\n"  # 25
+            "echo PA TH\n"  # 26: two words, neither the name
+            "x=$(a) || exit 1\n"  # 27
+        )
+        result = self.assert_findings(probes, [(line, "binding") for line in range(3, 21)])
+        path = "a write to `PATH` (the directories bash searches for `git`, `find`, `ls` and every other command word)"
+        named = (
+            "a word spelling its name (an argument of `read`, `printf -v`, `unset` or `mapfile`, a nameref's value, an "
+            "arithmetic operand, text handed to another program, a message)"
+        )
+        operand = (
+            "a write to any guarded name: an operand where bash evaluates arithmetic that is not digits and operators "
+            "alone (a name, which bash evaluates recursively, a parameter, an expansion)"
+        )
+        accepted = (
+            "the statement is not an accepted arithmetic statement of the adopted levers and libraries "
+            "(ACCEPTED_ARITHMETIC)"
+        )
+        for line, message in (
+            (3, f"{path}: {named}, in the command `printf`; the statement is not an accepted write"),
+            (4, f"{path}: a word spelling an assignment, `PATH=…`, in the command `PATH=x`"),
+            (5, f"{path}: {named}, in the command `printf`"),
+            (6, f"{path}: a word spelling an assignment, `PATH=…`, in the command `PATH=1`"),
+            (7, f"{operand}, in an arithmetic command; {accepted}"),
+            (8, f"{operand}, in a `[[ ]]` test; {accepted}"),
+            (9, f"{operand}, in an assignment; {accepted}"),
+            (10, f"{operand}, in a `let`; {accepted}"),
+            (11, "a write to any guarded name: the option `-i` of `declare`, under which a later assignment"),
+            (12, f"{operand}, in the command `exit`; {accepted}"),
+            (16, f"{operand}, in an arithmetic command; {accepted}"),
+            (17, f"{operand}, in a `for`; {accepted}"),
+            (18, f"{operand}, in an assignment; {accepted}"),
+            (19, f"{operand}, in an assignment; {accepted}"),
+            (20, f"{operand}, in a `[[ ]]` test; {accepted}"),
+        ):
+            self.assertIn(f":{line}: binding: {message}", result.stdout)
+        # The allowlist is exact: a row's text passes in a file of the row's name alone; one character off, or the same
+        # text in another file, is a finding; the two rows round 18 held in ACCEPTED_WRITES hold here now.
+        for name, body, findings_expected in (
+            ("pr-audit.sh", '[[ $# -eq 1 ]] || refuse "${usage}"\n', []),
+            ("pr-merge.sh", '[[ $# -eq 1 ]] || refuse "${usage}"\n', [(3, "binding")]),
+            ("pr-audit.sh", '[[ $# -eq 2 ]] || refuse "${usage}"\n', [(3, "binding")]),
+            ("pr-audit.sh", "exit $((128 + $2))\n", []),
+            ("pr-audit.sh", "exit $((128 + $1))\n", [(3, "binding")]),
+            ("pr-audit.sh", '[[ ${template_entries} -gt 0 ]] || refuse "${template} has no filesystem entries"\n', []),
+            ("records-sync.sh", "((status == 0)) || fail x\n", []),
+            ("read-lib.sh", "((status == 0)) || return 1\n", [(3, "binding")]),
+            ("records-sync.sh", "while (($#)); do shift; done\n", []),  # the `;` is part of the statement's text
+            ("records-sync.sh", "(($#)) || exit 1\n", [(3, "binding")]),
         ):
             with self.subTest(name=name, body=body):
                 result = self.run_check(self.script(name, body))
@@ -2218,13 +2337,20 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "PS4",
         ):
             self.assertIn(name, guarded)
-        # The accepted writes name files of the adopted set only, and every row has a reason.
+        # The accepted writes and arithmetic statements name files of the adopted set only (the lint's own file among
+        # the arithmetic ones), and every row has a reason.
         adopted = set(namespace["LEVERS"]) | set(namespace["LIBRARIES"])  # type: ignore[arg-type]
         rows = namespace["ACCEPTED_WRITES"]
         assert isinstance(rows, tuple)
-        self.assertEqual(28, len(rows))
+        self.assertEqual(26, len(rows))
         for files, text, reason in rows:
             self.assertLessEqual(set(files), adopted, text)
+            self.assertTrue(text and reason, text)
+        arithmetic = namespace["ACCEPTED_ARITHMETIC"]
+        assert isinstance(arithmetic, tuple)
+        self.assertEqual(44, len(arithmetic))
+        for files, text, reason in arithmetic:
+            self.assertLessEqual(set(files), adopted | {CHECK.name}, text)
             self.assertTrue(text and reason, text)
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:

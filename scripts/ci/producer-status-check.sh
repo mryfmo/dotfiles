@@ -148,29 +148,35 @@
 #      `for` list, a `case` pattern, a test or arithmetic operand, a redirect target, a coprocess name, a heredoc body
 #      bash expands) whose leading literal parts spell an assignment to a guarded name (WRITES: `export
 #      'PATH=/x/bin:$PATH'`, `env PATH=/x/bin git ls-files`, `'GIT_ISOLATED_ENV=PATH=/x/bin'`, `alias fail=true`) or
-#      any of whose literal parts holds the name of a guarded variable as a token (every guarded name the shadow part
-#      does not read as a command word: `read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
-#      ref=PATH`, `(( PATH = 1 ))`, `${a[PATH=1]}`, `let 'PATH = 1'`, `unset 'a[PATH=1]'`, `bash -c 'cd /; PATH=x
-#      git'`, a message that names it); a bare literal, a single-quoted, double-quoted, ANSI-C or locale string is a
-#      literal part, and an expansion among them contributes no text and hides none; (d) a word of a declaration
-#      (`declare`, `typeset`, `readonly`, `export`, `local`, directly or through `builtin` or `command`) with no known
-#      text, which may spell any write (`export "$binding"`, `export "${GIT_ISOLATED_ENV[@]}"`; a forwarder's own
-#      unknown argument is the shadow finding above as well); (e) a declaration option under which a later assignment
-#      writes elsewhere (`declare -i`, `local -n`; ATTRIBUTE_OPTIONS); (f) a word with no known text where bash
-#      evaluates arithmetic (`(( ))`, `$(( ))`, `let`, a C-style `for`, an array index or a slice, an operand of
-#      `-eq`, `-ne`, `-lt`, `-le`, `-gt`, `-ge`, of `-v` or `-R`; measured on bash 3.2: `y='PATH=1'; (( $y, 1 ))`, `[[
-#      $y -eq 1 ]]`, `a[$y]=1` and `declare -i x; x=$y` each set PATH), the parameters bash alone sets aside (`$#`,
-#      `$?`, `$$`, `$!`, `${#name}`). The walk visits every node of every statement and asks those questions of each;
-#      there is no list of positions. A write is accepted only when the exact text of its statement, in its file, is
-#      a row of ACCEPTED_WRITES, the writes the adopted set makes (measured and listed there: the `IFS=` prefixes of
-#      the levers' `read` lines, `LEVER_DIR=${dir}` of every self-check, the library's three arrays, their `declare`,
-#      the `unset` loop over their names, `export "${GIT_ISOLATED_ENV[@]}"`, the messages that name a guarded
-#      variable); any other is a finding naming the name, how it is written, the statement's kind and the line. Not
-#      read: an expansion handed to an external command (`env "$x" git`, `sudo "$x"`: that command's argument, which
-#      the shell does not bind; the one the library hands `env` is the array a row pins), a name an expansion carries
-#      into a builtin that is no declaration (`unset -v "$name"` of the scrubs, `printf -v "$3"` of the readers, `read
-#      -r "$name"`: the caller's name, by design), and a literal heredoc body (data, skipped by every scan). An allow
-#      comment exempts nothing in rule f.
+#      its literal parts hold the name of a guarded variable as a token (every guarded name the shadow part does not
+#      read as a command word: `read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n ref=PATH`,
+#      `(( PATH = 1 ))`, `${a[PATH=1]}`, `let 'PATH = 1'`, `unset 'a[PATH=1]'`, `bash -c 'cd /; PATH=x git'`, a
+#      message that names it); a bare literal, a single-quoted, double-quoted, ANSI-C or locale string is a literal
+#      part, the name is matched in the concatenation of every literal part, quotes removed and in order (`printf -v
+#      PA"TH" x`, `PA'TH'=1`, `'PA'TH=1`; measured: each sets PATH), and in each part alone, and an expansion among
+#      them contributes no text and hides none; (d) a word of a declaration (`declare`, `typeset`, `readonly`,
+#      `export`, `local`, directly or through `builtin` or `command`) with no known text, which may spell any write
+#      (`export "$binding"`, `export "${GIT_ISOLATED_ENV[@]}"`; a forwarder's own unknown argument is the shadow
+#      finding above as well); (e) a declaration option under which a later assignment writes elsewhere (`declare
+#      -i`, `local -n`; ATTRIBUTE_OPTIONS); (f) an operand where bash evaluates arithmetic (`(( ))`, `$(( ))`, `let`,
+#      a C-style `for`, an array index or a slice, an operand of `-eq`, `-ne`, `-lt`, `-le`, `-gt`, `-ge`, of `-v` or
+#      `-R`) that is not digits, operators and whitespace alone (ARITHMETIC_INERT): bash evaluates a name there
+#      recursively (measured on bash 3.2: `y='PATH=1'` then `(( y, 1 ))`, `(( $y, 1 ))`, `[[ y -eq 1 ]]`, `a[y]=1`,
+#      `let 'y + 1'` and `declare -i x; x=$y` each set PATH), so a name, a `$`, an expansion or a substitution there is
+#      a write to any guarded name unless the exact text of its statement, in its file, is a row of
+#      ACCEPTED_ARITHMETIC (the statements of the adopted set, measured and listed there: the `$#` tests, the status
+#      and counter comparisons and increments, `exit $((128 + $2))`, the fetch retry `for`; `$#`, `$?` and `${#name}`
+#      are rows too, no reading of which parameters are numbers is kept). The walk visits every node of every
+#      statement and asks those questions of each; there is no list of positions. A write is accepted only when the
+#      exact text of its statement, in its file, is a row of ACCEPTED_WRITES, the writes the adopted set makes
+#      (measured and listed there: the `IFS=` prefixes of the levers' `read` lines, `LEVER_DIR=${dir}` of every
+#      self-check, the library's three arrays, their `declare`, the `unset` loop over their names, `export
+#      "${GIT_ISOLATED_ENV[@]}"`, the messages that name a guarded variable); any other is a finding naming the name,
+#      how it is written, the statement's kind and the line. Not read: an expansion handed to an external command
+#      (`env "$x" git`, `sudo "$x"`: that command's argument, which the shell does not bind; the one the library hands
+#      `env` is the array a row pins), a name an expansion carries into a builtin that is no declaration (`unset -v
+#      "$name"` of the scrubs, `printf -v "$3"` of the readers, `read -r "$name"`: the caller's name, by design), and a
+#      literal heredoc body (data, skipped by every scan). An allow comment exempts nothing in rule f.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
 #   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
 #   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
@@ -298,6 +304,7 @@ SHAPES = {  # how a finding names the command kind of a branch; a kind not liste
     "FuncDecl": "a function definition",
     "TestClause": "a `[[ ]]` test",
     "ArithmCmd": "an arithmetic command",
+    "LetClause": "a `let`",
     "TimeClause": "a `time`",
     "CoprocClause": "a `coproc`",
 }
@@ -439,17 +446,21 @@ WRITES = re.compile(
     "(" + "|".join(re.escape(name) for name in GUARDED_NAMES if IDENTIFIER.fullmatch(name)) + r")(?:\[[^]]*\])?\+?="
 )
 # The text bash evaluates as arithmetic, where any name may be assigned (`(( PATH = 1 ))`, `a[PATH=1]=x`, `let 'PATH
-# = 1'`, `${a[PATH=1]}`, `${x:PATH=1}`, and `[[ $y -eq 1 ]]`, whose operands bash evaluates; measured on bash 3.2:
-# `y='PATH=1'; (( $y, 1 ))`, `[[ $y -eq 1 ]]` and `a[$y]=1` each set PATH): the node kinds that open one, the fields
-# of an Assign or ParamExp that hold one, the test operators whose operands are one, and the test operators whose
-# operand is a name with a subscript bash evaluates (`[[ -v 'a[PATH=1]' ]]`). A word there with no known text is a
-# write to any guarded name, the parameters bash alone sets aside (`$#`, `$?`, `$$`, `$!`, a `${#name}` length).
+# = 1'`, `${a[PATH=1]}`, `${x:PATH=1}`, and `[[ $y -eq 1 ]]`, whose operands bash evaluates): the node kinds that open
+# one, the fields of an Assign or ParamExp that hold one, the test operators whose operands are one, and the test
+# operators whose operand is a name with a subscript bash evaluates (`[[ -v 'a[PATH=1]' ]]`). Bash evaluates a name
+# there recursively, so a bare identifier is a write to whatever its value spells (measured on bash 3.2: `y='PATH=1'`
+# then `(( y, 1 ))`, `(( $y, 1 ))`, `[[ y -eq 1 ]]`, `[[ $y -eq 1 ]]`, `a[y]=1`, `a[$y]=1` and `let 'y + 1'` each set
+# PATH). An operand is inert only when every part is a literal and its text is digits, operators and whitespace alone
+# (ARITHMETIC_INERT: `1`, `128`, `'1 + 2'`, the `@` and `*` of a whole-array subscript); any other operand (a name, a
+# `$`, a letter, a backquote, an expansion, a substitution) is a write to any guarded name unless the exact text of its
+# statement, in its file, is a row of ACCEPTED_ARITHMETIC. `$#`, `$?`, `${#name}` and a hex literal are not inert: a
+# parameter bash alone sets is accepted by a row, never by a reading of which parameters those are.
 ARITHMETIC_KINDS = ("ArithmCmd", "ArithmExp", "LetClause", "CStyleLoop")
 ARITHMETIC_FIELDS = ("Index", "Slice")
 ARITHMETIC_TESTS = ("-eq", "-ne", "-lt", "-le", "-gt", "-ge")
 NAME_TESTS = ("-v", "-R")
-NUMERIC_PARAMETERS = ("#", "?", "$", "!")
-SUBSCRIPTS = ("@", "*")  # the whole-array subscripts, `${name[@]}` and `${name[*]}`: no arithmetic is evaluated
+ARITHMETIC_INERT = re.compile(r"[0-9\s+\-*/%<>=!&|^~?:(),@]*")
 ASSIGNING_OPS = ("=", ":=")  # the parameter expansions that write their parameter (`${PATH=x}`, `${PATH:=x}`)
 DECLARERS = ("declare", "typeset", "readonly", "export", "local")  # the words shfmt parses as a DeclClause
 # The declaration options under which a later plain assignment writes elsewhere: `-i` evaluates the value as
@@ -460,7 +471,7 @@ ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
 # git-isolated.sh and the five levers) that writes a guarded name, as (the file names it is accepted in, the statement
 # text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a
 # changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row
-# names it. Measured on head ba8eb39d (U112 round 18); nothing else writes a guarded name there. This Python sits in a
+# names it. Measured on head fb2774e9 (U112 round 20); nothing else writes a guarded name there. This Python sits in a
 # command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,
 # so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
 # Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
@@ -590,11 +601,6 @@ done""",
         "an empty IFS for the one `read` of the environment listing, restored after it",
     ),
     (
-        ("pr-audit.sh",),
-        r"""exit $((128 + $2))""",
-        "the signal number the lever's own trap passes as $2, added to 128",
-    ),
-    (
         ("pr-audit.sh", "pr-body-edit.sh", "pr-merge.sh"),
         r"""IFS= read -r line;""",
         "an empty IFS for the one `read` of a line, restored after it",
@@ -608,12 +614,6 @@ done""",
         ("pr-audit.sh",),
         r"""refuse 'no python3 on PATH (it runs the codex supervisor)'""",
         "a refusal message naming PATH (a word, not a write)",
-    ),
-    (
-        ("pr-audit.sh",),
-        r"""[[ ${template_entries} -gt 0 ]]""",
-        "an arithmetic test of a grep count; the `fail` after the count takes every status but 0 and 1, so the value is "
-        "a decimal",
     ),
     (
         ("pr-audit.sh",),
@@ -660,6 +660,117 @@ done""",
         r'''IFS=$'\t' read -r number head state <<< "${view}"''',
         "a tab IFS for the one `read` of gh's TSV row, restored after it",
     ),
+)
+# The accepted arithmetic: the exact text of each statement of the adopted set that holds an operand bash evaluates as
+# arithmetic which is not inert (ARITHMETIC_INERT), as (the file names, the statement text, why), measured on head
+# fb2774e9 (U112 round 20) with this table empty. Every operand there is a name the statement itself assigned a decimal
+# to, a count of `$#` or `${#array[@]}`, or the signal number a trap passes; a row holds in its file alone, and a
+# changed character is a finding until a row names it. The same quoting rule as ACCEPTED_WRITES applies.
+ACCEPTED_ARITHMETIC = (
+    (("producer-status-check.sh",), r"""(($# == 0));""", "this lint refuses an empty argument list"),
+    (("read-lib.sh",), r"""(($# >= 1))""", "a reader's argument count"),
+    (
+        ("read-lib.sh",),
+        r"""((rc_status != 0 && rc_status != 1));""",
+        "the status of `git config --get`, assigned `$?` by the statement before it",
+    ),
+    (("read-lib.sh",), r"""((rc_status == 0))""", "the same status"),
+    (("read-lib.sh",), r"""((rf_status != 0));""", "the status of a `cat`, assigned `$?` by the statement before it"),
+    (
+        ("read-lib.sh",),
+        r"""((rl_status != 0));""",
+        "the status of a `git ls-files`, assigned `$?` by the statement before it",
+    ),
+    (("git-isolated.sh",), r"""((listed))""", "a count the library's own loop incremented"),
+    (("records-sync.sh", "pr-threads-check.sh"), r"""(($#));""", "the argument count of an option loop"),
+    (("records-sync.sh", "pr-threads-check.sh"), r"""(($# >= 2))""", "an option that takes a value needs two words"),
+    (("records-sync.sh",), r"""((${#programs[@]} == 1))""", "the count of the program directories found"),
+    (("records-sync.sh",), r"""((${#files[@]} + ${#gone[@]} > 0))""", "the counts of the files to sync and to remove"),
+    (("records-sync.sh",), r"""((${#masked[@]}));""", "the count of the masked copies"),
+    (
+        ("records-sync.sh", "pr-audit.sh", "pr-merge.sh"),
+        r"""((status == 0))""",
+        "a status the statement before it assigned `$?` or 0",
+    ),
+    (("records-sync.sh",), r"""((status != 1))""", "the same status"),
+    (
+        ("records-sync.sh",),
+        r"""n=$((last + 1))""",
+        "the next record number after the last one listed, a decimal by regex",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""((status == 125))""",
+        "the status of the audit run, assigned `$?` by the statement before it",
+    ),
+    (("pr-audit.sh",), r"""exit $((128 + $2))""", "the signal number the lever's own trap passes as $2, added to 128"),
+    (("pr-audit.sh",), r"""((signal_hold));""", "a flag the trap sets to 1"),
+    (("pr-audit.sh",), r"""((${#text} == size))""", "the byte count of AGENTS.md against the size git reported"),
+    (("pr-audit.sh",), r"""headings=$((headings + 1))""", "a counter of `## Audit` headings"),
+    (("pr-audit.sh",), r"""((inside));""", "a flag the heading loop sets to 1 or 0"),
+    (("pr-audit.sh",), r"""((headings == 1))""", "the same counter"),
+    (("pr-audit.sh",), r"""[[ $# -eq 1 ]]""", "the lever's argument count"),
+    (
+        ("pr-audit.sh",),
+        r"""[[ ${template_entries} -gt 0 ]]""",
+        "an arithmetic test of a grep count; the `fail` after the count takes every status but 0 and 1, so the value is "
+        "a decimal",
+    ),
+    (("pr-audit.sh",), r"""((root_denies == 1))""", "a grep count of the sandbox profile's root denial"),
+    (("pr-audit.sh",), r"""count=$((count + 1))""", "a counter of the settings lines"),
+    (("pr-audit.sh",), r"""((count == 1))""", "the same counter"),
+    (
+        ("pr-audit.sh",),
+        # The one row with a continuation line: bash 3.2 joins a backslash-newline of this quoted heredoc inside its
+        # command substitution (measured), so the backslash and the newline are Python escapes here, not source bytes.
+        "for ((try = 1; try <= wait_tries; try++)); do\n"
+        "    # `bounded` is a perl exec, which cannot run a shell function, so the fetch carries the library's own "
+        "arrays, and\n"
+        "    # after them the gh helper, the shape of records-sync.sh's push: the library's empty helper resets the "
+        "list and the\n"
+        "    # later `-c` wins, so a private origin answers to the gh login and to no helper of the operator's "
+        "configuration.\n"
+        '    bounded "${gh_timeout}" env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -c '
+        "'credential.helper=!gh auth git-credential' \\\n"
+        '        -C "${clone}" fetch -q --no-tags "${url}" "+refs/pull/${pr}/head:refs/audit/head" '
+        "'+refs/heads/main:refs/audit/main' || # git-isolated: allow bounded exec of the library's own arrays\n"
+        '        fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"\n'
+        "    head=$(git_isolated -C \"${clone}\" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head='' "
+        "# producer-status: allow the head test after the loop refuses an empty head\n"
+        '    [[ ${head} != "${want}" ]] || break\n'
+        '    ((try == wait_tries)) || sleep "${wait_seconds}"\n'
+        "done",
+        "the fetch retry loop: `try` is the loop's own counter and `wait_tries` a decimal of the lever; the whole `for` "
+        "is the statement, so its body is pinned byte for byte too",
+    ),
+    (("pr-audit.sh",), r"""((try == wait_tries))""", "the last try of that loop"),
+    (("pr-audit.sh",), r"""entries=$((entries + 1))""", "a counter of the template's filesystem entries"),
+    (("pr-audit.sh",), r"""((entries == template_entries))""", "that counter against the grep count"),
+    (("pr-audit.sh",), r"""((rendered == resolved))""", "two counts of the rendered config's paths"),
+    (
+        ("pr-audit.sh",),
+        r"""((status != 0))""",
+        "the status of the sandbox probe, assigned `$?` by the statement before it",
+    ),
+    (("pr-merge.sh",), r"""[[ $# -ge 1 ]]""", "the lever's argument count"),
+    (("pr-merge.sh",), r"""[[ $# -eq 2 && $1 == --records && -n $2 ]]""", "the lever's argument count and words"),
+    (
+        ("pr-merge.sh",),
+        r"""((merge_status == 0))""",
+        "the status of `gh pr merge`, assigned `$?` by the statement before it",
+    ),
+    (("pr-threads-check.sh",), r"""((fix_time < created));""", "two epoch seconds `date` printed"),
+    (("pr-threads-check.sh",), r"""((seen_head))""", "a flag the listing loop sets to 1"),
+    (("pr-threads-check.sh",), r"""((count <= 100))""", "the comment count of a thread, a field of gh's TSV row"),
+    (("pr-threads-check.sh",), r"""threads=$((threads + 1))""", "a counter of the threads listed"),
+    (("pr-threads-check.sh",), r"""open=$((open + 1))""", "a counter of the open threads"),
+    (("pr-threads-check.sh",), r"""((open == 0))""", "the same counter"),
+    (
+        ("pr-body-edit.sh",),
+        r"""((size == 0 || size > 65536))""",
+        "the body's byte count, a decimal by the regex before it",
+    ),
+    (("pr-body-edit.sh",), r"""[[ $# -eq 2 && $1 == --body-file ]]""", "the lever's argument count and word"),
 )
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
@@ -1010,24 +1121,24 @@ def literal_texts(word):
     return "".join(leading), texts
 
 
-def numeric(word):
-    """Whether a word where bash evaluates arithmetic evaluates no text of a script's choosing: a parameter bash alone
-    sets, so its text is a number (exactly one short expansion of NUMERIC_PARAMETERS, `$#`, `$?`, `$$`, `$!`, or one
-    length, `${#name}`, `${#name[@]}`, bare or alone in double quotes), or the whole-array subscript `@` or `*` of
-    `${name[@]}`, which names every element and evaluates nothing."""
-    parts = word.get("Parts") or []
-    if len(parts) == 1 and parts[0].get("Type") == "DblQuoted":
-        parts = parts[0].get("Parts") or []
-    if len(parts) != 1:
-        return False
-    if parts[0].get("Type") == "Lit":
-        return parts[0].get("Value") in SUBSCRIPTS
-    if parts[0].get("Type") != "ParamExp":
-        return False
-    expansion = parts[0]
-    if expansion.get("Length"):
-        return True
-    return bool(expansion.get("Short")) and expansion["Param"]["Value"] in NUMERIC_PARAMETERS
+def inert_operand(word):
+    """Whether a word where bash evaluates arithmetic evaluates no text of a script's choosing: every part a literal
+    (a bare literal, a quoted string, double quotes around them) whose text is digits, operators and whitespace alone
+    (ARITHMETIC_INERT): `1`, `128`, `'1 + 2'`, the `@` or `*` of a whole-array subscript. A name (bash evaluates it
+    recursively: `y='PATH=1'; (( y, 1 ))` sets PATH), a `$` in any part, a letter, a backquote, an expansion or a
+    substitution is not inert; `$#`, `$?` and `${#name}` are not read as numbers here, a row accepts their statements."""
+    todo = list(word.get("Parts") or [])
+    while todo:
+        part = todo.pop(0)
+        kind = part.get("Type")
+        if kind == "DblQuoted":
+            todo = list(part.get("Parts") or []) + todo
+        elif kind in ("Lit", "SglQuoted"):
+            if not ARITHMETIC_INERT.fullmatch(part.get("Value") or ""):
+                return False
+        else:
+            return False
+    return True
 
 
 def written_in(stmt):
@@ -1445,7 +1556,7 @@ class Walk:
         variables = [name for name in GUARDED_NAMES if name not in self.shadowed and IDENTIFIER.fullmatch(name)]
         self.variables = re.compile("(?<![A-Za-z0-9_])(" + "|".join(map(re.escape, variables)) + ")(?![A-Za-z0-9_])")
         self.source = None  # the bytes of the file being walked (statement_text); None for the contract fixtures
-        self.file = ""  # its name, which a row of ACCEPTED_WRITES must list
+        self.file = ""  # its name, which a row of ACCEPTED_WRITES or ACCEPTED_ARITHMETIC must list
 
     def run(self, tree, source=None, file=""):
         self.source = source
@@ -1756,21 +1867,23 @@ class Walk:
         elif forwarded in DECLARERS:  # rule f: the words of a forwarded declaration (`builtin declare -i x`)
             self.attributes(stmt, forwarded, args[1:])
 
-    def write(self, stmt, name, how, line=None):
+    def write(self, stmt, name, how, line=None, accepted=None):
         """Rule f on a write to a guarded name (name; None when a word with no known text may write any of them), by
         how, in the statement stmt: a finding at line (the statement's first line when None) unless the statement's
-        exact text, in this file, is a row of ACCEPTED_WRITES. No allow comment exempts it."""
+        exact text, in this file, is a row of ACCEPTED_WRITES, or of the table accepted names as (its rows, its name):
+        ACCEPTED_ARITHMETIC for an arithmetic operand. No allow comment exempts it."""
+        rows, table = (ACCEPTED_WRITES, "ACCEPTED_WRITES") if accepted is None else accepted
         text = self.statement_text(stmt)
-        for files, accepted, _ in ACCEPTED_WRITES:
-            if self.file in files and text == accepted:
+        for files, row, _ in rows:
+            if self.file in files and text == row:
                 return
         guarded = f"`{name}` ({GUARDED_NAMES[name]})" if name is not None else "any guarded name"
         self.findings.add(
             (
                 stmt["Pos"]["Line"] if line is None else line,
                 BINDING,
-                f"a write to {guarded}: {how}, in {written_in(stmt)}; the statement is not an accepted write of the "
-                "adopted levers and libraries (ACCEPTED_WRITES)",
+                f"a write to {guarded}: {how}, in {written_in(stmt)}; the statement is not an accepted "
+                f"{'arithmetic statement' if accepted else 'write'} of the adopted levers and libraries ({table})",
             )
         )
 
@@ -1810,19 +1923,22 @@ class Walk:
     def word(self, word, stmt, arithmetic):
         """A write spelled by a word, in any position: its leading literal parts spell an assignment to a guarded
         name (WRITES: `export 'PATH=/x/bin:$PATH'`, `env PATH=/x/bin git ls-files`, `PATH=/x/bin:$PATH` as any
-        command's word, `'GIT_ISOLATED_ENV=PATH=/x/bin'`, `alias fail=true`), or any literal part holds the name of a
+        command's word, `'GIT_ISOLATED_ENV=PATH=/x/bin'`, `alias fail=true`), or its literal parts hold the name of a
         guarded variable as a token (`read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
         ref=PATH`, `(( PATH = 1 ))`, `let 'PATH = 1'`, `${a[PATH=1]}`, `coproc PATH {…}`, `bash -c 'cd /; PATH=x git'`,
-        a message naming it; an expansion among the parts contributes no text and hides none). Where bash evaluates
-        arithmetic (arithmetic) a word with no known text that is not a parameter bash alone sets (numeric) is a
-        write to any guarded name (measured: `y='PATH=1'; (( $y, 1 ))` sets PATH)."""
+        a message naming it). The name is matched in the concatenation of every literal part, quotes removed and in
+        order, so a name spelled across quotes is found (`printf -v PA"TH" x`, `PA'TH'=1`, `'PA'TH=1`), and in each
+        part alone, so nothing a part names is lost; an expansion among the parts contributes no text and hides none.
+        Where bash evaluates arithmetic (arithmetic) an operand that is not inert (inert_operand: a name, which bash
+        evaluates recursively, a `$`, an expansion) is a write to any guarded name unless the statement is a row of
+        ACCEPTED_ARITHMETIC (measured: `y='PATH=1'` then `(( y, 1 ))` or `(( $y, 1 ))` sets PATH)."""
         leading, texts = literal_texts(word)
         line = (word.get("Pos") or stmt["Pos"])["Line"]
         writes = {}  # name -> how, one finding per name the word writes
         match = WRITES.match(leading)
         if match is not None:
             writes[match[1]] = f"a word spelling an assignment, `{match[0]}…`"
-        for text in texts:
+        for text in ("".join(texts), *texts):
             for found in self.variables.finditer(text):
                 writes.setdefault(
                     found[1],
@@ -1831,8 +1947,15 @@ class Walk:
                 )
         for name, how in writes.items():
             self.write(stmt, name, how, line)
-        if arithmetic and word_text(word) is None and not numeric(word):
-            self.write(stmt, None, "a word with no known text where bash evaluates arithmetic", line)
+        if arithmetic and not inert_operand(word):
+            self.write(
+                stmt,
+                None,
+                "an operand where bash evaluates arithmetic that is not digits and operators alone (a name, which "
+                "bash evaluates recursively, a parameter, an expansion)",
+                line,
+                (ACCEPTED_ARITHMETIC, "ACCEPTED_ARITHMETIC"),
+            )
 
     def attributes(self, stmt, variant, words):
         """A declaration's words that assign nothing (a DeclClause's `Naked` arguments; every argument after a

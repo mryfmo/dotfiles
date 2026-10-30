@@ -18,16 +18,19 @@
 #   row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a `correct` verdict may
 #   carry P2 and P3 findings, so the lever also opens the store's `verdicts/U<n>-<sha8>.md` of the body's unit and
 #   the current head (absent, a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
-#   and parses its `## Findings` list, the lines pr-audit.sh's reader writes (`- P<n> (<confidence>) <path>:<line>:
-#   <rationale>`, or `- none`). That file is the `verdict.md` of `pr-audit.sh`, the audit route (`hcom-orchestration`
-#   SKILL step 4, U119 round 3), copied into the store; a verdict of the retired `omp-run.sh --role audit` route has
-#   no `## Findings` heading, is refused by name, and belongs to a merged unit, never to a merge head. Every P2 or P3
-#   line needs a row of the store's `dispositions.tsv` (header `ts unit head_sha priority path line disposition
-#   reference`) with the same unit, full head sha, path and line whose `disposition` is `residual` and whose
-#   reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later head that fixed the
-#   finding and never satisfies the gate for the head it judges. The first finding without such a row is named in
-#   the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line of another shape, a verdict file whose
-#   last line is not `Verdict: correct`, and a `dispositions.tsv` or `units.tsv` row whose column count is not its
+#   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
+#   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
+#   (`- P<n> (<confidence>) <path>:<line>: <rationale>`, the path the text before the line's last `:<line>: `, which
+#   holds no colon and no whitespace, or `- none`). That file is the `verdict.md` of `pr-audit.sh`, the audit route
+#   (`hcom-orchestration` SKILL step 4, U119 round 3), copied into the store; a verdict of the retired omp-run.sh
+#   audit route has no `## Findings` heading, is refused by name, and belongs to a merged unit, never to a merge
+#   head. Every P2 or P3 line needs a row of the store's `dispositions.tsv` (header `ts unit head_sha priority path
+#   line disposition reference`) with the same unit, full head sha, path and line whose `disposition` is `residual`
+#   and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later head that
+#   fixed the finding and never satisfies the gate for the head it judges. The first finding without such a row is
+#   named in the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line of another shape or whose path
+#   holds a colon or whitespace (its path and line cannot be told from its rationale), a verdict file whose last
+#   line is not `Verdict: correct`, and a `dispositions.tsv` or `units.tsv` row whose column count is not its
 #   header's or whose required column is empty are refusals naming the line (standing order 21); the rows are split
 #   by awk on the tab alone, since bash's `read` merges adjacent tabs (U119 round 3). Every store path the lever
 #   opens (`ledger.tsv`, `verdicts/`, the verdict file, `dispositions.tsv`, `units.tsv`) must be a regular file or
@@ -143,9 +146,14 @@ dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\tref
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
 # The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read; the unit names the verdict file.
 program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
-# A `## Findings` list line as pr-audit.sh's reader writes it. The path holds no colon, so `:<line>:` is found once;
-# a path with one does not match and the line is refused as malformed, never read as another finding.
-finding_re='^- (P[0-3]) \((high|medium|low)\) ([^:]+):([1-9][0-9]*): '
+# A `## Findings` list line as pr-audit.sh's reader writes it, `- P<n> (<confidence>) <path>:<line>: <rationale>`,
+# read from its structure (U119 round 4, audit of dc08660f): the path is everything from `) ` to the last `:<digits>: `
+# of the line (POSIX gives the first subexpression the longest text the whole match allows), the line those digits.
+# A path the gate accepts holds no colon and no whitespace (path_re), so a line whose path, read that way, holds
+# either (the reader wrote a path with a colon or a space, or the rationale holds a `:<digits>: `) is refused naming
+# the line, never read as a shorter path and an earlier line that another location's row could satisfy.
+finding_re='^- (P[0-3]) \((high|medium|low)\) (.+):([1-9][0-9]*): '
+path_re='^[^[:space:]:]+$'
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -276,19 +284,23 @@ require_dispositions() {
     [[ ! -L ${verdict_file} && -f ${verdict_file} && -O ${verdict_file} && -r ${verdict_file} ]] ||
         refuse "${verdict_file} is not a readable regular file of this user; a merge needs the verdict file of the head, not only its ledger row"
     text=$(cat -- "${verdict_file}") || fail "cannot read ${verdict_file}"
+    # Only the leading `## Findings` section is read (U119 round 4, audit of dc08660f): from the first `## Findings`
+    # line to the next `## ` heading. A later `## Findings` line, in the Notes the reader copies from the model or in
+    # a rationale, is text, never a second list.
     while IFS= read -r line; do
         line=${line%$'\r'}
         [[ -n ${line} ]] || continue
         last=${line}
-        if [[ ${line} == '## '* ]]; then
-            section=0
-            if [[ ${line} == '## Findings' ]]; then
-                section=1
-                seen=1
-            fi
+        if ((seen == 0)); then
+            [[ ${line} != '## Findings' ]] || seen=1 section=1
             continue
         fi
-        ((section == 0)) || findings+=("${line}")
+        ((section == 1)) || continue
+        if [[ ${line} == '## '* ]]; then
+            section=0
+            continue
+        fi
+        findings+=("${line}")
     done <<< "${text}"
     ((seen == 1)) ||
         refuse "${verdict_file} has no '## Findings' section; the gate reads the verdict.md pr-audit.sh writes (a '## Findings' list of '- P<n> (<confidence>) <path>:<line>: <rationale>' or '- none', then 'Blocking: <n>' and the last line 'Verdict: <value>'); a verdict of the retired omp-run.sh audit route has no such section and no merge head has one"
@@ -300,6 +312,8 @@ require_dispositions() {
         [[ ${entry} =~ ${finding_re} ]] ||
             refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': ${entry}"
         priority=${BASH_REMATCH[1]} path=${BASH_REMATCH[3]} lineno=${BASH_REMATCH[4]}
+        [[ ${path} =~ ${path_re} ]] || # lint-comparisons: allow the path is the text the reader wrote, judged by its characters, never resolved
+            refuse "${verdict_file}: a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its path and line cannot be told from its rationale: ${entry}"
         case ${priority} in
         P0 | P1) refuse "${verdict_file} lists ${priority} at ${path}:${lineno} under a correct ledger row; a P0 or P1 blocks (standing order 35), so the row or the file is wrong" ;;
         esac

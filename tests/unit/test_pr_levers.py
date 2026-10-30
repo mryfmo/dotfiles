@@ -912,12 +912,12 @@ class PrMergeTest(PrLeverTestCase):
     def ledger(self, *rows):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
 
-    def verdict(self, *findings, head=SHA_A, unit="U71", last="Verdict: correct"):
+    def verdict(self, *findings, head=SHA_A, unit="U71", last="Verdict: correct", notes="none"):
         """The store's `verdicts/U<n>-<sha8>.md`, the lever's verdict.md in the reader's shape (`- none` by default)."""
         listed = "\n".join(findings or ("- none",))
         (self.records / "verdicts").mkdir(exist_ok=True)
         (self.records / f"verdicts/{unit}-{head[:8]}.md").write_text(
-            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\n{last}\n"
+            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\n{notes}\n\nBlocking: 0\n{last}\n"
         )
 
     def dispositions(self, *rows, header=DISPOSITIONS_HEADER):
@@ -1313,7 +1313,11 @@ class PrMergeTest(PrLeverTestCase):
                 lambda: self.verdict("- P2 scripts/x.sh:3 boom"),
                 "a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': - P2 scripts/x.sh:3 boom",
             ),
-            ("a path with a colon", lambda: self.verdict("- P2 (high) a:b.sh:3: boom"), "a Findings line is not"),
+            (
+                "a path with a colon",
+                lambda: self.verdict("- P2 (high) a:b.sh:3: boom"),
+                "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace",
+            ),
             ("prose in the section", lambda: self.verdict("none found"), "a Findings line is not"),
             ("no list", lambda: self.verdict(""), "the Findings section lists nothing"),
             (
@@ -1350,6 +1354,61 @@ class PrMergeTest(PrLeverTestCase):
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_a_findings_line_is_read_from_its_structure_never_at_its_first_colon(self):
+        # U119 round 4 (audit of dc08660f, P2): the gate took the first `:<digits>: ` of the line, so a reader-written
+        # path `file:1: real.sh` at line 9 was read as `file` line 1, and that other location's residual row satisfied
+        # it. The path is now the text before the line's last `:<line>: ` and may hold no colon and no whitespace.
+        self.units("U71", "U72")
+        # path `file` line 1, a rationale that begins with `real.sh:9`: only the row for file:1 holds
+        self.verdict("- P2 (high) file:1: real.sh:9 is the line it misreads")
+        self.dispositions(disposition_row(path="real.sh", line=9))
+        self.github()
+        self.assert_refused(self.merge(), "lists P2 at file:1 without a holding disposition: no ")
+        self.dispositions(disposition_row(path="file", line=1))
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the audit's line, path `file:1: real.sh` at line 9 as the reader writes it, and a rationale holding
+        # `:<digits>: `: each is refused naming the line, with rows for both readings present (red on dc08660f: the
+        # first merged on the row for file:1)
+        self.dispositions(
+            disposition_row(path="file", line=1), disposition_row(path="real.sh", line=9, ts="2026-10-25T09:31:00Z")
+        )
+        for line in ("- P2 (high) file:1: real.sh:9: boom", "- P2 (high) file:1: see real.sh:9: the same shape"):
+            with self.subTest(line):
+                self.verdict(line)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                self.assert_refused(
+                    run,
+                    "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its"
+                    f" path and line cannot be told from its rationale: {line}",
+                )
+                self.assertEqual(self.writes(), [])
+
+    def test_only_the_leading_findings_section_of_the_verdict_file_is_read(self):
+        # U119 round 4 (audit of dc08660f, P2): every `## Findings` line reopened the list, so a finding-free correct
+        # verdict whose Notes held one was refused as prose in the section, and a list line after it would have been a
+        # finding. The section runs from the first `## Findings` line to the next `## ` heading; the rest is text.
+        self.github()
+        self.verdict(
+            notes="## Findings\n\nnone found in a second pass\n\n- P2 (high) scripts/x.sh:3: text, not a finding"
+        )
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # a later `## Findings` with `- none` does not replace the leading list: its P2 still needs its row
+        self.verdict(P2_LINE, notes="## Findings\n\n- none")
+        self.dispositions()
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(), "lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding disposition: no "
+        )
 
     def test_a_malformed_units_table_is_refused_naming_the_line(self):
         # U119 round 3: the residual's unit is looked up in units.tsv, whose rows are read by the same grammar.

@@ -84,25 +84,35 @@ TABLE: dict[str, Kind] = {
     "DblQuoted": Kind(None, ("Parts", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     "SglQuoted": Kind(None, ("Value", "Dollar", "Pos.Line"), {"Dollar": (True,)}),
     # The lint reads a literal's value for the one `source` shape rule f accepts (U112 round 14): the two libraries
-    # beside a lever, named by `${LEVER_DIR}` and one of these literals.
+    # beside a lever, named by `${LEVER_DIR}` and one of these literals; and for the whole-array subscripts `@` and `*`,
+    # which evaluate no arithmetic where an index is read (U112 round 18).
     "Lit": Kind(
         None,
         ("Value", "Pos.Line", "Pos.Offset", "End.Offset"),
-        {"Value": ("a\\ b", "/git-isolated.sh", "/read-lib.sh")},
+        {"Value": ("a\\ b", "/git-isolated.sh", "/read-lib.sh", "@", "*")},
     ),
     # A parameter's name is its Param.Value, bare: the sandbox guard looks for TMPDIR and the lint for jq by that
     # spelling, so the fixture expands both. The lint reads `$?` as the whole node (Short, Param.Value `?`): the
     # `name=$?` branch of a tested read; and LEVER_DIR, the directory of the two libraries a `source` may name.
+    # The lint reads an expansion that assigns its parameter (`Exp.Op` `=` or `:=`), the arithmetic its Index or Slice
+    # holds, and the parameters bash alone sets (`$#`, `$$`, `$!`, with `$?`) as numeric in arithmetic (U112 round 18).
     "ParamExp": Kind(
         None,
-        ("Param.Value", "Short", "Length", "Index", "Pos.Line"),
-        {"Length": (True,), "Short": (True,), "Param.Value": ("TMPDIR", "jq", "?", "LEVER_DIR")},
+        ("Param.Value", "Short", "Length", "Index", "Slice", "Exp.Op", "Pos.Line"),
+        {
+            "Length": (True,),
+            "Short": (True,),
+            "Param.Value": ("TMPDIR", "jq", "?", "LEVER_DIR", "#", "$", "!"),
+            "Exp.Op": ("=", ":="),
+        },
     ),
     "ExtGlob": Kind(None, ("Pattern.Value", "Pos.Line")),
     "BinaryCmd": Kind(None, ("Op", "X", "Y", "Pos.Line"), {"Op": ("|", "&&", "||")}),
     "TestClause": Kind(None, ("X", "Pos.Line")),
-    "UnaryTest": Kind(None, ("Op", "X"), {"Op": ("!", "-s")}),
-    "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=")}),
+    # The lint reads the operators whose operands bash evaluates as arithmetic (`-eq` …) or as a name with a subscript
+    # it evaluates (`-v`, `-R`), where a word with no known text may write any guarded name (U112 round 18).
+    "UnaryTest": Kind(None, ("Op", "X"), {"Op": ("!", "-s", "-v", "-R")}),
+    "BinaryTest": Kind(None, ("Op", "X", "Y"), {"Op": ("==", "!=", "=", "-eq", "-ne", "-lt", "-le", "-gt", "-ge")}),
     "CaseClause": Kind(None, ("Word", "Word.End.Line", "In.Line", "Items", "Pos.Line")),
     # The lint reads a top-level function's name and body: a `||` branch may call one whose body ends in `exit`.
     "FuncDecl": Kind(None, ("Name", "Name.Value", "Body", "Pos.Line")),
@@ -111,11 +121,17 @@ TABLE: dict[str, Kind] = {
     # `coproc` is a clause around one statement (shfmt 3.14.1 writes no Coprocess flag on the statement): the lint
     # reads the statement a tested coprocess runs (U112 round 6).
     "CoprocClause": Kind(None, ("Stmt", "Pos.Line")),
+    # The arithmetic contexts rule f reads for a word with no known text, and the loop variable it reads as a write
+    # (`for PATH in …`, `select`): the kinds are tested by name, the loop's Name.Value is read (U112 round 18).
     "ArithmExp": Kind(None, ("X",)),
+    "ArithmCmd": Kind(None, ("X",)),
+    "LetClause": Kind(None, ("Exprs",)),
+    "CStyleLoop": Kind(None, ("Init",)),
+    "WordIter": Kind(None, ("Name.Value",)),
     # An assignment is untyped, named by its Name; its array literal and the elements are untyped too and are read
     # through it (`Array.Elems`, each element's `Value` a word), so they have no row of their own (U113). Append is
     # written only on `+=`: the lint refuses `status+=$?` as a `||` branch, so the fixture has one (U112 round 11).
-    "Assign": Kind("Name", ("Name.Value", "Value", "Array.Elems", "Append", "Pos.Line"), {"Append": (True,)}),
+    "Assign": Kind("Name", ("Name.Value", "Value", "Array.Elems", "Append", "Index", "Pos.Line"), {"Append": (True,)}),
 }
 UNTYPED = {row.marker: kind for kind, row in TABLE.items() if row.marker}
 

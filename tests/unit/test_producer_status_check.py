@@ -52,7 +52,14 @@ alias, and non-interactive bash expands none unless that option is set, and roun
 `command`: `export 'PATH=/tmp/x:$PATH'` and `builtin export PATH=/tmp/x` had passed while bash ran the spoofed git;
 `export "${GIT_ISOLATED_ENV[@]}"` is the one accepted word with no known text, the array's assignments read as the
 exported words) and puts a process substitution on the path of the statements inside it (`cat <(x=$(false) || exit 1)`
-had passed while bash went on with exit 0), so a tested read or a producer there is a finding naming its line.
+had passed while bash went on with exit 0), so a tested read or a producer there is a finding naming its line, and
+round 18 replaces rule f's binding reading (rounds 14 to 17 each added one more way to write PATH or a trusted name,
+and the round-17 audit found two more: `PATH=` with no Value, `export 'GIT_ISOLATED_ENV=PATH=/tmp/x'`) with an
+allowlist: GUARDED_NAMES is one closed set of every name the lint trusts by its spelling and every variable bash reads,
+a write is any Assign to one, a loop variable, an assigning expansion, a word in any position whose literal parts spell
+an assignment to one or name a guarded variable, a declaration word with no known text, an attribute option, or an
+unknown word where bash evaluates arithmetic, and ACCEPTED_WRITES holds the exact statement texts of the adopted set
+(28 rows); `test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting.
 """
 
 from __future__ import annotations
@@ -64,12 +71,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_shfmt_json_contract import CAPTURES, captures, hidden_tree, pinned_version  # noqa: E402
+from test_shfmt_json_contract import CAPTURES, captures, contract, hidden_tree, pinned_version  # noqa: E402
 
 CHECK = ROOT / "scripts/ci/producer-status-check.sh"
 TABLE = ROOT / "scripts/ci/status-blind-producers.tsv"
@@ -82,12 +90,23 @@ LEVERS = tuple(
 ANSI_C_HEREDOC = ROOT / "tests/fixtures/shfmt-json/heredoc-ansi-c-delimiter"
 PROLOGUE = "set -euo pipefail\n"
 PRODUCERS = ("git ls-files", "git config -f", "git config --file", "find", "ls")
-# The words rule f protects, as a finding lists them (sorted): the builtins the rules read, the producers, the refusal
-# names and the lint's own rebinders.
+# The words rule f protects, as a finding lists them (sorted): the builtins the rules read, the declarations, the
+# producers, the refusal names and the lint's own rebinders.
 NAMES = (
-    "`.`, `alias`, `builtin`, `command`, `echo`, `enable`, `eval`, `exit`, `fail`, `find`, `git`, `hash`, `ls`, "
-    "`mapfile`, `printf`, `readarray`, `refuse`, `return`, `set`, `shopt`, `source`, `trap`, `unalias`, `unset`"
+    "`.`, `alias`, `builtin`, `command`, `declare`, `echo`, `enable`, `eval`, `exit`, `export`, `fail`, `find`, `git`, "
+    "`hash`, `local`, `ls`, `mapfile`, `printf`, `read`, `readarray`, `readonly`, `refuse`, `return`, `set`, `shopt`, "
+    "`source`, `trap`, `typeset`, `unalias`, `unset`"
 )
+# The identifier-shaped strings the walk compares a value against that are no name bash binds (round 18's drift test):
+# each with its reason; the test asserts the list is exact.
+NOT_NAMES = {
+    "allow": "the second word of `# producer-status: allow <reason>` (rule e)",
+    "pipefail": "the last word of the prologue `set -euo pipefail` (rule c), an option of `set`",
+    "expand_aliases": "a `shopt` option rule f reads the word of, not a name bash binds",
+    "Type": "the key of every typed node, in the `$?` pattern STATUS_PARAMETERS",
+    "Col": "a position field without_positions drops, beside Offset and Line of the contract table",
+}
+IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|\.")
 # How a finding ends on an `alias` or `unalias` call (round 16: any form), and what a rebinding of a rebinder shadows.
 ALIAS = (
     "which no lever does; non-interactive bash expands none unless `shopt -s expand_aliases` is set, and an alias of "
@@ -212,7 +231,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             ("echo `a`", "substitution"),
             ('cat > "$(a)"', "substitution"),
             ("[[ -n $(a) ]] || exit 1", "substitution"),
-            ("n=$((1 + $(a))) || exit 1", "substitution"),
+            (
+                "n=$((1 + $(a))) || exit 1",
+                ("binding", "substitution"),
+            ),  # the output is evaluated as arithmetic (rule f)
             ("for i in $(a); do :; done", "substitution"),
             ("case $(a) in *) ;; esac", "substitution"),
             ('x=$(a "$(b)") || exit 1', "substitution"),
@@ -1254,19 +1276,23 @@ class ProducerStatusCheckTest(unittest.TestCase):
                 )
 
     def test_shape_4_a_read_from_a_file_is_a_finding_naming_read_file(self) -> None:
-        result = self.assert_findings("IFS= read -r x < unreadable || exit 1\n", [(3, "read")])
+        result = self.assert_findings("read -r x < unreadable || exit 1\n", [(3, "read")])
         self.assert_findings("'read' -r x < unreadable || exit 1\n", [(3, "read")])
         self.assertIn("read_file", result.stdout)
-        clean = 'while IFS= read -r l; do :; done < file\nread -r a b <<< "${v}"\nread -r -p "x" answer || exit 1\n'
+        clean = 'while read -r l; do :; done < file\nread -r a b <<< "${v}"\nread -r -p "x" answer || exit 1\n'
         self.assert_findings(clean, [])
+        # The `IFS=` prefix of such a read is a write to a guarded name (rule f, round 18), reported beside rule d.
+        self.assert_findings("IFS= read -r x < unreadable || exit 1\n", [(3, "binding"), (3, "read")])
 
     def test_the_allow_comment_exempts_a_b_and_d_with_a_reason_and_is_a_finding_without_one(self) -> None:
         allowed = (
             "x=$(a) # producer-status: allow the status is read from the file below\n"
             "git ls-files > l # producer-status: allow the listing is advisory\n"
-            "IFS= read -r y < f # producer-status: allow a reason\n"
+            "read -r y < f # producer-status: allow a reason\n"
         )
         self.assert_findings(allowed, [])
+        # Rule f is exempted by nothing: the `IFS=` prefix stays a finding under an allow comment.
+        self.assert_findings("IFS= read -r y < f # producer-status: allow a reason\n", [(3, "binding")])
         result = self.assert_findings("x=$(a) # producer-status: allow\n", [(3, "allow"), (3, "substitution")])
         self.assertIn("needs a reason", result.stdout)
         # The prologue rule has no exemption.
@@ -1484,7 +1510,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "hash -r\n"  # 20: accepted
             "unset -f set\n"  # 21: a finding since round 14, like the definition at 3
         )
-        result = self.assert_findings(shadow, [(line, "shadow") for line in (3, *range(6, 18), 8, 8, 19, 21)])
+        shadowed = [(line, "shadow") for line in (3, *range(6, 18), 8, 8, 19, 21)]
+        result = self.assert_findings(
+            shadow, shadowed + [(13, "binding")]
+        )  # 13: `set='true'` spells a write (round 18)
         producers = (
             "the producers `git ls-files`, `git config -f`, `git config --file` rule b holds to a stderr capture"
         )
@@ -1566,7 +1595,12 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "unset -f other\n"  # 48: no word the rules read
         )
         twice = (5, 13, 14)
-        expected = [(line, "shadow") for line in (*range(5, 7), *range(8, 29), *twice, 42)]
+        shadowed = (*range(5, 7), *range(8, 20), *range(24, 29), *twice, 42)
+        # Round 18: a write to a guarded name is `binding`: the assignments of 20 to 23, the `fail=true` word of the
+        # alias at 6, and `export PATH`, `export "${GIT_ISOLATED_ENV[@]}"` outside git-isolated.sh, `export -f refuse`
+        # and `readonly -f fail` (30, 45, 46, 47), accepted before, are writes now.
+        bound = (6, 20, 21, 22, 23, 30, 45, 46, 47)
+        expected = [(line, "shadow") for line in shadowed] + [(line, "binding") for line in bound]
         result = self.assert_findings(rebinders, expected)
         names = NAMES
         refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
@@ -1589,16 +1623,36 @@ class ProducerStatusCheckTest(unittest.TestCase):
             (16, f"`trap` runs an action {unread[:22]} whole{unread[22:]}: `refuse() {{ :; }}`"),
             (18, f"`trap` runs an action with no known text, which may define or rebind one of {names}"),
             (19, f"`mapfile` runs a callback (`-C`) {unread}"),
-            (
-                20,
-                "an assignment to `PATH` binds a command word: the directories bash searches for `git`, `find` and `ls`",
-            ),
-            (21, "an assignment to `BASH_ALIASES` binds a command word: the alias table of bash 4, as `alias` does"),
-            (23, "an assignment to `BASH_CMDS` binds a command word: the hash table of bash 4, as `hash -p` does"),
             (25, f"`.` reads a file with no known text, which may define or rebind one of {names}"),
             (28, f"`command` has an argument with no known text, which may name one of {names}"),
         ):
             self.assertIn(f":{line}: shadow: {message}", result.stdout)
+        path = "a write to `PATH` (the directories bash searches for `git`, `find`, `ls` and every other command word)"
+        for line, message in (
+            (
+                6,
+                "a write to `fail` (a refusal function a `||` branch calls (rule a, form ii)): a word spelling an assignment, `fail=…`, in the command `alias`",
+            ),
+            (20, f"{path}: an assignment, in an assignment"),
+            (
+                21,
+                "a write to `BASH_ALIASES` (the alias table of bash 4, which `alias` writes): an assignment, in an assignment",
+            ),
+            (
+                23,
+                "a write to `BASH_CMDS` (the hash table of bash 4, which `hash -p` writes): an assignment, in the declaration `declare`",
+            ),
+            (30, f"{path}: an assignment with no value, or the bare name, in the declaration `export`"),
+            (
+                45,
+                "a write to any guarded name: a word of `export` with no known text, which may spell an assignment to any of them, in the declaration `export`",
+            ),
+            (
+                46,
+                "a write to `refuse` (a refusal function a `||` branch calls (rule a, form ii)): an assignment with no value, or the bare name, in the declaration `export`",
+            ),
+        ):
+            self.assertIn(f":{line}: binding: {message}", result.stdout)
         # Every redirect the walk meets is validated: a descriptor that is not a decimal refuses the file on any
         # command, in any statement, never only on a producer; a decimal one passes anywhere.
         for body, line in (
@@ -1673,6 +1727,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
         )
         twice = (17, 18)
         expected = [(line, "shadow") for line in (4, *range(6, 23), *twice, 27)]
+        expected.append((22, "binding"))  # `fail=true` spells a write to a guarded name (round 18)
         result = self.assert_findings(rebinders, expected)
         names = NAMES
         refusal = "and shadows the refusal function a `||` branch calls (rule a, form ii)"
@@ -1752,6 +1807,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
         )
         twice = (7, 22)
         expected = [(line, "shadow") for line in (4, *range(7, 26), *twice)]
+        expected += [(4, "binding"), (7, "binding")]  # `command=eval` and `refuse=true` spell writes (round 18)
         result = self.assert_findings(rebinders, expected)
         option = "`shopt` names `expand_aliases`, under which a script expands aliases and an alias rebinds any word; no lever sets it"
         for line, message in (
@@ -1791,7 +1847,9 @@ class ProducerStatusCheckTest(unittest.TestCase):
         `env` and of either through a forwarder (BINDERS, BINDING_WORD; `export "${GIT_ISOLATED_ENV[@]}"` the one
         accepted word with no known text, that array's assignments read as the exported words), and puts a process
         substitution on the path of the statements inside it (flagged_path), so a tested read or a producer there is a
-        finding naming the substitution's line."""
+        finding naming the substitution's line. Round 18 replaced the binding reading with the guarded-name allowlist:
+        the lines below are kept, judged by it (`binding`; `env "$@"` is an external command's argument, accepted; the
+        bare `export PATH`, the library's lines outside git-isolated.sh and `export -f refuse` are writes)."""
         spoof = self.temp / "x"
         spoof.mkdir()
         (spoof / "git").write_text("#!/bin/sh\necho spoofed\n")
@@ -1823,10 +1881,10 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "refuse() { exit 2; }\n"  # 3
             "export 'PATH=/tmp/x:$PATH'\n"  # 4: the auditor's quoted word
             "builtin export PATH=/tmp/x\n"  # 5: the auditor's forwarded word
-            'export "PATH=/tmp/x:$PATH"\n'  # 6: no known text
+            'export "PATH=/tmp/x:$PATH"\n'  # 6: the leading literal spells the write, and the word has no known text (twice)
             'export "$binding"\n'  # 7
-            "declare -x PATH=/tmp/x\n"  # 8: an Assign, a finding since round 14
-            "env PATH=/tmp/x git ls-files\n"  # 9: the spoofed git runs past rule b
+            "declare -x PATH=/tmp/x\n"  # 8: an Assign
+            "env PATH=/tmp/x git ls-files\n"  # 9: a word of any command
             "env -i PATH=/tmp/x git ls-files\n"  # 10
             "command env PATH=/tmp/x true\n"  # 11: through a forwarder
             "builtin command export PATH=/tmp/x\n"  # 12: through a chain of forwarders
@@ -1834,63 +1892,63 @@ class ProducerStatusCheckTest(unittest.TestCase):
             "typeset 'BASH_CMDS[git]=/tmp/x/git'\n"  # 14
             "f() { local 'PATH+=:/tmp/x'; }\n"  # 15: an append
             "export -n 'BASH_ALIASES[git]=true'\n"  # 16
-            'env "$@" git ls-files\n'  # 17: no known text
-            "GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM=1 PATH=/tmp/x)\n"  # 18: an element of the exported array binds
-            'GIT_ISOLATED_ENV+=("$extra")\n'  # 19: an element with no known text
-            "GIT_ISOLATED_ENV[0]=PATH=/tmp/x\n"  # 20
-            "GIT_ISOLATED_ENV=(git)\n"  # 21: an element that assigns nothing
-            'export "${OTHER[@]}"\n'  # 22: not the library's array
-            'export "${GIT_ISOLATED_ENV[0]}"\n'  # 23: not the whole array
+            'env "$@" git ls-files\n'  # 17: accepted since round 18: an expansion handed to an external command
+            "GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM=1 PATH=/tmp/x)\n"  # 18: the assignment, and the element (twice)
+            'GIT_ISOLATED_ENV+=("$extra")\n'  # 19
+            "GIT_ISOLATED_ENV[0]=PATH=/tmp/x\n"  # 20: the assignment, and the value (twice)
+            "GIT_ISOLATED_ENV=(git)\n"  # 21
+            'export "${OTHER[@]}"\n'  # 22: a word with no known text
+            'export "${GIT_ISOLATED_ENV[0]}"\n'  # 23
             'export "${GIT_ISOLATED_ENV[@]:-}"\n'  # 24
-            "x=$(false) || refuse\n"  # 25: accepted from here on
-            "export GIT_CONFIG_NOSYSTEM=1\n"  # 26
-            "g() { local status=0; declare -r y=1; local -- z; }\n"  # 27
-            "export PATH\n"  # 28: no value
-            "declare +x -a GIT_ISOLATED_ENV GIT_ISOLATED_ARGS\n"  # 29: git-isolated.sh's own line
-            "GIT_ISOLATED_ENV=(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1)\n"  # 30: known assignments of other names
+            "x=$(false) || refuse\n"  # 25: accepted
+            "export GIT_CONFIG_NOSYSTEM=1\n"  # 26: accepted
+            "g() { local status=0; declare -r y=1; local -- z; }\n"  # 27: accepted
+            "export PATH\n"  # 28: a finding since round 18: the bare name is a write
+            "declare +x -a GIT_ISOLATED_ENV GIT_ISOLATED_ARGS\n"  # 29: not the library's exact line (twice)
+            "GIT_ISOLATED_ENV=(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1)\n"  # 30: not the library's exact array
             "GIT_ISOLATED_ENV+=(GIT_TERMINAL_PROMPT=0)\n"  # 31
-            '( export "${GIT_ISOLATED_ENV[@]}" && exec git "${GIT_ISOLATED_ARGS[@]}" "$@" )\n'  # 32: git_isolated's line
-            "export -f refuse\n"  # 33: leaves the function bound
-            "env GIT_CONFIG_NOSYSTEM=1 true\n"  # 34
-            'env "${GIT_ISOLATED_ENV[@]}" true\n'  # 35: the accepted word in any binder position
+            '( export "${GIT_ISOLATED_ENV[@]}" && exec git "${GIT_ISOLATED_ARGS[@]}" "$@" )\n'  # 32: outside git-isolated.sh
+            "export -f refuse\n"  # 33: a write to a guarded name
+            "env GIT_CONFIG_NOSYSTEM=1 true\n"  # 34: accepted
+            'env "${GIT_ISOLATED_ENV[@]}" true\n'  # 35: accepted
         )
-        expected = [(line, "shadow") for line in range(4, 25)]
+        twice = (6, 18, 20, 29)
+        expected = [(line, "binding") for line in (*range(4, 17), *range(18, 25), *range(28, 34), *twice)]
         result = self.assert_findings(bindings, expected)
-        path = "assigns `PATH` in an argument, which binds a command word: the directories bash searches for `git`, `find` and `ls`"
-        unknown = "has an argument with no known text, which may assign one of `BASH_ALIASES`, `BASH_CMDS`, `PATH`"
-        exported = '`GIT_ISOLATED_ENV`, which `export "${GIT_ISOLATED_ENV[@]}"` exports word by word,'
+        path = "a write to `PATH` (the directories bash searches for `git`, `find`, `ls` and every other command word)"
+        unknown = "a write to any guarded name: a word of `export` with no known text, which may spell an assignment to any of them"
+        array = "a write to `GIT_ISOLATED_ENV` (the array git_isolated of git-isolated.sh exports word by word before it execs git)"
         for line, message in (
-            (4, f"`export` {path}"),
-            (5, f"`export` {path}"),
-            (6, f"`export` {unknown}"),
-            (7, f"`export` {unknown}"),
-            (
-                8,
-                "an assignment to `PATH` binds a command word: the directories bash searches for `git`, `find` and `ls`",
-            ),
-            (9, f"`env` {path}"),
-            (11, f"`env` {path}"),
-            (12, f"`export` {path}"),
-            (13, f"`readonly` {path}"),
+            (4, f"{path}: a word spelling an assignment, `PATH=…`, in the declaration `export`"),
+            (5, f"{path}: a word spelling an assignment, `PATH=…`, in the command `builtin`"),
+            (6, f"{path}: a word spelling an assignment, `PATH=…`, in the declaration `export`"),
+            (6, f"{unknown}, in the declaration `export`"),
+            (7, f"{unknown}, in the declaration `export`"),
+            (8, f"{path}: an assignment, in the declaration `declare`"),
+            (9, f"{path}: a word spelling an assignment, `PATH=…`, in the command `env`"),
+            (11, f"{path}: a word spelling an assignment, `PATH=…`, in the command `command`"),
+            (12, f"{path}: a word spelling an assignment, `PATH=…`, in the command `builtin`"),
+            (13, f"{path}: a word spelling an assignment, `PATH[0]=…`, in the declaration `readonly`"),
             (
                 14,
-                "`typeset` assigns `BASH_CMDS` in an argument, which binds a command word: the hash table of bash 4, as `hash -p` does",
+                "a write to `BASH_CMDS` (the hash table of bash 4, which `hash -p` writes): a word spelling an assignment, `BASH_CMDS[git]=…`, in the declaration `typeset`",
             ),
-            (15, f"`local` {path}"),
-            (17, f"`env` {unknown}"),
+            (15, f"{path}: a word spelling an assignment, `PATH+=…`, in the declaration `local`"),
+            (18, f"{array}: an assignment, in an assignment"),
+            (18, f"{path}: a word spelling an assignment, `PATH=…`, in an assignment"),
+            (19, f"{array}: an assignment, in an assignment"),
+            (21, f"{array}: an assignment, in an assignment"),
+            (22, f"{unknown}, in the declaration `export`"),
+            (24, f"{unknown}, in the declaration `export`"),
+            (28, f"{path}: an assignment with no value, or the bare name, in the declaration `export`"),
+            (32, f"{unknown}, in the declaration `export`"),
             (
-                18,
-                f"{exported} assigns `PATH` in an element, which binds a command word: the directories bash searches for `git`, `find` and `ls`",
+                33,
+                "a write to `refuse` (a refusal function a `||` branch calls (rule a, form ii)): an assignment with no value, or the bare name, in the declaration `export`",
             ),
-            (
-                19,
-                f"{exported} has an element with no known text, which may assign one of `BASH_ALIASES`, `BASH_CMDS`, `PATH`",
-            ),
-            (21, f"{exported} has an element that is no assignment of a name: `git`"),
-            (22, f"`export` {unknown}"),
-            (24, f"`export` {unknown}"),
         ):
-            self.assertIn(f":{line}: shadow: {message}", result.stdout)
+            self.assertIn(f":{line}: binding: {message}", result.stdout)
+        self.assertNotIn(":17:", result.stdout)
         children = (
             "cat <(x=$(false) || exit 1)\n"  # 3: the auditor's line
             "tee >(x=$(false) || exit 1)\n"  # 4
@@ -1920,6 +1978,254 @@ class ProducerStatusCheckTest(unittest.TestCase):
             self.assertIn(message, result.stdout)
         result = self.assert_findings("cat <(set -euo pipefail)\nx=$(a) || exit 1\n", [(1, "prologue")], prologue="")
         self.assertIn("the one at line 2 runs in a process substitution opened at line 2, a child shell", result.stdout)
+
+    def test_the_round_18_mutations_are_findings_named_by_line_and_rule(self) -> None:
+        """The two P2 of the ba8eb39d audit, which that head read as clean: `PATH=` has no Value in shfmt's tree, so
+        the guard that asked for one passed it, and `export 'GIT_ISOLATED_ENV=PATH=/tmp/x'` assigned the array the
+        lint trusts by name through a quoted word, after which the accepted `export "${GIT_ISOLATED_ENV[@]}"` set
+        PATH (measured below: the spoofed git runs). Rounds 14 to 17 each added one more detection; round 18 replaces
+        the shape: GUARDED_NAMES is one closed set, a write is any Assign to one (a Value or not), a loop variable, an
+        assigning expansion, a word in any position whose literal parts spell `name=` or name a guarded variable, a
+        declaration word with no known text, an attribute option, or an unknown word where bash evaluates arithmetic
+        (measured below: `(( $y, 1 ))` and `[[ $y -eq 1 ]]` with `y='PATH=1'` run the spoofed git), and only the
+        exact statement texts of ACCEPTED_WRITES, in their files, are accepted."""
+        spoof = self.temp / "1"  # `PATH=1` names this directory, relative to the cwd the scripts run in
+        spoof.mkdir()
+        (spoof / "git").write_text("#!/bin/sh\necho spoofed\n")
+        (spoof / "git").chmod(0o755)
+        read = 'listing=$(git ls-files) || exit 1\necho "ran ${listing}"\n'
+        for binding in (
+            f"export 'GIT_ISOLATED_ENV=PATH={spoof}'\nexport \"${{GIT_ISOLATED_ENV[@]}}\"\n",  # the auditor's line
+            "y='PATH=1'\n(( $y, 1 ))\n",
+            "y='PATH=1'\n[[ $y -eq 1 ]]\n",
+            "y='PATH=1'\na[$y]=1\n",
+            "declare -i x\ny='PATH=1'\nx=$y\n",
+        ):
+            with self.subTest(binding=binding):
+                script = self.script("spoofed.sh", binding + read)
+                ran = subprocess.run(
+                    ["/bin/bash", str(script)], cwd=self.temp, capture_output=True, text=True, check=False
+                )
+                self.assertEqual((0, "ran spoofed\n"), (ran.returncode, ran.stdout), ran.stderr)  # measured
+        writes = (
+            "PATH=\n"  # 3: the auditor's line: no Value, a write to the empty string
+            "export 'GIT_ISOLATED_ENV=PATH=/tmp/x'\n"  # 4: the auditor's line: the array, and PATH named (twice)
+            'export "${GIT_ISOLATED_ENV[@]}"\n'  # 5: a declaration word with no known text, outside git-isolated.sh
+            "IFS=$'\\n'\n"  # 6
+            "for PATH in a; do :; done\n"  # 7
+            "read -r PATH\n"  # 8
+            "printf -v PATH x\n"  # 9
+            "declare -a GIT_ISOLATED_ENV=(x)\n"  # 10
+            "env PATH=x git ls-files\n"  # 11
+            "export PATH=/tmp/x\n"  # 12: the rounds 14 to 17 table, each a `binding` now
+            "export 'PATH=/tmp/x:$PATH'\n"  # 13
+            "builtin export PATH=/tmp/x\n"  # 14
+            "declare -x PATH=/tmp/x\n"  # 15
+            "readonly 'PATH[0]=/tmp/x'\n"  # 16
+            "typeset 'BASH_CMDS[git]=/tmp/x/git'\n"  # 17
+            "f() { local 'PATH+=:/tmp/x'; }\n"  # 18
+            "GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM=1 PATH=/tmp/x)\n"  # 19: twice
+            'GIT_ISOLATED_ENV+=("$extra")\n'  # 20
+            "GIT_ISOLATED_ENV[0]=PATH=/tmp/x\n"  # 21: twice
+            "export PATH\n"  # 22: the bare name
+            "unset PATH\n"  # 23: the name as a word, in any command
+            "mapfile -t PATH\n"  # 24
+            "local -n ref=PATH\n"  # 25: the name, and the nameref option (twice)
+            "((PATH = 1))\n"  # 26: arithmetic
+            "let 'PATH = 1'\n"  # 27
+            "x=${a[PATH=1]}\n"  # 28
+            ': "${PATH:=/tmp/x}"\n'  # 29: an assigning expansion
+            "[[ $y -eq 1 ]]\n"  # 30: an unknown word where bash evaluates arithmetic
+            "a[$y]=1\n"  # 31
+            "declare -i n\n"  # 32: the integer attribute
+            "bash -c 'cd /; PATH=/tmp/x git ls-files'\n"  # 33: text handed to another program
+            "export BASH_ENV=/tmp/x/env\n"  # 34: a variable bash reads
+            "LEVER_DIR=/tmp/x\n"  # 35: the directory the accepted source reads from
+            "select PATH in a; do :; done\n"  # 36
+            "coproc PATH { :; }\n"  # 37
+            "unset 'a[PATH=1]'\n"  # 38
+            "PATH= git ls-files\n"  # 39: a prefix with no Value (and the producer, rule b)
+            "BASH_ALIASES[fail]=true\n"  # 40
+            "export -f refuse\n"  # 41
+            "alias fail=true\n"  # 42: spells a write (and the alias, rule f's shadow reading)
+            "g() { local status=0; declare -r y=1; local -- z; }\n"  # 43: accepted from here to 46
+            "export GIT_CONFIG_NOSYSTEM=1\n"  # 44
+            "[[ $# -eq 1 ]]\n"  # 45: a parameter bash alone sets
+            "((count == 1))\n"  # 46: a bare name in arithmetic is a known word
+            "IFS= read -r line\n"  # 47: a lever's text, but not in a lever's file
+            "IFS=$'\\t' read -r state base <<< \"${view}\"\n"  # 48
+            'env "${GIT_ISOLATED_ENV[@]}" true\n'  # 49: accepted from here on: an external command's argument
+            'unset -v "${name}"\n'  # 50: a name an expansion carries into a builtin that is no declaration
+            "printf -v \"$3\" '%s' ''\n"  # 51
+            "x=$(a) || exit 1\n"  # 52
+        )
+        twice = (4, 19, 21, 25)
+        expected = [(line, "binding") for line in (*range(3, 43), *twice, 47, 48)]
+        expected += [(39, "producer"), (42, "shadow")]
+        result = self.assert_findings(writes, expected)
+        path = "a write to `PATH` (the directories bash searches for `git`, `find`, `ls` and every other command word)"
+        named = (
+            "a word spelling its name (an argument of `read`, `printf -v`, `unset` or `mapfile`, a nameref's value, an "
+            "arithmetic operand, text handed to another program, a message)"
+        )
+        unknown = "a write to any guarded name: a word with no known text where bash evaluates arithmetic"
+        for line, message in (
+            (3, f"{path}: an assignment with no value, or the bare name, in an assignment"),
+            (
+                4,
+                "a write to `GIT_ISOLATED_ENV` (the array git_isolated of git-isolated.sh exports word by word before it "
+                "execs git): a word spelling an assignment, `GIT_ISOLATED_ENV=…`, in the declaration `export`",
+            ),
+            (4, f"{path}: {named}, in the declaration `export`"),
+            (
+                5,
+                "a write to any guarded name: a word of `export` with no known text, which may spell an assignment to any "
+                "of them, in the declaration `export`",
+            ),
+            (
+                6,
+                "a write to `IFS` (the characters word splitting and `read` split on (`for name in ${names}` of "
+                "git_env_scrub)): an assignment, in an assignment",
+            ),
+            (7, f"{path}: the variable of a `for` or `select`, in a `for`"),
+            (8, f"{path}: {named}, in the command `read`"),
+            (9, f"{path}: {named}, in the command `printf`"),
+            (11, f"{path}: a word spelling an assignment, `PATH=…`, in the command `env`"),
+            (23, f"{path}: {named}, in the command `unset`"),
+            (25, f"{path}: {named}, in the declaration `local`"),
+            (
+                25,
+                "a write to any guarded name: the option `-n` of `local`, under which a later assignment evaluates its "
+                "value as arithmetic (`-i`) or writes the variable its value names (`-n`), in the declaration `local`",
+            ),
+            (26, f"{path}: {named}, in an arithmetic command"),
+            (
+                29,
+                f"{path}: an expansion that assigns its parameter (`${{name=…}}`, `${{name:=…}}`), in the command `:`",
+            ),
+            (30, f"{unknown}, in a `[[ ]]` test"),
+            (31, f"{unknown}, in an assignment"),
+            (32, "a write to any guarded name: the option `-i` of `declare`, under which a later assignment"),
+            (33, f"{path}: {named}, in the command `bash`"),
+            (
+                34,
+                "a write to `BASH_ENV` (the file every non-interactive bash reads before its script (a child `bash` of a "
+                "lever)): an assignment, in the declaration `export`",
+            ),
+            (36, f"{path}: the variable of a `for` or `select`, in a `for`"),
+            (39, f"{path}: an assignment with no value, or the bare name, in the command `git`"),
+            (
+                47,
+                "a write to `IFS` (the characters word splitting and `read` split on (`for name in ${names}` of "
+                "git_env_scrub)): an assignment with no value, or the bare name, in the command `read`; the statement is "
+                "not an accepted write of the adopted levers and libraries (ACCEPTED_WRITES)",
+            ),
+        ):
+            self.assertIn(f":{line}: binding: {message}", result.stdout)
+        # The allowlist is exact: a row's text passes in a file of the row's name alone, and one character off, or the
+        # same text in another file, is a finding.
+        accepted = "while IFS=$'\\t' read -r bucket name; do :; done <<< \"${x}\"\n"
+        for name, body, findings_expected in (
+            ("pr-merge.sh", accepted, []),
+            ("pr-merge.sh", accepted.replace("bucket name", "bucket names"), [(3, "binding")]),
+            ("pr-audit.sh", accepted, [(3, "binding")]),
+            ("read-lib.sh", "f() {\n    LEVER_DIR=${dir}\n}\n", []),
+            ("read-lib.sh", "f() {\n    LEVER_DIR=${dir2}\n}\n", [(4, "binding")]),
+            ("other.sh", "f() {\n    LEVER_DIR=${dir}\n}\n", [(4, "binding")]),
+            ("read-lib.sh", "f() { LEVER_DIR=${dir}; }\n", [(3, "binding")]),  # the `;` is part of the statement's text
+        ):
+            with self.subTest(name=name, body=body):
+                result = self.run_check(self.script(name, body))
+                self.assertEqual("", result.stderr)
+                self.assertEqual(sorted(findings_expected), findings(result), result.stdout)
+
+    def test_every_name_the_lint_compares_against_is_a_guarded_name(self) -> None:
+        """GUARDED_NAMES cannot drift from the lint: every identifier-shaped string the walk compares a value against
+        (a literal, or a module constant holding strings, on either side of `==`, `!=`, `in` or `not in`) is a guarded
+        name, a kind or field of the contract table, or one of NOT_NAMES with its reason; and the constants the rules
+        read names from are subsets of the guarded set. The constants are read by executing the walk's module-level
+        assignments alone."""
+        source = re.search(r"cat << 'PY'\n(.*?)\nPY\n", CHECK.read_text(), re.DOTALL)
+        assert source is not None
+        module = ast.parse(source.group(1))
+        assigns: list[ast.stmt] = []
+        for node in module.body:  # the constants come before the first function; `walk = Walk(...)` comes after
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                break
+            if isinstance(node, ast.Assign):
+                assigns.append(node)
+        namespace: dict[str, object] = {"re": re, "sys": types.SimpleNamespace(argv=["", "", ""])}
+        exec(compile(ast.Module(body=assigns, type_ignores=[]), "walk", "exec"), namespace)
+        guarded = namespace["GUARDED_NAMES"]
+        assert isinstance(guarded, dict)
+        for name, reason in guarded.items():
+            self.assertTrue(reason and reason[0].islower(), f"{name} needs a one-line reason")
+
+        def values(value: object) -> set[str]:
+            if isinstance(value, str):
+                return {value}
+            if isinstance(value, dict):
+                return set().union(*(values(key) for key in value))
+            if isinstance(value, (tuple, list, set, frozenset)):
+                return set().union(*(values(item) for item in value))
+            return set()
+
+        def strings(node: ast.AST) -> set[str]:
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                return {node.value}
+            if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+                return set().union(*(strings(item) for item in node.elts))
+            if isinstance(node, ast.Name) and node.id in namespace:
+                return values(namespace[node.id])
+            if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id in namespace:
+                if isinstance(node.slice, ast.Constant):
+                    return values(namespace[node.value.id][node.slice.value])  # type: ignore[index]
+            return set()
+
+        compared: set[str] = set()
+        for node in ast.walk(module):
+            if isinstance(node, ast.Compare) and all(
+                isinstance(op, (ast.Eq, ast.NotEq, ast.In, ast.NotIn)) for op in node.ops
+            ):
+                for operand in (node.left, *node.comparators):
+                    compared |= strings(operand)
+        names = {text for text in compared if IDENT.fullmatch(text) and (len(text) > 1 or text == ".")}
+        table = set(contract.TABLE)
+        for row in contract.TABLE.values():
+            table |= {segment for field in row.fields for segment in field.split(".")}
+            table |= {row.marker} if row.marker else set()
+        self.assertEqual(
+            set(), names - set(guarded) - table - set(NOT_NAMES), "compared, neither guarded nor classified"
+        )
+        self.assertEqual(set(), set(NOT_NAMES) - names, "a classified word the lint no longer compares against")
+        self.assertEqual(set(), set(NOT_NAMES) & set(guarded), "a classified word that is guarded")
+        for constant in ("REFUSAL_NAMES", "TERMINATORS", "WRITERS", "REBINDERS", "DECLARERS"):
+            self.assertLessEqual(values(namespace[constant]), set(guarded), constant)
+        for constant in ("READER", "LIBRARY_DIR"):
+            self.assertIn(namespace[constant], guarded, constant)
+        self.assertIn(namespace["PROLOGUE_WORDS"][0], guarded)  # type: ignore[index]
+        for name in ("PATH", "BASH_ALIASES", "BASH_CMDS", "GIT_ISOLATED_ENV", "GIT_ISOLATED_ARGS", "LEVER_DIR"):
+            self.assertIn(name, guarded)
+        for name in (
+            "BASH_ENV",
+            "ENV",
+            "SHELLOPTS",
+            "BASHOPTS",
+            "IFS",
+            "CDPATH",
+            "BASH_LOADABLES_PATH",
+            "EXECIGNORE",
+            "PS4",
+        ):
+            self.assertIn(name, guarded)
+        # The accepted writes name files of the adopted set only, and every row has a reason.
+        adopted = set(namespace["LEVERS"]) | set(namespace["LIBRARIES"])  # type: ignore[arg-type]
+        rows = namespace["ACCEPTED_WRITES"]
+        assert isinstance(rows, tuple)
+        self.assertEqual(28, len(rows))
+        for files, text, reason in rows:
+            self.assertLessEqual(set(files), adopted, text)
+            self.assertTrue(text and reason, text)
 
     def test_the_walk_has_one_descent_and_every_scan_steps_by_it(self) -> None:
         """One function of the embedded walk, children, reads a node's values, through without_literal_body; every

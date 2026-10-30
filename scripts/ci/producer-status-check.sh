@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file producer-status-check.sh
-# @brief Refuse a command substitution outside the accepted grammar, a status-blind producer without its stderr capture, a missing `set -euo pipefail`, a `read` from a file, an alias, and a function or rebinding that shadows a word the rules read, the rebinders among them.
+# @brief Refuse a command substitution outside the accepted grammar, a status-blind producer without its stderr capture, a missing `set -euo pipefail`, a `read` from a file, an alias, a function or rebinding that shadows a word the rules read, and a write to a guarded name outside the accepted writes.
 # @description
 #   Regime-cutover U112 (plan P-21): standing order 21 made checkable. ShellCheck's check-extra-masked-returns
 #   never flags a plain `x=$(producer)`, never looks at a file redirection, exempts echo, dirname, basename, printf,
@@ -99,58 +99,78 @@
 #   e. `allow`: `# producer-status: allow <reason>` on the statement's first line exempts that statement from a, b
 #      and d; an allow comment with no reason is itself a finding and exempts nothing. The enforced file set is
 #      tests/unit/test_producer_status_check.py (the library and the five levers), not a Makefile target.
-#   f. `shadow`: the rules above read a closed set of command words as bash builtins, as the table's producers, as
-#      the refusal functions or as the rebinders of this rule: `set` (c), `exit` and `return` (a, form i), `echo` and
-#      `printf` (the refusal grammar), the first word of every producer row (`git`, `find`, `ls`; b), REFUSAL_NAMES
-#      (`refuse`, `fail`; a, form ii) and every word of REBINDERS below (the set is closed over itself: `alias
-#      command=eval` had passed, and `command 'refuse() { return 0; }'` then redefined the refusal function through a
-#      word this rule read as its own). The set is built from that data (interpreted), not listed twice. A function
-#      definition of any of these names, at any depth and in any spelling (`set() { :; }` lets a warned listing pass
-#      a bare `[[ ! -s err ]]`, since the `set -euo pipefail` the test relies on ran a function; `exit() { :; }`,
-#      `echo() { exit 0; }`, `git() { command git "$@"; return 0; }`, `eval() { :; }`, `command() { :; }`), is a
-#      finding at its definition line naming what it shadows (a refusal name's definitions are judged by form ii:
-#      one, at top level, before the read). So is every other way bash offers to rebind a word or to run text this
-#      walk has not read, a plain command whose known first word is one of REBINDERS, read as bash reads that word
-#      (SKIPS_OPTIONS: for a NAMER, a FORWARDER, `trap`, `mapfile` and `readarray` the leading `-` words are options
-#      read for their letters, `--` ends them, a letter with an argument takes it, `hash -p /x`, and a `+` word is an
-#      argument; `source`, `.` and `eval` skip nothing, every argument word is the file or the text; a call left with
-#      no argument to judge, `source`, `enable -n`, `hash -p /usr/bin/true`, is a finding, `hash -r`, whose option
-#      is the whole job, aside): an ALIASER (`alias`, `unalias`) in any form, `alias -p` and `alias ll='ls -l'`
-#      included, since no lever defines an alias and non-interactive bash expands none unless `shopt -s
-#      expand_aliases` is set, so the rule has no alias to accept (measured: the auditor's bypass exits 127 without
-#      that option and runs on with exit 0 under it); the EXPANDER (`shopt`) with `expand_aliases` among its
-#      arguments in any spelling (`-s`, `-qs`, `-u`, after `--`) or with an argument that has no known text (`shopt
-#      -s inherit_errexit` and `shopt -q nullglob` pass); a NAMER (`enable`, `hash`, `unset`) with an argument whose
-#      known text, before any `=`, is such a name (`enable -n echo`, `enable -n command`, `hash -p /x/true refuse`,
-#      `hash -p /usr/bin/true command`, `unset -f refuse`, and `unset refuse`, which removes the function when no
-#      variable has the name) or with an argument that has no known text (`unset "$name"`; `unset -v` names
-#      variables only and binds nothing, INERT_OPTIONS); a FORWARDER (`builtin`, `command`) whose arguments name such
-#      a word or have no known text (`command git ls-files` runs past rule b), and whose command is judged again when
-#      its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`; `command -v` and `-V` print
-#      and run nothing); a RUNNER whose text or file this walk has not read: `eval` with any argument, `source` and
-#      `.` with any argument but the one accepted shape, `. "${LEVER_DIR}/git-isolated.sh"` or `.
+#   f. `shadow` and `binding`: the rules above trust a closed set of names by their spelling, GUARDED_NAMES below, one
+#      dict with a reason per name: the builtins the rules read (`set`, c; `exit`, `return`, a form i; `echo`,
+#      `printf`, the refusal grammar; `read`, d), the refusal functions (`refuse`, `fail`, a form ii), the rebinders of
+#      this rule (REBINDERS, so the set is closed over itself: `alias command=eval` had passed, and `command 'refuse()
+#      { return 0; }'` then redefined the refusal function through a word this rule read as its own), the library's
+#      arrays (`GIT_ISOLATED_ENV`, exported word by word before every git; `GIT_ISOLATED_ARGS`,
+#      `GIT_ISOLATED_SCRUB_NAMES`), the directory the one accepted `source` reads from (`LEVER_DIR`), the variables
+#      that bind a command word (`PATH`, `BASH_ALIASES`, `BASH_CMDS`) and the ones bash itself reads when it runs a
+#      lever (`BASH_ENV`, `ENV`, `SHELLOPTS`, `BASHOPTS`, `IFS`, `CDPATH`, `BASH_LOADABLES_PATH`, `EXECIGNORE`, `PS4`).
+#      tests/unit/test_producer_status_check.py holds every literal name this walk compares against to that set, so
+#      it cannot drift; the producers' first words come from the table and are protected as command words only.
+#      `shadow`, the command words: a function definition of any name the rules read as a command word (interpreted:
+#      the builtins, the producers, the refusal names, the rebinders), at any depth and in any spelling (`set() { :;
+#      }` lets a warned listing pass a bare `[[ ! -s err ]]`, since the `set -euo pipefail` the test relies on ran a
+#      function; `exit() { :; }`, `git() { command git "$@"; return 0; }`, `eval() { :; }`), is a finding at its
+#      definition line naming what it shadows (a refusal name's definitions are judged by form ii: one, at top level,
+#      before the read). So is every other way bash offers to rebind a word or to run text this walk has not read, a
+#      plain command whose known first word is one of REBINDERS, read as bash reads that word (SKIPS_OPTIONS: for a
+#      NAMER, a FORWARDER, `trap`, `mapfile` and `readarray` the leading `-` words are options read for their letters,
+#      `--` ends them, a letter with an argument takes it, `hash -p /x`, and a `+` word is an argument; `source`, `.`
+#      and `eval` skip nothing, every argument word is the file or the text; a call left with no argument to judge,
+#      `source`, `enable -n`, `hash -p /usr/bin/true`, is a finding, `hash -r`, whose option is the whole job, aside):
+#      an ALIASER (`alias`, `unalias`) in any form, `alias -p` and `alias ll='ls -l'` included, since no lever defines
+#      an alias and non-interactive bash expands none unless `shopt -s expand_aliases` is set, so the rule has no
+#      alias to accept (measured: the auditor's bypass exits 127 without that option and runs on with exit 0 under
+#      it); the EXPANDER (`shopt`) with `expand_aliases` among its arguments in any spelling (`-s`, `-qs`, `-u`, after
+#      `--`) or with an argument that has no known text (`shopt -s inherit_errexit` and `shopt -q nullglob` pass); a
+#      NAMER (`enable`, `hash`, `unset`) with an argument whose known text, before any `=`, is such a name (`enable -n
+#      echo`, `enable -n command`, `hash -p /x/true refuse`, `unset -f refuse`, and `unset refuse`, which removes the
+#      function when no variable has the name) or with an argument that has no known text (`unset "$name"`; `unset
+#      -v` names variables only and binds nothing, INERT_OPTIONS); a FORWARDER (`builtin`, `command`) whose arguments
+#      name such a word or have no known text (`command git ls-files` runs past rule b), and whose command is judged
+#      again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`; `command -v` and
+#      `-V` print and run nothing); a RUNNER whose text or file this walk has not read: `eval` with any argument,
+#      `source` and `.` with any argument but the one accepted shape, `. "${LEVER_DIR}/git-isolated.sh"` or `.
 #      "${LEVER_DIR}/read-lib.sh"`, the two libraries every lever sources (LIBRARY_DIR, LIBRARY_FILES; the parts of
 #      the one argument, nothing else), `trap` with an action that is not empty, `-` or one simple command whose
 #      first word is no rebinder (`trap cleanup EXIT` and `trap 'rm -f "${f}"' EXIT` are read whole; `trap 'refuse()
 #      { :; }' DEBUG` redefines the function before the next command runs), `mapfile` or `readarray` with `-C` (the
-#      callback is text bash runs); and an assignment with a value, anywhere (plain, a command's prefix, a
-#      declaration's argument), to a variable that binds a command word (BINDING_VARIABLES: PATH, where `git`,
-#      `find` and `ls` are found; BASH_ALIASES and BASH_CMDS, the alias and hash tables of bash 4), spelled as an
-#      assignment or as a word: every argument word of a declaration (`declare`, `typeset`, `readonly`, `export`,
-#      `local`; shfmt's DeclClause) or of `env` that is no assignment of a name, through any chain of FORWARDERS
-#      (`builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`), is read as bash reads it (BINDERS): a known
-#      text matching BINDING_WORD assigns the name before `=` (`export 'PATH=/tmp/x:$PATH'`, `readonly 'PATH[0]=x'`,
-#      `env PATH=/tmp/x git ls-files`; measured: bash applies the word and runs the spoofed `git`), one with no known
-#      text (`export "$binding"`) may spell any of them and is a finding, with one accepted shape: the bare `[@]`
-#      expansion of LIBRARY_ENVIRONMENT, `export "${GIT_ISOLATED_ENV[@]}"`, which git_isolated of git-isolated.sh
-#      runs before it execs git, so every assignment to that name, in any file and at any depth, is read as the
-#      exported words: an array literal (`=`, `+=`), an element or a value must be a known text assigning a name that
-#      is none of BINDING_VARIABLES (an element with no known text, with no `=`, or `PATH=…` is a finding). A
-#      declaration or `env` acts on variables, and `-f` on a function leaves it bound (`export -f refuse`, measured
-#      on bash 3.2), so none is a rebinder: `export PATH`, `export GIT_CONFIG_NOSYSTEM=1`, `local status=0` and
-#      `declare -r y=1` pass. Not read: an indirect write to a binding variable or to LIBRARY_ENVIRONMENT (`read`,
-#      `printf -v`, `for`, a nameref, `${name=value}`), which this rule does not close. An allow comment exempts
-#      nothing here.
+#      callback is text bash runs).
+#      `binding`, the writes: a write to a guarded name is (a) an Assign node whose name is guarded, with or without
+#      a value, wherever it sits (a plain assignment, a command's prefix, `IFS= read -r x`, a declaration's argument,
+#      `export PATH=/tmp/x`, `declare -a GIT_ISOLATED_ENV=(x)`; shfmt writes no Value for `PATH=`, which writes the
+#      empty string, nor for the bare name of `export PATH` or `declare +x -a GIT_ISOLATED_ENV`, each a write too);
+#      (b) the variable of a `for` or `select`, and an expansion that assigns its parameter (`${PATH=x}`,
+#      `${PATH:=x}`); (c) a word in any position (an argument of any command, a prefix's value, an array element, a
+#      `for` list, a `case` pattern, a test or arithmetic operand, a redirect target, a coprocess name, a heredoc body
+#      bash expands) whose leading literal parts spell an assignment to a guarded name (WRITES: `export
+#      'PATH=/tmp/x:$PATH'`, `env PATH=/tmp/x git ls-files`, `'GIT_ISOLATED_ENV=PATH=/tmp/x'`, `alias fail=true`) or
+#      any of whose literal parts holds the name of a guarded variable as a token (every guarded name the shadow part
+#      does not read as a command word: `read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
+#      ref=PATH`, `(( PATH = 1 ))`, `${a[PATH=1]}`, `let 'PATH = 1'`, `unset 'a[PATH=1]'`, `bash -c 'cd /; PATH=x
+#      git'`, a message that names it); a bare literal, a single-quoted, double-quoted, ANSI-C or locale string is a
+#      literal part, and an expansion among them contributes no text and hides none; (d) a word of a declaration
+#      (`declare`, `typeset`, `readonly`, `export`, `local`, directly or through `builtin` or `command`) with no known
+#      text, which may spell any write (`export "$binding"`, `export "${GIT_ISOLATED_ENV[@]}"`; a forwarder's own
+#      unknown argument is the shadow finding above as well); (e) a declaration option under which a later assignment
+#      writes elsewhere (`declare -i`, `local -n`; ATTRIBUTE_OPTIONS); (f) a word with no known text where bash
+#      evaluates arithmetic (`(( ))`, `$(( ))`, `let`, a C-style `for`, an array index or a slice, an operand of
+#      `-eq`, `-ne`, `-lt`, `-le`, `-gt`, `-ge`, of `-v` or `-R`; measured on bash 3.2: `y='PATH=1'; (( $y, 1 ))`, `[[
+#      $y -eq 1 ]]`, `a[$y]=1` and `declare -i x; x=$y` each set PATH), the parameters bash alone sets aside (`$#`,
+#      `$?`, `$$`, `$!`, `${#name}`). The walk visits every node of every statement and asks those questions of each;
+#      there is no list of positions. A write is accepted only when the exact text of its statement, in its file, is
+#      a row of ACCEPTED_WRITES, the writes the adopted set makes (measured and listed there: the `IFS=` prefixes of
+#      the levers' `read` lines, `LEVER_DIR=${dir}` of every self-check, the library's three arrays, their `declare`,
+#      the `unset` loop over their names, `export "${GIT_ISOLATED_ENV[@]}"`, the messages that name a guarded
+#      variable); any other is a finding naming the name, how it is written, the statement's kind and the line. Not
+#      read: an expansion handed to an external command (`env "$x" git`, `sudo "$x"`: that command's argument, which
+#      the shell does not bind; the one the library hands `env` is the array a row pins), a name an expansion carries
+#      into a builtin that is no declaration (`unset -v "$name"` of the scrubs, `printf -v "$3"` of the readers, `read
+#      -r "$name"`: the caller's name, by design), and a literal heredoc body (data, skipped by every scan). An allow
+#      comment exempts nothing in rule f.
 #   A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt
 #   expands the body of a partly quoted delimiter such as `<<'E'OF`), by every scan of this walk: one function,
 #   children, is the only descent into a node, so a `$(refuse() { return 0; })` or a `# producer-status: allow` in
@@ -220,7 +240,8 @@ import shfmt_json_contract as contract  # noqa: E402
 NAME = "producer-status-check"
 TABLE = sys.argv[2]
 SUBSTITUTION, PRODUCER, PROLOGUE, READ, ALLOW = "substitution", "producer", "prologue", "read", "allow"
-SHADOW = "shadow"  # rule f
+SHADOW = "shadow"  # rule f, a command word rebound
+BINDING = "binding"  # rule f, a write to a guarded name outside the accepted writes
 MESSAGES = {
     SUBSTITUTION: (
         "a command substitution here loses its status; make it the whole value of the one assignment of a statement "
@@ -282,6 +303,7 @@ SHAPES = {  # how a finding names the command kind of a branch; a kind not liste
 }
 LIST_SHAPES = {"|": "a pipeline", "&&": "an `&&` list", "||": "a `||` list"}
 PROLOGUE_WORDS = ["set", "-euo", "pipefail"]
+READER = "read"  # the builtin rule d holds away from a file; a function of that name shadows it
 STDERR = 2  # a descriptor is read as a decimal, so `02>` and `002>` name it too
 FILE_OPS = (">", ">>", ">|")  # the only operators that, on fd 2, capture stderr to the word's file
 BOTH_OPS = ("&>", "&>>")  # touch fd 2 with no descriptor written
@@ -360,35 +382,285 @@ LIBRARY_FILES = ("/git-isolated.sh", "/read-lib.sh")
 # 'rm -f "${file}"' EXIT` are read; `trap 'refuse() { :; }' DEBUG`, which redefines the function before the next
 # command runs (measured), is not.
 SIMPLE_COMMAND = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)(?:[ \t][^;&|()\x60=\n]*)?")  # \x60 is the backquote
-BINDING_VARIABLES = {  # an assignment to one binds a command word, as the rebinders do (rule f)
-    "PATH": "the directories bash searches for `git`, `find` and `ls`",
-    "BASH_ALIASES": "the alias table of bash 4, as `alias` does",
-    "BASH_CMDS": "the hash table of bash 4, as `hash -p` does",
+# Rule f's guarded names, one closed set: every name the rules above trust by its spelling (the refusal names, the
+# builtins, the rebinders, the library arrays and the directory the accepted `source` reads from) and the variables
+# bash itself reads when it runs a lever (measured on /bin/bash 3.2.57; the bash 4 ones by the manual), name -> why a
+# write to it is judged. tests/unit/test_producer_status_check.py holds every literal name this walk compares against
+# to this set, so it cannot drift. A write to one of them is a finding unless its statement is in ACCEPTED_WRITES.
+GUARDED_NAMES = {
+    "PATH": "the directories bash searches for `git`, `find`, `ls` and every other command word",
+    "BASH_ALIASES": "the alias table of bash 4, which `alias` writes",
+    "BASH_CMDS": "the hash table of bash 4, which `hash -p` writes",
+    "GIT_ISOLATED_ENV": "the array git_isolated of git-isolated.sh exports word by word before it execs git",
+    "GIT_ISOLATED_ARGS": "the array git_isolated passes to git before the caller's arguments",
+    "GIT_ISOLATED_SCRUB_NAMES": "the names git_env_scrub of git-isolated.sh removes from the environment",
+    "LEVER_DIR": "the directory the one accepted `source` reads the two libraries from (rule f)",
+    "refuse": "a refusal function a `||` branch calls (rule a, form ii)",
+    "fail": "a refusal function a `||` branch calls (rule a, form ii)",
+    "set": "the builtin the prologue `set -euo pipefail` relies on (rule c)",
+    "exit": "the builtin a `||` branch ends a failed read with (rule a, form i)",
+    "return": "the builtin a `||` branch ends a failed read with (rule a, form i)",
+    "echo": "the builtin the refusal grammar writes to stderr with (rule a)",
+    "printf": "the builtin the refusal grammar writes to stderr with (rule a)",
+    "read": "the builtin rule d holds away from a file",
+    "declare": "a declaration rule f reads the words and attribute options of",
+    "typeset": "a declaration rule f reads the words and attribute options of",
+    "readonly": "a declaration rule f reads the words and attribute options of",
+    "export": "a declaration rule f reads the words and attribute options of",
+    "local": "a declaration rule f reads the words and attribute options of",
+    "alias": "a rebinder rule f reads a rebinding by",
+    "unalias": "a rebinder rule f reads a rebinding by",
+    "shopt": "a rebinder rule f reads a rebinding by",
+    "enable": "a rebinder rule f reads a rebinding by",
+    "hash": "a rebinder rule f reads a rebinding by",
+    "unset": "a rebinder rule f reads a rebinding by",
+    "builtin": "a rebinder rule f reads a rebinding by",
+    "command": "a rebinder rule f reads a rebinding by",
+    "eval": "a rebinder rule f reads a rebinding by",
+    "source": "a rebinder rule f reads a rebinding by",
+    ".": "a rebinder rule f reads a rebinding by (no identifier: bash cannot assign it, so no write spells it)",
+    "trap": "a rebinder rule f reads a rebinding by",
+    "mapfile": "a rebinder rule f reads a rebinding by",
+    "readarray": "a rebinder rule f reads a rebinding by",
+    "BASH_ENV": "the file every non-interactive bash reads before its script (a child `bash` of a lever)",
+    "ENV": "the file a POSIX-mode shell (`sh`, `bash --posix`) reads before its script",
+    "SHELLOPTS": "the `set -o` options a child bash inherits when it is exported (`posix`, `xtrace`)",
+    "BASHOPTS": "the `shopt` options a child bash inherits when it is exported (`expand_aliases`)",
+    "IFS": "the characters word splitting and `read` split on (`for name in ${names}` of git_env_scrub)",
+    "CDPATH": "the directories `cd` searches for a relative argument",
+    "BASH_LOADABLES_PATH": "the directories `enable -f` searches for a loadable builtin",
+    "EXECIGNORE": "the paths bash skips when it searches PATH (bash 4.4)",
+    "PS4": "the prompt bash expands, command substitutions included, before each traced command (`set -x`)",
 }
-# Rule f reads a binding spelled as a word too: every argument word of a DECLARER (shfmt's DeclClause: `declare`,
-# `typeset`, `readonly`, `export`, `local`; a word that is no assignment of a name is an Assign with no Name, `Naked`,
-# and the word as its Value) or of ENVIRONMENT (`env`, which runs its command under the bindings among its arguments),
-# and of either through a FORWARDER (`builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`), measured on bash
-# 3.2: `export 'PATH=/tmp/x:$PATH'` and `builtin export PATH=/tmp/x` each set PATH and the next `git` is the spoofed
-# one. A known text matching BINDING_WORD assigns the name before `=` (an index and `+=` included); a word with no
-# known text may spell any binding. The forwarders are REBINDERS; the binders are not: a function or alias of `export`
-# hides no text this walk has not read.
-BINDING_WORD = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)(?:\[[^]]*\])?\+?=")
-ENVIRONMENT = ("env",)
+IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# A word's first literal part that spells an assignment to a guarded name: the name, an index and a `+` allowed, then
+# `=` (`PATH=/tmp/x:`, `PATH[0]=x`, `PATH+=:x`, `GIT_ISOLATED_ENV=PATH=/tmp/x`, `fail=true` as an `alias` word).
+WRITES = re.compile(
+    "(" + "|".join(re.escape(name) for name in GUARDED_NAMES if IDENTIFIER.fullmatch(name)) + r")(?:\[[^]]*\])?\+?="
+)
+# The text bash evaluates as arithmetic, where any name may be assigned (`(( PATH = 1 ))`, `a[PATH=1]=x`, `let 'PATH
+# = 1'`, `${a[PATH=1]}`, `${x:PATH=1}`, and `[[ $y -eq 1 ]]`, whose operands bash evaluates; measured on bash 3.2:
+# `y='PATH=1'; (( $y, 1 ))`, `[[ $y -eq 1 ]]` and `a[$y]=1` each set PATH): the node kinds that open one, the fields
+# of an Assign or ParamExp that hold one, the test operators whose operands are one, and the test operators whose
+# operand is a name with a subscript bash evaluates (`[[ -v 'a[PATH=1]' ]]`). A word there with no known text is a
+# write to any guarded name, the parameters bash alone sets aside (`$#`, `$?`, `$$`, `$!`, a `${#name}` length).
+ARITHMETIC_KINDS = ("ArithmCmd", "ArithmExp", "LetClause", "CStyleLoop")
+ARITHMETIC_FIELDS = ("Index", "Slice")
+ARITHMETIC_TESTS = ("-eq", "-ne", "-lt", "-le", "-gt", "-ge")
+NAME_TESTS = ("-v", "-R")
+NUMERIC_PARAMETERS = ("#", "?", "$", "!")
+SUBSCRIPTS = ("@", "*")  # the whole-array subscripts, `${name[@]}` and `${name[*]}`: no arithmetic is evaluated
+ASSIGNING_OPS = ("=", ":=")  # the parameter expansions that write their parameter (`${PATH=x}`, `${PATH:=x}`)
 DECLARERS = ("declare", "typeset", "readonly", "export", "local")  # the words shfmt parses as a DeclClause
-BINDERS = DECLARERS + ENVIRONMENT
-# The one word with no known text a binder accepts: the bare `[@]` expansion of the library's environment array,
-# `export "${GIT_ISOLATED_ENV[@]}"`, which git_isolated of scripts/orchestrator/git-isolated.sh runs before it execs
-# git (in any quoting name_parts flattens; `[*]`, `[0]`, a length or an operator is another word). So every assignment
-# to that name, in any file and at any depth, is read by Walk.binding as the exported words: in an array literal (`=`
-# or `+=`) every element, else the value, must be a known text that assigns, by BINDING_WORD, a name that is none of
-# BINDING_VARIABLES.
-LIBRARY_ENVIRONMENT = "GIT_ISOLATED_ENV"
-ENVIRONMENT_ARRAY = {
-    "Type": "ParamExp",
-    "Param": {"Value": LIBRARY_ENVIRONMENT},
-    "Index": {"Type": "Word", "Parts": [{"Type": "Lit", "Value": "@"}]},
-}
+# The declaration options under which a later plain assignment writes elsewhere: `-i` evaluates the value as
+# arithmetic (`declare -i x; x=$y` with `y='PATH=1'` sets PATH, measured on bash 3.2), `-n` makes the name a reference
+# that writes the variable its value names (`local -n r=PATH; r=x`). `export -n` removes the export attribute only.
+ATTRIBUTE_OPTIONS = {"declare": "in", "typeset": "in", "local": "in"}
+# The accepted writes: the exact text of each statement of the adopted set (this lint, scripts/orchestrator/read-lib.sh,
+# git-isolated.sh and the five levers) that writes a guarded name, as (the file names it is accepted in, the statement
+# text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a
+# changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row
+# names it. Measured on head ba8eb39d (U112 round 18); nothing else writes a guarded name there. This Python sits in a
+# command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,
+# so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted
+# Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.
+LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")
+LIBRARIES = ("read-lib.sh", "git-isolated.sh")
+ACCEPTED_WRITES = (
+    (
+        LIBRARIES + LEVERS,
+        r"""LEVER_DIR=${dir}""",
+        "lever_self_check of every lever and library sets the directory the libraries are sourced from, from its own "
+        "resolved path",
+    ),
+    (
+        ("git-isolated.sh",),
+        r"""for git_isolated_name in GIT_ISOLATED_ENV GIT_ISOLATED_ARGS GIT_ISOLATED_SCRUB_NAMES; do
+    unset -v "${git_isolated_name}" 2> /dev/null || {
+        echo "git-isolated.sh: refused: ${git_isolated_name} is readonly in the sourcing shell; the library cannot assign it" >&2
+        exit 2
+    }
+done""",
+        "the library unsets its three arrays before it assigns them, so a caller's export of one is not kept (audit "
+        "round 2 P1)",
+    ),
+    (
+        ("git-isolated.sh",),
+        r"""declare +x -a GIT_ISOLATED_ENV GIT_ISOLATED_ARGS GIT_ISOLATED_SCRUB_NAMES""",
+        "the library declares its three arrays unexported",
+    ),
+    (
+        ("git-isolated.sh",),
+        r"""GIT_ISOLATED_ENV=(
+    # No global config file: no `url.*.insteadOf`, credential helper, hook path, identity or include of ~/.gitconfig
+    # or $XDG_CONFIG_HOME/git/config (research 01 section 1.1; records-sync.sh U101, the redirected push).
+    GIT_CONFIG_GLOBAL=/dev/null
+    # No system config file $(prefix)/etc/gitconfig (research 01 section 1.1).
+    GIT_CONFIG_NOSYSTEM=1
+    # No system attributes file $(prefix)/etc/gitattributes, so it names no filter driver (research 01 section 1.4
+    # item 3; pr-audit.sh U71b audit round 1, a filter driver run on the audited tree).
+    GIT_ATTR_NOSYSTEM=1
+    # No credential or passphrase prompt on the terminal: a transport that needs one fails instead of waiting
+    # (pr-audit.sh U71b, the bounded fetch).
+    GIT_TERMINAL_PROMPT=0
+)""",
+        "the library's environment of every isolated git, the flag set the levers document",
+    ),
+    (
+        ("git-isolated.sh",),
+        r"""GIT_ISOLATED_ARGS=(
+    # No replacement refs: a `refs/replace/*` of the repository cannot stand in for an object (pr-audit.sh U71b audit
+    # round 7, with GIT_NO_REPLACE_OBJECTS).
+    --no-replace-objects
+    # No hook of any repository runs: git's documented off switch (research 01 section 1.1; records-sync.sh U101 round
+    # 6, a post-checkout hook that planted files in the sync).
+    -c core.hooksPath=/dev/null
+    # No fsmonitor program: a hook path in core.fsmonitor ran inside `git ls-files` (measured, research 01 section 1.1;
+    # records-sync.sh U101 round 12).
+    -c core.fsmonitor=false
+    # No user attributes file ($XDG_CONFIG_HOME/git/attributes), so no filter, diff or merge driver comes from it
+    # (research 01 section 1.4 item 3; pr-audit.sh git_tree).
+    -c core.attributesFile=/dev/null
+    # No commit-graph file of the repository: an ancestry read (merge-base) must not trust a file the checkout wrote
+    # (pr-audit.sh git_safe and git_tree).
+    -c core.commitGraph=false
+    # No ssh program: the ssh transport fails, whatever `core.sshCommand` any config names (research 01 section 1.1;
+    # scripts/lint-comparisons.py GIT_C).
+    -c core.sshCommand=false
+    # Every transport off by default (file, git, ext, and any `insteadOf` rewrite to one); a caller re-opens one per
+    # command, as the tests do with `-c protocol.file.allow=always` (research 01 section 1.1; hcom-seat U85).
+    -c protocol.allow=never
+    # https is the one transport left on: the levers fetch and push over https only (scripts/lint-comparisons.py GIT_C).
+    -c protocol.https.allow=always
+    # The empty helper resets the helper list, so no helper of any config answers; a caller adds its own after it
+    # (records-sync.sh: `!gh auth git-credential`, standing order 19; research 01 section 1.1).
+    -c credential.helper=
+    # No credential prompt (research 01 section 1.1).
+    -c credential.interactive=false
+    # No automatic gc in a scratch repository that is removed on exit (records-sync.sh git_scratch; tests U100).
+    -c gc.auto=0
+    # No detached maintenance process left behind a command (records-sync.sh git_scratch; tests U100).
+    -c maintenance.auto=false
+)""",
+        "the library's arguments before the caller's, the flag set the levers document",
+    ),
+    (
+        ("git-isolated.sh",),
+        r"""GIT_ISOLATED_SCRUB_NAMES=(http_proxy HTTPS_PROXY https_proxy HTTP_PROXY NO_PROXY no_proxy SSL_CERT_FILE SSL_CERT_DIR CURL_CA_BUNDLE)""",
+        "the names the library's scrub removes besides GIT_*",
+    ),
+    (
+        ("git-isolated.sh",),
+        "echo \"${who}: refused: GIT_ISOLATED_ENV is empty; the library's flag set is gone\" >&2",
+        "a refusal message naming the array (a word, not a write)",
+    ),
+    (
+        ("git-isolated.sh",),
+        "echo \"${who}: refused: GIT_ISOLATED_ARGS is empty; the library's flag set is gone\" >&2",
+        "a refusal message naming the array (a word, not a write)",
+    ),
+    (
+        ("git-isolated.sh",),
+        "echo \"${who}: refused: GIT_ISOLATED_SCRUB_NAMES is empty; the library's flag set is gone\" >&2",
+        "a refusal message naming the array (a word, not a write)",
+    ),
+    (
+        ("git-isolated.sh",),
+        r'''export "${GIT_ISOLATED_ENV[@]}"''',
+        "git_isolated exports the pinned array word by word in the subshell that execs git",
+    ),
+    (
+        ("records-sync.sh",),
+        r"""IFS= read -r -d '' dir;""",
+        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",
+    ),
+    (
+        ("records-sync.sh",),
+        r"""IFS= read -r -d '' path;""",
+        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",
+    ),
+    (
+        ("records-sync.sh",),
+        r"""IFS= read -r -d '' entry;""",
+        "an empty IFS for the one `read` of a NUL-separated listing, restored after it",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""IFS= read -r git_name;""",
+        "an empty IFS for the one `read` of the environment listing, restored after it",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""exit $((128 + $2))""",
+        "the signal number the lever's own trap passes as $2, added to 128",
+    ),
+    (
+        ("pr-audit.sh", "pr-body-edit.sh", "pr-merge.sh"),
+        r"""IFS= read -r line;""",
+        "an empty IFS for the one `read` of a line, restored after it",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""refuse 'no codex on PATH'""",
+        "a refusal message naming PATH (a word, not a write)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""refuse 'no python3 on PATH (it runs the codex supervisor)'""",
+        "a refusal message naming PATH (a word, not a write)",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""[[ ${template_entries} -gt 0 ]]""",
+        "an arithmetic test of a grep count; the `fail` after the count takes every status but 0 and 1, so the value is "
+        "a decimal",
+    ),
+    (
+        ("pr-audit.sh",),
+        r'''IFS=$'\t' read -r state base want pr_url <<< "${view}"''',
+        "a tab IFS for the one `read` of gh's TSV row, restored after it",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""IFS= read -r path;""",
+        "an empty IFS for the one `read` of a line, restored after it",
+    ),
+    (
+        ("pr-audit.sh",),
+        r"""IFS=' ' read -r access path;""",
+        "a space IFS for the one `read` of an access and a path, restored after it",
+    ),
+    (
+        ("pr-merge.sh",),
+        r'''IFS=$'\t' read -r state base head draft <<< "${view}"''',
+        "a tab IFS for the one `read` of gh's TSV row, restored after it",
+    ),
+    (
+        ("pr-merge.sh",),
+        r'''IFS=$'\t' read -r again again_base <<< "${again}"''',
+        "a tab IFS for the one `read` of gh's TSV row, restored after it",
+    ),
+    (
+        ("pr-merge.sh",),
+        r"""IFS=$'\t' read -r bucket name;""",
+        "a tab IFS for the one `read` of gh's TSV rows, restored after it",
+    ),
+    (
+        ("pr-merge.sh",),
+        r'''IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"''',
+        "a tab IFS for the one `read` of gh's TSV row, restored after it",
+    ),
+    (
+        ("pr-threads-check.sh",),
+        r"""IFS=$'\t' read -r first resolved created severity count reply;""",
+        "a tab IFS for the one `read` of gh's TSV rows, restored after it",
+    ),
+    (
+        ("pr-body-edit.sh",),
+        r'''IFS=$'\t' read -r number head state <<< "${view}"''',
+        "a tab IFS for the one `read` of gh's TSV row, restored after it",
+    ),
+)
 NAME_KINDS = ("ParamExp",)  # the one expansion a file name may hold: two such words compare by their parts
 DEVNULL = "/dev/null"
 DOUBLE_QUOTE_ESCAPES = '$`"\\\n'  # inside double quotes bash removes a backslash before these only
@@ -684,6 +956,9 @@ def interpreted(rows):
         words[name] = "the builtin a `||` branch ends a failed read with (rule a, form i)"
     for name in WRITERS:
         words[name] = "the builtin the refusal grammar writes to stderr with (rule a, forms ii and iii)"
+    words[READER] = "the builtin rule d holds away from a file (`read < file` is a finding)"
+    for name in DECLARERS:
+        words[name] = "the declaration whose words and attribute options rule f reads (rule f)"
     for name in REBINDERS:
         words[name] = "a rebinder of the lint's own rebinders, the words rule f reads a rebinding by (rule f)"
     producers = {}
@@ -712,12 +987,55 @@ def sourced_library(args):
     )
 
 
-def environment_array(word):
-    """Whether the word is the one word with no known text a binder accepts: the bare `[@]` expansion of
-    LIBRARY_ENVIRONMENT (ENVIRONMENT_ARRAY) and nothing else, in any quoting name_parts flattens
-    (`"${GIT_ISOLATED_ENV[@]}"`); `[*]`, `[0]`, `${#…[@]}` and `${…[@]:-}` are other words."""
-    parts = name_parts(word)
-    return parts is not None and len(parts) == 1 and parts[0] == ENVIRONMENT_ARRAY
+def literal_texts(word):
+    """(the text of the word's leading literal parts, joined; the text of every literal part, in order): what rule f
+    scans a word for a write with. A literal part is a bare literal, a single-quoted string (ANSI-C included, as
+    written), or a literal inside double quotes (a locale string included). An expansion, a substitution or a glob
+    part contributes no text and hides none: the parts around it are read, and it ends the leading run."""
+    leading = []
+    texts = []
+    still_leading = True
+    todo = list(word.get("Parts") or [])
+    while todo:
+        part = todo.pop(0)
+        kind = part.get("Type")
+        if kind == "DblQuoted":
+            todo = list(part.get("Parts") or []) + todo
+        elif kind in ("Lit", "SglQuoted"):
+            texts.append(part.get("Value") or "")
+            if still_leading:
+                leading.append(texts[-1])
+        else:
+            still_leading = False
+    return "".join(leading), texts
+
+
+def numeric(word):
+    """Whether a word where bash evaluates arithmetic evaluates no text of a script's choosing: a parameter bash alone
+    sets, so its text is a number (exactly one short expansion of NUMERIC_PARAMETERS, `$#`, `$?`, `$$`, `$!`, or one
+    length, `${#name}`, `${#name[@]}`, bare or alone in double quotes), or the whole-array subscript `@` or `*` of
+    `${name[@]}`, which names every element and evaluates nothing."""
+    parts = word.get("Parts") or []
+    if len(parts) == 1 and parts[0].get("Type") == "DblQuoted":
+        parts = parts[0].get("Parts") or []
+    if len(parts) != 1:
+        return False
+    if parts[0].get("Type") == "Lit":
+        return parts[0].get("Value") in SUBSCRIPTS
+    if parts[0].get("Type") != "ParamExp":
+        return False
+    expansion = parts[0]
+    if expansion.get("Length"):
+        return True
+    return bool(expansion.get("Short")) and expansion["Param"]["Value"] in NUMERIC_PARAMETERS
+
+
+def written_in(stmt):
+    """How a write's finding names the statement it sits in: a declaration by its word, else statement_name."""
+    cmd = command_of(stmt)
+    if isinstance(cmd, dict) and cmd.get("Type") == "DeclClause":
+        return f"the declaration `{cmd['Variant']['Value']}`"
+    return statement_name(stmt)
 
 
 def leading_options(word, args):
@@ -1121,8 +1439,17 @@ class Walk:
         self.terminators = TERMINATORS  # `exit` and `return`, less any name a function of the file takes
         self.set_e = None  # the offset of the first top-level, unflagged `set -euo pipefail` (a bare test of rule b)
         self.shadowed = interpreted(rows)  # rule f: the words the rules read, name -> what a definition of it shadows
+        # Rule f: the guarded names that are variables, every one the shadow part does not read as a command word
+        # (`refuse`, `eval`, … run in command position throughout the levers and are written by an assignment
+        # spelling alone), as the token pattern Walk.word scans a word's literal parts with.
+        variables = [name for name in GUARDED_NAMES if name not in self.shadowed and IDENTIFIER.fullmatch(name)]
+        self.variables = re.compile("(?<![A-Za-z0-9_])(" + "|".join(map(re.escape, variables)) + ")(?![A-Za-z0-9_])")
+        self.source = None  # the bytes of the file being walked (statement_text); None for the contract fixtures
+        self.file = ""  # its name, which a row of ACCEPTED_WRITES must list
 
-    def run(self, tree):
+    def run(self, tree, source=None, file=""):
+        self.source = source
+        self.file = file
         self.seen.clear()
         self.findings.clear()
         self.accepted.clear()
@@ -1207,15 +1534,18 @@ class Walk:
             return
         self.findings.add((line, rule, message))
 
-    def visit(self, node, stack, siblings):
+    def visit(self, node, stack, siblings, arithmetic=False):
         """Depth first; stack is the statements holding node, innermost first, and the process substitutions among
         them (the path flagged_path reads), siblings the statement list it sits in, its index there and the stack
         around that list (the list a later `[[ ! -s file ]]` is searched in, and the path it shares with the
-        producer). The two accepted positions are marked here, at the statement or clause that tests the read, before
-        its substitution is visited."""
+        producer), arithmetic whether node sits where bash evaluates arithmetic (ARITHMETIC_KINDS, the Index and Slice
+        of an expansion or assignment, the operands of an arithmetic or name test; a statement inside, `$(( $(cmd)
+        ))`, starts over). The two accepted positions are marked here, at the statement or clause that tests the
+        read, before its substitution is visited; rule f's writes are asked of every assignment, loop variable,
+        expansion and word met."""
         if isinstance(node, list):
             for item in node:
-                self.visit(item, stack, siblings)
+                self.visit(item, stack, siblings, arithmetic)
             return
         if not isinstance(node, dict):
             return
@@ -1226,6 +1556,7 @@ class Walk:
                 self.seen["Redirect"] += 1
                 descriptor_number(redirect)
             stack = (node, *stack)
+            arithmetic = False
             if siblings is not None and siblings[0] is self.top:
                 self.top_index = siblings[1]
             self.statement(node, stack, siblings)
@@ -1234,7 +1565,9 @@ class Walk:
                 self.prologues.append(stack)
         elif kind is None and "Name" in node:
             self.seen["Assign"] += 1
-            self.binding(node)
+            self.assignment(node, stack[0])
+        elif kind == "WordIter":
+            self.loop(node, stack[0])
         elif kind in ("IfClause", "WhileClause") or (kind is None and "Cond" in node):
             # An `elif` is an IfClause with no Type key (shfmt types only interface fields); its Cond marks it. The
             # condition's last statement may be negated; a flag on any statement around the clause is a flag.
@@ -1252,12 +1585,27 @@ class Walk:
             # it (flagged_path), so a tested read or a producer there is a finding naming the substitution's line.
             self.seen["ProcSubst"] += 1
             stack = (node, *stack)
+        elif kind == "ParamExp":
+            self.expansion(node, stack[0])
+        elif "Parts" in node and kind in (None, "Word"):
+            # A word, untyped in a concrete position (an argument, a value, an element, a pattern, a redirect's
+            # target, a heredoc body) and typed in an interface one (a test or arithmetic operand).
+            self.seen["Word"] += 1
+            self.word(node, stack[0], arithmetic)
+        inner = (
+            arithmetic
+            or kind in ARITHMETIC_KINDS
+            or (kind == "BinaryTest" and node.get("Op") in ARITHMETIC_TESTS)
+            or (kind == "UnaryTest" and node.get("Op") in NAME_TESTS)
+        )
+        indexed = {id(node.get(field)) for field in ARITHMETIC_FIELDS} - {id(None)}
         for value in children(node):
+            inside = inner or id(value) in indexed
             if isinstance(value, list) and any(isinstance(item, dict) and "Cmd" in item for item in value):
                 for index, item in enumerate(value):
-                    self.visit(item, stack, (value, index, stack))
+                    self.visit(item, stack, (value, index, stack), inside)
             else:
-                self.visit(value, stack, siblings)
+                self.visit(value, stack, siblings, inside)
 
     def statement(self, stmt, stack, siblings):
         """Rules b, d and f on one statement's own command. stack is the statement's path to the top level: a producer
@@ -1265,17 +1613,17 @@ class Walk:
         (flagged_path) is a finding whatever follows it. Else a later `[[ ! -s file ]]` of the same statement list is
         judged on that list's path to the top level (siblings[2]), which it shares with the producer."""
         cmd = stmt.get("Cmd")
-        self.declaration(stmt, cmd)
+        if isinstance(cmd, dict) and cmd.get("Type") == "DeclClause":  # rule f: a declaration's words that assign nothing
+            naked = [arg["Value"] for arg in cmd.get("Args") or [] if "Name" not in arg and "Value" in arg]
+            self.attributes(stmt, cmd["Variant"]["Value"], naked)
         if not isinstance(cmd, dict) or cmd.get("Type") != "CallExpr":
             return
         words = leading_words(cmd)
         redirects = stmt.get("Redirs") or []
-        if words[:1] == ["read"] and any(redirect.get("Op") == "<" for redirect in redirects):
+        if words[:1] == [READER] and any(redirect.get("Op") == "<" for redirect in redirects):
             self.report(stmt, stmt["Pos"]["Line"], READ, MESSAGES[READ])
         if words[:1] and words[0] in REBINDERS:
             self.rebinding(stmt, words[0], (cmd.get("Args") or [])[1:])
-        if words[:1] and words[0] in ENVIRONMENT:
-            self.binding_words(stmt["Pos"]["Line"], f"`{words[0]}`", (cmd.get("Args") or [])[1:])
         for row in self.rows:
             if words[: len(row)] != row:
                 continue
@@ -1320,8 +1668,8 @@ class Walk:
         FORWARDER's argument whose known text, before any `=`, is a word the rules read, the rebinders among them, is
         a finding naming what it shadows (`enable -n echo`, `enable -n command`, `hash -p /x/git git`, `unset -f
         refuse`, `command git`), and so is one with no known text, which may name any of them; a FORWARDER's command
-        is judged again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`) or a
-        binder (binding_words: `builtin export PATH=/tmp/x`, `command env PATH=/tmp/x git`). A
+        is judged again when its own first word is a rebinder (`command unset -f refuse`, `command alias x=y`), and a
+        forwarded declaration's words are read by attributes (`builtin declare -i x`, `builtin export "$x"`). A
         RUNNER's argument is text or a file this walk has not read: `eval` with any argument, `source` or `.` with any
         but the one accepted shape (sourced_library; every argument word counts, `source -- lib.sh` and `source
         +lib.sh` among them), `trap` with an action that is not read whole (trap_action; the signal names after it
@@ -1397,74 +1745,112 @@ class Walk:
             text = word_text(arg)
             if text is None:
                 self.findings.add((line, SHADOW, unknown))
-            elif index == 0 and forwarded in REBINDERS:
-                continue  # a rebinder run through the forwarder shadows nothing; its own call is judged below
+            elif index == 0 and forwarded in REBINDERS + DECLARERS:
+                continue  # a rebinder or declarer run through the forwarder shadows nothing; its own words are judged
+            elif word in FORWARDERS and text in DECLARERS:
+                continue  # the declaration a chain of forwarders runs (`builtin command export …`); attributes reads it
             elif (name := text.split("=", 1)[0]) in self.shadowed:
                 self.findings.add((line, SHADOW, f"`{word}` names `{name}` and shadows {self.shadowed[name]}"))
         if forwarded in REBINDERS:
             self.rebinding(stmt, forwarded, args[1:])
-        elif forwarded in BINDERS:
-            self.binding_words(line, f"`{forwarded}`", args[1:])
+        elif forwarded in DECLARERS:  # rule f: the words of a forwarded declaration (`builtin declare -i x`)
+            self.attributes(stmt, forwarded, args[1:])
 
-    def binding(self, assign):
-        """Rule f on an assignment anywhere (plain, a prefix of a command, an argument of a declaration): one that
-        gives a value to a variable that binds a command word (BINDING_VARIABLES) is a finding at its line.
-        `export PATH` and `declare -A BASH_ALIASES` carry no value and bind nothing. One to LIBRARY_ENVIRONMENT, the
-        array `export "${GIT_ISOLATED_ENV[@]}"` exports word by word, is read as those words (binding_words over the
-        elements of its array literal, else over its value, every one an assignment). No allow comment exempts it."""
+    def write(self, stmt, name, how, line=None):
+        """Rule f on a write to a guarded name (name; None when a word with no known text may write any of them), by
+        how, in the statement stmt: a finding at line (the statement's first line when None) unless the statement's
+        exact text, in this file, is a row of ACCEPTED_WRITES. No allow comment exempts it."""
+        text = self.statement_text(stmt)
+        for files, accepted, _ in ACCEPTED_WRITES:
+            if self.file in files and text == accepted:
+                return
+        guarded = f"`{name}` ({GUARDED_NAMES[name]})" if name is not None else "any guarded name"
+        self.findings.add(
+            (
+                stmt["Pos"]["Line"] if line is None else line,
+                BINDING,
+                f"a write to {guarded}: {how}, in {written_in(stmt)}; the statement is not an accepted write of the "
+                "adopted levers and libraries (ACCEPTED_WRITES)",
+            )
+        )
+
+    def statement_text(self, stmt):
+        """The statement's source text, first byte to last (shfmt's offsets are bytes; a trailing comment is not
+        part of it), or None when the walk has no source (the contract fixtures), where nothing is accepted."""
+        if self.source is None:
+            return None
+        return self.source[stmt["Pos"]["Offset"] : stmt["End"]["Offset"]].decode("utf-8", "replace")
+
+    def assignment(self, assign, stmt):
+        """A write by an Assign node, wherever it sits (a plain assignment, a command's prefix, a declaration's
+        argument: `PATH=/tmp/x`, `IFS= read -r x`, `export PATH=/tmp/x`, `declare -a GIT_ISOLATED_ENV=(x)`), with or
+        without a value: shfmt writes no Value for `PATH=`, which writes the empty string, nor for the bare name of
+        `export PATH` or `declare +x -a GIT_ISOLATED_ENV`, read as writes too."""
         name = assign["Name"]["Value"]
-        line = assign["Pos"]["Line"]
-        if name in BINDING_VARIABLES and ("Value" in assign or "Array" in assign):
-            what = BINDING_VARIABLES[name]
-            self.findings.add((line, SHADOW, f"an assignment to `{name}` binds a command word: {what}"))
-        if name == LIBRARY_ENVIRONMENT:
-            if "Array" in assign:
-                words = [element["Value"] for element in assign["Array"].get("Elems") or []]
-            else:
-                words = [assign["Value"]] if "Value" in assign else []
-            exported = f'`{name}`, which `export "${{{name}[@]}}"` exports word by word,'
-            self.binding_words(line, exported, words, unit="element", every=True)
-
-    def declaration(self, stmt, cmd):
-        """Rule f on a declaration (shfmt's DeclClause: `declare`, `typeset`, `readonly`, `export`, `local`): an
-        argument that assigns a name (`export PATH=/tmp/x`, `local status=0`) or names one (`export PATH`) is an
-        Assign that visit hands to binding; every other argument, `Naked` with the word as its Value (an option, a
-        quoted or expanded word: `-x`, `'PATH=/tmp/x:$PATH'`, `"$binding"`), is read by binding_words."""
-        if not isinstance(cmd, dict) or cmd.get("Type") != "DeclClause":
+        if name not in GUARDED_NAMES:
             return
-        words = [arg["Value"] for arg in cmd.get("Args") or [] if "Name" not in arg and "Value" in arg]
-        self.binding_words(stmt["Pos"]["Line"], f"`{cmd['Variant']['Value']}`", words)
+        valued = "Value" in assign or "Array" in assign
+        how = "an assignment" if valued else "an assignment with no value, or the bare name"
+        self.write(stmt, name, how, assign["Pos"]["Line"])
 
-    def binding_words(self, line, what, words, unit="argument", every=False):
-        """Rule f on words bash reads as assignments: the arguments of a binder (a declaration or `env`, directly or
-        through a FORWARDER) and the elements of LIBRARY_ENVIRONMENT (every). A known text matching BINDING_WORD
-        assigns the name before `=`: one of BINDING_VARIABLES is a finding (`export 'PATH=/tmp/x:$PATH'`, `env
-        PATH=/tmp/x git ls-files`); a word with no known text may spell any of them (`export "$binding"`) and is a
-        finding, the one accepted shape aside (environment_array, whose elements this rule reads where they are
-        assigned); any other known text (`-x`, `GIT_CONFIG_NOSYSTEM=1`, `git`) binds no command word, unless every
-        word must be an assignment (an element of the array), when it is a finding too."""
-        names = ", ".join(f"`{name}`" for name in sorted(BINDING_VARIABLES))
+    def loop(self, loop, stmt):
+        """A write by the variable of a `for` or `select` (shfmt's WordIter)."""
+        name = loop["Name"]["Value"]
+        if name in GUARDED_NAMES:
+            self.write(stmt, name, "the variable of a `for` or `select`")
+
+    def expansion(self, expansion, stmt):
+        """A write by a parameter expansion that assigns its parameter: `${PATH=x}`, `${PATH:=x}` (ASSIGNING_OPS)."""
+        if (expansion.get("Exp") or {}).get("Op") in ASSIGNING_OPS:
+            name = expansion["Param"]["Value"]
+            if name in GUARDED_NAMES:
+                how = "an expansion that assigns its parameter (`${name=…}`, `${name:=…}`)"
+                self.write(stmt, name, how, expansion["Pos"]["Line"])
+
+    def word(self, word, stmt, arithmetic):
+        """A write spelled by a word, in any position: its leading literal parts spell an assignment to a guarded
+        name (WRITES: `export 'PATH=/tmp/x:$PATH'`, `env PATH=/tmp/x git ls-files`, `PATH=/tmp/x:$PATH` as any
+        command's word, `'GIT_ISOLATED_ENV=PATH=/tmp/x'`, `alias fail=true`), or any literal part holds the name of a
+        guarded variable as a token (`read -r PATH`, `printf -v PATH x`, `unset PATH`, `mapfile PATH`, `local -n
+        ref=PATH`, `(( PATH = 1 ))`, `let 'PATH = 1'`, `${a[PATH=1]}`, `coproc PATH {…}`, `bash -c 'cd /; PATH=x git'`,
+        a message naming it; an expansion among the parts contributes no text and hides none). Where bash evaluates
+        arithmetic (arithmetic) a word with no known text that is not a parameter bash alone sets (numeric) is a
+        write to any guarded name (measured: `y='PATH=1'; (( $y, 1 ))` sets PATH)."""
+        leading, texts = literal_texts(word)
+        line = (word.get("Pos") or stmt["Pos"])["Line"]
+        writes = {}  # name -> how, one finding per name the word writes
+        match = WRITES.match(leading)
+        if match is not None:
+            writes[match[1]] = f"a word spelling an assignment, `{match[0]}…`"
+        for text in texts:
+            for found in self.variables.finditer(text):
+                writes.setdefault(
+                    found[1],
+                    "a word spelling its name (an argument of `read`, `printf -v`, `unset` or `mapfile`, a nameref's "
+                    "value, an arithmetic operand, text handed to another program, a message)",
+                )
+        for name, how in writes.items():
+            self.write(stmt, name, how, line)
+        if arithmetic and word_text(word) is None and not numeric(word):
+            self.write(stmt, None, "a word with no known text where bash evaluates arithmetic", line)
+
+    def attributes(self, stmt, variant, words):
+        """A declaration's words that assign nothing (a DeclClause's `Naked` arguments; every argument after a
+        forwarded declarer, `builtin export …`): one with no known text may spell any write (`export "$binding"`,
+        `export "${GIT_ISOLATED_ENV[@]}"`); an option cluster with a letter of ATTRIBUTE_OPTIONS for the variant makes
+        a later assignment write elsewhere (`declare -i x`, `local -n r`)."""
         for word in words:
             text = word_text(word)
+            line = (word.get("Pos") or stmt["Pos"])["Line"]
             if text is None:
-                if not environment_array(word):
-                    self.findings.add(
-                        (line, SHADOW, f"{what} has an {unit} with no known text, which may assign one of {names}")
-                    )
-                continue
-            match = BINDING_WORD.match(text)
-            if match is None:
-                if every:
-                    self.findings.add((line, SHADOW, f"{what} has an {unit} that is no assignment of a name: `{text}`"))
-            elif match[1] in BINDING_VARIABLES:
-                self.findings.add(
-                    (
-                        line,
-                        SHADOW,
-                        f"{what} assigns `{match[1]}` in an {unit}, which binds a command word: "
-                        f"{BINDING_VARIABLES[match[1]]}",
-                    )
+                how = f"a word of `{variant}` with no known text, which may spell an assignment to any of them"
+                self.write(stmt, None, how, line)
+            elif len(text) > 1 and text[0] == "-" and set(text[1:]) & set(ATTRIBUTE_OPTIONS.get(variant, "")):
+                how = (
+                    f"the option `{text}` of `{variant}`, under which a later assignment evaluates its value as "
+                    "arithmetic (`-i`) or writes the variable its value names (`-n`)"
                 )
+                self.write(stmt, None, how, line)
 
     def tests_empty(self, stmt, target):
         """Whether the statement's own command is `[[ ! -s <target> ]]`, the two words shown to name one file."""
@@ -1589,7 +1975,7 @@ for source, tree in fixtures.items():
     except Exception as error:  # a fixture the walk cannot read is "could not judge" for every listed file
         refuse(f"cannot walk the syntax tree of {source} ({error!r})")
     visited.update(walk.seen)
-for kind in ("Stmt", "Assign", "CmdSubst", "Redirect", "ProcSubst"):
+for kind in ("Stmt", "Assign", "Word", "CmdSubst", "Redirect", "ProcSubst"):
     if not visited[kind]:
         refuse(f"the walk visited no {kind} node in the contract fixtures, which hold some")
 
@@ -1597,7 +1983,8 @@ status = 0
 for file in sys.argv[3:]:
     try:
         with open(file, "rb") as handle:
-            run = subprocess.run(["shfmt", "-ln", "bash", "--to-json"], stdin=handle, capture_output=True, check=False)
+            source = handle.read()
+        run = subprocess.run(["shfmt", "-ln", "bash", "--to-json"], input=source, capture_output=True, check=False)
     except OSError as error:
         refuse(f"cannot read {file} ({error})")
     sys.stderr.write(run.stderr.decode(errors="replace"))
@@ -1608,7 +1995,7 @@ for file in sys.argv[3:]:
     except ValueError:
         refuse(f"shfmt gave no JSON tree for {file}")
     try:
-        findings = walk.run(tree)
+        findings = walk.run(tree, source, file.rsplit("/", 1)[-1])
     except Unread as error:  # a value the walk does not read is "could not judge", never a clean file
         refuse(f"cannot judge {file}: {error}")
     except Exception as error:  # any other failure to read the tree is the same, never a clean file

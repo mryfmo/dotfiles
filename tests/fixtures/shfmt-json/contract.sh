@@ -76,3 +76,14 @@ git ls-files > "$dir/list" 2> "$dir/err" 02>&1 1>&2- <&0 || exit 1
 # producer-status-check (U112 round 17): a declaration whose argument is a quoted assignment word, so the variant and
 # the arguments the lint reads on a DeclClause are in the tree.
 export 'FIRST=1'
+# producer-status-check (U112 round 18): the write positions rule f reads: a loop variable, an expansion that assigns,
+# a slice, the parameters bash alone sets, an arithmetic command, a `let`, a C-style loop, an indexed assignment, the
+# arithmetic tests and the name tests, so the kinds, fields and operators the rule reads are in the tree.
+for item in one two; do :; done
+: "${first:=z}" "${name=w}" "${name:1}" "${words[@]}" "${words[*]}" $# $$ $!
+((count > 0)) || exit 1
+let count+=1
+for ((index = 0; index < 1; index++)); do :; done
+words[0]=one
+[[ 1 -eq 1 && 1 -ne 2 && 1 -lt 2 && 1 -le 1 && 2 -gt 1 && 1 -ge 1 ]] || exit 1
+[[ -v name && -R name ]] || exit 1

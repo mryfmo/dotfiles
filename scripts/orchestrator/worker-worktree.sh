@@ -49,7 +49,10 @@
 #   symlink, a trailing slash) names it without being it (`<checkout>/.git/hooks` is no root: a tree made there would
 #   write the checkout; round 5 compared the resolved strings, and the audit made the tree through a case alias), and
 #   neither the checkout's path nor the root holding a newline, each in its resolved form (a symlink whose name holds
-#   none may point at a directory whose name holds one; the alternates file is one path per line). A read that fails
+#   none may point at a directory whose name holds one; the alternates file is one path per line); every path read
+#   (`git rev-parse`'s and `pwd -P`'s) is captured exactly, a sentinel after the output keeping the trailing newline
+#   `$(…)` would strip, so a directory named `trees<LF>` is never read as its newline-free sibling `trees` (round 2 of
+#   U123b: the checks ran on the sibling and the tree was made under it). A read that fails
 #   before anything is made (`git rev-parse`, `git config`, the resolver's `cd` and `pwd -P`, the `uname -s` that
 #   chooses `stat`'s format flag, `stat` itself) is a refusal with exit 2, never an absence
 #   (standing order 21). Then `mkdir <root>/<unit>` (no `-p`) reserves the target: success means this run owns the
@@ -190,8 +193,32 @@ git_run() {
     )
 }
 
+# @description Set `exact` to the standard output of the command $@, byte for byte apart from the one newline that
+#   ends its line. `$(…)` strips every trailing newline, so `pwd -P` in a directory named `trees<LF>` read as the
+#   newline-free sibling `trees`, and the newline check and the identity walk ran on the sibling while the tree was
+#   made under it (round 2 of U123b). The command's output is followed by a sentinel `x`, which holds the newlines in
+#   place; the sentinel and one newline are removed, and whatever is left of the name, a newline included, reaches the
+#   checks. The result is a variable, not output, so no second substitution stands between the read and its reader.
+# @arg $@ string The command; its stderr is the caller's.
+# @set exact The output.
+# @exitcode 1 The command failed.
+exact_line() {
+    exact=$("$@" && printf x) || return 1
+    exact=${exact%x}
+    exact=${exact%$'\n'}
+}
+
+# @description Print the physical path of the directory $1 (`cd` and `pwd -P`). Run inside `exact_line`'s
+#   substitution, so the `cd` is a subshell's and the lever's own directory does not change.
+# @arg $1 string A directory.
+# @exitcode 1 The directory cannot be entered.
+physical_path() {
+    cd -- "$1" && pwd -P
+}
+
 # @description Resolve $1, an absolute path without `.` or `..` components that may not exist yet, through its longest
-#   existing leading directory (`cd` and `pwd -P`, so a symlink into the checkout is seen for what it is): `root_prefix`
+#   existing leading directory (`physical_path` through `exact_line`, so a symlink into the checkout is seen for what
+#   it is and a trailing newline in the directory's name is kept): `root_prefix`
 #   is that directory's physical path and `resolved_root` is it with the rest appended as given, the directories
 #   `mkdir -p` would make. The results are variables, not output, so no producer stands between the resolution and its
 #   readers, and the prefix is the first directory of the identity walk below.
@@ -206,7 +233,8 @@ resolve_root() {
         candidate=${candidate%/*}
         [[ -n ${candidate} ]] || candidate=/
     done
-    root_prefix=$(cd "${candidate}" && pwd -P) || return 1
+    exact_line physical_path "${candidate}" || return 1
+    root_prefix=${exact}
     resolved_root=${root_prefix%/}${rest:+/${rest}}
     [[ -n ${resolved_root} ]] || resolved_root=/
 }
@@ -237,15 +265,21 @@ branch=${normalized}
 [[ ${branch} =~ ^[A-Za-z0-9._/-]+$ ]] || refuse "the branch ${branch} has a character outside [A-Za-z0-9._/-]"
 [[ -n ${base} ]] || refuse "the base is empty"
 
-toplevel=$(git_run rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the main checkout'
-toplevel=$(cd "${toplevel}" && pwd -P) || refuse "cannot resolve ${toplevel}"
+exact_line git_run rev-parse --show-toplevel 2> /dev/null || refuse 'run from the main checkout'
+toplevel=${exact}
+exact_line physical_path "${toplevel}" || refuse "cannot resolve ${toplevel}"
+toplevel=${exact}
 [[ ${toplevel} != *$'\n'* ]] || refuse "the checkout path ${toplevel//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
-git_dir=$(git_run rev-parse --path-format=absolute --git-dir 2> /dev/null) || refuse "cannot read the git directory of ${toplevel}"
-common=$(git_run rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || refuse "cannot read the git common directory of ${toplevel}"
+exact_line git_run rev-parse --path-format=absolute --git-dir 2> /dev/null || refuse "cannot read the git directory of ${toplevel}"
+git_dir=${exact}
+exact_line git_run rev-parse --path-format=absolute --git-common-dir 2> /dev/null || refuse "cannot read the git common directory of ${toplevel}"
+common=${exact}
 [[ ${git_dir} == "${common}" ]] || # lint-comparisons: allow both sides are git's absolute forms of one checkout
     refuse "${toplevel} is a linked worktree (git dir ${git_dir}, common ${common}); run from the main checkout"
-git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve the git directory ${git_dir}"
-objects=$(git_run rev-parse --path-format=absolute --git-path objects 2> /dev/null) || refuse "cannot read the objects directory of ${toplevel}"
+exact_line physical_path "${git_dir}" || refuse "cannot resolve the git directory ${git_dir}"
+git_dir=${exact}
+exact_line git_run rev-parse --path-format=absolute --git-path objects 2> /dev/null || refuse "cannot read the objects directory of ${toplevel}"
+objects=${exact}
 [[ -d ${objects} ]] || refuse "${objects} is not a directory"
 [[ ${objects} != *$'\n'* ]] || refuse "the objects directory ${objects//$'\n'/\\n} holds a newline; the alternates file is one path per line" # lint-comparisons: allow a shape test (a newline in the path), no path identity is compared
 # git config exits 1 for a key that is absent and otherwise for a read that failed (standing order 21): only 1 is absence.

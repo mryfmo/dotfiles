@@ -774,6 +774,43 @@ class WorkerWorktreeTest(unittest.TestCase):
                 self.assertEqual(self.checkout_state(), before)
         self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
 
+    def test_a_symlink_to_a_directory_whose_name_ends_in_a_newline_is_not_read_as_its_sibling(self):
+        """`DOTFILES_WT` naming a newline-free symlink to a directory named `trees<LF>`, with a newline-free sibling
+        `trees` present (the verdict on bb87a69a and Codex thread 4427932954, P2 :209): `$(cd … && pwd -P)` strips a
+        trailing newline, so the newline check and the identity walk ran on the sibling and the tree was made under
+        it with exit 0. The resolution keeps the newline, so the link, and an absent directory under it, are refused
+        with exit 2 naming the resolved path, before anything is made: the sibling and the target stay empty, no
+        `git init`, the checkout as it was. The same for a checkout whose own name ends in a newline with a sibling
+        present: the checkout path is refused, not read as the sibling."""
+        target = self.root / "trees\n"
+        target.mkdir()
+        sibling = self.root / "trees"
+        sibling.mkdir()
+        link = self.root / "trees-link"
+        link.symlink_to(target)
+        before = self.checkout_state()
+        for root, resolved in ((str(link), f"{self.root}/trees\\n"), (str(link / "wt"), f"{self.root}/trees\\n/wt")):
+            with self.subTest(root=root):
+                run = self.run_lever("U7", "feat/u7", "origin/main", DOTFILES_WT=root)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"worker-worktree.sh: refused: DOTFILES_WT resolves to {resolved}, which holds a newline; "
+                    "the alternates file is one path per line",
+                    run.stderr,
+                )
+                self.assertNotIn("removed again", run.stderr)
+                self.assertEqual((self.listing(sibling), self.listing(target)), ([], []))
+                self.assertEqual(self.checkout_state(), before)
+        checkout = self.root / "co\n"
+        git_clone(self.origin, checkout, env=self.env, cwd=self.root)
+        (self.root / "co").mkdir()
+        run = self.run_lever("U7", "feat/u7", "origin/main", cwd=checkout)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"worker-worktree.sh: refused: the checkout path {self.root}/co\\n holds a newline", run.stderr)
+        self.assertEqual(self.listing(self.root / "co"), [])
+        self.assertFalse((self.root / "wt").exists())
+        self.assertNotIn('"init"', self.lever_calls, "no refusal ran git init")
+
     def test_a_failing_resolver_or_identity_read_is_a_refusal_that_makes_nothing(self):
         """Standing order 21 for the reads that place the root (the verdict on ee3145aa, P2 test :686): the resolver's
         `cd` into a directory without permissions, the `uname -s` that chooses `stat`'s format flag (failing, or naming

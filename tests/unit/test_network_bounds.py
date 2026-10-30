@@ -391,7 +391,7 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("documentation; names the tool without running it"),
     (
         "scripts/orchestrator/README.md",
-        "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract` |",
+        "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract`; `test_the_decision_rule_is_applied_from_the_findings` (U119: a `correct` with a P2 passes with `Blocking: 0`, a P1 is `incorrect` with `Blocking: 1`, a verdict its findings do not derive or a priority outside P0 to P3 is exit 1 naming the field, no `verdict.md`) |",
     ): Exempt("documentation; names the tool without running it"),
     (
         "scripts/orchestrator/README.md",

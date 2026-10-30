@@ -109,7 +109,10 @@
 #   a `Program-Unit: <program>/U<n>` line (regime-cutover U120, standing order 36): before anything else the checkout's
 #   `scripts/orchestrator/rounds-check.py <store> U<n>` reads the ledger and the decisions file, and a non-zero exit
 #   (the unit's next round needs a `mechanism-change` row, the store is malformed, or the check could not run) refuses
-#   the audit. A body without the line keeps the behaviour without the flag.
+#   the audit; then the unit's brief, the one file `<store>/briefs/U<n>-*.md`, is judged by the checkout's
+#   `scripts/orchestrator/brief-check.py` (regime-cutover U123, standing order 37), and a brief it refuses, a glob with
+#   zero or two files, or a check that could not run refuses the audit the same way, exit 3, before any model runs.
+#   A body without the line keeps the behaviour without the flag.
 # @env CODEX_HOME The caller's Codex home whose `auth.json` is the login (default ~/.codex).
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call and per `git fetch` (default 60).
 # @env PR_AUDIT_TIMEOUT Seconds for the `codex exec` run (default 3600).
@@ -129,8 +132,9 @@
 #   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
 #   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could
 #   not be given a process group of its own.
-# @exitcode 3 Refused by the round cap: `rounds-check.py` exited non-zero for the body's unit (its reason is on stderr),
-#   or the check could not run; nothing was written (standing order 21: a check that cannot run never reads as allowed).
+# @exitcode 3 Refused by the round cap or the brief gate: `rounds-check.py` or `brief-check.py` exited non-zero for the
+#   body's unit (the check's lines are on stderr), the unit's brief is not one file, or a check could not run; nothing
+#   was written (standing order 21: a check that cannot run never reads as allowed).
 # @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.
 # @example
 #   ~/.local/bin/common/pr-audit.sh 547 --records .orchestration/orchestrate/regime-cutover
@@ -276,8 +280,9 @@ fail() {
     exit 1
 }
 
-# @description Print the round cap's refusal on stderr and exit 3; no audit ran and the EXIT trap removes the run
-#   directory, so nothing is left. Exit 3 tells this refusal, which a `decisions.tsv` row lifts, from a usage one.
+# @description Print the round cap's or the brief gate's refusal on stderr and exit 3; no audit ran and the EXIT trap
+#   removes the run directory, so nothing is left. Exit 3 tells this refusal, which a `decisions.tsv` row or a brief
+#   fix lifts, from a usage one.
 # @arg $@ string The reason.
 refuse_round() {
     echo "${lever}: refused: $*" >&2
@@ -943,6 +948,25 @@ if ((unit_lines == 1)); then
     rounds=$("${python}" -I -S "${rounds_check}" "${records}" "${unit}" --pr "${pr}" 2>&1) || status=$?
     ((status == 0)) || refuse_round "rounds-check.py exited ${status} for ${unit}: ${rounds:-no output}"
     echo "${lever}: ${rounds}" >&2
+    # The brief gate (regime-cutover U123, standing order 37). The unit's brief is the one file
+    # `<store>/briefs/U<n>-*.md`: zero or two matches refuse naming the glob, since a brief the lever cannot name was
+    # never judged. The checkout's brief-check.py is the one judge of a brief, and its status decides (standing order
+    # 21): a check that could not run is the same refusal as a brief it refuses, never "clean". Every unit audited
+    # from here on has a brief written after U121 landed the check, so no date exemption is needed.
+    brief=''
+    for candidate in "${records}/briefs/${unit}-"*.md; do
+        [[ -e ${candidate} ]] || continue
+        [[ -z ${brief} ]] ||
+            refuse_round "the brief of ${unit} is not one file: ${brief} and ${candidate} both match ${records}/briefs/${unit}-*.md"
+        brief=${candidate}
+    done
+    [[ -n ${brief} ]] || refuse_round "the brief of ${unit} is not one file: nothing matches ${records}/briefs/${unit}-*.md"
+    brief_check=${repo}/scripts/orchestrator/brief-check.py
+    [[ -f ${brief_check} ]] || refuse_round "no ${brief_check} in the checkout; the brief of ${unit} cannot be checked"
+    status=0
+    brief_report=$("${python}" -I -S "${brief_check}" "${brief}" 2>&1) || status=$?
+    ((status == 0)) || refuse_round "brief-check.py exited ${status} for ${unit} on ${brief}: ${brief_report:-no output}"
+    echo "${lever}: brief-check: ${brief} passes" >&2
 fi
 contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || fail "cannot read ${run}/body.md" # producer-status: allow [[ $? == 1 ]] is grep's count of 0; the fail after it takes every other status
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"

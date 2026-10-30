@@ -38,6 +38,7 @@ LEVERS = (
     "pr-audit.sh",
     "read-lib.sh",
     "brief-check.py",
+    "worker-worktree.sh",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 

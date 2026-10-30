@@ -65,6 +65,16 @@ ROUND_CAP_EXIT = (
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
     "mechanism-change row and run it again."
 )
+# U123 round 3 (audit of 8cdb0f9c, P2 SKILL.md:26): step 1 creates the worker's tree with the lever and says why
+# a worker tree cannot push; until this test the step-4 selector was cited for it and passed against main's skill.
+# Round 4: the tree is a repository of its own, and the coordinator fetches its head by path.
+WORKER_WORKTREE = (
+    "Create the worker tree with `~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main`: a worker tree "
+    "is a repository of its own that cannot push (its config holds a refused `pushurl`, an empty credential helper "
+    "and a `pre-push` hook that exits 1; nothing of your checkout's configuration reaches it, and `git worktree list` "
+    "does not list it), and the coordinator fetches its head by path and pushes from the checkout with the `push=` "
+    "line the lever prints."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
@@ -167,6 +177,11 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn("Until U119 round 3 this step ran `omp-run.sh --role audit`", verify)
         self.assertNotIn("omp-run.sh --role audit", step(text, "The loop", 6))
         self.assertIn("a file without a `## Findings` section is refused by name", step(text, "The loop", 6))
+
+    def test_step_one_creates_the_worker_worktree_with_the_lever_whose_worktree_cannot_push(self):
+        brief = step(ORCHESTRATION.read_text(), "The loop", 1)
+        self.assertIn(WORKER_WORKTREE, brief)
+        self.assertEqual(brief.count("worker-worktree.sh"), 1)
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")

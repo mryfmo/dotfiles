@@ -47,6 +47,11 @@ BODY = "First paragraph.\n\n## Contract\n\nIt guarantees one thing.\n"
 # A program pull request's body (U120): the lever then needs `--records` and the round cap's leave for the unit.
 PROGRAM_BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
 ROUNDS_CHECK = ROOT / "scripts/orchestrator/rounds-check.py"
+# The unit's brief (U123): the lever judges `<store>/briefs/U<n>-*.md` with the checkout's brief-check.py after the
+# round cap. CLEAN_BRIEF holds no trigger term; TRIGGER_BRIEF holds one (`hook`) and no CLOSURE or TRUST section.
+BRIEF_CHECK = ROOT / "scripts/orchestrator/brief-check.py"
+CLEAN_BRIEF = "GOAL\nOne fixture unit.\nCHANGE\nAdd one line.\nCONTEXT\nNone.\n"
+TRIGGER_BRIEF = "GOAL\nA hook over the text.\nCHANGE\nAdd one line.\nCONTEXT\nNone.\n"
 LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 DECISIONS_HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n"
 
@@ -801,17 +806,27 @@ class PrAuditTest(unittest.TestCase):
                 self.assert_refused(self.run_lever(*args), "")
                 self.assertFalse((self.rec / "gh-calls").exists())
 
-    def with_store(self, ledger_rows=(), program="regime-cutover", root=None):
-        """A fixture store of PROGRAM in scratch (or under ROOT), and the checkout's own copy of rounds-check.py,
-        which the lever runs from `<checkout>/scripts/orchestrator/` (the store and the check come from the same
-        checkout)."""
+    def with_store(self, ledger_rows=(), program="regime-cutover", root=None, brief=CLEAN_BRIEF):
+        """A fixture store of PROGRAM in scratch (or under ROOT) holding the unit's brief `briefs/U7-fixture.md`
+        (BRIEF None writes none), and the checkout's own copies of rounds-check.py and brief-check.py, which the lever
+        runs from `<checkout>/scripts/orchestrator/` (the store and the checks come from the same checkout), with
+        brief-check.py's pin in the checkout manifest its self-check reads."""
         store = (root or self.root / "records") / program
-        store.mkdir(parents=True, exist_ok=True)
+        if (store / "briefs").exists():
+            shutil.rmtree(store / "briefs")  # a store is rebuilt whole: an earlier call's brief never stands in
+        (store / "briefs").mkdir(parents=True)
         (store / "ledger.tsv").write_text(LEDGER_HEADER + "".join("\t".join(row) + "\n" for row in ledger_rows))
         (store / "decisions.tsv").write_text(DECISIONS_HEADER)
-        target = self.repo / "scripts/orchestrator/rounds-check.py"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROUNDS_CHECK, target)
+        if brief is not None:
+            (store / "briefs/U7-fixture.md").write_text(brief)
+        for source in (ROUNDS_CHECK, BRIEF_CHECK):
+            target = self.repo / "scripts/orchestrator" / source.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+        manifest = self.repo / "home/dot_agents/agent-config.yaml"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256(BRIEF_CHECK.read_bytes()).hexdigest()
+        manifest.write_text(f"claude:\n  levers:\n    sha256:\n      brief-check.py: {digest}\n")
         return store
 
     def incorrect_rows(self, count):
@@ -953,6 +968,58 @@ class PrAuditTest(unittest.TestCase):
         self.assertIn("pr-audit.sh: rounds-check: U7 allowed: 0 audit rows", run.stderr)
         self.assertIn("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused", run.stderr)
         self.assertNotIn("U7b", run.stderr)
+        self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+
+    def test_a_program_pull_request_whose_brief_fails_brief_check_is_refused_before_any_model_runs(self):
+        """U123 (standing order 37): after the round cap allows the round, the checkout's brief-check.py judges the
+        unit's brief, the one file `<store>/briefs/U<n>-*.md`. A brief with a trigger term and no CLOSURE is exit 3
+        with the check's reasons on stderr: no probe, no codex, nothing left. So are zero or two files on the glob
+        (a brief the lever cannot name was never judged), a python that fails on the check and no check in the
+        checkout (standing order 21). The clean fixture brief every other store test writes proceeds."""
+        self.answer(body=PROGRAM_BODY)
+        store = self.with_store(brief=TRIGGER_BRIEF)
+        brief = store / "briefs/U7-fixture.md"
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn("pr-audit.sh: rounds-check: U7 allowed: 0 audit rows", run.stderr)
+        self.assertIn(f"pr-audit.sh: refused: brief-check.py exited 1 for U7 on {brief}: ", run.stderr)
+        self.assertIn(
+            'GOAL holds "hook" (a hook runs on text its author does not control); no CLOSURE section', run.stderr
+        )
+        self.assertIn('GOAL holds "hook"; no TRUST section', run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        store = self.with_store(brief=None)
+        (store / "briefs/U7b-fixture.md").write_text(CLEAN_BRIEF)  # another unit's brief never stands in
+        (store / "briefs/U71-fixture.md").write_text(CLEAN_BRIEF)
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(f"refused: the brief of U7 is not one file: nothing matches {store}/briefs/U7-*.md", run.stderr)
+        store = self.with_store()
+        (store / "briefs/U7-second.md").write_text(CLEAN_BRIEF)
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(
+            f"refused: the brief of U7 is not one file: {brief} and {store}/briefs/U7-second.md both match "
+            f"{store}/briefs/U7-*.md",
+            run.stderr,
+        )
+        store = self.with_store()
+        run = self.run_lever(
+            "7", "--records", str(store), PATH=self.failing_tool("python3", "*brief-check.py*", "exit 127")
+        )
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(f"refused: brief-check.py exited 127 for U7 on {brief}", run.stderr)
+        (self.repo / "scripts/orchestrator/brief-check.py").unlink()
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual((run.returncode, run.stdout), (3, ""), run.stderr)
+        self.assertIn(f"no {self.repo}/scripts/orchestrator/brief-check.py in the checkout", run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.assertEqual(list(self.tmp.iterdir()), [], "nothing is left")
+        store = self.with_store()
+        run = self.run_lever("7", "--records", str(store))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"pr-audit.sh: brief-check: {brief} passes", run.stderr)
         self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
 
     @unittest.skipIf(os.geteuid() == 0, "root enters a directory without search permission")

@@ -5735,10 +5735,10 @@
 <span class="s"># text from its first byte to its last, why). A statement is accepted only when its file and its bytes both match: a</span>
 <span class="s"># changed flag of the library, a new `IFS=` prefix in a lever, the same text in another file is a finding until a row</span>
 <span class="s"># names it. Measured on head fb2774e9 (U112 round 20), plus the rows of the pr-merge.sh disposition gate (U119 round</span>
-<span class="s"># 5); nothing else writes a guarded name there. This Python sits in a command substitution around a heredoc: bash 3.2</span>
-<span class="s"># scans the body for quotes and backticks before the heredoc is read, so a row text must keep them balanced as bash</span>
-<span class="s"># counts them (a text holding both kinds of quote is a double-quoted Python string with the inner double quotes</span>
-<span class="s"># escaped), else the lint refuses to start and the enforced-set test fails.</span>
+<span class="s"># 5) and of the pr-audit.sh round cap (U120 round 4); nothing else writes a guarded name there. This Python sits in a</span>
+<span class="s"># command substitution around a heredoc: bash 3.2 scans the body for quotes and backticks before the heredoc is read,</span>
+<span class="s"># so a row text must keep them balanced as bash counts them (a text holding both kinds of quote is a double-quoted</span>
+<span class="s"># Python string with the inner double quotes escaped), else the lint refuses to start and the enforced-set test fails.</span>
 <span class="s">LEVERS = ("records-sync.sh", "pr-audit.sh", "pr-merge.sh", "pr-threads-check.sh", "pr-body-edit.sh")</span>
 <span class="s">LIBRARIES = ("read-lib.sh", "git-isolated.sh")</span>
 <span class="s">ACCEPTED_WRITES = (</span>
@@ -5938,7 +5938,8 @@
 <span class="s">)</span>
 <span class="s"># The accepted arithmetic: the exact text of each statement of the adopted set that holds an operand bash evaluates as</span>
 <span class="s"># arithmetic which is not inert (ARITHMETIC_INERT), as (the file names, the statement text, why), measured on head</span>
-<span class="s"># fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5).</span>
+<span class="s"># fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5)</span>
+<span class="s"># and of the pr-audit.sh round cap (U120 round 4).</span>
 <span class="s"># Every operand there is a name the statement itself assigned a decimal to, a count of `$#` or `${#array[@]}`, or the</span>
 <span class="s"># signal number a trap passes; a row holds in its file alone, and a changed character is a finding until a row names</span>
 <span class="s"># it. The same quoting rule as ACCEPTED_WRITES applies.</span>
@@ -6028,6 +6029,15 @@
 <span class="s">        r"""((status != 0))""",</span>
 <span class="s">        "the status of the sandbox probe, assigned `$?` by the statement before it",</span>
 <span class="s">    ),</span>
+<span class="s">    (("pr-audit.sh",), r"""(($# &gt; 0));""", "the argument count of the option loop (the round cap, U120)"),</span>
+<span class="s">    (</span>
+<span class="s">        ("pr-audit.sh",),</span>
+<span class="s">        r"""[[ $# -ge 2 &amp;&amp; -n $2 &amp;&amp; ${records_given} == 0 ]]""",</span>
+<span class="s">        "an option that takes a value needs two words, and `--records` is given once (its own sentinel, U120 round 5)",</span>
+<span class="s">    ),</span>
+<span class="s">    (("pr-audit.sh",), r"""unit_lines=$((unit_lines + 1))""", "a counter of the body's Program-Unit lines"),</span>
+<span class="s">    (("pr-audit.sh",), r"""((unit_lines &lt;= 1))""", "the same counter, at most one line"),</span>
+<span class="s">    (("pr-audit.sh",), r"""((unit_lines == 1));""", "the same counter, one line names a program pull request"),</span>
 <span class="s">    (("pr-merge.sh",), r"""[[ $# -ge 1 ]]""", "the lever's argument count"),</span>
 <span class="s">    (("pr-merge.sh",), r"""[[ $# -eq 2 &amp;&amp; $1 == --records &amp;&amp; -n $2 ]]""", "the lever's argument count and words"),</span>
 <span class="s">    (</span>

@@ -125,7 +125,9 @@ class WorkerWorktreeTest(unittest.TestCase):
                 # the empty helper value leaves nothing after the tab, which strip() removes: partition, not split
                 origin, _, got = self.git("config", "--show-origin", "--get", key, cwd=path).partition("\t")
                 self.assertEqual((origin, got), (f"file:{wt_git}/config.worktree", value))
-                self.assertEqual(self.git_status("config", "--get", key)[:2], (1, ""), "the main checkout keeps its config")
+                self.assertEqual(
+                    self.git_status("config", "--get", key)[:2], (1, ""), "the main checkout keeps its config"
+                )
         hook = wt_git / "hooks/pre-push"
         self.assertTrue(os.access(hook, os.X_OK), hook)
         self.assertIn(HOOK_MESSAGE, hook.read_text())
@@ -218,7 +220,9 @@ class WorkerWorktreeTest(unittest.TestCase):
                 run = self.run_lever("U7", "feat/u7", "origin/main", FAKE_GIT_FAIL=failing)
                 self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
                 self.assertIn(f"worker-worktree.sh: {message}", run.stderr)
-                self.assertIn(f"removing the half-made worktree {self.root / 'wt/U7'} and the branch feat/u7", run.stderr)
+                self.assertIn(
+                    f"removing the half-made worktree {self.root / 'wt/U7'} and the branch feat/u7", run.stderr
+                )
                 self.assertFalse((self.root / "wt/U7").exists())
                 self.assertEqual(self.worktrees(), before)
                 self.assertEqual(self.git_status("show-ref", "--verify", "--quiet", "refs/heads/feat/u7")[0], 1)

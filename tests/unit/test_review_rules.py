@@ -21,7 +21,9 @@ DESIGN_RULE = (
 )
 FILED = "`filed: f=<n> s=<n> <reason>`"
 VERDICT_BULLET = "- A finding's weight is its frequency times its severity."
-REVIEWER_BULLET = "- The Codex Bot and every reviewer rate each finding's frequency and severity 1 to 10 in the finding text"
+REVIEWER_BULLET = (
+    "- The Codex Bot and every reviewer rate each finding's frequency and severity 1 to 10 in the finding text"
+)
 
 
 def section(text, heading):

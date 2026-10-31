@@ -296,14 +296,15 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertEqual(self.hooks_state(), state)
 
     def test_a_failing_read_refuses_before_anything_is_written(self):
-        """Standing order 21: the git directory, the common directory and the `core.hooksPath` read failing (exit
-        128 from the PATH git) are each a refusal naming the read, never an absence, with nothing written; so is a
-        `cmp` that cannot read the hook file."""
+        """Standing order 21: the git directory, the common directory, the worktree list and the `core.hooksPath`
+        read failing (exit 128 from the PATH git) are each a refusal naming the read, never an absence, with nothing
+        written; so is a `cmp` that cannot read the hook file."""
         state = self.hooks_state()
         for pattern, message in (
             ("rev-parse --path-format=absolute --git-dir", "cannot read the git directory"),
             ("rev-parse --path-format=absolute --git-common-dir", "cannot read the git common directory"),
-            ("config --get core.hooksPath", "cannot read core.hooksPath"),
+            ("worktree list --porcelain -z", "cannot list the worktrees"),
+            ("config --show-origin --get core.hooksPath", "cannot read core.hooksPath"),
         ):
             with self.subTest(pattern):
                 env = {**self.env, "PATH": f"{self.shim(pattern)}:{self.env['PATH']}"}
@@ -550,7 +551,8 @@ class CheckoutGuardTest(unittest.TestCase):
 
     def test_a_failing_git_read_of_the_hook_refuses_the_move(self):
         """Standing order 21: each git read of the hook (the toplevel, the worktree list, the remote refs, the
-        ancestry) failing with exit 128 is a refusal naming the read, never a pass; the branch stays."""
+        ancestry, and the ref itself when a creation line arrives) failing with exit 128 is a refusal naming the
+        read, never a pass; the branch stays."""
         self.install()
         self.store()
         for pattern in (
@@ -568,6 +570,13 @@ class CheckoutGuardTest(unittest.TestCase):
                 self.assertNotIn(REFUSAL, err)
                 self.assertEqual(self.git("rev-parse", "HEAD"), before)
                 self.git("reset", "-q", "--hard", "origin/main")
+        # A creation line (`branch topic`) makes the hook read the ref; that read failing refuses the creation.
+        before = self.branches()
+        status, _, err = self.git_status("branch", "topic", "origin/main", env=self.hook_shim("rev-parse --verify -q"))
+        self.assertNotEqual(status, 0, err)
+        self.assertIn("git rev-parse --verify -q refs/heads/topic exited 128: shim: failing", err)
+        self.assertIn(FAILED_READ, err)
+        self.assertEqual(self.branches(), before)
         # The shim itself passes a move it does not fail: the control for the injection.
         status, err, _ = self.commit(env=self.hook_shim("no-such-read"))
         self.assert_refused(status, err)
@@ -599,10 +608,12 @@ class CheckoutGuardTest(unittest.TestCase):
 
     def test_the_hook_judges_the_documented_lines(self):
         """The installed hook run by hand on the documented lines, a store present: a `refs/heads/*` line to a commit
-        origin does not hold is refused; one to origin's commit, a deletion, a `ref:` value, a tag, a remote-tracking
-        ref and a detached HEAD pass; a line of another shape is a refusal; the states other than `prepared` exit 0
+        origin does not hold is refused, as a move or as a creation; one to origin's commit, a deletion, a `ref:`
+        value, a tag, a remote-tracking ref, a detached HEAD and the packed backend's creation line for a branch that
+        already names the commit pass; a line of another shape is a refusal; the states other than `prepared` exit 0
         whatever the lines; a transaction holding one refused line among passing ones is refused."""
         self.install()
+        self.git("branch", "off", self.work)  # before the store exists: a branch already off origin
         self.store()
         held = self.git("rev-parse", "origin/main")
         hook = self.hooks / HOOK
@@ -621,23 +632,31 @@ class CheckoutGuardTest(unittest.TestCase):
             ("a tag", f"{ZERO} {self.work} refs/tags/mark\n"),
             ("a remote-tracking ref", f"{held} {self.work} refs/remotes/origin/main\n"),
             ("a detached HEAD", f"{held} {self.work} HEAD\n"),
+            ("the packed backend's creation of a branch already at the commit", f"{ZERO} {self.work} refs/heads/off\n"),
+            ("old equal to new", f"{self.work} {self.work} refs/heads/off\n"),
             ("nothing", ""),
         ):
             with self.subTest(label):
                 result = run("prepared", data)
                 self.assertEqual((result.returncode, result.stderr), (0, ""))
-        for label, data in (
-            ("the commit origin does not hold", refused),
+        for label, data, ref in (
+            ("the commit origin does not hold", refused, "refs/heads/main"),
             (
                 "one refused line among passing ones",
                 f"{held} {held} refs/heads/main\n{refused}{ZERO} {held} refs/tags/t\n",
+                "refs/heads/main",
+            ),
+            (
+                "a new branch at the commit origin does not hold",
+                f"{ZERO} {self.work} refs/heads/topic\n",
+                "refs/heads/topic",
             ),
         ):
             with self.subTest(label):
                 result = run("prepared", data)
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn(REFUSAL, result.stderr)
-                self.assertIn(f"refs/heads/main would move to {self.work}", result.stderr)
+                self.assertIn(f"{ref} would move to {self.work}", result.stderr)
         for label, data in (
             ("two fields", f"{held} refs/heads/main\n"),
             ("four fields", f"{held} {self.work} refs/heads/main extra\n"),
@@ -704,6 +723,127 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
         self.assertFalse((other / ".git/hooks" / HOOK).exists())
+
+    def test_a_replaced_origin_tip_does_not_rewrite_the_ancestry_the_hook_reads(self):
+        """A `refs/replace/<origin tip>` ref, or a `GIT_REPLACE_REF_BASE` of the caller naming a tag, that stands a
+        fabricated commit whose parent is the worker's commit in for origin's tip makes the worker's commit an ancestor
+        of origin's as a plain git reads it (round 2 passed `update-ref main <worker commit>` under both). The hook
+        reads with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1`, so the move is refused under both and no
+        branch moves; the replace ref itself (outside refs/heads) and a move to origin's commit pass."""
+        self.install()
+        self.store()
+        held = self.git("rev-parse", "origin/main")
+        fabricated = self.git("commit-tree", f"{held}^{{tree}}", "-p", self.work, "-m", "fabricated")
+        status, _, err = self.git_status("replace", held, fabricated)
+        self.assertEqual(status, 0, err)
+        self.assertEqual(self.git("rev-parse", "origin/main^"), self.work, "the replacement is in effect for plain git")
+        before = self.branches()
+        status, _, err = self.git_status("update-ref", "refs/heads/main", self.work)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches(), before)
+        self.assertEqual(self.git("rev-parse", "origin/main"), held)
+        status, _, err = self.git_status("update-ref", "refs/heads/topic", held)
+        self.assertEqual(status, 0, err)
+        self.git("branch", "-q", "-D", "topic")
+        self.git("replace", "-d", held)
+        self.git("update-ref", f"refs/tags/{held}", fabricated)
+        env = {**self.env, "GIT_REPLACE_REF_BASE": "refs/tags/"}
+        self.assertEqual(self.git("rev-parse", "origin/main^", env=env), self.work, "the tag stands in for plain git")
+        status, _, err = self.git_status("update-ref", "refs/heads/main", self.work, env=env)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches(), before)
+
+    def test_pack_refs_and_gc_pass_over_a_branch_that_is_already_off_origin(self):
+        """A backend update feeds the hook lines whose old and new values are equal: `git pack-refs --all` and `git gc`
+        in a guarded checkout holding a branch that is already off origin (made before the store existed; round 2
+        aborted the packing with exit 128) succeed and move nothing, while a move of that branch to another commit
+        origin does not hold is still refused."""
+        self.install()
+        self.git("branch", "off", self.work)
+        self.store()
+        before = self.branches()
+        for label, args in (("pack-refs --all", ["pack-refs", "--all"]), ("gc", ["gc", "-q"])):
+            with self.subTest(label):
+                status, _, err = self.git_status(*args)
+                self.assertEqual(status, 0, err)
+                self.assertNotIn("checkout-guard", err)
+                self.assertEqual(self.branches(), before)
+        self.assertIn(f"{self.work} refs/heads/off", (self.checkout / ".git/packed-refs").read_text())
+        more = self.git("commit-tree", f"{self.work}^{{tree}}", "-p", self.work, "-m", "more")
+        status, _, err = self.git_status("update-ref", "refs/heads/off", more)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches(), before)
+
+    def test_install_and_check_refuse_a_hooks_path_of_a_linked_worktree_or_inherited_from_the_environment(self):
+        """The effective `core.hooksPath` is read in the main checkout and in every linked worktree, with the caller's
+        `GIT_CONFIG_*` still in the environment (round 2 read the main checkout alone, after scrubbing them): a linked
+        worktree whose `config.worktree` sets `core.hooksPath=/dev/null` and a `GIT_CONFIG_COUNT=1
+        GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null` of the caller each refuse `install` and `check`
+        (exit 2, nothing written) naming the worktree and the origin of the value; with the override gone, `install`
+        passes and a commit in the linked worktree is refused."""
+        linked = self.root / "linked"
+        self.git("worktree", "add", "-q", str(linked), "-b", "linked", "origin/main")
+        self.git("config", "extensions.worktreeConfig", "true")
+        self.git("config", "--worktree", "core.hooksPath", "/dev/null", cwd=linked)
+        self.assertEqual(self.git_status("config", "--get", "core.hooksPath")[0], 1, "the main checkout's is unset")
+        state = self.hooks_state()
+        for action in ("install", "check"):
+            with self.subTest(action, origin="config.worktree"):
+                run = self.run_lever(action, str(self.checkout))
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"core.hooksPath is /dev/null in {linked} (from file:", run.stderr)
+                self.assertIn("config.worktree)", run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertEqual(self.hooks_state(), state)
+        self.git("config", "--worktree", "--unset", "core.hooksPath", cwd=linked)
+        base = {name: value for name, value in self.env.items() if not name.startswith("GIT_CONFIG_")}
+        inherited = quiet_git_env(
+            {**base, "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null"}
+        )
+        for action in ("install", "check"):
+            with self.subTest(action, origin="environment"):
+                run = self.run_lever(action, str(self.checkout), env=inherited)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"core.hooksPath is /dev/null in {self.checkout} (from command line)", run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertEqual(self.hooks_state(), state)
+        self.install()
+        self.store()
+        status, err, before = self.commit(linked)
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=linked), before)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads an unreadable directory")
+    def test_a_hooks_directory_that_cannot_be_read_refuses_check_and_install(self):
+        """Standing order 21: a hooks directory of mode 000 makes `check` and `install` exit 2 naming the read, never
+        report the installed hook `absent` (round 2 did, exit 1) or write anything; a file where the directory should
+        be is refused too."""
+        self.install()
+        state = self.hooks_state()
+        self.hooks.chmod(0)
+        try:
+            for action in ("check", "install"):
+                with self.subTest(action):
+                    run = self.run_lever(action, str(self.checkout))
+                    self.assertEqual(run.returncode, 2, run.stdout)
+                    self.assertIn(f"cannot read {self.hooks}", run.stderr)
+                    self.assertEqual(run.stdout, "")
+        finally:
+            self.hooks.chmod(0o755)
+        self.assertEqual(self.hooks_state(), state)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(self.hooks / HOOK))]))
+        flat = self.clone(self.root / "flat")
+        if (flat / ".git/hooks").exists():
+            shutil.rmtree(flat / ".git/hooks")
+        (flat / ".git/hooks").write_text("not a directory\n")
+        for action in ("check", "install"):
+            with self.subTest(action, hooks="a file"):
+                run = self.run_lever(action, str(flat))
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"{flat / '.git/hooks'} exists and is not a directory", run.stderr)
+                self.assertEqual(run.stdout, "")
+        self.assertEqual((flat / ".git/hooks").read_text(), "not a directory\n")
 
 
 if __name__ == "__main__":

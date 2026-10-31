@@ -354,7 +354,7 @@
       "target": ".local/bin/common/checkout-guard.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "a45da3313a01653e07a310ba1905cefe1b4ce77dde75697e0642ea9a65cc389a"
+      "sha256": "002b41bef5e20864285a1ef7adc922ca5fd67e22047605716a49e43809aaf0f1"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",

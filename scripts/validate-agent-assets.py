@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import bisect
 import importlib.util
 import json
+import math
 import os
 import posixpath
 import re
@@ -12,10 +14,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import tomllib
 
@@ -43,26 +46,243 @@ def generator() -> Any:
     return module
 
 
-SECRET_PATTERN = re.compile(
-    r"""(?ix)
-    (
-        # A key prefix starts after a non-word character or the start, or right
-        # after an escape sequence (a backslash and 1-9 letters or digits: \n,
-        # \u000a, \U0000000A, \x0a); the zero-width lookbehinds keep the escape
-        # out of the match, so --mask-secrets leaves it intact.
-        (?:(?<![A-Za-z0-9_])|(?<=\\[A-Za-z0-9])|(?<=\\[A-Za-z0-9]{2})|(?<=\\[A-Za-z0-9]{3})|(?<=\\[A-Za-z0-9]{4})|(?<=\\[A-Za-z0-9]{5})|(?<=\\[A-Za-z0-9]{6})|(?<=\\[A-Za-z0-9]{7})|(?<=\\[A-Za-z0-9]{8})|(?<=\\[A-Za-z0-9]{9}))
-        (?:ghp_[A-Za-z0-9_]{20,} | github_pat_[A-Za-z0-9_]{20,}
-           # An sk- key body holds a run of 20+ hyphen-free key characters within
-           # its first 64 characters (an sk-proj- key right after proj-); a
-           # hyphenated slug such as ...-sk-boundary-a01-review-receipt never
-           # does. The bound keeps a long hyphenated run from rescanning (O(n^2)).
-           | sk-(?=[A-Za-z0-9_-]{0,64}[A-Za-z0-9_]{20})[A-Za-z0-9_-]{20,})
-        | api[_-]?key\s*[:=]\s*["'][^"']+["']
-        | password\s*=\s*["'][^"']+["']
-        | secret\s*[:=]\s*["'][^"']+["']
-        | token\s*[:=]\s*["'][^"']+["']
+class SecretRule(NamedTuple):
+    """One row of SECRET_RULES, the committed-secret scan's rule table (gitleaks' rule model, in the script itself
+    because records-sync.sh runs this file alone from a tools tree).
+
+    `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
+    whole match); `secret_in` trims the group's trailing whitespace in code, so no rule's regex needs a lazy
+    quantifier or a lookahead to end its capture. `entropy` is the least Shannon entropy, in bits per character,
+    the secret must reach, or None for a provider rule whose prefix alone is the evidence; it is measured over
+    measured_text(secret), the secret with every SECRET_MASK, quoting character and carriage return removed, as
+    the greatest entropy of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's
+    own output passes the scan, a value beside a marker is judged on its own, no quoting changes the measure, and
+    nothing else on the line can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
+    under the same `(?i)` the rule's regex uses (keyword_filter), finds one in it: a cheap filter before the regex
+    that folds a text exactly as the regex folds it, so it never skips a text the regex would match.
+    """
+
+    id: str
+    description: str
+    regex: re.Pattern[str]
+    secret_group: int
+    entropy: float | None
+    keywords: tuple[str, ...]
+    keyword_regex: re.Pattern[str]
+
+    def secret_in(self, match: re.Match[str]) -> tuple[str, int]:
+        """The secret MATCH holds and where its finding ends: the secret group with its trailing whitespace removed
+        (str.rstrip, linear), and the match's end moved back by what was removed when the group ends the match, so
+        the mask leaves a line's trailing whitespace and its line ending in place. The trim is code, never regex:
+        round 7 ended a generic capture with a lazy quantifier and a lookahead for the trailing whitespace, which
+        rescanned the rest of the line at every step (2,000, 8,000 and 32,000 spaces inside the quotes took 0.018,
+        0.264 and 4.191 s) and failed at every position when a bare CR stood before text on the line, so that line
+        matched nothing (round 7 verdict on 1632d807)."""
+        secret = match.group(self.secret_group)
+        trimmed = secret.rstrip()
+        end = match.end()
+        if match.end(self.secret_group) == end:
+            end -= len(secret) - len(trimmed)
+        return trimmed, end
+
+    def reaches_entropy(self, secret: str) -> bool:
+        """Whether SECRET passes this rule's entropy condition: always for a provider rule; otherwise the densest
+        window of measured_text(SECRET) reaches the threshold (densest_window_entropy). `"prefix
+        <redacted:secret-pattern>"`, the masker's output for a quoted assignment that held a provider token, is 3.77
+        bits with the marker and `prefix ` 2.81 without it; a real value beside the marker keeps its own entropy."""
+        if self.entropy is None:
+            return True
+        return densest_window_entropy(measured_text(secret)) >= self.entropy
+
+
+# A key prefix starts after a non-word character or the start, or right after an escape sequence (a backslash
+# and 1-9 letters or digits: \n, \u000a, \U0000000A, \x0a); the zero-width lookbehinds keep the escape out of
+# the match, so --mask-secrets leaves it intact. Every provider rule opens with it.
+KEY_PREFIX_BOUNDARY = (
+    r"(?:(?<![A-Za-z0-9_])|(?<=\\[A-Za-z0-9])|(?<=\\[A-Za-z0-9]{2})|(?<=\\[A-Za-z0-9]{3})|(?<=\\[A-Za-z0-9]{4})"
+    r"|(?<=\\[A-Za-z0-9]{5})|(?<=\\[A-Za-z0-9]{6})|(?<=\\[A-Za-z0-9]{7})|(?<=\\[A-Za-z0-9]{8})|(?<=\\[A-Za-z0-9]{9}))"
+)
+# gitleaks' documented example threshold for a generic rule: a quoted value below it is a word or a name
+# (`real-secret` is 2.85, `password123` 3.28), a key or a random token is above it (a ghp_ token is about 4.8).
+GENERIC_SECRET_ENTROPY = 3.5
+# The window a generic rule measures, the least key body a provider rule accepts (`{20,}`): a secret is found by its
+# densest window, not by the average of its line. Round 6 measured one entropy over the whole rest of the line, so a
+# line holding two assignments, 160 characters of padding and then a 4.32-bit value, measured 1.43 bits and passed
+# (round 7 finding on 38a83e45); a 20-character window over that value measures the value alone.
+GENERIC_SECRET_MIN_LENGTH = 20
+# What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
+SECRET_MASK = "<redacted:secret-pattern>"
+# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value,
+# and a carriage return is a line's content only because the line feed alone ends the capture (assignment_rule).
+# Rounds 4 and 5 each let the quotes decide where the value ended and each fell to the next quoting corner (an
+# apostrophe inside a double-quoted value, then an escaped quote); now nothing written on the line decides what is
+# measured.
+UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\\r")
+
+
+def measured_text(secret: str) -> str:
+    """What a generic rule measures: SECRET with every SECRET_MASK and every quote, backslash and carriage return
+    removed."""
+    return secret.replace(SECRET_MASK, "").translate(UNMEASURED_CHARACTERS)
+
+
+def densest_window_entropy(text: str) -> float:
+    """The greatest Shannon entropy of any window of GENERIC_SECRET_MIN_LENGTH characters of TEXT, or of TEXT itself
+    when it is shorter: a secret is found by its densest window, not by the average of its line, so low-entropy
+    padding beside it on the line (a second assignment, a long value, prose) cannot bring it under the threshold.
+    A text shorter than the window is measured whole, as it was, and the window's length caps what a short text can
+    reach (log2 of its length), so nothing shorter is loosened."""
+    starts = range(max(len(text) - GENERIC_SECRET_MIN_LENGTH, 0) + 1)
+    return max(shannon_entropy(text[start : start + GENERIC_SECRET_MIN_LENGTH]) for start in starts)
+
+
+def keyword_filter(keywords: tuple[str, ...]) -> re.Pattern[str]:
+    """The filter that decides whether a rule's regex runs over a text: one of KEYWORDS, under the same `(?i)` the
+    rule's regex uses, so the two fold a text the same way and the filter never skips a text the regex would match.
+
+    Round 8 (1bd17d87) looked for a keyword in the lower-cased text, and str.lower keeps U+017F LATIN SMALL LETTER
+    LONG S and U+0131 dotless i and turns U+0130 dotted I into two characters, while the regex folds each onto its
+    ASCII letter (with U+212A KELVIN SIGN, which str.lower does fold): a `ſecret` key with a quoted 4.32-bit value
+    never reached its rule and passed the tree scan and both CLIs while origin/main's one regex reported it.
+    str.casefold folds the long s and still keeps the two i. Measured over this tree's 9.6 million scanned
+    characters: the lower-cased filter 0.34 s, str.casefold 0.33 s, this filter 0.47 s, a translation table of the
+    four letters 0.52 s, no filter 1.74 s."""
+    return re.compile("(?i)" + "|".join(map(re.escape, keywords)))
+
+
+def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
+    """A rule for a key format whose prefix identifies it: the whole match is the secret, no entropy test."""
+    regex = re.compile("(?i)" + KEY_PREFIX_BOUNDARY + body)
+    return SecretRule(rule_id, description, regex, 0, None, (keyword,), keyword_filter((keyword,)))
+
+
+def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
+    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its line, trimmed, is the secret,
+    judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy), so a
+    variable named `token` holding a word is not a finding and padding beside a secret on its line does not hide it.
+
+    No quote ends the capture. Rounds 4 and 5 (verdicts on 43fe25f3 and a7b060cd) each assumed a regex can find
+    where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
+    an apostrophe inside a double-quoted value, then an escaped quote, each measured as its first character. A
+    value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
+    with the quotes, backslashes and carriage returns removed, and the finding's span is the whole line from the
+    key: the masker writes one marker over all of it, so its output has no remainder to measure. What follows the
+    value on its line (a trailing comment, a second literal, a second assignment) is captured, measured and masked
+    with it: the measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding
+    on 38a83e45: 160 characters of padding before a second assignment brought the whole line to 1.43 bits), and
+    over-capture errs on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a
+    reason, never a shorter capture or a looser measure.
+
+    The capture is one greedy class to the line feed, linear in the line, and only the line feed ends it: a carriage
+    return before text is content of the line, captured, measured and masked with the value; a trailing one (a CRLF
+    line) is trimmed with the trailing whitespace, in code (SecretRule.secret_in), never by the regex. Round 7's
+    capture stopped at a CR and ended with a lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed
+    by a CR and text matched nothing and passed the tree scan and both CLIs in text and in JSON, and the lookahead
+    rescanned the rest of the line at every step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s
+    (round 7 verdict on 1632d807).
+
+    The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
+    unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
+    prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
+    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\n]*)""")
+    return SecretRule(
+        rule_id,
+        f"a quoted {keywords[0]} assignment",
+        regex,
+        1,
+        GENERIC_SECRET_ENTROPY,
+        keywords,
+        keyword_filter(keywords),
     )
-    """,
+
+
+SECRET_RULES = (
+    provider_rule("github-pat", "GitHub personal access token", r"ghp_[A-Za-z0-9_]{20,}", "ghp_"),
+    provider_rule(
+        "github-fine-grained-pat",
+        "GitHub fine-grained personal access token",
+        r"github_pat_[A-Za-z0-9_]{20,}",
+        "github_pat_",
+    ),
+    provider_rule(
+        "openai-api-key",
+        "OpenAI API key",
+        # An sk- key body holds a run of 20+ hyphen-free key characters within its first 64 characters (an sk-proj-
+        # key right after proj-); a hyphenated slug such as ...-sk-boundary-a01-review-receipt never does. The bound
+        # keeps a long hyphenated run from rescanning (O(n^2)).
+        r"sk-(?=[A-Za-z0-9_-]{0,64}[A-Za-z0-9_]{20})[A-Za-z0-9_-]{20,}",
+        "sk-",
+    ),
+    assignment_rule("generic-api-key", r"api[_-]?key", ":=", ("api_key", "api-key", "apikey")),
+    assignment_rule("generic-password", r"password", "=", ("password",)),
+    assignment_rule("generic-secret", r"secret", ":=", ("secret",)),
+    assignment_rule("generic-token", r"token", ":=", ("token",)),
+)
+
+
+class SecretAllowance(NamedTuple):
+    """One row of SECRET_ALLOWLIST: a finding the row matches is suppressed, for the reason the row states.
+
+    `rule_id` is a SECRET_RULES id or `*`. Every condition the row sets must hold: `path_regex` over the
+    repository-relative path, `fingerprint` equal to the finding's `<path>:<rule_id>:<line>`, `secret_regex` over
+    the whole secret. A row with no condition would allow everything, so the table refuses it at load. A path
+    regex ends in `\\Z`, never `$`: `$` also matches before a trailing newline, so a file whose name ends in a
+    newline would satisfy a `$`-anchored row; the table refuses a path regex with an unescaped `$` at load.
+    `--mask-secrets` and `--scan-identifiers` see text without a repository path, so only `secret_regex` rows
+    reach them.
+    """
+
+    rule_id: str
+    reason: str
+    path_regex: re.Pattern[str] | None = None
+    fingerprint: str | None = None
+    secret_regex: re.Pattern[str] | None = None
+
+    def has_condition(self) -> bool:
+        return self.path_regex is not None or self.fingerprint is not None or self.secret_regex is not None
+
+    def allows(self, rule_id: str, secret: str, path: str | None, fingerprint: str | None) -> bool:
+        if self.rule_id not in ("*", rule_id):
+            return False
+        if self.path_regex is not None and (path is None or self.path_regex.search(path) is None):
+            return False
+        if self.fingerprint is not None and self.fingerprint != fingerprint:
+            return False
+        return self.secret_regex is None or self.secret_regex.fullmatch(secret) is not None
+
+
+# A `$` that is not escaped: in a path regex it would also match before a trailing newline.
+UNESCAPED_DOLLAR = re.compile(r"(?<!\\)(?:\\\\)*\$")
+
+
+def checked_allowlist(rows: tuple[SecretAllowance, ...]) -> tuple[SecretAllowance, ...]:
+    """ROWS, after refusing a row that sets no condition (such a row would allow every finding of its rule) and a
+    path regex anchored with `$` (which a path ending in a newline satisfies; `\\Z` is the end of the path)."""
+    for row in rows:
+        if not row.has_condition():
+            raise ValueError(f"SECRET_ALLOWLIST row {row.reason!r} sets no path, fingerprint or secret condition")
+        if row.path_regex is not None and UNESCAPED_DOLLAR.search(row.path_regex.pattern):
+            raise ValueError(f"SECRET_ALLOWLIST row {row.reason!r} anchors its path regex with `$`; use `\\Z`")
+    return rows
+
+
+SECRET_ALLOWLIST = checked_allowlist(
+    (
+        SecretAllowance(
+            "*",
+            "CompactionDB plants dummy credentials to exercise its redaction boundary",
+            path_regex=re.compile(
+                r"^vendor/compactiondb/(validate\.py|tests/test_(migration|redaction)\.py"
+                r"|\.claude/contextdb/contextdb/redaction\.py)\Z"
+            ),
+        ),
+        SecretAllowance(
+            "*",
+            "the name of the environment variable a template reads, bare or as a shell reference, never its value",
+            # The secret is the whole rest of the assignment line, so the name's quotes are part of it.
+            secret_regex=re.compile(r"""["']?(?:\$\{?)?(?:GITHUB_PERSONAL_ACCESS_TOKEN|FIGMA_OAUTH_TOKEN)\}?["']?"""),
+        ),
+    )
 )
 DEPRECATED_MCP_PACKAGES = {
     "@modelcontextprotocol/server-github": "Use the official ghcr.io/github/github-mcp-server container instead.",
@@ -1763,16 +1983,23 @@ def validate_no_removed_claude_skill() -> None:
         fail("removed Claude skill references remain: " + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10]))
 
 
+class EvidenceNotText(ValueError):
+    """`.orchestration` evidence that is not UTF-8 text: a NUL byte or a UTF-16 encoding there would hide it from the
+    scan, so the file is one finding of the scan, reported with the others, never an exit at the first such file."""
+
+
 def read_scannable_text(path: Path) -> str | None:
+    """PATH's text, or None for a binary or undecodable file the scan skips; raises EvidenceNotText, before any
+    decode, for orchestration evidence that holds a NUL byte or is UTF-16."""
     data = path.read_bytes()
     offset = data.find(b"\0")
-    # Orchestration evidence is UTF-8 text; a NUL or a UTF-16 encoding there
-    # would hide it from the scan, so both fail before any decode.
     if path.relative_to(ROOT).parts[:1] == (".orchestration",):
         if offset != -1:
-            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text")
+            raise EvidenceNotText(
+                f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text"
+            )
         if data.startswith((b"\xff\xfe", b"\xfe\xff")):
-            fail(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
+            raise EvidenceNotText(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         try:
             return data.decode("utf-16")
@@ -1786,13 +2013,6 @@ def read_scannable_text(path: Path) -> str | None:
         return None
 
 
-ALLOWED_SECRET_PLACEHOLDERS = frozenset(
-    {
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "FIGMA_OAUTH_TOKEN",
-    }
-)
-SECRET_MASK = "<redacted:secret-pattern>"
 HOME_MASK = "~"
 
 
@@ -1848,38 +2068,89 @@ def mask_home_paths(text: str) -> tuple[str, int]:
     return home_path_pattern().subn(HOME_MASK, text)
 
 
-def strip_allowed_secret_placeholders(text: str) -> str:
-    for placeholder in ALLOWED_SECRET_PLACEHOLDERS:
-        text = text.replace(placeholder, "")
-    return text
+def shannon_entropy(text: str) -> float:
+    """Bits per character of TEXT's character distribution, gitleaks' measure: 0 for one repeated character, 2 for
+    four characters used equally, about 4.7 for 26 letters used once each."""
+    length = len(text)
+    return sum(count / length * math.log2(length / count) for count in Counter(text).values())
+
+
+class SecretFinding(NamedTuple):
+    """A rule's match in one text: the whole match's span, and the secret the rule's secret_group holds."""
+
+    rule: SecretRule
+    start: int
+    end: int
+    secret: str
+
+    def masked(self) -> str:
+        """The secret as a report may show it: its first four characters."""
+        return f"{self.secret[:4]}..."
+
+
+def secret_allowance(
+    rule_id: str, secret: str, path: str | None = None, fingerprint: str | None = None
+) -> SecretAllowance | None:
+    """The first SECRET_ALLOWLIST row that suppresses this finding, or None; without PATH only content rows apply."""
+    return next((row for row in SECRET_ALLOWLIST if row.allows(rule_id, secret, path, fingerprint)), None)
+
+
+def secret_findings(text: str) -> list[SecretFinding]:
+    """Every SECRET_RULES finding in TEXT that no content-only allowlist row suppresses, in text order.
+
+    A rule runs when its keyword filter finds one of its keywords in the text (keyword_filter, which folds as the
+    rule's regex folds); a match of a rule with an entropy threshold counts only when the secret reaches it. Rows
+    with a path or fingerprint condition need the repository path and are applied by validate_no_obvious_secrets().
+    """
+    findings = []
+    for rule in SECRET_RULES:
+        if rule.keyword_regex.search(text) is None:
+            continue
+        for match in rule.regex.finditer(text):
+            secret, end = rule.secret_in(match)
+            if not rule.reaches_entropy(secret):
+                continue
+            if secret_allowance(rule.id, secret) is None:
+                findings.append(SecretFinding(rule, match.start(), end, secret))
+    return sorted(findings, key=lambda finding: (finding.start, finding.end))
+
+
+def secret_spans(text: str) -> list[tuple[int, int]]:
+    """The spans --mask-secrets replaces: each finding's whole match, with overlapping matches merged into one."""
+    spans: list[tuple[int, int]] = []
+    for finding in secret_findings(text):
+        if spans and finding.start < spans[-1][1]:
+            spans[-1] = (spans[-1][0], max(spans[-1][1], finding.end))
+        else:
+            spans.append((finding.start, finding.end))
+    return spans
 
 
 def mask_secret_matches(text: str) -> tuple[str, int]:
-    """Replace the SECRET_PATTERN matches the committed-secret scan would flag, and normalise home paths.
+    """Replace what the committed-secret scan would flag, and normalise home paths, until the text passes the scan.
 
-    Mirrors validate_no_obvious_secrets(): allowed placeholders are stripped
-    before matching, so a line is masked only when its stripped form still
-    matches and every other line is kept byte for byte. A final whole-text
-    pass covers a match that spans lines, so masked text always passes the
-    scan. Home directory prefixes then become `~` (mask_home_paths), which
-    the scan requires of `.orchestration` evidence.
+    Mirrors validate_no_obvious_secrets(): the same rules and the same content allowlist rows decide what is masked,
+    and every other byte is kept. Home directory prefixes become `~` (mask_home_paths), which the scan requires of
+    `.orchestration` evidence. A mask changes what is left: masking a provider token (or a home path) out of a longer
+    quoted value raises the entropy of the remainder, so after one pass `token = "Qz7v... <redacted:secret-pattern>"`
+    is a generic finding the scan reports (round 4 verdict on 43fe25f3). The pass repeats until one masks nothing,
+    so the text written is the scan's fixpoint; each masking pass replaces at least one unmasked character, so the
+    passes end. The count is every mask written over every pass.
     """
     count = 0
-    lines = []
-    for line in text.splitlines(keepends=True):
-        sanitized = strip_allowed_secret_placeholders(line)
-        if SECRET_PATTERN.search(sanitized):
-            sanitized, matches = SECRET_PATTERN.subn(SECRET_MASK, sanitized)
-            count += matches
-            lines.append(sanitized)
-        else:
-            lines.append(line)
-    masked = "".join(lines)
-    if SECRET_PATTERN.search(strip_allowed_secret_placeholders(masked)):
-        masked, matches = SECRET_PATTERN.subn(SECRET_MASK, strip_allowed_secret_placeholders(masked))
-        count += matches
-    masked, homes = mask_home_paths(masked)
-    return masked, count + homes
+    while True:
+        pieces = []
+        cursor = 0
+        spans = secret_spans(text)
+        for start, end in spans:
+            pieces.extend((text[cursor:start], SECRET_MASK))
+            cursor = end
+        pieces.append(text[cursor:])
+        masked, homes = mask_home_paths("".join(pieces))
+        count += len(spans) + homes
+        if not spans and not homes:
+            return masked, count
+        text = masked
 
 
 def mask_json_strings(value: Any) -> tuple[Any, int]:
@@ -1912,8 +2183,25 @@ def mask_members(pairs: Iterable[tuple[str, Any]]) -> tuple[dict[str, Any], int]
     return masked, count
 
 
-def json_strings(text: str) -> list[str] | None:
-    """Every key and string value of a JSON document, or None when text is not JSON.
+class JsonString(NamedTuple):
+    """One string literal of a JSON document: the offset of its opening quote in the text, and its decoded text."""
+
+    offset: int
+    text: str
+
+
+class JsonStringMismatch(ValueError):
+    """The string literals found in a JSON text are not the strings its parsed document holds, so no finding in it
+    can be placed on a line."""
+
+
+# A JSON string literal. Outside a literal a valid document has no quote, and a literal's quotes and backslashes
+# are escaped, so over a text json.loads accepted this finds every literal, in document order.
+JSON_STRING_LITERAL = re.compile(r'"(?:[^"\\]|\\.)*"')
+
+
+def decoded_json_strings(text: str) -> list[str] | None:
+    """Every key and string value of a JSON document in document order, or None when text is not JSON.
 
     Objects are read as pair tuples, so a duplicate key's earlier value is kept.
     """
@@ -1928,16 +2216,39 @@ def json_strings(text: str) -> list[str] | None:
         if isinstance(value, str):
             strings.append(value)
         elif isinstance(value, list):
-            stack.extend(value)
+            stack.extend(reversed(value))
         elif isinstance(value, tuple):
-            for key, item in value:
-                strings.append(key)
+            for key, item in reversed(value):
                 stack.append(item)
+                stack.append(key)
     return strings
 
 
+def json_strings(text: str) -> list[JsonString] | None:
+    """Every key and string value of a JSON document with the offset of its literal, in document order, or None
+    when text is not JSON.
+
+    The literals are found in the text and decoded one by one, then compared with the parsed document's strings;
+    a difference raises JsonStringMismatch, since a finding would otherwise be placed on another literal's line.
+    """
+    decoded = decoded_json_strings(text)
+    if decoded is None:
+        return None
+    literals = [
+        JsonString(match.start(), json.decoder.scanstring(text, match.start() + 1)[0])
+        for match in JSON_STRING_LITERAL.finditer(text)
+    ]
+    if [literal.text for literal in literals] != decoded:
+        raise JsonStringMismatch(
+            f"{len(literals)} JSON string literal(s) in the text do not match the {len(decoded)} string(s) of the "
+            "parsed document"
+        )
+    return literals
+
+
 def mask_secrets(paths: list[str]) -> int:
-    """Mask SECRET_PATTERN matches and home paths in place (evidence); 2 if any file is missing, 1 on a key collision.
+    """Mask the committed-secret scan's findings and home paths in place (evidence); 2 if any file is missing, 1 on a
+    key collision.
 
     A file whose whole text parses as JSON, whatever its suffix (the test
     json_strings() applies for the scan), is masked per key and string value
@@ -2015,7 +2326,7 @@ def identifier_reasons(
     document's keys and string values, so no match spans JSON syntax), the home path over STRINGS; a redact word
     (redact_word_pattern) is named by its physical line number in the words file."""
     reasons = []
-    if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in secret_strings or strings):
+    if any(secret_findings(s) for s in secret_strings or strings):
         reasons.append("a secret pattern")
     if any(home_path_pattern().search(s) for s in strings):
         reasons.append("a home directory path")
@@ -2038,7 +2349,7 @@ def identifier_findings(path: Path, words: list[tuple[int, str]]) -> list[str]:
         text = data.decode()
     except UnicodeDecodeError:
         return ["not UTF-8 text"]
-    strings = json_strings(text) or [text]
+    strings = decoded_json_strings(text) or [text]
     return identifier_reasons([text, *strings], words, secret_strings=strings)
 
 
@@ -2082,14 +2393,28 @@ def scan_identifiers(args: list[str]) -> int:
     return 1 if findings else 0
 
 
+def line_starts(text: str) -> list[int]:
+    """The offset of the first character of every line of TEXT, in order: 0, then one past each line feed. Built
+    once per file, so placing a finding on its line is a bisection of this list and the report stays linear in the
+    number of findings (round 10 verdict on cd56bd93: counting the line feeds before each finding was quadratic)."""
+    return [0, *(match.end() for match in re.finditer("\n", text))]
+
+
+def finding_line(starts: list[int], finding: SecretFinding, literal: JsonString | None) -> int:
+    """The 1-based line of FINDING in a file whose line starts are STARTS (line_starts of its text). A finding in a
+    decoded JSON string is placed on the line of LITERAL, the string it was found in: a strict JSON literal holds no
+    raw newline, so it sits on one line, whatever escapes the writer used. Elsewhere the finding's own offset names
+    the line."""
+    offset = finding.start if literal is None else literal.offset
+    return bisect.bisect_right(starts, offset)
+
+
 def validate_no_obvious_secrets() -> None:
-    # CompactionDB uses intentional dummy credentials to exercise its redaction boundary.
-    compactiondb_dummy_secret_fixtures = {
-        Path("vendor/compactiondb/validate.py"),
-        Path("vendor/compactiondb/tests/test_migration.py"),
-        Path("vendor/compactiondb/tests/test_redaction.py"),
-        Path("vendor/compactiondb/.claude/contextdb/contextdb/redaction.py"),
-    }
+    """The committed-secret scan: every SECRET_RULES finding in every file, a home directory path in `.orchestration`
+    evidence and an evidence file that is not UTF-8 text, collected over the whole tree and reported in one failure.
+    A finding is suppressed only by a SECRET_ALLOWLIST row; the report names each as the fingerprint such a row may
+    carry."""
+    problems: list[str] = []
     for path in ROOT.rglob("*"):
         if not path.is_file():
             continue
@@ -2097,24 +2422,51 @@ def validate_no_obvious_secrets() -> None:
             continue
         if is_nested_git_tree(path.parent) or is_gitignored(path):
             continue
-        if path.relative_to(ROOT) in compactiondb_dummy_secret_fixtures:
+        try:
+            text = read_scannable_text(path)
+        except EvidenceNotText as error:
+            problems.append(str(error))
             continue
-        text = read_scannable_text(path)
         if text is None:
             continue
+        relative_path = path.relative_to(ROOT)
+        relative = relative_path.as_posix()
         # A JSON document is scanned per key and string value, so a match never
         # spans JSON syntax between two fields; any other text is scanned whole.
-        strings = json_strings(text) or [text]
-        if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
-            fail(f"possible committed secret in {path.relative_to(ROOT)}")
+        try:
+            literals = json_strings(text)
+        except JsonStringMismatch as error:
+            problems.append(f"{relative} cannot be scanned per JSON string: {error}")
+            continue
+        scanned = literals if literals is not None else [None]
+        starts: list[int] | None = None  # indexed at the first finding; a clean file never pays for it
+        for literal in scanned:
+            for finding in secret_findings(text if literal is None else literal.text):
+                if starts is None:
+                    starts = line_starts(text)
+                fingerprint = f"{relative}:{finding.rule.id}:{finding_line(starts, finding, literal)}"
+                if secret_allowance(finding.rule.id, finding.secret, relative, fingerprint) is None:
+                    problems.append(
+                        f"possible committed secret {fingerprint} {finding.masked()} ({finding.rule.description})"
+                    )
         # Decoded JSON strings too: a JSON writer may escape the slashes (`\/home\/...`).
-        if path.relative_to(ROOT).parts[:1] == (".orchestration",) and any(
-            home_path_pattern().search(s) for s in (text, *strings)
+        if relative_path.parts[:1] == (".orchestration",) and any(
+            home_path_pattern().search(s) for s in (text, *(literal.text for literal in literals or []))
         ):
-            fail(
-                f"{path.relative_to(ROOT)} names a home directory; normalise it with "
+            problems.append(
+                f"{relative} names a home directory; normalise it with "
                 "`uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`"
             )
+    if problems:
+        fail(
+            "\n".join(
+                (
+                    f"{len(problems)} finding(s) in the committed-secret scan; a secret is suppressed only by a "
+                    "SECRET_ALLOWLIST row with a reason, by path or by its <path>:<rule>:<line> fingerprint:",
+                    *(f"  {problem}" for problem in problems),
+                )
+            )
+        )
 
 
 def validate_compactiondb_project_copy() -> None:

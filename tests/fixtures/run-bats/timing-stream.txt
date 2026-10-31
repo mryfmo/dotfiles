@@ -1,0 +1,6 @@
+1..2
+suite tests/fixtures/run-bats/two-tests.bats
+begin 1 [recorded] skipped
+ok 1 [recorded] skipped in 10ms # skip the directive follows the duration
+begin 2 [recorded] slow
+ok 2 [recorded] slow in 330ms

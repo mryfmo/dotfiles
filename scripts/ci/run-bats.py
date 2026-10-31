@@ -8,6 +8,13 @@ outside a test (Bats sources every file before its plan line), it prints `not ok
 then a read-only diagnosis as TAP comments: every process under Bats as a tree, with its elapsed time, state, Linux
 wchan and full command (or `diagnosis unavailable: <reason>` when `ps` fails or hangs), and exits 124.
 
+With `--timing` among the arguments (run_bats in scripts/run_unit_test.sh passes it), every result line carries
+` in <ms>ms` after the test's name (RESULT below, the form recorded from Bats 1.14.0 in
+tests/fixtures/run-bats/timing-stream.txt); the run's largest duration is printed after the stream's last line as
+`slowest: <n> <name> <ms> ms`. A result line without the suffix is a malformed stream: one stderr line names it, and
+the exit status stays the suite's. When GITHUB_STEP_SUMMARY names a file, the stall's `not ok` line and diagnosis, or
+the slowest line of a passing run, are appended to it in a fenced block under the Bats command (regime-cutover U128).
+
 It signals nothing. Stopping a stalled test is the workflow step's `timeout-minutes` and the runner's job: when the
 step's main process exits while orphans still hold its output, the runner ends the step after 5 s (actions/runner
 ProcessInvoker.ProcessExitedHandler), and it ends the job's orphan processes when the job completes.
@@ -16,7 +23,9 @@ A run whose plan is `1..0`, or that prints no plan, fails: every suite CI runs h
 """
 
 import os
+import re
 import selectors
+import shlex
 import subprocess
 import sys
 import time
@@ -26,11 +35,17 @@ import time
 # (scripts/ci/drop-azure-apt-mirror.py). Twice the bound (one earlier test as slow as it allows, then the stalled
 # one) plus what the other tests take (at most 284 s measured) stays under the `Run unit test` step's timeout-minutes,
 # so a stalled test is named and diagnosed before the step is stopped (tests/unit/test_apt_mirror.py BoundOrderTest).
+# The `slowest:` line every run prints under `--timing` (and writes to the job summary page) is what these figures
+# are re-checked against (U128); a bound here is never moved on a guess.
 DEFAULT_BOUND = 600
 # Once Bats has exited, a process it left behind may still hold the stream open; reading stops this much later.
 AFTER_EXIT = 2
 # The diagnosis' one `ps` call gets this long; a hung `ps` leaves the timeout's exit unchanged.
 PS_TIMEOUT = 10
+# A result line under `--timing`, as Bats 1.14.0 prints it (tests/fixtures/run-bats/timing-stream.txt): the duration
+# follows the name, before any ` # skip <reason>` directive. The name is read lazily, so a reason that holds
+# ` in <n>ms` is not read as the duration.
+RESULT = re.compile(r"(?:ok|not ok) (?P<number>\d+) (?P<name>.+?) in (?P<ms>\d+)ms( # .*)?")
 
 
 def trace_fds():
@@ -94,15 +109,29 @@ def diagnosis(root):
     return "".join(text)
 
 
+def summary(text):
+    """Append text to the file GITHUB_STEP_SUMMARY names (the run's summary page), in a fenced block so GitHub shows
+    the lines as written. Unset or empty: nothing. A write that fails is one stderr line; the exit status is the
+    caller's either way (the summary is a convenience, the log is the record)."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if not path:
+        return
+    try:
+        with open(path, "a") as handle:
+            handle.write(f"```text\n{text}```\n")
+    except OSError as error:
+        print(f"run-bats: GITHUB_STEP_SUMMARY={path!r} not written: {error.strerror}", file=sys.stderr)
+
+
 def main(argv):
     bound = int(os.environ.get("BATS_PER_TEST_TIMEOUT", DEFAULT_BOUND))
-    bats = subprocess.Popen(
-        ["bats", "--formatter", "cat", *argv], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, pass_fds=trace_fds()
-    )
+    timing = any(argument in ("--timing", "-T") for argument in argv)
+    command = ["bats", "--formatter", "cat", *argv]
+    bats = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, pass_fds=trace_fds())
     stream = bats.stdout.fileno()
     selector = selectors.DefaultSelector()
     selector.register(stream, selectors.EVENT_READ)
-    state = {"running": "", "plan": None, "deadline": time.monotonic() + bound}
+    state = {"running": "", "plan": None, "slowest": None, "deadline": time.monotonic() + bound}
     out = sys.stdout
 
     def emit(raw):
@@ -116,6 +145,15 @@ def main(argv):
             return
         if line.startswith(("ok ", "not ok ")):
             state["running"] = ""
+            if timing:
+                result = RESULT.fullmatch(line)
+                if result is None:
+                    print(
+                        f"run-bats: malformed stream: no duration on a result line under --timing: {line}",
+                        file=sys.stderr,
+                    )
+                elif state["slowest"] is None or int(result["ms"]) > state["slowest"][0]:
+                    state["slowest"] = (int(result["ms"]), result["number"], result["name"])
         elif state["plan"] is None and line.startswith("1.."):
             state["plan"] = line[len("1..") :]
         # A test's own output lines do not extend its bound.
@@ -123,17 +161,21 @@ def main(argv):
             state["deadline"] = time.monotonic() + bound
         out.write(line + "\n")
 
+    def stalled(verdict):
+        """The stall's `not ok` line and the diagnosis, to stdout and to the summary; the exit is 124."""
+        text = f"{verdict}\n{diagnosis(bats.pid)}"
+        out.write(text)
+        out.flush()
+        summary(f"{shlex.join(command)}\n{text}")
+        return 124
+
     pending, exited_at = b"", None
     while True:
         now = time.monotonic()
         if now >= state["deadline"]:
             if state["running"]:
-                out.write(f"not ok {state['running']} # timeout after {bound} s (BATS_PER_TEST_TIMEOUT)\n")
-            else:
-                out.write(f"not ok - Bats printed nothing for {bound} s outside a test (BATS_PER_TEST_TIMEOUT)\n")
-            out.write(diagnosis(bats.pid))
-            out.flush()
-            return 124
+                return stalled(f"not ok {state['running']} # timeout after {bound} s (BATS_PER_TEST_TIMEOUT)")
+            return stalled(f"not ok - Bats printed nothing for {bound} s outside a test (BATS_PER_TEST_TIMEOUT)")
         if exited_at is None and bats.poll() is not None:
             exited_at = now
         if exited_at is not None and now - exited_at >= AFTER_EXIT:
@@ -153,14 +195,18 @@ def main(argv):
     try:
         status = bats.wait(timeout=max(state["deadline"] - time.monotonic(), 1))
     except subprocess.TimeoutExpired:
-        out.write(f"not ok - Bats closed its output but did not exit within {bound} s (BATS_PER_TEST_TIMEOUT)\n")
-        out.write(diagnosis(bats.pid))
-        out.flush()
-        return 124
+        return stalled(f"not ok - Bats closed its output but did not exit within {bound} s (BATS_PER_TEST_TIMEOUT)")
     plan = state["plan"]
     if status == 0 and (plan is None or not plan.isdigit() or int(plan) == 0):
         print(f"run-bats: expected at least one test; Bats planned {plan or 'nothing'}", file=sys.stderr)
-        return 1
+        status = 1
+    if state["slowest"] is not None:
+        ms, number, name = state["slowest"]
+        line = f"slowest: {number} {name} {ms} ms\n"
+        out.write(line)
+        out.flush()
+        if status == 0:
+            summary(f"{shlex.join(command)}\n{line}")
     return status
 
 

@@ -5432,6 +5432,9 @@
 <span class="c1">#   bound it prints `not ok &lt;n&gt; &lt;name&gt; # timeout after &lt;s&gt; s` and fails with 124. Time spent outside a</span>
 <span class="c1">#   test, such as loading a file, gets the same bound. A run that plans no test fails. It signals</span>
 <span class="c1">#   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.</span>
+<span class="c1">#   `--timing` is passed before the arguments (regime-cutover U128): each result line then carries its</span>
+<span class="c1">#   duration, the wrapper prints `slowest: &lt;n&gt; &lt;name&gt; &lt;ms&gt; ms` after the stream, and writes the stall line</span>
+<span class="c1">#   with its diagnosis, or a passing run's slowest line, to the file GITHUB_STEP_SUMMARY names.</span>
 <span class="c1">#   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.</span>
 <span class="c1"># @arg $@ string Arguments passed to bats.</span>
 <span class="c1"># @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: the wrapper's DEFAULT_BOUND (scripts/ci/run-bats.py).</span>
@@ -5445,7 +5448,7 @@
 <span class="w">    </span><span class="c1"># The check's status decides (standing order 21): a refusal, or a check that cannot run, ends the suite here.</span>
 <span class="w">    </span><span class="nv">accepted</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/pinned-tool-version.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/../home/dot_mise/config.toml"</span><span class="w"> </span>bats<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/run-bats.py"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
+<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/run-bats.py"</span><span class="w"> </span>--timing<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

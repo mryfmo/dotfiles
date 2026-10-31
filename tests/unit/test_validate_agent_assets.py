@@ -2471,20 +2471,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         value behind the padding is still reported, with the whole rest of the line as the secret."""
         module = self.module
         mask = module.SECRET_MASK
-        lengths = (2_000, 8_000, 32_000, 128_000)
-        # Judged on the 8,000-to-128,000 step, a 16x step: a linear scan grows about 16x (the densest-window measure
-        # visits one window per character), a quadratic one 256x (the round-7 lookahead grew 14.7x and 16.1x per 4x
-        # step, so about 240x per 16x). The bound 32 is twice linear and an eighth of quadratic. The earlier 4x step
-        # with the bound 8 failed on CI runners three times across two heads (8.0x, 8.9x, 9.2x) while the same scans
-        # measured 4.0x per step locally on the base and on both heads: at 8,000 characters a run is about 30 ms on a
-        # shared runner and its jitter alone reaches the bound.
-        growth_bound = 32
-        judged_step = (8_000, 128_000)
+        lengths = (2_000, 8_000, 32_000)
+        # Judged on the 8,000-to-32,000 step: a linear scan grows about 4x (the densest-window measure visits one
+        # window per character), a quadratic one 16x (the round-7 lookahead grew 14.7x and 16.1x). The bound 12 is
+        # three times linear and still below the quadratic growth the test exists to catch. Measured on the base and
+        # on two heads of U107b (least of five, 2,000 to 128,000 characters, both padding kinds, all three forms):
+        # every step 3.8x to 4.1x. On GitHub's runners the same scans ran 3x slower at 8,000 and 6x to 13x slower at
+        # 32,000 and 128,000 (a bound of 8 saw 8.0x, 8.9x and 9.2x; a 128,000-character run took 2.5 s against 0.2 s
+        # locally), so the judged step stays at 32,000 and the bound carries that jitter. Least of five, not three.
+        growth_bound = 12
+        judged_step = (8_000, 32_000)
         hang_bound = 2.0
 
         def least_of_three(scan) -> float:
             times = []
-            for _ in range(3):
+            for _ in range(5):
                 started = time.perf_counter()
                 scan()
                 times.append(time.perf_counter() - started)

@@ -779,6 +779,7 @@ claude:
       - Bash(~/.local/bin/common/worktree-gc.sh *)
       - Bash(~/.local/bin/common/worker-worktree.sh *)
       - Bash(~/.local/bin/common/regime-init *)
+      - Bash(~/.local/bin/common/checkout-guard.sh *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
     # Read/Edit rules guard Claude's own file tools and the file commands it
@@ -855,7 +856,8 @@ claude:
       worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
-      regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
+      regime-init: 15aa8b9f98852995b62117b97163d571b179b52041877622a54168836a9ef0e7
+      checkout-guard.sh: 55316cc6d47ed1108d8bae43e84b1604a5a916eb9edd06ab58c318bda83bf069
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96

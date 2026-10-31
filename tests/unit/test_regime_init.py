@@ -88,6 +88,39 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged"})
         self.assertIn("nothing changed", again.stdout)
 
+    def test_the_first_run_installs_the_checkout_guard_and_a_commit_is_then_refused(self):
+        """regime-init runs `checkout-guard.sh install` on the checkout it prepares (U129): the first run writes the
+        `pre-commit` and `post-checkout` hooks (`installed` rows), a commit in the checkout is then refused with the
+        worker-tree route since the store now exists, and the second run finds the lever's own hooks (`unchanged`)."""
+        hooks = self.repo / ".git/hooks"
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        rows = self.rows(run.stdout)
+        for name in ("pre-commit", "post-checkout"):
+            with self.subTest(hook=name):
+                self.assertEqual(rows[str(hooks / name)], "installed")
+                self.assertTrue(os.access(hooks / name, os.X_OK), name)
+        (self.repo / "work.txt").write_text("work\n")
+        subprocess.run(["git", "add", "work.txt"], cwd=self.repo, env=self.env, check=True)
+        commit = subprocess.run(
+            ["git", "commit", "-q", "-m", "work"], cwd=self.repo, env=self.env, capture_output=True, text=True
+        )
+        self.assertEqual(commit.returncode, 1, commit.stderr)
+        self.assertIn(
+            "checkout-guard: this checkout is the coordinator's; commits belong in a worker tree", commit.stderr
+        )
+        again = self.init("pilot")
+        self.assertEqual(again.returncode, 0, again.stderr)
+        for name in ("pre-commit", "post-checkout"):
+            self.assertEqual(self.rows(again.stdout)[str(hooks / name)], "unchanged")
+        self.assertIn("nothing changed", again.stdout)
+        # The guard's refusal is regime-init's: a foreign pre-commit stops the run with exit 2 after the store rows.
+        (hooks / "pre-commit").write_text("#!/bin/sh\nexit 0\n")
+        refused = self.init("pilot")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is not this lever's hook", refused.stderr)
+        self.assertIn("checkout-guard.sh install", refused.stderr)
+
     def test_an_inherited_store_and_team_are_named_and_the_hint_is_always_printed(self):
         """From a seat, HCOM_DIR and HCOM_TEAM are inherited and win; regime-init says so (orchestrator pilot, U33b)."""
         plain = self.init("pilot")

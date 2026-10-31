@@ -82,6 +82,14 @@ WORKER_WORKTREE = (
     "does not list it), and the coordinator fetches its head by path and pushes from the checkout with the `push=` "
     "line the lever prints."
 )
+# U129: the same step says the checkout itself refuses commits (the hooks regime-init installs), without naming the
+# worker-tree lever a second time.
+CHECKOUT_GUARD = (
+    "Your checkout refuses every commit, in it and in any linked worktree of it, while a program store exists: "
+    "`regime-init` installed `checkout-guard.sh`'s `pre-commit` and `post-checkout` into its `.git/hooks` "
+    "(`~/.local/bin/common/checkout-guard.sh check <checkout>` reports them), so a worker that reaches for the "
+    "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
@@ -191,6 +199,7 @@ class HcomSeatSkillsTest(unittest.TestCase):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)
         self.assertIn(WORKER_WORKTREE, brief)
         self.assertEqual(brief.count("worker-worktree.sh"), 1)
+        self.assertIn(CHECKOUT_GUARD, brief)
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")

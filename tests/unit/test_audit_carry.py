@@ -646,9 +646,9 @@ class AuditCarryTest(unittest.TestCase):
         )
         unscored = (  # the reader before U125, after U118-42cb4aa0.md
             "## Findings\n\n"
-            "- P1 (high) scripts/pin_records.py:820: The spelling-based .git guard accepts skills='./.GIT/skills/' "
+            "- P1 (high) scripts/example-guard.py:820: The spelling-based .git guard accepts skills='./.GIT/skills/' "
             "on case-insensitive macOS.\n"
-            "- P3 (medium) scripts/pin_records.py:813: Normalization erases symlink-crossing components.\n\n"
+            "- P3 (medium) scripts/example-guard.py:813: Normalization erases symlink-crossing components.\n\n"
             "## Reproduced\n\n- python3 -m unittest tests.unit.test_pin_records: 124 tests passed.\n\n"
             "## Notes\n\nOne P1.\n\nBlocking: 1\nVerdict: incorrect\n"
         )

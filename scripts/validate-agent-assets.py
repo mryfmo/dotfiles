@@ -172,12 +172,16 @@ LINE_SEPARATORS = r"\n\r"
 def assignment_regex(key: str, operators: str, separators: str) -> re.Pattern[str]:
     """The regex of a `<key> = "<value>"` rule whose whole match, from the key through the operator to the end of the
     value, crosses none of SEPARATORS (FIELD_SEPARATORS or LINE_SEPARATORS). The blanks allowed around the operator
-    are the ASCII blanks that are not separators, never `\\s`: round 1 of U107b bounded the value and kept `\\s*`
-    around the operator, so `token =<TAB>"Qz7v..."` matched across the tab, the mask removed it and a four-column TSV
-    row became three (audit P2 on f84ea376)."""
-    blanks = "".join(blank for blank in (" ", r"\t", r"\f", r"\v") if blank not in separators)
+    and before the quote are every whitespace character that is not a separator (`[^\\S<separators>]`: `\\s` minus
+    the separators, so the NBSP, the thin space and the ideographic space count as blanks, as they do for `\\s`),
+    never `\\s` itself: round 1 of U107b bounded the value and kept `\\s*` around the operator, so
+    `token =<TAB>"Qz7v..."` matched across the tab, the mask removed it and a four-column TSV row became three (audit
+    P2 on f84ea376); round 2 wrote the blanks as `[ \\f\\v]`, the ASCII blanks only, so `password<NBSP>=<NBSP>"Qz7v..."`
+    passed both scans unmasked in a text and in a decoded JSON string where 05597009's `\\s*` found it (audit P1 on
+    a5b9ca2c)."""
+    blanks = r"[^\S" + separators + "]*"
     value = """(["'][^""" + separators + "]*)"
-    return re.compile("(?i)" + key + "[" + blanks + "]*[" + operators + "][" + blanks + "]*" + value)
+    return re.compile("(?i)" + key + blanks + "[" + operators + "]" + blanks + value)
 
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:

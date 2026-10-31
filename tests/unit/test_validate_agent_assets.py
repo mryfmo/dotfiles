@@ -2412,6 +2412,48 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
         self.assertEqual(module.mask_secret_matches(two_lines, in_json_string=True), (f'{mask}\nsecond line"', 1))
 
+    def test_a_unicode_blank_around_the_operator_is_a_blank_in_text_and_in_a_json_string(self) -> None:
+        """U107b round 3, audit P1 on a5b9ca2c: round 2 wrote the blanks around the operator as `[ \\f\\v]`, the ASCII
+        blanks only, so `password<NBSP>=<NBSP>"Qz7v..."` (and a thin space, an ideographic space) passed both scans
+        unmasked in a text and in a decoded JSON string where 05597009's `\\s*` found it. The blanks are every
+        whitespace character but the separators: each of the three is found and masked in both forms, before the
+        operator, after it and before the quote; the tab stays a field boundary in a text and content in a string."""
+        module = self.module
+        mask = module.SECRET_MASK
+        secret = f'"{HIGH_ENTROPY_VALUE}"'
+        for blank in ("\u00a0", "\u2009", "\u3000"):
+            for text in (f"{PASSWORD_KEY}{blank}={blank}{secret}\n", f"{PASSWORD_KEY} ={blank} {secret}\n"):
+                with self.subTest(blank=hex(ord(blank)), text=text):
+                    for in_json_string in (False, True):
+                        findings = module.secret_findings(text, in_json_string=in_json_string)
+                        self.assertEqual([(f.rule.id, f.secret) for f in findings], [("generic-password", secret)])
+                        self.assertEqual(
+                            module.mask_secret_matches(text, in_json_string=in_json_string), (f"{mask}\n", 1)
+                        )
+            # The tab beside a Unicode blank is still the field boundary in a text and content in a decoded string.
+            split = f"{PASSWORD_KEY}{blank}=\t{secret}\n"
+            self.assertEqual(module.secret_findings(split), [])
+            self.assertEqual([f.secret for f in module.secret_findings(split, in_json_string=True)], [secret])
+        # The tree scan: a text file and a JSON string, each with the NBSP around the operator, are reported and the
+        # masked copies pass.
+        nbsp_line = f"{PASSWORD_KEY}\u00a0=\u00a0{secret}"
+        text_path = self.write_text_file("docs/notes.md", nbsp_line + "\n")
+        document = json.dumps({"items": [{"note": nbsp_line}]}, indent=2) + "\n"
+        self.assertIn("\\u00a0", document)
+        json_path = self.write_text_file("fixtures/evidence.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('docs/notes.md:generic-password:1 "Qz7...', stderr.getvalue())
+        self.assertIn('fixtures/evidence.json:generic-password:4 "Qz7...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        self.assertEqual(module.mask_secret_matches(nbsp_line + "\n"), (f"{mask}\n", 1))
+        text_path.write_text(f"{mask}\n")
+        masked, count = module.mask_json_strings(json.loads(document))
+        self.assertEqual((masked, count), ({"items": [{"note": mask}]}, 1))
+        json_path.write_text(json.dumps(masked, indent=2) + "\n")
+        module.validate_no_obvious_secrets()
+
     def test_a_generic_rule_scans_a_padded_line_in_linear_time(self) -> None:
         """Round 7 verdict on 1632d807: the lazy capture's lookahead rescanned the rest of the line at every step, so a
         quoted value behind 2,000, 8,000 and 32,000 spaces took 0.018, 0.264 and 4.191 s against 0.0001 s on
@@ -3765,6 +3807,39 @@ class ScanIdentifiersModeTest(unittest.TestCase):
         result = self.scan(member)
         self.assertEqual((result.returncode, result.stderr), (0, ""))
         self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+    def test_a_unicode_blank_around_the_operator_is_refused_and_masked_in_a_text_and_in_a_json_string(self) -> None:
+        """U107b round 3, audit P1 on a5b9ca2c, through the two CLIs records-sync.sh runs: round 2's blanks around the
+        operator were the ASCII `[ \\f\\v]`, so `password<NBSP>=<NBSP>"Qz7v..."` exited 0 from --scan-identifiers and
+        --mask-secrets masked nothing, in a text file and in a JSON string, where 05597009 masked it. The NBSP, the
+        thin space and the ideographic space are blanks: each file is refused and masked whole, and the masked copy
+        passes."""
+        module = load_validator()
+        for blank in ("\u00a0", "\u2009", "\u3000"):
+            line = f'{PASSWORD_KEY}{blank}={blank}"{HIGH_ENTROPY_VALUE}"'
+            text = self.temp_dir / f"evidence-{ord(blank):04x}.md"
+            text.write_text(line + "\n")
+            member = self.temp_dir / f"member-{ord(blank):04x}.json"
+            member.write_bytes((json.dumps({"items": [{"note": line}]}, indent=2) + "\n").encode())
+            self.assertIn(f"\\u{ord(blank):04x}".encode(), member.read_bytes())
+            for path, masked_text in (
+                (text, f"{module.SECRET_MASK}\n"),
+                (member, json.dumps({"items": [{"note": module.SECRET_MASK}]}, indent=2) + "\n"),
+            ):
+                with self.subTest(blank=hex(ord(blank)), path=path.name):
+                    result = self.scan(path)
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({path}): a secret pattern\n")
+                    self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+                    masked = subprocess.run(
+                        [sys.executable, str(VALIDATOR), "--mask-secrets", str(path)], text=True, capture_output=True
+                    )
+                    self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+                    self.assertEqual(masked.stdout, f"masked 1 match(es) in {path}\n")
+                    self.assertEqual(path.read_bytes().decode(), masked_text)
+                    result = self.scan(path)
+                    self.assertEqual((result.returncode, result.stderr), (0, ""))
+                    self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
 
 if __name__ == "__main__":

@@ -417,14 +417,14 @@
       "target": ".local/bin/common/pr-thread-resolve.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "3543a21f8d765623c5ca466b9edfb9a4fe11f9d96cae72450906d113209d8aec"
+      "sha256": "efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-threads-check.sh",
       "target": ".local/bin/common/pr-threads-check.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "2e0f87ab053d7600525b23dd459437a8f06986636f00583299451c2254567395"
+      "sha256": "984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",
@@ -588,6 +588,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "ci-rerun.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "filed-findings.py"
     },
     {
       "source": "home/dot_local/bin/common",

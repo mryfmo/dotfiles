@@ -376,9 +376,10 @@ def score(where, letter, text):
 
 
 def findings_of(verdict_file):
-    """The (priority, frequency, severity, path, line) of every line of the file's leading `## Findings` section under
-    FINDINGS_GRAMMAR: `- none` lists none, and a section that is neither `- none` alone nor finding lines alone is
-    malformed."""
+    """The (priority, frequency, severity, path, line, rationale) of every line of the file's leading `## Findings`
+    section under FINDINGS_GRAMMAR: `- none` lists none, and a section that is neither `- none` alone nor finding
+    lines alone is malformed. The rationale is the text after the line's `:<line>: `, read as it is (round d: the
+    filed-findings list prints it; this lever's table leaves it out)."""
     seen = section = False
     listed, nones = [], 0
     for line_number, line in enumerate(read_text(verdict_file).split("\n"), 1):
@@ -407,6 +408,7 @@ def findings_of(verdict_file):
                 score(where, "s", match.group(4)),
                 match.group(5),
                 number(where, match.group(6), "line"),
+                line[match.end() :],
             )
         )
     if not seen:
@@ -438,7 +440,7 @@ def carried_findings(store, previous):
         row_line = number(f"{name}:{line_number}", fields[5], "line")
         rows.append(((fields[1], fields[2], fields[3], fields[4], row_line), fields[6], fields[7]))
     joined = []
-    for priority, frequency, severity, path, line in listed:
+    for priority, frequency, severity, path, line, _rationale in listed:
         key = (previous.unit, previous.head_sha, priority, path, line)
         matched = [(disposition, reference) for row_key, disposition, reference in rows if row_key == key]
         for disposition, reference in matched or [(NO_ROW, "-")]:

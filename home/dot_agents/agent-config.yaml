@@ -860,11 +860,11 @@ claude:
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
       pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
-      pr-thread-resolve.sh: 3543a21f8d765623c5ca466b9edfb9a4fe11f9d96cae72450906d113209d8aec
+      pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
-      pr-threads-check.sh: 2e0f87ab053d7600525b23dd459437a8f06986636f00583299451c2254567395
+      pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
       pr-merge.sh: 705dbd64221feda5b983febe4ba5691bc9db994a3b0d4f71c1f8781c9fe2c545
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c

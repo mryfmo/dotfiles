@@ -389,6 +389,10 @@ class PrThreadResolveTest(ThreadsFixture):
             ("residual: unit=U29 gate=no Linux make update until U29", "P3"),
             ("residual: operator=2026-10-24T12:53:00Z", "P1"),
             ("filed: f=1 s=9 no run, test, incident or user has produced the case", "P1"),
+            # U125 round d (the U124 filed findings): the reason is the text after `s=<n>` with the surrounding
+            # whitespace trimmed, and a reply is read at its first non-blank line.
+            ("filed: f=1 s=1  two spaces before the reason", "P1"),
+            ("\nfiled: f=1 s=9 after a blank first line", "P1"),
         ):
             with self.subTest(reply=reply):
                 self.calls.unlink(missing_ok=True)
@@ -400,7 +404,14 @@ class PrThreadResolveTest(ThreadsFixture):
         """U124 round 3: a disposition holds only when its author's `authorAssociation` is OWNER, MEMBER or
         COLLABORATOR (`maintainer_associations`); an outsider's `filed:` or `fixed:` on a P1 thread resolves nothing,
         whatever its text, and a maintainer's `filed:` of any of the three associations resolves."""
-        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+        # U125 round d: a reply read at its first non-blank line, and one of blank lines alone, by an outsider are
+        # refused naming the author, where the old levers read the second as `no reply`.
+        for reply in (
+            "filed: f=1 s=1 an outsider's rating",
+            f"fixed: {self.head}",
+            "\nfiled: f=1 s=1 after a blank first line",
+            "\n \n",
+        ):
             for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
                 with self.subTest(reply=reply, association=association):
                     self.calls.unlink(missing_ok=True)
@@ -434,6 +445,12 @@ class PrThreadResolveTest(ThreadsFixture):
                 ("480", "4365170609"),
                 (thread(4365170609, replies=["refuted: a.py:1", "@codex ok?"]),),
                 "no valid disposition",
+            ),
+            # U125 round d: a maintainer's reply of blank lines alone is no disposition, named by its author
+            (
+                ("480", "4365170609"),
+                (thread(4365170609, replies=[" \n\t\n"]),),
+                "(the newest reply by coordinator, association OWNER, holds no text)",
             ),
         ]
         for args, nodes, message in cases:
@@ -856,6 +873,11 @@ class PrThreadsCheckTest(ThreadsFixture):
             thread(6, severity="P1", replies=["filed: f=1 s=9 no run, test, incident or user has produced the case"]),
             # U124 round 3: a reason of the two characters backslash and t is a reason (the decode is exact).
             thread(7, severity="P1", replies=["filed: f=1 s=1 \\t"]),
+            # U125 round d (the U124 filed findings, weights 4 and 1): the reason is the text after `s=<n>` with the
+            # surrounding whitespace trimmed (two spaces, a tab), and a reply is read at its first non-blank line.
+            thread(8, severity="P1", replies=["filed: f=1 s=1  two spaces before the reason"]),
+            thread(9, replies=["filed: f=2 s=4\ta tab before the reason"]),
+            thread(10, severity="P1", replies=["\n\nfiled: f=1 s=9 after two blank lines"]),
         )
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertEqual(
@@ -868,7 +890,10 @@ class PrThreadsCheckTest(ThreadsFixture):
                 "thread comment=5 severity=P1 state=residual operator=2026-10-24T12:53:00Z",
                 "thread comment=6 severity=P1 state=filed f=1 s=9 weight=9",
                 "thread comment=7 severity=P1 state=filed f=1 s=1 weight=1",
-                "summary threads=7 open=0",
+                "thread comment=8 severity=P1 state=filed f=1 s=1 weight=1",
+                "thread comment=9 severity=P2 state=filed f=2 s=4 weight=8",
+                "thread comment=10 severity=P1 state=filed f=1 s=9 weight=9",
+                "summary threads=10 open=0",
             ],
         )
         self.assertEqual(self.writes(), [], "read-only")
@@ -922,6 +947,13 @@ class PrThreadsCheckTest(ThreadsFixture):
                 thread(1, replies=["filed: f=1 a score is missing"]),
                 "reply needs f=<1..10> s=<1..10> <reason>; a score is missing; got: filed: f=1 a score is missing)",
             ),
+            # U125 round d: a reply is read at its first non-blank line, so prose after a blank line is prose, and a
+            # reply of blank lines alone is open naming its author, never `no reply`.
+            (thread(1, replies=["\n\nlooks fine to me"]), "open (the newest reply is not a disposition)"),
+            (
+                thread(1, severity="P1", replies=[" \n\t\n"]),
+                "open (the newest reply by coordinator, association OWNER, holds no text)",
+            ),
         ]
         for node, message in cases:
             with self.subTest(message=message, node=node["comments"]["nodes"][-1]["body"][:40]):
@@ -948,7 +980,13 @@ class PrThreadsCheckTest(ThreadsFixture):
     def test_a_reply_outside_the_maintainers_leaves_the_thread_open(self):
         """U124 round 3: the newest reply's author must be a maintainer (`authorAssociation` OWNER, MEMBER or
         COLLABORATOR); an outsider's `filed:` or `fixed:` on a P1 thread, resolved or not, is open naming the author."""
-        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+        for reply in (
+            "filed: f=1 s=1 an outsider's rating",
+            f"fixed: {self.head}",
+            # U125 round d: read at the first non-blank line, and blank lines alone, still name the outsider
+            "\nfiled: f=1 s=1 after a blank first line",
+            "\n \n",
+        ):
             for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
                 for resolved in (False, True):
                     with self.subTest(reply=reply, association=association, resolved=resolved):

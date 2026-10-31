@@ -8,7 +8,7 @@
 #   pull request (GraphQL `reviewThreads`, read-only; more than 100 threads, or more than 100 comments in one,
 #   is a refusal, never a partial read) and requires `--head` to be the pull request's current `headRefOid` and
 #   a commit in this checkout (`git fetch` first). Every thread, resolved or not (GitHub's `isResolved` alone
-#   proves nothing, U28b F1), passes only when the first line of its newest reply is a disposition of
+#   proves nothing, U28b F1), passes only when the first non-blank line of its newest reply is a disposition of
 #   `preferences.md` standing order 22 and that reply's author is a maintainer of the repository: GitHub's
 #   `authorAssociation` of the comment is `OWNER`, `MEMBER` or `COLLABORATOR` (`maintainer_associations` below, named
 #   once; U124 round 3). A newest reply by anyone else leaves the thread `open (newest reply by <login>, association
@@ -25,9 +25,12 @@
 #   naming the product. Each score is accepted by its decimal string (`^(10|[1-9])$`) before any arithmetic, so a
 #   decimal past bash's range cannot wrap into one (U124 round 2); a `filed:` of any other shape (a score outside
 #   that grammar, a missing score, no reason) is a malformed reply, refused naming what is wrong and quoting the line.
-#   The reason must hold a character that is not whitespace, judged on the reply's own text: the listing's `@tsv`
-#   writes a tab as the two characters `\t`, and `disposition` decodes the line before it reads it, so a tab-only
-#   reason is a missing reason, not a reason of two characters (U124 round 3).
+#   The reason is the text after `s=<n>` with the whitespace around it trimmed and must hold a character that is not
+#   whitespace (`filed: f=1 s=1  reason`, two spaces, holds; U125 round d), judged on the reply's own text: the
+#   listing's `@tsv` writes a tab as the two characters `\t`, and `disposition` decodes the line before it reads it,
+#   so a tab-only reason is a missing reason, not a reason of two characters (U124 round 3). A reply whose first line
+#   is blank is judged by its first non-blank line, and a reply of blank lines alone is `open` naming its author's
+#   login and association as any reply is (U125 round d).
 #   A residual without `--records` is a refusal. Any other newest reply, or none, is a refusal: the remedy is a
 #   `U<n>b` TASK or a `pr-thread-reply.sh` disposition, never a merge. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -139,8 +142,9 @@ threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   }
 }'
 # `head <sha> <hasNextPage>`, then per thread `<first id> <resolved> <created epoch> <P0-P3 or -> <count> <newest
-# reply's authorAssociation or -> <its author's login or -> <newest reply's first line>` (TSV; the reply is last
-# because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes).
+# reply's authorAssociation or -> <its author's login or -> <newest reply's first non-blank line>` (TSV; the reply is
+# last because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes; a line is blank
+# when it holds no character outside whitespace, so a reply opened by an empty line is read at its text).
 # shellcheck disable=SC2016 # jq source, not shell
 threads_jq='.data.repository.pullRequest
   | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
@@ -149,7 +153,7 @@ threads_jq='.data.repository.pullRequest
       ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
       ($c.totalCount | tostring),
       (($c.nodes[1:] | last) as $reply | ($reply.authorAssociation // "-"), ($reply.author.login // "-"),
-        (($reply.body // "") | split("\n") | (.[0] // "") | rtrimstr("\r")))] | @tsv)'
+        (($reply.body // "") | split("\n") | map(rtrimstr("\r")) | map(select(test("\\S"))) | (.[0] // "")))] | @tsv)'
 
 # @description Print the refusal on stderr and exit 2.
 # @arg $@ string The reason.
@@ -185,7 +189,8 @@ has_row() {
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The `authorAssociation` of the newest reply's author (GitHub's enum), or `-` without a reply.
 # @arg $4 string The newest reply's author login, or `-`.
-# @arg $5 string The first line of the newest reply as the listing's `@tsv` escaped it; decoded here before any read.
+# @arg $5 string The first non-blank line of the newest reply as the listing's `@tsv` escaped it; decoded here before
+#   any read.
 disposition() {
     local created=$1 severity=$2 association=$3 login=$4 line='' fix fix_time status frequency severity_score weight why
     # The associations GitHub gives a maintainer's comment (U124 round 3); a reply by anyone else closes nothing.
@@ -194,7 +199,7 @@ disposition() {
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
-    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
+    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+)[[:space:]]+[^[:space:]]'
     local filed_scores='^filed: f=[^[:space:]]+ s=[^[:space:]]+[[:space:]]*$'
     local score_re='^(10|[1-9])$'
     # `@tsv` wrote a tab as `\t`, a carriage return as `\r` and a backslash as `\\`, and nothing else starts with a
@@ -202,7 +207,9 @@ disposition() {
     # a tab-only reason is whitespace, not the two characters `\t` (U124 round 3). An empty reply is left as the
     # empty string above: `printf -v` with nothing to print leaves its variable unset.
     [[ -z $5 ]] || printf -v line '%b' "$5"
-    if [[ -n ${line} && ! ${association} =~ ${maintainer_associations} ]]; then
+    # A reply exists when the listing names its author's association (`-` without one), and its author must be a
+    # maintainer whatever the reply says, a reply of blank lines alone included (U125 round d).
+    if [[ ${association} != - && ! ${association} =~ ${maintainer_associations} ]]; then
         echo "open (newest reply by ${login}, association ${association}: not a maintainer)"
         return
     fi
@@ -282,8 +289,10 @@ disposition() {
             return
         }
         echo "filed f=${frequency} s=${severity_score} weight=${weight}"
-    elif [[ -z ${line} ]]; then
+    elif [[ -z ${line} && ${association} == - ]]; then
         echo 'open (no reply)'
+    elif [[ -z ${line} ]]; then
+        echo "open (the newest reply by ${login}, association ${association}, holds no text)"
     else
         echo 'open (the newest reply is not a disposition)'
     fi

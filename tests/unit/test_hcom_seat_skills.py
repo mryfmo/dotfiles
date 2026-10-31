@@ -60,6 +60,13 @@ AUDIT_ROUTE = (
 )
 AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
 AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"
+# U125 round d: the reader writes the two scores into every finding line and counts the filed findings, which the
+# merge gate skips; the list lever is where the operator reads them.
+FILED_FINDINGS = (
+    "Each finding line carries `[f<n> s<n>]`, the auditor's frequency and severity scores, `Filed: <n>` counts the "
+    "findings whose weight (frequency times severity) is under 10, which need no disposition for the merge, and "
+    "`scripts/orchestrator/filed-findings.py <store>` lists every filed finding of the store for the operator."
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -167,6 +174,8 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertNotIn("pr-audit.sh <n>` run", verify, "the documented line carries --records")
         self.assertIn(AUDIT_COPY, verify)
         self.assertIn(AUDIT_SHAPE, verify)
+        self.assertIn("[f<n> s<n>] <path>:<line>: <rationale>` or `- none`, then `Blocking: <n>`, `Filed: <n>`", verify)
+        self.assertIn(FILED_FINDINGS, verify)
         # the three exits, each named once in the step, the round cap's beside the other two
         self.assertIn("Exit 2 is a refusal named on stderr", verify)
         self.assertIn("exit 1 is a failed read, fetch or codex run", verify)

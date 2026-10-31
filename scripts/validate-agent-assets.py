@@ -54,10 +54,10 @@ class SecretRule(NamedTuple):
     whole match); `secret_in` trims the group's trailing whitespace in code, so no rule's regex needs a lazy
     quantifier or a lookahead to end its capture. `entropy` is the least Shannon entropy, in bits per character,
     the secret must reach, or None for a provider rule whose prefix alone is the evidence; it is measured over
-    measured_text(secret), the secret with every SECRET_MASK, quoting character and carriage return removed, as
-    the greatest entropy of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's
-    own output passes the scan, a value beside a marker is judged on its own, no quoting changes the measure, and
-    nothing else on the line can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
+    measured_text(secret), the secret with every SECRET_MASK and quoting character removed, as the greatest entropy
+    of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's own output passes
+    the scan, a value beside a marker is judged on its own, no quoting changes the measure, and nothing else in the
+    value's field can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
     under the same `(?i)` the rule's regex uses (keyword_filter), finds one in it: a cheap filter before the regex
     that folds a text exactly as the regex folds it, so it never skips a text the regex would match.
     """
@@ -112,17 +112,16 @@ GENERIC_SECRET_ENTROPY = 3.5
 GENERIC_SECRET_MIN_LENGTH = 20
 # What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
 SECRET_MASK = "<redacted:secret-pattern>"
-# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value,
-# and a carriage return is a line's content only because the line feed alone ends the capture (assignment_rule).
+# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value.
 # Rounds 4 and 5 each let the quotes decide where the value ended and each fell to the next quoting corner (an
-# apostrophe inside a double-quoted value, then an escaped quote); now nothing written on the line decides what is
-# measured.
-UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\\r")
+# apostrophe inside a double-quoted value, then an escaped quote); now nothing written in the field decides what is
+# measured: the capture runs to the end of the field (assignment_rule), not of the line, because the records lever
+# masks TSV files whose columns are tab-separated, and a marker that crosses a tab destroys the row.
+UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\")
 
 
 def measured_text(secret: str) -> str:
-    """What a generic rule measures: SECRET with every SECRET_MASK and every quote, backslash and carriage return
-    removed."""
+    """What a generic rule measures: SECRET with every SECRET_MASK and every quote and backslash removed."""
     return secret.replace(SECRET_MASK, "").translate(UNMEASURED_CHARACTERS)
 
 
@@ -157,34 +156,43 @@ def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> Se
 
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
-    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its line, trimmed, is the secret,
-    judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy), so a
-    variable named `token` holding a word is not a finding and padding beside a secret on its line does not hide it.
+    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its field, trimmed, is the
+    secret, judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy),
+    so a variable named `token` holding a word is not a finding and padding beside a secret in its field does not
+    hide it.
 
     No quote ends the capture. Rounds 4 and 5 (verdicts on 43fe25f3 and a7b060cd) each assumed a regex can find
     where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
     an apostrophe inside a double-quoted value, then an escaped quote, each measured as its first character. A
-    value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
-    with the quotes, backslashes and carriage returns removed, and the finding's span is the whole line from the
-    key: the masker writes one marker over all of it, so its output has no remainder to measure. What follows the
-    value on its line (a trailing comment, a second literal, a second assignment) is captured, measured and masked
-    with it: the measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding
-    on 38a83e45: 160 characters of padding before a second assignment brought the whole line to 1.43 bits), and
-    over-capture errs on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a
-    reason, never a shorter capture or a looser measure.
+    value's characters are in its field whatever the quoting, so the whole rest of the field is the secret, measured
+    with the quotes and backslashes removed, and the finding's span is the whole field from the key: the masker
+    writes one marker over all of it, so its output has no remainder to measure. What follows the value in its field
+    (a trailing comment, a second literal, a second assignment) is captured, measured and masked with it: the
+    measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding on 38a83e45:
+    160 characters of padding before a second assignment brought the whole line to 1.43 bits), and over-capture errs
+    on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
+    shorter capture or a looser measure.
 
-    The capture is one greedy class to the line feed, linear in the line, and only the line feed ends it: a carriage
-    return before text is content of the line, captured, measured and masked with the value; a trailing one (a CRLF
-    line) is trimmed with the trailing whitespace, in code (SecretRule.secret_in), never by the regex. Round 7's
-    capture stopped at a CR and ended with a lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed
-    by a CR and text matched nothing and passed the tree scan and both CLIs in text and in JSON, and the lookahead
-    rescanned the rest of the line at every step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s
-    (round 7 verdict on 1632d807).
+    The field, not the line, ends the capture: the records lever (records-sync.sh) masks the store's TSV files, whose
+    columns are tab-separated, and a marker that crosses a tab destroys the row. U107's capture ran to the line feed,
+    so a ledger row whose evidence column quoted the round-5 finding (`<key> = "x\\"Qz7v..."` in prose) was masked
+    from its key through two tabs to the end of the row, the masked copy had 5 columns instead of 7, rounds-check.py
+    refused it and the regime check was red on two records syncs (U107b, 2026-10-31). The capture is one greedy class
+    that excludes the tab, the line feed and the carriage return at every position, linear in the line, with no
+    lookahead, so the match ends where the class ends and the trailing whitespace is trimmed in code
+    (SecretRule.secret_in): a trailing carriage return (a CRLF line) is outside the capture and the mask leaves the
+    line ending in place; a bare one before text ends the capture too, the value before it is captured, measured
+    and masked, and the text after it stays. What stands after a tab or a carriage return is scanned on its own: a
+    second quoted assignment there is its own match, and a bare value there is outside the generic rules, as an
+    unquoted value is. Round 7 (verdict on 1632d807) also stopped its capture at a CR, but ended the match with a
+    lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed by a CR and text matched nothing and
+    passed the tree scan and both CLIs in text and in JSON, and the lookahead rescanned the rest of the line at every
+    step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s.
 
     The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
     unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
     prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
-    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\n]*)""")
+    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\t\n\r]*)""")
     return SecretRule(
         rule_id,
         f"a quoted {keywords[0]} assignment",

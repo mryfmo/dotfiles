@@ -53,7 +53,9 @@ APT_JOBS = {
     ("private-bootstrap.yaml", "private-bootstrap"),
     ("ubuntu.yaml", "build"),
 }
-# Measured, in seconds (passing Ubuntu client jobs, October 2026):
+# Measured, in seconds (passing Ubuntu client jobs, October 2026). Since U128 every suite log ends with the wrapper's
+# `slowest: <n> <name> <ms> ms` line (scripts/ci/run-bats.py under `--timing`; a passing run's goes to the job summary
+# page too), so these figures are re-checked against that line, not against a hand-timed log:
 # the time a `Run unit test` step spends outside its slowest test: 88-135 s typically, 284 s at most (run
 # 40314461046, where ghostty took 201 s on a slow mirror);
 OTHER_TESTS_BUDGET = 300

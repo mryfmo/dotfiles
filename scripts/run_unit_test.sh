@@ -29,6 +29,9 @@ set -Eeo pipefail
 #   bound it prints `not ok <n> <name> # timeout after <s> s` and fails with 124. Time spent outside a
 #   test, such as loading a file, gets the same bound. A run that plans no test fails. It signals
 #   nothing: the workflow step's timeout-minutes and the runner stop what a stalled test left running.
+#   `--timing` is passed before the arguments (regime-cutover U128): each result line then carries its
+#   duration, the wrapper prints `slowest: <n> <name> <ms> ms` after the stream, and writes the stall line
+#   with its diagnosis, or a passing run's slowest line, to the file GITHUB_STEP_SUMMARY names.
 #   python3 runs it with `-I -S`, so no PYTHON* variable, user site or site-packages changes it.
 # @arg $@ string Arguments passed to bats.
 # @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: the wrapper's DEFAULT_BOUND (scripts/ci/run-bats.py).
@@ -42,7 +45,7 @@ function run_bats() {
     # The check's status decides (standing order 21): a refusal, or a check that cannot run, ends the suite here.
     accepted="$("${here}/ci/pinned-tool-version.sh" "${here}/../home/dot_mise/config.toml" bats)" || return 1
     printf '%s\n' "${accepted}"
-    python3 -I -S "${here}/ci/run-bats.py" "$@"
+    python3 -I -S "${here}/ci/run-bats.py" --timing "$@"
 }
 
 #

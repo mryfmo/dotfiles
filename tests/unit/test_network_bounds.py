@@ -685,7 +685,7 @@ class RunBatsBoundTest(unittest.TestCase):
     def test_a_bats_that_is_not_the_pin_is_refused_before_the_wrapper_runs(self) -> None:
         # U127: run_bats runs scripts/ci/pinned-tool-version.sh first. Another version is refused with the check's
         # message and Bats never runs the suite; the pinned one is accepted and the check's line opens the log.
-        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n", version="0.0.1")
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\n'\n", version="0.0.1")
         status, out, err, _ = self.run_bats("30", "tests/x.bats")
         self.assertEqual(1, status, out + err)
         self.assertIn("pinned-tool-version: the bats on PATH is version 0.0.1, but ", err)
@@ -693,19 +693,19 @@ class RunBatsBoundTest(unittest.TestCase):
         self.assertEqual("", out)
         self.assertEqual("", self.accepted)
         self.assertFalse((self.temp / "args").exists())
-        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n")
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\n'\n")
         status, out, err, _ = self.run_bats("30", "tests/x.bats")
         self.assertEqual(0, status, out + err)
         self.assertTrue(self.accepted.startswith(f"==> bats {BATS_PIN}, the version "), self.accepted)
         self.assertTrue(self.accepted.endswith("/home/dot_mise/config.toml pins"), self.accepted)
-        self.assertEqual("1..1\nrunning: 1 [x] fast\nok 1 [x] fast\n", out)
-        self.assertEqual("--formatter cat tests/x.bats", (self.temp / "args").read_text().strip())
+        self.assertEqual("1..1\nrunning: 1 [x] fast\nok 1 [x] fast in 1ms\nslowest: 1 [x] fast 1 ms\n", out)
+        self.assertEqual("--formatter cat --timing tests/x.bats", (self.temp / "args").read_text().strip())
 
     def test_a_stalled_test_is_named_and_the_run_fails_within_the_bound(self) -> None:
         # The stalled test's grandchild is what kept the PR #570 jobs alive until the job timeout.
         self.fake_bats(
             """\
-            printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast\\nbegin 2 [x] misc\\n'
+            printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\nbegin 2 [x] misc\\n'
             echo $$ >> "${PIDS}"
             sleep 300 &
             echo $! >> "${PIDS}"
@@ -716,13 +716,13 @@ class RunBatsBoundTest(unittest.TestCase):
         self.assertEqual(124, status, out + err)
         self.assertLess(elapsed, 4)
         named = (
-            "1..2\nrunning: 1 [x] fast\nok 1 [x] fast\nrunning: 2 [x] misc\n"
+            "1..2\nrunning: 1 [x] fast\nok 1 [x] fast in 1ms\nrunning: 2 [x] misc\n"
             "not ok 2 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT)\n"
         )
         self.assertTrue(out.startswith(named), out)
         # Everything after the named line is the diagnosis, as TAP comments.
         self.assertTrue(all(line.startswith("#") for line in out[len(named) :].splitlines()), out)
-        self.assertEqual("--formatter cat -r tests/x/\n", (self.temp / "args").read_text())
+        self.assertEqual("--formatter cat --timing -r tests/x/\n", (self.temp / "args").read_text())
 
     def test_output_from_a_running_test_does_not_extend_its_bound(self) -> None:
         self.fake_bats(
@@ -748,10 +748,10 @@ class RunBatsBoundTest(unittest.TestCase):
     def test_pass_and_fail_statuses_are_kept(self) -> None:
         for code in (0, 1):
             with self.subTest(status=code):
-                verdict = "ok 2 [x] b" if code == 0 else "not ok 2 [x] b"
+                verdict = "ok 2 [x] b in 3ms" if code == 0 else "not ok 2 [x] b in 3ms"
                 self.fake_bats(
                     f"""\
-                    printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] a\\nok 1 [x] a\\nbegin 2 [x] b\\n# output of b\\n'
+                    printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] a\\nok 1 [x] a in 1ms\\nbegin 2 [x] b\\n# output of b\\n'
                     printf '{verdict}\\n'
                     exit {code}
                     """
@@ -760,7 +760,9 @@ class RunBatsBoundTest(unittest.TestCase):
                 self.assertEqual(code, status, err)
                 self.assertLess(elapsed, 10)
                 self.assertEqual(
-                    f"1..2\nrunning: 1 [x] a\nok 1 [x] a\nrunning: 2 [x] b\n# output of b\n{verdict}\n", out
+                    f"1..2\nrunning: 1 [x] a\nok 1 [x] a in 1ms\nrunning: 2 [x] b\n# output of b\n{verdict}\n"
+                    "slowest: 2 [x] b 3 ms\n",
+                    out,
                 )
 
     def test_a_run_that_plans_no_test_fails(self) -> None:
@@ -776,7 +778,7 @@ class RunBatsBoundTest(unittest.TestCase):
         the caller holds a pipe on that descriptor and reads what reaches it."""
         self.fake_bats(
             """\
-            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a\\n'
+            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a in 1ms\\n'
             if [ -n "${BASH_XTRACEFD:-}" ]; then printf 'trace-line\\n' >&"${BASH_XTRACEFD}" || exit 9; fi
             exit 0
             """

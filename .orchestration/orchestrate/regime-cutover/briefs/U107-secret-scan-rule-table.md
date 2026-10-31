@@ -10,7 +10,7 @@ CHANGE
 1. The rules become one tuple of rows in the script (`SECRET_RULES`), each row a small dataclass or named tuple: `id`, `description`, `regex` (compiled), `secret_group` (int), `entropy` (float or None, Shannon entropy over the secret group, computed in the script), `keywords` (tuple of lower-case substrings that must appear in the text for the rule to run). Provider rules keep today's bodies (`ghp_`, `github_pat_`, `sk-` with the existing bound) with entropy `None`. The generic assignment rules (`api_key`, `password`, `secret`, `token`) become one rule each with the quoted value as the secret group and an entropy threshold of 3.5 (gitleaks' documented example), so `planted = "ghp_" + "A1b2..."` is judged by the provider rule on the literal, not by the assignment shape, and a variable named `token` holding a low-entropy or concatenated string is not a finding. Keep the escape-sequence lookbehinds that `--mask-secrets` depends on, as a documented part of each provider regex.
 2. An allowlist table `SECRET_ALLOWLIST` with rows of `rule_id` (or `*`), `path_regex` (repository-relative), `fingerprint` (optional: `<path>:<rule_id>:<line>`), and `reason`. Today's `compactiondb_dummy_secret_fixtures` and `ALLOWED_SECRET_PLACEHOLDERS` move into it as rows. The test fixtures that plant a fake `ghp_` token in `tests/unit/` get rows by path regex with the reason "test fixture, the planted token is split or synthetic".
 3. `validate_no_obvious_secrets()` collects every finding across every file (rule id, path, line, the secret masked to its first four characters) and fails once at the end with all of them, never at the first hit. `--mask-secrets` and `--scan-identifiers` keep their exact external behaviour (same exit codes, same message shapes, same masked text) and are driven by the same rules; the tests that pin them must still pass unchanged where they do not depend on the removed assignment-shape behaviour.
-4. Tests: a fixture tree with two files each holding a planted provider token asserts both are reported in one run; a low-entropy `<redacted:secret-pattern>` assignment is not a finding; a high-entropy one is; an allowlist path row suppresses a finding and an allowlist fingerprint row suppresses exactly one line and not another; the masker output on a sample is byte-identical before and after for every provider-rule match (capture the before text from `git show origin/main:scripts/validate-agent-assets.py` in the test's setUp, run both, compare).
+4. Tests: a fixture tree with two files each holding a planted provider token asserts both are reported in one run; a low-entropy `<redacted:secret-pattern>
 
 ACCEPTANCE
 1. `uv run --no-project --with pyyaml python -m unittest tests.unit.test_validate_agent_assets` passes. 2. `uv run --no-project --with pyyaml scripts/validate-agent-assets.py` over the tree exits 0 on the head (the whole-tree scan; paste the result line). 3. The PR body Contract states: every finding is reported, a finding is suppressed only by an allowlist row with a reason, the masker's output for provider rules is unchanged, and the generic rules now require entropy above the threshold.
@@ -20,6 +20,13 @@ TIMEBOX
 
 FORBIDDEN
 No external data file for the rules. No new dependency (gitleaks or other). No weakening of a provider rule. No `# noqa`-style suppression comments in scanned files; suppression is a table row.
+
+CLOSURE
+allowlist: the scan is one rule table with provider rows and entropy-gated generic rows, and a finding is suppressed only by a row of the allowlist table with a reason; no suppression lives in scanned text.
+
+TRUST
+TRUST: the unit trusts the rule table and the allowlist table as the one judgment of what a secret is; it trusts the provider patterns as published by their vendors and the gitleaks entropy threshold as measured, and it does not read file content for anything but the rules' matches.
+Both sections were added 2026-10-31T03:29:18Z by the coordinator under standing order 37; the unit predates U121.
 
 WORKER RULES (standing orders 27, 29, 31, 34; read `preferences.md` lines 23 to 36 in the store)
 - Create your worktree from the main checkout and work only there: `git -C ~/Workspace/dotfiles fetch -q origin && git -C ~/Workspace/dotfiles worktree add -b feat/secret-scan-rule-table /tmp/dotfiles-wt/U107 origin/main`. Never write under `~/Workspace`, under `$HOME` config directories, or on any other host. Never `git stash`. No local Bats as evidence.

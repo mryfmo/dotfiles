@@ -1789,7 +1789,7 @@ class PrMergeTest(PrLeverTestCase):
         self.dispositions(disposition_row())
         merge_file = self.records / f"verdicts/U71-{SHA_A[:8]}.md"
         carry_file = self.records / f"verdicts/U71-{earlier[:8]}.md"
-        tail = "\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nVerdict: correct\n"
+        tail = "\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\nnone\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
         for name, section, accepted in (
             ("- none", "- none", True),
             ("one finding line", P2_LINE, True),

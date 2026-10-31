@@ -63,7 +63,7 @@ MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
 # reads one way in PyYAML and another in GitHub, and none survives a byte comparison. A change to regime.yml updates
 # both constants in the same commit, once the property checks pass on the new text; a reviewer verifies the pin with
 # `shasum -a 256 .github/workflows/regime.yml` without reading the literal.
-WORKFLOW_SHA256 = "e32b3341b26543bb19da9087666e28e295eeb0eaac019cfb0a047dfb649ba6e0"
+WORKFLOW_SHA256 = "2b62a44213e0f82de2f8319d77d5cbaaece61de14aece523b11b2aaaac3a1b06"
 WORKFLOW_BYTES = """\
 name: regime
 
@@ -115,7 +115,22 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           # who wrote the pull request (U71, F152): only an owner, member or collaborator's Program-Unit line counts
           PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
-        run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+        # the base sha is read into a variable with its producer's status checked (standing order 21): a git that
+        # prints a sha and exits non-zero ends the step before the verifier runs
+        run: |
+          set -euo pipefail
+          base=$(git rev-parse HEAD) || exit 1
+          uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "${base}" --head "${HEAD_SHA}"
+      - name: Check the round cap over the records the pull request's head carries
+        # standing order 36 (U120): the base's rounds-check.py reads the head's ledger.tsv and decisions.tsv as data
+        # (git cat-file blob) and checks every unit; a head whose two files are its merge base's blobs is nothing to check
+        timeout-minutes: 2
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          base=$(git rev-parse HEAD) || exit 1
+          uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "${base}" --head "${HEAD_SHA}"
 """
 BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_VARIABLE = "PR_BODY"
@@ -130,6 +145,9 @@ EXPRESSION = "${{"
 HEAD_REF = "refs/regime/pr-head"
 HEAD_REFSPEC = "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
 VERIFIER = "scripts/orchestrator/regime-ci.py"
+ROUNDS_CHECK = "scripts/orchestrator/rounds-check.py"  # U120: the round cap over the head's store, read as data
+CHECKED_BASE = "base=$(git rev-parse HEAD) || exit 1"  # round 3: the base sha with its producer's status read
+STORE = ".orchestration/orchestrate/regime-cutover"
 UNSAFE_OPTION = "allow-unsafe-pr-checkout"
 READ_ONLY = {"contents": "read"}
 POSITION = {"Offset", "Line", "Col"}
@@ -173,6 +191,8 @@ Part = tuple
 Word = tuple[Part, ...]
 Statement = tuple[Word, ...]
 Script = tuple[Statement, ...]
+# A checked statement, `name=$(statement) || exit 1`, is the one compound statement admitted (Checked below): an
+# assignment whose producer's status is read, so a failure ends the step before the name is used (standing order 21).
 
 
 def lit(text: str) -> Part:
@@ -200,6 +220,17 @@ def rev_parse(ref: str) -> Statement:
     return call("git", "rev-parse", ref)
 
 
+class Checked(NamedTuple):
+    """`name=$(statement) || exit 1`: one plain assignment of one substitution of one statement, with the producer's
+    status read and a failure ending the step with status 1 (standing order 21, round 3). The producer is a shape."""
+
+    name: str
+    producer: Statement
+
+
+EXIT_1 = call("exit", "1")
+
+
 class Row(NamedTuple):
     """One run step's script: the regime.yml text a message points at, and the shape the step must have."""
 
@@ -209,8 +240,10 @@ class Row(NamedTuple):
 
 # The table: the run steps of the workflow, in order, each pinned to the last part. The first fetches the pull
 # request's own `/head` ref (not `/merge`, which GitHub builds from the head and the base) into the data ref, from
-# origin, with no option but --no-tags, and checks the ref against the event's head sha. The second runs the base's
-# verifier on the base's HEAD and that sha. No statement moves HEAD or the work tree, and nothing else runs.
+# origin, with no option but --no-tags, and checks the ref against the event's head sha. The second and the third read
+# the base's HEAD into `base` with the producer's status checked (standing order 21; round 3) and run the base's
+# verifier, then its round-cap check, on that sha and the event's head sha. No statement moves HEAD or the work tree,
+# and nothing else runs.
 SCRIPTS = (
     Row(
         HEAD_REFSPEC,
@@ -224,9 +257,22 @@ SCRIPTS = (
     Row(
         f"python -I {VERIFIER}",
         (
+            call("set", "-euo", "pipefail"),
+            Checked("base", rev_parse("HEAD")),
             call(
                 *("uv", "run", "--no-config", "--no-project", "python", "-I", VERIFIER),
-                *("--base", dq(sub(rev_parse("HEAD"))), "--head", dq(var("HEAD_SHA"))),
+                *("--base", dq(var("base")), "--head", dq(var("HEAD_SHA"))),
+            ),
+        ),
+    ),
+    Row(
+        f"python -I {ROUNDS_CHECK}",
+        (
+            call("set", "-euo", "pipefail"),
+            Checked("base", rev_parse("HEAD")),
+            call(
+                *("uv", "run", "--no-config", "--no-project", "python", "-I", ROUNDS_CHECK, "--all", STORE),
+                *("--base", dq(var("base")), "--head", dq(var("HEAD_SHA"))),
             ),
         ),
     ),
@@ -256,6 +302,7 @@ INPUTS = (
         {"HEAD_SHA": HEAD_EXPRESSION, BODY_VARIABLE: BODY_CARRIER, "PR_AUTHOR_ASSOCIATION": AUTHOR_EXPRESSION},
         None,
     ),
+    Inputs("timeout-minutes: 2", {"HEAD_SHA": HEAD_EXPRESSION}, None),
 )
 
 
@@ -287,6 +334,12 @@ DOCUMENT = {
                 {"uses": SETUP_UV_ACTION, "with": INPUTS[1].options},
                 {"name": "Fetch the pull request's head as data", "env": INPUTS[2].env, "run": SCRIPT},
                 {"name": "Check the pull request with the base's verifier", "env": INPUTS[3].env, "run": SCRIPT},
+                {
+                    "name": "Check the round cap over the records the pull request's head carries",
+                    "timeout-minutes": 2,
+                    "env": INPUTS[4].env,
+                    "run": SCRIPT,
+                },
             ],
         }
     },
@@ -407,7 +460,7 @@ class Reader:
         self.fields(tree, "script", "Name", "Stmts", "Last")
         return tuple(self.statement(node) for node in tree.get("Stmts") or [])
 
-    def statement(self, node: dict) -> Statement:
+    def statement(self, node: dict) -> Statement | Checked:
         self.comments(node, "Comments")
         self.fields(node, "statement", "Cmd", "Comments")  # Negated, Background, Coprocess and Redirs are refused
         # shfmt sets Semicolon for `;` (and for `&`, refused above as Background) and leaves it out at a newline. A `;`
@@ -415,14 +468,48 @@ class Reader:
         if node.get("Semicolon"):
             self.refuse(node, "a semicolon")
         command = node.get("Cmd")
-        if not isinstance(command, dict) or command.get("Type") != "CallExpr":
-            kind = command.get("Type", "untyped") if isinstance(command, dict) else "empty"
+        kind = command.get("Type", "untyped") if isinstance(command, dict) else "empty"
+        if kind == "BinaryCmd":
+            return self.checked(command)
+        if kind != "CallExpr":
             self.refuse(node, f"a {kind} statement")
         self.fields(command, "call", "Args")  # an assignment before the command word is refused
         words = command.get("Args") or []
         if not words:
             self.refuse(command, "a call with no word")
         return tuple(self.word(word) for word in words)
+
+    def checked(self, node: dict) -> Checked:
+        """`name=$(statement) || exit 1`, the one binary command admitted: `||` with one plain assignment of one
+        substitution of one statement on its left and `exit 1` on its right. Every other operator (`&&`, `|`), a
+        second assignment, a command word after the assignment, `+=`, an array, an index, a `local` or `declare`
+        clause and a right side other than `exit 1` are refused by name, so the producer's status is read and a
+        failure ends the step (standing order 21)."""
+        self.fields(node, "BinaryCmd", "Op", "X", "Y")
+        if node.get("Op") != "||":
+            self.refuse(node, f"a BinaryCmd joined by {node.get('Op')}")
+        left, right = node.get("X") or {}, node.get("Y") or {}
+        if self.statement(right) != EXIT_1:
+            self.refuse(right, "a `||` whose right side is not `exit 1`")
+        self.comments(left, "Comments")
+        self.fields(left, "statement", "Cmd", "Comments")
+        assignment = left.get("Cmd")
+        kind = assignment.get("Type", "untyped") if isinstance(assignment, dict) else "empty"
+        if kind != "CallExpr":
+            self.refuse(left, f"a {kind} on the left of `||`")
+        self.fields(assignment, "assignment", "Assigns")  # a command word after the assignment (Args) is refused
+        assigns = assignment.get("Assigns") or []
+        if len(assigns) != 1:
+            self.refuse(assignment, f"{len(assigns)} assignments on the left of `||`")
+        self.fields(assigns[0], "assignment", "Name", "Value")  # Append (+=), Naked, Index and Array are refused
+        name = (assigns[0].get("Name") or {}).get("Value")
+        if not isinstance(name, str) or not name:
+            self.refuse(assigns[0], "an assignment with no name")
+        value = assigns[0].get("Value")
+        word = self.word(value) if isinstance(value, dict) else ()
+        if len(word) != 1 or word[0][0] != "sub" or len(word[0][1]) != 1:
+            self.refuse(assigns[0], "an assignment whose value is not one substitution of one statement")
+        return Checked(name, word[0][1][0])
 
     def word(self, node: dict) -> Word:
         self.fields(node, "word", "Parts")
@@ -463,8 +550,10 @@ class Reader:
         self.refuse(node, f"a {kind or 'untyped'} part")
 
 
-def render(statement: Statement) -> str:
+def render(statement: Statement | Checked) -> str:
     """A shape written back as shell text, for a message: the form the table holds, not the text the file had."""
+    if isinstance(statement, Checked):
+        return f"{statement.name}=$({render(statement.producer)}) || exit 1"
     return " ".join("".join(render_part(part) for part in word) for word in statement)
 
 
@@ -711,6 +800,20 @@ def verify_step(doc: dict) -> dict:
     return run_step(doc, 1)
 
 
+def rounds_step(doc: dict) -> dict:
+    return run_step(doc, 2)
+
+
+def edits(*mutations: Callable[[dict], None]) -> Callable[[dict], None]:
+    """Several edits of one copy, applied in order."""
+
+    def mutate(doc: dict) -> None:
+        for mutation in mutations:
+            mutation(doc)
+
+    return mutate
+
+
 def checkout_step(doc: dict) -> dict:
     return next(step for step in regime_steps(doc) if step.get("uses", "").startswith("actions/checkout@"))
 
@@ -888,6 +991,48 @@ RUN_SCRIPTS = Invariant(
         "the base in backquotes": Mutation(
             replace_run(verify_step, "$(git rev-parse HEAD)", "`git rev-parse HEAD`"), "Backquotes"
         ),
+        # the base sha's status (standing order 21, round 3): unread, ignored, softened, or the assignment in another form
+        "the base's status unread": Mutation(
+            edits(
+                replace_run(verify_step, f"{CHECKED_BASE}\n", ""),
+                replace_run(verify_step, '"${base}"', '"$(git rev-parse HEAD)"'),
+            ),
+            f"`{CHECKED_BASE}` there",
+        ),
+        "the base's status ignored": Mutation(replace_run(verify_step, "|| exit 1", "|| true"), "not `exit 1`"),
+        "the base's failure softened to exit 0": Mutation(
+            replace_run(verify_step, "|| exit 1", "|| exit 0"), "not `exit 1`"
+        ),
+        "the base chained with &&": Mutation(
+            replace_run(verify_step, "|| exit 1", "&& true"), "BinaryCmd joined by &&"
+        ),
+        "a command word after the assignment": Mutation(
+            replace_run(verify_step, "$(git rev-parse HEAD) ||", "$(git rev-parse HEAD) true ||"), "Args"
+        ),
+        "a second assignment": Mutation(replace_run(verify_step, "\nbase=$(", "\nother=1 base=$("), "2 assignments"),
+        "the base appended": Mutation(replace_run(verify_step, "base=$(", "base+=$("), "Append"),
+        "the base as an array": Mutation(
+            replace_run(verify_step, "base=$(git rev-parse HEAD)", "base=($(git rev-parse HEAD))"), "Array"
+        ),
+        "the base declared local": Mutation(replace_run(verify_step, "\nbase=$(", "\nlocal base=$("), "DeclClause"),
+        "the base read through a pipeline": Mutation(
+            replace_run(verify_step, "$(git rev-parse HEAD)", "$(git rev-parse HEAD | cat)"), "BinaryCmd joined by |"
+        ),
+        "the base unquoted": Mutation(replace_run(verify_step, '"${base}"', "${base}"), "--base ${base} --head"),
+        "no set -euo pipefail": Mutation(
+            replace_run(verify_step, "set -euo pipefail\n", ""), "`set -euo pipefail` there"
+        ),
+        # the round-cap step: the same status, and its base taken from the fetched head
+        "the round cap's base status unread": Mutation(
+            edits(
+                replace_run(rounds_step, f"{CHECKED_BASE}\n", ""),
+                replace_run(rounds_step, '"${base}"', '"$(git rev-parse HEAD)"'),
+            ),
+            f"`{CHECKED_BASE}` there",
+        ),
+        "the round cap's base taken from the fetched head": Mutation(
+            replace_run(rounds_step, "rev-parse HEAD", f"rev-parse {HEAD_REF}"), f"rev-parse {HEAD_REF}"
+        ),
         "the head sha inlined into run": Mutation(replace_run(verify_step, "${HEAD_SHA}", HEAD_EXPRESSION), EXPRESSION),
         "the body inlined into run": Mutation(append_run(verify_step, f' --body "{BODY_CARRIER}"'), EXPRESSION),
         "another shell": Mutation(set_in(verify_step, "shell", "python"), "shell"),
@@ -897,7 +1042,7 @@ RUN_SCRIPTS = Invariant(
         "a default directory for the job": Mutation(
             set_in(regime_job, "defaults", {"run": {"working-directory": "/other"}}), "working-directory"
         ),
-        "a third run step": Mutation(add_step({"run": f"git checkout {HEAD_REF}\n"}), "3 run steps"),
+        "a fourth run step": Mutation(add_step({"run": f"git checkout {HEAD_REF}\n"}), "4 run steps"),
     },
 )
 # the round-4 audit's edit: bash reads BASH_ENV at the start of every non-interactive shell, so the verifier step ran
@@ -955,7 +1100,7 @@ STEP_INPUTS = Invariant(
         "persist-credentials as a string": Mutation(
             set_in(checkout_options, "persist-credentials", "false"), "found 'false' (str), the table holds False"
         ),
-        "a fifth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "5 steps"),
+        "a sixth step": Mutation(add_step({"uses": "actions/setup-node@v4"}), "6 steps"),
     },
 )
 CANCEL_IN_PROGRESS = Invariant(
@@ -1211,10 +1356,17 @@ STRAY_RUN = f"        run: git checkout {HEAD_REF}\n"
 # file or refuses it), the round-6 audit's spelling, and the text-level changes no parsed check could ever see.
 RAW_EDITS = {
     "a duplicate run: key on the verifier step (the auditor's edit)": RawEdit(
-        swap("        run: uv run", f"{STRAY_RUN}        run: uv run"), 51, True
+        swap(
+            f"        run: |\n          set -euo pipefail\n          {CHECKED_BASE}\n          uv run --no-config"
+            f" --no-project python -I {VERIFIER}",
+            f"{STRAY_RUN}        run: |\n          set -euo pipefail\n          {CHECKED_BASE}\n          uv run"
+            f" --no-config --no-project python -I {VERIFIER}",
+        ),
+        53,
+        True,
     ),
     "a duplicate run: key on the fetch step": RawEdit(
-        swap("        run: |\n", f"{STRAY_RUN}        run: |\n"), 41, True
+        swap("        run: |\n          git fetch", f"{STRAY_RUN}        run: |\n          git fetch"), 41, True
     ),
     "a duplicate permissions: key (the auditor's edit)": RawEdit(
         swap("\npermissions:\n", "\npermissions: write-all\npermissions:\n"), 19, True
@@ -1362,6 +1514,67 @@ class PinnedParserTest(unittest.TestCase):
         fake = f'#!/bin/sh\n[ "$1" = --version ] && {{ echo v{self.pin}; exit 0; }}\n"{real}" "$@"\nexit 3\n'
         message = self.refusal(self.path_with(fake))
         self.assertIn("shfmt exited 3 on the run script", message)
+
+
+# the shas the step-run fixtures hand the steps: the fake git prints BASE_FIXTURE, env: carries HEAD_FIXTURE
+BASE_FIXTURE = "a" * 40
+HEAD_FIXTURE = "b" * 40
+
+
+class StepRunTest(unittest.TestCase):
+    """The two verifier steps' scripts, run as the runner's bash runs them, read the status of the git that produces
+    the base sha (standing order 21): a git that prints a sha and exits non-zero ends the step before the verifier
+    runs. On 05a48d78 the sha went into `--base "$(git rev-parse HEAD)"` and the status was lost."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.doc = load(WORKFLOW)
+
+    def run_step(self, index: int, git_status: int) -> tuple[subprocess.CompletedProcess[str], Path]:
+        """The step's script under `bash -e` with a PATH holding a git that prints BASE and exits `git_status`, and a
+        uv that records its arguments instead of running; HEAD_SHA is the one env: variable both steps hold."""
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        tools = root / "bin"
+        tools.mkdir()
+        recorded = root / "uv-arguments"
+        (tools / "git").write_text(f"#!/bin/sh\necho {BASE_FIXTURE}\nexit {git_status}\n")
+        (tools / "uv").write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{recorded}'\n")
+        for tool in (tools / "git", tools / "uv"):
+            tool.chmod(0o755)
+        script = root / "step.sh"
+        script.write_text(run_step(self.doc, index)["run"])
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "bash")
+        run = subprocess.run(
+            [str(bash), "-e", str(script)],
+            env={"PATH": str(tools), "HEAD_SHA": HEAD_FIXTURE},
+            capture_output=True,
+            text=True,
+            cwd=root,
+            check=False,
+        )
+        return run, recorded
+
+    def test_a_git_that_prints_a_sha_and_exits_nonzero_ends_the_step_before_the_verifier(self) -> None:
+        for index, name in ((1, VERIFIER), (2, ROUNDS_CHECK)):
+            with self.subTest(name):
+                run, recorded = self.run_step(index, 77)
+                self.assertNotEqual(0, run.returncode, f"the step passed with its base sha's status unread: {run}")
+                self.assertFalse(recorded.exists(), f"{name} ran on a base sha whose producer failed: {run}")
+
+    def test_a_git_that_exits_zero_hands_the_verifier_the_base_and_head_shas(self) -> None:
+        for index, name in ((1, VERIFIER), (2, ROUNDS_CHECK)):
+            with self.subTest(name):
+                run, recorded = self.run_step(index, 0)
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                arguments = recorded.read_text().split("\n")
+                self.assertIn(name, arguments)
+                self.assertEqual(
+                    [BASE_FIXTURE, HEAD_FIXTURE],
+                    [arguments[arguments.index(flag) + 1] for flag in ("--base", "--head")],
+                )
 
 
 if __name__ == "__main__":

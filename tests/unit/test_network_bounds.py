@@ -209,9 +209,12 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("comment; names the tool without running it"),
     (
         ".github/workflows/test.yaml",
-        "sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby",
+        "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby",
     ): Exempt("an apt-get install package name"),
-    (".github/workflows/test.yaml", "sudo apt-get install -y jq curl"): Exempt("an apt-get install package name"),
+    (
+        ".github/workflows/test.yaml",
+        "sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl",
+    ): Exempt("an apt-get install package name"),
     # U96's chezmoi externals prefetch (scripts/lib/chezmoi-externals.sh and its copy in setup.sh): its own allowlisted
     # retry loop, so curl's --retry stays off; --max-time 900 caps one attempt on the checked continuation. U111's
     # cache check shares the prefetch's curl predicate and says in one message why it did not run without it.
@@ -388,8 +391,12 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("documentation; names the tool without running it"),
     (
         "scripts/orchestrator/README.md",
-        "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract` |",
+        "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract`; `test_the_decision_rule_is_applied_from_the_findings` (U119: a `correct` with a P2 passes with `Blocking: 0`, a P1 is `incorrect` with `Blocking: 1`, a verdict its findings do not derive or a priority outside P0 to P3 is exit 1 naming the field, no `verdict.md`)                                                                                                      |",
     ): Exempt("documentation; names the tool without running it"),
+    (
+        "scripts/orchestrator/README.md",
+        "Regime-cutover U104 (handoff R1) and U121 (standing order 37). `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the checkout, runs between a written brief and its TASK line (`hcom-orchestration` SKILL, step 1). A brief is a sequence of upper-case section headings, each a line that is exactly its name (`GOAL`, `SCOPE`, `CHANGE`, `CONTEXT`, `ACCEPTANCE`, `VERIFY`, `TIMEBOX`, `FORBIDDEN`, `CLOSURE`, `TRUST`, `REPORT`, `STANDING`, plus the `WORKER RULES (...)` line), each followed by its text; the script parses it into one `dict[str, str]`, so a term in SCOPE or FORBIDDEN fires nothing. Exit 0, printing nothing: the GOAL, CHANGE and CONTEXT sections hold none of the trigger terms in the script's one tuple (shell, tokeniz*, parse, parser, regex, hook, worktree, config, path, process, signal, supervisor, curl, wget, heredoc, quote, bound, refuse, fail closed, untrusted, sandbox, lint, rule, allowlist, denylist, walk, census; whole words, any case, a backticked term included), or the `CLOSURE` section is one line naming one of the four forms, `ast`, `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text, and the `TRUST` section is at least 40 characters and holds the word `trusted` or `trusts`. Exit 1, one reason per line on stdout: a term fired and there is no `CLOSURE`, or `CLOSURE` is empty, names two forms or holds any other line; a term fired and there is no `TRUST`, or it is too short, or it names nothing as trusted; `CLOSURE` names `allowlist` or `ast` while CHANGE holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or the brief has no GOAL, CHANGE or CONTEXT section. Exit 2 on usage, a file that cannot be read, or a heading that appears twice (named with both line numbers; merging the bodies would hide an empty second `CLOSURE`), never read as clean. It is installed and pinned like the levers below (`claude.levers.sha256`; the same self-check, in Python with `hashlib`, exits 2 with nothing on stdout when the copy differs from its pin) and allowed by `orchestrator.yml` at its installed path, so a repository without `scripts/orchestrator/` runs the same checked copy. The thirteen treadmill rows behind the rule are in the program's `handoff/02-audit-treadmill-analysis.md` (U109 and U112 added the trust boundary); `tests/unit/test_brief_check.py` runs the checkout script as a subprocess under `python -I` and the installed copy under a scratch HOME as the SKILL spells it. The lever call that refuses a program PR whose brief fails this check is a follow-up after U120.",
+    ): Exempt(f"documentation; the brief-check.py trigger-term list {MENTION}"),
     (
         "scripts/orchestrator/pr-audit.sh",
         "#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail",
@@ -420,6 +427,13 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "scripts/orchestrator/pr-audit.sh",
         'refuse "the sandbox network probe did not show the network denied (curl exit 6 or 7): ${probe_out:-no output}"',
     ): Exempt("message; names the tool without running it"),
+    # U104: brief-check.py's trigger table names the two tools as words a brief may hold; the script fetches nothing.
+    ("scripts/orchestrator/brief-check.py", '("curl", "fetched content is open-ended input"),'): Exempt(
+        f"trigger-term table row; {MENTION}"
+    ),
+    ("scripts/orchestrator/brief-check.py", '("wget", "fetched content is open-ended input"),'): Exempt(
+        f"trigger-term table row; {MENTION}"
+    ),
 }
 SNAP_EXEMPT = {
     (

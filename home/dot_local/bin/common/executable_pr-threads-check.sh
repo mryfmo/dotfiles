@@ -8,13 +8,29 @@
 #   pull request (GraphQL `reviewThreads`, read-only; more than 100 threads, or more than 100 comments in one,
 #   is a refusal, never a partial read) and requires `--head` to be the pull request's current `headRefOid` and
 #   a commit in this checkout (`git fetch` first). Every thread, resolved or not (GitHub's `isResolved` alone
-#   proves nothing, U28b F1), passes only when the first line of its newest reply is a disposition of
-#   `preferences.md` standing order 22, checked here:
+#   proves nothing, U28b F1), passes only when the first non-blank line of its newest reply is a disposition of
+#   `preferences.md` standing order 22 and that reply's author is a maintainer of the repository: GitHub's
+#   `authorAssociation` of the comment is `OWNER`, `MEMBER` or `COLLABORATOR` (`maintainer_associations` below, named
+#   once; U124 round 3). A newest reply by anyone else leaves the thread `open (newest reply by <login>, association
+#   <value>: not a maintainer)` whatever its text, since the forms are public and the reply is text anyone with a
+#   GitHub account wrote. The forms, checked here:
 #   `fixed: <sha>` when `<sha>` is `--head` or an ancestor of it and was committed after the thread's first
 #   comment (so a thread opened after the head cannot be `fixed`); `refuted: <text>` citing a URL or a
 #   `file:line`; `residual: unit=U<n> gate=<clause>` when the finding is P2 or P3 (the `![P<n> Badge]` of its
 #   first comment; no badge counts as P1) and `units.tsv` in `--records` has the row `U<n>`; or
-#   `residual: operator=<ts>` when `decisions.tsv` in `--records` has a row at `<ts>`, the only residual for a P1.
+#   `residual: operator=<ts>` when `decisions.tsv` in `--records` has a row at `<ts>`, the only residual for a P1;
+#   or `filed: f=<n> s=<n> <reason>` (regime-cutover U124, the weighted finding rule of AGENTS.md "Audit") for a
+#   thread of any priority when both scores are whole numbers from 1 to 10 and their product, the finding's weight,
+#   is under WEIGHT_THRESHOLD below, the one place this file names that number; a weight at or above it is refused
+#   naming the product. Each score is accepted by its decimal string (`^(10|[1-9])$`) before any arithmetic, so a
+#   decimal past bash's range cannot wrap into one (U124 round 2); a `filed:` of any other shape (a score outside
+#   that grammar, a missing score, no reason) is a malformed reply, refused naming what is wrong and quoting the line.
+#   The reason is the text after `s=<n>` with the whitespace around it trimmed and must hold a character that is not
+#   whitespace (`filed: f=1 s=1  reason`, two spaces, holds; U125 round d), judged on the reply's own text: the
+#   listing's `@tsv` writes a tab as the two characters `\t`, and `disposition` decodes the line before it reads it,
+#   so a tab-only reason is a missing reason, not a reason of two characters (U124 round 3). A reply whose first line
+#   is blank is judged by its first non-blank line, and a reply of blank lines alone is `open` naming its author's
+#   login and association as any reply is (U125 round d).
 #   A residual without `--records` is a refusal. Any other newest reply, or none, is a refusal: the remedy is a
 #   `U<n>b` TASK or a `pr-thread-reply.sh` disposition, never a merge. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -51,8 +67,10 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
-    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''             # producer-status: allow the if below takes an empty home as the checkout layout
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
         LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
     else
@@ -71,9 +89,9 @@ lever_self_check() {
         exit 2
     }
     if command -v sha256sum > /dev/null; then
-        digest=$(sha256sum < "${self}") || digest=''
+        digest=$(sha256sum < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     else
-        digest=$(shasum -a 256 < "${self}") || digest=''
+        digest=$(shasum -a 256 < "${self}") || digest='' # producer-status: allow the regex test below refuses an empty digest
     fi
     digest=${digest%% *}
     [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
@@ -86,10 +104,31 @@ lever_self_check() {
     }
 }
 lever_self_check
+# The isolated git and the environment scrub come from the library beside this script (U113): the ancestry and the
+# commit dates below are read in the checkout by a git no caller variable or configuration steers.
+[[ -r ${LEVER_DIR}/git-isolated.sh ]] || {
+    echo "pr-threads-check.sh: refused: git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/git-isolated.sh
+. "${LEVER_DIR}/git-isolated.sh"
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
+
+[[ -r ${LEVER_DIR}/read-lib.sh ]] || {
+    echo "pr-threads-check.sh: refused: read-lib.sh unreadable beside this script: ${LEVER_DIR}/read-lib.sh" >&2
+    exit 2
+}
+# shellcheck source=scripts/orchestrator/read-lib.sh
+. "${LEVER_DIR}/read-lib.sh"
 
 lever='pr-threads-check.sh'
 usage='usage: pr-threads-check.sh <pr> --head <sha> [--records <dir>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
+# The weighted finding rule (AGENTS.md "Audit", regime-cutover U124): a `filed:` reply holds when frequency times
+# severity is under this number. AGENTS.md names the same number once in its verdict bullet, and
+# tests/unit/test_review_rules.py keeps the two equal.
+WEIGHT_THRESHOLD=10
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   repository(owner: $owner, name: $name) {
@@ -97,13 +136,15 @@ threads_query='query($owner: String!, $name: String!, $pr: Int!) {
       headRefOid
       reviewThreads(first: 100) {
         pageInfo { hasNextPage }
-        nodes { isResolved comments(first: 100) { totalCount nodes { databaseId createdAt body } } }
+        nodes { isResolved comments(first: 100) { totalCount nodes { databaseId createdAt body authorAssociation author { login } } } }
       }
     }
   }
 }'
 # `head <sha> <hasNextPage>`, then per thread `<first id> <resolved> <created epoch> <P0-P3 or -> <count> <newest
-# reply's first line>` (TSV; the reply is last because it may be empty).
+# reply's authorAssociation or -> <its author's login or -> <newest reply's first non-blank line>` (TSV; the reply is
+# last because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes; a line is blank
+# when it holds no character outside whitespace, so a reply opened by an empty line is read at its text).
 # shellcheck disable=SC2016 # jq source, not shell
 threads_jq='.data.repository.pullRequest
   | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
@@ -111,7 +152,8 @@ threads_jq='.data.repository.pullRequest
       ($c.nodes[0].createdAt | fromdateiso8601 | tostring),
       ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
       ($c.totalCount | tostring),
-      (($c.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
+      (($c.nodes[1:] | last) as $reply | ($reply.authorAssociation // "-"), ($reply.author.login // "-"),
+        (($reply.body // "") | split("\n") | map(rtrimstr("\r")) | map(select(test("\\S"))) | (.[0] // "")))] | @tsv)'
 
 # @description Print the refusal on stderr and exit 2.
 # @arg $@ string The reason.
@@ -145,21 +187,40 @@ has_row() {
 # @description Print the disposition a thread's newest reply carries, or `open (<why>)`.
 # @arg $1 int The created epoch of the thread's first comment.
 # @arg $2 string Its severity, P0-P3 or `-`.
-# @arg $3 string The first line of the newest reply.
+# @arg $3 string The `authorAssociation` of the newest reply's author (GitHub's enum), or `-` without a reply.
+# @arg $4 string The newest reply's author login, or `-`.
+# @arg $5 string The first non-blank line of the newest reply as the listing's `@tsv` escaped it; decoded here before
+#   any read.
 disposition() {
-    local created=$1 severity=$2 line=$3 fix fix_time status
+    local created=$1 severity=$2 association=$3 login=$4 line='' fix fix_time status frequency severity_score weight why
+    # The associations GitHub gives a maintainer's comment (U124 round 3); a reply by anyone else closes nothing.
+    local maintainer_associations='^(OWNER|MEMBER|COLLABORATOR)$'
     local fixed='^fixed: ([0-9a-f]{40})( |$)'
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
+    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+)[[:space:]]+[^[:space:]]'
+    local filed_scores='^filed: f=[^[:space:]]+ s=[^[:space:]]+[[:space:]]*$'
+    local score_re='^(10|[1-9])$'
+    # `@tsv` wrote a tab as `\t`, a carriage return as `\r` and a backslash as `\\`, and nothing else starts with a
+    # backslash in its output; `%b` reads those three back, so the regexes below see the reply's own characters and
+    # a tab-only reason is whitespace, not the two characters `\t` (U124 round 3). An empty reply is left as the
+    # empty string above: `printf -v` with nothing to print leaves its variable unset.
+    [[ -z $5 ]] || printf -v line '%b' "$5"
+    # A reply exists when the listing names its author's association (`-` without one), and its author must be a
+    # maintainer whatever the reply says, a reply of blank lines alone included (U125 round d).
+    if [[ ${association} != - && ! ${association} =~ ${maintainer_associations} ]]; then
+        echo "open (newest reply by ${login}, association ${association}: not a maintainer)"
+        return
+    fi
     if [[ ${line} =~ ${fixed} ]]; then
         fix=${BASH_REMATCH[1]}
-        git cat-file -e "${fix}^{commit}" 2> /dev/null || {
+        git_isolated cat-file -e "${fix}^{commit}" 2> /dev/null || {
             echo "open (fixed: ${fix} is not a commit here)"
             return
         }
         status=0
-        git merge-base --is-ancestor "${fix}" "${head}" || status=$?
+        git_isolated merge-base --is-ancestor "${fix}" "${head}" || status=$?
         case ${status} in
         0) ;;
         1)
@@ -168,7 +229,7 @@ disposition() {
             ;;
         *) fail "git merge-base --is-ancestor ${fix} ${head} failed" ;;
         esac
-        fix_time=$(git show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
+        fix_time=$(git_isolated show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
         if ((fix_time < created)); then
             echo "open (fixed: ${fix} predates the finding)"
             return
@@ -200,8 +261,38 @@ disposition() {
         1) echo "open (residual: no decisions.tsv row at ${fix})" ;;
         *) fail "cannot read ${records}/decisions.tsv" ;;
         esac
-    elif [[ -z ${line} ]]; then
+    elif [[ ${line} == filed:* ]]; then
+        # The shape, then each score by its decimal string (score_re) before any arithmetic: bash evaluates a name or
+        # a subscript inside `(( ))` and wraps a decimal past its range (U124 round 2: f=18446744073709551617 read as
+        # 1), and the reply is text anyone with a GitHub account wrote. A refusal names the fault and quotes the line.
+        why=''
+        if [[ ${line} =~ ${filed} ]]; then
+            frequency=${BASH_REMATCH[1]}
+            severity_score=${BASH_REMATCH[2]}
+            if ! [[ ${frequency} =~ ${score_re} ]]; then
+                why="f=${frequency} is not a whole number from 1 to 10"
+            elif ! [[ ${severity_score} =~ ${score_re} ]]; then
+                why="s=${severity_score} is not a whole number from 1 to 10"
+            fi
+        elif [[ ${line} =~ ${filed_scores} ]]; then
+            why='the reason is missing'
+        else
+            why='a score is missing'
+        fi
+        if [[ -n ${why} ]]; then
+            echo "open (filed: reply needs f=<1..10> s=<1..10> <reason>; ${why}; got: ${line})"
+            return
+        fi
+        weight=$((frequency * severity_score))
+        ((weight < WEIGHT_THRESHOLD)) || {
+            echo "open (filed: f=${frequency} s=${severity_score} weighs ${weight}, not under ${WEIGHT_THRESHOLD}; fix it, or answer refuted: or residual:)"
+            return
+        }
+        echo "filed f=${frequency} s=${severity_score} weight=${weight}"
+    elif [[ -z ${line} && ${association} == - ]]; then
         echo 'open (no reply)'
+    elif [[ -z ${line} ]]; then
+        echo "open (the newest reply by ${login}, association ${association}, holds no text)"
     else
         echo 'open (the newest reply is not a disposition)'
     fi
@@ -234,7 +325,7 @@ done
 [[ -z ${records} || (-f ${records}/units.tsv && -f ${records}/decisions.tsv) ]] ||
     refuse "--records holds no units.tsv and decisions.tsv: ${records}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
-git cat-file -e "${head}^{commit}" 2> /dev/null || refuse "${head} is not a commit in this checkout; git fetch first"
+git_isolated cat-file -e "${head}^{commit}" 2> /dev/null || refuse "${head} is not a commit in this checkout; git fetch first"
 
 repo=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'gh repo view failed'
 [[ ${repo} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "gh repo view printed no owner/repo: ${repo}"
@@ -244,7 +335,7 @@ listing=$(gh_bounded api graphql -f "query=${threads_query}" -f "owner=${repo%%/
 threads=0
 open=0
 seen_head=0
-while IFS=$'\t' read -r first resolved created severity count reply; do
+while IFS=$'\t' read -r first resolved created severity count association login reply; do
     if [[ ${first} == head ]]; then
         [[ ${resolved} == "${head}" ]] || refuse "the head of pull request ${pr} is ${resolved}, not ${head}"
         [[ ${created} == false ]] || refuse "pull request ${pr} has more than 100 review threads; check it by hand"
@@ -257,7 +348,7 @@ while IFS=$'\t' read -r first resolved created severity count reply; do
     ((count <= 100)) || refuse "the thread of comment ${first} has more than 100 comments; check it by hand"
     threads=$((threads + 1))
     # A resolved thread is judged like an open one (U28b F1): GitHub's isResolved says someone clicked, not why.
-    state=$(disposition "${created}" "${severity}" "${reply}") || exit $?
+    state=$(disposition "${created}" "${severity}" "${association}" "${login}" "${reply}") || exit $?
     if [[ ${resolved} == true ]]; then
         case ${state} in
         open*) state="open (resolved without a valid disposition: ${state#open (}" ;;

@@ -57,6 +57,11 @@ bash:
       approval: allow
     - match: "*pr-threads-check.sh *"
       approval: deny
+    # The brief gate (U104): read-only, run from the checkout before a unit's first TASK (SKILL step 1).
+    - match: "~/.local/bin/common/brief-check.py *"
+      approval: allow
+    - match: "*brief-check.py *"
+      approval: deny
     # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
     # spelling and the bare form chained are denied as the argument forms are.
     - match: "~/.local/bin/common/records-sync.sh *"

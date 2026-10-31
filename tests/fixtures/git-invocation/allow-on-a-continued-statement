@@ -1,0 +1,3 @@
+bounded 60 env "${GIT_ISOLATED_ENV[@]}" git "${GIT_ISOLATED_ARGS[@]}" -C "${clone}" fetch -q \
+    "${url}" || # git-isolated: allow bounded exec of the library's own arrays
+    fail "git fetch failed"

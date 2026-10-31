@@ -64,9 +64,10 @@ SHEBANG_FORMS=(
     'zsh /usr/bin/env zsh' # *
     'zsh /bin/zsh'
     'zsh /usr/bin/zsh'
-    'other /usr/bin/env python3' # *
-    'other /usr/bin/env ruby'    # *
-    'other /usr/bin/env -S uv'   # * (env -S uv run --no-cache --script)
+    'other /usr/bin/env python3'    # *
+    'other /usr/bin/env ruby'       # *
+    'other /usr/bin/env -S uv'      # * (env -S uv run --no-cache --script)
+    'other /usr/bin/env -S python3' # * (env -S python3 -I)
 )
 
 #

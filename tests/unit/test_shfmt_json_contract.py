@@ -54,6 +54,8 @@ FIXTURE = FIXTURES / "contract.sh"
 BACKQUOTES = FIXTURES / "contract-backquotes"
 CAPTURES = {FIXTURE: FIXTURES / "contract.json", BACKQUOTES: FIXTURES / "contract-backquotes.json"}
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
+PRODUCER_CHECK = ROOT / "scripts/ci/producer-status-check.sh"
+GIT_CHECK = ROOT / "scripts/ci/git-invocation-check.sh"
 HOOK = ROOT / "home/dot_claude/hooks/executable_enforce-uv.sh"
 LINT = ROOT / "scripts/lint-comparisons.py"
 NESTED_LINE = 7  # contract.sh: the one command substitution that opens inside another
@@ -66,9 +68,12 @@ UNREADABLE_TREE = {"Type": "File", "Stmts": [{"Command": {"Type": "CallExpr"}}]}
 # the whole file). The extractor below reads them.
 WALKERS = {
     CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
+    PRODUCER_CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
+    GIT_CHECK: ("python", re.compile(r"cat << 'PY'\n(.*?)\nPY\n", re.DOTALL)),
     HOOK: ("jq", re.compile(r"function split_segments\(\) \{\n(.*?)\n\}\n", re.DOTALL)),
     LINT: ("python", None),
     ROOT / "tests/unit/test_sandbox_portability.py": ("python", None),
+    ROOT / "tests/unit/test_apt_mirror.py": ("python", None),
 }
 # Reads the extractor finds that TABLE need not hold, each with its reason: the list may shrink, never grow, and the
 # test asserts its exact contents. Empty: every read of every walker is in the table for its kind.
@@ -798,10 +803,18 @@ class ContractRunTest(unittest.TestCase):
         """One run of each walker over a small conforming input, under env."""
         script = self.temp / "lever.sh"
         script.write_text('#!/usr/bin/env bash\ndir=$(dirname "$0")\necho "$dir"\n')
+        reader = self.temp / "reader.sh"
+        reader.write_text('#!/usr/bin/env bash\nset -euo pipefail\ndir=$(pwd -P) || exit 1\necho "$dir"\n')
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "python script.py"}})
         return {
             "masked-dirname-check": subprocess.run(
                 ["bash", str(CHECK), str(script)], capture_output=True, text=True, check=False, env=env
+            ),
+            "producer-status-check": subprocess.run(
+                ["bash", str(PRODUCER_CHECK), str(reader)], capture_output=True, text=True, check=False, env=env
+            ),
+            "git-invocation-check": subprocess.run(
+                ["bash", str(GIT_CHECK), str(script)], capture_output=True, text=True, check=False, env=env
             ),
             "enforce-uv": subprocess.run(
                 ["bash", str(HOOK)], input=payload, capture_output=True, text=True, check=False, env=env
@@ -809,6 +822,13 @@ class ContractRunTest(unittest.TestCase):
             "lint-comparisons": subprocess.run(
                 [sys.executable, "-I", str(LINT), "--baseline", str(self.temp / "none.tsv"), "lever.sh", "--changed"],
                 cwd=self.temp,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            ),
+            "apt-bound-tree": subprocess.run(
+                [sys.executable, "-I", str(ROOT / "tests/unit/test_apt_mirror.py"), "--script", str(script)],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -834,6 +854,8 @@ class ContractRunTest(unittest.TestCase):
         expected = {
             "enforce-uv": "lists 1 statement(s) but the walk saw none",
             "lint-comparisons": "saw no statement in 1 shell file(s)",
+            "producer-status-check": "saw none of the 1 top-level statement(s)",
+            "apt-bound-tree": "lists 1 statement(s) but the walk saw none",
         }
         for name, message in expected.items():
             with self.subTest(walker=name):
@@ -843,6 +865,8 @@ class ContractRunTest(unittest.TestCase):
                 self.assertEqual("", result.stdout)
         check = results["masked-dirname-check"]
         self.assertEqual((0, "", ""), (check.returncode, check.stdout, check.stderr))
+        invocation = results["git-invocation-check"]  # the same self-check on the fixtures, so the same clean verdict
+        self.assertEqual((0, "", ""), (invocation.returncode, invocation.stdout, invocation.stderr))
 
     def test_masked_dirname_check_refuses_fixtures_in_which_its_walk_sees_no_substitution(self) -> None:
         # The contract holds (every node is still in each tree), but the walk skips a quoted heredoc's body, so its
@@ -863,11 +887,19 @@ class ContractRunTest(unittest.TestCase):
         results = self.walkers({**os.environ})
         check = results["masked-dirname-check"]
         self.assertEqual((0, "", ""), (check.returncode, check.stdout, check.stderr))
+        producer = results["producer-status-check"]
+        self.assertEqual((0, "", ""), (producer.returncode, producer.stdout, producer.stderr))
         hook = results["enforce-uv"]
         self.assertEqual(0, hook.returncode, hook.stderr)
         self.assertIn('"permissionDecision":"deny"', hook.stdout)
         lint = results["lint-comparisons"]
         self.assertEqual((0, "", ""), (lint.returncode, lint.stdout, lint.stderr))
+        self.assertEqual(
+            (0, "", ""),
+            (results["apt-bound-tree"].returncode, results["apt-bound-tree"].stdout, results["apt-bound-tree"].stderr),
+        )
+        invocation = results["git-invocation-check"]
+        self.assertEqual((0, "", ""), (invocation.returncode, invocation.stdout, invocation.stderr))
 
     def test_the_sandbox_guard_refuses_what_the_other_walkers_refuse(self) -> None:
         # tests/unit/test_sandbox_portability.py walks the same JSON in process: a contract mismatch and a run whose

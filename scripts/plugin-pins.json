@@ -10,7 +10,7 @@
     },
     "ponytail@ponytail": {
       "marketplace": "DietrichGebert/ponytail",
-      "pin": "5.3.2"
+      "pin": "5.3.3"
     },
     "pstack@cursor-plugins": {
       "marketplace": "cursor/plugins",
@@ -31,9 +31,10 @@
   },
   "codex": {
     "ponytail@ponytail": {
+      "content_sha256": "78475e2fae09d418815fdeeb8d4bcdbdc18b2002ce2a6389f868961498bec3bd",
       "marketplace": "https://github.com/DietrichGebert/ponytail.git",
-      "pin": "5.3.2",
-      "ref": "09c434ab73ca43761c5d8b0c5d341926c2fba710"
+      "pin": "5.3.3",
+      "ref": "7801d061243d7b753bad0e0b3c057cd250b11755"
     },
     "superpowers@openai-curated": {
       "marketplace": "openai-curated",

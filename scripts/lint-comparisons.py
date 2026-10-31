@@ -85,8 +85,10 @@ PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
 RE_FUNCS = ("re.compile", "re.search", "re.match", "re.fullmatch")
-GIT_C = ("core.hooksPath=/dev/null", "core.fsmonitor=false", "protocol.allow=never", "protocol.https.allow=always")
-GIT_C += ("core.attributesFile=/dev/null", "core.sshCommand=false")
+LIBRARY = (
+    "scripts/orchestrator/git-isolated.sh"  # the levers' isolated git; its two arrays are this lint's git flags (U113)
+)
+ISOLATED = ("GIT_ISOLATED_ENV", "GIT_ISOLATED_ARGS")  # the library's arrays: the environment, then the arguments
 OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
@@ -136,7 +138,7 @@ def blank(m):  # a chezmoi action is no shell: blanked to spaces, newlines and o
     return (":" if lone else " ") + re.sub(r"[^\n]", " ", m[0][1:])
 
 
-def shfmt_tree(rel, text, zsh=None):  # (AST, text as parsed): shfmt's JSON AST is the token rules' only
+def shfmt_tree(rel, text, zsh=None, seen=True):  # (AST, text as parsed): shfmt's JSON AST is the token rules' only
     # shell reader, and it refuses; zsh set: a nested string (-c, eval) in that dialect, which yields (None, text)
     # instead, since its parse is no file's
     nested = zsh is not None
@@ -158,7 +160,7 @@ def shfmt_tree(rel, text, zsh=None):  # (AST, text as parsed): shfmt's JSON AST 
         if nested:
             return None, text
         sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON AST")
-    if not nested:
+    if not nested and seen:  # seen=False: a file read for its data (the library), no file the rules judge
         SEEN.update(files=1, statements=contract().count(tree)["Stmt"])
     return tree, text
 
@@ -583,10 +585,55 @@ def python_hits(text):
             yield node.lineno, "R4", py_calls(parts, PY_NORM.match)
 
 
-def git(*args):  # plan 024 5.14 item 2: env -i, a system git by its absolute path, -C, no system or global config
+def refuse(message):  # exit 2 with the cause on stderr: the lint could not judge, which is never "clean"
+    print(f"lint-comparisons: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+def literal(word):  # the value of a word that is one plain literal, else None
+    parts = word.get("Parts") or []
+    return parts[0].get("Value") if len(parts) == 1 and parts[0].get("Type") == "Lit" else None
+
+
+@functools.cache
+def isolated_git():  # (environment, arguments) of the levers' isolated git, read as data from the library's syntax
+    # tree: its two top-level array assignments, every element one plain literal. The library is never sourced, and
+    # an absent array or an element that is no plain literal refuses (U113)
+    try:
+        text = (ROOT / LIBRARY).read_text()
+    except OSError as error:
+        refuse(f"{LIBRARY}: cannot read the isolated-git library ({error})")
+    tree, _ = shfmt_tree(LIBRARY, text, seen=False)
+    found = {}
+    for stmt in tree.get("Stmts") or []:
+        cmd = stmt.get("Cmd") or {}
+        if cmd.get("Type") != "CallExpr":
+            continue
+        for assign in cmd.get("Assigns") or []:
+            assigned = (assign.get("Name") or {}).get("Value")
+            if assigned not in ISOLATED:
+                continue
+            if assigned in found:
+                refuse(f"{LIBRARY}: {assigned} is assigned twice at the top level")
+            values = [literal(elem.get("Value") or {}) for elem in (assign.get("Array") or {}).get("Elems") or []]
+            if not values or None in values:
+                refuse(f"{LIBRARY}: {assigned} is not an array of plain literals (line {assign['Pos']['Line']})")
+            found[assigned] = values
+    missing = [array for array in ISOLATED if array not in found]
+    if missing:
+        refuse(f"{LIBRARY}: no top-level array assignment of {', '.join(missing)}")
+    env_name, args_name = ISOLATED
+    pairs = [entry.partition("=") for entry in found[env_name]]
+    if any(not sign for _, sign, _ in pairs):
+        refuse(f"{LIBRARY}: an entry of {env_name} is not NAME=value")
+    return {key: value for key, _, value in pairs}, tuple(found[args_name])
+
+
+def git(*args):  # plan 024 5.14 item 2: env -i, a system git by its absolute path, -C; the environment and the flags
+    # are the isolated-git library's (U113), so this lint and the levers run git under one list
     exe = shutil.which("git", path=os.defpath) or sys.exit(f"lint-comparisons: no git in {os.defpath}")
-    cmd = [os.path.realpath(exe), "-C", str(ROOT), *(x for c in GIT_C for x in ("-c", c)), *args]  # not PATH's git
-    env = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+    env, flags = isolated_git()
+    cmd = [os.path.realpath(exe), *flags, "-C", str(ROOT), *args]  # not PATH's git
     return filter(None, subprocess.run(cmd, env=env, capture_output=True, text=True, check=True).stdout.split("\0"))
 
 

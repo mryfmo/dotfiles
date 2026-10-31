@@ -1,0 +1,6 @@
+{
+  "name": "ponytail",
+  "version": "5.3.3",
+  "skills": "./docs/skills/",
+  "hooks": "./hooks/claude-codex-hooks.json"
+}

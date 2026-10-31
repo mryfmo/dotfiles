@@ -665,8 +665,11 @@ codex:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
         enabled: true
-      # Ponytail 5.3.2 at 09c434a (both hosts, 2026-10-25): each hook runs `node -e` on the plugin's own
-      # hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout, the same three scripts as before.
+      # Ponytail 5.3.3 at 7801d06 (review bump 2026-10-29: upstream released v5.3.3 and the marketplace upgrade
+      # installs the copy from upstream main, so a fresh bootstrap landed off the 5.3.2 pin). The compare
+      # 09c434ab...7801d061 touches hooks/band/*.ts, tests and the plugin manifests only;
+      # hooks/claude-codex-hooks.json is unchanged, so these hashes still match. Each hook runs `node -e` on
+      # the plugin's own hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout.
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
         trusted_hash: sha256:defea43402fc8edba23234c694a1117cf80efc2da38968a40a1004cd9d63f725
         enabled: true
@@ -774,6 +777,7 @@ claude:
       - Bash(~/.local/bin/common/hcom-dispatch *)
       - Bash(~/.local/bin/common/bus-history.sh *)
       - Bash(~/.local/bin/common/worktree-gc.sh *)
+      - Bash(~/.local/bin/common/worker-worktree.sh *)
       - Bash(~/.local/bin/common/regime-init *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
@@ -839,27 +843,34 @@ claude:
   # for the exact head and green CI, U71). pr-audit.sh is the Codex audit route
   # (U71b): one `codex exec` under the `audit` permission profile of
   # codex.audit, never run unless its launch-time sandbox probes pass.
+  # brief-check.py is the orchestrator seat's brief gate (U104): the same install
+  # and self-check, run from the checkout before the first TASK of a unit and
+  # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
       hcom-seat: c21451cbb0c4a4ff38ba2fc1837933c01e76d4facc205e71dd18685d18115abe
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
+      worker-worktree.sh: 3cfe8e3a98ce7379bcbfab9883e8c0f60c53fe7f38e2427512ef92c355c04dd1
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: 190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96
-      pr-thread-reply.sh: 5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037
-      pr-thread-resolve.sh: 382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123
+      pr-thread-reply.sh: a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c
+      pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a
-      pr-body-edit.sh: 23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee
-      pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
-      records-sync.sh: d7cff85921ce06b58222763858db7d3c11069ca4c4ec6e62b88fac3f1a8914d7
-      pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
+      pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
+      pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
+      records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
+      pr-merge.sh: 705dbd64221feda5b983febe4ba5691bc9db994a3b0d4f71c1f8781c9fe2c545
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 0a65b188de2d920d4d7bbbebe6ece946e2c9a70ea32a3ad07441bdc917edb419
+      pr-audit.sh: 07788a4ec344341dc1e00518cfed9d6fea924e883624197821adadc3468e40e3
+      brief-check.py: 63fa7c6e6677fc2e871a9c9fb5cf0ac338141e5377696c321311a3cf980021ae
+      read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
@@ -1371,7 +1382,7 @@ assets:
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
       frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
-      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
+      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.3}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
       pstack@cursor-plugins: {marketplace: cursor/plugins, pin: 0.15.30}
   codex-plugins:
@@ -1381,20 +1392,50 @@ assets:
     verify: installed-version
     note: >-
       each pin is the version both hosts ran on 2026-10-25 (the plugin.json of the copy under
-      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d). A plugin with a ref comes
-      from a git marketplace that the Codex config fetches at that commit (`ref` under
-      [marketplaces.<name>], rendered from here; `codex plugin marketplace upgrade` stays on it),
-      and ponytail's hooks are trusted only at the trusted_hash pins under codex.hooks.state.
-      superpowers comes from the OpenAI-curated catalog, which takes no version, so make update
-      only compares it. make doctor fails when an installed version or a marketplace revision
-      differs from its pin. The crit plugin is the local copy `crit install codex-plugin` writes
-      for the pinned crit release (assets.crit).
+      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d); the copy is judged by that
+      version, as the Claude copy of the same plugin is, and, where content_sha256 is recorded, by its
+      content: the sha256 over one line per file, `<relative path> NUL <sha256 of its bytes> LF`, for
+      every regular file of the copy whose path is not inert, sorted by the bytes of the path, the .git
+      directory skipped; a symlink anywhere in the copy is a finding. Inert is what the manifest does not
+      point at and Codex never loads by convention: the copy's .codex-plugin/plugin.json names the trees
+      and files Codex loads (skills, hooks, the mcp/mcpServers config, apps, commands,
+      interface.composerIcon and interface.logo, and any other string that is a path inside the copy),
+      every file a reference reaches (resolved by the filesystem and decided by identity, never by comparing
+      path text, so `./DOCS/skills/` on a case-insensitive filesystem pins docs/skills/) is pinned whatever
+      glob matches it, and only to the files no reference reaches
+      do the scripts/pin_records.py INERT globs apply (a README, README.md, README.txt or README.rst at
+      any depth, docs/, i18n/, LICENSE*, images, .gitignore and .github/). A manifest that cannot be read
+      or parsed, or that names a path outside the copy, is a finding, never "no references". Inert is a
+      property of Codex's loading, not of the file type: instruction files (skills/, AGENTS.md, any
+      other Markdown) are injected into the model and are pinned with .mcp.json (stdio MCP commands
+      Codex enables), the manifests, scripts/, commands/ and any file kind that appears tomorrow; the
+      trusted_hash pins under codex.hooks.state cover the hook command strings only.
+      `check-agent-runtime.py --codex-content-sha256 <copy dir>` prints the
+      value for a review bump. The Claude copy of the same plugin is pinned by version only; that
+      asymmetry remains and is no reason to leave a file unpinned here. A plugin with a ref comes from a
+      git marketplace: the ref pins the marketplace catalog snapshot only (`ref` under
+      [marketplaces.<name>], rendered from here, and `codex plugin marketplace upgrade` keeps the
+      catalog on it), while the upgrade installs the plugin copy from the source the catalog names
+      (upstream main for ponytail), whatever the ref says, so the copy's commit is not compared with
+      it. After each update the copy is judged by make doctor's check (scripts/update-agent-assets.sh
+      judge_codex_copy), whether it was cached before or not; one the doctor rejects is removed, a
+      WARN, and make doctor's drift until the review bump, not a run failure. superpowers comes from
+      the OpenAI-curated catalog, which takes no version, so make update only compares it. make
+      doctor fails when an installed version, a copy's content or a marketplace revision differs from
+      its pin. The crit plugin is the local copy `crit install codex-plugin` writes for the pinned
+      crit release (assets.crit).
     plugins:
       superpowers@openai-curated: {marketplace: openai-curated, pin: 6.3.0}
       ponytail@ponytail:
         marketplace: https://github.com/DietrichGebert/ponytail.git
-        pin: 5.3.2
-        ref: 09c434ab73ca43761c5d8b0c5d341926c2fba710
+        pin: 5.3.3
+        ref: 7801d061243d7b753bad0e0b3c057cd250b11755
+        # content_sha256 of the tree at 7801d061 (tag v5.3.3, 2026-10-29), read on 2026-10-30 from a
+        # scratch clone with check-agent-runtime.py --codex-content-sha256 (144 files pinned, 70 inert:
+        # the manifest names ./skills/, ./hooks/claude-codex-hooks.json, ./assets/codex-icon.png and
+        # ./assets/logo.png, so the two icons are pinned); the same value at main 96608e07 (README, i18n
+        # READMEs and two logo SVGs, all inert).
+        content_sha256: 78475e2fae09d418815fdeeb8d4bcdbdc18b2002ce2a6389f868961498bec3bd
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi

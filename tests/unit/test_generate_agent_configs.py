@@ -235,11 +235,14 @@ MANAGED_ALLOW = [
     "Bash(~/.local/bin/common/hcom-dispatch *)",
     "Bash(~/.local/bin/common/bus-history.sh *)",
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
+    "Bash(~/.local/bin/common/worker-worktree.sh *)",
     "Bash(~/.local/bin/common/regime-init *)",
     "Bash(hcom list *)",
 ]
 LEVERS = (
+    "brief-check.py",
     "bus-history.sh",
+    "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",
     "omp-run.sh",
@@ -251,12 +254,14 @@ LEVERS = (
     "pr-thread-resolve.sh",
     "pr-threads-check.sh",
     "pr-update-branch.sh",
+    "read-lib.sh",
     "records-sync.sh",
     "regime-env",
     "regime-init",
     "regime-start",
     "regime-stop",
     "seat-login-preflight",
+    "worker-worktree.sh",
     "worktree-gc.sh",
 )
 

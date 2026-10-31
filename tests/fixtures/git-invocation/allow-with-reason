@@ -1,0 +1,1 @@
+read_config git user.name name # git-isolated: allow the identity is read from the user configuration on purpose

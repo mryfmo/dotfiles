@@ -167,12 +167,39 @@ jobs:
         if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
         run: /usr/bin/python3 -I -S scripts/ci/drop-azure-apt-mirror.py
 
+      - name: Install apt packages
+        if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
+        # Each apt call ends on its own (regime-cutover U109): coreutils' timeout, by its path so that no alias, hash
+        # or PATH entry stands in for it, cuts a call that prints nothing at 180 s, over ten times the measured index
+        # fetch (5.8 to 10.7 s in the last five passing main runs; the installs took under 1 s), and apt's own
+        # options give up a connection or read silent for 15 s and move to the next mirror, three times
+        # (runner-images#15040). sudo comes first so that timeout and apt share root and the SIGKILL 10 s after
+        # the SIGTERM reaches apt, since an unprivileged timeout cannot signal a root process and sudo relays the
+        # signals it receives but a SIGKILL ends sudo itself and leaves apt running (sudo(8), Signal handling).
+        # The step holds nothing else: tests/unit/test_apt_mirror.py reads it from shfmt's syntax tree and accepts
+        # only the exact form, one call per statement, so no other command stands in for a word of it. Its bound is
+        # the two calls (180 s each plus the 10 s kill delay), rounded up plus one minute (BoundOrderTest). Ruby is
+        # required for bashcov/simplecov formatters; bats and parallel for the Bats run.
+        timeout-minutes: 8
+        run: |
+          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
+          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby
+
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # Twice the measured rest of this step (at most 73 s: ubuntu-24.04 server, run 40338292845; 14 to 46 s on
+        # the other rows), rounded up plus one minute (tests/unit/test_apt_mirror.py BoundOrderTest); the apt calls
+        # run in the step above under their own bound. A stalled download or gem install ends here, under this
+        # step's name, never at the job's 45 minutes.
+        timeout-minutes: 4
         # gh and scripts/lib/github-release.sh authenticate with this token; no other step needs it.
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          # pipefail: the checksum pipeline's producers (the download, the grep) must end the step when they fail after
+          # printing, since the step names no `shell:` and the runner's `bash -e` alone reads the checker's status (round 22).
+
           if [[ "${OS}" == macos-* ]]; then
             # The macOS runner images ship third-party taps tapped but
             # untrusted, and Homebrew warns on every `brew install` while one
@@ -186,11 +213,7 @@ jobs:
             # `gawk` is available for shell tooling used by the test suite.
             brew install bash bats-core gawk parallel
 
-          elif [[ "${OS}" == ubuntu-* ]]; then
-            # Ruby is required for bashcov/simplecov formatters.
-            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby
-
-          else
+          elif [[ "${OS}" != ubuntu-* ]]; then
             echo "${OS} and ${SYSTEM} are not supported" >&2
             exit 1
           fi
@@ -210,14 +233,26 @@ jobs:
           esac
           artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
           base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
-          sha256_check=(shasum -a 256 --check --strict)
-          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
+          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64). The tool's name
+          # is kept, and each command below is spelled out: tests/unit/test_apt_mirror.py reads every step from
+          # shfmt's tree and refuses a command word it cannot read, an array or a variable included (regime-cutover U109).
+          # Every status is read (round 21): the banner is a plain assignment under this step's `bash -e`, so a
+          # `sha256sum --version` that fails ends the step before any tool is selected (the BSD one prints
+          # `sha256sum (Darwin) 1.0` and exits 0, so it selects shasum); tests/unit/test_ci_workflows.py injects each case.
+          if command -v sha256sum > /dev/null 2>&1; then
+            sha256sum_banner="$(sha256sum --version)"
+            case "${sha256sum_banner}" in
+              *'GNU coreutils'*) sha256_tool=sha256sum ;;
+              *) sha256_tool=shasum ;;
+            esac
+          else
+            sha256_tool=shasum
+          fi
           # 30 s to connect, and a transfer under 1 KB/s for 60 s fails, as the installers' downloads (U99).
           curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
           curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \
-            | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
+            | (cd "${RUNNER_TEMP}" && if [[ "${sha256_tool}" == sha256sum ]]; then sha256sum --check --strict; else shasum -a 256 --check --strict; fi)
           # The checksum file comes from the same release; the attestation is the publisher's
           # check, verified before chezmoi runs with the runner's authenticated gh (GITHUB_TOKEN).
           if ! github_release_attestation twpayne/chezmoi "v${chezmoi_version}" "${RUNNER_TEMP}/${artifact}"; then
@@ -240,8 +275,9 @@ jobs:
               ;;
           esac
           test -x "${files_test_chezmoi}"
-          # A runner-provided chezmoi earlier on PATH must not shadow this release.
-          "${files_test_chezmoi}" --version | grep -F "v${chezmoi_version}"
+          # A runner-provided chezmoi earlier on PATH must not shadow this release: `chezmoi` here resolves as
+          # `command -v chezmoi` did above, so the version checked is the one FILES_TEST_CHEZMOI names.
+          chezmoi --version | grep -F "v${chezmoi_version}"
           printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
 
           # Install coverage tooling as user gems and expose gem bin dir on PATH
@@ -287,7 +323,13 @@ jobs:
           # literal here). tests/unit/test_generate_agent_configs.py ClaudeDoctorLinuxGlobTest runs `claude doctor`
           # on the rendered settings and fails when CLAUDE_DOCTOR_BIN is set but not executable (regime-cutover U17).
           mise -C "${RUNNER_TEMP}/statusline-mise" install npm:@anthropic-ai/claude-code
+          # claude_bin is the path `mise which` answered in this step (a failing substitution in a plain assignment
+          # ends the step under bash -e), tested executable on the line before it runs, so tests/unit/test_apt_mirror.py
+          # (regime-cutover U109) exempts the expanded command word by step and line. `mise exec` is not used for the
+          # version check because on the ubuntu-24.04 rows it installed the copied config's whole toolset (30 tools,
+          # actions run 40936139847), whose shfmt then failed the ShellCheck step's version probe.
           claude_bin="$(mise -C "${RUNNER_TEMP}/statusline-mise" which claude)"
+          test -x "${claude_bin}"
           "${claude_bin}" --version
           printf 'CLAUDE_DOCTOR_BIN=%s\n' "${claude_bin}" >> "${GITHUB_ENV}"
 
@@ -444,12 +486,27 @@ jobs:
         with:
           enable-cache: false
 
+      - name: Install apt packages for the unit tests
+        if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' }}
+        # jq and zsh for the Python unit tests, bounded as in "Install apt packages"; 150 s is over thirty times the
+        # measured 1.1 to 1.7 s refresh of the lists that step fetched, and the 1.3 to 3.2 s installs (regime-cutover
+        # U109). sudo comes first so that the SIGKILL 10 s after the SIGTERM reaches the root-owned apt, which
+        # sudo cannot relay (sudo(8), Signal handling). The step holds nothing but the two calls; its bound is them
+        # (150 s each plus the 10 s kill delay), rounded up plus one minute (tests/unit/test_apt_mirror.py
+        # BoundOrderTest).
+        timeout-minutes: 7
+        run: |
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq zsh
+
       - name: Run Python unit tests
         if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # Twice the measured rest of this step (at most 664 s: macos-15 client, run 40610790312; 189 to 388 s on the
+        # Ubuntu rows), rounded up plus one minute (tests/unit/test_apt_mirror.py BoundOrderTest); the apt calls run
+        # in the step above under their own bound.
+        timeout-minutes: 24
         run: |
-          if [[ "${OS}" == ubuntu-* ]]; then
-            sudo apt-get update && sudo apt-get install -y jq zsh
-          elif [[ "${OS}" == macos-* ]]; then
+          if [[ "${OS}" == macos-* ]]; then
             command -v jq > /dev/null 2>&1 || brew install jq
             command -v zsh > /dev/null 2>&1 || brew install zsh
           fi
@@ -529,12 +586,17 @@ jobs:
           BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \
             ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
 
-      - name: Setup for Codecov
-        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
+      - name: Install apt packages for Codecov
+        if: ${{ steps.decide.outputs.should_test == 'true' && runner.os == 'Linux' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
+        # codecov-action uses these two tools while preparing and uploading the explicit Cobertura report in this
+        # repository setup. Both are on the image already (0.3 to 0.5 s measured); the call is bounded in the one
+        # form every apt call in a workflow carries, in a step that holds nothing else (regime-cutover U109), sudo
+        # first so that the SIGKILL 10 s after the SIGTERM reaches the root-owned apt, which sudo cannot relay
+        # (sudo(8), Signal handling). Its bound is the call (150 s plus the 10 s kill delay), rounded up plus one
+        # minute (BoundOrderTest).
+        timeout-minutes: 4
         run: |
-          # codecov-action uses these tools while preparing and uploading the
-          # explicit Cobertura report in this repository setup.
-          sudo apt-get install -y jq curl
+          sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl
 
       - name: Upload coverage to Codecov
         if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}

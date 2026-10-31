@@ -23,9 +23,13 @@ yazi = "latest"
 # sandbox-runtime: the `srt` that contains the omp seats (scripts/orchestrator/hcom-seat, regime-cutover U85).
 "npm:@anthropic-ai/sandbox-runtime" = "latest"
 "npm:bash-language-server" = "latest"
-# Held with ccusage: the CI statusline smoke runs both; keep until ccusage restores linux-x64 (U42).
+# Held with ccusage: the CI smoke installs both behind the same skew check; 2.2.32 declares no optionalDependencies.
 "npm:ccstatusline" = "2.2.32"
-# Held: the npm backend installs 20.0.38 without its optional linux-x64 native binary (run 40087404553); keep until a release restores it.
+# Held: ccusage ships six platform packages as optionalDependencies, published minutes after the meta package
+# (20.0.38: meta 2026-10-21T10:49:51Z, linux-x64 10:54:25Z). A job that starts inside that skew after the 72h cutoff
+# (run 40087404553, 2026-10-24T10:49:49Z) installs without the native binary, because npm skips an optional
+# dependency it cannot fetch. The exact pin is the policy for tools with native optional dependencies; bump it
+# deliberately after scripts/ci/npm-cooldown-skew-check.sh passes the new version. It is not a wait for a fix.
 "npm:ccusage" = "20.0.37"
 "npm:pyright" = "latest"
 "npm:fast-cli" = "latest"

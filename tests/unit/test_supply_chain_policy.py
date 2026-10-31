@@ -428,7 +428,7 @@ main
         held["http:shfmt"] = '[tools."http:shfmt"]'
         held["http:ruff"] = '[tools."http:ruff"]'
         held["npm:prettier"] = '"npm:prettier" = '
-        # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
+        # U114: ccusage's platform packages publish minutes after its meta package; both statusline tools hold exact pins.
         held["npm:ccusage"] = '"npm:ccusage" = '
         held["npm:ccstatusline"] = '"npm:ccstatusline" = '
         for name, request in config["tools"].items():

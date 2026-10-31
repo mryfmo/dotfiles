@@ -310,6 +310,7 @@ jobs:
         run: |
           mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
           mise -C "${RUNNER_TEMP}/statusline-mise" install node
+          scripts/ci/npm-cooldown-skew-check.sh "${RUNNER_TEMP}/statusline-mise" npm:ccstatusline npm:ccusage
           # Every version comes from the copied config and its minimum_release_age (no literal here).
           mise -C "${RUNNER_TEMP}/statusline-mise" install npm:ccstatusline npm:ccusage
           mise -C "${RUNNER_TEMP}/statusline-mise" install http:ruff npm:prettier

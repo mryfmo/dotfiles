@@ -2301,11 +2301,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(text)], [("generic-token", secret)])
         self.assertEqual(module.measured_text(secret), HIGH_ENTROPY_VALUE)
         self.assertEqual(module.mask_secret_matches(text), (f"{mask}{tail}\n", 1))
-        # A CR between the operator and the quote is whitespace before the value; one before the LF is outside the
-        # capture, and the mask leaves the CRLF line ending in place.
-        crlf = f'{FIELD} =\r"{HIGH_ENTROPY_VALUE}"\r\n'
+        # A CR before the LF is outside the capture, and the mask leaves the CRLF line ending in place. A CR between
+        # the operator and the quote is a line boundary in both forms (round 1 let `\s*` cross it): the key is on one
+        # line and the quoted value, bare of its key, on the next, so no generic rule matches.
+        crlf = f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\r\n'
         self.assertEqual([f.secret for f in module.secret_findings(crlf)], [f'"{HIGH_ENTROPY_VALUE}"'])
         self.assertEqual(module.mask_secret_matches(crlf), (f"{mask}\r\n", 1))
+        split = f'{FIELD} =\r"{HIGH_ENTROPY_VALUE}"\r\n'
+        for in_json_string in (False, True):
+            self.assertEqual(module.secret_findings(split, in_json_string=in_json_string), [])
+            self.assertEqual(module.mask_secret_matches(split, in_json_string=in_json_string), (split, 0))
         path = self.write_text_file("docs/notes.md", text)
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
@@ -2335,6 +2340,77 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assertEqual(module.secret_findings(low), [])
         self.assertEqual(module.mask_secret_matches(low), (low, 0))
         module.validate_no_obvious_secrets()
+
+    def test_a_tab_between_the_key_and_the_quote_is_a_field_boundary_in_text_and_content_in_a_json_string(
+        self,
+    ) -> None:
+        """U107b round 2, audit P2 on f84ea376: round 1 bounded the value at a tab but kept `\\s*` around the operator,
+        so `<key> =<TAB>"Qz7v..."` matched across the tab, the mask removed it and a four-column TSV row became three.
+        In a text scanned as it is the whole match crosses no tab: the key column and the value column are two
+        fields, so the line is no assignment and nothing is masked; a tab after the value still ends it and is kept.
+        In a decoded JSON string a tab is content, so the same line is an assignment there (the form the tree scan
+        and --mask-secrets use for every decoded string)."""
+        module = self.module
+        mask = module.SECRET_MASK
+        secret = f'"{HIGH_ENTROPY_VALUE}"'
+        for text in (f"{FIELD} =\t{secret}\n", f"{FIELD}\t= {secret}\n", f"{FIELD}\t=\t{secret}\n"):
+            with self.subTest(text=text):
+                self.assertEqual(module.secret_findings(text), [])
+                self.assertEqual(module.mask_secret_matches(text), (text, 0))
+                self.assertEqual(
+                    [(f.rule.id, f.secret) for f in module.secret_findings(text, in_json_string=True)],
+                    [("generic-token", secret)],
+                )
+                self.assertEqual(module.mask_secret_matches(text, in_json_string=True), (f"{mask}\n", 1))
+        after = f"{FIELD} = {secret}\tnext\n"
+        self.assertEqual([(f.rule.id, f.secret) for f in module.secret_findings(after)], [("generic-token", secret)])
+        self.assertEqual(module.mask_secret_matches(after), (f"{mask}\tnext\n", 1))
+        # The tree scan reads a text file as it is: the split line passes, the line with the tab after its value is
+        # reported.
+        path = self.write_text_file("docs/notes.md", f"{FIELD} =\t{secret}\n")
+        module.validate_no_obvious_secrets()
+        path.write_text(after)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('docs/notes.md:generic-token:1 "Qz7...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+
+    def test_a_tab_inside_a_decoded_json_string_is_content_and_the_whole_value_is_reported(self) -> None:
+        """U107b round 2, Codex P1 on f84ea376: --mask-secrets and both scans decode every JSON string before scanning
+        it, so a `\\t` inside one is content, not a field boundary, but round 1 bounded the value at it in every text:
+        `<key> = "prefix<TAB>Qz7v..."` inside a JSON string measured as `prefix`, zero findings and zero masks where
+        05597009 masked it, and the value could reach the records sync. A decoded string is scanned in the rules'
+        line-bounded form: the whole value is reported and masked, as before round 1; a line feed inside the string
+        still ends the value."""
+        module = self.module
+        mask = module.SECRET_MASK
+        secret = f'"prefix\t{HIGH_ENTROPY_VALUE}"'
+        line = f"{PASSWORD_KEY} = {secret}"
+        # As a text file the tab splits the field: the part before it measures as `prefix` and the rest is bare.
+        self.assertEqual(module.secret_findings(line + "\n"), [])
+        findings = [(f.rule.id, f.secret) for f in module.secret_findings(line, in_json_string=True)]
+        self.assertEqual(findings, [("generic-password", secret)])
+        self.assertEqual(module.mask_secret_matches(line, in_json_string=True), (mask, 1))
+        self.assertEqual(module.mask_json_strings({"items": [{"note": line}]}), ({"items": [{"note": mask}]}, 1))
+        document = json.dumps({"items": [{"note": line}]}, indent=2) + "\n"
+        self.assertIn("\\t", document)
+        path = self.write_text_file("fixtures/evidence.json", document)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            module.validate_no_obvious_secrets()
+        self.assertIn('fixtures/evidence.json:generic-password:4 "pre...', stderr.getvalue())
+        self.assertNotIn(HIGH_ENTROPY_VALUE, stderr.getvalue())
+        masked, _ = module.mask_json_strings(json.loads(document))
+        path.write_text(json.dumps(masked, indent=2) + "\n")
+        module.validate_no_obvious_secrets()
+        # A line feed inside a decoded string still ends the value (the closing quote on the next line is outside the
+        # capture, as any text there is): the line after it is scanned on its own.
+        two_lines = f'{PASSWORD_KEY} = "{HIGH_ENTROPY_VALUE}\nsecond line"'
+        self.assertEqual(
+            [f.secret for f in module.secret_findings(two_lines, in_json_string=True)], [f'"{HIGH_ENTROPY_VALUE}']
+        )
+        self.assertEqual(module.mask_secret_matches(two_lines, in_json_string=True), (f'{mask}\nsecond line"', 1))
 
     def test_a_generic_rule_scans_a_padded_line_in_linear_time(self) -> None:
         """Round 7 verdict on 1632d807: the lazy capture's lookahead rescanned the rest of the line at every step, so a
@@ -3630,6 +3706,65 @@ class ScanIdentifiersModeTest(unittest.TestCase):
                 self.assertEqual(masked.stdout, f"masked 1 match(es) in {evidence}\n")
                 self.assertEqual(evidence.read_text(), f"{mask}\tVerdict: correct\n")
                 self.assertEqual(self.scan(evidence).returncode, 0)
+
+    def test_a_tab_between_a_key_column_and_a_value_column_is_kept_and_nothing_is_masked(self) -> None:
+        """U107b round 2, audit P2 on f84ea376, through the two CLIs records-sync.sh runs: round 1 kept `\\s*` around
+        the operator, so a four-column TSV row whose second column ends with the operator and whose third is a quoted
+        4.32-bit value was masked from the key across the tab, and the masked copy had three columns. The two columns
+        are two fields, so the row is no assignment: the masker writes nothing, the row keeps its four columns and
+        the scan passes it; a value followed by a tab is still masked up to the tab, and the tab is kept."""
+        module = load_validator()
+        columns = ["2026-10-31T05:00:02Z", f"{FIELD} =", f'"{HIGH_ENTROPY_VALUE}"', "verdicts/U107-f84ea376.md"]
+        row = "\t".join(columns) + "\n"
+        ledger = self.temp_dir / "ledger.tsv"
+        ledger.write_text(row)
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(ledger)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        kept = ledger.read_text()
+        masked_columns = kept.rstrip("\n").split("\t")
+        self.assertEqual(len(masked_columns), 4, f"{len(masked_columns)} columns after masking: {kept!r}")
+        self.assertEqual(kept, row)
+        self.assertEqual(masked.stdout, f"masked 0 match(es) in {ledger}\n")
+        result = self.scan(ledger)
+        self.assertEqual((result.returncode, result.stderr), (0, ""), result.stdout)
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
+
+        ledger.write_text(f'{FIELD} = "{HIGH_ENTROPY_VALUE}"\tnext\n')
+        self.assertEqual(self.scan(ledger).returncode, 1)
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(ledger)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.stdout, f"masked 1 match(es) in {ledger}\n")
+        self.assertEqual(ledger.read_text(), f"{module.SECRET_MASK}\tnext\n")
+        self.assertEqual(self.scan(ledger).returncode, 0)
+
+    def test_a_tab_inside_a_json_string_value_is_content_and_the_value_is_refused_and_masked_whole(self) -> None:
+        """U107b round 2, Codex P1 on f84ea376, through the two CLIs records-sync.sh runs: --mask-secrets decodes every
+        JSON string before scanning it, so `\\t` inside one is content, but round 1 bounded the value at it, so a
+        quoted 4.32-bit value behind `prefix<TAB>` inside a JSON string exited 0 from --scan-identifiers and
+        --mask-secrets masked nothing where 05597009 masked it. The string is refused and masked whole."""
+        module = load_validator()
+        line = f'{PASSWORD_KEY} = "prefix\t{HIGH_ENTROPY_VALUE}"'
+        member = self.temp_dir / "member.json"
+        member.write_bytes((json.dumps({"items": [{"note": line}]}, indent=2) + "\n").encode())
+        self.assertIn(b"\\t", member.read_bytes())
+        result = self.scan(member)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, f"--scan-identifiers: file 1 ({member}): a secret pattern\n")
+        self.assertNotIn(HIGH_ENTROPY_VALUE, result.stdout + result.stderr)
+        masked = subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", str(member)], text=True, capture_output=True
+        )
+        self.assertEqual(masked.returncode, 0, masked.stdout + masked.stderr)
+        self.assertEqual(masked.stdout, f"masked 1 match(es) in {member}\n")
+        self.assertEqual(
+            member.read_bytes().decode(), json.dumps({"items": [{"note": module.SECRET_MASK}]}, indent=2) + "\n"
+        )
+        result = self.scan(member)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(result.stdout, "scanned 1 file(s): 0 finding(s), 2 redact word(s)\n")
 
 
 if __name__ == "__main__":

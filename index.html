@@ -1356,6 +1356,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/home/dot_local/bin/common/executable_checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
         
   
@@ -4718,6 +4746,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/orchestrator/checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/orchestrator/ci-rerun/" class="md-nav__link">
         
   
@@ -5367,7 +5423,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">116</span>
+  <span class="landing-stat__value">118</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -5377,12 +5433,12 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">39</span>
+  <span class="landing-stat__value">40</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">44</span>
+  <span class="landing-stat__value">45</span>
   <span class="landing-stat__label">local commands</span>
   <span class="landing-stat__note">helpers under home/dot_local/bin</span>
 </div>
@@ -5442,7 +5498,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **116** source reference pages are generated from tracked shell assets
+- **118** source reference pages are generated from tracked shell assets
 - **29** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -5500,7 +5556,7 @@ _29 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_39 documented entries_
+_40 documented entries_
 
 - [`scripts/apply-check.sh`](reference/scripts/apply-check.md): The disposable check `make apply-check` runs inside a container, for client and server. It copies the parts of the wo...
 - [`scripts/check-sleep.sh`](reference/scripts/check-sleep.md): An orchestrator Mac that sleeps overnight stalls every seat, so `make doctor` runs this check after the tools check. ...
@@ -5509,7 +5565,7 @@ _39 documented entries_
 - [`scripts/ci/install-pinned-lint-tools.sh`](reference/scripts/ci/install-pinned-lint-tools.md): CI's "Put the pinned `ShellCheck`, `shfmt` and `Bats` on PATH" step (regime-cutover U97; Bats since U127, when the fi...
 - [`scripts/ci/masked-dirname-check.sh`](reference/scripts/ci/masked-dirname-check.md): ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape `dir=$(cd "$(dirname ...
 
-[33 more entries in the full catalog](catalog/)
+[34 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">
@@ -5520,16 +5576,16 @@ _39 documented entries_
 
 Executable helpers published from `home/dot_local/bin/**`.
 
-_44 documented entries_
+_45 documented entries_
 
 - [`home/dot_local/bin/common/executable_agent-session-staleness`](reference/home/dot_local/bin/common/executable_agent-session-staleness.md)
 - [`home/dot_local/bin/common/executable_brief-check.py`](reference/home/dot_local/bin/common/executable_brief-check.py.md)
 - [`home/dot_local/bin/common/executable_bus-history.sh`](reference/home/dot_local/bin/common/executable_bus-history.md): Plan 025 W2b (C-1). Reads `hcom events --type message --thread <team> --full --last <limit> [--after <since>]` (`hcom...
 - [`home/dot_local/bin/common/executable_cdgwq`](reference/home/dot_local/bin/common/executable_cdgwq.md): Uses `gwq list --json` and `fzf` to select a known repository path, then changes the current shell into that directory.
 - [`home/dot_local/bin/common/executable_cdw`](reference/home/dot_local/bin/common/executable_cdw.md): Selects the newest path returned by `gwq list --json` and changes the current shell into that repository.
-- [`home/dot_local/bin/common/executable_chezmoi-cd`](reference/home/dot_local/bin/common/executable_chezmoi-cd.md): Resolves `chezmoi source-path` and changes the current shell into that repository checkout.
+- [`home/dot_local/bin/common/executable_checkout-guard.sh`](reference/home/dot_local/bin/common/executable_checkout-guard.md): Regime-cutover U129 (standing orders 27 and 29). On 2026-10-31 three owners acted in the coordinator's checkout again...
 
-[38 more entries in the full catalog](catalog/)
+[39 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

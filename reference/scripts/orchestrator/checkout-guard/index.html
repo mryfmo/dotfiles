@@ -1,0 +1,6218 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Generated reference for shell-based dotfiles automation.">
+      
+      
+      
+      
+        <link rel="prev" href="../bus-history/">
+      
+      
+        <link rel="next" href="../ci-rerun/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>scripts/orchestrator/checkout-guard.sh - Dotfiles Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#scriptsorchestratorcheckout-guardsh" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Dotfiles Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              scripts/orchestrator/checkout-guard.sh
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Dotfiles Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../omp-skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    omp skills: which skills each omp launch and seat loads
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../openai-siwc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    openai-siwc: omp provider for Sign in with ChatGPT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../operator-handout-g16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G16 operator handout: host cleanup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../orchestrator-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The orchestrator seat: stop gate, skill and doctor wiring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../pi-claude-bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    pi-claude-bridge as an omp extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../remote-host-logins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Seat logins on a remote host
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    History
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Historical documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../history/nix-first-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix first architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../history/nix-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../chezmoi-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/.chezmoiscripts Template Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2" id="__nav_10_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_1" id="__nav_10_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot claude
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot claude
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_1_1" id="__nav_10_2_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_enforce-uv.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_format-edited-files.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_claude/hooks/executable_project-map-reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_project-map-reload.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_2" id="__nav_10_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot config
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot config
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_2_1" id="__nav_10_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alias
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_2_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Alias
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_config/alias/common/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_config/alias/common.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_3" id="__nav_10_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot local
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot local
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_3_1" id="__nav_10_2_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bin
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_2_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bin
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_3_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_3_1_1" id="__nav_10_2_3_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_10_2_3_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_3_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-session-staleness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_brief-check.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_brief-check.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdgwq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_chezmoi-cd
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_compactiondb-install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_contextdb-codex-notify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_contextdb-codex-notify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_dev
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_disk-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_disk-gc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_fgc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-delete-merged-branches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_hcom-dispatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-dispatch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_hcom-seat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_hcom-seat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_permgate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-init/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-init
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-open-url/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-open-url
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-stop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_regime-url-opener/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-url-opener
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_remove-agent-asset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_seat-login-preflight/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_seat-login-preflight
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_ua-symbol-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_ua-symbol-coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_uv-format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2_3_1_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_2_3_1_2" id="__nav_10_2_3_1_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_10_2_3_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2_3_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/server/cuda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/cuda.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/ssh_agent.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Install
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_1" id="__nav_10_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/chezmoi_private/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/chezmoi_private.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/credential_dirs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/credential_dirs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/gh_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/gh_extensions.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/mise.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/common/sheldon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/sheldon.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_2" id="__nav_10_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Macos
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Macos
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_2_1" id="__nav_10_3_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arm64
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_3_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arm64
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/arm64/prepare_arm64_system.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_2_2" id="__nav_10_3_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_3_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/brew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/brew.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/command_line_tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/command_line_tool.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/defaults/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/defaults.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/macos/common/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_3" id="__nav_10_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ubuntu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ubuntu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_3_1" id="__nav_10_3_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_3_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/default_shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_3_2" id="__nav_10_3_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_3_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/common/apparmor_userns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/apparmor_userns.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/common/ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/ssh.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_3_3_3" id="__nav_10_3_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_10_3_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/server/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/setup_timezone.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/server/ssh_server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/ssh_server.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install/ubuntu/server/starship/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/starship.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10_4" id="__nav_10_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Scripts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apply-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/apply-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../check-sleep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-sleep.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generate-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/generate-docs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gh-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_benchmark.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run_unit_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_4_11" id="__nav_10_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ci
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/git-invocation-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/git-invocation-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/install-pinned-lint-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/install-pinned-lint-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/npm-cooldown-skew-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/npm-cooldown-skew-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/pinned-tool-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/pinned-tool-version.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/producer-status-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/producer-status-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci/run-on-lint-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/run-on-lint-files.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_4_12" id="__nav_10_4_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lib
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/asset-manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/asset-manifest.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/chezmoi-externals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/chezmoi-externals.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lib/npm-release-age/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/npm-release-age.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4_13" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10_4_13" id="__nav_10_4_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestrator
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_4_13_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10_4_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Orchestrator
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git-isolated/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/git-isolated.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../omp-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/omp-run.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-body-edit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-body-edit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-close/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-close.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-thread-reply/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-reply.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-thread-resolve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-thread-resolve.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-threads-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-threads-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pr-update-branch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-update-branch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../read-lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/read-lib.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/records-sync.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../worker-worktree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worker-worktree.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../worktree-gc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/worktree-gc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_11_1" id="__nav_11_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Acceptance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../verification/acceptance/005/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan 005 acceptance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="scriptsorchestratorcheckout-guardsh">scripts/orchestrator/checkout-guard.sh<a class="headerlink" href="#scriptsorchestratorcheckout-guardsh" title="Permanent link">&para;</a></h1>
+<p>Regime-cutover U129 (standing orders 27 and 29). On 2026-10-31 three owners acted in the coordinator's checkout against the first line of their task: one committed on its local <code>main</code>, two ran <code>git worktree add</code> there and committed in the linked worktrees. The worker tree of U123 cannot push, but nothing in the checkout refused a commit: its <code>core.hooksPath</code> is unset and its <code>.git/hooks/</code> holds samples alone, the directory every linked worktree of it shares. A rule holds when the tool refuses. Round 1 installed a <code>pre-commit</code>, and the audit found four more channels in one census (cherry-pick, merge, the shell's inherited options, an unreadable ancestor), so round 2 moves the guard to the reference layer, where no list of commands is needed: every way of authoring a commit in the checkout moves a local branch to a commit origin does not hold, while every move the coordinator makes there (<code>pull --ff-only</code>, <code>reset --hard origin/main</code>, <code>worktree add -b &lt;x&gt; origin/main</code>) lands on a commit origin holds. <code>checkout-guard.sh install &lt;checkout&gt;</code> puts one hook into the checkout's common hooks directory, mode 0755, by a rename of a temporary file it has written and read back there (below): - <code>reference-transaction</code>: a <code>python3 -I -S</code> script (the heredoc of write_hook below, so this file's sha256 pin covers it; no shell starts, so no shell startup file, <code>SHELLOPTS</code> or <code>BASH_ENV</code> reaches it, and no <code>PYTHON*</code> variable or planted module is read). Git runs it for every reference transaction; in its <code>prepared</code> phase it reads the <code>&lt;old-value&gt; SP &lt;new-value&gt; SP &lt;ref-name&gt; LF</code> lines from stdin and, while <code>.orchestration/orchestrate/&lt;program&gt;/units.tsv</code> exists under the toplevel of the worktree the command runs in or under the main worktree's, refuses the transaction (exit 1, git then fails with status 128) when any line moves a <code>refs/heads/*</code> ref to a commit that no <code>refs/remotes/origin/*</code> ref reaches (<code>git --no-replace-objects merge-base --is-ancestor</code>, each status read), printing <code>checkout-guard: this checkout is the coordinator's; commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one under $TMPDIR/dotfiles-wt/&lt;unit&gt; (standing order 29)</code>. Deletions and every ref outside <code>refs/heads/</code> (a detached HEAD, tags, remote-tracking refs, ORIG_HEAD, the stash) pass; the other phases exit 0. <code>git commit --no-verify</code> skips no reference-transaction hook. A read that fails refuses the transaction (standing order 21): the store walk lists <code>.orchestration</code>, then <code>orchestrate</code>, then every program directory, in that order and to the end (<code>os.listdir</code>: a directory is listed, never <code>stat</code>-ed for a child, which a mode-0111 directory answers while refusing a listing; no program directory is skipped once a store is found), where an absent <code>.orchestration</code> or <code>orchestrate</code> is no store and any other <code>OSError</code> on any of those listings (a mode-000 or 0111 directory, a file where <code>.orchestration</code> or <code>orchestrate</code> should be) is a refusal naming it; the toplevel and the worktree list come from git as bytes (<code>worktree list --porcelain -z</code>), never split on newlines; a git read that exits non-zero is a refusal naming it. The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the plain <code>git</code> with <code>--no-replace-objects</code> and <code>GIT_NO_REPLACE_OBJECTS=1</code> (so no <code>refs/replace/*</code> ref and no <code>GIT_REPLACE_REF_BASE</code> of the caller rewrites the ancestry it reads), <code>GIT_GRAFT_FILE=/dev/null</code> (so neither <code>.git/info/grafts</code> nor a <code>GIT_GRAFT_FILE</code> of the caller grafts a parent onto a commit it walks: git reads that file in place of <code>info/grafts</code>, and <code>--no-replace-objects</code> leaves grafts alone, audit round 5 P1; pr-audit.sh closes the same channel by refusing a grafts file in its fresh repository, which a hook in the user's checkout cannot) and <code>-c core.hooksPath=/dev/null</code> (so they run no hook), with a <code># git-isolated: allow</code> reason; it writes nothing but its own stderr and runs no network command. The isolated git of the levers (git-isolated.sh, the same flags) never runs it, so records-sync.sh and the other levers are untouched. A transaction line whose new value is the commit the ref already names is a backend update, not a move, and passes: the files backend writes a ref it packs as a creation, <code>&lt;zero&gt; &lt;value&gt; &lt;ref&gt;</code>, measured on git 2.56 <code>pack-refs --all</code> and <code>gc</code>, so the hook reads the ref (<code>rev-parse --verify -q</code>) when the old value is zero; a creation of a ref that does not exist is judged like any move. <code>checkout-guard.sh check &lt;checkout&gt;</code> reports <code>installed</code> (byte-equal to the copy here and executable), <code>absent</code>, <code>differs</code> or <code>not-executable</code> for the hook, and <code>stale</code> for a round-1 <code>pre-commit</code> or <code>post-checkout</code> still there (byte-equal to round 1's, kept in write_hook for this comparison alone); exit 0 when the hook is installed and nothing is stale, else 1; a symlink or a file that is not a regular file at the hook path is a refusal (exit 2) naming the kind, which <code>check</code> does not judge, while a regular file of other content is <code>differs</code>. <code>install</code> refuses (exit 2, nothing written) unless <code>&lt;checkout&gt;</code> is in a main checkout (<code>git rev-parse --git-dir</code> equals <code>--git-common-dir</code>; a linked worktree's hooks directory is the main checkout's, so it is installed there). The hook goes into <code>&lt;git-common-dir&gt;/hooks</code> as the isolated git (git-isolated.sh, U113) names it, with the caller's <code>GIT_*</code> and transport variables scrubbed first so no <code>GIT_DIR</code> or <code>GIT_COMMON_DIR</code> of the caller points the reads at another repository, and each path git prints read whole through one helper (git_path: a sentinel after the output, so the trailing newline a command substitution strips stays and only git's own line end is removed; a separate git directory whose name ends in LF is installed into, not its stripped sibling, audit round 5 P2); the directory is made when absent. Nothing here reads <code>core.hooksPath</code>: rounds 2 to 4 each tried to establish at install time what git resolves for it at the next commit, and each audit named another channel (<code>GIT_CONFIG_COUNT</code>; <code>GIT_CONFIG_GLOBAL</code> and <code>GIT_CONFIG_SYSTEM</code>; <code>GIT_CONFIG</code>, <code>GIT_DIR</code>, <code>includeIf.onbranch</code>), since git's configuration is layered and conditional and the caller owns every layer, so the check cannot hold and round 5 removed it; where git resolves its hooks is the trust boundary below. The hooks directory, when it exists, must be a directory that can be read (a mode-000 one is a refusal naming it, never <code>absent</code>), and the hook path absent or already this lever's own; a regular file of other content there is refused and never overwritten. The write is one rename: the hook's bytes go to a temporary file in the hooks directory (<code>mktemp</code> there), its mode is set, it is read back (<code>cmp -s</code> against the scratch copy, the execute bit), and one <code>mv</code> puts it at the hook path; a failure at any step before the rename exits 2 with the hook path exactly as found (absent stays absent, this lever's own hook that lacked its execute bit keeps its bytes) and the EXIT trap removes the temporary file (audit round 5 P2: writing the hook path in place left an empty, a non-executable or an unverified hook behind a refusal). After the hook is in place it removes a round-1 <code>pre-commit</code> or <code>post-checkout</code> that is byte-equal to round 1's (<code>removed</code> rows; the <code>pre-commit</code> in either of the two byte forms round 1 wrote, see write_hook), so an upgraded checkout keeps no dead hook; any other file at those two paths is not this lever's and is left alone. A second run finds its own hook, prints <code>unchanged</code> and exits 0, so regime-init calls it on every run. Every comparison is <code>cmp -s</code> against a copy of the expected bytes written to a scratch directory (NUL-safe: a shell variable cannot hold the NUL a drifted file may), its status read: 0 is equal, 1 is different, anything else is a failed read and a refusal. Every read and write is checked (standing order 21): each <code>mktemp</code>, each <code>git rev-parse</code> (the toplevel, the git directory, the common directory), each write of the expected bytes (<code>cat</code>), each <code>cmp</code>, the <code>mkdir</code> of the hooks directory, the <code>chmod</code>, the <code>mv</code>, the <code>rm</code> of a round-1 hook; each failure exits 2 naming the file. Left out, by design: a worker that edits <code>.git/hooks</code> of the checkout (the worker tree is a repository of its own and never sees this hook); a branch made a symbolic ref (<code>symbolic-ref refs/heads/main refs/tags/x</code>: the next commit moves the tag, which the rule does not name); a copy or rename of a branch that is already off origin (<code>branch -c</code>, <code>branch -m</code>: no branch moves to a new commit); a commit on a detached HEAD (no branch moves; the rule names local branches); and a repository with no <code>origin</code> remote, where no commit is reachable and every branch move is refused while a store exists. Trusted: the worker is a non-adversarial actor whose reflex the refusal stops, not an attacker: git resolving its hooks to another place under the caller's configuration or environment, whenever and however set, is a standing-order breach the records catch, not a defect this hook closes (the boundary U123 drew for the worker tree); so is a worker who replaces a branch with a symbolic ref or copies a branch that is already off origin. The coordinator is the only committer in the checkout and commits nothing there by design (records move through records-sync.sh's scratch repository, code through worker trees); git runs the common <code>hooks/reference-transaction</code> for the checkout and every linked worktree when it resolves no <code>core.hooksPath</code>, and resolves symbolic refs before the <code>prepared</code> phase (githooks(5)); <code>refs/remotes/origin/*</code> are origin's refs, whatever wrote them; <code>python3</code> on the hook's PATH is a CPython 3; the worker's identity is not read.</p>
+<h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Source: <code>scripts/orchestrator/checkout-guard.sh</code></li>
+<li>Category: repository script</li>
+<li>Renderer: <code>shell-fallback</code></li>
+</ul>
+<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>cleanup</code></li>
+<li><code>git_path</code></li>
+<li><code>hook_state</code></li>
+<li><code>lever_self_check</code></li>
+<li><code>refuse</code></li>
+<li><code>write_hook</code></li>
+</ul>
+<h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
+<span class="c1"># @file checkout-guard.sh</span>
+<span class="c1"># @brief Install into the coordinator's checkout the reference-transaction hook that refuses, while a program store exists, every move of a local branch to a commit origin does not hold; or check that it is in place.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Regime-cutover U129 (standing orders 27 and 29). On 2026-10-31 three owners acted in the coordinator's checkout</span>
+<span class="c1">#   against the first line of their task: one committed on its local `main`, two ran `git worktree add` there and</span>
+<span class="c1">#   committed in the linked worktrees. The worker tree of U123 cannot push, but nothing in the checkout refused a</span>
+<span class="c1">#   commit: its `core.hooksPath` is unset and its `.git/hooks/` holds samples alone, the directory every linked</span>
+<span class="c1">#   worktree of it shares. A rule holds when the tool refuses. Round 1 installed a `pre-commit`, and the audit found</span>
+<span class="c1">#   four more channels in one census (cherry-pick, merge, the shell's inherited options, an unreadable ancestor), so</span>
+<span class="c1">#   round 2 moves the guard to the reference layer, where no list of commands is needed: every way of authoring a</span>
+<span class="c1">#   commit in the checkout moves a local branch to a commit origin does not hold, while every move the coordinator</span>
+<span class="c1">#   makes there (`pull --ff-only`, `reset --hard origin/main`, `worktree add -b &lt;x&gt; origin/main`) lands on a commit</span>
+<span class="c1">#   origin holds. `checkout-guard.sh install &lt;checkout&gt;` puts one hook into the checkout's common hooks directory,</span>
+<span class="c1">#   mode 0755, by a rename of a temporary file it has written and read back there (below):</span>
+<span class="c1">#   - `reference-transaction`: a `python3 -I -S` script (the heredoc of write_hook below, so this file's sha256 pin</span>
+<span class="c1">#     covers it; no shell starts, so no shell startup file, `SHELLOPTS` or `BASH_ENV` reaches it, and no `PYTHON*`</span>
+<span class="c1">#     variable or planted module is read). Git runs it for every reference transaction; in its `prepared` phase it</span>
+<span class="c1">#     reads the `&lt;old-value&gt; SP &lt;new-value&gt; SP &lt;ref-name&gt; LF` lines from stdin and, while</span>
+<span class="c1">#     `.orchestration/orchestrate/&lt;program&gt;/units.tsv` exists under the toplevel of the worktree the command runs in or</span>
+<span class="c1">#     under the main worktree's, refuses the transaction (exit 1, git then fails with status 128) when any line moves</span>
+<span class="c1">#     a `refs/heads/*` ref to a commit that no `refs/remotes/origin/*` ref reaches (`git --no-replace-objects</span>
+<span class="c1">#     merge-base --is-ancestor`, each status read), printing `checkout-guard: this checkout is the coordinator's; commits belong in a worker tree:</span>
+<span class="c1">#     ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one under $TMPDIR/dotfiles-wt/&lt;unit&gt;</span>
+<span class="c1">#     (standing order 29)`. Deletions and every ref outside `refs/heads/` (a detached HEAD, tags, remote-tracking</span>
+<span class="c1">#     refs, ORIG_HEAD, the stash) pass; the other phases exit 0. `git commit --no-verify` skips no</span>
+<span class="c1">#     reference-transaction hook. A read that fails refuses the transaction (standing order 21): the store walk lists</span>
+<span class="c1">#     `.orchestration`, then `orchestrate`, then every program directory, in that order and to the end (`os.listdir`:</span>
+<span class="c1">#     a directory is listed, never `stat`-ed for a child, which a mode-0111 directory answers while refusing a</span>
+<span class="c1">#     listing; no program directory is skipped once a store is found), where an absent `.orchestration` or</span>
+<span class="c1">#     `orchestrate` is no store and any other `OSError` on any of those listings (a mode-000 or 0111 directory, a</span>
+<span class="c1">#     file where `.orchestration` or `orchestrate` should be) is a refusal naming it; the toplevel and the worktree</span>
+<span class="c1">#     list come from git as bytes (`worktree list --porcelain -z`), never split on newlines; a git read that exits</span>
+<span class="c1">#     non-zero is a refusal naming it.</span>
+<span class="c1">#   The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the</span>
+<span class="c1">#   plain `git` with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1` (so no `refs/replace/*` ref and no</span>
+<span class="c1">#   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads), `GIT_GRAFT_FILE=/dev/null` (so neither</span>
+<span class="c1">#   `.git/info/grafts` nor a `GIT_GRAFT_FILE` of the caller grafts a parent onto a commit it walks: git reads that</span>
+<span class="c1">#   file in place of `info/grafts`, and `--no-replace-objects` leaves grafts alone, audit round 5 P1; pr-audit.sh</span>
+<span class="c1">#   closes the same channel by refusing a grafts file in its fresh repository, which a hook in the user's checkout</span>
+<span class="c1">#   cannot) and `-c core.hooksPath=/dev/null` (so they run no hook), with a `# git-isolated: allow` reason; it writes</span>
+<span class="c1">#   nothing but its own stderr and runs no network command.</span>
+<span class="c1">#   The isolated git of the levers (git-isolated.sh, the same flags) never runs it, so records-sync.sh and the other</span>
+<span class="c1">#   levers are untouched. A transaction line whose new value is the commit the ref already names is a backend update,</span>
+<span class="c1">#   not a move, and passes: the files backend writes a ref it packs as a creation, `&lt;zero&gt; &lt;value&gt; &lt;ref&gt;`, measured</span>
+<span class="c1">#   on git 2.56 `pack-refs --all` and `gc`, so the hook reads the ref (`rev-parse --verify -q`) when the old value is</span>
+<span class="c1">#   zero; a creation of a ref that does not exist is judged like any move.</span>
+<span class="c1">#   `checkout-guard.sh check &lt;checkout&gt;` reports `installed` (byte-equal to the copy here and executable), `absent`,</span>
+<span class="c1">#   `differs` or `not-executable` for the hook, and `stale` for a round-1 `pre-commit` or `post-checkout` still</span>
+<span class="c1">#   there (byte-equal to round 1's, kept in write_hook for this comparison alone); exit 0 when the hook is installed</span>
+<span class="c1">#   and nothing is stale, else 1; a symlink or a file that is not a regular file at the hook path is a refusal (exit</span>
+<span class="c1">#   2) naming the kind, which `check` does not judge, while a regular file of other content is `differs`. `install`</span>
+<span class="c1">#   refuses (exit 2, nothing written) unless `&lt;checkout&gt;` is in a main checkout (`git rev-parse --git-dir` equals</span>
+<span class="c1">#   `--git-common-dir`; a linked worktree's hooks directory is the main checkout's, so it is installed there). The</span>
+<span class="c1">#   hook goes into `&lt;git-common-dir&gt;/hooks` as the isolated git (git-isolated.sh, U113) names it, with the caller's</span>
+<span class="c1">#   `GIT_*` and transport variables scrubbed first so no `GIT_DIR` or `GIT_COMMON_DIR` of the caller points the reads</span>
+<span class="c1">#   at another repository, and each path git prints read whole through one helper (git_path: a sentinel after the</span>
+<span class="c1">#   output, so the trailing newline a command substitution strips stays and only git's own line end is removed; a</span>
+<span class="c1">#   separate git directory whose name ends in LF is installed into, not its stripped sibling, audit round 5 P2); the</span>
+<span class="c1">#   directory is made when absent. Nothing here reads `core.hooksPath`: rounds 2 to 4</span>
+<span class="c1">#   each tried to establish at install time what git resolves for it at the next commit, and each audit named another</span>
+<span class="c1">#   channel (`GIT_CONFIG_COUNT`; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`; `GIT_CONFIG`, `GIT_DIR`,</span>
+<span class="c1">#   `includeIf.onbranch`), since git's configuration is layered and conditional and the caller owns every layer, so</span>
+<span class="c1">#   the check cannot hold and round 5 removed it; where git resolves its hooks is the trust boundary below. The hooks</span>
+<span class="c1">#   directory, when it exists, must be a directory that can be read (a mode-000 one is a refusal naming it, never</span>
+<span class="c1">#   `absent`), and the hook path absent or already this lever's own; a regular file of other content there is</span>
+<span class="c1">#   refused and never overwritten. The write is one rename: the hook's bytes go to a temporary file in the hooks</span>
+<span class="c1">#   directory (`mktemp` there), its mode is set, it is read back (`cmp -s` against the scratch copy, the execute bit),</span>
+<span class="c1">#   and one `mv` puts it at the hook path; a failure at any step before the rename exits 2 with the hook path exactly</span>
+<span class="c1">#   as found (absent stays absent, this lever's own hook that lacked its execute bit keeps its bytes) and the EXIT trap</span>
+<span class="c1">#   removes the temporary file (audit round 5 P2: writing the hook path in place left an empty, a non-executable or an</span>
+<span class="c1">#   unverified hook behind a refusal). After the hook is in place it removes a round-1 `pre-commit` or `post-checkout`</span>
+<span class="c1">#   that is byte-equal to round 1's (`removed` rows; the `pre-commit` in either of the two byte forms round 1 wrote,</span>
+<span class="c1">#   see write_hook), so an upgraded checkout keeps no dead hook; any other file at those two paths is not this</span>
+<span class="c1">#   lever's and is left alone. A second run finds its own hook, prints `unchanged` and exits 0, so regime-init calls</span>
+<span class="c1">#   it on every run. Every comparison is `cmp -s` against a copy of the expected bytes written to a scratch directory</span>
+<span class="c1">#   (NUL-safe: a shell variable cannot hold the NUL a drifted file may), its status read: 0 is equal, 1 is different,</span>
+<span class="c1">#   anything else is a failed read and a refusal. Every read and write is checked (standing order 21): each `mktemp`,</span>
+<span class="c1">#   each `git rev-parse` (the toplevel, the git directory, the common directory), each write of the expected bytes</span>
+<span class="c1">#   (`cat`), each `cmp`, the `mkdir` of the hooks directory, the `chmod`, the `mv`, the `rm` of a round-1 hook; each</span>
+<span class="c1">#   failure exits 2 naming the file. Left out, by design: a worker that edits `.git/hooks` of the</span>
+<span class="c1">#   checkout (the worker tree is a repository of its own and never sees this hook); a branch made a symbolic ref</span>
+<span class="c1">#   (`symbolic-ref refs/heads/main refs/tags/x`: the next commit moves the tag, which the rule does not name); a copy</span>
+<span class="c1">#   or rename of a branch that is already off origin (`branch -c`, `branch -m`: no branch moves to a new commit); a</span>
+<span class="c1">#   commit on a detached HEAD (no branch moves; the rule names local branches); and a repository with no `origin`</span>
+<span class="c1">#   remote, where no commit is reachable and every branch move is refused while a store exists.</span>
+<span class="c1">#   Trusted: the worker is a non-adversarial actor whose reflex the refusal stops, not an attacker: git resolving its</span>
+<span class="c1">#   hooks to another place under the caller's configuration or environment, whenever and however set, is a</span>
+<span class="c1">#   standing-order breach the records catch, not a defect this hook closes (the boundary U123 drew for the worker</span>
+<span class="c1">#   tree); so is a worker who replaces a branch with a symbolic ref or copies a branch that is already off origin.</span>
+<span class="c1">#   The coordinator is the only committer in the checkout and commits nothing there by design (records move</span>
+<span class="c1">#   through records-sync.sh's scratch repository, code through worker trees); git runs the common</span>
+<span class="c1">#   `hooks/reference-transaction` for the checkout and every linked worktree when it resolves no `core.hooksPath`, and</span>
+<span class="c1">#   resolves symbolic refs before the `prepared` phase (githooks(5)); `refs/remotes/origin/*` are origin's refs,</span>
+<span class="c1">#   whatever wrote them; `python3` on the hook's PATH is a CPython 3; the worker's identity is not read.</span>
+<span class="c1"># @arg $1 string `install` or `check`.</span>
+<span class="c1"># @arg $2 string The checkout: a directory inside the main worktree of the repository.</span>
+<span class="c1"># @stdout One row per hook, `checkout-guard: &lt;state&gt;\t&lt;path&gt;`: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.</span>
+<span class="c1"># @exitcode 0 Done: the hook installed and no stale round-1 hook left (install), or in place with nothing stale (check).</span>
+<span class="c1"># @exitcode 1 `check`: the hook is absent, differs or is not executable, or a round-1 hook is still there.</span>
+<span class="c1"># @exitcode 2 A refusal: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read, a failed write step before the rename (the hook path is as it was found; a failed removal of a round-1 hook comes after the rename and leaves the hook in place), or the manifest pin differing from this file.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles</span>
+<span class="c1">#   ~/.local/bin/common/checkout-guard.sh check ~/Workspace/dotfiles</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>
+<span class="c1">#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot</span>
+<span class="c1">#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the</span>
+<span class="c1">#   file. The pin is the `claude.levers.sha256.&lt;name&gt;` line, which `scripts/generate-agent-configs.py` refreshes.</span>
+<span class="c1"># @set LEVER_MANIFEST The manifest the pin came from.</span>
+<span class="c1"># @set LEVER_DIR The physical directory of this file, where the sourced git-isolated.sh library sits.</span>
+lever_self_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest<span class="w"> </span>home
+<span class="w">    </span><span class="c1"># The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.</span>
+<span class="w">    </span><span class="nv">src</span><span class="o">=</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*/*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">src</span><span class="p">%/*</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>.<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span>/
+<span class="w">    </span><span class="nv">dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">src</span><span class="p">##*/</span><span class="si">}</span><span class="s2">: refused: cannot resolve the script directory of </span><span class="si">${</span><span class="nv">src</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/agent-config.yaml
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">LEVER_MANIFEST</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/../../home/dot_agents/agent-config.yaml
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: manifest unreadable: </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>-E<span class="w"> </span><span class="s2">"s/^      </span><span class="si">${</span><span class="nv">name</span><span class="p">//./</span><span class="se">\\</span><span class="p">.</span><span class="si">}</span><span class="s2">: ([0-9a-f]{64})\$/\\1/p"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: cannot read </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: no single sha256 pin for </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>sha256sum<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-f<span class="o">]{</span><span class="m">64</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: cannot hash </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">: refused: sha256 </span><span class="si">${</span><span class="nv">digest</span><span class="si">}</span><span class="s2"> of </span><span class="si">${</span><span class="nv">self</span><span class="si">}</span><span class="s2"> differs from the pin in </span><span class="si">${</span><span class="nv">LEVER_MANIFEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+lever_self_check
+
+<span class="nv">lever</span><span class="o">=</span><span class="s1">'checkout-guard.sh'</span>
+<span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: checkout-guard.sh install|check &lt;checkout&gt;'</span>
+<span class="nv">hook</span><span class="o">=</span>reference-transaction
+<span class="nv">legacy_hooks</span><span class="o">=(</span>pre-commit<span class="w"> </span>post-checkout<span class="o">)</span>
+
+<span class="c1"># @description Print a refusal on stderr and exit 2; nothing was written.</span>
+<span class="c1"># @arg $@ string The reason.</span>
+refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: refused: </span><span class="nv">$*</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="o">((</span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">usage</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">action</span><span class="o">=</span><span class="nv">$1</span>
+<span class="nv">checkout</span><span class="o">=</span><span class="nv">$2</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">action</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+install<span class="w"> </span><span class="p">|</span><span class="w"> </span>check<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">usage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2"> is not a directory"</span>
+
+<span class="c1"># The lever's reads run through the isolated git (U113), with the caller's `GIT_*` and transport variables removed</span>
+<span class="c1"># first: a `GIT_DIR` or `GIT_COMMON_DIR` of the caller would point them at another repository, and the hook goes where</span>
+<span class="c1"># this git names the common hooks directory of the checkout. Each read's status is checked (standing order 21); the</span>
+<span class="c1"># toplevel read fails for a path outside a working tree too, and git's stderr names which.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/git-isolated.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"git-isolated.sh unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/git-isolated.sh</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/git-isolated.sh"</span>
+<span class="nv">scratch</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/checkout-guard.XXXXXX"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'cannot make a scratch directory for the expected hook bytes'</span>
+<span class="c1"># The temporary file of the install below, while it exists: made in the hooks directory, renamed onto the hook path</span>
+<span class="c1"># on success, removed here on a refusal before the rename.</span>
+<span class="nv">staged</span><span class="o">=</span><span class="s1">''</span>
+<span class="c1"># The scratch directory and a temporary file a refusal left go on exit. A removal that fails is named on stderr and</span>
+<span class="c1"># does not replace the exit status (a command that fails inside an EXIT trap would).</span>
+cleanup<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2"> could not be removed"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">lever</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2"> could not be removed"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="o">}</span>
+<span class="nb">trap</span><span class="w"> </span>cleanup<span class="w"> </span>EXIT
+<span class="c1"># shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes</span>
+git_env_scrub
+
+<span class="c1"># @description Read into the variable named $1 the one path the isolated git query $2... prints, every byte of it:</span>
+<span class="c1">#   the output is taken with a sentinel after it (`&amp;&amp; printf x`, removed after), so the trailing newline a command</span>
+<span class="c1">#   substitution would strip stays, and exactly the one LF git ends its line with is removed. A separate git</span>
+<span class="c1">#   directory whose name ends in LF is then itself, not its stripped sibling (audit round 5 P2). git's status comes</span>
+<span class="c1">#   through the `&amp;&amp;`; git's stderr goes to the scratch directory's `stderr` file for the caller's refusal to print.</span>
+<span class="c1"># @arg $1 string The variable that receives the path.</span>
+<span class="c1"># @arg $@ string The arguments of git_isolated.</span>
+<span class="c1"># @exitcode 0 The variable holds the path.</span>
+<span class="c1"># @exitcode 1 git exited non-zero or printed no line; the variable is not written.</span>
+git_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">gp_name</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span>gp_out
+<span class="w">    </span><span class="nb">shift</span>
+<span class="w">    </span><span class="nv">gp_out</span><span class="o">=</span><span class="k">$(</span>git_isolated<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/stderr"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>x<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">gp_out</span><span class="o">=</span><span class="si">${</span><span class="nv">gp_out</span><span class="p">%x</span><span class="si">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">gp_out</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gp_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">gp_out</span><span class="p">%</span><span class="s1">$'\n'</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># The three paths git_path fills (`printf -v`), declared here so each read's failure is the refusal beside it.</span>
+<span class="nv">toplevel</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">git_dir</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">common</span><span class="o">=</span><span class="s1">''</span>
+git_path<span class="w"> </span>toplevel<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the toplevel of </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2"> (is it inside a git working tree?): </span><span class="k">$(</span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/stderr"</span><span class="k">)</span><span class="s2">"</span>
+git_path<span class="w"> </span>git_dir<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-dir<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the git directory of </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span>
+git_path<span class="w"> </span>common<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the git common directory of </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># The one comparison of two paths: both are git's absolute forms for one checkout, read whole by git_path (a trailing</span>
+<span class="c1"># newline of the name kept), equal byte for byte in a main checkout and differing by the `worktrees/&lt;id&gt;` tail in a</span>
+<span class="c1"># linked one.</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are git's absolute forms of one checkout</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span><span class="s2"> is a linked worktree (git dir </span><span class="si">${</span><span class="nv">git_dir</span><span class="si">}</span><span class="s2">, common </span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2">); install in the main checkout, whose hooks every linked worktree shares"</span>
+<span class="nv">hooks</span><span class="o">=</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span>/hooks
+<span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2"> is a symlink; nothing is written through it"</span>
+
+<span class="c1"># @description Write the text of hook $1 to the path $2: the quoted heredocs below, so nothing in them expands here,</span>
+<span class="c1">#   each redirected straight into the file (a command substitution would re-parse the body: bash 3.2 and others</span>
+<span class="c1">#   expand `$'…'` inside a quoted heredoc there, which is how round 1's installed `pre-commit` came to differ from its</span>
+<span class="c1">#   heredoc by that one token). `pre-commit` and `post-checkout` are round 1's hooks, kept so an upgraded checkout's</span>
+<span class="c1">#   copies are recognised and removed, never installed: `pre-commit` in the heredoc's own bytes and, as</span>
+<span class="c1">#   `pre-commit.subst`, in the bytes round 1 wrote through its command substitution (`$'\n'` already a newline inside</span>
+<span class="c1">#   the quotes); `post-checkout` holds no such token and has one form. A failed write is a refusal naming the path.</span>
+<span class="c1"># @arg $1 string `reference-transaction`, `pre-commit`, `pre-commit.subst` or `post-checkout`.</span>
+<span class="c1"># @arg $2 string The path.</span>
+write_hook<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>reference-transaction<span class="o">)</span>
+<span class="w">        </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'REFERENCE_TRANSACTION' &gt; "$2" || refuse "cannot write $2"</span>
+<span class="s">#!/usr/bin/env -S python3 -I -S</span>
+<span class="s"># checkout-guard reference-transaction (regime-cutover U129), installed by checkout-guard.sh, whose `check` compares</span>
+<span class="s"># these bytes with its copy. The coordinator's checkout and every linked worktree of it share this file, and git runs</span>
+<span class="s"># it for every reference transaction (githooks(5)). In the `prepared` phase, the refs locked and symbolic refs</span>
+<span class="s"># resolved, it reads the updates from stdin, one `&lt;old-value&gt; SP &lt;new-value&gt; SP &lt;ref-name&gt; LF` per line, and refuses</span>
+<span class="s"># the transaction (exit 1, the route to a worker tree on stderr) while a program store</span>
+<span class="s"># `.orchestration/orchestrate/&lt;program&gt;/units.tsv` exists under this worktree's toplevel or under the main worktree's</span>
+<span class="s"># and any line moves a `refs/heads/*` ref to a commit that no `refs/remotes/origin/*` ref reaches. That is every</span>
+<span class="s"># commit authored here (commit, --amend, merge, cherry-pick, rebase; `--no-verify` skips no reference-transaction),</span>
+<span class="s"># while `pull --ff-only`, `reset --hard origin/&lt;branch&gt;`, `fetch`, a branch deleted or made at origin's commit, a line</span>
+<span class="s"># whose new value is the commit the ref already names (a backend update: `pack-refs` and `gc` write a packed ref as</span>
+<span class="s"># `&lt;zero&gt; &lt;value&gt; &lt;ref&gt;` on git 2.56, so the ref is read when the old value is zero; no branch moves), and every ref outside</span>
+<span class="s"># refs/heads/ (a detached HEAD, tags, remote-tracking refs, ORIG_HEAD, the stash) pass. The other phases exit 0. It</span>
+<span class="s"># runs under `python3 -I -S`: no shell starts, so no shell startup file, SHELLOPTS or BASH_ENV reaches it, and no</span>
+<span class="s"># PYTHON* variable, site directory or module planted beside it is read. A read that fails refuses the transaction</span>
+<span class="s"># (standing order 21): `.orchestration`, `orchestrate` or a program directory that cannot be listed (each is listed</span>
+<span class="s"># in that order, to the last program directory), a line of another shape, a git read that exits non-zero. Its git</span>
+<span class="s"># calls carry `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1`, so no `refs/replace/*` ref and</span>
+<span class="s"># no `GIT_REPLACE_REF_BASE` of the caller stands in for a commit when the ancestry is read, `GIT_GRAFT_FILE=/dev/null`,</span>
+<span class="s"># so neither `.git/info/grafts` nor a `GIT_GRAFT_FILE` of the caller grafts a parent onto a commit that read walks</span>
+<span class="s"># (`--no-replace-objects` leaves grafts alone), and `-c core.hooksPath=/dev/null`, so they run no hook; the isolated</span>
+<span class="s"># git of the levers (the same flags) never runs this file. It writes nothing but its own stderr.</span>
+<span class="s">import os</span>
+<span class="s">import subprocess</span>
+<span class="s">import sys</span>
+
+<span class="s">ROUTE = (</span>
+<span class="s">    "commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one "</span>
+<span class="s">    "under $TMPDIR/dotfiles-wt/&lt;unit&gt; (standing order 29)"</span>
+<span class="s">)</span>
+<span class="s"># A hook runs inside the user's git and cannot isolate itself from the repository it guards; the flag keeps its own</span>
+<span class="s"># reads from running any hook, this file included.</span>
+<span class="s"># git-isolated: allow a hook cannot isolate itself from its repository</span>
+<span class="s">GIT = ("git", "--no-replace-objects", "-c", "core.hooksPath=/dev/null")</span>
+<span class="s"># The environment of every read: the hook's own plus git's switches for the same things. A replacement ref is read by</span>
+<span class="s"># neither form (git-replace(1): `--no-replace-objects` or `GIT_NO_REPLACE_OBJECTS`), and the grafts file is /dev/null:</span>
+<span class="s"># git reads the file GIT_GRAFT_FILE names in place of `.git/info/grafts`, so neither that file nor one the caller</span>
+<span class="s"># names grafts a parent onto a commit the ancestry read walks (`--no-replace-objects` leaves grafts alone).</span>
+<span class="s">ENV = dict(os.environ, GIT_NO_REPLACE_OBJECTS="1", GIT_GRAFT_FILE="/dev/null")</span>
+<span class="s">ZERO = (b"0" * 40, b"0" * 64)</span>
+
+
+<span class="s">def refuse(reason):</span>
+<span class="s">    sys.stderr.write("checkout-guard reference-transaction: %s; the update is refused (standing order 21)\n" % reason)</span>
+<span class="s">    sys.exit(1)</span>
+
+
+<span class="s">def git(*args):</span>
+<span class="s">    """(exit status, stdout bytes, stderr text) of one git read; a git that cannot start refuses."""</span>
+<span class="s">    try:</span>
+<span class="s">        run = subprocess.run(GIT + args, stdin=subprocess.DEVNULL, capture_output=True, check=False, env=ENV)</span>
+<span class="s">    except OSError as error:</span>
+<span class="s">        refuse("cannot run git %s: %s" % (" ".join(args), error))</span>
+<span class="s">    return run.returncode, run.stdout, run.stderr.decode("utf-8", "replace").strip()</span>
+
+
+<span class="s">def read(*args):</span>
+<span class="s">    """The stdout bytes of one git read; a non-zero exit refuses the transaction naming the read."""</span>
+<span class="s">    status, out, err = git(*args)</span>
+<span class="s">    if status != 0:</span>
+<span class="s">        refuse("git %s exited %d: %s" % (" ".join(args), status, err))</span>
+<span class="s">    return out</span>
+
+
+<span class="s">def updates(data):</span>
+<span class="s">    """The (old, new, ref) of each line of DATA in the shape githooks(5) documents; any other shape refuses."""</span>
+<span class="s">    lines = data.split(b"\n")</span>
+<span class="s">    if lines and lines[-1] == b"":</span>
+<span class="s">        lines.pop()</span>
+<span class="s">    result = []</span>
+<span class="s">    for line in lines:</span>
+<span class="s">        fields = line.split(b" ")</span>
+<span class="s">        if len(fields) != 3 or not all(fields):</span>
+<span class="s">            refuse("a line of the transaction is not &lt;old-value&gt; SP &lt;new-value&gt; SP &lt;ref-name&gt;: %r" % line)</span>
+<span class="s">        result.append((fields[0], fields[1], fields[2]))</span>
+<span class="s">    return result</span>
+
+
+<span class="s">def store_under(top):</span>
+<span class="s">    """Whether `.orchestration/orchestrate/&lt;program&gt;/units.tsv` exists under TOP. The walk lists `.orchestration`,</span>
+<span class="s">    then `orchestrate`, then every program directory, in that order and to the end: the listing is the read, never a</span>
+<span class="s">    `stat` of a child (which a mode-0111 directory answers while refusing a listing), and no program directory is</span>
+<span class="s">    skipped once a store is found. An absent `.orchestration` or `orchestrate` is no store; any other `OSError` on</span>
+<span class="s">    any of those listings (mode 000 or 0111, a file where `.orchestration` or `orchestrate` should be) refuses the</span>
+<span class="s">    transaction, never passes it (standing order 21). A file among the program directories is not a program."""</span>
+<span class="s">    root = os.path.join(top, b".orchestration")</span>
+<span class="s">    stores = os.path.join(root, b"orchestrate")</span>
+<span class="s">    for directory in (root, stores):</span>
+<span class="s">        try:</span>
+<span class="s">            names = os.listdir(directory)</span>
+<span class="s">        except FileNotFoundError:</span>
+<span class="s">            return False</span>
+<span class="s">        except OSError as error:</span>
+<span class="s">            refuse("cannot read %s: %s" % (os.fsdecode(directory), error.strerror or error))</span>
+<span class="s">    found = False</span>
+<span class="s">    for name in sorted(names):</span>
+<span class="s">        program = os.path.join(stores, name)</span>
+<span class="s">        try:</span>
+<span class="s">            entries = os.listdir(program)</span>
+<span class="s">        except (FileNotFoundError, NotADirectoryError):</span>
+<span class="s">            continue</span>
+<span class="s">        except OSError as error:</span>
+<span class="s">            refuse("cannot read %s: %s" % (os.fsdecode(program), error.strerror or error))</span>
+<span class="s">        if b"units.tsv" in entries:</span>
+<span class="s">            found = True</span>
+<span class="s">    return found</span>
+
+
+<span class="s">def origin_commits():</span>
+<span class="s">    """The distinct commits the refs/remotes/origin/* refs name, origin/HEAD's first: the one most moves land on."""</span>
+<span class="s">    listing = read("for-each-ref", "--format=%(refname)%09%(objectname)", "refs/remotes/origin/")</span>
+<span class="s">    first, rest = [], []</span>
+<span class="s">    for line in listing.split(b"\n"):</span>
+<span class="s">        if not line:</span>
+<span class="s">            continue</span>
+<span class="s">        name, _, commit = line.partition(b"\t")</span>
+<span class="s">        (first if name == b"refs/remotes/origin/HEAD" else rest).append(commit)</span>
+<span class="s">    return list(dict.fromkeys(first + rest))</span>
+
+
+<span class="s">def reachable(commit, candidates):</span>
+<span class="s">    """Whether COMMIT is an ancestor of (or equal to) one of CANDIDATES: `merge-base --is-ancestor` exits 0 for an</span>
+<span class="s">    ancestor and 1 for none; any other status is a failed read and refuses."""</span>
+<span class="s">    for candidate in candidates:</span>
+<span class="s">        status, _, err = git("merge-base", "--is-ancestor", commit, candidate)</span>
+<span class="s">        if status == 0:</span>
+<span class="s">            return True</span>
+<span class="s">        if status != 1:</span>
+<span class="s">            refuse(</span>
+<span class="s">                "git merge-base --is-ancestor %s %s exited %d: %s" % (commit.decode(), candidate.decode(), status, err)</span>
+<span class="s">            )</span>
+<span class="s">    return False</span>
+
+
+<span class="s">def current(ref):</span>
+<span class="s">    """The commit REF names now, or None when there is no such ref: `rev-parse --verify -q` exits 0 with the object</span>
+<span class="s">    name and 1 for no such ref; any other status is a failed read and refuses."""</span>
+<span class="s">    status, out, err = git("rev-parse", "--verify", "-q", ref)</span>
+<span class="s">    if status == 0:</span>
+<span class="s">        return out.strip()</span>
+<span class="s">    if status == 1:</span>
+<span class="s">        return None</span>
+<span class="s">    refuse("git rev-parse --verify -q %s exited %d: %s" % (ref.decode("utf-8", "replace"), status, err))</span>
+
+
+<span class="s">def main():</span>
+<span class="s">    data = sys.stdin.buffer.read()</span>
+<span class="s">    if len(sys.argv) != 2 or sys.argv[1] != "prepared":</span>
+<span class="s">        return 0</span>
+<span class="s">    moves = [</span>
+<span class="s">        (old, new, ref)</span>
+<span class="s">        for old, new, ref in updates(data)</span>
+<span class="s">        if ref.startswith(b"refs/heads/") and new not in ZERO and not new.startswith(b"ref:") and old != new</span>
+<span class="s">    ]</span>
+<span class="s">    if not moves:</span>
+<span class="s">        return 0</span>
+<span class="s">    toplevel = read("rev-parse", "--show-toplevel")</span>
+<span class="s">    if toplevel.endswith(b"\n"):</span>
+<span class="s">        toplevel = toplevel[:-1]</span>
+<span class="s">    # The first record of the NUL-separated porcelain list is the main worktree (git-worktree(1)).</span>
+<span class="s">    first = read("worktree", "list", "--porcelain", "-z").split(b"\0", 1)[0]</span>
+<span class="s">    if not first.startswith(b"worktree "):</span>
+<span class="s">        refuse("the worktree list does not start with the main worktree: %r" % first)</span>
+<span class="s">    tops = [toplevel]</span>
+<span class="s">    if first[len(b"worktree ") :] != toplevel:</span>
+<span class="s">        tops.append(first[len(b"worktree ") :])</span>
+<span class="s">    # Every toplevel is walked before the decision: a store that cannot be read under one of them refuses even when</span>
+<span class="s">    # the other holds a readable store (no short-circuit).</span>
+<span class="s">    if not any([store_under(top) for top in tops]):</span>
+<span class="s">        return 0</span>
+<span class="s">    candidates = origin_commits()</span>
+<span class="s">    for old, new, ref in moves:</span>
+<span class="s">        # The files backend writes a ref it packs as a creation, `&lt;zero&gt; &lt;value&gt; &lt;ref&gt;` (measured on git 2.56</span>
+<span class="s">        # `pack-refs --all` and `gc`): a line whose new value is the commit the ref already names moves no branch.</span>
+<span class="s">        if old in ZERO and current(ref) == new:</span>
+<span class="s">            continue</span>
+<span class="s">        if not reachable(new, candidates):</span>
+<span class="s">            sys.stderr.write("checkout-guard: this checkout is the coordinator's; %s\n" % ROUTE)</span>
+<span class="s">            sys.stderr.write(</span>
+<span class="s">                "checkout-guard: %s would move to %s, which no refs/remotes/origin/* ref reaches\n"</span>
+<span class="s">                % (ref.decode("utf-8", "replace"), new.decode("utf-8", "replace"))</span>
+<span class="s">            )</span>
+<span class="s">            return 1</span>
+<span class="s">    return 0</span>
+
+
+<span class="s">if __name__ == "__main__":</span>
+<span class="s">    sys.exit(main())</span>
+<span class="s">REFERENCE_TRANSACTION</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>pre-commit<span class="o">)</span>
+<span class="w">        </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ROUND1_PRE_COMMIT' &gt; "$2" || refuse "cannot write $2"</span>
+<span class="s">#!/usr/bin/env bash</span>
+<span class="s"># checkout-guard pre-commit (regime-cutover U129), installed by checkout-guard.sh, whose `check` compares these</span>
+<span class="s"># bytes with its copy. The coordinator's checkout and every linked worktree of it share this file: while a program</span>
+<span class="s"># store `.orchestration/orchestrate/&lt;program&gt;/units.tsv` exists under the toplevel of the worktree the commit is made</span>
+<span class="s"># in or under the main worktree's, every commit is refused with the one accepted route, a worker tree made by</span>
+<span class="s"># worker-worktree.sh (standing order 29). No environment variable bypasses it; `git commit --no-verify` is the</span>
+<span class="s"># operator's own hand, and the isolated git of the levers (`-c core.hooksPath=/dev/null`) never runs this file. A read</span>
+<span class="s"># that fails refuses the commit (standing order 21). This hook writes nothing but its own stdout and stderr.</span>
+<span class="s">set -euo pipefail</span>
+<span class="s">route="commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one under \$TMPDIR/dotfiles-wt/&lt;unit&gt; (standing order 29)"</span>
+<span class="s"># Refuse the commit on a failed read, naming it.</span>
+<span class="s">refuse() {</span>
+<span class="s">    echo "checkout-guard pre-commit: $*; the commit is refused (standing order 21)" &gt;&amp;2</span>
+<span class="s">    exit 1</span>
+<span class="s">}</span>
+<span class="s"># A hook runs inside the user's git, which puts its own exec path first on PATH, and cannot isolate itself from the</span>
+<span class="s"># repository it guards; the two reads name this worktree and the main one, nothing else.</span>
+<span class="s">toplevel=$(git rev-parse --show-toplevel) || refuse 'cannot read the toplevel of this worktree' # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s"># The first worktree of the porcelain list is the main one (git-worktree(1)).</span>
+<span class="s">worktrees=$(git worktree list --porcelain) || refuse 'cannot list the worktrees of this repository' # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s">main=${worktrees%%$'\n'*}</span>
+<span class="s">[[ ${main} == 'worktree '* ]] || refuse "the worktree list does not start with the main worktree: ${main}"</span>
+<span class="s">main=${main#worktree }</span>
+<span class="s">for top in "${toplevel}" "${main}"; do</span>
+<span class="s">    stores=${top}/.orchestration/orchestrate</span>
+<span class="s">    [[ -d ${stores} ]] || continue</span>
+<span class="s">    # A directory that cannot be listed is a failed read, never "no store": the glob below would match nothing.</span>
+<span class="s">    [[ -r ${stores} &amp;&amp; -x ${stores} ]] || refuse "cannot read ${stores}"</span>
+<span class="s">    for program in "${stores}"/*/; do</span>
+<span class="s">        [[ -d ${program} ]] || continue # the pattern itself, when nothing matches</span>
+<span class="s">        [[ -r ${program} &amp;&amp; -x ${program} ]] || refuse "cannot read ${program}"</span>
+<span class="s">        [[ -e ${program}units.tsv ]] || continue</span>
+<span class="s">        echo "checkout-guard: this checkout is the coordinator's; ${route}" &gt;&amp;2</span>
+<span class="s">        exit 1</span>
+<span class="s">    done</span>
+<span class="s">done</span>
+<span class="s">exit 0</span>
+<span class="s">ROUND1_PRE_COMMIT</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>pre-commit.subst<span class="o">)</span>
+<span class="w">        </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ROUND1_PRE_COMMIT_SUBST' &gt; "$2" || refuse "cannot write $2"</span>
+<span class="s">#!/usr/bin/env bash</span>
+<span class="s"># checkout-guard pre-commit (regime-cutover U129), installed by checkout-guard.sh, whose `check` compares these</span>
+<span class="s"># bytes with its copy. The coordinator's checkout and every linked worktree of it share this file: while a program</span>
+<span class="s"># store `.orchestration/orchestrate/&lt;program&gt;/units.tsv` exists under the toplevel of the worktree the commit is made</span>
+<span class="s"># in or under the main worktree's, every commit is refused with the one accepted route, a worker tree made by</span>
+<span class="s"># worker-worktree.sh (standing order 29). No environment variable bypasses it; `git commit --no-verify` is the</span>
+<span class="s"># operator's own hand, and the isolated git of the levers (`-c core.hooksPath=/dev/null`) never runs this file. A read</span>
+<span class="s"># that fails refuses the commit (standing order 21). This hook writes nothing but its own stdout and stderr.</span>
+<span class="s">set -euo pipefail</span>
+<span class="s">route="commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one under \$TMPDIR/dotfiles-wt/&lt;unit&gt; (standing order 29)"</span>
+<span class="s"># Refuse the commit on a failed read, naming it.</span>
+<span class="s">refuse() {</span>
+<span class="s">    echo "checkout-guard pre-commit: $*; the commit is refused (standing order 21)" &gt;&amp;2</span>
+<span class="s">    exit 1</span>
+<span class="s">}</span>
+<span class="s"># A hook runs inside the user's git, which puts its own exec path first on PATH, and cannot isolate itself from the</span>
+<span class="s"># repository it guards; the two reads name this worktree and the main one, nothing else.</span>
+<span class="s">toplevel=$(git rev-parse --show-toplevel) || refuse 'cannot read the toplevel of this worktree' # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s"># The first worktree of the porcelain list is the main one (git-worktree(1)).</span>
+<span class="s">worktrees=$(git worktree list --porcelain) || refuse 'cannot list the worktrees of this repository' # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s">main=${worktrees%%'</span>
+<span class="s">'*}</span>
+<span class="s">[[ ${main} == 'worktree '* ]] || refuse "the worktree list does not start with the main worktree: ${main}"</span>
+<span class="s">main=${main#worktree }</span>
+<span class="s">for top in "${toplevel}" "${main}"; do</span>
+<span class="s">    stores=${top}/.orchestration/orchestrate</span>
+<span class="s">    [[ -d ${stores} ]] || continue</span>
+<span class="s">    # A directory that cannot be listed is a failed read, never "no store": the glob below would match nothing.</span>
+<span class="s">    [[ -r ${stores} &amp;&amp; -x ${stores} ]] || refuse "cannot read ${stores}"</span>
+<span class="s">    for program in "${stores}"/*/; do</span>
+<span class="s">        [[ -d ${program} ]] || continue # the pattern itself, when nothing matches</span>
+<span class="s">        [[ -r ${program} &amp;&amp; -x ${program} ]] || refuse "cannot read ${program}"</span>
+<span class="s">        [[ -e ${program}units.tsv ]] || continue</span>
+<span class="s">        echo "checkout-guard: this checkout is the coordinator's; ${route}" &gt;&amp;2</span>
+<span class="s">        exit 1</span>
+<span class="s">    done</span>
+<span class="s">done</span>
+<span class="s">exit 0</span>
+<span class="s">ROUND1_PRE_COMMIT_SUBST</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>post-checkout<span class="o">)</span>
+<span class="w">        </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ROUND1_POST_CHECKOUT' &gt; "$2" || refuse "cannot write $2"</span>
+<span class="s">#!/usr/bin/env bash</span>
+<span class="s"># checkout-guard post-checkout (regime-cutover U129), installed by checkout-guard.sh beside its pre-commit. After a</span>
+<span class="s"># branch checkout (its third argument is 1, the checkout `git worktree add` performs) in a linked worktree of the</span>
+<span class="s"># coordinator's checkout it prints the worker-tree route as a warning and exits 0: a hook cannot undo the add, and</span>
+<span class="s"># the pre-commit this checkout shares with the worktree refuses the commits made there. A file checkout, or a branch</span>
+<span class="s"># checkout in the main checkout, prints nothing. A read that fails is named and exits 0: this hook refuses nothing,</span>
+<span class="s"># so its status never changes the command's outcome. It writes nothing but its own stdout and stderr.</span>
+<span class="s">set -euo pipefail</span>
+<span class="s">route="commits belong in a worker tree: ~/.local/bin/common/worker-worktree.sh &lt;unit&gt; &lt;branch&gt; origin/main makes one under \$TMPDIR/dotfiles-wt/&lt;unit&gt; (standing order 29)"</span>
+<span class="s">[[ ${3:-0} == 1 ]] || exit 0</span>
+<span class="s"># A hook runs inside the user's git and cannot isolate itself from the repository it guards; the two reads name this</span>
+<span class="s"># worktree's git directory and the common one.</span>
+<span class="s">if ! git_dir=$(git rev-parse --path-format=absolute --git-dir); then # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s">    echo 'checkout-guard post-checkout: cannot read the git directory of this worktree; no warning is printed' &gt;&amp;2</span>
+<span class="s">    exit 0</span>
+<span class="s">fi</span>
+<span class="s">if ! common=$(git rev-parse --path-format=absolute --git-common-dir); then # git-isolated: allow a hook runs inside the user's git and cannot isolate itself from the repository it guards</span>
+<span class="s">    echo 'checkout-guard post-checkout: cannot read the git common directory of this worktree; no warning is printed' &gt;&amp;2</span>
+<span class="s">    exit 0</span>
+<span class="s">fi</span>
+<span class="s">[[ ${git_dir} != "${common}" ]] || exit 0 # lint-comparisons: allow both sides are git's absolute forms; equal means the main checkout, which is silent</span>
+<span class="s">echo "checkout-guard: warning: this is a linked worktree of the coordinator's checkout, whose pre-commit refuses every commit here; ${route}" &gt;&amp;2</span>
+<span class="s">exit 0</span>
+<span class="s">ROUND1_POST_CHECKOUT</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"no hook named </span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1"># The expected bytes of each hook, written once to the scratch directory so every comparison below is `cmp -s`, which</span>
+<span class="c1"># reads every byte of both files (a command substitution would drop a NUL).</span>
+<span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">legacy_hooks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>pre-commit.subst<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span>write_hook<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">done</span>
+
+<span class="c1"># @description Judge the file at $1 against hook $2: `state` is `absent` (nothing there), `own` (a regular file</span>
+<span class="c1">#   holding exactly this lever's bytes), `differs` (a regular file of any other content) or, for a file that is not</span>
+<span class="c1">#   judged, its kind: `a symlink` (whatever it points at: nothing is written through one), `a directory`, `a fifo`,</span>
+<span class="c1">#   `a socket`, `a device` or `not a regular file`; `executable` is 1 when a regular file has its owner's execute</span>
+<span class="c1">#   bit. The comparison is `cmp -s` against the scratch copy, and for `pre-commit` against both of its forms: 0 equal,</span>
+<span class="c1">#   1 different, anything else a failed read and a refusal, never an absence (standing order 21).</span>
+<span class="c1"># @arg $1 string The path.</span>
+<span class="c1"># @arg $2 string The hook name.</span>
+<span class="c1"># @set state `absent`, `own`, `differs` or the kind of a file that is not judged.</span>
+<span class="c1"># @set executable 0 or 1.</span>
+hook_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span>same<span class="w"> </span>form
+<span class="w">    </span><span class="nv">executable</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">state</span><span class="o">=</span><span class="s1">'a symlink'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">state</span><span class="o">=</span>absent
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s1">'a directory'</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-p<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s1">'a fifo'</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-S<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s1">'a socket'</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-b<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-c<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s1">'a device'</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span><span class="s1">'not a regular file'</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">state</span><span class="o">=</span>differs
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">executable</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>form<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scratch</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">.subst"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">form</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">same</span><span class="o">=</span><span class="m">0</span>
+<span class="w">        </span>cmp<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">form</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">same</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">same</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span><span class="m">0</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">state</span><span class="o">=</span>own
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot compare </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2"> with this lever's </span><span class="si">${</span><span class="nv">form</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1"># The hooks directory is read before anything in it is judged: one that cannot be listed or entered (mode 000) would</span>
+<span class="c1"># make every path in it read as absent (audit round 2 P3), so it is a refusal naming it, never an absence; a file</span>
+<span class="c1"># where the directory should be is foreign and refused. An absent directory is made by `install` below.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2"> exists and is not a directory"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
+
+<span class="c1"># The hook and the two round-1 paths are judged before anything is written. A symlink or a file that is not a regular</span>
+<span class="c1"># file at the hook path is not judged by either action (audit round 3 P3: `check` read both as `differs`): it is a</span>
+<span class="c1"># refusal naming the kind, and nothing is written through or over it; a regular file of other content is `differs`</span>
+<span class="c1"># for `check` and a refusal for `install` below. Anything at a round-1 path that is not round 1's own is left alone.</span>
+hook_state<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">hook_own</span><span class="o">=</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span><span class="nv">hook_executable</span><span class="o">=</span><span class="si">${</span><span class="nv">executable</span><span class="si">}</span>
+<span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">hook_own</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+absent<span class="w"> </span><span class="p">|</span><span class="w"> </span>own<span class="w"> </span><span class="p">|</span><span class="w"> </span>differs<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2"> is </span><span class="si">${</span><span class="nv">hook_own</span><span class="si">}</span><span class="s2">, not this lever's hook; </span><span class="si">${</span><span class="nv">action</span><span class="si">}</span><span class="s2"> does not judge it and nothing is written through it (move it away by hand, then rerun)"</span><span class="w"> </span><span class="p">;;</span>
+<span class="k">esac</span>
+<span class="nv">stale</span><span class="o">=()</span>
+<span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">legacy_hooks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span>hook_state<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>own<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">stale</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="k">done</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">action</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>check<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">missing</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nv">target</span><span class="o">=</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span>/<span class="si">${</span><span class="nv">hook</span><span class="si">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">hook_own</span><span class="si">}</span>:<span class="si">${</span><span class="nv">hook_executable</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>own:1<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: installed\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>own:0<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: not-executable\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>absent:*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: absent\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: differs\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stale</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">stale</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: stale\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">missing</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
+
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hook_own</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>differs<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2"> exists and is not this lever's hook; it is never overwritten (move it away by hand, then rerun)"</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>mkdir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot make </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
+
+<span class="c1"># The hook path is written by one rename. Unless the hook is already this lever's own and executable, the bytes go to</span>
+<span class="c1"># a temporary file in the hooks directory (`mktemp` there, so the rename stays on one filesystem; a dotfile git runs</span>
+<span class="c1"># as no hook), its mode is set, and it is read back (`cmp -s` against the scratch copy, the execute bit) before one</span>
+<span class="c1"># `mv` puts it at the hook path. A failure at any of those steps refuses with the hook path exactly as found (absent</span>
+<span class="c1"># stays absent, this lever's own hook that lacked its execute bit keeps its bytes; the trap removes the temporary</span>
+<span class="c1"># file): writing the hook path in place left an empty, a non-executable or an unverified hook behind a refusal (audit</span>
+<span class="c1"># round 5 P2).</span>
+<span class="nv">target</span><span class="o">=</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span>/<span class="si">${</span><span class="nv">hook</span><span class="si">}</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hook_own</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>own<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">hook_executable</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: unchanged\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nv">staged</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/.</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">.XXXXXX"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot make a temporary file in </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2"> for the hook"</span>
+<span class="w">    </span>write_hook<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot make </span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2"> executable"</span>
+<span class="w">    </span>hook_state<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>own<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">executable</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2"> reads back as </span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2"> (executable: </span><span class="si">${</span><span class="nv">executable</span><span class="si">}</span><span class="s2">) after the write; </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2"> is as it was"</span>
+<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot move </span><span class="si">${</span><span class="nv">staged</span><span class="si">}</span><span class="s2"> onto </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">staged</span><span class="o">=</span><span class="s1">''</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: installed\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
+
+<span class="c1"># The round-1 hooks go only after the new hook is in place, so no run leaves the checkout unguarded.</span>
+<span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stale</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">stale</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span>rm<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot remove the round-1 </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span>/<span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> is still there after its removal"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'checkout-guard: removed\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">done</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

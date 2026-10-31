@@ -1299,6 +1299,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_chezmoi-cd/" class="md-nav__link">
         
   
@@ -4741,6 +4769,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/checkout-guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/checkout-guard.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/orchestrator/ci-rerun/" class="md-nav__link">
         
   
@@ -5391,7 +5447,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_regime-init">home/dot_local/bin/common/executable_regime-init<a class="headerlink" href="#homedot_localbincommonexecutable_regime-init" title="Permanent link">&para;</a></h1>
-<p>Regime-cutover U33, a coordinator lever pre-authorized by <code>Bash(~/.local/bin/common/regime-init *)</code>. Run it in the git checkout of the repository. It derives the repository slug, hcom store and team through the sourced regime-env helper, then creates <code>&lt;toplevel&gt;/.orchestration/orchestrate/&lt;program&gt;/</code> with the templates from <code>~/.agents/regime/</code> (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md), writes <code>~/.local/state/hcom/&lt;slug&gt;/origin</code> with the toplevel, and prints the AGENTS.md audit section, or appends it with <code>--write-agents</code> when AGENTS.md has no <code>## Audit</code> heading. It is idempotent: an existing file equal to its template is left alone, one that differs is kept unless <code>--force</code> replaces it, and a second run says that nothing changed. It never writes through a symlink, and it refuses outside a git checkout and when the derived store's origin names another checkout with the same slug.</p>
+<p>Regime-cutover U33, a coordinator lever pre-authorized by <code>Bash(~/.local/bin/common/regime-init *)</code>. Run it in the git checkout of the repository. It derives the repository slug, hcom store and team through the sourced regime-env helper, then creates <code>&lt;toplevel&gt;/.orchestration/orchestrate/&lt;program&gt;/</code> with the templates from <code>~/.agents/regime/</code> (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md), writes <code>~/.local/state/hcom/&lt;slug&gt;/origin</code> with the toplevel, installs the checkout guard (U129: <code>checkout-guard.sh install &lt;toplevel&gt;</code>, the <code>reference-transaction</code> hook that refuses, while a store exists, every move of a local branch in the checkout or a linked worktree of it to a commit origin does not hold, which is every commit made there; round 2 removes round 1's <code>pre-commit</code> and <code>post-checkout</code>), and prints the AGENTS.md audit section, or appends it with <code>--write-agents</code> when AGENTS.md has no <code>## Audit</code> heading. It is idempotent: an existing file equal to its template is left alone, one that differs is kept unless <code>--force</code> replaces it, a second run finds the guard's own hook (<code>unchanged</code>), and says that nothing changed. It never writes through a symlink, and it refuses outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the guard refuses (a linked worktree, a foreign hook at its path).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_regime-init</code></li>
@@ -5413,15 +5469,19 @@
 <span class="c1">#   in the git checkout of the repository. It derives the repository slug, hcom store and team through the</span>
 <span class="c1">#   sourced regime-env helper, then creates `&lt;toplevel&gt;/.orchestration/orchestrate/&lt;program&gt;/` with the</span>
 <span class="c1">#   templates from `~/.agents/regime/` (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md),</span>
-<span class="c1">#   writes `~/.local/state/hcom/&lt;slug&gt;/origin` with the toplevel, and prints the AGENTS.md audit section, or</span>
-<span class="c1">#   appends it with `--write-agents` when AGENTS.md has no `## Audit` heading. It is idempotent: an existing</span>
-<span class="c1">#   file equal to its template is left alone, one that differs is kept unless `--force` replaces it, and a</span>
-<span class="c1">#   second run says that nothing changed. It never writes through a symlink, and it refuses outside a git</span>
-<span class="c1">#   checkout and when the derived store's origin names another checkout with the same slug.</span>
+<span class="c1">#   writes `~/.local/state/hcom/&lt;slug&gt;/origin` with the toplevel, installs the checkout guard (U129: `checkout-guard.sh</span>
+<span class="c1">#   install &lt;toplevel&gt;`, the `reference-transaction` hook that refuses, while a store exists, every move of a local</span>
+<span class="c1">#   branch in the checkout or a linked worktree of it to a commit origin does not hold, which is every commit made</span>
+<span class="c1">#   there; round 2 removes round 1's `pre-commit` and `post-checkout`), and prints the AGENTS.md audit section, or</span>
+<span class="c1">#   appends it with `--write-agents` when AGENTS.md has no `## Audit` heading. It is idempotent: an existing file</span>
+<span class="c1">#   equal to its template is left alone, one that differs is kept unless `--force` replaces it, a second run finds the</span>
+<span class="c1">#   guard's own hook (`unchanged`), and says that nothing changed. It never writes through a symlink, and it refuses</span>
+<span class="c1">#   outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the</span>
+<span class="c1">#   guard refuses (a linked worktree, a foreign hook at its path).</span>
 <span class="c1"># @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under .orchestration/orchestrate.</span>
 <span class="c1"># @option --force Replace store files that differ from their template.</span>
 <span class="c1"># @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.</span>
-<span class="c1"># @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`), the section when not written, the next commands.</span>
+<span class="c1"># @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`; `checkout-guard: installed`, `unchanged` or `removed` per hook), the section when not written, the next commands.</span>
 <span class="c1"># @exitcode 0 Done, including when nothing changed.</span>
 <span class="c1"># @exitcode 2 A refusal, before or instead of the write it names.</span>
 <span class="c1"># @example</span>
@@ -5564,6 +5624,21 @@ mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span>
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot create </span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">REGIME_TOPLEVEL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">origin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot write </span><span class="si">${</span><span class="nv">origin</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'created\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">origin</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">changed</span><span class="o">=</span><span class="m">1</span>
+<span class="k">fi</span>
+
+<span class="c1"># The checkout refuses commits once a store exists (U129): checkout-guard.sh writes its reference-transaction hook</span>
+<span class="c1"># into the checkout's common hooks directory, or finds its own there and prints `unchanged`, and removes a round-1</span>
+<span class="c1"># `pre-commit` or `post-checkout` that is still there (`removed`); its refusals (a linked worktree, a foreign hook) are</span>
+<span class="c1"># this run's, after the store rows and before the AGENTS section.</span>
+<span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/checkout-guard.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"checkout-guard.sh absent beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/checkout-guard.sh"</span>
+<span class="nv">guard_rows</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/checkout-guard.sh"</span><span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"checkout-guard.sh install </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2"> failed; the store is in place, the hook is not"</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">guard_rows</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># A change is a receipt row read by its full shape at the start of a line, `checkout-guard: installed&lt;TAB&gt;&lt;path&gt;` or</span>
+<span class="c1"># `checkout-guard: removed&lt;TAB&gt;&lt;path&gt;`, never the word anywhere: a checkout path may hold `installed`. Left: a path</span>
+<span class="c1"># holding a newline followed by that exact prefix, which costs the nothing-changed line alone.</span>
+<span class="nv">guard_receipt</span><span class="o">=</span><span class="s2">"(^|"</span><span class="s1">$'\n'</span><span class="s2">")checkout-guard: (installed|removed)"</span><span class="s1">$'\t'</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">guard_rows</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">guard_receipt</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">changed</span><span class="o">=</span><span class="m">1</span>
 <span class="k">fi</span>
 

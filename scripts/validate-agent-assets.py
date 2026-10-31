@@ -50,14 +50,16 @@ class SecretRule(NamedTuple):
     """One row of SECRET_RULES, the committed-secret scan's rule table (gitleaks' rule model, in the script itself
     because records-sync.sh runs this file alone from a tools tree).
 
-    `regex` matches the whole secret-bearing text and `secret_group` is the group holding the secret (0 for the
-    whole match); `secret_in` trims the group's trailing whitespace in code, so no rule's regex needs a lazy
-    quantifier or a lookahead to end its capture. `entropy` is the least Shannon entropy, in bits per character,
-    the secret must reach, or None for a provider rule whose prefix alone is the evidence; it is measured over
-    measured_text(secret), the secret with every SECRET_MASK, quoting character and carriage return removed, as
-    the greatest entropy of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's
-    own output passes the scan, a value beside a marker is judged on its own, no quoting changes the measure, and
-    nothing else on the line can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
+    `regex` matches the whole secret-bearing text in a text scanned as it is, `regex_in_string` in a decoded JSON
+    string (one pattern for a provider rule; a generic rule's two forms differ in what bounds the match, see
+    assignment_rule; secret_findings chooses), and `secret_group` is the group holding the secret (0 for the whole
+    match); `secret_in` trims the group's trailing whitespace in code, so no rule's regex needs a lazy quantifier or
+    a lookahead to end its capture. `entropy` is the least Shannon entropy, in bits per character, the secret must
+    reach, or None for a provider rule whose prefix alone is the evidence; it is measured over
+    measured_text(secret), the secret with every SECRET_MASK and quoting character removed, as the greatest entropy
+    of any window of GENERIC_SECRET_MIN_LENGTH characters (`reaches_entropy`), so the masker's own output passes
+    the scan, a value beside a marker is judged on its own, no quoting changes the measure, and nothing else in the
+    value's field can dilute it. The rule runs over a text only when `keyword_regex`, one of `keywords`
     under the same `(?i)` the rule's regex uses (keyword_filter), finds one in it: a cheap filter before the regex
     that folds a text exactly as the regex folds it, so it never skips a text the regex would match.
     """
@@ -65,6 +67,7 @@ class SecretRule(NamedTuple):
     id: str
     description: str
     regex: re.Pattern[str]
+    regex_in_string: re.Pattern[str]
     secret_group: int
     entropy: float | None
     keywords: tuple[str, ...]
@@ -112,17 +115,17 @@ GENERIC_SECRET_ENTROPY = 3.5
 GENERIC_SECRET_MIN_LENGTH = 20
 # What --mask-secrets writes over a finding; measured_text() removes it before a value is measured.
 SECRET_MASK = "<redacted:secret-pattern>"
-# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value,
-# and a carriage return is a line's content only because the line feed alone ends the capture (assignment_rule).
+# The characters removed before a value is measured: the quoting characters are the writer's syntax, not the value.
 # Rounds 4 and 5 each let the quotes decide where the value ended and each fell to the next quoting corner (an
-# apostrophe inside a double-quoted value, then an escaped quote); now nothing written on the line decides what is
-# measured.
-UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\\r")
+# apostrophe inside a double-quoted value, then an escaped quote); now nothing written in the field decides what is
+# measured: the capture runs to the end of the field (assignment_rule), not of the line, because the records lever
+# masks TSV files whose columns are tab-separated, and a marker that crosses a tab destroys the row; in a decoded JSON
+# string, where a tab is content, it runs to the end of the line.
+UNMEASURED_CHARACTERS = str.maketrans("", "", "\"'\\")
 
 
 def measured_text(secret: str) -> str:
-    """What a generic rule measures: SECRET with every SECRET_MASK and every quote, backslash and carriage return
-    removed."""
+    """What a generic rule measures: SECRET with every SECRET_MASK and every quote and backslash removed."""
     return secret.replace(SECRET_MASK, "").translate(UNMEASURED_CHARACTERS)
 
 
@@ -153,42 +156,90 @@ def keyword_filter(keywords: tuple[str, ...]) -> re.Pattern[str]:
 def provider_rule(rule_id: str, description: str, body: str, keyword: str) -> SecretRule:
     """A rule for a key format whose prefix identifies it: the whole match is the secret, no entropy test."""
     regex = re.compile("(?i)" + KEY_PREFIX_BOUNDARY + body)
-    return SecretRule(rule_id, description, regex, 0, None, (keyword,), keyword_filter((keyword,)))
+    return SecretRule(rule_id, description, regex, regex, 0, None, (keyword,), keyword_filter((keyword,)))
+
+
+# What a generic rule's match never crosses, as the body of a regex class. In a text scanned as it is (FIELD_SEPARATORS)
+# the tab, which separates the columns of the TSV files the records lever masks, the line feed and the carriage
+# return. In a decoded JSON string (LINE_SEPARATORS) the line feed and the carriage return only: --mask-secrets and
+# both scans decode every key and string value before scanning it, so a tab there is what the writer wrote, not a
+# column, and `"prefix<TAB>Qz7v..."` bounded at the tab measured as `prefix` and was neither reported nor masked
+# where 05597009 masked it (Codex P1 on f84ea376, U107b round 2).
+FIELD_SEPARATORS = r"\t\n\r"
+LINE_SEPARATORS = r"\n\r"
+
+
+def assignment_regex(key: str, operators: str, separators: str) -> re.Pattern[str]:
+    """The regex of a `<key> = "<value>"` rule whose whole match, from the key through the operator to the end of the
+    value, crosses none of SEPARATORS (FIELD_SEPARATORS or LINE_SEPARATORS). The blanks allowed around the operator
+    and before the quote are every whitespace character that is not a separator (`[^\\S<separators>]`: `\\s` minus
+    the separators, so the NBSP, the thin space and the ideographic space count as blanks, as they do for `\\s`),
+    never `\\s` itself: round 1 of U107b bounded the value and kept `\\s*` around the operator, so
+    `token =<TAB>"Qz7v..."` matched across the tab, the mask removed it and a four-column TSV row became three (audit
+    P2 on f84ea376); round 2 wrote the blanks as `[ \\f\\v]`, the ASCII blanks only, so `password<NBSP>=<NBSP>"Qz7v..."`
+    passed both scans unmasked in a text and in a decoded JSON string where 05597009's `\\s*` found it (audit P1 on
+    a5b9ca2c)."""
+    blanks = r"[^\S" + separators + "]*"
+    value = """(["'][^""" + separators + "]*)"
+    return re.compile("(?i)" + key + blanks + "[" + operators + "]" + blanks + value)
 
 
 def assignment_rule(rule_id: str, key: str, operators: str, keywords: tuple[str, ...]) -> SecretRule:
-    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its line, trimmed, is the secret,
-    judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy), so a
-    variable named `token` holding a word is not a finding and padding beside a secret on its line does not hide it.
+    """A `<key> = "<value>"` rule: from the quote that opens the value to the end of its field, trimmed, is the
+    secret, judged by the densest GENERIC_SECRET_MIN_LENGTH-character window of measured_text (densest_window_entropy),
+    so a variable named `token` holding a word is not a finding and padding beside a secret in its field does not
+    hide it.
 
     No quote ends the capture. Rounds 4 and 5 (verdicts on 43fe25f3 and a7b060cd) each assumed a regex can find
     where a quoted value ends (either quote, then the quote that opened it) and each fell to the next quoting corner:
     an apostrophe inside a double-quoted value, then an escaped quote, each measured as its first character. A
-    value's characters are on its line whatever the quoting, so the whole rest of the line is the secret, measured
-    with the quotes, backslashes and carriage returns removed, and the finding's span is the whole line from the
-    key: the masker writes one marker over all of it, so its output has no remainder to measure. What follows the
-    value on its line (a trailing comment, a second literal, a second assignment) is captured, measured and masked
-    with it: the measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding
-    on 38a83e45: 160 characters of padding before a second assignment brought the whole line to 1.43 bits), and
-    over-capture errs on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a
-    reason, never a shorter capture or a looser measure.
+    value's characters are in its field whatever the quoting, so the whole rest of the field is the secret, measured
+    with the quotes and backslashes removed, and the finding's span is the whole field from the key: the masker
+    writes one marker over all of it, so its output has no remainder to measure. What follows the value in its field
+    (a trailing comment, a second literal, a second assignment) is captured, measured and masked with it: the
+    measure is the densest window, so what is captured with a secret cannot dilute it (round 7 finding on 38a83e45:
+    160 characters of padding before a second assignment brought the whole line to 1.43 bits), and over-capture errs
+    on the refusing side; a legitimate line that trips the rule gets a SECRET_ALLOWLIST row with a reason, never a
+    shorter capture or a looser measure.
 
-    The capture is one greedy class to the line feed, linear in the line, and only the line feed ends it: a carriage
-    return before text is content of the line, captured, measured and masked with the value; a trailing one (a CRLF
-    line) is trimmed with the trailing whitespace, in code (SecretRule.secret_in), never by the regex. Round 7's
-    capture stopped at a CR and ended with a lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed
-    by a CR and text matched nothing and passed the tree scan and both CLIs in text and in JSON, and the lookahead
-    rescanned the rest of the line at every step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s
-    (round 7 verdict on 1632d807).
+    The field, not the line, ends the capture: the records lever (records-sync.sh) masks the store's TSV files, whose
+    columns are tab-separated, and a marker that crosses a tab destroys the row. U107's capture ran to the line feed,
+    so a ledger row whose evidence column quoted the round-5 finding (`<key> = "x\\"Qz7v..."` in prose) was masked
+    from its key through two tabs to the end of the row, the masked copy had 5 columns instead of 7, rounds-check.py
+    refused it and the regime check was red on two records syncs (U107b, 2026-10-31). The capture is one greedy class
+    that excludes the tab, the line feed and the carriage return at every position, linear in the line, with no
+    lookahead, so the match ends where the class ends and the trailing whitespace is trimmed in code
+    (SecretRule.secret_in): a trailing carriage return (a CRLF line) is outside the capture and the mask leaves the
+    line ending in place; a bare one before text ends the capture too, the value before it is captured, measured
+    and masked, and the text after it stays. What stands after a tab or a carriage return is scanned on its own: a
+    second quoted assignment there is its own match, and a bare value there is outside the generic rules, as an
+    unquoted value is. Round 7 (verdict on 1632d807) also stopped its capture at a CR, but ended the match with a
+    lookahead for whitespace before the LF, so `<key> = "Qz7v..."` followed by a CR and text matched nothing and
+    passed the tree scan and both CLIs in text and in JSON, and the lookahead rescanned the rest of the line at every
+    step of the lazy capture, so 32,000 spaces inside the quotes took 4.191 s.
+
+    Two forms of the regex, and secret_findings chooses one per text. `regex`, for a text scanned as it is (a file, a
+    TSV row, a path), crosses no tab, line feed or carriage return anywhere in the match, from the key through the
+    operator to the end of the value, so the key column and the value column of a TSV row are two fields and
+    `token =<TAB>"Qz7v..."` is no assignment: the value stands in its field bare of its key, as an unquoted value
+    does (round 1 bounded the value but left `\\s*` around the operator, so the match crossed the tab and a
+    four-column row masked to three; audit P2 on f84ea376). A line feed or a carriage return between the key and the
+    quote is the same boundary in both forms. `regex_in_string`, for a decoded JSON string, crosses no line feed or
+    carriage return but takes a tab as content, around the operator and in the value: --mask-secrets and both scans
+    decode every key and string value before scanning it, so a tab there is what the writer wrote, not a column, and
+    with the field form `<key> = "prefix<TAB>Qz7v..."` inside a JSON string measured as `prefix` and was neither
+    reported nor masked where 05597009 masked it (Codex P1 on f84ea376). In either form what stands after a
+    separator is scanned on its own: a second quoted assignment there is its own match, a bare value there is
+    outside the generic rules.
 
     The rule still runs only where the value opens with a quote, as on origin/main: a capture that also took an
     unquoted value trips 53 legitimate lines of this tree (workflow `${{ secrets.* }}` references, TypeScript,
     prose), one that took any line with a quote after the operator 20, each needing a row by line number."""
-    regex = re.compile("(?i)" + key + r"\s*[" + operators + r"""]\s*(["'][^\n]*)""")
     return SecretRule(
         rule_id,
         f"a quoted {keywords[0]} assignment",
-        regex,
+        assignment_regex(key, operators, FIELD_SEPARATORS),
+        assignment_regex(key, operators, LINE_SEPARATORS),
         1,
         GENERIC_SECRET_ENTROPY,
         keywords,
@@ -2095,18 +2146,25 @@ def secret_allowance(
     return next((row for row in SECRET_ALLOWLIST if row.allows(rule_id, secret, path, fingerprint)), None)
 
 
-def secret_findings(text: str) -> list[SecretFinding]:
+def secret_findings(text: str, *, in_json_string: bool = False) -> list[SecretFinding]:
     """Every SECRET_RULES finding in TEXT that no content-only allowlist row suppresses, in text order.
 
     A rule runs when its keyword filter finds one of its keywords in the text (keyword_filter, which folds as the
     rule's regex folds); a match of a rule with an entropy threshold counts only when the secret reaches it. Rows
     with a path or fingerprint condition need the repository path and are applied by validate_no_obvious_secrets().
+
+    IN_JSON_STRING says what TEXT is, and this is the one place that decides which form of a rule runs: a text
+    scanned as it is (a file, a TSV row, a path) is matched by `rule.regex`, whose generic form crosses no tab, line
+    feed or carriage return; a decoded JSON string (mask_json_strings, identifier_findings and the tree scan decode
+    every key and string value before scanning it) by `rule.regex_in_string`, whose generic form crosses no line
+    feed or carriage return and takes a tab as content (assignment_rule).
     """
     findings = []
     for rule in SECRET_RULES:
         if rule.keyword_regex.search(text) is None:
             continue
-        for match in rule.regex.finditer(text):
+        regex = rule.regex_in_string if in_json_string else rule.regex
+        for match in regex.finditer(text):
             secret, end = rule.secret_in(match)
             if not rule.reaches_entropy(secret):
                 continue
@@ -2115,10 +2173,10 @@ def secret_findings(text: str) -> list[SecretFinding]:
     return sorted(findings, key=lambda finding: (finding.start, finding.end))
 
 
-def secret_spans(text: str) -> list[tuple[int, int]]:
+def secret_spans(text: str, *, in_json_string: bool = False) -> list[tuple[int, int]]:
     """The spans --mask-secrets replaces: each finding's whole match, with overlapping matches merged into one."""
     spans: list[tuple[int, int]] = []
-    for finding in secret_findings(text):
+    for finding in secret_findings(text, in_json_string=in_json_string):
         if spans and finding.start < spans[-1][1]:
             spans[-1] = (spans[-1][0], max(spans[-1][1], finding.end))
         else:
@@ -2126,8 +2184,11 @@ def secret_spans(text: str) -> list[tuple[int, int]]:
     return spans
 
 
-def mask_secret_matches(text: str) -> tuple[str, int]:
+def mask_secret_matches(text: str, *, in_json_string: bool = False) -> tuple[str, int]:
     """Replace what the committed-secret scan would flag, and normalise home paths, until the text passes the scan.
+
+    IN_JSON_STRING is passed to secret_findings and selects the form of the generic rules: mask_json_strings sets it
+    for every decoded key and string value, so a tab inside one is content and the value around it is masked whole.
 
     Mirrors validate_no_obvious_secrets(): the same rules and the same content allowlist rows decide what is masked,
     and every other byte is kept. Home directory prefixes become `~` (mask_home_paths), which the scan requires of
@@ -2141,7 +2202,7 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     while True:
         pieces = []
         cursor = 0
-        spans = secret_spans(text)
+        spans = secret_spans(text, in_json_string=in_json_string)
         for start, end in spans:
             pieces.extend((text[cursor:start], SECRET_MASK))
             cursor = end
@@ -2154,9 +2215,10 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
 
 
 def mask_json_strings(value: Any) -> tuple[Any, int]:
-    """Mask every string in a parsed JSON value, so the document stays parseable."""
+    """Mask every string in a parsed JSON value, in the rules' form for a decoded string (a tab is content), so the
+    document stays parseable."""
     if isinstance(value, str):
-        return mask_secret_matches(value)
+        return mask_secret_matches(value, in_json_string=True)
     if isinstance(value, list):
         pairs = [mask_json_strings(item) for item in value]
         return [item for item, _ in pairs], sum(count for _, count in pairs)
@@ -2175,7 +2237,7 @@ def mask_members(pairs: Iterable[tuple[str, Any]]) -> tuple[dict[str, Any], int]
     originals: dict[str, str] = {}
     count = 0
     for key, item in pairs:
-        masked_key, key_count = mask_secret_matches(key)
+        masked_key, key_count = mask_secret_matches(key, in_json_string=True)
         if originals.setdefault(masked_key, key) != key:
             raise MaskedKeyCollision(f"keys {originals[masked_key]!r} and {key!r} both mask to {masked_key!r}")
         masked[masked_key], item_count = mask_json_strings(item)
@@ -2318,15 +2380,20 @@ def redact_word_pattern(word: str) -> re.Pattern[str]:
 
 
 def identifier_reasons(
-    strings: list[str], words: list[tuple[int, str]], secret_strings: list[str] | None = None
+    strings: list[str], words: list[tuple[int, str]], decoded_strings: list[str] | None = None
 ) -> list[str]:
     """The secret, home-path and redact-word tests over STRINGS, as reasons that quote nothing they found.
 
-    The tests are validate_no_obvious_secrets()': the secret pattern over SECRET_STRINGS (default STRINGS; a JSON
-    document's keys and string values, so no match spans JSON syntax), the home path over STRINGS; a redact word
+    The tests are validate_no_obvious_secrets()': the secret pattern over DECODED_STRINGS when given (a JSON
+    document's keys and string values, each in the rules' form for a decoded string, so no match spans JSON syntax
+    and a tab inside a string is content), else over STRINGS as they are; the home path over STRINGS; a redact word
     (redact_word_pattern) is named by its physical line number in the words file."""
     reasons = []
-    if any(secret_findings(s) for s in secret_strings or strings):
+    if decoded_strings is None:
+        secret = any(secret_findings(s) for s in strings)
+    else:
+        secret = any(secret_findings(s, in_json_string=True) for s in decoded_strings)
+    if secret:
         reasons.append("a secret pattern")
     if any(home_path_pattern().search(s) for s in strings):
         reasons.append("a home directory path")
@@ -2349,8 +2416,10 @@ def identifier_findings(path: Path, words: list[tuple[int, str]]) -> list[str]:
         text = data.decode()
     except UnicodeDecodeError:
         return ["not UTF-8 text"]
-    strings = decoded_json_strings(text) or [text]
-    return identifier_reasons([text, *strings], words, secret_strings=strings)
+    decoded = decoded_json_strings(text)
+    if decoded:
+        return identifier_reasons([text, *decoded], words, decoded_strings=decoded)
+    return identifier_reasons([text], words)
 
 
 def scan_identifiers(args: list[str]) -> int:
@@ -2441,7 +2510,9 @@ def validate_no_obvious_secrets() -> None:
         scanned = literals if literals is not None else [None]
         starts: list[int] | None = None  # indexed at the first finding; a clean file never pays for it
         for literal in scanned:
-            for finding in secret_findings(text if literal is None else literal.text):
+            for finding in secret_findings(
+                text if literal is None else literal.text, in_json_string=literal is not None
+            ):
                 if starts is None:
                     starts = line_starts(text)
                 fingerprint = f"{relative}:{finding.rule.id}:{finding_line(starts, finding, literal)}"

@@ -1081,7 +1081,9 @@ class PrAuditTest(unittest.TestCase):
         self.answer(head=head, body=PROGRAM_BODY)
         return head
 
-    def earlier_store(self, earlier, finding="- P2 (high) change.txt:1: the first line is wrong", dispositions=None):
+    def earlier_store(
+        self, earlier, finding="- P2 (high) [f5 s5] change.txt:1: the first line is wrong", dispositions=None
+    ):
         """A store whose ledger names `earlier` as U7's correct head at pull request 7, with its verdict file and
         dispositions.tsv (one residual row for the finding by default)."""
         evidence = f"verdicts/U7-{earlier[:8]}.md: correct, Blocking: 0"
@@ -1118,7 +1120,7 @@ class PrAuditTest(unittest.TestCase):
             prompt,
         )
         self.assertIn(
-            "priority\tpath\tline\tdisposition\treference\nP2\tchange.txt\t1\tresidual\tunit=U9 gate=until U9 lands\n",
+            "priority\tf\ts\tpath\tline\tdisposition\treference\nP2\t5\t5\tchange.txt\t1\tresidual\tunit=U9 gate=until U9 lands\n",
             prompt,
         )
         self.assertIn(f"Changed lines of {head[:8]} since {earlier[:8]}:", prompt)
@@ -1163,7 +1165,7 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         (rundir,) = self.tmp.iterdir()
         prompt = (rundir / "prompt.md").read_text()
-        self.assertIn("priority\tpath\tline\tdisposition\treference\n(none)\n", prompt)
+        self.assertIn("priority\tf\ts\tpath\tline\tdisposition\treference\n(none)\n", prompt)
         # no earlier audited head (the ledger holds no audit row for the unit): no block, and the run says so
         shutil.rmtree(rundir)
         (self.rec / "codex-calls").unlink()
@@ -1230,7 +1232,7 @@ class PrAuditTest(unittest.TestCase):
         store = self.earlier_store(earlier, dispositions=seven)
         run = self.run_lever("7", "--records", str(store))
         self.assert_refused(run, f"audit-carry: {store}/dispositions.tsv:2: 7 columns, not 8")
-        store = self.earlier_store(earlier, finding="- P2 (high) change.txt: no line")
+        store = self.earlier_store(earlier, finding="- P2 (high) [f5 s5] change.txt: no line")
         run = self.run_lever("7", "--records", str(store))
         self.assert_refused(run, f"audit-carry: {store}/verdicts/U7-{earlier[:8]}.md:3: not a Findings line")
         store = self.earlier_store(earlier)

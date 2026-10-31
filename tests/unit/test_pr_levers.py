@@ -1026,17 +1026,11 @@ UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
 # A `## Findings` line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>:
 # <rationale>` (U119 round 2: a `correct` verdict may carry P2 and P3; U125: the two scores, frequency and severity,
 # each 1 to 10, whose product the gate weighs; f=5 s=5 is weight 25, at or above the threshold, so the earlier tests
-# keep their meaning).
-SCORES = re.compile(r" \[f\d+ s\d+\]")
+# keep their meaning). The merge gate and audit-carry.py read this one form (U125 rounds b and c).
 
 
 def finding_line(priority, path, line, rationale, confidence="high", f=5, s=5):
     return f"- {priority} ({confidence}) [f{f} s{s}] {path}:{line}: {rationale}"
-
-
-def unscored(text):
-    """`text` with every `[f<n> s<n>]` token removed: the line form `audit-carry.py` reads until U125 round c."""
-    return SCORES.sub("", text)
 
 
 P2_LINE = finding_line("P2", "scripts/orchestrator/pr-merge.sh", 236, "the row is read, the findings are not")
@@ -1741,8 +1735,8 @@ class PrMergeTest(PrLeverTestCase):
         the same sections: `- none` alone or finding lines alone are read; an empty section, `- none` beside a
         finding, `- none` twice, a line of another shape and a path with a colon or whitespace are malformed verdicts
         for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings). Since
-        U125 round b the gate reads the scored line form; the carry lever reads the unscored one until round c, so
-        each reader gets its own form of one fixture set."""
+        U125 (rounds b and c) both read the scored line form, so one text of each fixture goes to both files: a line
+        without the `[f<n> s<n>]` token and a score outside 1 to 10 are malformed to both as well."""
         carry = LEVERS / "audit-carry.py"
         self.git("switch", "-q", "-c", "feat")
         (self.repo / "a.txt").write_text("one\n")
@@ -1767,11 +1761,15 @@ class PrMergeTest(PrLeverTestCase):
             ("a line of another shape", "- P2 (high) a.txt: no line", False),
             ("a path with a colon", finding_line("P2", "file:1: real.sh", 9, "boom"), False),
             ("a path with whitespace", finding_line("P2", "a b.txt", 1, "boom"), False),
+            ("a line without the scores", "- P2 (high) a.txt:1: boom", False),
+            ("a frequency of 0", finding_line("P2", "a.txt", 1, "boom", f=0), False),
+            ("a severity of 11", finding_line("P2", "a.txt", 1, "boom", s=11), False),
+            ("a frequency that is no number", finding_line("P2", "a.txt", 1, "boom", f="x"), False),
         ):
             with self.subTest(name):
                 text = f"## Findings\n\n{section}".rstrip("\n") + tail
                 merge_file.write_text(text)
-                carry_file.write_text(unscored(text))
+                carry_file.write_text(text)
                 self.ledger(ledger_row(SHA_A))
                 self.calls.unlink(missing_ok=True)
                 self.github()

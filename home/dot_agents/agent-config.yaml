@@ -857,7 +857,7 @@ claude:
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       git-isolated.sh: 06b87d0285dbc01d5bd4166415640b01eda81b3ede2ffcf1d7416d0c09793fa9
       regime-init: c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e
-      checkout-guard.sh: 173ce90703db0686b1b60ced77e3560d2416e398c51e72c10e55940957b416b0
+      checkout-guard.sh: ef3e6fe3d028220a625bc38f9425aea89d092a4261761ac00e090ecad7920673
       seat-login-preflight: 9eb65443e051ba86d00c936d40b5b8b677c81600d23d17e861f6774613d3846c
       regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96

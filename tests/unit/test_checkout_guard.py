@@ -33,6 +33,10 @@ ROUTE = (
 REFUSAL = "checkout-guard: this checkout is the coordinator's; " + ROUTE
 FAILED_READ = "the update is refused (standing order 21)"
 ZERO = "0" * 40
+# The expected bytes `install` and `check` write to the scratch directory before anything else: one `cat` per hook form
+# (`reference-transaction`, `pre-commit`, `post-checkout`, `pre-commit.subst`); the next `cat` of an install is the
+# write of the hook's bytes to the temporary file in the hooks directory.
+SCRATCH_WRITES = 4
 # githooks(5), reference-transaction: "For each reference update that was added to the transaction, the hook receives
 # on standard input a line of the format: <old-value> SP <new-value> SP <ref-name> LF"; symbolic values are
 # `ref:<ref-target>`; the exit status counts in the "preparing" and "prepared" states alone.
@@ -145,15 +149,22 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertIn(REFUSAL, err)
         self.assertIn("which no refs/remotes/origin/* ref reaches", err)
 
-    def shim(self, pattern, status=128, name="git"):
+    def shim(self, pattern, status=128, name="git", nth=None):
         """The directory whose `NAME` (default `git`) exits STATUS on a call whose arguments hold PATTERN, else runs
-        the real NAME from PATH."""
+        the real NAME from PATH. With NTH, only the NTH such call fails (the calls are counted in the `calls` file
+        of the directory, read and written by the shell's builtins so a `cat` shim never runs itself; the caller
+        removes the file between runs)."""
         real = shutil.which(name, path=self.env["PATH"])
         shims = Path(tempfile.mkdtemp(prefix=f"shim-{name}-", dir=self.root))
-        (shims / name).write_text(
-            f'#!/bin/sh\ncase "$*" in\n*"{pattern}"*) echo "shim: failing {name} {pattern}" >&2; exit {status} ;;\nesac\n'
-            f'exec "{real}" "$@"\n'
-        )
+        failing = f'echo "shim: failing {name} {pattern}" >&2; exit {status}'
+        if nth is None:
+            decision = f"{failing} ;;"
+        else:
+            decision = (
+                f'n=0; [ -f "{shims}/calls" ] && read -r n < "{shims}/calls"; n=$((n + 1)); '
+                f'printf "%s\\n" "$n" > "{shims}/calls"; if [ "$n" -eq {nth} ]; then {failing}; fi ;;'
+            )
+        (shims / name).write_text(f'#!/bin/sh\ncase "$*" in\n*"{pattern}"*) {decision}\nesac\nexec "{real}" "$@"\n')
         (shims / name).chmod(0o755)
         return shims
 
@@ -356,6 +367,87 @@ class CheckoutGuardTest(unittest.TestCase):
             (self.hooks / HOOK).unlink()
         # The control: without a shim on PATH, `install` writes the hook.
         self.install()
+
+    def test_a_failing_write_step_of_install_leaves_the_hook_path_as_found(self):
+        """Standing order 21 at every decision of the install's write (audit round 5 P2: writing the hook path in
+        place left an empty, a non-executable or an unverified hook behind a refusal; round 5 pinned none of `mkdir`,
+        `chmod` and the stale-hook `rm`). The hook's bytes go to a temporary file in the hooks directory, which one
+        `mv` renames onto the hook path after the mode is set and the read-back passes; `mkdir` of an absent hooks
+        directory, the `cat` that writes those bytes (the fifth cat of a run, after the four scratch copies), `chmod`,
+        the read-back `cmp` and the `mv`, each a PATH shim exiting 28, make `install` exit 2 naming the step with no
+        row, the hooks directory's listing, bytes and modes unchanged and no temporary file left, whether the hook
+        is absent or is this lever's own without its execute bit. The round-1 `rm` comes after the rename by design
+        (no run leaves the checkout unguarded): with the hook already in place its failure changes nothing; with the
+        hook absent the hook is installed, the round-1 file stays, and the next run removes it."""
+        hook = self.hooks / HOOK
+        shutil.rmtree(self.hooks)
+        env = {**self.env, "PATH": f"{self.shim('', status=28, name='mkdir')}:{self.env['PATH']}"}
+        run = self.run_lever("install", str(self.checkout), env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"cannot make {self.hooks}", run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.assertFalse(self.hooks.exists(), "the hooks directory stays absent")
+        self.install()
+        original = hook.read_bytes()
+        hook.unlink()
+        cat = self.shim("", status=28, name="cat", nth=SCRATCH_WRITES + 1)
+        # The count is the install's: `check` writes the four scratch copies and no fifth, so the shim never fires.
+        env = {**self.env, "PATH": f"{cat}:{self.env['PATH']}"}
+        check = self.run_lever("check", str(self.checkout), env=env)
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("absent", str(hook))]), check.stderr)
+        self.assertNotIn("shim", check.stderr)
+        (cat / "calls").unlink()
+        staged = f"{self.hooks}/.{HOOK}."
+        for label, shims, messages in (
+            ("cat", cat, (f"cannot write {staged}",)),
+            ("chmod", self.shim("", status=28, name="chmod"), (f"cannot make {staged}", " executable")),
+            ("cmp", self.shim("", status=28, name="cmp"), ("cannot compare ",)),
+            ("mv", self.shim("", status=28, name="mv"), (f"cannot move {staged}", f" onto {hook}")),
+        ):
+            env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+            for found in ("absent", "own, not executable"):
+                if found == "absent":
+                    if hook.exists():
+                        hook.unlink()
+                else:
+                    hook.write_bytes(original)
+                    hook.chmod(0o644)
+                state = self.hooks_state()
+                with self.subTest(label, found=found):
+                    (shims / "calls").unlink(missing_ok=True)
+                    run = self.run_lever("install", str(self.checkout), env=env)
+                    self.assertEqual(run.returncode, 2, run.stdout)
+                    self.assertIn(f"shim: failing {label}", run.stderr)
+                    for message in messages:
+                        self.assertIn(message, run.stderr)
+                    self.assertEqual(run.stdout, "")
+                    self.assertEqual(self.hooks_state(), state)
+        # The control: the same checkout, no shim on PATH, the hook without its execute bit is installed in place.
+        run = self.install()
+        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
+        # The round-1 `rm`, after the rename: the pattern names the round-1 path alone, so the trap's own removals run.
+        stale = self.hooks / "pre-commit"
+        stale.write_bytes(round1_body("pre-commit"))
+        stale.chmod(0o755)
+        rm = self.shim(f"-- {stale}", status=28, name="rm")
+        env = {**self.env, "PATH": f"{rm}:{self.env['PATH']}"}
+        state = self.hooks_state()
+        run = self.run_lever("install", str(self.checkout), env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"cannot remove the round-1 {stale}", run.stderr)
+        self.assertEqual([("unchanged", str(hook))], self.rows(run.stdout))
+        self.assertEqual(self.hooks_state(), state)
+        hook.unlink()
+        run = self.run_lever("install", str(self.checkout), env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"cannot remove the round-1 {stale}", run.stderr)
+        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
+        self.assertEqual(stale.read_bytes(), round1_body("pre-commit"))
+        run = self.install()
+        self.assertEqual([("unchanged", str(hook)), ("removed", str(stale))], self.rows(run.stdout))
+        self.assertFalse(stale.exists())
 
     def test_every_way_of_authoring_a_commit_is_refused_and_no_branch_moves(self):
         """With `.orchestration/orchestrate/<program>/units.tsv` under the toplevel, every command that would move a
@@ -598,6 +690,53 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assert_refused(status, err)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=linked), before)
 
+    def test_a_separate_git_directory_whose_name_ends_in_lf_is_installed_into(self):
+        """A checkout whose `.git` is a symlink to a separate git directory whose name ends in LF: git resolves both
+        `--git-dir` and `--git-common-dir` to that directory, LF and all (its realpath), and runs the hooks there. A
+        command substitution strips the LF with git's own line end, so round 5 installed into the stripped sibling
+        and `check` reported it over the sibling while the checkout stayed unguarded (audit round 5 P2); the lever
+        reads each path whole, so `install` writes into the LF directory and nothing into the sibling, `check` judges
+        that file and a commit in the checkout is refused. A `gitdir:` pointer file cannot name such a directory: git
+        strips a pointer's trailing newlines (pinned below), which is why the symlink is the one form."""
+        lf = self.root / "gitdir\n"
+        sibling = self.root / "gitdir"
+        checkout = self.clone(self.root / "lf-checkout")
+        shutil.move(str(checkout / ".git"), str(lf))
+        (checkout / ".git").symlink_to(lf)
+        (sibling / "hooks").mkdir(parents=True)
+        for option in ("--git-dir", "--git-common-dir"):
+            run = subprocess.run(
+                ["git", "rev-parse", "--path-format=absolute", option],
+                cwd=checkout,
+                env=self.env,
+                capture_output=True,
+                check=False,
+                timeout=120,
+            )
+            self.assertEqual((run.returncode, run.stdout), (0, os.fsencode(lf) + b"\n"), run.stderr)
+        hook = lf / "hooks" / HOOK
+        run = self.run_lever("install", str(checkout))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"{PREFIX}installed\t{hook}\n")
+        self.assertEqual(stat.S_IMODE(hook.stat().st_mode), 0o755)
+        self.install()
+        self.assertEqual(hook.read_bytes(), (self.hooks / HOOK).read_bytes())
+        self.assertEqual(list((sibling / "hooks").iterdir()), [], "nothing in the stripped sibling")
+        check = self.run_lever("check", str(checkout))
+        self.assertEqual((check.returncode, check.stdout), (0, f"{PREFIX}installed\t{hook}\n"), check.stderr)
+        self.store(checkout)
+        self.git("fetch", "-q", str(self.root / "other"), "work", cwd=checkout)
+        status, err, before = self.commit(checkout)
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=checkout), before)
+        # Why the symlink: a `gitdir:` pointer naming the LF directory resolves to the stripped sibling, which is no
+        # repository, so git refuses the pointer and the LF directory is unreachable through it.
+        (checkout / ".git").unlink()
+        (checkout / ".git").write_text(f"gitdir: {lf}\n")
+        status, _, err = self.git_status("rev-parse", "--git-dir", cwd=checkout)
+        self.assertNotEqual(status, 0, err)
+        self.assertIn("gitfile does not point to a valid repository", err)
+
     def test_a_failing_git_read_of_the_hook_refuses_the_move(self):
         """Standing order 21: each git read of the hook (the toplevel, the worktree list, the remote refs, the
         ancestry, and the ref itself when a creation line arrives) failing with exit 128 is a refusal naming the
@@ -808,6 +947,39 @@ class CheckoutGuardTest(unittest.TestCase):
         status, _, err = self.git_status("update-ref", "refs/heads/main", self.work, env=env)
         self.assert_refused(status, err)
         self.assertEqual(self.branches(), before)
+
+    def test_a_grafted_origin_tip_does_not_rewrite_the_ancestry_the_hook_reads(self):
+        """`.git/info/grafts`, or a `GIT_GRAFT_FILE` of the caller, naming the worker's commit as the parent of
+        origin's tip makes the worker's commit an ancestor of origin's as a plain git reads it, and
+        `--no-replace-objects` leaves grafts alone (round 5 passed `update-ref main <worker commit>` under both with
+        origin's refs unchanged; the U71b audit found the same channel in pr-audit.sh). The hook reads with
+        `GIT_GRAFT_FILE=/dev/null`, so the move is refused under both forms and no branch moves; a move to origin's
+        commit still passes. The replace-object test beside this one still holds for its channel."""
+        self.install()
+        self.store()
+        held = self.git("rev-parse", "origin/main")
+        before = self.branches()
+        grafts = self.checkout / ".git/info/grafts"
+        grafts.parent.mkdir(exist_ok=True)
+        grafts.write_text(f"{held} {self.work}\n")
+        self.assertEqual(self.git("rev-parse", "origin/main^"), self.work, "the graft is in effect for plain git")
+        status, _, err = self.git_status("update-ref", "refs/heads/main", self.work)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches(), before)
+        self.assertEqual(self.git("rev-parse", "origin/main"), held)
+        status, _, err = self.git_status("update-ref", "refs/heads/topic", held)
+        self.assertEqual(status, 0, err)
+        self.git("branch", "-q", "-D", "topic")
+        grafts.unlink()
+        self.assertEqual(self.git_status("rev-parse", "--verify", "-q", "origin/main^")[0], 1, "no graft left")
+        callers = self.root / "grafts"
+        callers.write_text(f"{held} {self.work}\n")
+        env = {**self.env, "GIT_GRAFT_FILE": str(callers)}
+        self.assertEqual(self.git("rev-parse", "origin/main^", env=env), self.work, "the caller's file is in effect")
+        status, _, err = self.git_status("update-ref", "refs/heads/main", self.work, env=env)
+        self.assert_refused(status, err)
+        self.assertEqual(self.branches(), before)
+        self.assertEqual(self.git("rev-parse", "origin/main"), held)
 
     def test_pack_refs_and_gc_pass_over_a_branch_that_is_already_off_origin(self):
         """A backend update feeds the hook lines whose old and new values are equal: `git pack-refs --all` and `git gc`

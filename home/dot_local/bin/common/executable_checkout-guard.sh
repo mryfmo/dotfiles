@@ -11,8 +11,8 @@
 #   round 2 moves the guard to the reference layer, where no list of commands is needed: every way of authoring a
 #   commit in the checkout moves a local branch to a commit origin does not hold, while every move the coordinator
 #   makes there (`pull --ff-only`, `reset --hard origin/main`, `worktree add -b <x> origin/main`) lands on a commit
-#   origin holds. `checkout-guard.sh install <checkout>` writes one hook into the checkout's common hooks directory,
-#   mode 0755, and reads it back:
+#   origin holds. `checkout-guard.sh install <checkout>` puts one hook into the checkout's common hooks directory,
+#   mode 0755, by a rename of a temporary file it has written and read back there (below):
 #   - `reference-transaction`: a `python3 -I -S` script (the heredoc of write_hook below, so this file's sha256 pin
 #     covers it; no shell starts, so no shell startup file, `SHELLOPTS` or `BASH_ENV` reaches it, and no `PYTHON*`
 #     variable or planted module is read). Git runs it for every reference transaction; in its `prepared` phase it
@@ -34,8 +34,12 @@
 #     non-zero is a refusal naming it.
 #   The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the
 #   plain `git` with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1` (so no `refs/replace/*` ref and no
-#   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads) and `-c core.hooksPath=/dev/null` (so they run
-#   no hook), with a `# git-isolated: allow` reason; it writes nothing but its own stderr and runs no network command.
+#   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads), `GIT_GRAFT_FILE=/dev/null` (so neither
+#   `.git/info/grafts` nor a `GIT_GRAFT_FILE` of the caller grafts a parent onto a commit it walks: git reads that
+#   file in place of `info/grafts`, and `--no-replace-objects` leaves grafts alone, audit round 5 P1; pr-audit.sh
+#   closes the same channel by refusing a grafts file in its fresh repository, which a hook in the user's checkout
+#   cannot) and `-c core.hooksPath=/dev/null` (so they run no hook), with a `# git-isolated: allow` reason; it writes
+#   nothing but its own stderr and runs no network command.
 #   The isolated git of the levers (git-isolated.sh, the same flags) never runs it, so records-sync.sh and the other
 #   levers are untouched. A transaction line whose new value is the commit the ref already names is a backend update,
 #   not a move, and passes: the files backend writes a ref it packs as a creation, `<zero> <value> <ref>`, measured
@@ -50,22 +54,31 @@
 #   `--git-common-dir`; a linked worktree's hooks directory is the main checkout's, so it is installed there). The
 #   hook goes into `<git-common-dir>/hooks` as the isolated git (git-isolated.sh, U113) names it, with the caller's
 #   `GIT_*` and transport variables scrubbed first so no `GIT_DIR` or `GIT_COMMON_DIR` of the caller points the reads
-#   at another repository; the directory is made when absent. Nothing here reads `core.hooksPath`: rounds 2 to 4
+#   at another repository, and each path git prints read whole through one helper (git_path: a sentinel after the
+#   output, so the trailing newline a command substitution strips stays and only git's own line end is removed; a
+#   separate git directory whose name ends in LF is installed into, not its stripped sibling, audit round 5 P2); the
+#   directory is made when absent. Nothing here reads `core.hooksPath`: rounds 2 to 4
 #   each tried to establish at install time what git resolves for it at the next commit, and each audit named another
 #   channel (`GIT_CONFIG_COUNT`; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`; `GIT_CONFIG`, `GIT_DIR`,
 #   `includeIf.onbranch`), since git's configuration is layered and conditional and the caller owns every layer, so
 #   the check cannot hold and round 5 removed it; where git resolves its hooks is the trust boundary below. The hooks
 #   directory, when it exists, must be a directory that can be read (a mode-000 one is a refusal naming it, never
 #   `absent`), and the hook path absent or already this lever's own; a regular file of other content there is
-#   refused and never overwritten. After the hook is in place it removes a round-1 `pre-commit` or `post-checkout`
+#   refused and never overwritten. The write is one rename: the hook's bytes go to a temporary file in the hooks
+#   directory (`mktemp` there), its mode is set, it is read back (`cmp -s` against the scratch copy, the execute bit),
+#   and one `mv` puts it at the hook path; a failure at any step before the rename exits 2 with the hook path exactly
+#   as found (absent stays absent, this lever's own hook that lacked its execute bit keeps its bytes) and the EXIT trap
+#   removes the temporary file (audit round 5 P2: writing the hook path in place left an empty, a non-executable or an
+#   unverified hook behind a refusal). After the hook is in place it removes a round-1 `pre-commit` or `post-checkout`
 #   that is byte-equal to round 1's (`removed` rows; the `pre-commit` in either of the two byte forms round 1 wrote,
 #   see write_hook), so an upgraded checkout keeps no dead hook; any other file at those two paths is not this
 #   lever's and is left alone. A second run finds its own hook, prints `unchanged` and exits 0, so regime-init calls
 #   it on every run. Every comparison is `cmp -s` against a copy of the expected bytes written to a scratch directory
 #   (NUL-safe: a shell variable cannot hold the NUL a drifted file may), its status read: 0 is equal, 1 is different,
-#   anything else is a failed read and a refusal. Every read is checked (standing order 21): `mktemp`, each `git
-#   rev-parse` (the toplevel, the git directory, the common directory), each write of the expected bytes (`cat`),
-#   each `cmp`; each failure exits 2 naming the file. Left out, by design: a worker that edits `.git/hooks` of the
+#   anything else is a failed read and a refusal. Every read and write is checked (standing order 21): each `mktemp`,
+#   each `git rev-parse` (the toplevel, the git directory, the common directory), each write of the expected bytes
+#   (`cat`), each `cmp`, the `mkdir` of the hooks directory, the `chmod`, the `mv`, the `rm` of a round-1 hook; each
+#   failure exits 2 naming the file. Left out, by design: a worker that edits `.git/hooks` of the
 #   checkout (the worker tree is a repository of its own and never sees this hook); a branch made a symbolic ref
 #   (`symbolic-ref refs/heads/main refs/tags/x`: the next commit moves the tag, which the rule does not name); a copy
 #   or rename of a branch that is already off origin (`branch -c`, `branch -m`: no branch moves to a new commit); a
@@ -85,7 +98,7 @@
 # @stdout One row per hook, `checkout-guard: <state>\t<path>`: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
 # @exitcode 0 Done: the hook installed and no stale round-1 hook left (install), or in place with nothing stale (check).
 # @exitcode 1 `check`: the hook is absent, differs or is not executable, or a round-1 hook is still there.
-# @exitcode 2 A refusal, before anything is written: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read or write, or the manifest pin differing from this file.
+# @exitcode 2 A refusal: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read, a failed write step before the rename (the hook path is as it was found; a failed removal of a round-1 hook comes after the rename and leaves the hook in place), or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles
 #   ~/.local/bin/common/checkout-guard.sh check ~/Workspace/dotfiles
@@ -177,15 +190,45 @@ esac
 # shellcheck source=scripts/orchestrator/git-isolated.sh
 . "${LEVER_DIR}/git-isolated.sh"
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot make a scratch directory for the expected hook bytes'
-trap 'rm -rf -- "${scratch}"' EXIT
+# The temporary file of the install below, while it exists: made in the hooks directory, renamed onto the hook path
+# on success, removed here on a refusal before the rename.
+staged=''
+# The scratch directory and a temporary file a refusal left go on exit. A removal that fails is named on stderr and
+# does not replace the exit status (a command that fails inside an EXIT trap would).
+cleanup() {
+    [[ -z ${staged} ]] || rm -f -- "${staged}" || echo "${lever}: ${staged} could not be removed" >&2
+    rm -rf -- "${scratch}" || echo "${lever}: ${scratch} could not be removed" >&2
+}
+trap cleanup EXIT
 # shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
 git_env_scrub
-toplevel=$(git_isolated -C "${checkout}" rev-parse --show-toplevel 2> "${scratch}/stderr") || refuse "cannot read the toplevel of ${checkout} (is it inside a git working tree?): $(< "${scratch}/stderr")"
-git_dir=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-dir) || refuse "cannot read the git directory of ${toplevel}"
-common=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of ${toplevel}"
-# The one comparison of two paths: both are git's absolute forms for one checkout, equal byte for byte in a main
-# checkout and differing by the `worktrees/<id>` tail in a linked one, so the trailing newlines a command substitution
-# strips (none: each ends in `.git` or that tail) cannot make them read alike.
+
+# @description Read into the variable named $1 the one path the isolated git query $2... prints, every byte of it:
+#   the output is taken with a sentinel after it (`&& printf x`, removed after), so the trailing newline a command
+#   substitution would strip stays, and exactly the one LF git ends its line with is removed. A separate git
+#   directory whose name ends in LF is then itself, not its stripped sibling (audit round 5 P2). git's status comes
+#   through the `&&`; git's stderr goes to the scratch directory's `stderr` file for the caller's refusal to print.
+# @arg $1 string The variable that receives the path.
+# @arg $@ string The arguments of git_isolated.
+# @exitcode 0 The variable holds the path.
+# @exitcode 1 git exited non-zero or printed no line; the variable is not written.
+git_path() {
+    local gp_name=$1 gp_out
+    shift
+    gp_out=$(git_isolated "$@" 2> "${scratch}/stderr" && printf x) || return 1
+    gp_out=${gp_out%x}
+    [[ ${gp_out} == *$'\n' ]] || return 1
+    printf -v "${gp_name}" '%s' "${gp_out%$'\n'}"
+}
+
+# The three paths git_path fills (`printf -v`), declared here so each read's failure is the refusal beside it.
+toplevel='' git_dir='' common=''
+git_path toplevel -C "${checkout}" rev-parse --show-toplevel || refuse "cannot read the toplevel of ${checkout} (is it inside a git working tree?): $(< "${scratch}/stderr")"
+git_path git_dir -C "${checkout}" rev-parse --path-format=absolute --git-dir || refuse "cannot read the git directory of ${toplevel}"
+git_path common -C "${checkout}" rev-parse --path-format=absolute --git-common-dir || refuse "cannot read the git common directory of ${toplevel}"
+# The one comparison of two paths: both are git's absolute forms for one checkout, read whole by git_path (a trailing
+# newline of the name kept), equal byte for byte in a main checkout and differing by the `worktrees/<id>` tail in a
+# linked one.
 [[ ${git_dir} == "${common}" ]] || # lint-comparisons: allow both sides are git's absolute forms of one checkout
     refuse "${toplevel} is a linked worktree (git dir ${git_dir}, common ${common}); install in the main checkout, whose hooks every linked worktree shares"
 hooks=${common}/hooks
@@ -222,9 +265,10 @@ write_hook() {
 # (standing order 21): `.orchestration`, `orchestrate` or a program directory that cannot be listed (each is listed
 # in that order, to the last program directory), a line of another shape, a git read that exits non-zero. Its git
 # calls carry `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1`, so no `refs/replace/*` ref and
-# no `GIT_REPLACE_REF_BASE` of the caller stands in for a commit when the ancestry is read, and
-# `-c core.hooksPath=/dev/null`, so they run no hook; the isolated git of the levers (the same flags) never runs this
-# file. It writes nothing but its own stderr.
+# no `GIT_REPLACE_REF_BASE` of the caller stands in for a commit when the ancestry is read, `GIT_GRAFT_FILE=/dev/null`,
+# so neither `.git/info/grafts` nor a `GIT_GRAFT_FILE` of the caller grafts a parent onto a commit that read walks
+# (`--no-replace-objects` leaves grafts alone), and `-c core.hooksPath=/dev/null`, so they run no hook; the isolated
+# git of the levers (the same flags) never runs this file. It writes nothing but its own stderr.
 import os
 import subprocess
 import sys
@@ -237,9 +281,11 @@ ROUTE = (
 # reads from running any hook, this file included.
 # git-isolated: allow a hook cannot isolate itself from its repository
 GIT = ("git", "--no-replace-objects", "-c", "core.hooksPath=/dev/null")
-# The environment of every read: the hook's own plus git's switch for the same thing, so a replacement ref is read by
-# neither form (git-replace(1): `--no-replace-objects` or `GIT_NO_REPLACE_OBJECTS`).
-ENV = dict(os.environ, GIT_NO_REPLACE_OBJECTS="1")
+# The environment of every read: the hook's own plus git's switches for the same things. A replacement ref is read by
+# neither form (git-replace(1): `--no-replace-objects` or `GIT_NO_REPLACE_OBJECTS`), and the grafts file is /dev/null:
+# git reads the file GIT_GRAFT_FILE names in place of `.git/info/grafts`, so neither that file nor one the caller
+# names grafts a parent onto a commit the ancestry read walks (`--no-replace-objects` leaves grafts alone).
+ENV = dict(os.environ, GIT_NO_REPLACE_OBJECTS="1", GIT_GRAFT_FILE="/dev/null")
 ZERO = (b"0" * 40, b"0" * 64)
 
 
@@ -617,16 +663,24 @@ if [[ ! -d ${hooks} ]]; then
     mkdir "${hooks}" || refuse "cannot make ${hooks}"
 fi
 
-# Write the hook unless it is already this lever's own and executable, set its mode, and read it back: the file holds
-# this lever's bytes and has its execute bit, else the install is refused.
+# The hook path is written by one rename. Unless the hook is already this lever's own and executable, the bytes go to
+# a temporary file in the hooks directory (`mktemp` there, so the rename stays on one filesystem; a dotfile git runs
+# as no hook), its mode is set, and it is read back (`cmp -s` against the scratch copy, the execute bit) before one
+# `mv` puts it at the hook path. A failure at any of those steps refuses with the hook path exactly as found (absent
+# stays absent, this lever's own hook that lacked its execute bit keeps its bytes; the trap removes the temporary
+# file): writing the hook path in place left an empty, a non-executable or an unverified hook behind a refusal (audit
+# round 5 P2).
 target=${hooks}/${hook}
 if [[ ${hook_own} == own && ${hook_executable} == 1 ]]; then
     printf 'checkout-guard: unchanged\t%s\n' "${target}"
 else
-    [[ ${hook_own} == own ]] || write_hook "${hook}" "${target}"
-    chmod 755 "${target}" || refuse "cannot make ${target} executable"
-    hook_state "${target}" "${hook}"
-    [[ ${state} == own && ${executable} == 1 ]] || refuse "${target} reads back as ${state} (executable: ${executable}) after the write"
+    staged=$(mktemp "${hooks}/.${hook}.XXXXXX") || refuse "cannot make a temporary file in ${hooks} for the hook"
+    write_hook "${hook}" "${staged}"
+    chmod 755 "${staged}" || refuse "cannot make ${staged} executable"
+    hook_state "${staged}" "${hook}"
+    [[ ${state} == own && ${executable} == 1 ]] || refuse "${staged} reads back as ${state} (executable: ${executable}) after the write; ${target} is as it was"
+    mv -f -- "${staged}" "${target}" || refuse "cannot move ${staged} onto ${target}"
+    staged=''
     printf 'checkout-guard: installed\t%s\n' "${target}"
 fi
 

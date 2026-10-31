@@ -664,7 +664,7 @@ done""",
     ),
     (
         ("pr-threads-check.sh",),
-        r"""IFS=$'\t' read -r first resolved created severity count reply;""",
+        r"""IFS=$'\t' read -r first resolved created severity count association login reply;""",
         "a tab IFS for the one `read` of gh's TSV rows, restored after it",
     ),
     (
@@ -675,8 +675,8 @@ done""",
 )
 # The accepted arithmetic: the exact text of each statement of the adopted set that holds an operand bash evaluates as
 # arithmetic which is not inert (ARITHMETIC_INERT), as (the file names, the statement text, why), measured on head
-# fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5)
-# and of the pr-audit.sh round cap (U120 round 4).
+# fb2774e9 (U112 round 20) with this table empty, plus the rows of the pr-merge.sh disposition gate (U119 round 5),
+# of the pr-audit.sh round cap (U120 round 4) and of the pr-threads-check.sh `filed:` disposition (U124).
 # Every operand there is a name the statement itself assigned a decimal to, a count of `$#` or `${#array[@]}`, or the
 # signal number a trap passes; a row holds in its file alone, and a changed character is a finding until a row names
 # it. The same quoting rule as ACCEPTED_WRITES applies.
@@ -800,6 +800,16 @@ ACCEPTED_ARITHMETIC = (
     (("pr-threads-check.sh",), r"""threads=$((threads + 1))""", "a counter of the threads listed"),
     (("pr-threads-check.sh",), r"""open=$((open + 1))""", "a counter of the open threads"),
     (("pr-threads-check.sh",), r"""((open == 0))""", "the same counter"),
+    (
+        ("pr-threads-check.sh",),
+        r"""weight=$((frequency * severity_score))""",
+        "the two scores of a `filed:` reply, decimals 1 to 10 by the score_re match before it (U124), their product",
+    ),
+    (
+        ("pr-threads-check.sh",),
+        r"""((weight < WEIGHT_THRESHOLD))""",
+        "that product against the constant the file assigns a decimal to once",
+    ),
     (
         ("pr-body-edit.sh",),
         r"""((size == 0 || size > 65536))""",

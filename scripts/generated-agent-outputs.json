@@ -410,21 +410,21 @@
       "target": ".local/bin/common/pr-thread-reply.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037"
+      "sha256": "a87078136ec916af8d3e46cd907b729d00ae8b3a6ea841c05ad77daefed3087c"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-resolve.sh",
       "target": ".local/bin/common/pr-thread-resolve.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "8d66fae47de6e3c3148650bd7e8477ceb873bcf63f11d714d126f315461995ea"
+      "sha256": "3543a21f8d765623c5ca466b9edfb9a4fe11f9d96cae72450906d113209d8aec"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-threads-check.sh",
       "target": ".local/bin/common/pr-threads-check.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "dcd303233f6bae8ca7f18d61036ecc6175ecf52db6760c3ffc8ff600e69884f0"
+      "sha256": "2e0f87ab053d7600525b23dd459437a8f06986636f00583299451c2254567395"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",

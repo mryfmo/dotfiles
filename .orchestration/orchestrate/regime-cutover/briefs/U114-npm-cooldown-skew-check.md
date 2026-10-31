@@ -21,6 +21,13 @@ TIMEBOX
 FORBIDDEN
 No `min-release-age-exclude`. No `--omit=optional`. No change to any 72 h window (`home/dot_mise/config.toml:107,110`, `home/dot_npmrc`, `scripts/lib/github-release.sh:12-14`, `.github/dependabot.yml`). No version change for either pin. No second copy of the verdict's logic: one function, sourced. No regex over npm's JSON text. No change to the network-denied smoke (`test.yaml:363-394`) or to `scripts/check-statusline-tools.py`.
 
+CLOSURE
+parser-module: one verdict function, `npm_release_age_verdict` in `scripts/lib/npm-release-age.sh`, sourced by the upgrade script and the CI check alike, parses the registry's JSON through a JSON parser and decides the three exit codes; no second copy of the logic and no regex over the JSON text.
+
+TRUST
+TRUST: the unit trusts `mise latest` as the answer to what would be installed, `registry.npmjs.org`'s `time` map as the publication record, and the mise window as the policy; it does not read the installed package tree or npm's own cache to decide.
+Both sections were added 2026-10-31T03:29:18Z by the coordinator under standing order 37; the unit predates U121.
+
 WORKER RULES (standing orders 27, 29, 31, 34; read `preferences.md` lines 23 to 36 in the store)
 
 - Create your worktree from the main checkout and work only there: `git -C ~/Workspace/dotfiles fetch -q origin && git -C ~/Workspace/dotfiles worktree add -b ci/npm-cooldown-skew-check /tmp/dotfiles-wt/U114 origin/main`. Never write under `~/Workspace`, under `$HOME` config directories, or on any other host. Never `git stash`. No local Bats as evidence. Network only to `registry.npmjs.org`, `nodejs.org` (the node install of ACCEPTANCE 3) and `mise-versions.jdx.dev`; every network call under `perl -e 'alarm 120; exec @ARGV' …`.

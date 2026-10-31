@@ -868,7 +868,7 @@ claude:
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
       pr-merge.sh: 78acaeb9c3533dc96789b32f923570d3f906710d337de4caddead0418a9e8951
       omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
-      pr-audit.sh: 61729f9eadf6e8bc8cf5231ae259a2f6ee83bbdb67d234568da412db3cb225c8
+      pr-audit.sh: 07788a4ec344341dc1e00518cfed9d6fea924e883624197821adadc3468e40e3
       brief-check.py: 63fa7c6e6677fc2e871a9c9fb5cf0ac338141e5377696c321311a3cf980021ae
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
     # The only extension directories `hcom-seat` passes with `-e`, by default or

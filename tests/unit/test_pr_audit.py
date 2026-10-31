@@ -259,7 +259,8 @@ class PrAuditTest(unittest.TestCase):
         )
         self.assertEqual(
             verdict.read_text(),
-            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nBlocking: 0\nVerdict: correct\n",
+            "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nBlocking: 0\nFiled: 0\n"
+            "Verdict: correct\n",
         )
         self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before, "nothing outside the run dir is written")
 
@@ -276,7 +277,13 @@ class PrAuditTest(unittest.TestCase):
         self.assertIs(schema["additionalProperties"], False)
         self.assertEqual(schema["properties"]["verdict"]["enum"], ["correct", "incorrect", "blocked"])
         finding = schema["properties"]["findings"]["items"]
-        self.assertEqual(finding["required"], ["priority", "confidence", "path", "line", "rationale"])
+        self.assertEqual(
+            finding["required"], ["priority", "confidence", "frequency", "severity", "path", "line", "rationale"]
+        )
+        for score in ("frequency", "severity"):
+            self.assertEqual(finding["properties"][score]["type"], "integer")
+            self.assertEqual(finding["properties"][score]["minimum"], 1)
+            self.assertEqual(finding["properties"][score]["maximum"], 10)
         self.assertIs(finding["additionalProperties"], False)
         self.assertEqual(finding["properties"]["priority"]["enum"], ["P0", "P1", "P2", "P3"])
         self.assertEqual(finding["properties"]["confidence"]["enum"], ["high", "medium", "low"])
@@ -305,7 +312,8 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("The head's own rules", prompt)
         self.assertIn("It guarantees one thing.", prompt)
         self.assertIn(f"diff {self.main}..{self.head}", prompt)
-        for field in ("`verdict`", "`findings`", "`priority`", "`confidence`", "`path`", "`line`", "`rationale`"):
+        fields = ("`verdict`", "`findings`", "`priority`", "`confidence`", "`frequency`", "`severity`", "`path`")
+        for field in (*fields, "`line`", "`rationale`"):
             self.assertIn(field, prompt)
         self.assertIn("`reproduced`", prompt)
         self.assertIn("`notes`", prompt)
@@ -313,10 +321,17 @@ class PrAuditTest(unittest.TestCase):
         self.assertNotIn("null when the finding has no line", prompt)
         self.assertIn("is met by the `verdict` field of that object", prompt)
         self.assertIn("an integer from 1 to 2147483647, never null", prompt)
-        self.assertIn("Any P0 or P1 finding means `incorrect`", prompt)
+        self.assertIn("A finding has a weight, its frequency times its severity.", prompt)
+        self.assertIn("A P0 or P1 finding with weight 10 or more means `incorrect`", prompt)
+        self.assertIn("A finding of any priority with weight under 10 is filed", prompt)
+        self.assertIn("`frequency` (an integer from 1 to 10: how often the case arises", prompt)
+        self.assertIn("`severity` (an integer from 1 to 10: what the case costs when it arises", prompt)
         self.assertIn(
-            "Report every P2 and P3 finding with its priority and confidence; they do not change the verdict", prompt
+            "Report every P2 and P3 finding with weight 10 or more with its priority and confidence; "
+            "they do not change the verdict",
+            prompt,
         )
+        self.assertNotIn("Any P0 or P1 finding means", prompt, "a P0 or P1 under the weight threshold is filed (U125)")
         self.assertNotIn("P0, P1 or P2", prompt, "a P2 no longer blocks (U119)")
 
     def test_the_prompt_codex_receives_asks_for_a_census_of_findings(self):
@@ -328,7 +343,10 @@ class PrAuditTest(unittest.TestCase):
         (rundir,) = self.tmp.iterdir()
         handed = self.codex_calls()[2]["prompt"]
         self.assertEqual(handed, (rundir / "prompt.md").read_text())
-        rule = "Report every P2 and P3 finding with its priority and confidence; they do not change the verdict. "
+        rule = (
+            "Report every P2 and P3 finding with weight 10 or more with its priority and confidence; "
+            "they do not change the verdict. "
+        )
         census = (
             "List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; "
             "the findings list is a census of the head against the Contract, not a sample."
@@ -1242,7 +1260,7 @@ class PrAuditTest(unittest.TestCase):
         """U106: the fake's modes (b) to (e) of the brief, then the other shapes the schema rejects (a missing key, a
         finding without its keys, an unknown key, a wrong type, a non-object). Each is exit 1 naming verdict.json, no
         stdout line, no verdict.md."""
-        bad_finding = {"priority": "P3", "confidence": "high", "path": "change.txt"}
+        bad_finding = {"priority": "P3", "confidence": "high", "frequency": 5, "severity": 5, "path": "change.txt"}
         conforming = {"verdict": "correct", "findings": [], "reproduced": [], "notes": None}
         cases = (
             (
@@ -1277,29 +1295,55 @@ class PrAuditTest(unittest.TestCase):
                 self.assertFalse((rundir / "verdict.md").exists(), "a refused verdict writes no verdict text")
 
     def test_the_decision_rule_is_applied_from_the_findings(self):
-        """Any P0 or P1 finding means incorrect; none means correct or blocked; a P2 or P3 is reported and changes no
-        verdict (U119, decision 2026-10-30 change 1). verdict.md carries `Blocking: <count of P0 and P1>` before its
-        last line. A verdict the findings do not derive, or a priority outside P0 to P3, is refused naming the field,
-        never corrected: the lever prints no verdict at all and writes no verdict.md."""
+        """A finding's weight is its frequency times its severity (U125, decision 2026-10-30 on the weighted finding
+        rule). A P0 or P1 finding with weight 10 or more means incorrect; none means correct or blocked; a finding of
+        any priority with weight under 10 is filed, and a P2 or P3 of any weight is reported, neither changing the
+        verdict (U119). verdict.md carries `Blocking: <count of blocking>` and `Filed: <count of filed>` before its
+        last line, and each finding line its scores as `[f<n> s<n>]`. A verdict the findings do not derive, a
+        priority outside P0 to P3, or a finding without its scores or with one outside 1 to 10 is refused naming the
+        field, never corrected: the lever prints no verdict at all and writes no verdict.md."""
 
-        def finding(priority, line=12):
+        def finding(priority, line=12, frequency=5, severity=5):
             return {
                 "priority": priority,
                 "confidence": "medium",
+                "frequency": frequency,
+                "severity": severity,
                 "path": "change.txt",
                 "line": line,
                 "rationale": "Why.",
             }
 
         accepted = (
-            ({"verdict": "correct", "findings": [finding("P2")]}, "correct", 0),
-            ({"verdict": "incorrect", "findings": [finding("P1")]}, "incorrect", 1),
-            ({"verdict": "incorrect", "findings": [finding("P0"), finding("P1", 3), finding("P2", 7)]}, "incorrect", 2),
-            ({"verdict": "correct", "findings": [finding("P3"), finding("P2", 7)]}, "correct", 0),
-            ({"verdict": "blocked", "findings": []}, "blocked", 0),
+            ({"verdict": "correct", "findings": [finding("P2")]}, "correct", 0, 0),
+            ({"verdict": "incorrect", "findings": [finding("P1")]}, "incorrect", 1, 0),
+            (
+                {"verdict": "incorrect", "findings": [finding("P0"), finding("P1", 3), finding("P2", 7)]},
+                "incorrect",
+                2,
+                0,
+            ),
+            ({"verdict": "correct", "findings": [finding("P3"), finding("P2", 7)]}, "correct", 0, 0),
+            ({"verdict": "blocked", "findings": []}, "blocked", 0, 0),
+            ({"verdict": "correct", "findings": [finding("P1", frequency=1, severity=9)]}, "correct", 0, 1),
+            ({"verdict": "incorrect", "findings": [finding("P1", frequency=2, severity=5)]}, "incorrect", 1, 0),
+            ({"verdict": "correct", "findings": [finding("P3", frequency=1, severity=1)]}, "correct", 0, 1),
+            (
+                {
+                    "verdict": "incorrect",
+                    "findings": [
+                        finding("P0", frequency=10, severity=1),
+                        finding("P2", 3, frequency=3, severity=3),
+                        finding("P3", 7, frequency=2, severity=5),
+                    ],
+                },
+                "incorrect",
+                1,
+                1,
+            ),
         )
-        for document, value, blocking in accepted:
-            with self.subTest(verdict=value, findings=[f["priority"] for f in document["findings"]]):
+        for document, value, blocking, filed in accepted:
+            with self.subTest(verdict=value, findings=[f["priority"] for f in document["findings"]], filed=filed):
                 for path in self.tmp.iterdir():
                     shutil.rmtree(path)
                 document = {**document, "reproduced": ["bash -n: ok"], "notes": "A note."}
@@ -1308,11 +1352,13 @@ class PrAuditTest(unittest.TestCase):
                 (rundir,) = self.tmp.iterdir()
                 self.assertEqual(run.stdout, f"{rundir / 'verdict.md'}\nVerdict: {value}\n")
                 text = (rundir / "verdict.md").read_text()
-                self.assertTrue(text.endswith(f"\n\nBlocking: {blocking}\nVerdict: {value}\n"), text)
+                self.assertTrue(text.endswith(f"\n\nBlocking: {blocking}\nFiled: {filed}\nVerdict: {value}\n"), text)
                 for item in document["findings"]:
-                    self.assertIn(f"- {item['priority']} (medium) change.txt:{item['line']}: Why.\n", text)
+                    scores = f"[f{item['frequency']} s{item['severity']}]"
+                    self.assertIn(f"- {item['priority']} (medium) {scores} change.txt:{item['line']}: Why.\n", text)
                 self.assertIn("## Reproduced\n\n- bash -n: ok\n", text)
                 self.assertIn("## Notes\n\nA note.\n", text)
+        without = {key: value for key, value in finding("P1").items() if key not in ("frequency", "severity")}
         refused = (
             (
                 {"verdict": "incorrect", "findings": [finding("P2")]},
@@ -1339,12 +1385,42 @@ class PrAuditTest(unittest.TestCase):
                 "the verdict.verdict blocked contradicts the verdict.findings: 1 of priority P0 or P1",
             ),
             (
+                {"verdict": "incorrect", "findings": [finding("P1", frequency=1, severity=9)]},
+                "the verdict.verdict incorrect contradicts the verdict.findings: 0 of priority P0 or P1 with weight 10 "
+                "or more (weight is frequency times severity;",
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("P1", frequency=2, severity=5)]},
+                "the verdict.verdict correct contradicts the verdict.findings: 1 of priority P0 or P1 with weight 10 "
+                "or more",
+            ),
+            (
                 {"verdict": "incorrect", "findings": [finding("P4")]},
                 'the verdict.findings[0].priority is "P4", not one of P0, P1, P2, P3',
             ),
             (
                 {"verdict": "correct", "findings": [finding("p2")]},
                 'the verdict.findings[0].priority is "p2", not one of P0, P1, P2, P3',
+            ),
+            (
+                {"verdict": "incorrect", "findings": [without]},
+                "the verdict.findings[0] lacks the required key frequency",
+            ),
+            (
+                {"verdict": "incorrect", "findings": [{**without, "frequency": 5}]},
+                "the verdict.findings[0] lacks the required key severity",
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("P2", frequency=0)]},
+                "the verdict.findings[0].frequency is 0, below the minimum 1",
+            ),
+            (
+                {"verdict": "incorrect", "findings": [finding("P1", severity=11)]},
+                "the verdict.findings[0].severity is 11, above the maximum 10",
+            ),
+            (
+                {"verdict": "correct", "findings": [finding("P3", frequency=1.5)]},
+                "the verdict.findings[0].frequency is not of type integer",
             ),
         )
         for document, message in refused:
@@ -1370,7 +1446,8 @@ class PrAuditTest(unittest.TestCase):
         spliced as text, since json.dumps would round them too."""
 
         def document(line):
-            finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
+            scores = '"frequency": 5, "severity": 5'
+            finding = f'"priority": "P3", "confidence": "high", {scores}, "path": "f.txt", "line": {line}, "rationale": "Why."'
             return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": null}}'
 
         for line, number in (("7", 7), ("1.0", 1), ("1E2", 100)):
@@ -1384,7 +1461,7 @@ class PrAuditTest(unittest.TestCase):
                 written = (rundir / "verdict.json").read_text()
                 self.assertIn(f'"line": {line},', written, "the file codex wrote is kept as is")
                 text = (rundir / "verdict.md").read_text()
-                self.assertIn(f"- P3 (high) f.txt:{number}: Why.\n", text)
+                self.assertIn(f"- P3 (high) [f5 s5] f.txt:{number}: Why.\n", text)
                 self.assertNotIn(f"f.txt:{line}:", text.replace(f"f.txt:{number}:", ""))
         not_integer = "findings[0].line is not of type integer"
         refused = (
@@ -1421,7 +1498,8 @@ class PrAuditTest(unittest.TestCase):
         file beside it."""
 
         def document(notes="null", line="1", extra=""):
-            finding = f'"priority": "P3", "confidence": "high", "path": "f.txt", "line": {line}, "rationale": "Why."'
+            scores = '"frequency": 5, "severity": 5'
+            finding = f'"priority": "P3", "confidence": "high", {scores}, "path": "f.txt", "line": {line}, "rationale": "Why."'
             return f'{{"verdict": "correct", "findings": [{{{finding}}}], "reproduced": [], "notes": {notes}{extra}}}'
 
         departures = (

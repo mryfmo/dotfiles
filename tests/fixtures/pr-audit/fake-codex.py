@@ -148,6 +148,8 @@ elif argv[:1] == ["exec"]:
     finding = {
         "priority": "P1",
         "confidence": "high",
+        "frequency": 5,
+        "severity": 5,
         "path": "change.txt",
         "line": 1,
         "rationale": "A blocking finding.",

@@ -100,13 +100,16 @@
 #   string holding a lone surrogate (not a Unicode scalar value, so no UTF-8 text can carry it) is not of type
 #   string. It also refuses the schema itself, naming it, when it uses a keyword or type the reader does not
 #   implement, so no rule can bind codex and not the lever. The decision rule is applied from the data, never
-#   trusted from the model: any P0 or P1 finding means `incorrect`, none means `correct` (or `blocked`, when the
-#   audit could not be completed); a P2 or P3 finding is reported and does not change the verdict (regime-cutover
-#   U119, decision 2026-10-30 change 1: the thread rule of `pr-threads-check.sh` already closes one as `fixed:` or
-#   `residual:`); a `verdict` that contradicts its findings is refused, never corrected. The reader then writes
-#   `verdict.md` beside the JSON (the findings as a list, what was reproduced, the notes, then the line
-#   `Blocking: <count of P0 and P1 findings>` and one last line `Verdict: <value>`), whole or not at all (written
-#   under a partial name and renamed over the final one, so a failed write leaves no `verdict.md`); that is the
+#   trusted from the model: a finding's weight is its frequency times its severity (each 1 to 10, the auditor's
+#   scores), a P0 or P1 finding with weight 10 or more means `incorrect`, none means `correct` (or `blocked`, when
+#   the audit could not be completed), and a `verdict` that contradicts its findings is refused, never corrected. A
+#   finding of any priority with weight under 10 is filed (reported, the code left as it is) and a P2 or P3 finding
+#   with weight 10 or more is reported; neither changes the verdict (regime-cutover U119 and U125: the thread rule of
+#   `pr-threads-check.sh` closes one as `filed:`, `fixed:` or `residual:`). The reader then writes `verdict.md`
+#   beside the JSON (the findings as a list of `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>`, what
+#   was reproduced, the notes, then the lines `Blocking: <count of P0 and P1 findings with weight 10 or more>` and
+#   `Filed: <count of findings with weight under 10>`, and one last line `Verdict: <value>`), whole or not at all
+#   (written under a partial name and renamed over it, so a failed write leaves no `verdict.md`); that is the
 #   file whose path the lever prints, so the store's `verdicts/U<n>-<sha8>.md` copy keeps its shape. On exit the
 #   scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the run directory keeps `prompt.md`,
 #   `verdict.schema.json`, `codex.log`, `verdict.json` and `verdict.md`, or is removed whole when codex never started.
@@ -1264,7 +1267,7 @@ prompt=${run}/prompt.md
                     printf '\n</carried-%s>\n' "${nonce}"
             }
         } &&
-        printf '\nRun tests or scripts that need no network if they help (python3 -m unittest, shellcheck, bash -n). Do not edit files; no gh or network.\n\nYour final response is the JSON object of the schema this run passes with --output-schema, nothing else. The rule above that ends the final message with one `Verdict:` line is met by the `verdict` field of that object: the lever writes the line `Verdict: <value>` into verdict.md from it, and a `Verdict:` line or any other text outside the object is not the JSON object and is refused. The fields: `verdict` (`correct`, `incorrect` or `blocked`); `findings`, one object per finding with `priority` (P0, P1, P2 or P3), `confidence` (high, medium or low), `path` (the file, relative to the repository), `line` (the exact line of the finding, as the rules ask: an integer from 1 to 2147483647, never null; for a whole file, its first line) and `rationale` (one line); `reproduced`, one string per test or command you ran and what it showed; `notes`, a string or null. Any P0 or P1 finding means `incorrect`; with none the verdict is `correct`, or `blocked` when you could not complete the audit. Report every P2 and P3 finding with its priority and confidence; they do not change the verdict. List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; the findings list is a census of the head against the Contract, not a sample. The verdict is checked against the findings and a contradiction is refused.\n'
+        printf '\nRun tests or scripts that need no network if they help (python3 -m unittest, shellcheck, bash -n). Do not edit files; no gh or network.\n\nYour final response is the JSON object of the schema this run passes with --output-schema, nothing else. The rule above that ends the final message with one `Verdict:` line is met by the `verdict` field of that object: the lever writes the line `Verdict: <value>` into verdict.md from it, and a `Verdict:` line or any other text outside the object is not the JSON object and is refused. The fields: `verdict` (`correct`, `incorrect` or `blocked`); `findings`, one object per finding with `priority` (P0, P1, P2 or P3), `confidence` (high, medium or low), `frequency` (an integer from 1 to 10: how often the case arises in the real runs of this repository, 1 for a case no run, test, incident or user has produced, 10 for every run), `severity` (an integer from 1 to 10: what the case costs when it arises, 1 for cosmetic, 10 for data loss, a secret leaving the host or a wrong merge), `path` (the file, relative to the repository), `line` (the exact line of the finding, as the rules ask: an integer from 1 to 2147483647, never null; for a whole file, its first line) and `rationale` (one line); `reproduced`, one string per test or command you ran and what it showed; `notes`, a string or null. A finding has a weight, its frequency times its severity. A P0 or P1 finding with weight 10 or more means `incorrect`; with none the verdict is `correct`, or `blocked` when you could not complete the audit. A finding of any priority with weight under 10 is filed: report it with its scores, and the code is left as it is. Report every P2 and P3 finding with weight 10 or more with its priority and confidence; they do not change the verdict. List every finding of the whole scope in this one pass, P0 to P3, and do not stop after a few; the findings list is a census of the head against the Contract, not a sample. The verdict is checked against the findings and a contradiction is refused.\n'
 } > "${prompt}" || fail "cannot write the prompt ${prompt}"
 rm -f -- "${run}/body.md" "${run}/carried.md" || fail "cannot remove ${run}/body.md and ${run}/carried.md"
 
@@ -1284,7 +1287,7 @@ verdict_schema='{
     "verdict": {
       "type": "string",
       "enum": ["correct", "incorrect", "blocked"],
-      "description": "incorrect when any finding is P0 or P1; correct when none is; blocked when the audit could not be completed."
+      "description": "incorrect when a P0 or P1 finding has weight 10 or more (frequency times severity); correct when none has; blocked when the audit could not be completed."
     },
     "findings": {
       "type": "array",
@@ -1293,6 +1296,18 @@ verdict_schema='{
         "properties": {
           "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
           "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "frequency": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "How often the case arises in the real runs of this repository: 1 never produced by a run, test, incident or user, 10 every run."
+          },
+          "severity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "What it costs when it arises: 1 cosmetic, 10 data loss, a secret leaving the host or a wrong merge."
+          },
           "path": { "type": "string", "description": "The file, relative to the repository." },
           "line": {
             "type": "integer",
@@ -1302,7 +1317,7 @@ verdict_schema='{
           },
           "rationale": { "type": "string", "description": "One line." }
         },
-        "required": ["priority", "confidence", "path", "line", "rationale"],
+        "required": ["priority", "confidence", "frequency", "severity", "path", "line", "rationale"],
         "additionalProperties": false
       }
     },
@@ -1334,9 +1349,12 @@ import os
 import sys
 
 BLOCKING = ("P0", "P1")
+# A weight is a frequency times a severity, each 1 to 10 by the schema. A blocking priority at or above this threshold
+# blocks; any priority under it is filed (regime-cutover U125; the number is the one of the AGENTS.md verdict bullet).
+WEIGHT_THRESHOLD = 10
 # Each verdict and the outcome the findings must derive for it: `incorrect` needs a blocking finding, `correct` and
-# `blocked` need none; a P2 or P3 finding derives nothing (regime-cutover U119). A pair outside this table is a
-# contradiction and is refused, never corrected.
+# `blocked` need none; a filed finding, or a P2 or P3 of any weight, derives nothing (regime-cutover U119, U125). A
+# pair outside this table is a contradiction and is refused, never corrected.
 ACCEPTED_WITH = {"correct": "correct", "incorrect": "incorrect", "blocked": "correct"}
 # The JSON Schema keywords this reader implements: the subset the schema above is written in. Any other keyword in a
 # schema is refused before a verdict is read, so a rule can never bind codex and not the lever.
@@ -1532,27 +1550,31 @@ def main():
         refuse(verdict_path, f"not JSON: {error}")
     check(document, schema, "the verdict", verdict_path)
     verdict = document["verdict"]
-    blocking = [finding for finding in document["findings"] if finding["priority"] in BLOCKING]
+    findings = document["findings"]
+    blocking = [f for f in findings if f["priority"] in BLOCKING and f["frequency"] * f["severity"] >= WEIGHT_THRESHOLD]
+    filed = [f for f in findings if f["frequency"] * f["severity"] < WEIGHT_THRESHOLD]
     derived = "incorrect" if blocking else "correct"
     if ACCEPTED_WITH[verdict] != derived:
         refuse(
             verdict_path,
             f"the verdict.verdict {verdict} contradicts the verdict.findings: {len(blocking)} of priority P0 or P1 "
-            "(any one means incorrect, none means correct or blocked; a P2 or P3 changes no verdict)",
+            f"with weight {WEIGHT_THRESHOLD} or more (weight is frequency times severity; any one means incorrect, "
+            "none means correct or blocked; a finding under the threshold is filed and a P2 or P3 changes no verdict)",
         )
     lines = ["## Findings", ""]
-    for finding in document["findings"]:
+    for finding in findings:
         priority, confidence, path, line = (finding[key] for key in ("priority", "confidence", "path", "line"))
+        frequency, severity = int(finding["frequency"]), int(finding["severity"])
         at = f"{path}:{int(line)}"
         rationale = one_line(finding["rationale"])
-        lines.append(f"- {priority} ({confidence}) {one_line(at)}: {rationale}")
-    if not document["findings"]:
+        lines.append(f"- {priority} ({confidence}) [f{frequency} s{severity}] {one_line(at)}: {rationale}")
+    if not findings:
         lines.append("- none")
     lines += ["", "## Reproduced", ""]
     lines += [f"- {one_line(entry)}" for entry in document["reproduced"]] or ["- nothing"]
     if document["notes"]:
         lines += ["", "## Notes", "", document["notes"].rstrip()]
-    lines += ["", f"Blocking: {len(blocking)}", f"Verdict: {verdict}", ""]
+    lines += ["", f"Blocking: {len(blocking)}", f"Filed: {len(filed)}", f"Verdict: {verdict}", ""]
     write_whole(text_path, "\n".join(lines))
     print(verdict)
 

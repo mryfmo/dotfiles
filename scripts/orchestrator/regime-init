@@ -14,7 +14,7 @@
 #   equal to its template is left alone, one that differs is kept unless `--force` replaces it, a second run finds the
 #   guard's own hook (`unchanged`), and says that nothing changed. It never writes through a symlink, and it refuses
 #   outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the
-#   guard refuses (a linked worktree, a `core.hooksPath` set, a foreign hook at its path).
+#   guard refuses (a linked worktree, a foreign hook at its path).
 # @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under .orchestration/orchestrate.
 # @option --force Replace store files that differ from their template.
 # @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.
@@ -166,8 +166,8 @@ fi
 
 # The checkout refuses commits once a store exists (U129): checkout-guard.sh writes its reference-transaction hook
 # into the checkout's common hooks directory, or finds its own there and prints `unchanged`, and removes a round-1
-# `pre-commit` or `post-checkout` that is still there (`removed`); its refusals (a linked worktree, a `core.hooksPath`,
-# a foreign hook) are this run's, after the store rows and before the AGENTS section.
+# `pre-commit` or `post-checkout` that is still there (`removed`); its refusals (a linked worktree, a foreign hook) are
+# this run's, after the store rows and before the AGENTS section.
 [[ -x ${LEVER_DIR}/checkout-guard.sh ]] || refuse "checkout-guard.sh absent beside this script: ${LEVER_DIR}/checkout-guard.sh"
 guard_rows=$("${LEVER_DIR}/checkout-guard.sh" install "${checkout}") || refuse "checkout-guard.sh install ${checkout} failed; the store is in place, the hook is not"
 printf '%s\n' "${guard_rows}"

@@ -354,7 +354,7 @@
       "target": ".local/bin/common/checkout-guard.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "74225a5d359338f7bb2545b9f1d54c95d07921f75026aca0c3547f596b183c17"
+      "sha256": "173ce90703db0686b1b60ced77e3560d2416e398c51e72c10e55940957b416b0"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
@@ -466,7 +466,7 @@
       "target": ".local/bin/common/regime-init",
       "kind": "file",
       "executable": true,
-      "sha256": "eb8929ab51e9bcf1006f2bfca098a79e836b7509959a3b9aa1e104b28772c698"
+      "sha256": "c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-start",

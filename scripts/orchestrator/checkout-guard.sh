@@ -24,13 +24,14 @@
 #     ~/.local/bin/common/worker-worktree.sh <unit> <branch> origin/main makes one under $TMPDIR/dotfiles-wt/<unit>
 #     (standing order 29)`. Deletions and every ref outside `refs/heads/` (a detached HEAD, tags, remote-tracking
 #     refs, ORIG_HEAD, the stash) pass; the other phases exit 0. `git commit --no-verify` skips no
-#     reference-transaction hook. A read that fails refuses the transaction (standing order 21): the store walk is
-#     `os.scandir` over `.orchestration/orchestrate` and `os.listdir` of each program directory (a directory is
-#     listed, never `stat`-ed for a child: a mode-0111 program directory answers a `stat` of its `units.tsv` and
-#     refuses a listing), where an absent `.orchestration` is no store and any other `OSError` (a mode-000 or 0111
-#     directory, a file where a directory should be) is a refusal naming it; the toplevel and the worktree list come
-#     from git as bytes (`worktree list --porcelain -z`), never split on newlines; a git read that exits non-zero is a
-#     refusal naming it.
+#     reference-transaction hook. A read that fails refuses the transaction (standing order 21): the store walk lists
+#     `.orchestration`, then `orchestrate`, then every program directory, in that order and to the end (`os.listdir`:
+#     a directory is listed, never `stat`-ed for a child, which a mode-0111 directory answers while refusing a
+#     listing; no program directory is skipped once a store is found), where an absent `.orchestration` or
+#     `orchestrate` is no store and any other `OSError` on any of those listings (a mode-000 or 0111 directory, a
+#     file where `.orchestration` or `orchestrate` should be) is a refusal naming it; the toplevel and the worktree
+#     list come from git as bytes (`worktree list --porcelain -z`), never split on newlines; a git read that exits
+#     non-zero is a refusal naming it.
 #   The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the
 #   plain `git` with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1` (so no `refs/replace/*` ref and no
 #   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads) and `-c core.hooksPath=/dev/null` (so they run
@@ -46,43 +47,37 @@
 #   and nothing is stale, else 1; a symlink or a file that is not a regular file at the hook path is a refusal (exit
 #   2) naming the kind, which `check` does not judge, while a regular file of other content is `differs`. `install`
 #   refuses (exit 2, nothing written) unless `<checkout>` is in a main checkout (`git rev-parse --git-dir` equals
-#   `--git-common-dir`; a linked worktree's hooks directory is the main checkout's, so it is installed there),
-#   `core.hooksPath` is unset as the caller's git reads it in the main checkout and in every linked worktree: the
-#   reads are the plain `git worktree list --porcelain -z` and then `git config --show-origin --get-all
-#   core.hooksPath` in each worktree, run by git itself under the caller's environment exactly as inherited, before
-#   any scrub (`GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `HOME`, `XDG_CONFIG_HOME`,
-#   `GIT_CONFIG_COUNT` with its entries, `GIT_CONFIG_PARAMETERS` and every other selector git honours are left in
-#   place, so git resolves the repository, worktree, global, system and command-scope configuration as it will at the
-#   next commit; rounds 2 and 3 scrubbed before this read and kept a list of selectors, and each audit named one the
-#   list dropped), and any value at all is refused naming the worktree and every origin git printed; `check` makes
-#   the same reads. Only after those reads is the caller's `GIT_*` scrubbed, for the lever's own identity reads
-#   through the isolated git, and the main worktree the caller's git listed must be the toplevel the isolated git
-#   names, else the caller's environment (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`) points git at another
-#   repository and the run is refused naming both. The hooks directory, when it exists, must be a directory that
-#   can be read (a mode-000 one is a refusal naming it, never `absent`), and the hook path absent or already this
-#   lever's own; a regular file of other content there is refused and never overwritten. After the hook
-#   is in place it removes a round-1 `pre-commit` or `post-checkout` that is byte-equal to round 1's (`removed` rows;
-#   the `pre-commit` in either of the two byte forms round 1 wrote, see write_hook), so an upgraded checkout keeps no
-#   dead hook; any other file at those two paths is not this lever's and is left alone. A second run finds its own
-#   hook, prints `unchanged` and exits 0, so regime-init calls it on every run. Every comparison is `cmp -s` against
-#   a copy of the expected bytes written to a scratch directory (NUL-safe: a shell variable cannot hold the NUL a
-#   drifted file may), its status read: 0 is equal, 1 is different, anything else is a failed read and a refusal.
-#   Every read is checked (standing order 21): `git rev-parse`, `git worktree list`, `git config` (exit 1 is "unset",
-#   any other failure is a refusal), `mktemp`, each write of the expected bytes, each `cmp`; each failure exits 2
-#   naming the file. Left out, by design: a `core.hooksPath` set after the install, through configuration or
-#   environment (`check` reads it again and refuses); a worker that edits `.git/hooks` of the checkout (the worker
-#   tree is a repository of its own and never sees this hook); a branch made a symbolic ref (`symbolic-ref
-#   refs/heads/main refs/tags/x`: the next commit moves the tag, which the rule does not name); a copy or rename of a
-#   branch that is already off origin (`branch -c`, `branch -m`: no branch moves to a new commit); a commit on a
-#   detached HEAD (no branch moves; the rule names local branches); and a repository with no `origin` remote, where
-#   no commit is reachable and every branch move is refused while a store exists.
-#   Trusted: the worker is a non-adversarial actor whose reflex the refusal stops, not an attacker: a worker who,
-#   after the install, overrides the hooks path through configuration or environment, replaces a branch with a
-#   symbolic ref or copies a branch that is already off origin can author a commit in the checkout, and that act is
-#   a standing-order breach the records catch, not a defect this hook closes (the boundary U123 drew for the worker
-#   tree). The coordinator is the only committer in the checkout and commits nothing there by design (records move
+#   `--git-common-dir`; a linked worktree's hooks directory is the main checkout's, so it is installed there). The
+#   hook goes into `<git-common-dir>/hooks` as the isolated git (git-isolated.sh, U113) names it, with the caller's
+#   `GIT_*` and transport variables scrubbed first so no `GIT_DIR` or `GIT_COMMON_DIR` of the caller points the reads
+#   at another repository; the directory is made when absent. Nothing here reads `core.hooksPath`: rounds 2 to 4
+#   each tried to establish at install time what git resolves for it at the next commit, and each audit named another
+#   channel (`GIT_CONFIG_COUNT`; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`; `GIT_CONFIG`, `GIT_DIR`,
+#   `includeIf.onbranch`), since git's configuration is layered and conditional and the caller owns every layer, so
+#   the check cannot hold and round 5 removed it; where git resolves its hooks is the trust boundary below. The hooks
+#   directory, when it exists, must be a directory that can be read (a mode-000 one is a refusal naming it, never
+#   `absent`), and the hook path absent or already this lever's own; a regular file of other content there is
+#   refused and never overwritten. After the hook is in place it removes a round-1 `pre-commit` or `post-checkout`
+#   that is byte-equal to round 1's (`removed` rows; the `pre-commit` in either of the two byte forms round 1 wrote,
+#   see write_hook), so an upgraded checkout keeps no dead hook; any other file at those two paths is not this
+#   lever's and is left alone. A second run finds its own hook, prints `unchanged` and exits 0, so regime-init calls
+#   it on every run. Every comparison is `cmp -s` against a copy of the expected bytes written to a scratch directory
+#   (NUL-safe: a shell variable cannot hold the NUL a drifted file may), its status read: 0 is equal, 1 is different,
+#   anything else is a failed read and a refusal. Every read is checked (standing order 21): `mktemp`, each `git
+#   rev-parse` (the toplevel, the git directory, the common directory), each write of the expected bytes (`cat`),
+#   each `cmp`; each failure exits 2 naming the file. Left out, by design: a worker that edits `.git/hooks` of the
+#   checkout (the worker tree is a repository of its own and never sees this hook); a branch made a symbolic ref
+#   (`symbolic-ref refs/heads/main refs/tags/x`: the next commit moves the tag, which the rule does not name); a copy
+#   or rename of a branch that is already off origin (`branch -c`, `branch -m`: no branch moves to a new commit); a
+#   commit on a detached HEAD (no branch moves; the rule names local branches); and a repository with no `origin`
+#   remote, where no commit is reachable and every branch move is refused while a store exists.
+#   Trusted: the worker is a non-adversarial actor whose reflex the refusal stops, not an attacker: git resolving its
+#   hooks to another place under the caller's configuration or environment, whenever and however set, is a
+#   standing-order breach the records catch, not a defect this hook closes (the boundary U123 drew for the worker
+#   tree); so is a worker who replaces a branch with a symbolic ref or copies a branch that is already off origin.
+#   The coordinator is the only committer in the checkout and commits nothing there by design (records move
 #   through records-sync.sh's scratch repository, code through worker trees); git runs the common
-#   `hooks/reference-transaction` for the checkout and every linked worktree when no `core.hooksPath` is set, and
+#   `hooks/reference-transaction` for the checkout and every linked worktree when it resolves no `core.hooksPath`, and
 #   resolves symbolic refs before the `prepared` phase (githooks(5)); `refs/remotes/origin/*` are origin's refs,
 #   whatever wrote them; `python3` on the hook's PATH is a CPython 3; the worker's identity is not read.
 # @arg $1 string `install` or `check`.
@@ -90,7 +85,7 @@
 # @stdout One row per hook, `checkout-guard: <state>\t<path>`: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
 # @exitcode 0 Done: the hook installed and no stale round-1 hook left (install), or in place with nothing stale (check).
 # @exitcode 1 `check`: the hook is absent, differs or is not executable, or a round-1 hook is still there.
-# @exitcode 2 A refusal, before anything is written: usage, not a main checkout, `core.hooksPath` set in the checkout or a linked worktree as the caller's git reads it, the caller's git and the isolated git naming different main worktrees, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read or write, or the manifest pin differing from this file.
+# @exitcode 2 A refusal, before anything is written: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read or write, or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles
 #   ~/.local/bin/common/checkout-guard.sh check ~/Workspace/dotfiles
@@ -174,70 +169,25 @@ install | check) ;;
 esac
 [[ -d ${checkout} ]] || refuse "${checkout} is not a directory"
 
-# The hooks path is read first, by the caller's git under the caller's environment exactly as inherited. The value
-# that decides whether the hook runs at the next commit is git's own resolution of the repository, worktree
-# (`config.worktree` under `extensions.worktreeConfig`, which a linked worktree sets for itself alone), global,
-# system and command-scope configuration, selected by whatever the environment holds: `GIT_CONFIG_GLOBAL`,
-# `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `HOME`, `XDG_CONFIG_HOME`, `GIT_CONFIG_COUNT` with its `GIT_CONFIG_KEY_<n>`
-# and `GIT_CONFIG_VALUE_<n>` entries, `GIT_CONFIG_PARAMETERS`, and any selector a later git adds. Rounds 2 and 3
-# scrubbed the environment before this read and kept a list of selectors visible, and each audit named one the list
-# dropped (`GIT_CONFIG_COUNT`; then `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`), so no list is kept: nothing is
-# scrubbed before the read, and git's own resolution is the one list that cannot be shorter than git's. The worktrees
-# come from the same plain git (`worktree list --porcelain -z` into a scratch file, NUL-terminated records, so a path
-# holding a newline is read whole), and `config --show-origin --get-all core.hooksPath` runs in each: exit 1 is unset;
-# 0 is a value, any value at any origin in any worktree, and a refusal naming the worktree and every origin git
-# printed (the hook would not run there); anything else is a failed read and a refusal (standing order 21), a
-# worktree the read cannot enter (its directory gone) among them, `git worktree prune` first. Neither read runs a
-# hook or writes anything. The caller's `GIT_*` and transport variables are scrubbed only after these reads, for the
-# lever's own reads through the isolated git (U113) below.
+# The lever's reads run through the isolated git (U113), with the caller's `GIT_*` and transport variables removed
+# first: a `GIT_DIR` or `GIT_COMMON_DIR` of the caller would point them at another repository, and the hook goes where
+# this git names the common hooks directory of the checkout. Each read's status is checked (standing order 21); the
+# toplevel read fails for a path outside a working tree too, and git's stderr names which.
 [[ -r ${LEVER_DIR}/git-isolated.sh ]] || refuse "git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh"
 # shellcheck source=scripts/orchestrator/git-isolated.sh
 . "${LEVER_DIR}/git-isolated.sh"
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot make a scratch directory for the worktree list and the expected hook bytes'
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot make a scratch directory for the expected hook bytes'
 trap 'rm -rf -- "${scratch}"' EXIT
-if ! git -C "${checkout}" worktree list --porcelain -z > "${scratch}/worktrees" 2> "${scratch}/stderr"; then # git-isolated: allow the caller's git lists the worktrees whose hooks path it will read at the next commit, under the environment as inherited
-    refuse "cannot list the worktrees of ${checkout} as the caller's git reads them: $(< "${scratch}/stderr")"
-fi
-main_worktree=''
-while IFS= read -r -d '' line; do
-    [[ ${line} == 'worktree '* ]] || continue
-    worktree=${line#worktree }
-    [[ -n ${main_worktree} ]] || main_worktree=${worktree}
-    status=0
-    git -C "${worktree}" config --show-origin --get-all core.hooksPath > "${scratch}/hooks-path" 2> "${scratch}/stderr" || status=$? # git-isolated: allow the caller's git decides whether .git/hooks runs at the next commit, so the configuration is read by git itself under the environment as inherited, which the isolated git closes
-    case ${status} in
-    0)
-        found=''
-        while IFS= read -r line; do
-            origin=${line%%$'\t'*}
-            if [[ -z ${found} ]]; then
-                found="core.hooksPath is ${line#*$'\t'} in ${worktree} (from ${origin%:})"
-            else
-                found+="; also ${line#*$'\t'} (from ${origin%:})"
-            fi
-        done < "${scratch}/hooks-path"
-        refuse "${found}, so the hook this lever installs would not run there; unset it first"
-        ;;
-    1) ;;
-    *) refuse "cannot read core.hooksPath in ${worktree}: $(< "${scratch}/stderr")" ;;
-    esac
-done < "${scratch}/worktrees"
-[[ -n ${main_worktree} ]] || refuse "the worktree list of ${checkout} names no worktree"
-
-# The lever's own reads run through the isolated git (U113), with the caller's `GIT_*` and transport variables
-# removed first: a `GIT_DIR` or `GIT_COMMON_DIR` of the caller would point them at another repository. The same
-# variables would have pointed the caller's git above at that other repository too, so the main worktree it listed
-# must be the toplevel the isolated git names for the checkout; a difference means the hooks path read above is not
-# this checkout's, and the run is refused naming both.
 # shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
 git_env_scrub
-toplevel=$(git_isolated -C "${checkout}" rev-parse --show-toplevel 2> /dev/null) || refuse "${checkout} is not inside a git working tree"
+toplevel=$(git_isolated -C "${checkout}" rev-parse --show-toplevel 2> "${scratch}/stderr") || refuse "cannot read the toplevel of ${checkout} (is it inside a git working tree?): $(< "${scratch}/stderr")"
 git_dir=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-dir) || refuse "cannot read the git directory of ${toplevel}"
 common=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of ${toplevel}"
+# The one comparison of two paths: both are git's absolute forms for one checkout, equal byte for byte in a main
+# checkout and differing by the `worktrees/<id>` tail in a linked one, so the trailing newlines a command substitution
+# strips (none: each ends in `.git` or that tail) cannot make them read alike.
 [[ ${git_dir} == "${common}" ]] || # lint-comparisons: allow both sides are git's absolute forms of one checkout
     refuse "${toplevel} is a linked worktree (git dir ${git_dir}, common ${common}); install in the main checkout, whose hooks every linked worktree shares"
-[[ ${main_worktree} == "${toplevel}" ]] || # lint-comparisons: allow both sides are git's real paths of the main worktree
-    refuse "the caller's git lists ${main_worktree} as the main worktree of ${checkout} and the isolated git names ${toplevel}: the caller's environment (GIT_DIR, GIT_WORK_TREE or GIT_COMMON_DIR) points git at another repository, so the hooks path it would read is not this checkout's; unset it first"
 hooks=${common}/hooks
 [[ ! -L ${hooks} ]] || refuse "${hooks} is a symlink; nothing is written through it"
 
@@ -269,8 +219,9 @@ write_hook() {
 # refs/heads/ (a detached HEAD, tags, remote-tracking refs, ORIG_HEAD, the stash) pass. The other phases exit 0. It
 # runs under `python3 -I -S`: no shell starts, so no shell startup file, SHELLOPTS or BASH_ENV reaches it, and no
 # PYTHON* variable, site directory or module planted beside it is read. A read that fails refuses the transaction
-# (standing order 21): a store directory that cannot be listed, a line of another shape, a git read that exits
-# non-zero. Its git calls carry `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1`, so no `refs/replace/*` ref and
+# (standing order 21): `.orchestration`, `orchestrate` or a program directory that cannot be listed (each is listed
+# in that order, to the last program directory), a line of another shape, a git read that exits non-zero. Its git
+# calls carry `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1`, so no `refs/replace/*` ref and
 # no `GIT_REPLACE_REF_BASE` of the caller stands in for a commit when the ancestry is read, and
 # `-c core.hooksPath=/dev/null`, so they run no hook; the isolated git of the levers (the same flags) never runs this
 # file. It writes nothing but its own stderr.
@@ -329,30 +280,33 @@ def updates(data):
 
 
 def store_under(top):
-    """Whether `.orchestration/orchestrate/<program>/units.tsv` exists under TOP. An absent `.orchestration` or
-    `orchestrate` is no store; a directory that cannot be listed (`.orchestration/orchestrate` or a program directory,
-    mode 000 or 0111: the listing is the read, never a `stat` of a child, which a 0111 directory answers) or one that
-    is not a directory refuses the transaction, never passes it (standing order 21)."""
-    stores = os.path.join(top, b".orchestration", b"orchestrate")
-    try:
-        with os.scandir(stores) as entries:
-            programs = list(entries)
-    except FileNotFoundError:
-        return False
-    except OSError as error:
-        refuse("cannot read %s: %s" % (os.fsdecode(stores), error.strerror or error))
-    for program in programs:
+    """Whether `.orchestration/orchestrate/<program>/units.tsv` exists under TOP. The walk lists `.orchestration`,
+    then `orchestrate`, then every program directory, in that order and to the end: the listing is the read, never a
+    `stat` of a child (which a mode-0111 directory answers while refusing a listing), and no program directory is
+    skipped once a store is found. An absent `.orchestration` or `orchestrate` is no store; any other `OSError` on
+    any of those listings (mode 000 or 0111, a file where `.orchestration` or `orchestrate` should be) refuses the
+    transaction, never passes it (standing order 21). A file among the program directories is not a program."""
+    root = os.path.join(top, b".orchestration")
+    stores = os.path.join(root, b"orchestrate")
+    for directory in (root, stores):
         try:
-            if not program.is_dir():
-                continue
-            names = os.listdir(program.path)
+            names = os.listdir(directory)
         except FileNotFoundError:
+            return False
+        except OSError as error:
+            refuse("cannot read %s: %s" % (os.fsdecode(directory), error.strerror or error))
+    found = False
+    for name in sorted(names):
+        program = os.path.join(stores, name)
+        try:
+            entries = os.listdir(program)
+        except (FileNotFoundError, NotADirectoryError):
             continue
         except OSError as error:
-            refuse("cannot read %s: %s" % (os.fsdecode(program.path), error.strerror or error))
-        if b"units.tsv" in names:
-            return True
-    return False
+            refuse("cannot read %s: %s" % (os.fsdecode(program), error.strerror or error))
+        if b"units.tsv" in entries:
+            found = True
+    return found
 
 
 def origin_commits():
@@ -413,7 +367,9 @@ def main():
     tops = [toplevel]
     if first[len(b"worktree ") :] != toplevel:
         tops.append(first[len(b"worktree ") :])
-    if not any(store_under(top) for top in tops):
+    # Every toplevel is walked before the decision: a store that cannot be read under one of them refuses even when
+    # the other holds a readable store (no short-circuit).
+    if not any([store_under(top) for top in tops]):
         return 0
     candidates = origin_commits()
     for old, new, ref in moves:

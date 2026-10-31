@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -406,6 +408,174 @@ class TypeScriptTestsStepTest(unittest.TestCase):
         for directory in self.DIRECTORIES:
             with self.subTest(directory=directory):
                 self.assertTrue(sorted((ROOT / directory).glob("*.test.ts")), directory)
+
+
+class InstallToolsChecksumToolTest(unittest.TestCase):
+    """U109 rounds 21 and 22: the "Install tools" step picks the checksum tool from `sha256sum --version` and checks the
+    chezmoi download through `curl | grep | checker`. The round 11 decision ran the producer inside `[[ ]]`, so its exit
+    status was lost (round 21, audit of 76f1a732); the pipeline ran under the step's implicit `bash -e` with no
+    `pipefail`, so a curl that printed the checksum line and then exited 42 let the step go on (round 22, audit of
+    c01bb0a5). The body is run here as the runner runs a step that names no `shell:` (`bash -e {0}`), from a scratch
+    directory with stubs first on PATH, up to the decision or through the whole pipeline."""
+
+    GNU = "sha256sum (GNU coreutils) 9.4"
+    DARWIN = "sha256sum (Darwin) 1.0"  # macOS 15 to 27: text_cmds md5.c `version()` prints this and exits 0
+    TAG = "v2.66.0"
+    ARTIFACT = "chezmoi_2.66.0_linux_amd64.tar.gz"  # the uname stub answers Linux/x86_64
+    ARTIFACT_TEXT = "not a tarball: the pipeline checks these bytes and tar runs after it"
+    PIPELINE_END = "shasum -a 256 --check --strict; fi)"
+
+    @classmethod
+    def body(cls, text: str) -> list[str]:
+        """The step's `run:` body, dedented, one entry per line."""
+        step = text.split("      - name: Install tools\n", 1)[1].split("\n      - name: ", 1)[0]
+        return textwrap.dedent(step.split("        run: |\n", 1)[1]).splitlines()
+
+    @classmethod
+    def decision(cls, text: str) -> str:
+        """The body from its first line to the line before the first download."""
+        lines = cls.body(text)
+        first_download = next(i for i, line in enumerate(lines) if line.startswith("curl "))
+        block = "\n".join(lines[:first_download]) + "\n"
+        assert "sha256_tool=" in block, block
+        assert not any("curl" in line for line in block.splitlines() if not line.lstrip().startswith("#")), block
+        return block
+
+    @classmethod
+    def checksum(cls, text: str) -> str:
+        """The body from its first line through the checksum pipeline: both downloads, the `grep` and the checker."""
+        lines = cls.body(text)
+        end = next(i for i, line in enumerate(lines) if line.endswith(cls.PIPELINE_END))
+        block = "\n".join(lines[: end + 1]) + "\n"
+        assert 2 == sum(line.startswith("curl ") for line in block.splitlines()), block
+        assert '| grep "  ${artifact}$"' in block and "github_release_attestation" not in block, block
+        return block
+
+    def run_body(
+        self, block: str, stubs: dict[str, str | None], tools: tuple[str, ...] = ()
+    ) -> subprocess.CompletedProcess[str]:
+        """Run `block` as the runner runs a step that names no `shell:` (`bash --noprofile --norc -e`, no `pipefail`:
+        round 21 ran `-eo pipefail`, the `shell: bash` form, which is not this step's), from a scratch directory whose
+        PATH holds only the stubs: a `uname` answering Linux/x86_64, each `stubs` entry as a `sh` script (None: absent
+        from PATH), and each of `tools` linked from the host. The scratch `scripts/lib/github-release.sh` answers a tag
+        without the network. A `printf` after the block shows whether the step went on past it, and an EXIT trap
+        prints the selection, or `none`, whatever the body did."""
+        holder = tempfile.TemporaryDirectory()
+        self.addCleanup(holder.cleanup)
+        scratch = Path(holder.name)
+        stub_dir = scratch / "stubs"
+        stub_dir.mkdir()
+        (scratch / "scripts/lib").mkdir(parents=True)
+        (scratch / "scripts/lib/github-release.sh").write_text(f"github_release_tag() {{ printf '{self.TAG}\\n'; }}\n")
+        (stub_dir / "uname").write_text('#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo x86_64 ;; esac\n')
+        for name, script in stubs.items():
+            if script is not None:
+                (stub_dir / name).write_text(f"#!/bin/sh\n{script}\n")
+        for stub in stub_dir.iterdir():
+            stub.chmod(0o755)
+        for name in tools:
+            tool = shutil.which(name)
+            if tool is not None:
+                (stub_dir / name).symlink_to(tool)
+        script = scratch / "install-tools.sh"
+        script.write_text(
+            'trap \'printf "selected=%s\\n" "${sha256_tool-none}"\' EXIT\n' + block + "printf 'went on\\n'\n"
+        )
+        bash = shutil.which("bash")
+        assert bash is not None
+        env = {
+            "PATH": str(stub_dir),
+            "HOME": str(scratch),
+            "OS": "ubuntu-24.04",
+            "SYSTEM": "client",
+            "RUNNER_TEMP": str(scratch),
+        }
+        return subprocess.run(
+            [bash, "--noprofile", "--norc", "-e", str(script)],
+            cwd=scratch,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def run_decision(self, block: str, sha256sum: str | None) -> subprocess.CompletedProcess[str]:
+        return self.run_body(block, {"sha256sum": sha256sum})
+
+    def curl(self, checksums: str, status: int) -> str:
+        """A `curl` that writes ARTIFACT_TEXT to the path after `-o` (the first download, exit 0) and otherwise prints
+        `checksums` and exits with `status` (the checksums download)."""
+        printed = "".join(f"printf '%s\\n' '{line}'\n" for line in checksums.splitlines())
+        return (
+            'out=\nwhile [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; esac; shift; done\n'
+            f"if [ -n \"${{out}}\" ]; then printf '%s\\n' '{self.ARTIFACT_TEXT}' > \"${{out}}\"; exit 0; fi\n"
+            f"{printed}exit {status}\n"
+        )
+
+    def checksums(self, digest: str) -> str:
+        """A release checksums file: the artifact's line among two other platforms', so the `grep` selects."""
+        return (
+            f"{'0' * 64}  chezmoi_2.66.0_darwin_arm64.tar.gz\n"
+            f"{digest}  {self.ARTIFACT}\n"
+            f"{'f' * 64}  chezmoi_2.66.0_linux_arm64.tar.gz\n"
+        )
+
+    def test_the_decision_reads_every_status_of_sha256sum(self) -> None:
+        # A failing `sha256sum --version` ends the step with its status before any tool is selected; a banner that
+        # is not GNU's, or no sha256sum at all, selects shasum. On 76f1a732 the exit-42 cases went on, one with
+        # sha256sum selected and one with shasum.
+        block = self.decision(TEST.read_text())
+        for case, stub, status, stdout in (
+            ("GNU banner, exit 0", f"echo '{self.GNU}'\nexit 0", 0, "went on\nselected=sha256sum\n"),
+            ("GNU banner, exit 42", f"echo '{self.GNU}'\nexit 42", 42, "selected=none\n"),
+            ("no output, exit 42", "exit 42", 42, "selected=none\n"),
+            ("no sha256sum on PATH", None, 0, "went on\nselected=shasum\n"),
+            ("the BSD banner, exit 0", f"echo '{self.DARWIN}'\nexit 0", 0, "went on\nselected=shasum\n"),
+        ):
+            with self.subTest(case=case):
+                result = self.run_decision(block, stub)
+                self.assertEqual((status, stdout), (result.returncode, result.stdout), result.stderr)
+
+    def test_the_checksum_pipeline_ends_the_step_on_every_producers_status(self) -> None:
+        # Round 22 (audit of c01bb0a5): the pipeline is `curl | grep | checker` and the step names no `shell:`, so
+        # without the body's own `set -o pipefail` only the checker's status reached `bash -e`. A curl that prints
+        # the valid file and exits 42 ends the step with 42 (on c01bb0a5 it went on with 0); the real `grep` and
+        # the host's checker (the decision selects it from the real `sha256sum`, shasum where there is none or it
+        # is BSD's) pass the valid file, and fail an empty one or a wrong digest on both heads.
+        self.assertTrue(shutil.which("shasum") or shutil.which("sha256sum"), "a checker on the host's PATH")
+        block = self.checksum(TEST.read_text())
+        digest = hashlib.sha256(f"{self.ARTIFACT_TEXT}\n".encode()).hexdigest()
+        for case, checksums, curl_status, status, went_on in (
+            ("the valid file, curl exit 0", self.checksums(digest), 0, 0, True),
+            ("the valid file, then curl exit 42", self.checksums(digest), 42, 42, False),
+            ("nothing printed, curl exit 0", "", 0, 1, False),
+            ("a wrong digest, curl exit 0", self.checksums("1" * 64), 0, 1, False),
+        ):
+            with self.subTest(case=case):
+                result = self.run_body(
+                    block, {"curl": self.curl(checksums, curl_status)}, tools=("grep", "sha256sum", "shasum")
+                )
+                self.assertEqual(
+                    (status, went_on),
+                    (result.returncode, "went on\n" in result.stdout),
+                    (result.stdout, result.stderr),
+                )
+                if went_on:
+                    self.assertIn(f"{self.ARTIFACT}: OK\n", result.stdout)
+
+    def test_the_body_sets_pipefail_before_anything_else(self) -> None:
+        # The producers' statuses reach `bash -e` only through the body's own option, since the step keeps the
+        # runner's default shell (tests/unit/test_apt_mirror.py reads the step with no `shell:` key).
+        self.assertEqual("set -euo pipefail", self.body(TEST.read_text())[0])
+
+    def test_the_decision_is_spelled_in_literal_command_words(self) -> None:
+        # The tree rule of tests/unit/test_apt_mirror.py reads every command word; the decision gives it `command`,
+        # `sha256sum` and assignments, never an expansion in command position, and no `[[ ]]` around the producer.
+        block = self.decision(TEST.read_text())
+        self.assertIn('sha256sum_banner="$(sha256sum --version)"\n', block)
+        self.assertNotIn('[[ "$(sha256sum', block)
+        self.assertNotIn("2> /dev/null)", block)
 
 
 class RenderOnlySubtreesTest(unittest.TestCase):

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+{{ if eq .chezmoi.os "linux" -}}
+{{   if eq .chezmoi.osRelease.idLike "debian" -}}
+{{     if eq .system "client" -}}
+# This script only runs (chezmoi run_onchange) when its rendered content
+# changes. Embed the units' content hashes so an edit to either unit file
+# also changes this script's content and re-triggers the enable/reload below.
+# disk-gc.service sha256sum: {{ include "dot_config/systemd/user/disk-gc.service.tmpl" | sha256sum }}
+# disk-gc.timer sha256sum: {{ include "dot_config/systemd/user/disk-gc.timer.tmpl" | sha256sum }}
+
+if ! command -v systemctl > /dev/null 2>&1 || [ -z "${XDG_RUNTIME_DIR:-}" ] || ! systemctl --user status > /dev/null 2>&1; then
+    echo "No user systemd instance available; skipping disk-gc timer setup." >&2
+    exit 0
+fi
+
+if [ ! -f "${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user/disk-gc.timer" ]; then
+    echo "unit not visible to the user manager (temp destDir apply?); skipping" >&2
+    exit 0
+fi
+
+systemctl --user daemon-reload
+systemctl --user enable --now disk-gc.timer
+{{     end -}}
+{{   end -}}
+{{ end -}}

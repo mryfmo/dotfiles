@@ -1,0 +1,43 @@
+# U124 The weighted finding rule as text, and `filed:` as a thread disposition
+
+GOAL
+The operator's instruction of 2026-10-30 (decisions row, phase `operator-2026-10-30`): the review loop between the code-writing model and the reviewing model never ends, because the reviewer flags defects that are technically possible and practically never happen, and each fix invites the next. Two rules end it. (1) Every finding carries a frequency score and a severity score, each 1 to 10; when their product is under the project's threshold the finding is filed as an issue and the code stays as it is. (2) Code is not designed for rare or future cases nobody has asked for. The threshold for this project is 10 (the operator's text says 5, adjusted to the project; the coordinator rated today's P1 findings: the frequency-1 findings of the U122 and U123 audits scored 4 to 9, the findings that reproduced in real runs scored 14 to 48). This unit writes both rules where every reviewer and every coding agent reads them, and makes `filed:` a disposition the thread check accepts, so a Codex Bot finding under the threshold closes without a code change. U125 makes the audit lever enforce the scores.
+
+SCOPE
+One branch `feat/weighted-findings-rule` from `origin/main`. May write: `AGENTS.md` (the Audit section's finding list and verdict bullet, one bullet in Code Review Rules), `home/dot_agents/regime/AGENTS-audit-section.md` (kept equal to the AGENTS.md section, as the existing test requires), `home/dot_config/claude/rules/regime.md` (one bullet), `scripts/orchestrator/pr-threads-check.sh` (the disposition grammar) and its installed copy through the generator, `scripts/orchestrator/README.md` (rows), `tests/unit/test_pr_levers.py` or the module that tests pr-threads-check.sh, a new `tests/unit/test_review_rules.py`. Not `pr-audit.sh`, `pr-merge.sh`, `audit-carry.py` (U122 holds them; U125 follows).
+
+CHANGE
+1. AGENTS.md Audit section. The "Report each finding with" list gains two items after confidence: `frequency 1..10` (how often the case arises in this repository's real runs: 1 for a case no run, test, incident or user has produced, 10 for every run) and `severity 1..10` (what the case costs when it arises: 1 for cosmetic, 10 for data loss, a secret leaving the host, or a wrong merge). The verdict bullet (today: "A P0 or P1 finding makes the verdict `incorrect`; ...") becomes: a finding's weight is frequency times severity; a P0 or P1 finding with weight 10 or more makes the verdict `incorrect`; a finding of any priority with weight under 10 is `filed`: reported with its scores, the code left as it is, and closed in its thread as `filed: f=<n> s=<n> <reason>`; a P2 or P3 with weight 10 or more is reported and closed as `fixed:` or `residual:` as before. Name the number 10 once in that bullet; U125 reads the same number from a constant and a test keeps them equal.
+2. AGENTS.md Code Review Rules. One bullet for the Codex Bot and every reviewer: rate each finding's frequency and severity 1 to 10 in the finding text; a finding whose product is under 10 is filed, not fixed, and a thread so filed is closed. One bullet for every coding agent: "Do not design for rare or future cases nobody has asked for. A case is real when a test, an incident, a user or a measured run names it; otherwise state it in the Contract's Left out and move on." `home/dot_config/claude/rules/regime.md` gains the same coding bullet in its own voice (it reaches every repository through chezmoi). `AGENTS-audit-section.md` stays byte-equal to the AGENTS.md Audit section.
+3. `pr-threads-check.sh`: a newest reply whose first line is `filed: f=<1..10> s=<1..10> <reason>` is a valid disposition for a thread of any priority when f times s is under 10 (the constant named once, `WEIGHT_THRESHOLD=10`), refused with the product named otherwise; both numbers read by value (a non-number or 0 or 11 is a malformed reply, refused). Tests: `filed: f=1 s=9 ...` on a P1 thread passes; `filed: f=2 s=5 ...` is refused naming 10; `filed: f=x s=3` refused; red on origin/main.
+4. `tests/unit/test_review_rules.py`: the three rule surfaces hold the sentences (AGENTS.md Audit list has `frequency` and `severity`; the verdict bullet names `filed:` and the number 10; Code Review Rules and regime.md hold the design sentence); the number in AGENTS.md equals `WEIGHT_THRESHOLD` in `pr-threads-check.sh`.
+
+ACCEPTANCE
+1. `uv run --no-project --with pyyaml python -m unittest tests.unit.test_review_rules tests.unit.test_pr_levers tests.unit.test_regime_init tests.unit.test_scratch_git` OK (the regime-init test that compares the template with AGENTS.md included). 2. The lints of the WORKER RULES. 3. The PR body's Contract states (a) the rule, the number and where it is read from, (b) what is left out: the audit lever still blocks on priority alone until U125, and a filed thread is the coordinator's rating.
+
+CLOSURE
+allowlist: the disposition grammar of pr-threads-check.sh is a closed list of first-line forms (`fixed:`, `refuted:`, `residual:`, `filed:`), each read by value; the rule text is a fixed sentence a test asserts on three surfaces.
+
+TRUST
+TRUST: the unit trusts the coordinator's two scores in a `filed:` reply as the rating of record, and the auditor's scores once U125 lands; it does not read the reviewed code to second-guess a score, and it trusts `AGENTS.md` on `origin/main` as the one text every reviewer reads.
+
+TIMEBOX
+60 minutes.
+
+FORBIDDEN
+No change to `pr-audit.sh`, `pr-merge.sh`, `audit-carry.py` or `rounds-check.py` (U122 in flight; U125 follows). No `codex` or `gh` write.
+WORKER RULES (standing orders 27, 29, 31, 34; read `preferences.md` lines 23 to 45 in the store)
+- Never push, never open or edit a PR, never run pr-body-edit.sh, never edit the live store; the coordinator fetches your head by path and pushes. Your tree is made by the coordinator with `~/.local/bin/common/worker-worktree.sh U124 <branch> origin/main` (a repository of its own under the default root; it cannot push). Never write under `~/Workspace`, under `$HOME` config directories, or on any other host. Never `git stash`. No local Bats as evidence.
+- Run every test command in the foreground with a timeout and paste its result line; write a progress line beside your tree (`../U124-progress.txt`) at least every ten minutes of wall time; read only the line ranges you need (`grep -n`, then a bounded read) and make your first edit within fifteen minutes.
+- Commit unsigned: `git -c commit.gpgsign=false commit`. Every commit message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+- Before you report, run on the committed head: the test modules your change touches plus `uv run --no-project --with pyyaml python -m unittest tests.unit.test_scratch_git`; ShellCheck 0.11.0, `shfmt -i 4 -sr -d`, and `scripts/ci/masked-dirname-check.sh` on every touched shell file; `scripts/ci/producer-status-check.sh` over the adopted levers (exit 0); `scripts/ci/run-on-lint-files.sh python ruff format --config ruff.toml --check`; `uv run --no-project --with pyyaml scripts/lint-comparisons.py --changed`; `uv run --no-project --with pyyaml scripts/generate-agent-configs.py --check` (regenerate and commit if stale; never hand-edit a generated file). CI runs the full suite.
+- Shell comments are English shdoc. Tests assert behaviour the user observes. Comments explain a non-obvious why only. No `/tmp` literal in any tracked file.
+- A producer's status is read (standing order 21): a `$(...)` whose status is unchecked is a defect, a failed read is never treated as an absence, and every such decision has a failure-injection test.
+- Write the PR body beside your tree (`../U124-pr-body.md`) with `## Summary` (under 12 lines), `## Contract` (what this change guarantees, what it leaves out, a `Trusted:` sentence), `## Threat table` (`row | risk | status | evidence`), `## Verification` (commands and pasted result lines), the line `Program-Unit: regime-cutover/U124`, a blank line, then `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. No absolute home path, no credential-shaped literal.
+- Conventions: `~/.agents/pstack/skills/poteto-mode/SKILL.md` (Comments, Writing the reply), `~/.agents/pstack/skills/technical-writing/SKILL.md` for the PR body and the rule sentences.
+
+REPORT
+Status, branch, head sha (40 hex), files changed (`git diff --stat origin/main`), the commands with result lines, the red proof, deviations, anything not verified. Facts only. Under 30 lines.
+
+STANDING
+`~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (orders 35 to 39); the decisions row of phase `operator-2026-10-30` on the weighted finding rule.

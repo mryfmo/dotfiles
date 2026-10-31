@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+
+# @file home/dot_local/bin/common/executable_disk-gc
+# @brief Reclaim disk from Docker leftovers and merged git worktrees.
+# @description
+#   Prunes dangling Docker images, unused images created more than DISK_GC_IMAGE_AGE ago, anonymous
+#   volumes no container references that are older than DISK_GC_VOLUME_DAYS, trims the build cache to
+#   DISK_GC_BUILD_CACHE_MAX, drops uv and npm cache entries no environment references,
+#   then removes linked git worktrees of each repo in DISK_GC_REPOS (default: every repo under
+#   DISK_GC_WORKSPACE that has one) that are merged into the default branch (origin/HEAD, origin/main,
+#   origin/master, main or master, the first that exists), carry no tracked edits, were not touched within
+#   DISK_GC_WORKTREE_DAYS, and are not locked by a live process. Untracked files of
+#   a removed worktree are archived under ~/.local/share/disk-gc/scratch first, and
+#   archives older than DISK_GC_ARCHIVE_DAYS are purged. Without --apply it reports.
+# @example
+#   disk-gc                      # report only
+#   disk-gc --apply              # reclaim
+#   DISK_GC_REPOS="$HOME/Workspace/a:$HOME/Workspace/b" disk-gc --apply
+#   DISK_GC_WORKSPACE="$HOME/src" disk-gc
+
+set -Eeuo pipefail
+
+apply=0
+case "${1:-}" in
+--apply) apply=1 ;;
+"") ;;
+*)
+    echo "usage: disk-gc [--apply]" >&2
+    exit 2
+    ;;
+esac
+
+repos="${DISK_GC_REPOS:-}"
+workspace="${DISK_GC_WORKSPACE:-${HOME}/Workspace}"
+worktree_days="${DISK_GC_WORKTREE_DAYS:-3}"
+archive_days="${DISK_GC_ARCHIVE_DAYS:-30}"
+cache_max="${DISK_GC_BUILD_CACHE_MAX:-80GB}"
+image_age="${DISK_GC_IMAGE_AGE:-720h}"
+volume_days="${DISK_GC_VOLUME_DAYS:-7}"
+scratch="${XDG_DATA_HOME:-${HOME}/.local/share}/disk-gc/scratch"
+mkdir -p "${scratch}"
+
+# @description Print one log line.
+function log() {
+    printf 'disk-gc: %s\n' "$*"
+}
+
+# @description Run a mutating command under --apply; print it otherwise.
+function run() {
+    if [ "${apply}" -eq 1 ]; then
+        "$@"
+    else
+        log "would run: $*"
+    fi
+}
+
+# @description Print the root filesystem's used and available space with a label.
+function report_df() {
+    df -h / | awk -v label="$1" 'NR == 2 { print "disk-gc: " label " used=" $3 " avail=" $4 }'
+}
+
+# @description Prune dangling images, unused images created more than image_age ago (a stopped container
+#   still counts as a use; a pruned base image is pulled again on the next build), anonymous unreferenced
+#   volumes older than volume_days, and trim the build cache to cache_max (least recently used first).
+function docker_gc() {
+    if ! command -v docker > /dev/null 2>&1; then
+        log "docker not installed; skipping"
+        return 0
+    fi
+    if ! docker info > /dev/null 2>&1; then
+        log "docker daemon unreachable; skipping"
+        return 0
+    fi
+    run docker image prune -f || log "image prune failed; continuing"
+    run docker image prune -a -f --filter "until=${image_age}" || log "unused image prune failed; continuing"
+    volume_gc
+    run docker builder prune -f --max-used-space "${cache_max}" || log "builder prune failed; continuing"
+}
+
+# @description Remove anonymous volumes no container references that are older than volume_days. `docker volume
+#   prune` has no age filter, and `dangling=true` also lists named volumes, so each candidate is checked by name
+#   shape (64 hex digits) and creation time. A volume a stack recreated minutes ago is left alone.
+function volume_gc() {
+    local volumes v created created_ts cutoff
+    volumes=$(docker volume ls -q -f dangling=true)
+    cutoff=$(date -d "${volume_days} days ago" +%s)
+    while read -r v; do
+        [[ ${v} =~ ^[0-9a-f]{64}$ ]] || continue
+        created=$(docker volume inspect "${v}" --format '{{.CreatedAt}}') || continue
+        created_ts=$(date -d "${created}" +%s) || continue
+        [ "${created_ts}" -lt "${cutoff}" ] || continue
+        log "remove volume ${v:0:12}: anonymous, unreferenced, created ${created:0:10}"
+        run docker volume rm "${v}" || log "volume rm failed for ${v:0:12}; continuing"
+    done <<< "${volumes}"
+}
+
+# @description Drop uv and npm cache entries that no installed environment references. Both commands keep
+#   everything still in use, so a later install pays only for what was already unreferenced. uv holds a cache
+#   lock while another uv runs, so the wait is bounded and a busy cache is skipped until the next run.
+function package_cache_gc() {
+    if command -v uv > /dev/null 2>&1; then
+        run env UV_LOCK_TIMEOUT=30 uv cache prune || log "uv cache prune skipped: cache busy or failed"
+    fi
+    if command -v npm > /dev/null 2>&1; then
+        run npm cache verify || log "npm cache verify failed; continuing"
+    fi
+}
+
+# @description Whether a worktree lock names a process that is still alive.
+#   Claude Code writes "claude agent <name> (pid N start S)"; a lock without a
+#   pid is treated as live, since nothing proves it stale.
+# @exitcode 1 When there is no lock, or its pid is gone (process died or host rebooted).
+function lock_is_live() {
+    local lock="$1" pid
+    [ -f "${lock}" ] || return 1
+    pid=$(awk 'match($0, /pid [0-9]+/) { print substr($0, RSTART + 4, RLENGTH - 4); exit }' "${lock}")
+    [ -n "${pid}" ] || return 0
+    kill -0 "${pid}" 2> /dev/null
+}
+
+# @description List the files of a worktree that git does not track, NUL-separated: untracked files, plus
+#   ignored files under 1 MiB outside .venv/ and node_modules/, so an .env survives and dependency trees do not.
+function scratch_files() {
+    local wt="$1"
+    git -C "${wt}" ls-files --others --exclude-standard -z
+    # shellcheck disable=SC2185 # -files0-from supplies find's starting points; a '.' would add the whole tree
+    git -C "${wt}" ls-files --others --ignored --exclude-standard -z ':(exclude).venv' ':(exclude)node_modules' |
+        (cd "${wt}" && find -files0-from - -maxdepth 0 -type f -size -1024k -print0)
+}
+
+# @description Archive a worktree's scratch files as a tarball.
+function archive_scratch() {
+    local wt="$1" archive="$2"
+    scratch_files "${wt}" | tar --null -C "${wt}" -T - -czf "${archive}"
+    log "archived the scratch files of $(basename "${wt}") to ${archive}"
+}
+
+# @description Print the repos under the workspace that have at least one linked worktree, colon-separated.
+#   A repo whose listing cannot be read is left out, so a broken repo is never swept by accident.
+function discover_repos() {
+    local d count found=""
+    for d in "${workspace}"/*/; do
+        [ -d "${d}/.git" ] || continue
+        count=$(git -C "${d}" worktree list --porcelain 2> /dev/null | grep -c '^worktree ') || continue
+        [ "${count}" -gt 1 ] || continue
+        found="${found:+${found}:}${d%/}"
+    done
+    printf '%s' "${found}"
+}
+
+# @description Print the first ref that exists of origin/HEAD, origin/main, origin/master, main, master.
+# @exitcode 1 None exists.
+function default_branch() {
+    local repo="$1" ref
+    ref=$(git -C "${repo}" symbolic-ref -q --short refs/remotes/origin/HEAD 2> /dev/null) && {
+        printf '%s' "${ref}"
+        return 0
+    }
+    for ref in origin/main origin/master main master; do
+        if git -C "${repo}" rev-parse --verify -q "${ref}^{commit}" > /dev/null 2>&1; then
+            printf '%s' "${ref}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# @description Remove the merged, idle, unlocked linked worktrees of one repo.
+function worktree_gc() {
+    local repo="$1" base main_wt gitdir worktrees wt name head porcelain edits recent untracked size archive
+    if ! git -C "${repo}" rev-parse --git-dir > /dev/null 2>&1; then
+        log "not a git repo: ${repo}; skipping"
+        return 0
+    fi
+    git -C "${repo}" fetch -q origin 2> /dev/null || log "fetch failed for ${repo}; using the last-known refs"
+    base=$(default_branch "${repo}") || {
+        log "no default branch in ${repo}; skipping its worktrees"
+        return 0
+    }
+    log "repo ${repo}: base ${base}"
+    run git -C "${repo}" worktree prune --expire "${worktree_days}.days.ago"
+    main_wt=$(git -C "${repo}" worktree list --porcelain | awk '/^worktree / && !seen { print $2; seen = 1 }')
+    gitdir=$(git -C "${repo}" rev-parse --path-format=absolute --git-common-dir)
+    worktrees=$(git -C "${repo}" worktree list --porcelain | awk '/^worktree / { print $2 }')
+    while read -r wt; do
+        [ -n "${wt}" ] && [ "${wt}" != "${main_wt}" ] && [ -d "${wt}" ] || continue
+        name=$(basename "${wt}")
+        head=$(git -C "${wt}" rev-parse HEAD 2> /dev/null) || continue
+        if ! git -C "${repo}" merge-base --is-ancestor "${head}" "${base}"; then
+            log "keep ${name}: not merged into ${base}"
+            continue
+        fi
+        porcelain=$(git -C "${wt}" status --porcelain --untracked-files=no 2> /dev/null)
+        if [ -n "${porcelain}" ]; then
+            edits=$(printf '%s\n' "${porcelain}" | wc -l)
+            log "keep ${name}: ${edits} tracked edits"
+            continue
+        fi
+        # shellcheck disable=SC2185 # -files0-from supplies find's starting points; a '.' would add the whole tree
+        recent=$(git -C "${wt}" ls-files -z --cached --others --exclude-standard |
+            (cd "${wt}" && find -files0-from - -maxdepth 0 -type f -newermt "${worktree_days} days ago" -print) |
+            awk 'NR == 1')
+        if [ -n "${recent}" ]; then
+            log "keep ${name}: touched within ${worktree_days} days (${recent#"${wt}"/})"
+            continue
+        fi
+        if lock_is_live "${gitdir}/worktrees/${name}/locked"; then
+            log "keep ${name}: locked by a live process"
+            continue
+        fi
+        untracked=$(scratch_files "${wt}" | tr -cd '\0' | wc -c)
+        if [ "${untracked}" -gt 0 ]; then
+            archive="${scratch}/$(basename "${repo}")-${name}-$(date +%Y%m%d%H%M%S).tar.gz"
+            run archive_scratch "${wt}" "${archive}" || {
+                log "keep ${name}: scratch archive failed"
+                continue
+            }
+        fi
+        size=$(du -sh "${wt}" 2> /dev/null | awk '{ print $1 }')
+        log "remove ${name}: merged into ${base}, ${size}, ${untracked} scratch files"
+        run git -C "${repo}" worktree remove --force --force "${wt}" || log "worktree remove failed for ${name}"
+        if [ "${apply}" -eq 1 ] && [ -d "${wt}" ]; then
+            rm -rf "${wt}"
+        fi
+    done <<< "${worktrees}"
+    run git -C "${repo}" worktree prune --expire "${worktree_days}.days.ago" || log "worktree prune failed for ${repo}"
+}
+
+report_df before
+docker_gc
+package_cache_gc
+[ -n "${repos}" ] || repos=$(discover_repos)
+IFS=: read -r -a repo_list <<< "${repos}"
+for repo in "${repo_list[@]}"; do
+    worktree_gc "${repo}"
+done
+run find "${scratch}" -name '*.tar.gz' -mtime "+${archive_days}" -delete
+report_df after

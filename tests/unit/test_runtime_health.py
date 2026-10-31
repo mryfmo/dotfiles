@@ -789,6 +789,7 @@ EOF
         (repo / "scripts/lib").mkdir()
         (repo / "scripts/lib/chezmoi-externals.sh").write_text(
             'prefetch_chezmoi_externals() { printf \'prefetch %s\\n\' "$*" >> "$TEST_LOG"; }\n'
+            'assert_chezmoi_externals_cached() { printf \'cache-check %s\\n\' "$*" >> "$TEST_LOG"; }\n'
         )
         self.link_real_jq(bin_dir)
         log = repo / "calls"
@@ -810,8 +811,9 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
         self.assertEqual("git pull --ff-only", calls[0])
-        # U96: the externals are fetched, retried and verified, before chezmoi apply reads them.
-        self.assertEqual(["prefetch chezmoi", "chezmoi apply --verbose"], calls[1:3])
+        # U96: the externals are fetched, retried and verified, and (U111) chezmoi proven to read them from its cache,
+        # before chezmoi apply reads them.
+        self.assertEqual(["prefetch chezmoi", "cache-check chezmoi", "chezmoi apply --verbose"], calls[1:4])
 
     def test_make_update_skips_dirty_main_with_manual_pull_notice(self) -> None:
         result, log = self.update_fixture(dirty=True)

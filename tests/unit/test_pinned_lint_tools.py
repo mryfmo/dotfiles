@@ -412,7 +412,11 @@ class PinnedLintToolsTest(unittest.TestCase):
             self.assertEqual(expected, mentions, tools)
         install = steps["Install tools"]["run"]
         self.assertIn("brew install bash bats-core gawk parallel\n", install)
-        self.assertIn("sudo apt-get install -y bats curl iproute2 parallel ruby\n", install)
+        self.assertIn(
+            "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+            " install -y bats curl iproute2 parallel ruby\n",
+            steps["Install apt packages"]["run"],
+        )
 
 
 BAD_SHELL = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
@@ -591,6 +595,7 @@ class LintFileSetTest(unittest.TestCase):
             # Recognised non-shell forms the repository uses: no word names bash or sh.
             "home/uv-tool": "#!/usr/bin/env -S uv run --no-cache --script\nprint( 'bad' )\n",
             "home/ruby-tool": "#!/usr/bin/env ruby\nputs( 'bad' )\n",
+            "home/python-tool": "#!/usr/bin/env -S python3 -I\nprint( 'bad' )\n",
             "home/locked/inner.sh": "#!/usr/bin/env bash\necho inner\n",
             "home/zsh-abs": bad.replace("/usr/bin/env bash", "/bin/zsh"),
             "home/zsh-env": bad.replace("bash", "zsh"),

@@ -476,8 +476,11 @@ main
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
         # The agmsg retire step left with herdr-agents (U72); since U96 the apply follows only the externals' verified
-        # fetch into chezmoi's cache, which changes no target.
-        prefetch = "\tbash -c 'source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi'\n"
+        # fetch into chezmoi's cache, which changes no target, and since U111 the check that chezmoi reads that cache.
+        prefetch = (
+            "\tbash -c 'source scripts/lib/chezmoi-externals.sh && prefetch_chezmoi_externals chezmoi"
+            " && assert_chezmoi_externals_cached chezmoi'\n"
+        )
         steps = [line for line in tree.splitlines(keepends=True) if not line.startswith("\t@#")]
         self.assertEqual([prefetch, "\tchezmoi apply --verbose\n"], steps[:2], tree[:300])
 

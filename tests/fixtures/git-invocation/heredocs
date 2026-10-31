@@ -1,0 +1,6 @@
+cat << 'EOF'
+git status
+EOF
+cat << EOF
+$(git status)
+EOF

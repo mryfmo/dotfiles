@@ -1,0 +1,9 @@
+[Unit]
+Description=Reclaim disk from Docker leftovers and merged git worktrees
+
+[Service]
+Type=oneshot
+ExecStart={{ .chezmoi.homeDir }}/.local/bin/common/disk-gc --apply
+Environment=PATH={{ .chezmoi.homeDir }}/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
+Nice=10
+IOSchedulingClass=idle

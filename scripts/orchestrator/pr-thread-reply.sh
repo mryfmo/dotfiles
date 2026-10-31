@@ -10,8 +10,9 @@
 #   `<pr>` and `<comment-id>` are decimal. The body file is a regular file (not a symlink) of 1 to 65536 bytes
 #   whose real path is inside `$TMPDIR` or the checkout's `.orchestration/` (the program's store), so no other
 #   file of the account can be posted. Its first line is a disposition of `preferences.md` standing order 22:
-#   `fixed: <40-hex sha>`, `refuted: <text citing a URL or a file:line>`, `residual: unit=U<n> gate=<clause>`
-#   or `residual: operator=<decisions.tsv ts>`; `pr-threads-check.sh` reads the same grammar. `<owner>/<repo>`
+#   `fixed: <40-hex sha>`, `refuted: <text citing a URL or a file:line>`, `residual: unit=U<n> gate=<clause>`,
+#   `residual: operator=<decisions.tsv ts>` or `filed: f=<n> s=<n> <reason>` (two decimal scores and a reason,
+#   regime-cutover U124); `pr-threads-check.sh` reads the same grammar and judges the values. `<owner>/<repo>`
 #   comes from `gh repo view --json nameWithOwner`, never from an argument. The comment must be a review comment
 #   of that pull request (`gh api repos/<owner>/<repo>/pulls/comments/<comment-id>`, its `pull_request_url`
 #   ends in `/pulls/<pr>`) and the first comment of its thread (no `in_reply_to_id`), since GitHub takes a reply
@@ -114,7 +115,8 @@ disposition_line() {
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=U[0-9]+[a-z]? gate=[^[:space:]]'
     local operator='^residual: operator=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
-    [[ $1 =~ ${fixed} || $1 =~ ${refuted} || $1 =~ ${unit} || $1 =~ ${operator} ]]
+    local filed='^filed: f=[0-9]+ s=[0-9]+ [^[:space:]]'
+    [[ $1 =~ ${fixed} || $1 =~ ${refuted} || $1 =~ ${unit} || $1 =~ ${operator} || $1 =~ ${filed} ]]
 }
 
 # @description Refuse unless $1 is a regular file of 1 to 65536 bytes inside $TMPDIR or <toplevel>/.orchestration.
@@ -153,7 +155,7 @@ toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git c
 body_file_check "$4"
 first=$(sed -n '1{s/\r$//;p;}' "${body_path}") || refuse "cannot read ${body_path}"
 disposition_line "${first}" ||
-    refuse "the first line is not a disposition (fixed: <sha> | refuted: <doc or file:line> | residual: unit=U<n> gate=<clause> | residual: operator=<ts>): ${first}"
+    refuse "the first line is not a disposition (fixed: <sha> | refuted: <doc or file:line> | residual: unit=U<n> gate=<clause> | residual: operator=<ts> | filed: f=<1..10> s=<1..10> <reason>): ${first}"
 
 repo=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'gh repo view failed'
 [[ ${repo} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "gh repo view printed no owner/repo: ${repo}"

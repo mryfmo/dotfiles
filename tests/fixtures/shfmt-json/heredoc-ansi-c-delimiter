@@ -1,0 +1,4 @@
+cat <<$'\x45OF'
+body
+EOF
+dir=$(cd "$(dirname "$0")" && pwd -P)

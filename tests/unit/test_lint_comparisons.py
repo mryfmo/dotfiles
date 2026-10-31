@@ -6,6 +6,8 @@ The lint runs as a subprocess (`python3 -I`), so nothing of it is imported here.
 """
 
 import hashlib
+import importlib.util
+import json
 import os
 import re
 import shutil
@@ -15,16 +17,36 @@ import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from scratch_git import git_init  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "scripts/lint-comparisons.py"
-# plan 024 5.14 item 2: env -i, a system git by its absolute path, an explicit -C, no system or global config
-GIT_ENV = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
-GIT_C = ("core.hooksPath=/dev/null", "core.fsmonitor=false", "protocol.allow=never", "protocol.https.allow=always")
-GIT_C += ("core.attributesFile=/dev/null", "core.sshCommand=false")
+# The contract every shell parse runs first (U105): the lint refuses unless the shfmt on PATH parses these fixtures
+# into the pinned node table; a fake shfmt answers each one's captured tree.
+CONTRACT_FIXTURES = {
+    ROOT / "tests/fixtures/shfmt-json/contract.sh": ROOT / "tests/fixtures/shfmt-json/contract.json",
+    ROOT / "tests/fixtures/shfmt-json/contract-backquotes": ROOT / "tests/fixtures/shfmt-json/contract-backquotes.json",
+}
+CONTRACT_ANSWERS = "".join(  # sh lines: after `input` holds a parse's stdin, answer a fixture its captured tree
+    f'[ "$input" = "$(/bin/cat "{fixture}")" ] && exec /bin/cat "{tree}"\n'
+    for fixture, tree in CONTRACT_FIXTURES.items()
+)
+CONTRACT_LOG = "".join(f"-ln bash --to-json\n{fixture.read_text()}" for fixture in CONTRACT_FIXTURES)
+LIBRARY = ROOT / "scripts/orchestrator/git-isolated.sh"  # the levers' isolated git, whose arrays are the lint's (U113)
+
+
+def isolated_arrays():
+    """(environment, arguments) of the levers' isolated git, as the sourced library itself holds them: the ground
+    truth the lint's own read of the library's syntax tree is compared with (U113)."""
+    script = f'. "{LIBRARY}" && printf "%s\\n" "${{GIT_ISOLATED_ENV[@]}}" --- "${{GIT_ISOLATED_ARGS[@]}}"'
+    lines = subprocess.run(["bash", "-c", script], check=True, capture_output=True, text=True).stdout.splitlines()
+    split = lines.index("---")
+    return dict(entry.split("=", 1) for entry in lines[:split]), lines[split + 1 :]
+
+
 SHELL_NORMALISERS = {
     "realpath": '[[ "$(realpath "$path")" == */x ]]\n',
     "pwd -P": '[[ "$(cd "$dir" && pwd -P)" == */x ]]\n',
@@ -387,14 +409,10 @@ class LintComparisonsTest(unittest.TestCase):
         )
 
     def test_the_changed_files_are_clean_against_the_baseline(self):
-        git = [
-            os.path.realpath(shutil.which("git", path=os.defpath)),
-            "-C",
-            str(ROOT),
-            *(x for c in GIT_C for x in ("-c", c)),
-        ]
+        env, flags = isolated_arrays()
+        git = [os.path.realpath(shutil.which("git", path=os.defpath)), *flags, "-C", str(ROOT)]
         diff = ("diff", "--name-only", "-z", "--no-ext-diff", "--no-textconv", "origin/main...HEAD")
-        out = subprocess.run([*git, *diff], env=GIT_ENV, check=True, capture_output=True, text=True).stdout
+        out = subprocess.run([*git, *diff], env=env, check=True, capture_output=True, text=True).stdout
         changed = set(filter(None, out.split("\0")))
         result = self.lint(cwd=ROOT)  # no mode flag: the lint computes the same changed set itself
         self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
@@ -405,6 +423,82 @@ class LintComparisonsTest(unittest.TestCase):
         ]
         self.assertEqual([], [m[1] or m[2] for m in named if m and (m[1] or m[2]) in changed])
 
+    def lint_tree(self, repo, library=None):
+        """The lint and what it reads, copied under REPO: the contract and its fixtures (U105), the shfmt pin, and the
+        isolated-git library (U113), the checkout's unless LIBRARY gives another text."""
+        for rel in (
+            "scripts/ci/shfmt_json_contract.py",
+            "scripts/ci/pinned-tool-version.sh",
+            "home/dot_mise/config.toml",
+        ):
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / rel, repo / rel)
+        shutil.copy(LINT, repo / "scripts/lint-comparisons.py")
+        (repo / "tests/fixtures/shfmt-json").mkdir(parents=True)
+        for fixture in CONTRACT_FIXTURES:
+            shutil.copy(fixture, repo / "tests/fixtures/shfmt-json" / fixture.name)
+        (repo / "scripts/orchestrator").mkdir()
+        text = LIBRARY.read_text() if library is None else library
+        (repo / "scripts/orchestrator/git-isolated.sh").write_text(text)
+
+    def test_the_lint_s_git_runs_with_exactly_the_library_s_arrays(self):
+        """U113: the lint's git carries the library's environment and flags, read as data from its syntax tree. The
+        lint takes git from os.defpath, never from PATH, so the recording fake is put on a scratch defpath; the lint is
+        imported for that one patch, the rest of this module runs it as a subprocess."""
+        spec = importlib.util.spec_from_file_location("lint_comparisons", LINT)
+        lint = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lint)
+        defpath = self.temp / "defpath"
+        defpath.mkdir()
+        record = self.temp / "git-call.json"
+        fake = defpath / "git"
+        fake.write_text(
+            f"#!{sys.executable}\nimport json, os, sys\n"
+            f'json.dump({{"argv": sys.argv[1:], "env": dict(os.environ)}}, open({str(record)!r}, "w"))\n'
+        )
+        fake.chmod(0o755)
+        with mock.patch.object(os, "defpath", str(defpath)):
+            self.assertEqual([], list(lint.git("ls-files", "-z")))
+        call = json.loads(record.read_text())
+        env, flags = isolated_arrays()
+        self.assertEqual([*flags, "-C", str(ROOT), "ls-files", "-z"], call["argv"])
+        self.assertEqual(env, {name: value for name, value in call["env"].items() if name.startswith("GIT_")})
+        self.assertNotIn("PATH", call["env"], "the lint's git runs under the library's environment alone")
+        self.assertNotIn("HOME", call["env"])
+
+    def test_a_library_the_lint_cannot_read_as_two_arrays_of_literals_is_a_refusal(self):
+        """U113: an absent library, a missing or empty array, an array inside a function (not top-level), an element
+        that is an expansion or a quoted word, and an environment entry without a value each exit 2 naming the
+        library, with no finding and no run under fewer flags."""
+        env, flags = isolated_arrays()
+        env_line = "GIT_ISOLATED_ENV=(" + " ".join(f"{name}={value}" for name, value in env.items()) + ")"
+        args_line = "GIT_ISOLATED_ARGS=(" + " ".join(flags) + ")"
+
+        def library(first, second):
+            return f"#!/usr/bin/env bash\n{first}\n{second}\n"
+
+        cases = {
+            "no library": None,
+            "no arguments array": library(env_line, "OTHER_ARGS=(--no-replace-objects)"),
+            "an empty environment array": library("GIT_ISOLATED_ENV=()", args_line),
+            "the arrays inside a function": f"f() {{\n    {env_line}\n    {args_line}\n}}\n",
+            "an expansion among the elements": library(env_line, 'GIT_ISOLATED_ARGS=(-c "gc.auto=${level}")'),
+            "a quoted element": library(env_line, "GIT_ISOLATED_ARGS=('--no-replace-objects')"),
+            "an environment entry without a value": library("GIT_ISOLATED_ENV=(GIT_CONFIG_NOSYSTEM)", args_line),
+        }
+        for case, text in cases.items():
+            with self.subTest(case=case):
+                repo = self.temp / case.replace(" ", "-")
+                self.lint_tree(repo, text or "")
+                if text is None:
+                    (repo / "scripts/orchestrator/git-isolated.sh").unlink()
+                (repo / "scripts/x.sh").write_text("echo\n")
+                run = [sys.executable, "-I", str(repo / "scripts/lint-comparisons.py")]
+                result = subprocess.run(run, check=False, capture_output=True, text=True)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("", result.stdout)
+                self.assertIn("lint-comparisons: scripts/orchestrator/git-isolated.sh", result.stderr)
+
     def test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails(self):
         # the review's P2: the CI entry point's own changed set, in a repository with a real origin/main
         repo, (_, refused, _) = self.temp / "repo", TABLE["R1"]
@@ -414,10 +508,7 @@ class LintComparisonsTest(unittest.TestCase):
         def git(*args):
             subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false", *args], check=True, env=env)
 
-        (repo / "scripts").mkdir(parents=True)
-        shutil.copy(LINT, repo / "scripts/lint-comparisons.py")
-        (repo / "home/dot_mise").mkdir(parents=True)  # the shfmt pin the lint checks PATH's shfmt against
-        shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
+        self.lint_tree(repo)
         row = hashlib.sha256(refused.strip().encode()).hexdigest()
         (repo / "scripts/lint-comparisons-baseline.tsv").write_text(f"scripts/old.sh\tR1\t{row}\n")
         for name, text in (("main.sh", "true\n"), ("old.sh", refused)):
@@ -585,20 +676,27 @@ class LintComparisonsTest(unittest.TestCase):
         for answer in ("not-json", "{}", "null", '{"Type": "Word"}'):
             with self.subTest(answer=answer):
                 version = f'[ "$1" = --version ] && {{ echo v{self.shfmt_pin()}; exit 0; }}\n'
-                fake.write_text(f"#!/bin/sh\n{version}echo '{answer}'\n")
+                fake.write_text(f"#!/bin/sh\n{version}input=$(/bin/cat)\n{CONTRACT_ANSWERS}echo '{answer}'\n")
                 fake.chmod(0o755)
                 result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn("ok.sh: shfmt gave no JSON AST", result.stderr)
 
     def fake_shfmt(self, version: str) -> Path:
-        """A shfmt on an otherwise empty PATH that logs argv and input, reports `version`, and answers a file node."""
+        """A shfmt on an otherwise empty PATH (bash and awk beside it, for the pin check the contract runs) that logs
+        argv and input, reports `version`, answers each contract fixture its captured tree and any other parse the
+        first fixture's."""
         fake = self.temp / "path-only/shfmt"
         fake.parent.mkdir(exist_ok=True)
+        for tool in ("bash", "awk"):
+            if not (fake.parent / tool).exists():
+                (fake.parent / tool).symlink_to(shutil.which(tool))
+        tree = next(iter(CONTRACT_FIXTURES.values()))
         fake.write_text(
             '#!/bin/sh\necho "$*" >> "$0.log"\n'
             f'[ "$1" = --version ] && {{ echo v{version}; exit 0; }}\n'
-            '/bin/cat >> "$0.log"\necho \'{"Type": "File"}\'\n'
+            '/bin/cat > "$0.input"\n/bin/cat "$0.input" >> "$0.log"\ninput=$(/bin/cat "$0.input")\n'
+            f'{CONTRACT_ANSWERS}/bin/cat "{tree}"\n'
         )
         fake.chmod(0o755)
         return fake
@@ -617,7 +715,8 @@ class LintComparisonsTest(unittest.TestCase):
         )
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
         blanked = f'(\n:{" " * 16}\n)\n:{" " * 24}\necho "{" " * 8}"\n'  # an include alone is `:`
-        log = f"--version\n-ln bash --tojson\n{blanked}-ln zsh --tojson\necho\n-ln zsh --tojson\n#!/bin/zsh\necho\n"
+        contract = f"--version\n{CONTRACT_LOG}"  # the pin check and the fixtures, parsed before the first file
+        log = f"--version\n{contract}-ln bash --tojson\n{blanked}-ln zsh --tojson\necho\n-ln zsh --tojson\n#!/bin/zsh\necho\n"
         self.assertEqual(log, Path(f"{fake}.log").read_text())
 
     def test_a_shfmt_that_is_not_the_pin_is_refused_naming_both(self):  # U97: one shfmt version, no fallback

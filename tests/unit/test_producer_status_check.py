@@ -63,9 +63,10 @@ unknown word where bash evaluates arithmetic, and ACCEPTED_WRITES holds the exac
 `test_every_name_the_lint_compares_against_is_a_guarded_name` keeps the set from drifting, and round 20 matches a
 guarded name in the concatenation of a word's literal parts (`printf -v PA"TH" x` had passed) and reads every
 arithmetic operand that is not digits and operators alone as a write (`y=$1; (( y, 1 ))` had passed: bash evaluates
-a name there recursively), accepted only by the exact statement texts of ACCEPTED_ARITHMETIC (59 rows: eight of them
-that gate's, five the pr-audit.sh round cap's, U120 round 4, and two the `filed:` disposition's of
-pr-threads-check.sh, U124, whose scores are bounded by a regex before the arithmetic).
+a name there recursively), accepted only by the exact statement texts of ACCEPTED_ARITHMETIC (62 rows: eleven of them
+that gate's, three of those its weight product and threshold tests, U125, five the pr-audit.sh round cap's, U120
+round 4, and two the `filed:` disposition's of pr-threads-check.sh, U124, whose scores are bounded by a regex before
+the arithmetic).
 """
 
 from __future__ import annotations
@@ -2351,7 +2352,7 @@ class ProducerStatusCheckTest(unittest.TestCase):
             self.assertTrue(text and reason, text)
         arithmetic = namespace["ACCEPTED_ARITHMETIC"]
         assert isinstance(arithmetic, tuple)
-        self.assertEqual(59, len(arithmetic))
+        self.assertEqual(62, len(arithmetic))
         for files, text, reason in arithmetic:
             self.assertLessEqual(set(files), adopted | {CHECK.name}, text)
             self.assertTrue(text and reason, text)

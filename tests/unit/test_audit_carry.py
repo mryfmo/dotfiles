@@ -933,9 +933,11 @@ class AuditCarryTest(unittest.TestCase):
         run = cli("verdict", "7", b)
         self.assertEqual(run.stdout, f"2026-10-30T02:00:00Z\tU7\tcarried\tcarried {a} {b} {'f' * 64}\n", run.stderr)
         self.assertEqual(cli("verdict", "7", "f" * 40).stdout, "none\n")
-        self.assertEqual(cli("carry-source", "U7", a, "--pr", "7").stdout, f"{c}\tcorrect\n")
-        self.assertEqual(cli("carry-source", "U7", a).stdout, f"{e}\tcorrect\n")
-        self.assertEqual(cli("carry-source", "U7", b, "--pr", "7").stdout, f"{a}\tincorrect (round 2)\n")
+        # carry-source prints the source row's unit as its third column (U125 round b, the U122 round 6 residual): the
+        # row at c that wins by line order is U7's, the fix unit's row at the same ts being the earlier line
+        self.assertEqual(cli("carry-source", "U7", a, "--pr", "7").stdout, f"{c}\tcorrect\tU7\n")
+        self.assertEqual(cli("carry-source", "U7", a).stdout, f"{e}\tcorrect\tU7\n")
+        self.assertEqual(cli("carry-source", "U7", b, "--pr", "7").stdout, f"{a}\tincorrect (round 2)\tU7\n")
         self.assertEqual(cli("carry-source", "U8", d, "--pr", "7").stdout, "none\n")
         for args in (("verdict", "x", a), ("verdict", "7", a[:8]), ("carry-source", "U7b", a), ("verdict", "7")):
             with self.subTest(args=args):

@@ -403,7 +403,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "78acaeb9c3533dc96789b32f923570d3f906710d337de4caddead0418a9e8951"
+      "sha256": "705dbd64221feda5b983febe4ba5691bc9db994a3b0d4f71c1f8781c9fe2c545"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",

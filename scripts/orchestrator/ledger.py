@@ -27,8 +27,10 @@ head, an audit row being one whose verdict starts with the word `correct` or `in
 itself. An audit row whose `head_sha` is not 40 hex is Malformed.
 
 `ledger.py <store> verdict <pr> <head>` prints `<ts>\\t<unit>\\t<verdict>\\t<evidence>` of the newest row for the head,
-or `none`; `ledger.py <store> carry-source <unit> <head> [--pr <pr>]` prints `<head_sha>\\t<verdict>` of the newest
-audit row at another head, or `none`. Both exit 2 with one stderr line naming the file and line when the store cannot
+or `none`; `ledger.py <store> carry-source <unit> <head> [--pr <pr>]` prints `<head_sha>\\t<verdict>\\t<unit>` of the
+newest audit row at another head (its unit the row's own, a `U<n>b` fix unit's row under `U<n>b`, which names its
+verdict file and disposition rows; U125 for the U122 round 6 residual), or `none`. Both exit 2 with one stderr line
+naming the file and line when the store cannot
 be read as data (standing order 21: a failed read is never "no row").
 """
 
@@ -174,7 +176,7 @@ def main(argv=None):
     verdict.add_argument("pr", help="the pull request's decimal number")
     verdict.add_argument("head", help="the head, 40 hex")
     source = forms.add_parser(
-        "carry-source", help="the newest audit row at another head: <head_sha>\\t<verdict>, or none"
+        "carry-source", help="the newest audit row at another head: <head_sha>\\t<verdict>\\t<unit>, or none"
     )
     source.add_argument("unit", help="the body's unit, U<n>; its fix units U<n>[a-z] count with it")
     source.add_argument("head", help="the current head, 40 hex")
@@ -199,7 +201,7 @@ def main(argv=None):
             print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verdict, row.evidence)))
         else:
             row = ledger.newest_audit_at_another_head(args.unit, args.head, args.pr)
-            print(NONE if row is None else "\t".join((row.head_sha, row.verdict)))
+            print(NONE if row is None else "\t".join((row.head_sha, row.verdict, row.unit)))
     except Malformed as error:
         print(f"ledger: {error}", file=sys.stderr)
         return 2

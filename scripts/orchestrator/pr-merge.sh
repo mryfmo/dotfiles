@@ -30,22 +30,30 @@
 #   are this head's. That sha is always the current head: there is no silent carry-over (U71 audit round 10), so a
 #   head that `pr-update-branch.sh` moved gets a fresh audit or a `carried` row the coordinator wrote from the digest
 #   lever's output. The row alone is not enough (U119 round 2, Codex thread 4419039271): since standing order 35 a
-#   `correct` verdict may carry P2 and P3 findings, so the lever also opens the store's `verdicts/<unit>-<sha8>.md` of
+#   `correct` verdict may carry P2 and P3 findings, and since U125 filed ones of any priority, so the lever also opens
+#   the store's `verdicts/<unit>-<sha8>.md` of
 #   the audited head, `<unit>` the ledger row's `unit` column (round 2: the body's unit or a `U<n>b` fix unit of it,
 #   standing order 24; a `U71b` row's verdict is `U71b-<sha8>.md`, and a row of any other unit is refused) (absent,
 #   a symlink or unreadable is a refusal: a merge needs the verdict file, not only the row)
 #   and parses its leading `## Findings` section, from the first `## Findings` line to the next `## ` heading (a later
 #   `## Findings` line, in the Notes or a rationale, is text; U119 round 4), the lines pr-audit.sh's reader writes
-#   (`- P<n> (<confidence>) <path>:<line>: <rationale>`, the path the text before the line's last `:<line>: `, which
-#   holds no colon and no whitespace, or `- none`). That file is the `verdict.md` of `pr-audit.sh`, the audit route
+#   since U125 (`- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>`: the frequency and severity scores,
+#   each one of 1 to 10, read by value and never second-guessed, then the path, the text before the line's last
+#   `:<line>: `, which holds no colon and no whitespace, or `- none`; a line without the `[f<n> s<n>]` token is refused
+#   naming it, since this reader always writes it and a verdict of the unscored reader belongs to a merged unit, never
+#   to a merge head). That file is the `verdict.md` of `pr-audit.sh`, the audit route
 #   (`hcom-orchestration` SKILL step 4, U119 round 3), copied into the store; a verdict of the retired omp-run.sh
 #   audit route has no `## Findings` heading, is refused by name, and belongs to a merged unit, never to a merge
-#   head. Every P2 or P3 line needs a row of the store's `dispositions.tsv` (header `ts unit head_sha priority path
-#   line disposition reference`) with the same unit, full head sha, priority, path and line (the finding's whole
-#   identity, the key `audit-carry.py` joins by as well; U122 round 3) whose `disposition` is `residual`
-#   and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later head that
-#   fixed the finding and never satisfies the gate for the head it judges. The first finding without such a row is
-#   named in the refusal. A P0 or P1 line under a `correct` row, a `## Findings` line of another shape or whose path
+#   head. A finding's weight is its frequency times its severity, and WEIGHT_THRESHOLD (10, the number of the
+#   AGENTS.md verdict bullet and of the reader) decides what the gate asks of each line (U125): a line of any priority
+#   with weight under the threshold is filed, reported in the verdict and the code left as it is, so it needs no
+#   row; every P2 or P3 line at or above it needs a row of the store's `dispositions.tsv` (header `ts unit head_sha
+#   priority path line disposition reference`) with the same unit, full head sha, priority, path and line (the
+#   finding's whole identity, the key `audit-carry.py` joins by as well; U122 round 3) whose `disposition` is
+#   `residual` and whose reference `unit=U<n> gate=<clause>` names a `units.tsv` row; a `fixed` row names the later
+#   head that fixed the finding and never satisfies the gate for the head it judges. The first finding without such a
+#   row is named in the refusal. A P0 or P1 line at or above the threshold under a `correct` row, a `## Findings`
+#   line of another shape or without its scores, a score outside 1 to 10, a line whose path
 #   holds a colon or whitespace (its path and line cannot be told from its rationale), a verdict file whose last
 #   line is not `Verdict: correct`, and a `dispositions.tsv` or `units.tsv` row whose column count is not its
 #   header's or whose required column is empty are refusals naming the line (standing order 21); the rows are split
@@ -77,7 +85,8 @@
 #   header or column count, an empty required cell), no python3 or no `scripts/orchestrator/ledger.py` in the
 #   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
 #   for this head or whose earlier head has no `correct`
-#   row, no verdict file for the audited head, a P2 or P3 finding of it without its `residual` disposition row, a
+#   row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more without its `residual`
+#   disposition row, a
 #   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
 #   checkout, or CI that is not green on the head.
 # @example
@@ -167,19 +176,29 @@ dispositions_header=$'ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\tref
 units_header=$'id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote'
 # The body's program marker, the grammar regime-ci.py and pr-body-edit.sh read; the unit names the verdict file.
 program_unit_re='^Program-Unit: ([a-z0-9][a-z0-9_-]{0,63})/(U[0-9]+)$'
-# A `## Findings` list line as pr-audit.sh's reader writes it, `- P<n> (<confidence>) <path>:<line>: <rationale>`,
-# read from its structure (U119 round 4, audit of dc08660f): the path is everything from `) ` to the last `:<digits>: `
-# of the line (POSIX gives the first subexpression the longest text the whole match allows), the line those digits.
+# A finding's weight is its frequency times its severity, each 1 to 10 as pr-audit.sh's schema bounds them. A P0 or
+# P1 line at or above this threshold blocks a merge under a `correct` row; a line of any priority under it is filed,
+# reported in the verdict with the code left as it is, and needs no dispositions.tsv row (regime-cutover U125). The
+# number is the one of the AGENTS.md verdict bullet and of the reader's WEIGHT_THRESHOLD, named once here.
+WEIGHT_THRESHOLD=10
+# A `## Findings` list line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>]
+# <path>:<line>: <rationale>`, read from its structure (U119 round 4, audit of dc08660f): the two scores are the
+# text between `[f` and ` s` and between ` s` and the first `]`, each read by value as one of the strings 1 to 10
+# (score_re; `0`, `11`, `x` or `05` is a malformed line, never a weight); the path is everything from `] ` to the
+# last `:<digits>: ` of the line (POSIX gives the first subexpression the longest text the whole match allows), the
+# line those digits. A line without the `[f<n> s<n>]` token is refused naming the line: this branch's reader always
+# writes it, and a verdict of the unscored reader belongs to a merged unit, never to a merge head.
 # A path the gate accepts holds no colon and no whitespace (path_re), so a line whose path, read that way, holds
 # either (the reader wrote a path with a colon or a space, or the rationale holds a `:<digits>: `) is refused naming
 # the line, never read as a shorter path and an earlier line that another location's row could satisfy.
-finding_re='^- (P[0-3]) \((high|medium|low)\) (.+):([1-9][0-9]*): '
+finding_re='^- (P[0-3]) \((high|medium|low)\) \[f([^]]*) s([^]]*)\] (.+):([1-9][0-9]*): '
+score_re='^(10|[1-9])$'
 path_re='^[^[:space:]:]+$'
 # The grammar of the leading `## Findings` section, stated once here and once in audit-carry.py (FINDINGS_GRAMMAR),
-# which reads the same files: one `- none` line, or one or more finding_re lines whose path matches path_re; an empty
-# section, `- none` beside a finding line, or `- none` twice is a malformed verdict (round 2). The two readers are
-# run over one fixture set by tests.unit.test_pr_levers.
-findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) <path>:<line>: <rationale>' with a path free of colons and whitespace"
+# which reads the same files: one `- none` line, or one or more finding_re lines whose scores match score_re and
+# whose path matches path_re; an empty section, `- none` beside a finding line, or `- none` twice is a malformed
+# verdict (round 2). The two readers are run over one fixture set by tests.unit.test_pr_levers.
+findings_grammar="the leading '## Findings' section is one '- none' line, or one or more lines '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' with scores 1 to 10 and a path free of colons and whitespace"
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -364,7 +383,7 @@ pending_fields() {
 # @arg $2 string The unit of that ledger row, which names the verdict file and the disposition rows (round 2).
 require_dispositions() {
     local head=$1 row_unit=$2 verdicts_dir verdict_file dispositions text line section=0 seen=0 last='' n=1 satisfied status
-    local findings=() pending=() rows=() cols=() entry priority path lineno why residual_unit none_seen='' listed=''
+    local findings=() pending=() rows=() cols=() entry priority frequency severity weight path lineno why residual_unit none_seen='' listed=''
     local units_rows='' units_read=''
     verdicts_dir=${store}/verdicts
     [[ ! -L ${verdicts_dir} && -d ${verdicts_dir} && -O ${verdicts_dir} ]] ||
@@ -392,7 +411,7 @@ require_dispositions() {
         findings+=("${line}")
     done <<< "${text}"
     ((seen == 1)) ||
-        refuse "${verdict_file} has no '## Findings' section; the gate reads the verdict.md pr-audit.sh writes (a '## Findings' list of '- P<n> (<confidence>) <path>:<line>: <rationale>' or '- none', then 'Blocking: <n>' and the last line 'Verdict: <value>'); a verdict of the retired omp-run.sh audit route has no such section and no merge head has one"
+        refuse "${verdict_file} has no '## Findings' section; the gate reads the verdict.md pr-audit.sh writes (a '## Findings' list of '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' or '- none', then 'Blocking: <n>', 'Filed: <n>' and the last line 'Verdict: <value>'); a verdict of the retired omp-run.sh audit route has no such section and no merge head has one"
     [[ ${last} == 'Verdict: correct' ]] ||
         refuse "the last line of ${verdict_file} is not 'Verdict: correct' although the ledger row for ${head} is: ${last}"
     ((${#findings[@]} > 0)) || refuse "${verdict_file}: the Findings section lists nothing; ${findings_grammar}"
@@ -404,13 +423,24 @@ require_dispositions() {
         fi
         listed=1
         [[ ${entry} =~ ${finding_re} ]] ||
-            refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': ${entry}"
-        priority=${BASH_REMATCH[1]} path=${BASH_REMATCH[3]} lineno=${BASH_REMATCH[4]}
+            refuse "${verdict_file}: a Findings line is not '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>' (the reader writes the frequency and severity scores since U125; a line without them is the unscored reader's, whose verdicts belong to merged units, never to a merge head): ${entry}"
+        priority=${BASH_REMATCH[1]} frequency=${BASH_REMATCH[3]} severity=${BASH_REMATCH[4]} path=${BASH_REMATCH[5]} lineno=${BASH_REMATCH[6]}
+        [[ ${frequency} =~ ${score_re} ]] ||
+            refuse "${verdict_file}: a Findings line's frequency score 'f${frequency}' is not one of 1 to 10, so its weight cannot be read: ${entry}"
+        [[ ${severity} =~ ${score_re} ]] ||
+            refuse "${verdict_file}: a Findings line's severity score 's${severity}' is not one of 1 to 10, so its weight cannot be read: ${entry}"
         [[ ${path} =~ ${path_re} ]] || # lint-comparisons: allow the path is the text the reader wrote, judged by its characters, never resolved
             refuse "${verdict_file}: a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace, so its path and line cannot be told from its rationale: ${entry}"
+        # Both scores matched score_re, so the product is arithmetic on two small decimals the gate itself read.
+        weight=$((frequency * severity))
         case ${priority} in
-        P0 | P1) refuse "${verdict_file} lists ${priority} at ${path}:${lineno} under a correct ledger row; a P0 or P1 blocks (standing order 35), so the row or the file is wrong" ;;
+        P0 | P1)
+            ((weight < WEIGHT_THRESHOLD)) ||
+                refuse "${verdict_file} lists ${priority} at ${path}:${lineno} under a correct ledger row with weight ${weight} (f${frequency} s${severity}); a P0 or P1 of weight ${WEIGHT_THRESHOLD} or more blocks (standing order 35, the AGENTS.md Audit rule), so the row or the file is wrong"
+            ;;
         esac
+        # Under the threshold the finding is filed (U125): reported, the code left as it is, no disposition row asked.
+        ((weight >= WEIGHT_THRESHOLD)) || continue
         pending+=("${priority}"$'\t'"${path}"$'\t'"${lineno}")
     done
     [[ -z ${none_seen} || -z ${listed} ]] || refuse "${verdict_file}: the Findings section lists '- none' beside a finding line; ${findings_grammar}"

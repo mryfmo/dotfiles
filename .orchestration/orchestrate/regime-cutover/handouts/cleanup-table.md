@@ -24,6 +24,8 @@ Inventory taken 2026-10-23T21:58:15Z from `gh pr list --state open` and `git wor
 | #440 | `tools/task-generator-plan-check-a05-checker` | 2026-10-20 | 449 | fix(orchestrator): enforce checker contracts and preserve dispatch compatibility | close: superseded by the cutover (agmsg-regime tooling) |
 | #456 | `tools/gh-binding-a02` | 2026-10-22 | 16 | fix(orchestration): bind gh and isolate feedback descendants | close: superseded by the cutover (agmsg-regime tooling) |
 | #457 | `tools/install-ppa-resilience-a02` | 2026-10-22 | 7 | fix(install): an unreachable Ghostty PPA never fails the apply, attributed by command scope (T133 install-ppa-resilience a02) | close: superseded by the cutover (agmsg-regime tooling) |
+| #606 | `records/sync-16` | 2026-10-31 | 20 | chore(records): regime-cutover sync 16 | close: superseded by records sync 17: the regime check refused the store at U126 (three correct audit rows reached the round cap; the mechanism-change row of 2026-10-31T04:51:47Z fixes it) |
+| #607 | `records/sync-17` | 2026-10-31 | 21 | chore(records): regime-cutover sync 17 | close: superseded by records sync 18: the records lever's masker (U107) crossed two tabs in ledger row 207 so the copy had 5 columns and the regime check refused it; U107b bounds the masked value to its field |
 
 ## Worktrees
 

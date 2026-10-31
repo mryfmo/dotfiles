@@ -4317,6 +4317,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../ci/npm-cooldown-skew-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/npm-cooldown-skew-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../ci/pinned-tool-version/" class="md-nav__link">
         
   
@@ -4576,6 +4604,34 @@
     
   
     scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lib/npm-release-age/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/npm-release-age.sh
   
 
     
@@ -5348,7 +5404,6 @@
 <li><code>manifest_wheel_pin</code></li>
 <li><code>mise_tool_is_held</code></li>
 <li><code>npm_rebuild_skipped</code></li>
-<li><code>npm_release_age_verdict</code></li>
 <li><code>parse_args</code></li>
 <li><code>rebuild_mise_npm_tool</code></li>
 <li><code>reinstall_mise_npm_tools</code></li>
@@ -5394,6 +5449,8 @@
 <span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
 <span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/lib/ci-runner.sh"</span>
+<span class="c1"># shellcheck source=scripts/lib/npm-release-age.sh</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/lib/npm-release-age.sh"</span>
 <span class="c1"># chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME</span>
 <span class="c1"># says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git</span>
 <span class="c1"># config's XDG_CONFIG_HOME below cannot redirect it.</span>
@@ -5691,101 +5748,6 @@
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_tools</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Decide whether npm's own release-age window (min-release-age, ~/.npmrc) lets npm install one exact</span>
-<span class="c1">#   version again, from the window npm reports and the version's publish time in the registry. The rebuild of an</span>
-<span class="c1">#   installed version asks this first, so a version younger than the window is skipped before its install is moved,</span>
-<span class="c1">#   instead of failing in npm (ETARGET) after it. Every read is strict: an answer that is not exactly what npm prints</span>
-<span class="c1">#   is "cannot tell", never "old enough". The publish time is compared at its full precision (fractional seconds to</span>
-<span class="c1">#   the microsecond), and a version counts as old enough only from 60 seconds after the window ends, so a clock that</span>
-<span class="c1">#   differs from npm's by less than that never lets the rebuild move an install npm then refuses.</span>
-<span class="c1"># @arg $1 string The version mise reports as installed: one SemVer 2.0.0 version without build metadata.</span>
-<span class="c1"># @arg $2 string `npm config get min-release-age` output: a number of days, or `null` when npm sets no window.</span>
-<span class="c1"># @arg $3 number Optional: the current time in Unix seconds, for a frozen clock; the system clock when absent.</span>
-<span class="c1"># @stdin `npm view --json &lt;package&gt; time`: the registry's map of version to publish time.</span>
-<span class="c1"># @stdout The reason, when the version is not old enough or the answer cannot be told.</span>
-<span class="c1"># @exitcode 0 The version is at least min-release-age days and 60 seconds old, or npm sets no window.</span>
-<span class="c1"># @exitcode 1 The version is younger than that.</span>
-<span class="c1"># @exitcode 2 The version, the window, the publish time or the given time cannot be read.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>npm_release_age_verdict<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># The program is read into a variable, so stdin stays npm view's answer; read -d '' ends with status 1 at the end</span>
-<span class="w">    </span><span class="c1"># of the here-document by design, so an empty program is the failure checked. (A here-document inside $(...)</span>
-<span class="w">    </span><span class="c1"># breaks bash 3.2, the /bin/bash of macOS.)</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">code</span><span class="o">=</span><span class="s2">""</span>
-<span class="w">    </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>code<span class="w"> </span><span class="s">&lt;&lt; 'PY' || [ -n "${code}" ] || return 2</span>
-<span class="s">import datetime</span>
-<span class="s">import json</span>
-<span class="s">import re</span>
-<span class="s">import sys</span>
-
-<span class="s">version, age, *clock = sys.argv[1:]</span>
-<span class="s"># Past the end of npm's window by this much before a version counts as old enough: clocks differ.</span>
-<span class="s">MARGIN = datetime.timedelta(seconds=60)</span>
-<span class="s"># The SemVer 2.0.0 regular expression, verbatim from https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string</span>
-<span class="s"># (ASCII digits only; fullmatch, so no trailing newline). npm reads anything else, such as 20.0.0-a..b, as a tag.</span>
-<span class="s">SEMVER = re.compile(</span>
-<span class="s">    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"</span>
-<span class="s">    r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"</span>
-<span class="s">    r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$",</span>
-<span class="s">    re.ASCII,</span>
-<span class="s">)</span>
-<span class="s"># The registry's publish times, as npm view prints them: UTC with optional fractional seconds.</span>
-<span class="s">PUBLISHED = re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z", re.ASCII)</span>
-
-
-<span class="s">def cannot_tell(reason):</span>
-<span class="s">    print(reason)</span>
-<span class="s">    sys.exit(2)</span>
-
-
-<span class="s">def microseconds(fraction):</span>
-<span class="s">    """A decimal fraction of a second in whole microseconds, rounded up, so a time is never read as earlier."""</span>
-<span class="s">    nanoseconds = int((fraction or "").ljust(9, "0"))</span>
-<span class="s">    return -(-nanoseconds // 1000)</span>
-
-
-<span class="s">exact = SEMVER.fullmatch(version)</span>
-<span class="s"># npm drops build metadata, so 1.2.3+build would fetch 1.2.3, not the string mise reports.</span>
-<span class="s">if exact is None or exact.group(5) is not None:</span>
-<span class="s">    cannot_tell(f"mise reports {version!r}, not one exact version")</span>
-<span class="s"># timezone.utc, not datetime.UTC: macOS's /usr/bin/python3 is 3.9.</span>
-<span class="s">epoch = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)</span>
-<span class="s">if not clock:</span>
-<span class="s">    now = datetime.datetime.now(datetime.timezone.utc)</span>
-<span class="s">elif len(clock) == 1 and (given := re.fullmatch(r"(0|[1-9]\d{0,11})(?:\.(\d{1,6}))?", clock[0], re.ASCII)):</span>
-<span class="s">    now = epoch + datetime.timedelta(seconds=int(given[1]), microseconds=microseconds(given[2]))</span>
-<span class="s">else:</span>
-<span class="s">    cannot_tell(f"the given time {clock!r} is not one number of Unix seconds")</span>
-<span class="s">if age == "null":</span>
-<span class="s">    sys.exit(0)</span>
-<span class="s">if not re.fullmatch(r"(?:0|[1-9]\d{0,5})(?:\.\d{1,6})?", age, re.ASCII):</span>
-<span class="s">    cannot_tell(f"npm config get min-release-age printed {age!r}, not a number of days")</span>
-<span class="s">try:</span>
-<span class="s">    times = json.load(sys.stdin)</span>
-<span class="s">except ValueError:</span>
-<span class="s">    cannot_tell("npm view printed no JSON publish times")</span>
-<span class="s">published = times.get(version) if isinstance(times, dict) else None</span>
-<span class="s">match = PUBLISHED.fullmatch(published) if isinstance(published, str) else None</span>
-<span class="s">if match is None:</span>
-<span class="s">    cannot_tell(f"npm view lists no publish time for {version}")</span>
-<span class="s">try:</span>
-<span class="s">    when = datetime.datetime(*map(int, match.groups()[:6]), tzinfo=datetime.timezone.utc)</span>
-<span class="s">except ValueError:</span>
-<span class="s">    cannot_tell(f"npm view lists {published!r} for {version}, not a date")</span>
-<span class="s"># Full precision: 2026-10-23T21:20:46.540Z is 540 ms later than 21:20:46, and npm compares the whole value.</span>
-<span class="s">when += datetime.timedelta(microseconds=microseconds(match[7]))</span>
-<span class="s">clears = when + datetime.timedelta(days=float(age)) + MARGIN</span>
-<span class="s">if now &lt; clears:</span>
-<span class="s">    print(</span>
-<span class="s">        f"{version} was published {when:%Y-%m-%dT%H:%M:%S.%fZ}, younger than npm's min-release-age of {age} days"</span>
-<span class="s">        f" and a 60-second margin; it can be rebuilt from {clears:%Y-%m-%dT%H:%M:%S.%fZ}"</span>
-<span class="s">    )</span>
-<span class="s">    sys.exit(1)</span>
-<span class="s">PY</span>
-<span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

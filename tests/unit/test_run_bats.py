@@ -5,7 +5,9 @@ home/dot_mise/config.toml pin) printed for two-tests.bats on 2026-10-31; it pins
 <name> in <ms>ms`, the duration after the name and before any ` # skip <reason>` directive, and the wrapper's RESULT
 pattern is held to it. The wrapper runs here with a fake `bats` first on PATH (a script that cats the fixture, or
 prints a stream of the case's own), the summary file is a scratch file, and the case kills what its fake left
-running: the wrapper signals nothing.
+running: the wrapper signals nothing. A fake that stalls records its pid and `exec`s its sleep, so the recorded pid is
+the sleeping process (a sleep run as the shell's child would outlive a kill of the shell), and its argv[0] is the
+case's marker, so `ps` can name it.
 """
 
 from __future__ import annotations
@@ -13,12 +15,14 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
+import secrets
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import tomllib
 import unittest
 from pathlib import Path
@@ -91,6 +95,7 @@ class WrapperTest(unittest.TestCase):
         (self.temp / "bin/python3").symlink_to(sys.executable)
         self.pids = self.temp / "pids"
         self.summary = self.temp / "summary.md"
+        self.marker = f"stalled-bats-{secrets.token_hex(6)}"
         self.addCleanup(self.kill_recorded)
 
     def kill_recorded(self) -> None:
@@ -110,6 +115,19 @@ class WrapperTest(unittest.TestCase):
 
     def fake_bats_cats_the_fixture(self) -> None:
         self.fake_bats(f'exec cat "{STREAM}"\n')
+
+    def fake_bats_stalls(self, lines: str) -> None:
+        """A fake that prints `lines` and then stalls: it records its pid and `exec`s a sleep under the case's marker as
+        argv[0], so the recorded pid is the sleeping process and kill_recorded() leaves nothing of the fake behind."""
+        self.fake_bats(f'{lines}echo $$ >> "${{PIDS}}"\nexec -a "{self.marker}" sleep 300\n')
+
+    def marked_processes(self) -> list[str]:
+        """`<pid> <stat> <args>` of every process still alive whose arguments hold the case's marker (a zombie is dead)."""
+        ps = subprocess.run(
+            ["ps", "-A", "-o", "pid=,stat=,args="], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=True
+        )
+        lines = [line.split(maxsplit=2) for line in ps.stdout.splitlines() if self.marker in line]
+        return [" ".join(fields) for fields in lines if not fields[1].startswith("Z")]
 
     def environment(self, bound: str, summary: str | None) -> dict[str, str]:
         env = {
@@ -165,14 +183,8 @@ class WrapperTest(unittest.TestCase):
                 self.assertFalse(self.summary.exists())
 
     def test_a_stall_writes_the_timeout_line_and_the_diagnosis_to_the_log_and_the_summary(self) -> None:
-        self.fake_bats(
-            """\
-            printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\nbegin 2 [x] misc\\n'
-            echo $$ >> "${PIDS}"
-            sleep 300 &
-            echo $! >> "${PIDS}"
-            wait
-            """
+        self.fake_bats_stalls(
+            "printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\nbegin 2 [x] misc\\n'\n"
         )
         status, out, err = self.run_wrapper("--timing", "tests/x.bats", bound="2", summary=str(self.summary))
         self.assertEqual(124, status, out + err)
@@ -229,13 +241,29 @@ class WrapperTest(unittest.TestCase):
         self.assertEqual(
             [f"run-bats: GITHUB_STEP_SUMMARY={unwritable!r} not written: No such file or directory"], err.splitlines()
         )
-        self.fake_bats("printf '1..1\\nbegin 1 [x] misc\\n'\necho $$ >> \"${PIDS}\"\nsleep 300\n")
+        self.fake_bats_stalls("printf '1..1\\nbegin 1 [x] misc\\n'\n")
         status, out, err = self.run_wrapper("--timing", "tests/x.bats", bound="2", summary=unwritable)
         self.assertEqual(124, status, out + err)
         self.assertIn("not ok 1 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT)\n", out)
         self.assertEqual(
             [f"run-bats: GITHUB_STEP_SUMMARY={unwritable!r} not written: No such file or directory"], err.splitlines()
         )
+
+    def test_a_stalled_fake_is_its_sleep_and_the_cleanup_leaves_no_process_behind(self) -> None:
+        self.fake_bats_stalls("printf '1..1\\nbegin 1 [x] misc\\n'\n")
+        status, out, err = self.run_wrapper("--timing", "tests/x.bats", bound="2")
+        self.assertEqual(124, status, out + err)
+        # One pid recorded, and it is the sleeping process (the fake exec'd its sleep): the kill reaches the sleep itself.
+        recorded = self.pids.read_text().split()
+        before = self.marked_processes()
+        self.assertEqual(1, len(recorded), recorded)
+        self.assertEqual(recorded, [line.split()[0] for line in before], before)
+        self.assertTrue(before[0].endswith(f" {self.marker} 300"), before)
+        self.kill_recorded()
+        deadline = time.monotonic() + 5
+        while (after := self.marked_processes()) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertEqual([], after, "alive after the case's cleanup")
 
     def test_run_bats_passes_timing_before_its_arguments(self) -> None:
         self.assertIn('python3 -I -S "${here}/ci/run-bats.py" --timing "$@"', RUNNER.read_text())

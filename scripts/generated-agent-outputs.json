@@ -350,6 +350,13 @@
       "sha256": "e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2"
     },
     {
+      "source": "home/dot_local/bin/common/executable_checkout-guard.sh",
+      "target": ".local/bin/common/checkout-guard.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "ef3e6fe3d028220a625bc38f9425aea89d092a4261761ac00e090ecad7920673"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",
       "target": ".local/bin/common/git-isolated.sh",
       "kind": "file",
@@ -459,7 +466,7 @@
       "target": ".local/bin/common/regime-init",
       "kind": "file",
       "executable": true,
-      "sha256": "190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2"
+      "sha256": "c48f38c22638f0004caeb6151a79b1abfc260f055c306ef678a0c303c2dafb3e"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-start",
@@ -583,6 +590,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "bus-history.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "checkout-guard.sh"
     },
     {
       "source": "home/dot_local/bin/common",

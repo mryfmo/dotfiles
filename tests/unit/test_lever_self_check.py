@@ -39,6 +39,7 @@ LEVERS = (
     "read-lib.sh",
     "brief-check.py",
     "worker-worktree.sh",
+    "checkout-guard.sh",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 

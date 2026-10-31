@@ -12,6 +12,7 @@
       "Bash(~/.local/bin/common/worktree-gc.sh *)",
       "Bash(~/.local/bin/common/worker-worktree.sh *)",
       "Bash(~/.local/bin/common/regime-init *)",
+      "Bash(~/.local/bin/common/checkout-guard.sh *)",
       "Bash(hcom list *)"
     ],
     "deny": [

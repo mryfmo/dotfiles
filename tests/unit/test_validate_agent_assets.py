@@ -1175,7 +1175,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
         self.write_levers(
-            "hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "worker-worktree.sh", "regime-init"
+            "hcom-seat",
+            "hcom-dispatch",
+            "bus-history.sh",
+            "worktree-gc.sh",
+            "worker-worktree.sh",
+            "regime-init",
+            "checkout-guard.sh",
         )
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
@@ -1317,7 +1323,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_claude_permissions_allow_accepts_the_fixed_rules_and_the_executable_levers(self) -> None:
         self.write_levers(
-            "hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "worker-worktree.sh", "regime-init"
+            "hcom-seat",
+            "hcom-dispatch",
+            "bus-history.sh",
+            "worktree-gc.sh",
+            "worker-worktree.sh",
+            "regime-init",
+            "checkout-guard.sh",
         )
         for permissions in ({}, {"allow": []}, {"allow": ["Bash(hcom list *)"]}, {"allow": MANAGED_ALLOW}):
             with self.subTest(accepts=permissions):
@@ -1329,6 +1341,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "worktree-gc.sh": "0" * 64,
             "worker-worktree.sh": "0" * 64,
             "regime-init": "0" * 64,
+            "checkout-guard.sh": "0" * 64,
         }
         self.module.validate_claude_permissions_allow({"allow": MANAGED_ALLOW}, "permissions", pinned)
 
@@ -1396,7 +1409,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         spec.loader.exec_module(generator)
         self.module.ROOT = self.temp_dir
         self.write_levers(
-            "hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "worker-worktree.sh", "regime-init"
+            "hcom-seat",
+            "hcom-dispatch",
+            "bus-history.sh",
+            "worktree-gc.sh",
+            "worker-worktree.sh",
+            "regime-init",
+            "checkout-guard.sh",
         )
         checkout = copy.deepcopy(manifest)
         checkout["claude"]["permissions"]["allow"][1] = "Bash(scripts/orchestrator/hcom-seat *)"

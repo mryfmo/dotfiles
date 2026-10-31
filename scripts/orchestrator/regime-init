@@ -6,15 +6,19 @@
 #   in the git checkout of the repository. It derives the repository slug, hcom store and team through the
 #   sourced regime-env helper, then creates `<toplevel>/.orchestration/orchestrate/<program>/` with the
 #   templates from `~/.agents/regime/` (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md),
-#   writes `~/.local/state/hcom/<slug>/origin` with the toplevel, and prints the AGENTS.md audit section, or
-#   appends it with `--write-agents` when AGENTS.md has no `## Audit` heading. It is idempotent: an existing
-#   file equal to its template is left alone, one that differs is kept unless `--force` replaces it, and a
-#   second run says that nothing changed. It never writes through a symlink, and it refuses outside a git
-#   checkout and when the derived store's origin names another checkout with the same slug.
+#   writes `~/.local/state/hcom/<slug>/origin` with the toplevel, installs the checkout guard (U129: `checkout-guard.sh
+#   install <toplevel>`, the `reference-transaction` hook that refuses, while a store exists, every move of a local
+#   branch in the checkout or a linked worktree of it to a commit origin does not hold, which is every commit made
+#   there; round 2 removes round 1's `pre-commit` and `post-checkout`), and prints the AGENTS.md audit section, or
+#   appends it with `--write-agents` when AGENTS.md has no `## Audit` heading. It is idempotent: an existing file
+#   equal to its template is left alone, one that differs is kept unless `--force` replaces it, a second run finds the
+#   guard's own hook (`unchanged`), and says that nothing changed. It never writes through a symlink, and it refuses
+#   outside a git checkout, when the derived store's origin names another checkout with the same slug, and when the
+#   guard refuses (a linked worktree, a foreign hook at its path).
 # @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under .orchestration/orchestrate.
 # @option --force Replace store files that differ from their template.
 # @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.
-# @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`), the section when not written, the next commands.
+# @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`; `checkout-guard: installed`, `unchanged` or `removed` per hook), the section when not written, the next commands.
 # @exitcode 0 Done, including when nothing changed.
 # @exitcode 2 A refusal, before or instead of the write it names.
 # @example
@@ -157,6 +161,21 @@ else
     mkdir -p "${HCOM_DIR}" || refuse "cannot create ${HCOM_DIR}"
     printf '%s\n' "${REGIME_TOPLEVEL}" > "${origin}" || refuse "cannot write ${origin}"
     printf 'created\t%s\n' "${origin}"
+    changed=1
+fi
+
+# The checkout refuses commits once a store exists (U129): checkout-guard.sh writes its reference-transaction hook
+# into the checkout's common hooks directory, or finds its own there and prints `unchanged`, and removes a round-1
+# `pre-commit` or `post-checkout` that is still there (`removed`); its refusals (a linked worktree, a foreign hook) are
+# this run's, after the store rows and before the AGENTS section.
+[[ -x ${LEVER_DIR}/checkout-guard.sh ]] || refuse "checkout-guard.sh absent beside this script: ${LEVER_DIR}/checkout-guard.sh"
+guard_rows=$("${LEVER_DIR}/checkout-guard.sh" install "${checkout}") || refuse "checkout-guard.sh install ${checkout} failed; the store is in place, the hook is not"
+printf '%s\n' "${guard_rows}"
+# A change is a receipt row read by its full shape at the start of a line, `checkout-guard: installed<TAB><path>` or
+# `checkout-guard: removed<TAB><path>`, never the word anywhere: a checkout path may hold `installed`. Left: a path
+# holding a newline followed by that exact prefix, which costs the nothing-changed line alone.
+guard_receipt="(^|"$'\n'")checkout-guard: (installed|removed)"$'\t'
+if [[ ${guard_rows} =~ ${guard_receipt} ]]; then
     changed=1
 fi
 

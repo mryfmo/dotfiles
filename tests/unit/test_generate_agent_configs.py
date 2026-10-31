@@ -237,11 +237,13 @@ MANAGED_ALLOW = [
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
     "Bash(~/.local/bin/common/worker-worktree.sh *)",
     "Bash(~/.local/bin/common/regime-init *)",
+    "Bash(~/.local/bin/common/checkout-guard.sh *)",
     "Bash(hcom list *)",
 ]
 LEVERS = (
     "brief-check.py",
     "bus-history.sh",
+    "checkout-guard.sh",
     "git-isolated.sh",
     "hcom-dispatch",
     "hcom-seat",

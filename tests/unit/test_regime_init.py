@@ -85,7 +85,66 @@ class RegimeInitTest(unittest.TestCase):
 
         again = self.init("pilot")
         self.assertEqual(again.returncode, 0, again.stderr)
-        self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged"})
+        self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged", "checkout-guard: unchanged"})
+        self.assertIn("nothing changed", again.stdout)
+
+    def test_the_first_run_installs_the_checkout_guard_and_a_commit_is_then_refused(self):
+        """regime-init runs `checkout-guard.sh install` on the checkout it prepares (U129): the first run writes the
+        `reference-transaction` hook (a `checkout-guard: installed` row), a commit in the checkout is then refused
+        with the worker-tree route since the store now exists (this scratch repository has no `origin`, so no commit
+        is one origin holds), and the second run finds the lever's own hook (`unchanged`) and reports nothing
+        changed; a round-1 `pre-commit` the lever recognises is removed and counts as a change."""
+        hook = self.repo / ".git/hooks/reference-transaction"
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.rows(run.stdout)[str(hook)], "checkout-guard: installed")
+        self.assertTrue(os.access(hook, os.X_OK))
+        (self.repo / "work.txt").write_text("work\n")
+        subprocess.run(["git", "add", "work.txt"], cwd=self.repo, env=self.env, check=True)
+        commit = subprocess.run(
+            ["git", "commit", "-q", "-m", "work"], cwd=self.repo, env=self.env, capture_output=True, text=True
+        )
+        self.assertNotEqual(commit.returncode, 0, commit.stderr)
+        self.assertIn(
+            "checkout-guard: this checkout is the coordinator's; commits belong in a worker tree", commit.stderr
+        )
+        again = self.init("pilot")
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(self.rows(again.stdout)[str(hook)], "checkout-guard: unchanged")
+        self.assertIn("nothing changed", again.stdout)
+        # Round 1's pre-commit, byte for byte: removed on the next run, which is a change.
+        lever = (ROOT / "scripts/orchestrator/checkout-guard.sh").read_text()
+        body = lever.split("cat << 'ROUND1_PRE_COMMIT' > ", 1)[1].split("\n", 1)[1].split("\nROUND1_PRE_COMMIT\n", 1)[0]
+        (self.repo / ".git/hooks/pre-commit").write_text(body + "\n")
+        upgraded = self.init("pilot")
+        self.assertEqual(upgraded.returncode, 0, upgraded.stderr)
+        self.assertEqual(
+            self.rows(upgraded.stdout)[str(self.repo / ".git/hooks/pre-commit")], "checkout-guard: removed"
+        )
+        self.assertNotIn("nothing changed", upgraded.stdout)
+        self.assertFalse((self.repo / ".git/hooks/pre-commit").exists())
+        # The guard's refusal is regime-init's: a foreign hook stops the run with exit 2 after the store rows.
+        hook.write_text("#!/bin/sh\nexit 0\n")
+        refused = self.init("pilot")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is not this lever's hook", refused.stderr)
+        self.assertIn("checkout-guard.sh install", refused.stderr)
+
+    def test_a_checkout_path_holding_installed_still_reports_nothing_changed(self):
+        """The receipt is read by its full shape at line start (`checkout-guard: installed<TAB><path>`), never as the
+        word anywhere (U129 round 2): with the checkout under a directory named `installed`, the second run still
+        prints the nothing-changed line."""
+        repo = self.root / "installed" / "kit-named"
+        repo.mkdir(parents=True)
+        git_init(repo, env=self.env)
+        subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "init"], cwd=repo, env=self.env, check=True)
+        first = self.init("pilot", cwd=repo)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("checkout-guard: installed\t", first.stdout)
+        self.assertNotIn("nothing changed", first.stdout)
+        again = self.init("pilot", cwd=repo)
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertIn("checkout-guard: unchanged\t" + str(repo / ".git/hooks/reference-transaction"), again.stdout)
         self.assertIn("nothing changed", again.stdout)
 
     def test_an_inherited_store_and_team_are_named_and_the_hint_is_always_printed(self):

@@ -88,6 +88,15 @@ SPLIT_BRIEF = (
     "generated copy count once, tests and READMEs never) is refused and is split into sequenced units of at most two "
     "levers each before any TASK is sent (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)."
 )
+# U129 (round 2: the reference-transaction hook): the same step says the checkout itself refuses commits, without
+# naming the worker-tree lever a second time.
+CHECKOUT_GUARD = (
+    "Your checkout refuses every commit, in it and in any linked worktree of it, while a program store exists: "
+    "`regime-init` installed `checkout-guard.sh`'s `reference-transaction` hook into its `.git/hooks`, which refuses "
+    "any move of a local branch to a commit `origin` does not hold (`--no-verify` is no bypass; "
+    "`~/.local/bin/common/checkout-guard.sh check <checkout>` reports it), so a worker that reaches for the "
+    "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
@@ -200,6 +209,7 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(SPLIT_BRIEF, brief)
         self.assertLess(brief.index("the check refuses a brief without one."), brief.index(SPLIT_BRIEF))
         self.assertLess(brief.index(SPLIT_BRIEF), brief.index("Add the `units.tsv` row"))
+        self.assertIn(CHECKOUT_GUARD, brief)
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")

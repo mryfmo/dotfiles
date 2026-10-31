@@ -82,12 +82,13 @@ WORKER_WORKTREE = (
     "does not list it), and the coordinator fetches its head by path and pushes from the checkout with the `push=` "
     "line the lever prints."
 )
-# U129: the same step says the checkout itself refuses commits (the hooks regime-init installs), without naming the
-# worker-tree lever a second time.
+# U129 (round 2: the reference-transaction hook): the same step says the checkout itself refuses commits, without
+# naming the worker-tree lever a second time.
 CHECKOUT_GUARD = (
     "Your checkout refuses every commit, in it and in any linked worktree of it, while a program store exists: "
-    "`regime-init` installed `checkout-guard.sh`'s `pre-commit` and `post-checkout` into its `.git/hooks` "
-    "(`~/.local/bin/common/checkout-guard.sh check <checkout>` reports them), so a worker that reaches for the "
+    "`regime-init` installed `checkout-guard.sh`'s `reference-transaction` hook into its `.git/hooks`, which refuses "
+    "any move of a local branch to a commit `origin` does not hold (`--no-verify` is no bypass; "
+    "`~/.local/bin/common/checkout-guard.sh check <checkout>` reports it), so a worker that reaches for the "
     "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
 )
 

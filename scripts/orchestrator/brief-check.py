@@ -12,6 +12,15 @@ holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as
 CONTEXT section was found at all. Exit 2, nothing on stdout: usage, a file that cannot be read or decoded, or a
 section heading that appears twice; a brief the check cannot read is never read as clean.
 
+A brief whose SCOPE names more than two levers is refused too (regime-cutover U130; plan P-41 measured the four units
+whose one brief rewrote several levers at 6.5 audits each, the single-surface units of the same period at 2). The
+lever set is the manifest's `claude.levers.sha256` names, read from the same manifest as the pin and spelled nowhere
+else; a manifest without the block is exit 2. A backticked path in SCOPE is a lever when its basename is a pinned
+name, or `executable_<name>` under `home/dot_local/bin/common/` (the generated copy counts once with its source); a
+path under a `tests` directory or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never
+counts. More than two distinct levers is exit 1 with the one line `SCOPE names <n> levers (<names>); split into
+sequenced units of at most two levers each (plan P-41: ...)`; the count and the threshold are the whole rule.
+
 The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the
 same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as
 `~/.local/bin/common/brief-check.py`, and pins their sha256 under `claude.levers.sha256`; the orchestrator seat's
@@ -38,6 +47,11 @@ import sys
 LEVER = "brief-check.py"
 # The pin line of this lever in the manifest, read as text: the manifest is never parsed as YAML here.
 PIN_LINE = re.compile(r"^      brief-check\.py: ([0-9a-f]{64})$")
+# The levers block of the manifest, read as text too: the `levers:` line, its `sha256:` line, then one pin line per
+# lever, `<name>: <sha256>`, which names the lever by its file name under scripts/orchestrator/.
+LEVERS_LINE = "  levers:"
+SHA256_LINE = "    sha256:"
+LEVER_PIN = re.compile(r"^      (\S+): [0-9a-f]{64}$")
 
 
 def refuse(reason):
@@ -48,6 +62,9 @@ def refuse(reason):
 
 def lever_self_check():
     """Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31).
+
+    Returns the lever names pinned under the manifest's `levers: sha256:` block (U130), the one list of levers the
+    SCOPE count reads; a manifest without the block, or with an empty one, is refused like an unreadable one.
 
     The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the
     directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two
@@ -83,9 +100,26 @@ def lever_self_check():
         refuse(f"cannot hash {self_path}")
     if digest != pins[0]:
         refuse(f"sha256 {digest} of {self_path} differs from the pin in {manifest}")
+    return manifest_levers(lines, manifest)
 
 
-lever_self_check()
+def manifest_levers(lines, manifest):
+    """The lever names under the manifest's `levers:` / `sha256:` lines, in file order; none is a refusal."""
+    names = []
+    if LEVERS_LINE in lines:
+        start = lines.index(LEVERS_LINE) + 1
+        if start < len(lines) and lines[start] == SHA256_LINE:
+            for line in lines[start + 1 :]:
+                match = LEVER_PIN.match(line)
+                if match is None:
+                    break
+                names.append(match.group(1))
+    if not names:
+        refuse(f"no claude.levers.sha256 block in {manifest}")
+    return tuple(names)
+
+
+LEVERS = lever_self_check()
 
 SECTIONS = (
     "GOAL",
@@ -145,6 +179,21 @@ DRESSED_PHRASES = ("denylist", "forbidden words", "list of commands")
 # The TRUST section names what the unit trusts and does not read: at least this many characters, one of these words.
 TRUST_WORDS = ("trusted", "trusts")
 TRUST_MINIMUM = 40
+# The SCOPE section declares what the unit writes as backticked paths; a span holding whitespace is a command or a
+# phrase, not a path, and names nothing. A path is a lever when its basename is a pinned name, or `executable_<name>`
+# under INSTALLED_DIR (the generated copy counts once with its source). A path under a `tests` directory or with one
+# of the NEVER_LEVERS basenames never counts: tests, READMEs, the generated outputs and the manifest name levers
+# without rewriting one. More than LEVER_LIMIT distinct levers is refused (plan P-41, U130).
+BACKTICKED = re.compile(r"`([^`\n]+)`")
+INSTALLED_DIR = "home/dot_local/bin/common"
+INSTALLED_PREFIX = "executable_"
+TESTS_DIR = "tests"
+NEVER_LEVERS = ("README.md", "generated-agent-outputs.json", "agent-config.yaml")
+LEVER_LIMIT = 2
+LEVER_REASON = (
+    "SCOPE names {count} levers ({names}); split into sequenced units of at most two levers each "
+    "(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"
+)
 
 
 def word_pattern(terms):
@@ -256,6 +305,25 @@ def trust(body):
     return faults
 
 
+def scope_levers(body, levers):
+    """The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""
+    named = set()
+    for span in BACKTICKED.findall(body):
+        if any(character.isspace() for character in span):
+            continue
+        path = span[2:] if span.startswith("./") else span  # lint-comparisons: allow the brief's spelled text
+        parts = path.split("/")
+        name = parts[-1]
+        if TESTS_DIR in parts[:-1] or name in NEVER_LEVERS:  # lint-comparisons: allow spelled names
+            continue
+        installed = "/".join(parts[:-1]) == INSTALLED_DIR  # lint-comparisons: allow the spelled install directory
+        if installed and name.startswith(INSTALLED_PREFIX):  # lint-comparisons: allow the generated copy's prefix
+            name = name[len(INSTALLED_PREFIX) :]
+        if name in levers:
+            named.add(name)
+    return sorted(named)
+
+
 def judge(found):
     """The reasons the parsed brief is refused, one per line; empty when it passes."""
     if not any(name in found for name in JUDGED):
@@ -279,6 +347,9 @@ def judge(found):
         phrase = matched_term(DRESSED_WORD, DRESSED_PHRASES, found.get("CHANGE", ""))
         if phrase is not None:
             reasons.append(f'CLOSURE names {form} and CHANGE holds "{phrase}": a denylist dressed as a form')
+    levers = scope_levers(found.get("SCOPE", ""), LEVERS)
+    if len(levers) > LEVER_LIMIT:
+        reasons.append(LEVER_REASON.format(count=len(levers), names=", ".join(levers)))
     return reasons
 
 

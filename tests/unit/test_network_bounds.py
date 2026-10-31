@@ -398,7 +398,7 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("documentation; names the tool without running it"),
     (
         "scripts/orchestrator/README.md",
-        "Regime-cutover U104 (handoff R1) and U121 (standing order 37). `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the checkout, runs between a written brief and its TASK line (`hcom-orchestration` SKILL, step 1). A brief is a sequence of upper-case section headings, each a line that is exactly its name (`GOAL`, `SCOPE`, `CHANGE`, `CONTEXT`, `ACCEPTANCE`, `VERIFY`, `TIMEBOX`, `FORBIDDEN`, `CLOSURE`, `TRUST`, `REPORT`, `STANDING`, plus the `WORKER RULES (...)` line), each followed by its text; the script parses it into one `dict[str, str]`, so a term in SCOPE or FORBIDDEN fires nothing. Exit 0, printing nothing: the GOAL, CHANGE and CONTEXT sections hold none of the trigger terms in the script's one tuple (shell, tokeniz*, parse, parser, regex, hook, worktree, config, path, process, signal, supervisor, curl, wget, heredoc, quote, bound, refuse, fail closed, untrusted, sandbox, lint, rule, allowlist, denylist, walk, census; whole words, any case, a backticked term included), or the `CLOSURE` section is one line naming one of the four forms, `ast`, `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text, and the `TRUST` section is at least 40 characters and holds the word `trusted` or `trusts`. Exit 1, one reason per line on stdout: a term fired and there is no `CLOSURE`, or `CLOSURE` is empty, names two forms or holds any other line; a term fired and there is no `TRUST`, or it is too short, or it names nothing as trusted; `CLOSURE` names `allowlist` or `ast` while CHANGE holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or the brief has no GOAL, CHANGE or CONTEXT section. Exit 2 on usage, a file that cannot be read, or a heading that appears twice (named with both line numbers; merging the bodies would hide an empty second `CLOSURE`), never read as clean. It is installed and pinned like the levers below (`claude.levers.sha256`; the same self-check, in Python with `hashlib`, exits 2 with nothing on stdout when the copy differs from its pin) and allowed by `orchestrator.yml` at its installed path, so a repository without `scripts/orchestrator/` runs the same checked copy. The thirteen treadmill rows behind the rule are in the program's `handoff/02-audit-treadmill-analysis.md` (U109 and U112 added the trust boundary); `tests/unit/test_brief_check.py` runs the checkout script as a subprocess under `python -I` and the installed copy under a scratch HOME as the SKILL spells it. The lever call that refuses a program PR whose brief fails this check is a follow-up after U120.",
+        "Regime-cutover U104 (handoff R1) and U121 (standing order 37). `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the checkout, runs between a written brief and its TASK line (`hcom-orchestration` SKILL, step 1). A brief is a sequence of upper-case section headings, each a line that is exactly its name (`GOAL`, `SCOPE`, `CHANGE`, `CONTEXT`, `ACCEPTANCE`, `VERIFY`, `TIMEBOX`, `FORBIDDEN`, `CLOSURE`, `TRUST`, `REPORT`, `STANDING`, plus the `WORKER RULES (...)` line), each followed by its text; the script parses it into one `dict[str, str]`, so a term in SCOPE or FORBIDDEN fires nothing. Exit 0, printing nothing: the GOAL, CHANGE and CONTEXT sections hold none of the trigger terms in the script's one tuple (shell, tokeniz*, parse, parser, regex, hook, worktree, config, path, process, signal, supervisor, curl, wget, heredoc, quote, bound, refuse, fail closed, untrusted, sandbox, lint, rule, allowlist, denylist, walk, census; whole words, any case, a backticked term included), or the `CLOSURE` section is one line naming one of the four forms, `ast`, `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text, and the `TRUST` section is at least 40 characters and holds the word `trusted` or `trusts`. Exit 1, one reason per line on stdout: a term fired and there is no `CLOSURE`, or `CLOSURE` is empty, names two forms or holds any other line; a term fired and there is no `TRUST`, or it is too short, or it names nothing as trusted; `CLOSURE` names `allowlist` or `ast` while CHANGE holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or the brief has no GOAL, CHANGE or CONTEXT section. Exit 2 on usage, a file that cannot be read, or a heading that appears twice (named with both line numbers; merging the bodies would hide an empty second `CLOSURE`), never read as clean. U130 (plan P-41) adds one more exit-1 line, `SCOPE names <n> levers (<names>); split into sequenced units of at most two levers each (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)`, when the brief's SCOPE names more than two levers in backticked paths: the lever set is the `claude.levers.sha256` names of the manifest the self-check reads (a manifest without the block is exit 2, so the list is spelled once), a path counts by its basename or as `executable_<name>` under `home/dot_local/bin/common/` (the generated copy counts once with its source), and a path under `tests/` or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never counts; the count and the threshold are the whole rule, so a unit may still touch any number of files that are not levers. It is installed and pinned like the levers below (`claude.levers.sha256`; the same self-check, in Python with `hashlib`, exits 2 with nothing on stdout when the copy differs from its pin) and allowed by `orchestrator.yml` at its installed path, so a repository without `scripts/orchestrator/` runs the same checked copy. The thirteen treadmill rows behind the rule are in the program's `handoff/02-audit-treadmill-analysis.md` (U109 and U112 added the trust boundary); `tests/unit/test_brief_check.py` runs the checkout script as a subprocess under `python -I` and the installed copy under a scratch HOME as the SKILL spells it. The lever call that refuses a program PR whose brief fails this check is a follow-up after U120.",
     ): Exempt(f"documentation; the brief-check.py trigger-term list {MENTION}"),
     (
         "scripts/orchestrator/pr-audit.sh",
@@ -685,7 +685,7 @@ class RunBatsBoundTest(unittest.TestCase):
     def test_a_bats_that_is_not_the_pin_is_refused_before_the_wrapper_runs(self) -> None:
         # U127: run_bats runs scripts/ci/pinned-tool-version.sh first. Another version is refused with the check's
         # message and Bats never runs the suite; the pinned one is accepted and the check's line opens the log.
-        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n", version="0.0.1")
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\n'\n", version="0.0.1")
         status, out, err, _ = self.run_bats("30", "tests/x.bats")
         self.assertEqual(1, status, out + err)
         self.assertIn("pinned-tool-version: the bats on PATH is version 0.0.1, but ", err)
@@ -693,19 +693,19 @@ class RunBatsBoundTest(unittest.TestCase):
         self.assertEqual("", out)
         self.assertEqual("", self.accepted)
         self.assertFalse((self.temp / "args").exists())
-        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n")
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\n'\n")
         status, out, err, _ = self.run_bats("30", "tests/x.bats")
         self.assertEqual(0, status, out + err)
         self.assertTrue(self.accepted.startswith(f"==> bats {BATS_PIN}, the version "), self.accepted)
         self.assertTrue(self.accepted.endswith("/home/dot_mise/config.toml pins"), self.accepted)
-        self.assertEqual("1..1\nrunning: 1 [x] fast\nok 1 [x] fast\n", out)
-        self.assertEqual("--formatter cat tests/x.bats", (self.temp / "args").read_text().strip())
+        self.assertEqual("1..1\nrunning: 1 [x] fast\nok 1 [x] fast in 1ms\nslowest: 1 [x] fast 1 ms\n", out)
+        self.assertEqual("--formatter cat --timing tests/x.bats", (self.temp / "args").read_text().strip())
 
     def test_a_stalled_test_is_named_and_the_run_fails_within_the_bound(self) -> None:
         # The stalled test's grandchild is what kept the PR #570 jobs alive until the job timeout.
         self.fake_bats(
             """\
-            printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast\\nbegin 2 [x] misc\\n'
+            printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] fast\\nok 1 [x] fast in 1ms\\nbegin 2 [x] misc\\n'
             echo $$ >> "${PIDS}"
             sleep 300 &
             echo $! >> "${PIDS}"
@@ -716,13 +716,13 @@ class RunBatsBoundTest(unittest.TestCase):
         self.assertEqual(124, status, out + err)
         self.assertLess(elapsed, 4)
         named = (
-            "1..2\nrunning: 1 [x] fast\nok 1 [x] fast\nrunning: 2 [x] misc\n"
+            "1..2\nrunning: 1 [x] fast\nok 1 [x] fast in 1ms\nrunning: 2 [x] misc\n"
             "not ok 2 [x] misc # timeout after 2 s (BATS_PER_TEST_TIMEOUT)\n"
         )
         self.assertTrue(out.startswith(named), out)
         # Everything after the named line is the diagnosis, as TAP comments.
         self.assertTrue(all(line.startswith("#") for line in out[len(named) :].splitlines()), out)
-        self.assertEqual("--formatter cat -r tests/x/\n", (self.temp / "args").read_text())
+        self.assertEqual("--formatter cat --timing -r tests/x/\n", (self.temp / "args").read_text())
 
     def test_output_from_a_running_test_does_not_extend_its_bound(self) -> None:
         self.fake_bats(
@@ -748,10 +748,10 @@ class RunBatsBoundTest(unittest.TestCase):
     def test_pass_and_fail_statuses_are_kept(self) -> None:
         for code in (0, 1):
             with self.subTest(status=code):
-                verdict = "ok 2 [x] b" if code == 0 else "not ok 2 [x] b"
+                verdict = "ok 2 [x] b in 3ms" if code == 0 else "not ok 2 [x] b in 3ms"
                 self.fake_bats(
                     f"""\
-                    printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] a\\nok 1 [x] a\\nbegin 2 [x] b\\n# output of b\\n'
+                    printf '1..2\\nsuite tests/x.bats\\nbegin 1 [x] a\\nok 1 [x] a in 1ms\\nbegin 2 [x] b\\n# output of b\\n'
                     printf '{verdict}\\n'
                     exit {code}
                     """
@@ -760,7 +760,9 @@ class RunBatsBoundTest(unittest.TestCase):
                 self.assertEqual(code, status, err)
                 self.assertLess(elapsed, 10)
                 self.assertEqual(
-                    f"1..2\nrunning: 1 [x] a\nok 1 [x] a\nrunning: 2 [x] b\n# output of b\n{verdict}\n", out
+                    f"1..2\nrunning: 1 [x] a\nok 1 [x] a in 1ms\nrunning: 2 [x] b\n# output of b\n{verdict}\n"
+                    "slowest: 2 [x] b 3 ms\n",
+                    out,
                 )
 
     def test_a_run_that_plans_no_test_fails(self) -> None:
@@ -776,7 +778,7 @@ class RunBatsBoundTest(unittest.TestCase):
         the caller holds a pipe on that descriptor and reads what reaches it."""
         self.fake_bats(
             """\
-            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a\\n'
+            printf '1..1\\nbegin 1 [x] a\\nok 1 [x] a in 1ms\\n'
             if [ -n "${BASH_XTRACEFD:-}" ]; then printf 'trace-line\\n' >&"${BASH_XTRACEFD}" || exit 9; fi
             exit 0
             """

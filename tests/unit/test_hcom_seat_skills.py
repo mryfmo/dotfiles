@@ -82,6 +82,12 @@ WORKER_WORKTREE = (
     "does not list it), and the coordinator fetches its head by path and pushes from the checkout with the `push=` "
     "line the lever prints."
 )
+# U130: a brief naming more than two levers is split before any TASK is sent (plan P-41), said once in step 1.
+SPLIT_BRIEF = (
+    "A brief whose SCOPE names more than two levers (the manifest's `claude.levers.sha256` names; a source and its "
+    "generated copy count once, tests and READMEs never) is refused and is split into sequenced units of at most two "
+    "levers each before any TASK is sent (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)."
+)
 # U129 (round 2: the reference-transaction hook): the same step says the checkout itself refuses commits, without
 # naming the worker-tree lever a second time.
 CHECKOUT_GUARD = (
@@ -200,6 +206,9 @@ class HcomSeatSkillsTest(unittest.TestCase):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)
         self.assertIn(WORKER_WORKTREE, brief)
         self.assertEqual(brief.count("worker-worktree.sh"), 1)
+        self.assertIn(SPLIT_BRIEF, brief)
+        self.assertLess(brief.index("the check refuses a brief without one."), brief.index(SPLIT_BRIEF))
+        self.assertLess(brief.index(SPLIT_BRIEF), brief.index("Add the `units.tsv` row"))
         self.assertIn(CHECKOUT_GUARD, brief)
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):

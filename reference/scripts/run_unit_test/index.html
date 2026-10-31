@@ -5417,12 +5417,16 @@
 <span class="nb">set</span><span class="w"> </span>-Eeo<span class="w"> </span>pipefail
 
 <span class="c1">#</span>
-<span class="c1"># @description Run Bats, failing by name a test that runs longer than BATS_PER_TEST_TIMEOUT.</span>
+<span class="c1"># @description Run the pinned Bats, failing by name a test that runs longer than BATS_PER_TEST_TIMEOUT.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Bats' own BATS_TEST_TIMEOUT is not used. Bats 1.10.0 (the ubuntu-24.04 apt package) kills only a</span>
-<span class="c1">#   timed-out test's direct children, so a stalled grandchild such as `sudo snap` keeps Bats' output pipe</span>
-<span class="c1">#   open and the run still hangs (bats-core#1020). Bats 1.13.0 (ubuntu-26.04) and 1.14.0 (Homebrew) hold</span>
-<span class="c1">#   the run for the whole bound after any failing test (bats-core#1206).</span>
+<span class="c1">#   The Bats on PATH must be the release home/dot_mise/config.toml pins: scripts/ci/pinned-tool-version.sh</span>
+<span class="c1">#   runs first, and any other version, or a check that cannot run, refuses the suite with its message</span>
+<span class="c1">#   (regime-cutover U127; CI installs the pin with scripts/ci/install-pinned-lint-tools.sh, a host with</span>
+<span class="c1">#   `mise install http:bats`); its accepted line is printed, so every suite log names the version it ran.</span>
+<span class="c1">#   Bats' own BATS_TEST_TIMEOUT is not used. The pinned release holds the run for the whole bound after</span>
+<span class="c1">#   any failing test (bats-core#1206); the older Bats a host without the pin would run (refused above)</span>
+<span class="c1">#   kills only a timed-out test's direct children, so a stalled grandchild such as `sudo snap` keeps</span>
+<span class="c1">#   Bats' output pipe open and the run still hangs (bats-core#1020).</span>
 <span class="c1">#   Instead scripts/ci/run-bats.py reads Bats' extended stream (`--formatter cat`): it prints</span>
 <span class="c1">#   `running: &lt;n&gt; &lt;name&gt;` as each test starts, then the TAP lines; when a test has no result within the</span>
 <span class="c1">#   bound it prints `not ok &lt;n&gt; &lt;name&gt; # timeout after &lt;s&gt; s` and fails with 124. Time spent outside a</span>
@@ -5432,12 +5436,15 @@
 <span class="c1"># @arg $@ string Arguments passed to bats.</span>
 <span class="c1"># @env BATS_PER_TEST_TIMEOUT Seconds one test may run. Default: the wrapper's DEFAULT_BOUND (scripts/ci/run-bats.py).</span>
 <span class="c1"># @exitcode 124 A test, or the time between two lines outside a test, exceeded the bound.</span>
-<span class="c1"># @exitcode 1 Bats planned no test, or dirname failed.</span>
+<span class="c1"># @exitcode 1 Bats planned no test, dirname failed, or the Bats on PATH is not the pinned release (or could not be checked).</span>
 <span class="c1"># @exitcode Bats' exit status otherwise.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>run_bats<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>here
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>here<span class="w"> </span>accepted
 <span class="w">    </span><span class="nv">here</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># The check's status decides (standing order 21): a refusal, or a check that cannot run, ends the suite here.</span>
+<span class="w">    </span><span class="nv">accepted</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/pinned-tool-version.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/../home/dot_mise/config.toml"</span><span class="w"> </span>bats<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">accepted</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span>python3<span class="w"> </span>-I<span class="w"> </span>-S<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">/ci/run-bats.py"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 

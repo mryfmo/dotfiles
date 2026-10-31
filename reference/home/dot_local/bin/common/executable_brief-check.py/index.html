@@ -5390,6 +5390,15 @@
 <span class="s2">CONTEXT section was found at all. Exit 2, nothing on stdout: usage, a file that cannot be read or decoded, or a</span>
 <span class="s2">section heading that appears twice; a brief the check cannot read is never read as clean.</span>
 
+<span class="s2">A brief whose SCOPE names more than two levers is refused too (regime-cutover U130; plan P-41 measured the four units</span>
+<span class="s2">whose one brief rewrote several levers at 6.5 audits each, the single-surface units of the same period at 2). The</span>
+<span class="s2">lever set is the manifest's `claude.levers.sha256` names, read from the same manifest as the pin and spelled nowhere</span>
+<span class="s2">else; a manifest without the block is exit 2. A backticked path in SCOPE is a lever when its basename is a pinned</span>
+<span class="s2">name, or `executable_&lt;name&gt;` under `home/dot_local/bin/common/` (the generated copy counts once with its source); a</span>
+<span class="s2">path under a `tests` directory or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never</span>
+<span class="s2">counts. More than two distinct levers is exit 1 with the one line `SCOPE names &lt;n&gt; levers (&lt;names&gt;); split into</span>
+<span class="s2">sequenced units of at most two levers each (plan P-41: ...)`; the count and the threshold are the whole rule.</span>
+
 <span class="s2">The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the</span>
 <span class="s2">same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as</span>
 <span class="s2">`~/.local/bin/common/brief-check.py`, and pins their sha256 under `claude.levers.sha256`; the orchestrator seat's</span>
@@ -5416,6 +5425,11 @@ import<span class="w"> </span>sys
 <span class="nv">LEVER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"brief-check.py"</span>
 <span class="c1"># The pin line of this lever in the manifest, read as text: the manifest is never parsed as YAML here.</span>
 <span class="nv">PIN_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^      brief-check\.py: ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="c1"># The levers block of the manifest, read as text too: the `levers:` line, its `sha256:` line, then one pin line per</span>
+<span class="c1"># lever, `&lt;name&gt;: &lt;sha256&gt;`, which names the lever by its file name under scripts/orchestrator/.</span>
+<span class="nv">LEVERS_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"  levers:"</span>
+<span class="nv">SHA256_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"    sha256:"</span>
+<span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^      (\S+): [0-9a-f]{64}</span>$<span class="s2">"</span><span class="o">)</span>
 
 
 def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
@@ -5426,6 +5440,9 @@ def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)
 
 def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 <span class="w">    </span><span class="s2">"""Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31).</span>
+
+<span class="s2">    Returns the lever names pinned under the manifest's `levers: sha256:` block (U130), the one list of levers the</span>
+<span class="s2">    SCOPE count reads; a manifest without the block, or with an empty one, is refused like an unreadable one.</span>
 
 <span class="s2">    The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the</span>
 <span class="s2">    directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two</span>
@@ -5461,9 +5478,26 @@ def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot hash {self_path}"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>digest<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pins<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"sha256 {digest} of {self_path} differs from the pin in {manifest}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>
 
 
-lever_self_check<span class="o">()</span>
+def<span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The lever names under the manifest's `levers:` / `sha256:` lines, in file order; none is a refusal."""</span>
+<span class="w">    </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>LEVERS_LINE<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines:
+<span class="w">        </span><span class="nv">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lines.index<span class="o">(</span>LEVERS_LINE<span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>start<span class="w"> </span>&lt;<span class="w"> </span>len<span class="o">(</span>lines<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>lines<span class="o">[</span>start<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>SHA256_LINE:
+<span class="w">            </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines<span class="o">[</span>start<span class="w"> </span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span>:<span class="o">]</span>:
+<span class="w">                </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>line<span class="o">)</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">                    </span><span class="k">break</span>
+<span class="w">                </span>names.append<span class="o">(</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>names:
+<span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no claude.levers.sha256 block in {manifest}"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>names<span class="o">)</span>
+
+
+<span class="nv">LEVERS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lever_self_check<span class="o">()</span>
 
 <span class="nv">SECTIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
 <span class="w">    </span><span class="s2">"GOAL"</span>,
@@ -5523,6 +5557,21 @@ lever_self_check<span class="o">()</span>
 <span class="c1"># The TRUST section names what the unit trusts and does not read: at least this many characters, one of these words.</span>
 <span class="nv">TRUST_WORDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"trusted"</span>,<span class="w"> </span><span class="s2">"trusts"</span><span class="o">)</span>
 <span class="nv">TRUST_MINIMUM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">40</span>
+<span class="c1"># The SCOPE section declares what the unit writes as backticked paths; a span holding whitespace is a command or a</span>
+<span class="c1"># phrase, not a path, and names nothing. A path is a lever when its basename is a pinned name, or `executable_&lt;name&gt;`</span>
+<span class="c1"># under INSTALLED_DIR (the generated copy counts once with its source). A path under a `tests` directory or with one</span>
+<span class="c1"># of the NEVER_LEVERS basenames never counts: tests, READMEs, the generated outputs and the manifest name levers</span>
+<span class="c1"># without rewriting one. More than LEVER_LIMIT distinct levers is refused (plan P-41, U130).</span>
+<span class="nv">BACKTICKED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"`([^`\n]+)`"</span><span class="o">)</span>
+<span class="nv">INSTALLED_DIR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"home/dot_local/bin/common"</span>
+<span class="nv">INSTALLED_PREFIX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"executable_"</span>
+<span class="nv">TESTS_DIR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"tests"</span>
+<span class="nv">NEVER_LEVERS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"README.md"</span>,<span class="w"> </span><span class="s2">"generated-agent-outputs.json"</span>,<span class="w"> </span><span class="s2">"agent-config.yaml"</span><span class="o">)</span>
+<span class="nv">LEVER_LIMIT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span>
+<span class="nv">LEVER_REASON</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="s2">"SCOPE names {count} levers ({names}); split into sequenced units of at most two levers each "</span>
+<span class="w">    </span><span class="s2">"(plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"</span>
+<span class="o">)</span>
 
 
 def<span class="w"> </span>word_pattern<span class="o">(</span>terms<span class="o">)</span>:
@@ -5634,6 +5683,25 @@ def<span class="w"> </span>trust<span class="o">(</span>body<span class="o">)</s
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>faults
 
 
+def<span class="w"> </span>scope_levers<span class="o">(</span>body,<span class="w"> </span>levers<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The distinct pinned lever names the SCOPE body names in backticked paths, sorted."""</span>
+<span class="w">    </span><span class="nv">named</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>span<span class="w"> </span><span class="k">in</span><span class="w"> </span>BACKTICKED.findall<span class="o">(</span>body<span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>character.isspace<span class="o">()</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>character<span class="w"> </span><span class="k">in</span><span class="w"> </span>span<span class="o">)</span>:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>span<span class="o">[</span><span class="m">2</span>:<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>span.startswith<span class="o">(</span><span class="s2">"./"</span><span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>span<span class="w">  </span><span class="c1"># lint-comparisons: allow the brief's spelled text</span>
+<span class="w">        </span><span class="nv">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>path.split<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parts<span class="o">[</span>-1<span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>TESTS_DIR<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span>:-1<span class="o">]</span><span class="w"> </span>or<span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>NEVER_LEVERS:<span class="w">  </span><span class="c1"># lint-comparisons: allow spelled names</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">installed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/"</span>.join<span class="o">(</span>parts<span class="o">[</span>:-1<span class="o">])</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>INSTALLED_DIR<span class="w">  </span><span class="c1"># lint-comparisons: allow the spelled install directory</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>installed<span class="w"> </span>and<span class="w"> </span>name.startswith<span class="o">(</span>INSTALLED_PREFIX<span class="o">)</span>:<span class="w">  </span><span class="c1"># lint-comparisons: allow the generated copy's prefix</span>
+<span class="w">            </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>name<span class="o">[</span>len<span class="o">(</span>INSTALLED_PREFIX<span class="o">)</span><span class="w"> </span>:<span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>levers:
+<span class="w">            </span>named.add<span class="o">(</span>name<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>sorted<span class="o">(</span>named<span class="o">)</span>
+
+
 def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</span>:
 <span class="w">    </span><span class="s2">"""The reasons the parsed brief is refused, one per line; empty when it passes."""</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>any<span class="o">(</span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>found<span class="w"> </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span>JUDGED<span class="o">)</span>:
@@ -5657,6 +5725,9 @@ def<span class="w"> </span>judge<span class="o">(</span>found<span class="o">)</
 <span class="w">        </span><span class="nv">phrase</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>matched_term<span class="o">(</span>DRESSED_WORD,<span class="w"> </span>DRESSED_PHRASES,<span class="w"> </span>found.get<span class="o">(</span><span class="s2">"CHANGE"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">))</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>phrase<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">            </span>reasons.append<span class="o">(</span>f<span class="s1">'CLOSURE names {form} and CHANGE holds "{phrase}": a denylist dressed as a form'</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">levers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>scope_levers<span class="o">(</span>found.get<span class="o">(</span><span class="s2">"SCOPE"</span>,<span class="w"> </span><span class="s2">""</span><span class="o">)</span>,<span class="w"> </span>LEVERS<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>levers<span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>LEVER_LIMIT:
+<span class="w">        </span>reasons.append<span class="o">(</span>LEVER_REASON.format<span class="o">(</span><span class="nv">count</span><span class="o">=</span>len<span class="o">(</span>levers<span class="o">)</span>,<span class="w"> </span><span class="nv">names</span><span class="o">=</span><span class="s2">", "</span>.join<span class="o">(</span>levers<span class="o">)))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>reasons
 
 

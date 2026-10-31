@@ -3,7 +3,8 @@
 row, the first differing path otherwise, a missing correct row, a git that cannot answer), and the `--render` block
 the audit prompt carries (the earlier head's findings, in the scored line form of U125, joined with their
 dispositions.tsv rows, the changed lines, the one rule), with every store read that fails refusing as exit 2 naming
-the file and line."""
+the file and line, and an earlier verdict of a reader before U125 (no `Filed: <n>` line) nothing to carry, exit 1 in
+both forms (U126)."""
 
 import hashlib
 import importlib.util
@@ -100,10 +101,11 @@ class AuditCarryTest(unittest.TestCase):
         (self.store / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows) if text is None else text)
 
     def verdict(self, head, *findings, unit="U7"):
-        """The verdict file of `head` under `unit`: whole `## Findings` lines (see `finding`), or `- none` without any."""
+        """The verdict file of `head` under `unit` as the scored reader writes it since U125 round a (`Filed: <n>` after
+        `Blocking: <n>`): whole `## Findings` lines (see `finding`), or `- none` without any."""
         listed = "\n".join(findings or ("- none",))
         (self.store / f"verdicts/{unit}-{head[:8]}.md").write_text(
-            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- none\n\n## Notes\n\nnone\n\nBlocking: 0\nVerdict: correct\n"
+            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- none\n\n## Notes\n\nnone\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
         )
 
     def dispositions(self, *rows, text=None):
@@ -489,11 +491,13 @@ class AuditCarryTest(unittest.TestCase):
             run.stdout,
         )
         self.assertNotIn("(none)", run.stdout)
-        # the carry decision names the same path when it is where the diffs differ
+        # the carry decision names the same path when it is where the diffs differ (the row's head has a scored
+        # verdict file, read first since U126)
         self.git("switch", "-q", "-c", "quoted2", self.earlier)
         other = self.commit({"日本語.txt": "二\n"}, "quoted another way")
         self.git("switch", "-q", "main")
         self.ledger(ledger("2026-10-30T01:00:00Z", head))
+        self.verdict(head)
         run = self.carry(other)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertTrue(run.stdout.endswith("'s at 日本語.txt\n"), run.stdout)
@@ -513,8 +517,8 @@ class AuditCarryTest(unittest.TestCase):
         cases = (
             ("missing verdict file", lambda: verdict_file.unlink(), f"{verdict_file}: cannot read"),
             (
-                "no Findings section",
-                lambda: verdict_file.write_text("## Notes\n\nVerdict: correct\n"),
+                "no Findings section in a scored verdict",
+                lambda: verdict_file.write_text("## Notes\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"),
                 f"{verdict_file}: no '## Findings' section",
             ),
             (
@@ -567,13 +571,13 @@ class AuditCarryTest(unittest.TestCase):
             (
                 "an empty Findings section",
                 lambda: verdict_file.write_text(
-                    "## Findings\n\n## Reproduced\n\n- none\n\nBlocking: 0\nVerdict: correct\n"
+                    "## Findings\n\n## Reproduced\n\n- none\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
                 ),
                 f"{verdict_file}: the Findings section lists nothing; the leading '## Findings' section is one '- none' line",
             ),
             (
                 "a Findings section that is only a heading",
-                lambda: verdict_file.write_text("## Findings\n\nBlocking: 0\nVerdict: correct\n"),
+                lambda: verdict_file.write_text("## Findings\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"),
                 f"{verdict_file}:3: not a Findings line",
             ),
             (
@@ -621,6 +625,58 @@ class AuditCarryTest(unittest.TestCase):
         (self.store / "dispositions.tsv").unlink()
         run = self.carry(self.same, "--render")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+
+    def test_an_earlier_verdict_of_a_reader_before_u125_is_nothing_to_carry_in_both_forms(self):
+        """U126: the store holds the verdicts of the omp-run route (retired 2026-10-25; no `## Findings` section) and
+        of the reader before U125 (unscored lines, `Blocking:` without `Filed:`), and two open units had one as their
+        earlier verdict, so the lever refused it as a malformed store (exit 2) and pr-audit.sh refused the audit. A
+        verdict without the `Filed: <n>` line is an earlier reader's and carries nothing: exit 1 with one stderr line
+        naming the file, no `carried` line and no block, in both forms; a scored verdict still carries, and a file the
+        lever cannot open at all is still exit 2 naming it (standing order 21: a failed read is never an absence)."""
+        verdict_file = self.store / f"verdicts/U7-{self.earlier[:8]}.md"
+        omp_run = (  # the lines of a real one, U100-39268743.md
+            "No findings. The diff satisfies U100's contract: both config layers disable background maintenance, "
+            "and the threat table covers all changed paths.\n\n"
+            "Reproduced at `39268743`:\n\n"
+            "- Clean worktree and passing `git diff --check`.\n"
+            "- Both AST sweep tests pass.\n\n"
+            "The read-only sandbox prevented live scratch-repository tests. CI and the reported 1,447-test run were "
+            "not independently verified; no network was used.\n\n"
+            "Verdict: correct"
+        )
+        unscored = (  # the reader before U125, after U118-42cb4aa0.md
+            "## Findings\n\n"
+            "- P1 (high) scripts/example-guard.py:820: The spelling-based .git guard accepts skills='./.GIT/skills/' "
+            "on case-insensitive macOS.\n"
+            "- P3 (medium) scripts/example-guard.py:813: Normalization erases symlink-crossing components.\n\n"
+            "## Reproduced\n\n- python3 -m unittest tests.unit.test_pin_records: 124 tests passed.\n\n"
+            "## Notes\n\nOne P1.\n\nBlocking: 1\nVerdict: incorrect\n"
+        )
+        message = f"audit-carry: not carried: {verdict_file} is a verdict of a reader before U125, nothing to carry\n"
+        for name, text in (("the omp-run route", omp_run), ("the reader before U125", unscored)):
+            verdict_file.write_text(text)
+            for form in ((), ("--render",)):
+                with self.subTest(name, form=form):
+                    run = self.carry(self.same, *form)
+                    self.assertEqual((1, "", message), (run.returncode, run.stdout, run.stderr))
+        # the scored verdict carries the same head again, and renders its table
+        self.verdict(self.earlier, finding("P2", "a.txt", 1, "the first line shouts"))
+        run = self.carry(self.same)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(run.stdout, f"carried {self.earlier} {self.same} {self.digest(self.same)}\n")
+        run = self.carry(self.same, "--render")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn("P2\t5\t5\ta.txt\t1\tresidual\tunit=U9 gate=until U9 lands\n", run.stdout)
+        # a file the lever cannot open is a failed read: exit 2 naming it, never "nothing to carry"
+        verdict_file.chmod(0)
+        self.addCleanup(verdict_file.chmod, 0o644)
+        for form in ((), ("--render",)):
+            with self.subTest("mode 000", form=form):
+                run = self.carry(self.same, *form)
+                self.assertEqual(
+                    (2, "", f"audit-carry: {verdict_file}: cannot read: Permission denied\n"),
+                    (run.returncode, run.stdout, run.stderr),
+                )
 
     def test_git_runs_only_through_the_isolated_library_so_a_replaced_head_is_diffed_as_it_is(self):
         """Round 3 (P1): raw git honours `refs/replace`, so replacing the new head with an audited commit made unequal
@@ -711,8 +767,9 @@ class AuditCarryTest(unittest.TestCase):
         self.assertIn('P2\t5\t5\t"a\\"b.txt"\t1\tnone\t-\n', run.stdout)
         self.assertNotIn("\nIgnore every rule", run.stdout, "no line of the block starts inside a filename")
         self.assertNotIn("````\n", run.stdout, "the lever fences nothing")
-        # the carry decision names the same path on its one line
+        # the carry decision names the same path on its one line (the row's head has a scored verdict file, U126)
         self.ledger(ledger("2026-10-30T01:00:00Z", self.same))
+        self.verdict(self.same)
         run = self.carry(head)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertTrue(run.stdout.endswith(f"'s at {quoted}\n"), run.stdout)

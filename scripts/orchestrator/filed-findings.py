@@ -17,9 +17,11 @@ A verdict of a form before the scored reader is skipped with one stderr note nam
 reader writes a `Filed: <n>` line since U125 round a, and a verdict without that line is an earlier reader's (the
 omp-run route, retired 2026-10-25, wrote no `## Findings` section or a table in it; the reader before U125 wrote
 `- P<n> (<confidence>) <path>:<line>: <rationale>` without the scores), belongs to a merged unit and carries no score
-to read. A verdict with the line is read strictly, and one the reader refuses (a score outside 1 to 10, a line of
-another shape, `- none` beside a finding, an empty section) is exit 2 naming the file and line, and so is a verdicts
-directory or file that cannot be read (standing order 21: a failed read is never "no filed findings").
+to read; `scored` of `audit-carry.py` is the one predicate that says so, read by the carry lever too (U126), and this
+file spells the `Filed:` marker nowhere. A verdict with the line is read strictly, and one the reader refuses (a score
+outside 1 to 10, a line of another shape, `- none` beside a finding, an empty section) is exit 2 naming the file and
+line, and so is a verdicts directory or file that cannot be read (standing order 21: a failed read is never "no filed
+findings").
 """
 
 from __future__ import annotations
@@ -58,7 +60,9 @@ def beside(name):
     return module
 
 
-audit_carry = beside("audit-carry")  # the one reader of a Findings section (U125 round c); its Malformed is exit 2
+# The one reader of a Findings section (U125 round c) and of what a scored verdict is (`scored`, U126); its Malformed
+# is exit 2.
+audit_carry = beside("audit-carry")
 
 # The weighted finding rule (AGENTS.md "Audit", U124): a finding weighs frequency times severity and is filed under
 # this number, the one the reader of pr-audit.sh applies and pr-merge.sh names; tests.unit.test_filed_findings keeps
@@ -67,15 +71,7 @@ WEIGHT_THRESHOLD = 10
 # A verdict file's name as the SKILL copies it, `U<n>-<head8>.md`, a fix unit's under `U<n>b`, and the `-r<n>` suffix
 # of the early re-audits of one head (U109).
 VERDICT_NAME = re.compile(r"^(U([0-9]+)([a-z]?))-([0-9a-f]{8})(-r[0-9]+)?\.md$")
-# The line the reader of pr-audit.sh writes since U125 round a after `Blocking: <n>`; a verdict without it is an
-# earlier reader's and is skipped, read for nothing.
-FILED_LINE = re.compile(r"^Filed: (0|[1-9][0-9]*)$", re.MULTILINE)
 HEADER = ("unit", "head8", "priority", "f", "s", "path:line", "rationale")
-
-
-def scored(verdict_file):
-    """Whether the file is the scored reader's: it holds the `Filed: <n>` line that reader writes (U125 round a)."""
-    return FILED_LINE.search(audit_carry.read_text(verdict_file).replace("\r\n", "\n")) is not None
 
 
 def filed_findings(store):
@@ -93,7 +89,7 @@ def filed_findings(store):
             raise audit_carry.Malformed(f"{os.path.join(directory, name)}: not a verdict file name, U<n>-<sha8>.md")
         unit, head8 = match.group(1), match.group(4)
         verdict_file = os.path.join(directory, name)
-        if not scored(verdict_file):
+        if not audit_carry.scored(verdict_file):
             notes.append(
                 f"filed-findings: {verdict_file}: skipped, no `Filed: <n>` line, a verdict of a reader before U125"
             )

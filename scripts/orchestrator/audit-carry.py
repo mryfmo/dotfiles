@@ -65,7 +65,14 @@ P2) and a record whose patch has no hunk (a binary file, a text file holding a N
 `path: whole file`, and a path is never read from a patch header nor a header rebuilt from a path (round 4 P2: a NUL
 byte made the changed line vanish; P3: the last ` b/` of a header was taken as the path delimiter, so `dir
 b/payload.dat` was named `payload.dat`; round 6 P2: the rebuilt header octal-escaped a byte outside UTF-8 that git
-had written as it was, so a path holding 0xff was exit 2). The rows are modelled as frozen
+had written as it was, so a path holding 0xff was exit 2). Before that section is read, in both forms, the file is
+judged by `scored` (U126, the one predicate, read by `filed-findings.py` too): a verdict without the `Filed: <n>` line
+the reader writes since U125 round a is an earlier reader's (the omp-run route, retired 2026-10-25, wrote no
+`## Findings` section; the reader before U125 wrote unscored lines), carries nothing, and the lever prints `not
+carried: <file> is a verdict of a reader before U125, nothing to carry` on stderr and exits 1 (the status pr-audit.sh
+reads as no earlier audited head), writing no `carried` line and rendering no block, while a file that cannot be read
+at all stays exit 2 naming it (standing order 21: a failed read is never an absence; a legacy file is read and judged
+by its content). The rows are modelled as frozen
 dataclasses (`CarriedFinding`, `ChangedRange`) and `CarriedTable.render()` writes the one block, plain text with a
 tab-separated table, that the audit prompt carries inside pr-audit.sh's tags.
 
@@ -375,6 +382,25 @@ def score(where, letter, text):
     return int(text)
 
 
+# The line the reader of pr-audit.sh writes since U125 round a after `Blocking: <n>`, the one mark of the scored reader
+# (nothing before it wrote one); a verdict without it is an earlier reader's (the omp-run route, retired 2026-10-25,
+# wrote no `## Findings` section; the reader before U125 wrote unscored lines) and carries nothing to read (U126).
+FILED_LINE = re.compile(r"^Filed: (0|[1-9][0-9]*)$", re.MULTILINE)
+
+
+def verdict_file_of(store, previous):
+    """The earlier audited head's verdict file, `verdicts/<row unit>-<sha8>.md`, named by the row's unit, never the
+    body's (standing order 24: a fix unit's row names `U<n>b-<sha8>.md`)."""
+    return os.path.join(store, "verdicts", f"{previous.unit}-{previous.head_sha[:8]}.md")
+
+
+def scored(verdict_file):
+    """Whether the file is the scored reader's: it holds the `Filed: <n>` line that reader writes (U125 round a). The
+    one predicate behind this lever's two forms and filed-findings.py (U126); a file that cannot be read is Malformed
+    naming it (standing order 21), never "not scored"."""
+    return FILED_LINE.search(read_text(verdict_file).replace("\r\n", "\n")) is not None
+
+
 def findings_of(verdict_file):
     """The (priority, frequency, severity, path, line, rationale) of every line of the file's leading `## Findings`
     section under FINDINGS_GRAMMAR: `- none` lists none, and a section that is neither `- none` alone nor finding
@@ -428,7 +454,7 @@ def carried_findings(store, previous):
     """Every finding of the earlier head's verdict file joined with its dispositions.tsv rows by the gate key of
     pr-merge.sh, (unit, head_sha, priority, path, line); a row of another priority at the same location is another
     finding's (round 3 P1)."""
-    verdict_file = os.path.join(store, "verdicts", f"{previous.unit}-{previous.head_sha[:8]}.md")
+    verdict_file = verdict_file_of(store, previous)
     listed = findings_of(verdict_file)
     if not listed:
         return ()
@@ -687,6 +713,13 @@ def main(argv=None):
             print(
                 f"audit-carry: {'' if args.render else 'not carried: '}{why}",
                 file=sys.stderr if args.render else sys.stdout,
+            )
+            return 1
+        verdict_file = verdict_file_of(store, previous)
+        if not scored(verdict_file):
+            print(
+                f"audit-carry: not carried: {verdict_file} is a verdict of a reader before U125, nothing to carry",
+                file=sys.stderr,
             )
             return 1
         root = repo_root(args.repo)

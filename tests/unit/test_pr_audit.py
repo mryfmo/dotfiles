@@ -1090,7 +1090,7 @@ class PrAuditTest(unittest.TestCase):
         store = self.with_store([("2026-10-30T01:00:00Z", "U7", "7", earlier, "correct", "pr-audit.sh", evidence)])
         (store / "verdicts").mkdir(exist_ok=True)
         (store / f"verdicts/U7-{earlier[:8]}.md").write_text(
-            f"## Findings\n\n{finding}\n\n## Reproduced\n\n- none\n\n## Notes\n\nnone\n\nBlocking: 0\nVerdict: correct\n"
+            f"## Findings\n\n{finding}\n\n## Reproduced\n\n- none\n\n## Notes\n\nnone\n\nBlocking: 0\nFiled: 0\nVerdict: correct\n"
         )
         if dispositions is None:
             dispositions = (

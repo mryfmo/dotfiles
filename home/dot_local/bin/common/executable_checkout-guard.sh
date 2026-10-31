@@ -25,9 +25,12 @@
 #     (standing order 29)`. Deletions and every ref outside `refs/heads/` (a detached HEAD, tags, remote-tracking
 #     refs, ORIG_HEAD, the stash) pass; the other phases exit 0. `git commit --no-verify` skips no
 #     reference-transaction hook. A read that fails refuses the transaction (standing order 21): the store walk is
-#     `os.scandir`, where an absent `.orchestration` is no store and any other `OSError` (a mode-000 ancestor, a file
-#     where a directory should be) is a refusal naming it; the toplevel and the worktree list come from git as bytes
-#     (`worktree list --porcelain -z`), never split on newlines; a git read that exits non-zero is a refusal naming it.
+#     `os.scandir` over `.orchestration/orchestrate` and `os.listdir` of each program directory (a directory is
+#     listed, never `stat`-ed for a child: a mode-0111 program directory answers a `stat` of its `units.tsv` and
+#     refuses a listing), where an absent `.orchestration` is no store and any other `OSError` (a mode-000 or 0111
+#     directory, a file where a directory should be) is a refusal naming it; the toplevel and the worktree list come
+#     from git as bytes (`worktree list --porcelain -z`), never split on newlines; a git read that exits non-zero is a
+#     refusal naming it.
 #   The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the
 #   plain `git` with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1` (so no `refs/replace/*` ref and no
 #   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads) and `-c core.hooksPath=/dev/null` (so they run
@@ -40,16 +43,24 @@
 #   `checkout-guard.sh check <checkout>` reports `installed` (byte-equal to the copy here and executable), `absent`,
 #   `differs` or `not-executable` for the hook, and `stale` for a round-1 `pre-commit` or `post-checkout` still
 #   there (byte-equal to round 1's, kept in write_hook for this comparison alone); exit 0 when the hook is installed
-#   and nothing is stale, else 1. `install` refuses (exit 2, nothing written) unless `<checkout>` is in a main
-#   checkout (`git rev-parse --git-dir` equals `--git-common-dir`; a linked worktree's hooks directory is the main
-#   checkout's, so it is installed there), `core.hooksPath` is unset as the operator's git reads it in the main
-#   checkout and in every linked worktree (`worktree list --porcelain -z`, then `git config --show-origin --get` in
-#   each: the repository, worktree, global and system configuration and the caller's `GIT_CONFIG_COUNT`,
-#   `GIT_CONFIG_KEY_<n>`, `GIT_CONFIG_VALUE_<n>` and `GIT_CONFIG_PARAMETERS`, which stay in the environment for those
-#   reads and are scrubbed after them; a set path means this hook would never run there, and it is refused naming
-#   the worktree and the origin of the value; `check` makes the same reads), the hooks directory, when it exists, is
-#   a directory that can be read (a mode-000 one is a refusal naming it, never `absent`), and the hook path is absent
-#   or already this lever's own; any other file, or a symlink, there is refused and never overwritten. After the hook
+#   and nothing is stale, else 1; a symlink or a file that is not a regular file at the hook path is a refusal (exit
+#   2) naming the kind, which `check` does not judge, while a regular file of other content is `differs`. `install`
+#   refuses (exit 2, nothing written) unless `<checkout>` is in a main checkout (`git rev-parse --git-dir` equals
+#   `--git-common-dir`; a linked worktree's hooks directory is the main checkout's, so it is installed there),
+#   `core.hooksPath` is unset as the caller's git reads it in the main checkout and in every linked worktree: the
+#   reads are the plain `git worktree list --porcelain -z` and then `git config --show-origin --get-all
+#   core.hooksPath` in each worktree, run by git itself under the caller's environment exactly as inherited, before
+#   any scrub (`GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `HOME`, `XDG_CONFIG_HOME`,
+#   `GIT_CONFIG_COUNT` with its entries, `GIT_CONFIG_PARAMETERS` and every other selector git honours are left in
+#   place, so git resolves the repository, worktree, global, system and command-scope configuration as it will at the
+#   next commit; rounds 2 and 3 scrubbed before this read and kept a list of selectors, and each audit named one the
+#   list dropped), and any value at all is refused naming the worktree and every origin git printed; `check` makes
+#   the same reads. Only after those reads is the caller's `GIT_*` scrubbed, for the lever's own identity reads
+#   through the isolated git, and the main worktree the caller's git listed must be the toplevel the isolated git
+#   names, else the caller's environment (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`) points git at another
+#   repository and the run is refused naming both. The hooks directory, when it exists, must be a directory that
+#   can be read (a mode-000 one is a refusal naming it, never `absent`), and the hook path absent or already this
+#   lever's own; a regular file of other content there is refused and never overwritten. After the hook
 #   is in place it removes a round-1 `pre-commit` or `post-checkout` that is byte-equal to round 1's (`removed` rows;
 #   the `pre-commit` in either of the two byte forms round 1 wrote, see write_hook), so an upgraded checkout keeps no
 #   dead hook; any other file at those two paths is not this lever's and is left alone. A second run finds its own
@@ -79,7 +90,7 @@
 # @stdout One row per hook, `checkout-guard: <state>\t<path>`: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
 # @exitcode 0 Done: the hook installed and no stale round-1 hook left (install), or in place with nothing stale (check).
 # @exitcode 1 `check`: the hook is absent, differs or is not executable, or a round-1 hook is still there.
-# @exitcode 2 A refusal, before anything is written: usage, not a main checkout, `core.hooksPath` set in the checkout or a linked worktree, a hooks directory that cannot be read, a foreign hook, a failed read or write, or the manifest pin differing from this file.
+# @exitcode 2 A refusal, before anything is written: usage, not a main checkout, `core.hooksPath` set in the checkout or a linked worktree as the caller's git reads it, the caller's git and the isolated git naming different main worktrees, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read or write, or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles
 #   ~/.local/bin/common/checkout-guard.sh check ~/Workspace/dotfiles
@@ -163,61 +174,72 @@ install | check) ;;
 esac
 [[ -d ${checkout} ]] || refuse "${checkout} is not a directory"
 
-# The identity reads run through the isolated git (U113), with the caller's `GIT_*` and transport variables removed
-# first: a `GIT_DIR` or `GIT_COMMON_DIR` of the caller would point them at another repository. The scrub runs twice.
-# The first keeps the caller's command-scope configuration, `GIT_CONFIG_COUNT` with its `GIT_CONFIG_KEY_<n>` and
-# `GIT_CONFIG_VALUE_<n>` pairs and `GIT_CONFIG_PARAMETERS` (git-config(1), ENVIRONMENT: read like `-c` options, after
-# every file), which the operator's git reads too, so the hooks-path reads below see a `core.hooksPath` inherited
-# that way (audit round 2 P1: the full scrub hid one); the second scrub, after those reads, removes them as well.
+# The hooks path is read first, by the caller's git under the caller's environment exactly as inherited. The value
+# that decides whether the hook runs at the next commit is git's own resolution of the repository, worktree
+# (`config.worktree` under `extensions.worktreeConfig`, which a linked worktree sets for itself alone), global,
+# system and command-scope configuration, selected by whatever the environment holds: `GIT_CONFIG_GLOBAL`,
+# `GIT_CONFIG_SYSTEM`, `GIT_CONFIG_NOSYSTEM`, `HOME`, `XDG_CONFIG_HOME`, `GIT_CONFIG_COUNT` with its `GIT_CONFIG_KEY_<n>`
+# and `GIT_CONFIG_VALUE_<n>` entries, `GIT_CONFIG_PARAMETERS`, and any selector a later git adds. Rounds 2 and 3
+# scrubbed the environment before this read and kept a list of selectors visible, and each audit named one the list
+# dropped (`GIT_CONFIG_COUNT`; then `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`), so no list is kept: nothing is
+# scrubbed before the read, and git's own resolution is the one list that cannot be shorter than git's. The worktrees
+# come from the same plain git (`worktree list --porcelain -z` into a scratch file, NUL-terminated records, so a path
+# holding a newline is read whole), and `config --show-origin --get-all core.hooksPath` runs in each: exit 1 is unset;
+# 0 is a value, any value at any origin in any worktree, and a refusal naming the worktree and every origin git
+# printed (the hook would not run there); anything else is a failed read and a refusal (standing order 21), a
+# worktree the read cannot enter (its directory gone) among them, `git worktree prune` first. Neither read runs a
+# hook or writes anything. The caller's `GIT_*` and transport variables are scrubbed only after these reads, for the
+# lever's own reads through the isolated git (U113) below.
 [[ -r ${LEVER_DIR}/git-isolated.sh ]] || refuse "git-isolated.sh unreadable beside this script: ${LEVER_DIR}/git-isolated.sh"
 # shellcheck source=scripts/orchestrator/git-isolated.sh
 . "${LEVER_DIR}/git-isolated.sh"
-config_names=()
-names=$(compgen -e) || refuse 'cannot list the environment'
-for name in ${names}; do
-    case ${name} in
-    GIT_CONFIG_COUNT | GIT_CONFIG_PARAMETERS | GIT_CONFIG_KEY_* | GIT_CONFIG_VALUE_*) config_names+=("${name}") ;;
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot make a scratch directory for the worktree list and the expected hook bytes'
+trap 'rm -rf -- "${scratch}"' EXIT
+if ! git -C "${checkout}" worktree list --porcelain -z > "${scratch}/worktrees" 2> "${scratch}/stderr"; then # git-isolated: allow the caller's git lists the worktrees whose hooks path it will read at the next commit, under the environment as inherited
+    refuse "cannot list the worktrees of ${checkout} as the caller's git reads them: $(< "${scratch}/stderr")"
+fi
+main_worktree=''
+while IFS= read -r -d '' line; do
+    [[ ${line} == 'worktree '* ]] || continue
+    worktree=${line#worktree }
+    [[ -n ${main_worktree} ]] || main_worktree=${worktree}
+    status=0
+    git -C "${worktree}" config --show-origin --get-all core.hooksPath > "${scratch}/hooks-path" 2> "${scratch}/stderr" || status=$? # git-isolated: allow the caller's git decides whether .git/hooks runs at the next commit, so the configuration is read by git itself under the environment as inherited, which the isolated git closes
+    case ${status} in
+    0)
+        found=''
+        while IFS= read -r line; do
+            origin=${line%%$'\t'*}
+            if [[ -z ${found} ]]; then
+                found="core.hooksPath is ${line#*$'\t'} in ${worktree} (from ${origin%:})"
+            else
+                found+="; also ${line#*$'\t'} (from ${origin%:})"
+            fi
+        done < "${scratch}/hooks-path"
+        refuse "${found}, so the hook this lever installs would not run there; unset it first"
+        ;;
+    1) ;;
+    *) refuse "cannot read core.hooksPath in ${worktree}: $(< "${scratch}/stderr")" ;;
     esac
-done
-git_env_scrub "${config_names[@]+"${config_names[@]}"}"
+done < "${scratch}/worktrees"
+[[ -n ${main_worktree} ]] || refuse "the worktree list of ${checkout} names no worktree"
 
+# The lever's own reads run through the isolated git (U113), with the caller's `GIT_*` and transport variables
+# removed first: a `GIT_DIR` or `GIT_COMMON_DIR` of the caller would point them at another repository. The same
+# variables would have pointed the caller's git above at that other repository too, so the main worktree it listed
+# must be the toplevel the isolated git names for the checkout; a difference means the hooks path read above is not
+# this checkout's, and the run is refused naming both.
+# shellcheck disable=SC2119 # no name is kept: every GIT_* and transport variable goes
+git_env_scrub
 toplevel=$(git_isolated -C "${checkout}" rev-parse --show-toplevel 2> /dev/null) || refuse "${checkout} is not inside a git working tree"
 git_dir=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-dir) || refuse "cannot read the git directory of ${toplevel}"
 common=$(git_isolated -C "${checkout}" rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of ${toplevel}"
 [[ ${git_dir} == "${common}" ]] || # lint-comparisons: allow both sides are git's absolute forms of one checkout
     refuse "${toplevel} is a linked worktree (git dir ${git_dir}, common ${common}); install in the main checkout, whose hooks every linked worktree shares"
+[[ ${main_worktree} == "${toplevel}" ]] || # lint-comparisons: allow both sides are git's real paths of the main worktree
+    refuse "the caller's git lists ${main_worktree} as the main worktree of ${checkout} and the isolated git names ${toplevel}: the caller's environment (GIT_DIR, GIT_WORK_TREE or GIT_COMMON_DIR) points git at another repository, so the hooks path it would read is not this checkout's; unset it first"
 hooks=${common}/hooks
 [[ ! -L ${hooks} ]] || refuse "${hooks} is a symlink; nothing is written through it"
-
-# The effective hooks path is the value the operator's git reads when a ref moves, in the main checkout and in each
-# linked worktree: the repository, worktree (`config.worktree` under `extensions.worktreeConfig`, which a linked
-# worktree sets for itself alone), global and system configuration, and the command-scope configuration kept above,
-# which the isolated git closes while setting a `core.hooksPath` of its own, so each read is a plain git (after the
-# first scrub, so no `GIT_DIR` of the caller points it elsewhere). The worktrees come from `worktree list --porcelain
-# -z` into a scratch file, NUL-terminated lines, so a path holding a newline is read whole. A value anywhere means
-# the hook would not run there (audit round 2 P1: a linked worktree's own `config.worktree` was never read), and it
-# is refused naming the worktree and the origin of the value (`--show-origin`). git config exits 1 for a key that is
-# unset and otherwise for a read that failed (standing order 21): only 1 is absence; a worktree the read cannot
-# enter (its directory gone) is a refusal too, `git worktree prune` first.
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot make a scratch directory for the worktree list and the expected hook bytes'
-trap 'rm -rf -- "${scratch}"' EXIT
-git_isolated -C "${checkout}" worktree list --porcelain -z > "${scratch}/worktrees" || refuse "cannot list the worktrees of ${toplevel}"
-while IFS= read -r -d '' line; do
-    [[ ${line} == 'worktree '* ]] || continue
-    worktree=${line#worktree }
-    status=0
-    hooks_path=$(git -C "${worktree}" config --show-origin --get core.hooksPath 2>&1) || status=$? # git-isolated: allow the operator's git decides whether .git/hooks runs, so its configuration is read as it stands, which the isolated git closes
-    case ${status} in
-    0)
-        origin=${hooks_path%%$'\t'*}
-        refuse "core.hooksPath is ${hooks_path#*$'\t'} in ${worktree} (from ${origin%:}), so the hook under ${hooks} would not run there; unset it first"
-        ;;
-    1) ;;
-    *) refuse "cannot read core.hooksPath in ${worktree}: ${hooks_path}" ;;
-    esac
-done < "${scratch}/worktrees"
-# shellcheck disable=SC2119 # no name is kept now: every GIT_* and transport variable goes
-git_env_scrub
 
 # @description Write the text of hook $1 to the path $2: the quoted heredocs below, so nothing in them expands here,
 #   each redirected straight into the file (a command substitution would re-parse the body: bash 3.2 and others
@@ -308,8 +330,9 @@ def updates(data):
 
 def store_under(top):
     """Whether `.orchestration/orchestrate/<program>/units.tsv` exists under TOP. An absent `.orchestration` or
-    `orchestrate` is no store; a directory that cannot be listed, one that is not a directory, or a program whose
-    `units.tsv` cannot be looked up refuses the transaction, never passes it (standing order 21)."""
+    `orchestrate` is no store; a directory that cannot be listed (`.orchestration/orchestrate` or a program directory,
+    mode 000 or 0111: the listing is the read, never a `stat` of a child, which a 0111 directory answers) or one that
+    is not a directory refuses the transaction, never passes it (standing order 21)."""
     stores = os.path.join(top, b".orchestration", b"orchestrate")
     try:
         with os.scandir(stores) as entries:
@@ -319,16 +342,16 @@ def store_under(top):
     except OSError as error:
         refuse("cannot read %s: %s" % (os.fsdecode(stores), error.strerror or error))
     for program in programs:
-        units = os.path.join(program.path, b"units.tsv")
         try:
             if not program.is_dir():
                 continue
-            os.stat(units)
+            names = os.listdir(program.path)
         except FileNotFoundError:
             continue
         except OSError as error:
-            refuse("cannot read %s: %s" % (os.fsdecode(units), error.strerror or error))
-        return True
+            refuse("cannot read %s: %s" % (os.fsdecode(program.path), error.strerror or error))
+        if b"units.tsv" in names:
+            return True
     return False
 
 
@@ -533,26 +556,41 @@ for name in "${hook}" "${legacy_hooks[@]}" pre-commit.subst; do
 done
 
 # @description Judge the file at $1 against hook $2: `state` is `absent` (nothing there), `own` (a regular file
-#   holding exactly this lever's bytes) or `foreign` (a symlink, a directory, or any other content), and `executable`
-#   is 1 when the file has its owner's execute bit. A symlink is foreign whatever it points at: nothing is written
-#   through one. The comparison is `cmp -s` against the scratch copy, and for `pre-commit` against both of its forms:
-#   0 equal, 1 different, anything else a failed read and a refusal, never an absence (standing order 21).
+#   holding exactly this lever's bytes), `differs` (a regular file of any other content) or, for a file that is not
+#   judged, its kind: `a symlink` (whatever it points at: nothing is written through one), `a directory`, `a fifo`,
+#   `a socket`, `a device` or `not a regular file`; `executable` is 1 when a regular file has its owner's execute
+#   bit. The comparison is `cmp -s` against the scratch copy, and for `pre-commit` against both of its forms: 0 equal,
+#   1 different, anything else a failed read and a refusal, never an absence (standing order 21).
 # @arg $1 string The path.
 # @arg $2 string The hook name.
-# @set state `absent`, `own` or `foreign`.
+# @set state `absent`, `own`, `differs` or the kind of a file that is not judged.
 # @set executable 0 or 1.
 hook_state() {
     local target=$1 name=$2 same form
-    state=foreign
     executable=0
     if [[ -L ${target} ]]; then
+        state='a symlink'
         return 0
     fi
     if [[ ! -e ${target} ]]; then
         state=absent
         return 0
     fi
-    [[ -f ${target} ]] || return 0
+    if [[ ! -f ${target} ]]; then
+        if [[ -d ${target} ]]; then
+            state='a directory'
+        elif [[ -p ${target} ]]; then
+            state='a fifo'
+        elif [[ -S ${target} ]]; then
+            state='a socket'
+        elif [[ -b ${target} || -c ${target} ]]; then
+            state='a device'
+        else
+            state='not a regular file'
+        fi
+        return 0
+    fi
+    state=differs
     [[ ! -x ${target} ]] || executable=1
     for form in "${scratch}/${name}" "${scratch}/${name}.subst"; do
         [[ -e ${form} ]] || continue
@@ -577,9 +615,16 @@ if [[ -e ${hooks} ]]; then
     [[ -r ${hooks} && -x ${hooks} ]] || refuse "cannot read ${hooks}"
 fi
 
-# The hook and the two round-1 paths are judged before anything is written.
+# The hook and the two round-1 paths are judged before anything is written. A symlink or a file that is not a regular
+# file at the hook path is not judged by either action (audit round 3 P3: `check` read both as `differs`): it is a
+# refusal naming the kind, and nothing is written through or over it; a regular file of other content is `differs`
+# for `check` and a refusal for `install` below. Anything at a round-1 path that is not round 1's own is left alone.
 hook_state "${hooks}/${hook}" "${hook}"
 hook_own=${state} hook_executable=${executable}
+case ${hook_own} in
+absent | own | differs) ;;
+*) refuse "${hooks}/${hook} is ${hook_own}, not this lever's hook; ${action} does not judge it and nothing is written through it (move it away by hand, then rerun)" ;;
+esac
 stale=()
 for name in "${legacy_hooks[@]}"; do
     hook_state "${hooks}/${name}" "${name}"
@@ -611,7 +656,7 @@ if [[ ${action} == check ]]; then
     exit "${missing}"
 fi
 
-[[ ${hook_own} != foreign ]] || refuse "${hooks}/${hook} exists and is not this lever's hook; it is never overwritten (move it away by hand, then rerun)"
+[[ ${hook_own} != differs ]] || refuse "${hooks}/${hook} exists and is not this lever's hook; it is never overwritten (move it away by hand, then rerun)"
 if [[ ! -d ${hooks} ]]; then
     mkdir "${hooks}" || refuse "cannot make ${hooks}"
 fi

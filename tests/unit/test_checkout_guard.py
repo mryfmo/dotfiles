@@ -145,15 +145,16 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertIn(REFUSAL, err)
         self.assertIn("which no refs/remotes/origin/* ref reaches", err)
 
-    def shim(self, pattern, status=128):
-        """The env whose PATH `git` exits STATUS on a call whose arguments hold PATTERN, else runs the real git."""
-        real = shutil.which("git", path=self.env["PATH"])
-        shims = Path(tempfile.mkdtemp(prefix="shim-git-", dir=self.root))
-        (shims / "git").write_text(
-            f'#!/bin/sh\ncase "$*" in\n*"{pattern}"*) echo "shim: failing {pattern}" >&2; exit {status} ;;\nesac\n'
+    def shim(self, pattern, status=128, name="git"):
+        """The directory whose `NAME` (default `git`) exits STATUS on a call whose arguments hold PATTERN, else runs
+        the real NAME from PATH."""
+        real = shutil.which(name, path=self.env["PATH"])
+        shims = Path(tempfile.mkdtemp(prefix=f"shim-{name}-", dir=self.root))
+        (shims / name).write_text(
+            f'#!/bin/sh\ncase "$*" in\n*"{pattern}"*) echo "shim: failing {name} {pattern}" >&2; exit {status} ;;\nesac\n'
             f'exec "{real}" "$@"\n'
         )
-        (shims / "git").chmod(0o755)
+        (shims / name).chmod(0o755)
         return shims
 
     def hook_shim(self, pattern):
@@ -275,7 +276,7 @@ class CheckoutGuardTest(unittest.TestCase):
         (self.hooks / HOOK).symlink_to(self.root / "nowhere")
         run = self.run_lever("install", str(self.checkout))
         self.assertEqual(run.returncode, 2, run.stdout)
-        self.assertIn("is not this lever's hook", run.stderr)
+        self.assertIn(f"{self.hooks / HOOK} is a symlink, not this lever's hook", run.stderr)
         self.assertFalse((self.root / "nowhere").exists(), "nothing written through the symlink")
         (self.hooks / HOOK).unlink()
         self.assertEqual(self.hooks_state(), state)
@@ -296,15 +297,15 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertEqual(self.hooks_state(), state)
 
     def test_a_failing_read_refuses_before_anything_is_written(self):
-        """Standing order 21: the git directory, the common directory, the worktree list and the `core.hooksPath`
-        read failing (exit 128 from the PATH git) are each a refusal naming the read, never an absence, with nothing
-        written; so is a `cmp` that cannot read the hook file."""
+        """Standing order 21: the worktree list and the `core.hooksPath` read (the caller's git), the git directory
+        and the common directory (the isolated git) failing with exit 128 from the PATH git are each a refusal naming
+        the read, never an absence, with nothing written; so is a `cmp` that cannot read the hook file."""
         state = self.hooks_state()
         for pattern, message in (
+            ("worktree list --porcelain -z", "cannot list the worktrees"),
+            ("config --show-origin --get-all core.hooksPath", "cannot read core.hooksPath"),
             ("rev-parse --path-format=absolute --git-dir", "cannot read the git directory"),
             ("rev-parse --path-format=absolute --git-common-dir", "cannot read the git common directory"),
-            ("worktree list --porcelain -z", "cannot list the worktrees"),
-            ("config --show-origin --get core.hooksPath", "cannot read core.hooksPath"),
         ):
             with self.subTest(pattern):
                 env = {**self.env, "PATH": f"{self.shim(pattern)}:{self.env['PATH']}"}
@@ -323,6 +324,25 @@ class CheckoutGuardTest(unittest.TestCase):
                         self.assertIn(f"cannot compare {self.hooks / HOOK} with this lever's {HOOK}", run.stderr)
             finally:
                 (self.hooks / HOOK).chmod(0o755)
+
+    def test_a_failing_mktemp_refuses_check_and_install_and_writes_nothing(self):
+        """Standing order 21, the one producer round 3 left without an injection test: a `mktemp` on PATH that exits
+        28 (as the audit injected) makes `check` and `install` exit 2 naming the scratch directory, with no row and
+        the hooks directory unchanged, whether the hook is in place or not."""
+        shims = self.shim("", status=28, name="mktemp")
+        env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+        for installed in (False, True):
+            if installed:
+                self.install()
+            state = self.hooks_state()
+            for action in ("check", "install"):
+                with self.subTest(action, installed=installed):
+                    run = self.run_lever(action, str(self.checkout), env=env)
+                    self.assertEqual(run.returncode, 2, run.stdout)
+                    self.assertIn("shim: failing mktemp", run.stderr)
+                    self.assertIn("cannot make a scratch directory", run.stderr)
+                    self.assertEqual(run.stdout, "")
+                    self.assertEqual(self.hooks_state(), state)
 
     def test_every_way_of_authoring_a_commit_is_refused_and_no_branch_moves(self):
         """With `.orchestration/orchestrate/<program>/units.tsv` under the toplevel, every command that would move a
@@ -495,28 +515,37 @@ class CheckoutGuardTest(unittest.TestCase):
     @unittest.skipIf(os.geteuid() == 0, "root reads an unreadable directory")
     def test_a_store_that_cannot_be_read_refuses_the_move(self):
         """Fail closed (standing order 21): `.orchestration` itself (the ancestor round 1 read as "no store"), the
-        `orchestrate` directory or a program directory that cannot be listed, and an `.orchestration` that is a file,
-        are each a refusal naming the path, never "no store"; an absent `.orchestration` is no store."""
+        `orchestrate` directory or a program directory that cannot be listed (mode 000, and mode 0111, which answers a
+        `stat` of its `units.tsv` while refusing a listing: round 3 `stat`-ed and passed the commit), and an
+        `.orchestration` that is a file, are each a refusal naming the directory, never "no store"; an absent
+        `.orchestration` is no store."""
         self.install()
         store = self.store()
         stores = store.parent
-        for directory, named in (
-            (stores.parent, stores),
-            (stores, stores),
-            (store, store / "units.tsv"),
+        for directory, named, mode in (
+            (stores.parent, stores, 0),
+            (stores, stores, 0),
+            (stores, stores, 0o111),
+            (store, store, 0),
+            (store, store, 0o111),
         ):
-            with self.subTest(directory=directory.name):
-                mode = directory.stat().st_mode
-                directory.chmod(0)
+            with self.subTest(directory=directory.name, mode=oct(mode)):
+                restore = directory.stat().st_mode
+                directory.chmod(mode)
                 try:
                     status, err, before = self.commit()
+                    created, _, branch_err = self.git_status("branch", "at-origin", "origin/main")
                 finally:
-                    directory.chmod(stat.S_IMODE(mode))
+                    directory.chmod(stat.S_IMODE(restore))
                 self.assertNotEqual(status, 0, err)
                 self.assertIn(f"cannot read {named}", err)
                 self.assertIn(FAILED_READ, err)
                 self.assertNotIn(REFUSAL, err)
                 self.assertEqual(self.git("rev-parse", "HEAD"), before)
+                # The audit's probe: a move origin holds is not judged either while the store cannot be read.
+                self.assertNotEqual(created, 0, branch_err)
+                self.assertIn(f"cannot read {named}", branch_err)
+                self.assertEqual(self.git_status("rev-parse", "--verify", "-q", "refs/heads/at-origin")[0], 1)
                 self.git("reset", "-q", "--hard", "origin/main")
         shutil.rmtree(self.checkout / ".orchestration")
         (self.checkout / ".orchestration").write_text("a file\n")
@@ -713,16 +742,27 @@ class CheckoutGuardTest(unittest.TestCase):
         check = self.run_lever("check", str(self.checkout))
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
 
-    def test_the_caller_s_git_environment_does_not_redirect_the_identity_reads(self):
-        """`GIT_DIR` and `GIT_COMMON_DIR` in the caller's environment would point `rev-parse` at another repository;
-        the lever scrubs every `GIT_*` name before its reads, so the hook lands in the checkout named by the path."""
+    def test_a_caller_s_git_environment_pointing_at_another_repository_refuses_install_and_check(self):
+        """`GIT_DIR` and `GIT_WORK_TREE` in the caller's environment point the caller's git, whose hooks-path read runs
+        under the environment as inherited, at another repository, while the lever's isolated reads (after the scrub)
+        find the checkout named by the path. The two must name the same main worktree: round 3 installed into the
+        checkout after reading the other repository's configuration; now both actions refuse (exit 2) naming both
+        paths, and nothing is written in either repository."""
         other = self.root / "elsewhere"
         git_init(other, env=self.env, cwd=self.root)
         env = {**self.env, "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
-        run = self.run_lever("install", str(self.checkout), env=env)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
+        state = self.hooks_state()
+        for action in ("install", "check"):
+            with self.subTest(action):
+                run = self.run_lever(action, str(self.checkout), env=env)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn(f"the caller's git lists {other} as the main worktree of {self.checkout}", run.stderr)
+                self.assertIn(f"the isolated git names {self.checkout}", run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertEqual(self.hooks_state(), state)
         self.assertFalse((other / ".git/hooks" / HOOK).exists())
+        run = self.install()
+        self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
 
     def test_a_replaced_origin_tip_does_not_rewrite_the_ancestry_the_hook_reads(self):
         """A `refs/replace/<origin tip>` ref, or a `GIT_REPLACE_REF_BASE` of the caller naming a tag, that stands a
@@ -844,6 +884,104 @@ class CheckoutGuardTest(unittest.TestCase):
                 self.assertIn(f"{flat / '.git/hooks'} exists and is not a directory", run.stderr)
                 self.assertEqual(run.stdout, "")
         self.assertEqual((flat / ".git/hooks").read_text(), "not a directory\n")
+
+    def test_install_and_check_refuse_a_hooks_path_from_every_selector_the_caller_s_git_honours(self):
+        """The hooks-path read is git's own, under the caller's environment exactly as inherited, before any scrub
+        (rounds 2 and 3 scrubbed first and kept a list of selectors; the audits named `GIT_CONFIG_COUNT`, then
+        `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` as ones the list dropped): a `core.hooksPath=/dev/null` in the
+        file `GIT_CONFIG_GLOBAL` names, in the file `GIT_CONFIG_SYSTEM` names, in `GIT_CONFIG_PARAMETERS`, in
+        `GIT_CONFIG_COUNT`'s entries and in `$XDG_CONFIG_HOME/git/config` each make `install` and `check` exit 2
+        naming the main checkout and the origin git prints, with nothing written, while plain git under the same
+        environment reads the value; two origins at once are both named; with the environment restored, `install`
+        passes and a commit is refused."""
+        hooks_path = self.root / "hooks.cfg"
+        hooks_path.write_text("[core]\n\thooksPath = /dev/null\n")
+        xdg = self.root / "xdg"
+        (xdg / "git").mkdir(parents=True)
+        (xdg / "git/config").write_text("[core]\n\thooksPath = /dev/null\n")
+        base = {name: value for name, value in self.env.items() if not name.startswith("GIT_CONFIG_")}
+        selectors = (
+            ("GIT_CONFIG_GLOBAL", {"GIT_CONFIG_GLOBAL": str(hooks_path)}, f"file:{hooks_path}"),
+            ("GIT_CONFIG_SYSTEM", {"GIT_CONFIG_SYSTEM": str(hooks_path)}, f"file:{hooks_path}"),
+            ("GIT_CONFIG_PARAMETERS", {"GIT_CONFIG_PARAMETERS": "'core.hooksPath'='/dev/null'"}, "command line"),
+            (
+                "GIT_CONFIG_COUNT",
+                {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.hooksPath", "GIT_CONFIG_VALUE_0": "/dev/null"},
+                "command line",
+            ),
+            ("XDG_CONFIG_HOME", {"XDG_CONFIG_HOME": str(xdg)}, f"file:{xdg / 'git/config'}"),
+        )
+        state = self.hooks_state()
+        for selector, variables, origin in selectors:
+            env = quiet_git_env({**base, **variables})
+            self.assertEqual(
+                self.git("config", "--get", "core.hooksPath", env=env), "/dev/null", f"plain git reads {selector}"
+            )
+            for action in ("install", "check"):
+                with self.subTest(action, selector=selector):
+                    run = self.run_lever(action, str(self.checkout), env=env)
+                    self.assertEqual(run.returncode, 2, run.stdout)
+                    self.assertIn(f"core.hooksPath is /dev/null in {self.checkout} (from {origin})", run.stderr)
+                    self.assertIn("would not run there", run.stderr)
+                    self.assertEqual(run.stdout, "")
+                    self.assertEqual(self.hooks_state(), state)
+        self.git("config", "core.hooksPath", str(self.root / "repo-hooks"))
+        run = self.run_lever("install", str(self.checkout), env=quiet_git_env({**base, **selectors[0][1]}))
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"core.hooksPath is /dev/null in {self.checkout} (from file:{hooks_path})", run.stderr)
+        self.assertIn(f"; also {self.root / 'repo-hooks'} (from file:.git/config)", run.stderr)
+        self.git("config", "--unset", "core.hooksPath")
+        self.assertEqual(self.hooks_state(), state)
+        self.install()
+        self.store()
+        status, err, before = self.commit()
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+
+    def test_check_refuses_to_judge_a_symlink_or_a_non_regular_file_at_the_hook_path(self):
+        """A symlink at the hook path (even one that resolves to this lever's bytes), a directory and a fifo are not
+        judged: `check` and `install` exit 2 naming the kind with no row and nothing written through or over it
+        (round 3's `check` read each as `differs`, exit 1); a regular file of other content stays `differs`, exit 1,
+        and `install` refuses it; a byte-equal regular file is `installed`."""
+        self.install()
+        hook = self.hooks / HOOK
+        original = hook.read_bytes()
+        saved = self.root / "saved-hook"
+        saved.write_bytes(original)
+        saved.chmod(0o755)
+        hook.unlink()
+        for kind, make in (
+            ("a symlink", lambda: hook.symlink_to(saved)),
+            ("a symlink", lambda: hook.symlink_to(self.root / "nowhere")),
+            ("a directory", hook.mkdir),
+            ("a fifo", lambda: os.mkfifo(hook)),
+        ):
+            make()
+            state = self.hooks_state()
+            for action in ("check", "install"):
+                with self.subTest(action, kind=kind, target=os.readlink(hook) if hook.is_symlink() else None):
+                    run = self.run_lever(action, str(self.checkout))
+                    self.assertEqual(run.returncode, 2, run.stdout)
+                    self.assertIn(f"{hook} is {kind}, not this lever's hook; {action} does not judge it", run.stderr)
+                    self.assertEqual(run.stdout, "")
+                    self.assertEqual(self.hooks_state(), state)
+            self.assertEqual(saved.read_bytes(), original)
+            self.assertFalse((self.root / "nowhere").exists())
+            if hook.is_dir() and not hook.is_symlink():
+                hook.rmdir()
+            else:
+                hook.unlink()
+        hook.write_text("#!/bin/sh\nexit 0\n")
+        hook.chmod(0o755)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (1, [("differs", str(hook))]))
+        run = self.run_lever("install", str(self.checkout))
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn(f"{hook} exists and is not this lever's hook", run.stderr)
+        self.assertEqual(hook.read_text(), "#!/bin/sh\nexit 0\n")
+        hook.write_bytes(original)
+        check = self.run_lever("check", str(self.checkout))
+        self.assertEqual((check.returncode, self.rows(check.stdout)), (0, [("installed", str(hook))]))
 
 
 if __name__ == "__main__":

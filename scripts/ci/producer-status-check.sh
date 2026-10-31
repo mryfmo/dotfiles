@@ -794,6 +794,17 @@ ACCEPTED_ARITHMETIC = (
         "the status of unit_row_exists, assigned 0 or `$?` by the statements before it",
     ),
     (("pr-merge.sh",), r"""((satisfied == 1))""", "a flag the disposition loop sets to 1"),
+    (
+        ("pr-merge.sh",),
+        r"""weight=$((frequency * severity))""",
+        "the two scores of a Findings line, decimals 1 to 10 by the score_re matches before it (U125), their product",
+    ),
+    (
+        ("pr-merge.sh",),
+        r"""((weight < WEIGHT_THRESHOLD))""",
+        "that product against the constant the file assigns a decimal to once: a P0 or P1 at or above it refuses",
+    ),
+    (("pr-merge.sh",), r"""((weight >= WEIGHT_THRESHOLD))""", "the same product: under the constant the line is filed"),
     (("pr-threads-check.sh",), r"""((fix_time < created));""", "two epoch seconds `date` printed"),
     (("pr-threads-check.sh",), r"""((seen_head))""", "a flag the listing loop sets to 1"),
     (("pr-threads-check.sh",), r"""((count <= 100))""", "the comment count of a thread, a field of gh's TSV row"),

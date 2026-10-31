@@ -9,6 +9,7 @@ The tests assert the receipts, the refusals (exit 2, no write call), the failed 
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -388,6 +389,10 @@ class PrThreadResolveTest(ThreadsFixture):
             ("residual: unit=U29 gate=no Linux make update until U29", "P3"),
             ("residual: operator=2026-10-24T12:53:00Z", "P1"),
             ("filed: f=1 s=9 no run, test, incident or user has produced the case", "P1"),
+            # U125 round d (the U124 filed findings): the reason is the text after `s=<n>` with the surrounding
+            # whitespace trimmed, and a reply is read at its first non-blank line.
+            ("filed: f=1 s=1  two spaces before the reason", "P1"),
+            ("\nfiled: f=1 s=9 after a blank first line", "P1"),
         ):
             with self.subTest(reply=reply):
                 self.calls.unlink(missing_ok=True)
@@ -399,7 +404,14 @@ class PrThreadResolveTest(ThreadsFixture):
         """U124 round 3: a disposition holds only when its author's `authorAssociation` is OWNER, MEMBER or
         COLLABORATOR (`maintainer_associations`); an outsider's `filed:` or `fixed:` on a P1 thread resolves nothing,
         whatever its text, and a maintainer's `filed:` of any of the three associations resolves."""
-        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+        # U125 round d: a reply read at its first non-blank line, and one of blank lines alone, by an outsider are
+        # refused naming the author, where the old levers read the second as `no reply`.
+        for reply in (
+            "filed: f=1 s=1 an outsider's rating",
+            f"fixed: {self.head}",
+            "\nfiled: f=1 s=1 after a blank first line",
+            "\n \n",
+        ):
             for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
                 with self.subTest(reply=reply, association=association):
                     self.calls.unlink(missing_ok=True)
@@ -433,6 +445,12 @@ class PrThreadResolveTest(ThreadsFixture):
                 ("480", "4365170609"),
                 (thread(4365170609, replies=["refuted: a.py:1", "@codex ok?"]),),
                 "no valid disposition",
+            ),
+            # U125 round d: a maintainer's reply of blank lines alone is no disposition, named by its author
+            (
+                ("480", "4365170609"),
+                (thread(4365170609, replies=[" \n\t\n"]),),
+                "(the newest reply by coordinator, association OWNER, holds no text)",
             ),
         ]
         for args, nodes, message in cases:
@@ -855,6 +873,11 @@ class PrThreadsCheckTest(ThreadsFixture):
             thread(6, severity="P1", replies=["filed: f=1 s=9 no run, test, incident or user has produced the case"]),
             # U124 round 3: a reason of the two characters backslash and t is a reason (the decode is exact).
             thread(7, severity="P1", replies=["filed: f=1 s=1 \\t"]),
+            # U125 round d (the U124 filed findings, weights 4 and 1): the reason is the text after `s=<n>` with the
+            # surrounding whitespace trimmed (two spaces, a tab), and a reply is read at its first non-blank line.
+            thread(8, severity="P1", replies=["filed: f=1 s=1  two spaces before the reason"]),
+            thread(9, replies=["filed: f=2 s=4\ta tab before the reason"]),
+            thread(10, severity="P1", replies=["\n\nfiled: f=1 s=9 after two blank lines"]),
         )
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertEqual(
@@ -867,7 +890,10 @@ class PrThreadsCheckTest(ThreadsFixture):
                 "thread comment=5 severity=P1 state=residual operator=2026-10-24T12:53:00Z",
                 "thread comment=6 severity=P1 state=filed f=1 s=9 weight=9",
                 "thread comment=7 severity=P1 state=filed f=1 s=1 weight=1",
-                "summary threads=7 open=0",
+                "thread comment=8 severity=P1 state=filed f=1 s=1 weight=1",
+                "thread comment=9 severity=P2 state=filed f=2 s=4 weight=8",
+                "thread comment=10 severity=P1 state=filed f=1 s=9 weight=9",
+                "summary threads=10 open=0",
             ],
         )
         self.assertEqual(self.writes(), [], "read-only")
@@ -921,6 +947,13 @@ class PrThreadsCheckTest(ThreadsFixture):
                 thread(1, replies=["filed: f=1 a score is missing"]),
                 "reply needs f=<1..10> s=<1..10> <reason>; a score is missing; got: filed: f=1 a score is missing)",
             ),
+            # U125 round d: a reply is read at its first non-blank line, so prose after a blank line is prose, and a
+            # reply of blank lines alone is open naming its author, never `no reply`.
+            (thread(1, replies=["\n\nlooks fine to me"]), "open (the newest reply is not a disposition)"),
+            (
+                thread(1, severity="P1", replies=[" \n\t\n"]),
+                "open (the newest reply by coordinator, association OWNER, holds no text)",
+            ),
         ]
         for node, message in cases:
             with self.subTest(message=message, node=node["comments"]["nodes"][-1]["body"][:40]):
@@ -947,7 +980,13 @@ class PrThreadsCheckTest(ThreadsFixture):
     def test_a_reply_outside_the_maintainers_leaves_the_thread_open(self):
         """U124 round 3: the newest reply's author must be a maintainer (`authorAssociation` OWNER, MEMBER or
         COLLABORATOR); an outsider's `filed:` or `fixed:` on a P1 thread, resolved or not, is open naming the author."""
-        for reply in ("filed: f=1 s=1 an outsider's rating", f"fixed: {self.head}"):
+        for reply in (
+            "filed: f=1 s=1 an outsider's rating",
+            f"fixed: {self.head}",
+            # U125 round d: read at the first non-blank line, and blank lines alone, still name the outsider
+            "\nfiled: f=1 s=1 after a blank first line",
+            "\n \n",
+        ):
             for association in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"):
                 for resolved in (False, True):
                     with self.subTest(reply=reply, association=association, resolved=resolved):
@@ -1022,9 +1061,18 @@ def ledger_row(
 
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
 UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
-# A `## Findings` line as pr-audit.sh's reader writes it (U119 round 2: a `correct` verdict may carry P2 and P3).
-P2_LINE = "- P2 (high) scripts/orchestrator/pr-merge.sh:236: the row is read, the findings are not"
-P3_LINE = "- P3 (medium) scripts/orchestrator/README.md:275: the lever row omits the verdict file"
+# A `## Findings` line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>:
+# <rationale>` (U119 round 2: a `correct` verdict may carry P2 and P3; U125: the two scores, frequency and severity,
+# each 1 to 10, whose product the gate weighs; f=5 s=5 is weight 25, at or above the threshold, so the earlier tests
+# keep their meaning). The merge gate and audit-carry.py read this one form (U125 rounds b and c).
+
+
+def finding_line(priority, path, line, rationale, confidence="high", f=5, s=5):
+    return f"- {priority} ({confidence}) [f{f} s{s}] {path}:{line}: {rationale}"
+
+
+P2_LINE = finding_line("P2", "scripts/orchestrator/pr-merge.sh", 236, "the row is read, the findings are not")
+P3_LINE = finding_line("P3", "scripts/orchestrator/README.md", 275, "the lever row omits the verdict file", "medium")
 
 
 def disposition_row(
@@ -1066,7 +1114,7 @@ class PrMergeTest(PrLeverTestCase):
         listed = "\n".join(findings or ("- none",))
         (self.records / "verdicts").mkdir(exist_ok=True)
         (self.records / f"verdicts/{unit}-{head[:8]}.md").write_text(
-            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\n{notes}\n\nBlocking: 0\n{last}\n"
+            f"## Findings\n\n{listed}\n\n## Reproduced\n\n- the head builds\n\n## Notes\n\n{notes}\n\nBlocking: 0\nFiled: 0\n{last}\n"
         )
 
     def dispositions(self, *rows, header=DISPOSITIONS_HEADER):
@@ -1579,12 +1627,154 @@ class PrMergeTest(PrLeverTestCase):
                 self.github()
                 self.assert_refused(self.merge(), message)
 
+    def test_a_finding_under_the_weight_threshold_is_filed_and_needs_no_disposition_row(self):
+        """U125 round b (the weighted finding rule of AGENTS.md, U124, applied by the gate): a finding's weight is its
+        frequency times its severity, the `[f<n> s<n>]` token the reader writes since round a, read by value. A P0 or
+        P1 line with weight under 10 under a `correct` row is filed, reported with the code left as it is, so the head
+        merges with no `dispositions.tsv` at all (red on 7976f6be: refused as a P1 under a correct row); a P0 or P1 at
+        or above the threshold refuses as before, naming the weight; a P2 or P3 under the threshold needs no row, and
+        one at or above it needs its residual row as before. The threshold is named once in the gate and is the
+        reader's number."""
+        self.units("U71", "U72")
+        for name, lines in (
+            ("a P1 of weight 9", (finding_line("P1", "scripts/x.sh", 3, "rare and mild", f=1, s=9),)),
+            ("a P0 of weight 9", (finding_line("P0", "scripts/x.sh", 3, "rare and mild", "low", f=3, s=3),)),
+            ("a P2 of weight 4", (finding_line("P2", "scripts/x.sh", 3, "cosmetic", f=1, s=4),)),
+            ("a P3 of weight 9", (finding_line("P3", "scripts/x.sh", 3, "cosmetic", "medium", f=9, s=1),)),
+            (
+                "a filed P1 beside a filed P2",
+                (
+                    finding_line("P1", "scripts/x.sh", 3, "rare and mild", f=1, s=9),
+                    finding_line("P2", "scripts/y.sh", 4, "cosmetic", f=2, s=4),
+                ),
+            ),
+        ):
+            with self.subTest(name):
+                self.verdict(*lines)
+                (self.records / "dispositions.tsv").unlink(missing_ok=True)
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        for name, line, message in (
+            (
+                "a P1 of weight 10",
+                finding_line("P1", "scripts/x.sh", 3, "boom", f=2, s=5),
+                "lists P1 at scripts/x.sh:3 under a correct ledger row with weight 10 (f2 s5); a P0 or P1 of weight 10"
+                " or more blocks",
+            ),
+            (
+                "a P1 of weight 10 the other way round",
+                finding_line("P1", "scripts/x.sh", 3, "boom", f=1, s=10),
+                "lists P1 at scripts/x.sh:3 under a correct ledger row with weight 10 (f1 s10)",
+            ),
+            (
+                "a P0 of weight 100",
+                finding_line("P0", "scripts/x.sh", 3, "boom", f=10, s=10),
+                "lists P0 at scripts/x.sh:3 under a correct ledger row with weight 100 (f10 s10)",
+            ),
+            (
+                "a P2 of weight 25 without its row",
+                finding_line("P2", "scripts/x.sh", 3, "boom", f=5, s=5),
+                "lists P2 at scripts/x.sh:3 without a holding disposition: no ",
+            ),
+            (
+                "a P3 of weight 10 without its row",
+                finding_line("P3", "scripts/x.sh", 3, "boom", "medium", f=2, s=5),
+                "lists P3 at scripts/x.sh:3 without a holding disposition: no ",
+            ),
+        ):
+            with self.subTest(name):
+                self.verdict(line)
+                self.dispositions()
+                self.calls.unlink(missing_ok=True)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertNotIn(
+                    ["pr", "checks", "7", "--json", "bucket,name"], self.gh_calls(), "refused before CI is read"
+                )
+        # a filed P2 beside a P2 at the threshold: only the second needs its row, and the refusal names that one
+        self.verdict(
+            finding_line("P2", "scripts/x.sh", 3, "cosmetic", f=1, s=4),
+            finding_line("P2", "scripts/y.sh", 4, "boom", f=2, s=5),
+        )
+        self.dispositions()
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assert_refused(self.merge(), "lists P2 at scripts/y.sh:4 without a holding disposition: no ")
+        self.dispositions(disposition_row(path="scripts/y.sh", line=4))
+        self.calls.unlink()
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # the number is named once in the gate, and it is the one the reader of pr-audit.sh decides by
+        gate = re.findall(r"^WEIGHT_THRESHOLD=(\d+)$", (LEVERS / "pr-merge.sh").read_text(), re.MULTILINE)
+        reader = re.findall(r"^WEIGHT_THRESHOLD = (\d+)$", (LEVERS / "pr-audit.sh").read_text(), re.MULTILINE)
+        self.assertEqual((gate, reader), (["10"], ["10"]))
+
+    def test_a_carry_whose_source_is_a_fix_unit_s_head_merges_on_that_unit_s_row(self):
+        """U125 round b, the U122 round 6 residual: the coordinator writes the `carried` row under the body's unit
+        (`U71`, the unit audit-carry.py was asked for) while the source head's `correct` row is a fix unit's (`U71b`,
+        standing order 24). The gate names the verdict file and the disposition rows by the source row's unit, so the
+        carry merges on `verdicts/U71b-<sha8>.md` and a `U71b` residual row and never opens a `U71` file for the
+        source head, and `ledger.py carry-source` prints that unit beside the head and verdict for every caller."""
+        digest = "d" * 64
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()
+        self.ledger(
+            ledger_row(SHA_B, unit="U71b"),
+            ledger_row(SHA_A, "carried", ts="2026-10-25T10:00:00Z", evidence=f"carried {SHA_B} {SHA_A} {digest}"),
+        )
+        self.verdict(P2_LINE, head=SHA_B, unit="U71b")
+        self.units("U71", "U72")
+        self.dispositions(disposition_row(head=SHA_B, unit="U71b"))
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.assertFalse((self.records / f"verdicts/U71-{SHA_B[:8]}.md").exists(), "no file of the body's unit")
+        # the disposition rows are the source unit's as well: a U71 row for the same finding does not hold
+        self.dispositions(disposition_row(head=SHA_B, unit="U71"))
+        self.calls.unlink()
+        self.github()
+        self.assert_refused(
+            self.merge(),
+            f"verdicts/U71b-{SHA_B[:8]}.md lists P2 at scripts/orchestrator/pr-merge.sh:236 without a holding "
+            f"disposition: no {self.records}/dispositions.tsv row for unit U71b, head {SHA_B}",
+        )
+        # the reader's carry-source form names the source row's unit, the column the gate names the file by
+        run = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                str(self.reader),
+                str(self.records),
+                "carry-source",
+                "U71",
+                SHA_A,
+                "--pr",
+                "7",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual(
+            (0, f"{SHA_B}\tcorrect (fresh-context audit, findings=0)\tU71b\n"), (run.returncode, run.stdout), run.stderr
+        )
+
     def test_the_merge_gate_and_audit_carry_read_the_findings_grammar_alike(self):
         """Round 2 (P2): the two readers of a verdict file's leading `## Findings` section, this lever (bash,
         `findings_grammar`) and `scripts/orchestrator/audit-carry.py` (Python, `FINDINGS_GRAMMAR`), accept and refuse
         the same sections: `- none` alone or finding lines alone are read; an empty section, `- none` beside a
         finding, `- none` twice, a line of another shape and a path with a colon or whitespace are malformed verdicts
-        for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings)."""
+        for both, exit 2 naming the file (30c05715's audit-carry.py rendered an empty section as no findings). Since
+        U125 (rounds b and c) both read the scored line form, so one text of each fixture goes to both files: a line
+        without the `[f<n> s<n>]` token and a score outside 1 to 10 are malformed to both as well."""
         carry = LEVERS / "audit-carry.py"
         self.git("switch", "-q", "-c", "feat")
         (self.repo / "a.txt").write_text("one\n")
@@ -1607,8 +1797,12 @@ class PrMergeTest(PrLeverTestCase):
             ("- none beside a finding", f"- none\n{P2_LINE}", False),
             ("- none twice", "- none\n- none", False),
             ("a line of another shape", "- P2 (high) a.txt: no line", False),
-            ("a path with a colon", "- P2 (high) file:1: real.sh:9: boom", False),
-            ("a path with whitespace", "- P2 (high) a b.txt:1: boom", False),
+            ("a path with a colon", finding_line("P2", "file:1: real.sh", 9, "boom"), False),
+            ("a path with whitespace", finding_line("P2", "a b.txt", 1, "boom"), False),
+            ("a line without the scores", "- P2 (high) a.txt:1: boom", False),
+            ("a frequency of 0", finding_line("P2", "a.txt", 1, "boom", f=0), False),
+            ("a severity of 11", finding_line("P2", "a.txt", 1, "boom", s=11), False),
+            ("a frequency that is no number", finding_line("P2", "a.txt", 1, "boom", f="x"), False),
         ):
             with self.subTest(name):
                 text = f"## Findings\n\n{section}".rstrip("\n") + tail
@@ -1808,22 +2002,58 @@ class PrMergeTest(PrLeverTestCase):
             ("another unit's file", lambda: self.verdict(unit="U72"), "a merge needs the verdict file"),
             (
                 "P1 under a correct row",
-                lambda: self.verdict("- P1 (high) scripts/x.sh:3: boom"),
+                lambda: self.verdict(finding_line("P1", "scripts/x.sh", 3, "boom")),
                 "lists P1 at scripts/x.sh:3 under a correct ledger row",
             ),
             (
                 "P0 under a correct row",
-                lambda: self.verdict("- P0 (low) scripts/x.sh:3: boom"),
+                lambda: self.verdict(finding_line("P0", "scripts/x.sh", 3, "boom", "low")),
                 "lists P0 at scripts/x.sh:3 under a correct ledger row",
             ),
             (
                 "a line of another shape",
                 lambda: self.verdict("- P2 scripts/x.sh:3 boom"),
-                "a Findings line is not '- P<n> (<confidence>) <path>:<line>: <rationale>': - P2 scripts/x.sh:3 boom",
+                "a Findings line is not '- P<n> (<confidence>) [f<n> s<n>] <path>:<line>: <rationale>'",
+            ),
+            (
+                "the unscored line form",
+                lambda: self.verdict("- P2 (high) scripts/x.sh:3: boom"),
+                "a line without them is the unscored reader's, whose verdicts belong to merged units, never to a merge"
+                " head): - P2 (high) scripts/x.sh:3: boom",
+            ),
+            (
+                "a frequency of 0",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", f=0)),
+                "a Findings line's frequency score 'f0' is not one of 1 to 10, so its weight cannot be read: - P2",
+            ),
+            (
+                "a frequency of 11",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", f=11)),
+                "a Findings line's frequency score 'f11' is not one of 1 to 10",
+            ),
+            (
+                "a frequency that is no number",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", f="x")),
+                "a Findings line's frequency score 'fx' is not one of 1 to 10",
+            ),
+            (
+                "a zero-padded frequency",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", f="05")),
+                "a Findings line's frequency score 'f05' is not one of 1 to 10",
+            ),
+            (
+                "a severity of 0",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", s=0)),
+                "a Findings line's severity score 's0' is not one of 1 to 10, so its weight cannot be read: - P2",
+            ),
+            (
+                "a severity of 11",
+                lambda: self.verdict(finding_line("P2", "scripts/x.sh", 3, "boom", s=11)),
+                "a Findings line's severity score 's11' is not one of 1 to 10",
             ),
             (
                 "a path with a colon",
-                lambda: self.verdict("- P2 (high) a:b.sh:3: boom"),
+                lambda: self.verdict(finding_line("P2", "a:b.sh", 3, "boom")),
                 "a Findings line's path (the text before its last ':<line>: ') holds a colon or whitespace",
             ),
             ("prose in the section", lambda: self.verdict("none found"), "a Findings line is not"),
@@ -1869,7 +2099,7 @@ class PrMergeTest(PrLeverTestCase):
         # it. The path is now the text before the line's last `:<line>: ` and may hold no colon and no whitespace.
         self.units("U71", "U72")
         # path `file` line 1, a rationale that begins with `real.sh:9`: only the row for file:1 holds
-        self.verdict("- P2 (high) file:1: real.sh:9 is the line it misreads")
+        self.verdict(finding_line("P2", "file", 1, "real.sh:9 is the line it misreads"))
         self.dispositions(disposition_row(path="real.sh", line=9))
         self.github()
         self.assert_refused(self.merge(), "lists P2 at file:1 without a holding disposition: no ")
@@ -1885,7 +2115,10 @@ class PrMergeTest(PrLeverTestCase):
         self.dispositions(
             disposition_row(path="file", line=1), disposition_row(path="real.sh", line=9, ts="2026-10-25T09:31:00Z")
         )
-        for line in ("- P2 (high) file:1: real.sh:9: boom", "- P2 (high) file:1: see real.sh:9: the same shape"):
+        for line in (
+            finding_line("P2", "file:1: real.sh", 9, "boom"),
+            finding_line("P2", "file", 1, "see real.sh:9: the same shape"),
+        ):
             with self.subTest(line):
                 self.verdict(line)
                 self.calls.unlink(missing_ok=True)
@@ -1904,7 +2137,7 @@ class PrMergeTest(PrLeverTestCase):
         # finding. The section runs from the first `## Findings` line to the next `## ` heading; the rest is text.
         self.github()
         self.verdict(
-            notes="## Findings\n\nnone found in a second pass\n\n- P2 (high) scripts/x.sh:3: text, not a finding"
+            notes=f"## Findings\n\nnone found in a second pass\n\n{finding_line('P2', 'scripts/x.sh', 3, 'text, not a finding')}"
         )
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)

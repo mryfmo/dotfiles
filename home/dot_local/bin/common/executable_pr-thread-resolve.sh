@@ -19,8 +19,11 @@
 #   `decisions.tsv` row in `--records`; `filed: f=<n> s=<n> <reason>` (regime-cutover U124) answers a finding of
 #   any priority whose two scores are whole numbers from 1 to 10 with a product under WEIGHT_THRESHOLD, the same
 #   number pr-threads-check.sh reads, each score accepted by its decimal string (`^(10|[1-9])$`) before any
-#   arithmetic (U124 round 2), and whose reason holds a character that is not whitespace, judged on the reply's own
-#   text (the listing's `@tsv` writes a tab as `\t`; `disposition` decodes the line first, U124 round 3). So a
+#   arithmetic (U124 round 2), and whose reason, the text after `s=<n>` with the whitespace around it trimmed, holds
+#   a character that is not whitespace (`filed: f=1 s=1  reason` holds, U125 round d), judged on the reply's own
+#   text (the listing's `@tsv` writes a tab as `\t`; `disposition` decodes the line first, U124 round 3). The reply
+#   is read at its first non-blank line, and one of blank lines alone is refused naming its author's login and
+#   association as any reply is (U125 round d). So a
 #   resolution never hides a finding the merge check would refuse. The
 #   one write is the `resolveReviewThread` mutation on that thread id. `<owner>/<repo>` comes from
 #   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
@@ -123,8 +126,9 @@ threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   }
 }'
 # `head <sha> <hasNextPage>`, then per thread `<node id> <resolved> <first id> <created epoch> <P0-P3 or -> <count>
-# <newest reply's authorAssociation or -> <its author's login or -> <newest reply's first line>` (TSV; the reply is
-# last because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes).
+# <newest reply's authorAssociation or -> <its author's login or -> <newest reply's first non-blank line>` (TSV; the
+# reply is last because it may be empty, and `@tsv` writes a tab in it as `\t`, which `disposition` decodes; a line
+# is blank when it holds no character outside whitespace, so a reply opened by an empty line is read at its text).
 # shellcheck disable=SC2016 # jq source, not shell
 threads_jq='.data.repository.pullRequest
   | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
@@ -133,7 +137,7 @@ threads_jq='.data.repository.pullRequest
       ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
       ($c.totalCount | tostring),
       (($c.nodes[1:] | last) as $reply | ($reply.authorAssociation // "-"), ($reply.author.login // "-"),
-        (($reply.body // "") | split("\n") | (.[0] // "") | rtrimstr("\r")))] | @tsv)'
+        (($reply.body // "") | split("\n") | map(rtrimstr("\r")) | map(select(test("\\S"))) | (.[0] // "")))] | @tsv)'
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 resolve_mutation='mutation($thread: ID!) { resolveReviewThread(input: {threadId: $thread}) { thread { id isResolved } } }'
 
@@ -171,7 +175,8 @@ has_row() {
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The `authorAssociation` of the newest reply's author (GitHub's enum), or `-` without a reply.
 # @arg $4 string The newest reply's author login, or `-`.
-# @arg $5 string The first line of the newest reply as the listing's `@tsv` escaped it; decoded here before any read.
+# @arg $5 string The first non-blank line of the newest reply as the listing's `@tsv` escaped it; decoded here before
+#   any read.
 disposition() {
     local created=$1 severity=$2 association=$3 login=$4 line='' fix fix_time status frequency severity_score weight why
     # The associations GitHub gives a maintainer's comment (U124 round 3); a reply by anyone else closes nothing.
@@ -180,7 +185,7 @@ disposition() {
     local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
     local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
     local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
-    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+) [^[:space:]]'
+    local filed='^filed: f=([^[:space:]]+) s=([^[:space:]]+)[[:space:]]+[^[:space:]]'
     local filed_scores='^filed: f=[^[:space:]]+ s=[^[:space:]]+[[:space:]]*$'
     local score_re='^(10|[1-9])$'
     # `@tsv` wrote a tab as `\t`, a carriage return as `\r` and a backslash as `\\`, and nothing else starts with a
@@ -188,7 +193,9 @@ disposition() {
     # a tab-only reason is whitespace, not the two characters `\t` (U124 round 3). An empty reply is left as the
     # empty string above: `printf -v` with nothing to print leaves its variable unset.
     [[ -z $5 ]] || printf -v line '%b' "$5"
-    if [[ -n ${line} && ! ${association} =~ ${maintainer_associations} ]]; then
+    # A reply exists when the listing names its author's association (`-` without one), and its author must be a
+    # maintainer whatever the reply says, a reply of blank lines alone included (U125 round d).
+    if [[ ${association} != - && ! ${association} =~ ${maintainer_associations} ]]; then
         echo "open (newest reply by ${login}, association ${association}: not a maintainer)"
         return
     fi
@@ -268,8 +275,10 @@ disposition() {
             return
         }
         echo "filed f=${frequency} s=${severity_score} weight=${weight}"
-    elif [[ -z ${line} ]]; then
+    elif [[ -z ${line} && ${association} == - ]]; then
         echo 'open (no reply)'
+    elif [[ -z ${line} ]]; then
+        echo "open (the newest reply by ${login}, association ${association}, holds no text)"
     else
         echo 'open (the newest reply is not a disposition)'
     fi

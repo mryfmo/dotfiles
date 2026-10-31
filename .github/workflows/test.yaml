@@ -179,11 +179,11 @@ jobs:
         # The step holds nothing else: tests/unit/test_apt_mirror.py reads it from shfmt's syntax tree and accepts
         # only the exact form, one call per statement, so no other command stands in for a word of it. Its bound is
         # the two calls (180 s each plus the 10 s kill delay), rounded up plus one minute (BoundOrderTest). Ruby is
-        # required for bashcov/simplecov formatters; bats and parallel for the Bats run.
+        # required for bashcov/simplecov formatters, parallel for the Bats run; Bats itself is the mise pin (U127).
         timeout-minutes: 8
         run: |
           sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update
-          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby
+          sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y curl iproute2 parallel ruby
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
@@ -211,7 +211,7 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            brew install bash bats-core gawk parallel
+            brew install bash gawk parallel
 
           elif [[ "${OS}" != ubuntu-* ]]; then
             echo "${OS} and ${SYSTEM} are not supported" >&2
@@ -440,14 +440,15 @@ jobs:
             exit 1
           fi
 
-      - name: Put the pinned `ShellCheck` and `shfmt` on PATH
+      - name: Put the pinned `ShellCheck`, `shfmt` and `Bats` on PATH
         if: ${{ steps.decide.outputs.should_test == 'true' }}
-        # Each version and each platform's sha256 come from home/dot_mise/config.toml ([tools."http:shellcheck"] and
-        # [tools."http:shfmt"], copied by "Prepare statusline tool config"); mise checks each download against that
-        # sha256. Neither apt nor brew installs either tool, and the lint steps refuse any other version (U97).
-        # make shellcheck, scripts/ci/masked-dirname-check.sh and the unit tests get the same two from PATH.
+        # Each version and each platform's sha256 come from home/dot_mise/config.toml ([tools."http:shellcheck"],
+        # [tools."http:shfmt"] and [tools."http:bats"], copied by "Prepare statusline tool config"); mise checks each
+        # download against that sha256. Neither apt nor brew installs any of the three; the lint steps refuse any other
+        # ShellCheck or shfmt (U97), and the suite runner refuses any other Bats before it runs (U127). make shellcheck,
+        # scripts/ci/masked-dirname-check.sh and the unit tests get the same three from PATH.
         # scripts/ci/install-pinned-lint-tools.sh checks each install and lookup before it touches GITHUB_PATH.
-        run: scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt
+        run: scripts/ci/install-pinned-lint-tools.sh "${RUNNER_TEMP}/statusline-mise" shellcheck shfmt bats
 
       - name: Run `shfmt`
         if: ${{ steps.decide.outputs.should_test == 'true' }}

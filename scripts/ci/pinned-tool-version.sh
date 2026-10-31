@@ -3,16 +3,17 @@
 # @brief Refuse a lint tool whose version is not the one the mise config pins.
 # @description
 #   The lint gates run this before they lint (regime-cutover U97): `make shellcheck` for shellcheck and shfmt
-#   (scripts/ci/masked-dirname-check.sh parses with shfmt), `make format` for shfmt, ruff and prettier, and CI's shfmt
-#   and formatting steps for theirs. Each pin is one value in home/dot_mise/config.toml: the `version` of the
-#   `[tools."http:shellcheck"]`, `[tools."http:shfmt"]` or `[tools."http:ruff"]` table, or the exact version of
+#   (scripts/ci/masked-dirname-check.sh parses with shfmt), `make format` for shfmt, ruff and prettier, CI's shfmt
+#   and formatting steps for theirs, and run_bats in scripts/run_unit_test.sh for bats before every Bats suite (U127).
+#   Each pin is one value in home/dot_mise/config.toml: the `version` of the `[tools."http:shellcheck"]`,
+#   `[tools."http:shfmt"]`, `[tools."http:bats"]` or `[tools."http:ruff"]` table, or the exact version of
 #   `"npm:prettier"` under `[tools]`. mise installs it on every host, and CI's test jobs install it from a copy of the
 #   same file. Releases disagree on findings and formatting (the apt ShellCheck on CI reported SC2015 where the local
 #   mise release did not, in U71b and U96), so a run under any other version is refused, naming both, instead of
 #   passing locally and failing in CI. The config is read as text, with no TOML library, so the check runs before uv
 #   or a recent python3 is on PATH.
 # @arg $1 path The mise config that holds the pins (the Makefile and CI pass home/dot_mise/config.toml).
-# @arg $@ string The tools to check, after the config: shellcheck, shfmt, ruff or prettier.
+# @arg $@ string The tools to check, after the config: shellcheck, shfmt, bats, ruff or prettier.
 # @stdout One line per tool naming the accepted version.
 # @exitcode 0 Each tool's `--version` reports its pinned version.
 # @exitcode 1 A tool reports another version or none, or fails; or the config cannot be read or pins no version.
@@ -66,10 +67,11 @@ for tool in "$@"; do
     case ${tool} in
     shellcheck) key=http:shellcheck prefix='version: ' ;;
     shfmt) key=http:shfmt prefix=v ;;
+    bats) key=http:bats prefix='Bats ' ;;
     ruff) key=http:ruff prefix='ruff ' ;;
     prettier) key=npm:prettier prefix= ;;
     *)
-        printf 'pinned-tool-version: %s is not a pinned lint tool (shellcheck, shfmt, ruff, prettier)\n' "${tool}" >&2
+        printf 'pinned-tool-version: %s is not a pinned lint tool (shellcheck, shfmt, bats, ruff, prettier)\n' "${tool}" >&2
         exit 2
         ;;
     esac

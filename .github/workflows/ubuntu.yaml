@@ -131,13 +131,18 @@ jobs:
           install: true
           cache: true
 
-      # - name: Install latest bats-core
-      #   run: |
-      #     tmp_dir=$(mktemp -d /tmp/bats-core-XXXXX)
-      #     git clone --depth 1 https://github.com/bats-core/bats-core.git "${tmp_dir}"
-      #     cd "${tmp_dir}"
-      #     sudo ./install.sh /usr/local
-      #     rm -rf "${tmp_dir}"
+      - name: Put the pinned `Bats` on PATH
+        # One Bats for hosts and CI (regime-cutover U127): the version and sha256 come from home/dot_mise/config.toml
+        # ([tools."http:bats"]), copied into a mise project directory as test.yaml's "Prepare statusline tool config"
+        # does and trusted as its "Install statusline tools" does; mise checks the download against that sha256. apt
+        # installs no Bats, and the suite runner refuses any other version before it runs (U127).
+        # scripts/ci/install-pinned-lint-tools.sh checks the install and the lookup before it touches GITHUB_PATH.
+        run: |
+          pinned_mise_dir="${RUNNER_TEMP}/pinned-mise"
+          mkdir -p "${pinned_mise_dir}"
+          cp home/dot_mise/config.toml "${pinned_mise_dir}/mise.toml"
+          mise trust --yes "${pinned_mise_dir}/mise.toml"
+          scripts/ci/install-pinned-lint-tools.sh "${pinned_mise_dir}" bats
 
       - name: Test file existence
         # The hard stop: one per-test bound (the wrapper's default) and margin. No passing log of this step exists (the

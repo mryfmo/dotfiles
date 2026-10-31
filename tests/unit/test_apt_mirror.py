@@ -60,8 +60,8 @@ OTHER_TESTS_BUDGET = 300
 # the time a `test` job spends before `Run unit test`: at most 409 s (run 40251900588); and after it: at most 10 s.
 PRE_STEP_BUDGET = 480
 POST_STEP_BUDGET = 60
-# The files suite under ubuntu.yaml's and macos.yaml's `Test file existence` (under 1 s in test.yaml), plus the
-# brew install of bats-core there.
+# The files suite under ubuntu.yaml's and macos.yaml's `Test file existence` (under 1 s in test.yaml), with margin;
+# Bats comes from the pinned install step before it (U127), no longer from a brew install inside the step.
 FILES_STEP_BUDGET = 300
 MIRRORS = (
     "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n"

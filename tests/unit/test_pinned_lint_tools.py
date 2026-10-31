@@ -39,6 +39,7 @@ SET_CHECKS = (
 TOOLS = {
     "shellcheck": ("http:shellcheck", "ShellCheck - shell script analysis tool\nversion: {v}\nlicense: GNU GPLv3\n"),
     "shfmt": ("http:shfmt", "v{v}\n"),
+    "bats": ("http:bats", "Bats {v}\n"),
     "ruff": ("http:ruff", "ruff {v}\n"),
     "prettier": ("npm:prettier", "{v}\n"),
 }
@@ -47,6 +48,7 @@ CONSUMERS = (
     MAKEFILE,
     GUARD,
     ROOT / "scripts/ci/install-pinned-lint-tools.sh",
+    ROOT / "scripts/run_unit_test.sh",
     ROOT / "scripts/ci/run-on-lint-files.sh",
     ROOT / "scripts/lint-comparisons.py",
     ROOT / "scripts/ci/masked-dirname-check.sh",
@@ -54,10 +56,23 @@ CONSUMERS = (
 )
 COPY = '"${RUNNER_TEMP}/statusline-mise"'
 COMMAND_SECONDS = 60
-INSTALL_STEP = "Put the pinned `ShellCheck` and `shfmt` on PATH"
+INSTALL_STEP = "Put the pinned `ShellCheck`, `shfmt` and `Bats` on PATH"
 INSTALL = ROOT / "scripts/ci/install-pinned-lint-tools.sh"
 # The step's whole run: every install and lookup is checked inside the script, none in the YAML (round-1 audit).
-INSTALL_RUN = f"scripts/ci/install-pinned-lint-tools.sh {COPY} shellcheck shfmt\n"
+INSTALL_RUN = f"scripts/ci/install-pinned-lint-tools.sh {COPY} shellcheck shfmt bats\n"
+# The files-test jobs of macos.yaml and ubuntu.yaml install Bats alone the same way (U127): the copy, its trust and
+# the installer, nothing else, after mise-action and before the one step that runs the suite.
+FILES_WORKFLOWS = (ROOT / ".github/workflows/macos.yaml", ROOT / ".github/workflows/ubuntu.yaml")
+FILES_INSTALL_STEP = "Put the pinned `Bats` on PATH"
+FILES_INSTALL_RUN = (
+    'pinned_mise_dir="${RUNNER_TEMP}/pinned-mise"\n'
+    'mkdir -p "${pinned_mise_dir}"\n'
+    'cp home/dot_mise/config.toml "${pinned_mise_dir}/mise.toml"\n'
+    'mise trust --yes "${pinned_mise_dir}/mise.toml"\n'
+    'scripts/ci/install-pinned-lint-tools.sh "${pinned_mise_dir}" bats\n'
+)
+# The tool or its package as a word: not a `.bats` file, bats-core, run_bats or run-bats.py.
+BATS_WORD = re.compile(r"(?<![\w./-])bats(?![\w./-])")
 SHFMT_RUN = (
     "scripts/ci/pinned-tool-version.sh home/dot_mise/config.toml shfmt\n"
     "scripts/ci/run-on-lint-files.sh shell shfmt -i 4 -sr -d\n"
@@ -304,6 +319,33 @@ class PinnedLintToolsTest(unittest.TestCase):
                     self.assertEqual(1, refused.returncode, f"{name}: {refused.stdout}")
                     self.assertIn(f"{broken} pins no {tool} version", refused.stderr, name)
 
+    def test_the_bats_banner_is_the_word_bats_a_space_and_the_bare_version(self):
+        # `bats --version` prints one line, `Bats <version>` (bats-core's bin/bats): the prefix is that word and one
+        # space, case included, and a line of any other shape reads as no version, so the pin is compared by value.
+        version = pins()["bats"]
+        self.assertEqual(f"Bats {version}\n", TOOLS["bats"][1].format(v=version))
+        self.fake("bats", version)
+        accepted = self.guard(MISE_CONFIG, "bats")
+        self.assertEqual(0, accepted.returncode, accepted.stderr)
+        self.assertEqual(f"==> bats {version}, the version {MISE_CONFIG} pins\n", accepted.stdout)
+        for banner in (
+            f"bats {version}\n",
+            f"Bats v{version}\n",
+            f"Bats {version} (git)\n",
+            f"Bats  {version}\n",
+            f"{version}\n",
+        ):
+            with self.subTest(banner=banner):
+                path = self.bin / "bats"
+                path.write_text(f"#!/bin/sh\nprintf '%s' '{banner}'\n")
+                path.chmod(0o755)
+                refused = self.guard(MISE_CONFIG, "bats")
+                self.assertEqual(1, refused.returncode, refused.stdout)
+                self.assertIn(
+                    f"the bats on PATH is version unknown, but {MISE_CONFIG} pins bats {version}", refused.stderr
+                )
+                self.assertEqual("", refused.stdout)
+
     def test_the_guard_refuses_a_call_it_cannot_check(self):
         for args, status, message in (
             ((str(MISE_CONFIG),), 2, "usage: pinned-tool-version.sh"),
@@ -318,7 +360,12 @@ class PinnedLintToolsTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
 
     def test_no_consumer_holds_a_version_of_its_own(self):
-        workflow = "\n".join(line for step in step_blocks(WORKFLOW.read_text()) for line in commands(step["run"]))
+        workflow = "\n".join(
+            line
+            for path in (WORKFLOW, *FILES_WORKFLOWS)
+            for step in step_blocks(path.read_text())
+            for line in commands(step["run"])
+        )
         for tool, version in pins().items():
             with self.subTest(tool):
                 for path in CONSUMERS:
@@ -402,6 +449,7 @@ class PinnedLintToolsTest(unittest.TestCase):
         # No other step's commands install or run one of these tools: apt and brew lines included.
         for tools, expected in (
             (("shellcheck", "shfmt"), [INSTALL_STEP, "Run `shfmt`", "Run `ShellCheck`"]),
+            (("bats",), [INSTALL_STEP]),
             (("ruff", "prettier"), ["Install statusline tools", "Check Python and Markdown formatting"]),
         ):
             mentions = [
@@ -410,13 +458,33 @@ class PinnedLintToolsTest(unittest.TestCase):
                 if any(re.search(rf"\b{tool}\b(?![.\w])", line) for line in commands(step["run"]) for tool in tools)
             ]
             self.assertEqual(expected, mentions, tools)
+        # The package installs that shipped the image's Bats are gone (U127): apt and brew install the rest alone.
         install = steps["Install tools"]["run"]
-        self.assertIn("brew install bash bats-core gawk parallel\n", install)
+        self.assertIn("brew install bash gawk parallel\n", install)
         self.assertIn(
             "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3"
-            " install -y bats curl iproute2 parallel ruby\n",
+            " install -y curl iproute2 parallel ruby\n",
             steps["Install apt packages"]["run"],
         )
+        self.assertEqual([], [line for step in blocks for line in commands(step["run"]) if "bats-core" in line])
+
+    def test_the_files_test_jobs_install_the_pinned_bats_after_mise_and_before_the_suite(self):
+        for workflow in FILES_WORKFLOWS:
+            with self.subTest(workflow.name):
+                text = workflow.read_text()
+                blocks = step_blocks(text)
+                steps = {step["name"]: step for step in blocks}
+                step = steps[FILES_INSTALL_STEP]
+                self.assertEqual(FILES_INSTALL_RUN, "".join(f"{line}\n" for line in commands(step["run"])))
+                self.assertEqual("", step["if"])
+                # After mise-action, which puts mise on PATH, and before the one step that runs the suite.
+                install_at = text.index(f"- name: {FILES_INSTALL_STEP}\n")
+                self.assertLess(text.index("uses: jdx/mise-action@"), install_at)
+                self.assertLess(install_at, text.index("- name: Test file existence\n"))
+                # No other step names the tool or its package: the brew install and the commented source build are gone.
+                mentions = [s["name"] for s in blocks if any(BATS_WORD.search(line) for line in commands(s["run"]))]
+                self.assertEqual([FILES_INSTALL_STEP], mentions)
+                self.assertNotIn("bats-core", text)
 
 
 BAD_SHELL = "#!/usr/bin/env bash\nif true;then echo  bad;fi\n"
@@ -476,7 +544,7 @@ class InstallPinnedLintToolsTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.scratch)
         (self.scratch / "bin").mkdir()
         self.installs = self.scratch / "installs"
-        for tool in ("shellcheck", "shfmt"):
+        for tool in ("shellcheck", "shfmt", "bats"):
             binary = self.installs / tool / tool
             binary.parent.mkdir(parents=True)
             binary.write_text("#!/bin/sh\n")
@@ -516,18 +584,32 @@ class InstallPinnedLintToolsTest(unittest.TestCase):
         )
 
     def test_each_checked_binary_directory_goes_on_path(self):
-        result = self.run_install("shellcheck", "shfmt")
+        result = self.run_install("shellcheck", "shfmt", "bats")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            [str(self.installs / "shellcheck"), str(self.installs / "shfmt")], self.github_path.read_text().splitlines()
+            [str(self.installs / tool) for tool in ("shellcheck", "shfmt", "bats")],
+            self.github_path.read_text().splitlines(),
         )
         copy = self.scratch / "copy"
         self.assertEqual(
             [
-                f"-C {copy} install http:shellcheck http:shfmt",
+                f"-C {copy} install http:shellcheck http:shfmt http:bats",
                 f"-C {copy} which --tool http:shellcheck shellcheck",
                 f"-C {copy} which --tool http:shfmt shfmt",
+                f"-C {copy} which --tool http:bats bats",
             ],
+            (self.scratch / "mise.log").read_text().splitlines(),
+        )
+
+    def test_bats_alone_goes_on_path(self):
+        # The files-test jobs' call (U127): one tool, one install, one checked lookup, one directory.
+        result = self.run_install("bats")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([str(self.installs / "bats")], self.github_path.read_text().splitlines())
+        self.assertEqual(f"==> {self.installs / 'bats'} first on PATH\n", result.stdout)
+        copy = self.scratch / "copy"
+        self.assertEqual(
+            [f"-C {copy} install http:bats", f"-C {copy} which --tool http:bats bats"],
             (self.scratch / "mise.log").read_text().splitlines(),
         )
 

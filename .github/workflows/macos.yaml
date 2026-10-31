@@ -181,14 +181,25 @@ jobs:
           install: true
           cache: true
 
+      - name: Put the pinned `Bats` on PATH
+        # One Bats for hosts and CI (regime-cutover U127): the version and sha256 come from home/dot_mise/config.toml
+        # ([tools."http:bats"]), copied into a mise project directory as test.yaml's "Prepare statusline tool config"
+        # does and trusted as its "Install statusline tools" does; mise checks the download against that sha256. brew
+        # installs no Bats, and the suite runner refuses any other version before it runs (U127).
+        # scripts/ci/install-pinned-lint-tools.sh checks the install and the lookup before it touches GITHUB_PATH.
+        run: |
+          pinned_mise_dir="${RUNNER_TEMP}/pinned-mise"
+          mkdir -p "${pinned_mise_dir}"
+          cp home/dot_mise/config.toml "${pinned_mise_dir}/mise.toml"
+          mise trust --yes "${pinned_mise_dir}/mise.toml"
+          scripts/ci/install-pinned-lint-tools.sh "${pinned_mise_dir}" bats
+
       - name: Test file existence
-        # The hard stop: one per-test bound (the wrapper's default) plus the brew install, with margin. No passing log of this step
+        # The hard stop: one per-test bound (the wrapper's default) with margin. No passing log of this step
         # exists (the build job is skipped without the bootstrap secrets); the files suite took under 1 s in
         # test.yaml's passing runs. scripts/ci/run-bats.py names a stalled test and signals nothing.
         timeout-minutes: 25
         run: |
-          brew install bats-core
-
           export FILES_TEST_CHEZMOI="$(command -v chezmoi)"
           export FILES_TEST_SOURCE="$(chezmoi source-path)"
           export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"

@@ -24,6 +24,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import tomllib
 import unittest
 from pathlib import Path
 from typing import NamedTuple
@@ -45,6 +46,8 @@ RUNNER = ROOT / "scripts/run_unit_test.sh"
 WRAPPER = ROOT / "scripts/ci/run-bats.py"
 WORKFLOWS = ROOT / ".github/workflows"
 BASH = shutil.which("bash") or "/bin/bash"
+# The Bats release home/dot_mise/config.toml pins; run_bats refuses any other before the wrapper runs (U127).
+BATS_PIN = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]["http:bats"]["version"]
 # Every file that runs a network command on a host or a runner: the bootstrap, the installers, everything under
 # scripts/ (update-agent-assets.sh and upgrade-tools.sh behind make update, the release helper, the orchestrator
 # levers, the CI helpers) and the workflows. Compiled Python caches are not sources.
@@ -209,7 +212,7 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
     ): Exempt("comment; names the tool without running it"),
     (
         ".github/workflows/test.yaml",
-        "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y bats curl iproute2 parallel ruby",
+        "sudo /usr/bin/timeout --kill-after=10 180 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y curl iproute2 parallel ruby",
     ): Exempt("an apt-get install package name"),
     (
         ".github/workflows/test.yaml",
@@ -634,6 +637,7 @@ class RunBatsBoundTest(unittest.TestCase):
         # The python3 the runner calls, so the case does not depend on the host's.
         (self.temp / "bin/python3").symlink_to(sys.executable)
         self.pids = self.temp / "pids"
+        self.accepted = ""
         # The wrapper signals nothing, so the case itself stops what its fake left running.
         self.addCleanup(self.kill_recorded)
 
@@ -644,9 +648,14 @@ class RunBatsBoundTest(unittest.TestCase):
             except OSError:
                 pass
 
-    def fake_bats(self, body: str) -> None:
+    def fake_bats(self, body: str, version: str = BATS_PIN) -> None:
+        # run_bats checks the version first (U127): the fake answers --version with the real banner for `version` and
+        # runs nothing else on that call; every other call records its arguments and runs the body.
         script = self.temp / "bin/bats"
-        script.write_text(f'#!{BASH}\nprintf "%s\\n" "$*" > "{self.temp}/args"\n' + textwrap.dedent(body))
+        script.write_text(
+            f'#!{BASH}\nif [ "$1" = --version ]; then printf "Bats %s\\n" "{version}"; exit 0; fi\n'
+            f'printf "%s\\n" "$*" > "{self.temp}/args"\n' + textwrap.dedent(body)
+        )
         script.chmod(0o755)
 
     def run_bats(self, bound: str, *args: str) -> tuple[int, str, str, float]:
@@ -667,7 +676,30 @@ class RunBatsBoundTest(unittest.TestCase):
                 env=env, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
             )  # fmt: skip
             status = process.wait(timeout=60)
-        return status, out.read_text(), err.read_text(), time.monotonic() - started
+        # run_bats prints the version check's accepted line before the wrapper's stream (U127): the stream alone is
+        # returned, and that line is kept in self.accepted (empty when the check refused and nothing ran).
+        text = out.read_text()
+        self.accepted, _, text = text.partition("\n") if text.startswith("==> bats ") else ("", "", text)
+        return status, text, err.read_text(), time.monotonic() - started
+
+    def test_a_bats_that_is_not_the_pin_is_refused_before_the_wrapper_runs(self) -> None:
+        # U127: run_bats runs scripts/ci/pinned-tool-version.sh first. Another version is refused with the check's
+        # message and Bats never runs the suite; the pinned one is accepted and the check's line opens the log.
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n", version="0.0.1")
+        status, out, err, _ = self.run_bats("30", "tests/x.bats")
+        self.assertEqual(1, status, out + err)
+        self.assertIn("pinned-tool-version: the bats on PATH is version 0.0.1, but ", err)
+        self.assertIn(f'/home/dot_mise/config.toml pins bats {BATS_PIN}; run "mise install http:bats"', err)
+        self.assertEqual("", out)
+        self.assertEqual("", self.accepted)
+        self.assertFalse((self.temp / "args").exists())
+        self.fake_bats("printf '1..1\\nbegin 1 [x] fast\\nok 1 [x] fast\\n'\n")
+        status, out, err, _ = self.run_bats("30", "tests/x.bats")
+        self.assertEqual(0, status, out + err)
+        self.assertTrue(self.accepted.startswith(f"==> bats {BATS_PIN}, the version "), self.accepted)
+        self.assertTrue(self.accepted.endswith("/home/dot_mise/config.toml pins"), self.accepted)
+        self.assertEqual("1..1\nrunning: 1 [x] fast\nok 1 [x] fast\n", out)
+        self.assertEqual("--formatter cat tests/x.bats", (self.temp / "args").read_text().strip())
 
     def test_a_stalled_test_is_named_and_the_run_fails_within_the_bound(self) -> None:
         # The stalled test's grandchild is what kept the PR #570 jobs alive until the job timeout.

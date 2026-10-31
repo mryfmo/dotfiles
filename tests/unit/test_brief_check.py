@@ -72,6 +72,22 @@ TRUST_SENTENCE = (
 SKILL_COMMAND = SKILL_SENTENCE.split("`")[1]
 CLEAN_GOAL = "The six dead installer functions leave the installers and nothing else changes."
 TRUST = "The unit trusts the pinned lever set under ~/.local/bin/common and reads no earlier job step."
+# U130: three lever sources as a SCOPE names them, the reason line that refuses them (names sorted), and the SKILL
+# sentence that says a brief naming more than two is split before it is sent.
+THREE_LEVERS = (
+    "scripts/orchestrator/pr-merge.sh",
+    "scripts/orchestrator/brief-check.py",
+    "scripts/orchestrator/hcom-seat",
+)
+SPLIT_REASON = (
+    "SCOPE names 3 levers (brief-check.py, hcom-seat, pr-merge.sh); split into sequenced units of at most two levers "
+    "each (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)"
+)
+SPLIT_SENTENCE = (
+    "A brief whose SCOPE names more than two levers (the manifest's `claude.levers.sha256` names; a source and its "
+    "generated copy count once, tests and READMEs never) is refused and is split into sequenced units of at most two "
+    "levers each before any TASK is sent (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)."
+)
 
 
 def brief(**bodies):
@@ -85,6 +101,11 @@ def brief(**bodies):
 def closed(goal="A shell reader.", closure="ast", trust=TRUST, **bodies):
     """A brief that holds a trigger term and names both its form and its trust boundary."""
     return brief(GOAL=goal, CLOSURE=closure, TRUST=trust, **bodies)
+
+
+def scope(*paths):
+    """A SCOPE body naming each path in backticks, as a brief lists the paths it may write."""
+    return "One branch `feat/x` from `origin/main`. May write: " + ", ".join(f"`{path}`" for path in paths) + "."
 
 
 class BriefCheckTest(unittest.TestCase):
@@ -389,6 +410,72 @@ class BriefCheckTest(unittest.TestCase):
         self.assertLess(step.index("briefs/U<n>-<slug>.md` with GOAL"), step.index(SKILL_SENTENCE))
         self.assertIn(TRUST_SENTENCE, step)
         self.assertLess(step.index(SKILL_SENTENCE), step.index(TRUST_SENTENCE))
+        self.assertIn(SPLIT_SENTENCE, step)
+        self.assertLess(step.index(TRUST_SENTENCE), step.index(SPLIT_SENTENCE))
+
+    def test_a_scope_naming_three_lever_sources_is_refused_naming_them_sorted(self):
+        self.assert_refused_exactly(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS))), SPLIT_REASON)
+        # The installed spelling, the bare name and a `./` prefix name the same levers.
+        spellings = ("~/.local/bin/common/pr-merge.sh", "brief-check.py", "./scripts/orchestrator/hcom-seat")
+        self.assert_refused_exactly(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*spellings))), SPLIT_REASON)
+
+    def test_a_scope_naming_two_lever_sources_or_none_passes(self):
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2]))))
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope("scripts/ci/run-bats.sh", "Makefile"))))
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL)))
+
+    def test_a_source_and_its_installed_copy_count_once(self):
+        copies = [f"home/dot_local/bin/common/executable_{Path(path).name}" for path in THREE_LEVERS]
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2], *copies[:2]))))
+        # Three sources and their three copies are three levers, not six.
+        result = self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS, *copies)))
+        self.assert_refused_exactly(result, SPLIT_REASON)
+
+    def test_tests_readmes_the_generated_outputs_and_the_manifest_never_count(self):
+        never = (
+            "tests/unit/test_pr_audit.py",
+            "scripts/orchestrator/README.md",
+            "scripts/generated-agent-outputs.json",
+            "home/dot_agents/agent-config.yaml",
+            "tests/fixtures/pr-merge.sh",
+            "README.md",
+        )
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never))))
+        # Beside two levers they still add nothing: a counted `tests/fixtures/pr-merge.sh` would make three.
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*never, *THREE_LEVERS[1:]))))
+        # A lever named inside a command span or in prose, and a lever name in another section, count nothing.
+        body = "`ls scripts/orchestrator/hcom-seat pr-merge.sh brief-check.py`; hcom-seat, pr-merge.sh, brief-check.py."
+        self.assert_passes(self.check_text(brief(GOAL=CLEAN_GOAL, SCOPE=body, FORBIDDEN=scope(*THREE_LEVERS))))
+
+    def test_the_lever_count_is_printed_beside_the_other_reasons_in_one_run(self):
+        result = self.check_text(brief(GOAL="A shell reader.", SCOPE=scope(*THREE_LEVERS)))
+        self.assert_refused(result, 'GOAL holds "shell" (', 'GOAL holds "shell"; no TRUST section', SPLIT_REASON)
+
+    def test_a_checkout_manifest_without_the_levers_block_or_unreadable_refuses_before_any_judgement(self):
+        checkout = self.dir / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(SCRIPT, checkout / "scripts/orchestrator/brief-check.py")
+        manifest = checkout / "home/dot_agents/agent-config.yaml"
+        text = MANIFEST.read_text()
+        self.assertEqual(1, text.count("\n  levers:\n"))
+        manifest.write_text(text.replace("\n  levers:\n", "\n  levers_gone:\n"))
+        target = self.dir / "U0-scratch.md"
+        target.write_text(brief(GOAL=CLEAN_GOAL))
+        physical = (checkout / "scripts/orchestrator").resolve()
+        named = f"{physical}/../../home/dot_agents/agent-config.yaml"
+        cmd = [sys.executable, "-I", str(checkout / "scripts/orchestrator/brief-check.py"), str(target)]
+        result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertIn(f"brief-check.py: refused: no claude.levers.sha256 block in {named}", result.stderr)
+        if os.geteuid() == 0:
+            self.skipTest("mode 000 does not stop root, so the unreadable-manifest case is skipped")
+        manifest.write_text(text)
+        manifest.chmod(0)
+        self.addCleanup(manifest.chmod, 0o644)
+        result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+        self.assertIn(f"brief-check.py: refused: manifest unreadable: {named}", result.stderr)
 
 
 class InstalledBriefCheckTest(unittest.TestCase):
@@ -556,6 +643,21 @@ class InstalledBriefCheckTest(unittest.TestCase):
                 self.pin_lines(replacement)
                 result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
                 self.assert_refused(result, f"no single sha256 pin for brief-check.py in {self.manifest}")
+
+    def test_the_installed_copy_counts_levers_from_the_deployed_manifest(self):
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        self.assertEqual((1, ""), (result.returncode, result.stderr), result.stdout)
+        expected = [f"brief-check: .orchestration/orchestrate/p/briefs/U1-x.md: {SPLIT_REASON}"]
+        self.assertEqual(expected, result.stdout.splitlines())
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+
+    def test_a_deployed_manifest_without_the_levers_block_refuses(self):
+        text = self.manifest.read_text()
+        self.assertEqual(1, text.count("\n  levers:\n"))
+        self.manifest.write_text(text.replace("\n  levers:\n", "\n  levers_gone:\n"))
+        result = self.run_skill_command(brief(GOAL=CLEAN_GOAL))
+        self.assert_refused(result, f"no claude.levers.sha256 block in {self.manifest}")
 
     @unittest.skipIf(os.geteuid() == 0, "mode 000 does not stop root, so the unreadable-copy case is skipped")
     def test_an_unreadable_copy_is_refused_by_the_interpreter_before_any_judgement(self):

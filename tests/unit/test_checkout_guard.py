@@ -338,6 +338,79 @@ class CheckoutGuardTest(unittest.TestCase):
                     self.assertEqual(run.stdout, "")
                     self.assertEqual(self.hooks_state(), state)
 
+    def test_a_failing_staged_file_mktemp_leaves_an_existing_hooks_directory_unchanged(self):
+        """Standing order 21 at the staged-file `mktemp` alone (U129's filed P2, `:677`: the earlier shim fails the
+        scratch-directory call, the first `mktemp` of a run, and never reached this one): a counted PATH shim lets
+        the scratch call through and fails the second call with exit 28, so `install` exits 2 naming the hooks
+        directory with no row and the directory's listing, bytes and modes unchanged, whether the hook is absent or
+        this lever's own without its execute bit; `check` makes no second call, so the shim never fires on it."""
+        hook = self.hooks / HOOK
+        shims = self.shim("", status=28, name="mktemp", nth=2)
+        env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+        self.install()
+        original = hook.read_bytes()
+        for found in ("absent", "own, not executable"):
+            if found == "absent":
+                hook.unlink()
+            else:
+                hook.write_bytes(original)
+                hook.chmod(0o644)
+            state = self.hooks_state()
+            with self.subTest(found=found):
+                (shims / "calls").unlink(missing_ok=True)
+                run = self.run_lever("install", str(self.checkout), env=env)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn("shim: failing mktemp", run.stderr)
+                self.assertIn(f"cannot make a temporary file in {self.hooks} for the hook", run.stderr)
+                self.assertEqual(run.stdout, "")
+                self.assertEqual(self.hooks_state(), state)
+                self.assertEqual((shims / "calls").read_text(), "2\n", "the second mktemp was the one that failed")
+        (shims / "calls").unlink()
+        check = self.run_lever("check", str(self.checkout), env=env)
+        self.assertEqual(
+            (check.returncode, self.rows(check.stdout)), (1, [("not-executable", str(hook))]), check.stderr
+        )
+        self.assertNotIn("shim", check.stderr)
+        self.assertEqual((shims / "calls").read_text(), "1\n", "check makes the scratch directory alone")
+        # The control: no shim, the same checkout, the hook is installed in place.
+        run = self.install()
+        self.assertEqual([("installed", str(hook))], self.rows(run.stdout))
+        self.assertEqual((hook.read_bytes(), stat.S_IMODE(hook.stat().st_mode)), (original, 0o755))
+
+    def test_a_failed_install_removes_the_hooks_directory_it_made_and_never_one_that_existed(self):
+        """U129's filed P3 (`:663`): with the hooks directory absent, `install` makes it and then fails at the
+        staged-file `mktemp` (a counted PATH shim fails the second call with exit 28): exit 2, no row, and the
+        directory it made is gone, so a refusal leaves nothing behind (the Contract's "nothing written"); an empty
+        hooks directory that existed before the run stays, as does one holding files; the control without the shim
+        makes the directory and installs the hook."""
+        shims = self.shim("", status=28, name="mktemp", nth=2)
+        env = {**self.env, "PATH": f"{shims}:{self.env['PATH']}"}
+        shutil.rmtree(self.hooks)
+        run = self.run_lever("install", str(self.checkout), env=env)
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("shim: failing mktemp", run.stderr)
+        self.assertIn(f"cannot make a temporary file in {self.hooks} for the hook", run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.assertFalse(self.hooks.exists(), "the hooks directory install made is removed again")
+        self.assertTrue(self.hooks.parent.is_dir(), "the git directory itself stays")
+        for label, make in (
+            ("empty", lambda: None),
+            ("holding a file", lambda: (self.hooks / "keep").write_text("k\n")),
+        ):
+            with self.subTest(label):
+                self.hooks.mkdir()
+                make()
+                state = self.hooks_state()
+                (shims / "calls").unlink()
+                run = self.run_lever("install", str(self.checkout), env=env)
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertTrue(self.hooks.is_dir(), "a directory that existed before the run is never removed")
+                self.assertEqual(self.hooks_state(), state)
+                shutil.rmtree(self.hooks)
+        run = self.install()
+        self.assertEqual([("installed", str(self.hooks / HOOK))], self.rows(run.stdout))
+        self.assertEqual([entry.name for entry in self.hooks.iterdir()], [HOOK])
+
     def test_a_failing_toplevel_read_or_hook_write_refuses_check_and_install_and_writes_nothing(self):
         """Standing order 21, the two producers round 4 left without an injection test: the installer's isolated
         `rev-parse --show-toplevel` read (a PATH `git` that exits 28 on it, as the audit injected) and the write of
@@ -673,7 +746,8 @@ class CheckoutGuardTest(unittest.TestCase):
 
     def test_a_checkout_path_holding_a_newline_is_guarded(self):
         """A main checkout whose path holds a newline (which truncated round 1's porcelain read) is guarded in the
-        main worktree and in a linked one: the main worktree's path comes from `worktree list --porcelain -z`."""
+        main worktree and in a linked one: the main checkout's path is the parent of the common directory, read as
+        bytes with one line end removed."""
         checkout = self.clone(self.root / "check\nout")
         self.install(checkout)
         self.store(checkout)
@@ -737,15 +811,63 @@ class CheckoutGuardTest(unittest.TestCase):
         self.assertNotEqual(status, 0, err)
         self.assertIn("gitfile does not point to a valid repository", err)
 
+    def test_a_linked_worktree_of_a_checkout_whose_git_directory_is_a_symlink_target_is_guarded(self):
+        """U129's filed P1 (`:415`): a main checkout whose `.git` is a symlink to a separate git directory, a store under
+        it, and a linked worktree. `git worktree list` names that git directory as the main worktree (it strips `/.git`
+        from the common directory's realpath and nothing else), so U129's hook walked the git directory, found no
+        store and passed the linked worktree's moves. The hook reads no worktree list now: from the linked worktree
+        the common directory (pinned: git's answer is the separate directory) is not a `.git` directory, so git records
+        no name for the main checkout, and a commit and an `update-ref` there are each refused naming the directory
+        (standing order 21) with no branch moving, store or no store; in the main checkout itself, whose git directory
+        is the common one, the store is read and the commit is refused with the route, and without a store it passes."""
+        gitdir = self.root / "gitdir"
+        checkout = self.clone(self.root / "sym-checkout")
+        shutil.move(str(checkout / ".git"), str(gitdir))
+        (checkout / ".git").symlink_to(gitdir)
+        self.install(checkout)
+        self.store(checkout)
+        self.git("fetch", "-q", str(self.root / "other"), "work", cwd=checkout)
+        linked = self.root / "sym-linked"
+        status, _, err = self.git_status(
+            "worktree", "add", "-q", "-b", "linked", str(linked), "origin/main", cwd=checkout
+        )
+        self.assertEqual(status, 0, err)
+        self.assertEqual(self.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=linked), str(gitdir))
+        before = self.branches(linked)
+        status, err, head = self.commit(linked)
+        self.assertNotEqual(status, 0, err)
+        self.assertIn(f"the git common directory {gitdir} of this linked worktree is not a .git directory", err)
+        self.assertIn(FAILED_READ, err)
+        self.assertNotIn(REFUSAL, err)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=linked), head)
+        status, _, err = self.git_status("update-ref", "refs/heads/linked", self.work, cwd=linked)
+        self.assertNotEqual(status, 0, err)
+        self.assertIn(f"the git common directory {gitdir} of this linked worktree is not a .git directory", err)
+        self.assertEqual(self.branches(linked), before)
+        status, err, head = self.commit(checkout)
+        self.assert_refused(status, err)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=checkout), head)
+        # Without a store: the main checkout is inert, the linked worktree still cannot name it and stays refused.
+        shutil.rmtree(checkout / ".orchestration")
+        status, err, head = self.commit(checkout)
+        self.assertEqual(status, 0, err)
+        self.assertNotIn("checkout-guard", err)
+        self.git("reset", "-q", "--hard", "origin/main", cwd=checkout)
+        status, err, head = self.commit(linked)
+        self.assertNotEqual(status, 0, err)
+        self.assertIn("is not a .git directory", err)
+        self.assertEqual(self.branches(linked), before)
+
     def test_a_failing_git_read_of_the_hook_refuses_the_move(self):
-        """Standing order 21: each git read of the hook (the toplevel, the worktree list, the remote refs, the
-        ancestry, and the ref itself when a creation line arrives) failing with exit 128 is a refusal naming the
-        read, never a pass; the branch stays."""
+        """Standing order 21: each git read of the hook (the toplevel, the git directory, the common directory, the
+        remote refs, the ancestry, and the ref itself when a creation line arrives) failing with exit 128 is a refusal
+        naming the read, never a pass; the branch stays."""
         self.install()
         self.store()
         for pattern in (
             "rev-parse --show-toplevel",
-            "worktree list --porcelain -z",
+            "rev-parse --path-format=absolute --git-dir",
+            "rev-parse --path-format=absolute --git-common-dir",
             "for-each-ref --format=%(refname)%09%(objectname) refs/remotes/origin/",
             "merge-base --is-ancestor",
         ):
@@ -823,6 +945,7 @@ class CheckoutGuardTest(unittest.TestCase):
             ("the packed backend's creation of a branch already at the commit", f"{ZERO} {self.work} refs/heads/off\n"),
             ("old equal to new", f"{self.work} {self.work} refs/heads/off\n"),
             ("nothing", ""),
+            ("a deletion in SHA-256 form", f"{'a' * 64} {'0' * 64} refs/heads/topic\n"),
         ):
             with self.subTest(label):
                 result = run("prepared", data)
@@ -856,6 +979,22 @@ class CheckoutGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn("is not <old-value> SP <new-value> SP <ref-name>", result.stderr)
                 self.assertIn(FAILED_READ, result.stderr)
+        for label, data, value in (
+            ("no object id", "not-an-oid not-an-oid refs/heads/main\n", "not-an-oid"),
+            ("the new value alone", f"{held} not-an-oid refs/heads/main\n", "not-an-oid"),
+            ("uppercase hex", f"{held.upper()} {self.work} refs/heads/main\n", held.upper()),
+            ("39 hex digits", f"{held[:39]} {self.work} refs/heads/main\n", held[:39]),
+            ("63 hex digits", f"{'a' * 63} {self.work} refs/heads/main\n", "a" * 63),
+            ("a bare ref: value", f"{held} ref: refs/heads/main\n", "ref:"),
+        ):
+            with self.subTest(label):
+                result = run("prepared", data)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(
+                    f"is not an object id of 40 or 64 lowercase hex or ref:<ref-target>: b'{value}'", result.stderr
+                )
+                self.assertIn(FAILED_READ, result.stderr)
+                self.assertNotIn(REFUSAL, result.stderr)
         for state in ("preparing", "committed", "aborted"):
             with self.subTest(state):
                 result = run(state, refused)

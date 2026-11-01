@@ -16,7 +16,9 @@
 #   - `reference-transaction`: a `python3 -I -S` script (the heredoc of write_hook below, so this file's sha256 pin
 #     covers it; no shell starts, so no shell startup file, `SHELLOPTS` or `BASH_ENV` reaches it, and no `PYTHON*`
 #     variable or planted module is read). Git runs it for every reference transaction; in its `prepared` phase it
-#     reads the `<old-value> SP <new-value> SP <ref-name> LF` lines from stdin and, while
+#     reads the `<old-value> SP <new-value> SP <ref-name> LF` lines from stdin (each value an object id of 40 or 64
+#     lowercase hex or `ref:<ref-target>`; a line of another shape or a value of another form is a refusal naming it,
+#     U135) and, while
 #     `.orchestration/orchestrate/<program>/units.tsv` exists under the toplevel of the worktree the command runs in or
 #     under the main worktree's, refuses the transaction (exit 1, git then fails with status 128) when any line moves
 #     a `refs/heads/*` ref to a commit that no `refs/remotes/origin/*` ref reaches (`git --no-replace-objects
@@ -29,9 +31,15 @@
 #     a directory is listed, never `stat`-ed for a child, which a mode-0111 directory answers while refusing a
 #     listing; no program directory is skipped once a store is found), where an absent `.orchestration` or
 #     `orchestrate` is no store and any other `OSError` on any of those listings (a mode-000 or 0111 directory, a
-#     file where `.orchestration` or `orchestrate` should be) is a refusal naming it; the toplevel and the worktree
-#     list come from git as bytes (`worktree list --porcelain -z`), never split on newlines; a git read that exits
-#     non-zero is a refusal naming it.
+#     file where `.orchestration` or `orchestrate` should be) is a refusal naming it; the toplevel, the git directory
+#     and the common directory come from git as bytes (`rev-parse --show-toplevel`, `--path-format=absolute --git-dir`
+#     and `--git-common-dir`, one trailing LF removed each), never split on newlines; the main checkout is this
+#     worktree when its git directory is the common directory, else the parent of a common directory named `.git`, as
+#     git-worktree(1) derives the main worktree (U135: `worktree list` is not read; it named a separate git directory
+#     reached through a `.git` symlink as the main worktree, so a linked worktree's moves missed the store and
+#     passed); from a linked worktree whose common directory is not named `.git`, git records no name for the main
+#     checkout and every move is refused naming the directory, never passed; a git read that exits non-zero is a
+#     refusal naming it.
 #   The hook runs inside the user's git and cannot isolate itself from the repository it guards, so its reads are the
 #   plain `git` with `--no-replace-objects` and `GIT_NO_REPLACE_OBJECTS=1` (so no `refs/replace/*` ref and no
 #   `GIT_REPLACE_REF_BASE` of the caller rewrites the ancestry it reads), `GIT_GRAFT_FILE=/dev/null` (so neither
@@ -57,7 +65,9 @@
 #   at another repository, and each path git prints read whole through one helper (git_path: a sentinel after the
 #   output, so the trailing newline a command substitution strips stays and only git's own line end is removed; a
 #   separate git directory whose name ends in LF is installed into, not its stripped sibling, audit round 5 P2); the
-#   directory is made when absent. Nothing here reads `core.hooksPath`: rounds 2 to 4
+#   directory is made when absent, and a directory this run made is removed again (`rmdir`, so one that existed
+#   before is never touched) when a later step fails before the rename (U135). Nothing here reads `core.hooksPath`:
+#   rounds 2 to 4
 #   each tried to establish at install time what git resolves for it at the next commit, and each audit named another
 #   channel (`GIT_CONFIG_COUNT`; `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`; `GIT_CONFIG`, `GIT_DIR`,
 #   `includeIf.onbranch`), since git's configuration is layered and conditional and the caller owns every layer, so
@@ -98,7 +108,7 @@
 # @stdout One row per hook, `checkout-guard: <state>\t<path>`: `installed`, `unchanged` or `removed` (install); `installed`, `absent`, `differs`, `not-executable` or `stale` (check). regime-init matches the `checkout-guard: installed` and `checkout-guard: removed` rows at line start.
 # @exitcode 0 Done: the hook installed and no stale round-1 hook left (install), or in place with nothing stale (check).
 # @exitcode 1 `check`: the hook is absent, differs or is not executable, or a round-1 hook is still there.
-# @exitcode 2 A refusal: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read, a failed write step before the rename (the hook path is as it was found; a failed removal of a round-1 hook comes after the rename and leaves the hook in place), or the manifest pin differing from this file.
+# @exitcode 2 A refusal: usage, not a main checkout, a hooks directory that cannot be read, a symlink or a non-regular file at the hook path (`check` too), a regular file of other content there (`install`), a failed read, a failed write step before the rename (the hook path is as it was found and a hooks directory this run made is removed again; a failed removal of a round-1 hook comes after the rename and leaves the hook in place), or the manifest pin differing from this file.
 # @example
 #   ~/.local/bin/common/checkout-guard.sh install ~/Workspace/dotfiles
 #   ~/.local/bin/common/checkout-guard.sh check ~/Workspace/dotfiles
@@ -193,10 +203,14 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/checkout-guard.XXXXXX") || refuse 'cannot m
 # The temporary file of the install below, while it exists: made in the hooks directory, renamed onto the hook path
 # on success, removed here on a refusal before the rename.
 staged=''
+# The hooks directory, while this run has made it and not yet renamed the hook into it (U135: a failed install left
+# the directory it had made); `rmdir` removes an empty directory alone, so one that existed before is never touched.
+made_hooks=''
 # The scratch directory and a temporary file a refusal left go on exit. A removal that fails is named on stderr and
 # does not replace the exit status (a command that fails inside an EXIT trap would).
 cleanup() {
     [[ -z ${staged} ]] || rm -f -- "${staged}" || echo "${lever}: ${staged} could not be removed" >&2
+    [[ -z ${made_hooks} ]] || rmdir -- "${made_hooks}" || echo "${lever}: ${made_hooks} could not be removed" >&2
     rm -rf -- "${scratch}" || echo "${lever}: ${scratch} could not be removed" >&2
 }
 trap cleanup EXIT
@@ -253,8 +267,13 @@ write_hook() {
 # it for every reference transaction (githooks(5)). In the `prepared` phase, the refs locked and symbolic refs
 # resolved, it reads the updates from stdin, one `<old-value> SP <new-value> SP <ref-name> LF` per line, and refuses
 # the transaction (exit 1, the route to a worker tree on stderr) while a program store
-# `.orchestration/orchestrate/<program>/units.tsv` exists under this worktree's toplevel or under the main worktree's
-# and any line moves a `refs/heads/*` ref to a commit that no `refs/remotes/origin/*` ref reaches. That is every
+# `.orchestration/orchestrate/<program>/units.tsv` exists under this worktree's toplevel or under the main checkout's
+# (this worktree when its git directory is the common directory, else the parent of a common directory named `.git`,
+# as git-worktree(1) derives the main worktree; `worktree list` is not read, U135, since it named a separate git
+# directory reached through a `.git` symlink as the main worktree and a linked worktree's moves passed; from a linked
+# worktree whose common directory is not named `.git` every move is refused naming it, never passed) and any line
+# (each value 40 or 64 lowercase hex or `ref:<ref-target>`, else the line is refused naming the value) moves a
+# `refs/heads/*` ref to a commit that no `refs/remotes/origin/*` ref reaches. That is every
 # commit authored here (commit, --amend, merge, cherry-pick, rebase; `--no-verify` skips no reference-transaction),
 # while `pull --ff-only`, `reset --hard origin/<branch>`, `fetch`, a branch deleted or made at origin's commit, a line
 # whose new value is the commit the ref already names (a backend update: `pack-refs` and `gc` write a packed ref as
@@ -311,8 +330,18 @@ def read(*args):
     return out
 
 
+def object_id_or_symbolic(value):
+    """Whether VALUE is an object id, 40 or 64 lowercase hex (SHA-1 or SHA-256), or a symbolic value `ref:<ref-target>`
+    (githooks(5)); anything else is malformed, and the hook refuses rather than judge it."""
+    if value.startswith(b"ref:"):
+        return len(value) > len(b"ref:")
+    return len(value) in (40, 64) and all(c in b"0123456789abcdef" for c in value)
+
+
 def updates(data):
-    """The (old, new, ref) of each line of DATA in the shape githooks(5) documents; any other shape refuses."""
+    """The (old, new, ref) of each line of DATA in the shape githooks(5) documents, each value an object id of 40 or 64
+    lowercase hex or `ref:<ref-target>`; any other shape or value refuses naming it (U135: `not-an-oid` passed when
+    the field count alone was read)."""
     lines = data.split(b"\n")
     if lines and lines[-1] == b"":
         lines.pop()
@@ -321,8 +350,23 @@ def updates(data):
         fields = line.split(b" ")
         if len(fields) != 3 or not all(fields):
             refuse("a line of the transaction is not <old-value> SP <new-value> SP <ref-name>: %r" % line)
+        for value in fields[:2]:
+            if not object_id_or_symbolic(value):
+                refuse(
+                    "a value of the transaction is not an object id of 40 or 64 lowercase hex or ref:<ref-target>: %r"
+                    % value
+                )
         result.append((fields[0], fields[1], fields[2]))
     return result
+
+
+def path_line(*args):
+    """The one path a git read prints, exactly its line end removed: a path may itself end in LF (audit round 5 P2),
+    so one trailing LF goes, never more; no line at all refuses."""
+    out = read(*args)
+    if not out.endswith(b"\n"):
+        refuse("git %s printed no path" % " ".join(args))
+    return out[:-1]
 
 
 def store_under(top):
@@ -403,16 +447,24 @@ def main():
     ]
     if not moves:
         return 0
-    toplevel = read("rev-parse", "--show-toplevel")
-    if toplevel.endswith(b"\n"):
-        toplevel = toplevel[:-1]
-    # The first record of the NUL-separated porcelain list is the main worktree (git-worktree(1)).
-    first = read("worktree", "list", "--porcelain", "-z").split(b"\0", 1)[0]
-    if not first.startswith(b"worktree "):
-        refuse("the worktree list does not start with the main worktree: %r" % first)
+    toplevel = path_line("rev-parse", "--show-toplevel")
+    git_dir = path_line("rev-parse", "--path-format=absolute", "--git-dir")
+    common = path_line("rev-parse", "--path-format=absolute", "--git-common-dir")
+    # The main checkout: this worktree when its git directory is the common directory (the installer's own test),
+    # else the parent of a common directory named `.git`, as git-worktree(1) derives the main worktree. `worktree
+    # list` is not read (U135): it named a separate git directory reached through a `.git` symlink as the main
+    # worktree, so a linked worktree's moves missed the store and passed. From a linked worktree of such a directory
+    # git records no name for the main checkout, and the move is refused naming the directory, never passed.
     tops = [toplevel]
-    if first[len(b"worktree ") :] != toplevel:
-        tops.append(first[len(b"worktree ") :])
+    if git_dir != common:
+        parent, name = os.path.split(common)
+        if name != b".git":
+            refuse(
+                "the git common directory %s of this linked worktree is not a .git directory, so git records no name "
+                "for the main checkout whose store would be read" % os.fsdecode(common)
+            )
+        if parent != toplevel:
+            tops.append(parent)
     # Every toplevel is walked before the decision: a store that cannot be read under one of them refuses even when
     # the other holds a readable store (no short-circuit).
     if not any([store_under(top) for top in tops]):
@@ -661,6 +713,7 @@ fi
 [[ ${hook_own} != differs ]] || refuse "${hooks}/${hook} exists and is not this lever's hook; it is never overwritten (move it away by hand, then rerun)"
 if [[ ! -d ${hooks} ]]; then
     mkdir "${hooks}" || refuse "cannot make ${hooks}"
+    made_hooks=${hooks}
 fi
 
 # The hook path is written by one rename. Unless the hook is already this lever's own and executable, the bytes go to
@@ -681,6 +734,7 @@ else
     [[ ${state} == own && ${executable} == 1 ]] || refuse "${staged} reads back as ${state} (executable: ${executable}) after the write; ${target} is as it was"
     mv -f -- "${staged}" "${target}" || refuse "cannot move ${staged} onto ${target}"
     staged=''
+    made_hooks=''
     printf 'checkout-guard: installed\t%s\n' "${target}"
 fi
 

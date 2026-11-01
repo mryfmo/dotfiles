@@ -451,31 +451,115 @@ class BriefCheckTest(unittest.TestCase):
         result = self.check_text(brief(GOAL="A shell reader.", SCOPE=scope(*THREE_LEVERS)))
         self.assert_refused(result, 'GOAL holds "shell" (', 'GOAL holds "shell"; no TRUST section', SPLIT_REASON)
 
-    def test_a_checkout_manifest_without_the_levers_block_or_unreadable_refuses_before_any_judgement(self):
+    def checkout_check(self, manifest_text, text):
+        """Run a checkout-shaped copy of the script beside a scratch manifest; returns (result, manifest as named)."""
         checkout = self.dir / "checkout"
-        (checkout / "scripts/orchestrator").mkdir(parents=True)
-        (checkout / "home/dot_agents").mkdir(parents=True)
-        shutil.copy2(SCRIPT, checkout / "scripts/orchestrator/brief-check.py")
-        manifest = checkout / "home/dot_agents/agent-config.yaml"
-        text = MANIFEST.read_text()
-        self.assertEqual(1, text.count("\n  levers:\n"))
-        manifest.write_text(text.replace("\n  levers:\n", "\n  levers_gone:\n"))
+        if not checkout.exists():
+            (checkout / "scripts/orchestrator").mkdir(parents=True)
+            (checkout / "home/dot_agents").mkdir(parents=True)
+            shutil.copy2(SCRIPT, checkout / "scripts/orchestrator/brief-check.py")
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(manifest_text)
         target = self.dir / "U0-scratch.md"
-        target.write_text(brief(GOAL=CLEAN_GOAL))
+        target.write_text(text)
         physical = (checkout / "scripts/orchestrator").resolve()
-        named = f"{physical}/../../home/dot_agents/agent-config.yaml"
         cmd = [sys.executable, "-I", str(checkout / "scripts/orchestrator/brief-check.py"), str(target)]
         result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
+        return result, f"{physical}/../../home/dot_agents/agent-config.yaml"
+
+    def assert_refused_to_run(self, result, named, message):
+        """Exit 2, the refusal naming the scratch manifest on stderr, nothing on stdout: no judgement escaped."""
         self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
-        self.assertIn(f"brief-check.py: refused: no claude.levers.sha256 block in {named}", result.stderr)
+        self.assertIn(f"brief-check.py: refused: {message} {named}", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_a_checkout_manifest_without_the_levers_block_or_unreadable_refuses_before_any_judgement(self):
+        text = MANIFEST.read_text()
+        self.assertEqual(1, text.count("\n  levers:\n"))
+        gone = text.replace("\n  levers:\n", "\n  levers_gone:\n")
+        result, named = self.checkout_check(gone, brief(GOAL=CLEAN_GOAL))
+        self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
         if os.geteuid() == 0:
             self.skipTest("mode 000 does not stop root, so the unreadable-manifest case is skipped")
+        manifest = self.dir / "checkout/home/dot_agents/agent-config.yaml"
         manifest.write_text(text)
         manifest.chmod(0)
         self.addCleanup(manifest.chmod, 0o644)
+        cmd = [
+            sys.executable,
+            "-I",
+            str(self.dir / "checkout/scripts/orchestrator/brief-check.py"),
+            str(self.dir / "U0-scratch.md"),
+        ]
         result = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True, timeout=120, check=False)
-        self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
-        self.assertIn(f"brief-check.py: refused: manifest unreadable: {named}", result.stderr)
+        self.assert_refused_to_run(result, named, "manifest unreadable:")
+
+    def test_a_levers_block_under_another_key_is_not_the_lever_list(self):
+        # U136 (U130 verdict :109): an unrelated `levers:` / `sha256:` block before `claude:`, with `claude.levers`
+        # absent, was read as the lever list, so the three-lever brief passed; the reader takes the block under
+        # `claude:` alone and refuses to run without it.
+        text = MANIFEST.read_text()
+        unrelated = "other:\n  levers:\n    sha256:\n      foo: " + "0" * 64 + "\n      bar: " + "1" * 64 + "\n"
+        self.assertEqual(1, text.count("\nclaude:\n"))
+        planted = text.replace("\n  levers:\n", "\n  levers_gone:\n").replace("\nclaude:\n", f"\n{unrelated}claude:\n")
+        result, named = self.checkout_check(planted, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
+        # The same unrelated block beside an intact `claude.levers` changes nothing: the three levers are counted.
+        result, _ = self.checkout_check(
+            text.replace("\nclaude:\n", f"\n{unrelated}claude:\n"), brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS))
+        )
+        self.assert_refused_exactly(result, SPLIT_REASON)
+
+    def test_a_comment_and_a_blank_line_between_pins_end_nothing(self):
+        # U136 (U130 verdict :114): a YAML comment or a blank line after the first pin ended the list, so a
+        # three-lever brief passed against a one-lever list; every pin after them still counts.
+        text = MANIFEST.read_text()
+        first = next(line for line in text.splitlines() if line.startswith("      hcom-seat: "))
+        for gap in ("      # a comment about the next pin\n\n", "\n# a column-0 comment\n   \n"):
+            with self.subTest(gap=gap.strip() or "blank"):
+                spaced = text.replace(first + "\n", first + "\n" + gap)
+                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+                self.assert_refused_exactly(result, SPLIT_REASON)
+                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+                self.assert_passes(result)
+
+    def test_a_malformed_pin_line_in_the_block_refuses_naming_the_line(self):
+        text = MANIFEST.read_text()
+        lines = text.splitlines()
+        number = next(index for index, line in enumerate(lines, 1) if line.startswith("      hcom-dispatch: "))
+        malformed_lines = (
+            "      hcom-dispatch: not-a-digest",
+            "      hcom-dispatch " + "0" * 64,
+            "        hcom-dispatch: " + "0" * 64,
+        )
+        for malformed in malformed_lines:
+            with self.subTest(line=malformed.strip()):
+                broken = "\n".join(lines[: number - 1] + [malformed] + lines[number:]) + "\n"
+                result, named = self.checkout_check(broken, brief(GOAL=CLEAN_GOAL))
+                self.assertEqual((2, ""), (result.returncode, result.stdout), result.stderr)
+                self.assertIn(
+                    f"brief-check.py: refused: line {number} of {named} is not a `<name>: <sha256>` pin",
+                    result.stderr,
+                )
+                self.assertNotIn("Traceback", result.stderr)
+        # The list ends at the first line indented less than its entries: a key at the `sha256:` depth before the
+        # first pin leaves the block empty, and the pins after it are not read as the list.
+        first = number - 2
+        self.assertTrue(lines[first].startswith("      hcom-seat: "), lines[first])
+        shorter = "\n".join(lines[:first] + ["    extensions_gone:", "      - x"] + lines[first:]) + "\n"
+        result, named = self.checkout_check(shorter, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+        self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
+
+    def test_a_manifest_missing_the_block_and_the_pin_names_the_block(self):
+        # U136 (U130 verdict :103): with both gone the pin refusal came first; the block is checked before the pin.
+        text = MANIFEST.read_text()
+        pin = next(line for line in text.splitlines() if line.startswith("      brief-check.py: "))
+        both_gone = text.replace("\n  levers:\n", "\n  levers_gone:\n").replace(pin + "\n", "")
+        result, named = self.checkout_check(both_gone, brief(GOAL=CLEAN_GOAL))
+        self.assert_refused_to_run(result, named, "no claude.levers.sha256 block in")
+        self.assertNotIn("no single sha256 pin", result.stderr)
+        # The block intact and the pin gone is still the pin refusal.
+        result, named = self.checkout_check(text.replace(pin + "\n", ""), brief(GOAL=CLEAN_GOAL))
+        self.assert_refused_to_run(result, named, "no single sha256 pin for brief-check.py in")
 
 
 class InstalledBriefCheckTest(unittest.TestCase):

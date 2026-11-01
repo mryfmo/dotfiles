@@ -63,7 +63,7 @@ MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
 # reads one way in PyYAML and another in GitHub, and none survives a byte comparison. A change to regime.yml updates
 # both constants in the same commit, once the property checks pass on the new text; a reviewer verifies the pin with
 # `shasum -a 256 .github/workflows/regime.yml` without reading the literal.
-WORKFLOW_SHA256 = "2b62a44213e0f82de2f8319d77d5cbaaece61de14aece523b11b2aaaac3a1b06"
+WORKFLOW_SHA256 = "1741ade86ee0d7c6596a737a2f21bb13096c3b52c62c2b12ab012f67312227ec"
 WORKFLOW_BYTES = """\
 name: regime
 
@@ -98,7 +98,7 @@ jobs:
           # head's fork point, from before this verifier; ci:39185982423:1). The pull request cannot move this branch.
           ref: refs/heads/${{ github.base_ref }}
           persist-credentials: false
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false
       - name: Fetch the pull request's head as data
@@ -153,7 +153,7 @@ READ_ONLY = {"contents": "read"}
 POSITION = {"Offset", "Line", "Col"}
 TITLE_EXPRESSION = "${{ github.event.pull_request.title }}"
 CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-SETUP_UV_ACTION = "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7"
+SETUP_UV_ACTION = "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
 EVENT_TYPES = ["opened", "edited", "synchronize", "reopened", "ready_for_review"]
 MISSING = object()
 # The reader's booleans are YAML 1.2's: these six spellings and nothing else. PyYAML's own YAML 1.1 resolver also reads

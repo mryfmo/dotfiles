@@ -190,7 +190,7 @@ class RegimeCiTest(unittest.TestCase):
         steps = job["steps"]
         pins = [
             "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-            "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
+            "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e",
         ]
         self.assertEqual(pins, [s["uses"] for s in steps if "uses" in s])
         base = "refs/heads/${{ github.base_ref }}"  # the tip at run time, never a stale base sha (ci:39185982423:1)

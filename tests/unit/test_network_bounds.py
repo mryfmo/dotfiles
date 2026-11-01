@@ -9,8 +9,9 @@ unless configured (apt methods/basehttp.cc), and https inherits the http value.
 The check is a closed-world text rule, not a parser (treadmill-u99-scanner): every line of a scanned file that holds
 the word curl or wget, in any context (strings and comments included), carries that tool's canonical options, with
 their exact values, once per occurrence of the word, and no other value of a time or retry option. Every other such
-line is listed in EXEMPT by its file and exact text, with its reason; an entry whose line is gone fails. A line whose
-options sit on a continuation line is either rewritten or exempted with the exact options that line must carry.
+line is listed in EXEMPT by its file and exact text, with its reason, or, for a documentation paragraph whose prose
+keeps changing, in OPENING_EXEMPT by its file and opening phrase (U137); an entry whose line is gone fails. A line
+whose options sit on a continuation line is either rewritten or exempted with the exact options that line must carry.
 """
 
 from __future__ import annotations
@@ -100,6 +101,8 @@ class Exempt(NamedTuple):
 
 MENTION = "names the tool without running it"
 # (file, the whole stripped line, exactly) -> Exempt. Every entry must still match a line (test_no_exemption_is_stale).
+# A documentation paragraph goes in OPENING_EXEMPT below, never here: its whole text as a key broke on every edit of
+# the prose and never on a command (U130 at ff55f3a0 and U136 at fce9518b each lost an audit round to it).
 EXEMPT: dict[tuple[str, str], Exempt] = {
     (
         "setup.sh",
@@ -389,18 +392,6 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),
     (
-        "scripts/orchestrator/README.md",
-        "Before the audit, `codex sandbox -- /bin/sh -c …` runs twice with the same scratch CODEX_HOME and the default profile. The first must find unreadable every denied path that exists (the login, its resolved file, the scratch link, each deny path), a canary the lever writes in the run directory outside the allowlist, the real HOME, and every store the caller's `CLAUDE_CONFIG_DIR`, `GH_CONFIG_DIR` and XDG base-directory variables name (`~` resolved under the real HOME, a relative path against the caller's cwd, then by physical path; a store inside an allowed read or write root refuses the run, since the allowlist would expose it), and must fail to make a directory in the run directory and in each directory an absolute deny key names (`/var/tmp`). A denial counts only when the tool ran and its error names it (`Operation not permitted`, `Permission denied`, `Read-only file system`); a tool that could not run (exit 42, 126, 127 without that text) is an unproven denial and refuses. Positive controls run first in the same sandbox: `cat` of a file and `ls` of the head's tree and `mkdir` in the scratch TMPDIR must succeed. The second needs `curl https://github.com` to exist and exit 6 (resolve failure) or 7 (connect failure); any other status (0, a timeout, 126/127), no curl, or a probe that cannot run is a refusal. Every `codex` call runs in a session and process group of its own under one Python supervisor, embedded in the lever and run as `python3 -I -S` (isolated; regime-cutover U71b audit round 12 replaced a hand-built perl supervisor whose failure paths opened a new window in four rounds). Its INT, TERM and HUP handlers, installed before `subprocess.Popen(…, start_new_session=True)`, only record the signal (round 13: a handler that waited re-entered `Popen.wait` under its lock and deadlocked); the main flow alone does process work, waiting in slices of at most 0.2 s and checking the recorded signal and the deadline after each. Everything after the launch runs in `try`/`finally`, and the `finally` always runs the stop: a fixed list of steps (ignore signals, `ps` snapshot, `killpg` TERM, a 5 s grace, `killpg` KILL, reap, the Linux subreaper sweep, the survivor report) run by one runner in which each step has its own `try`/`except` and the next always runs (round 15), so KILL and the reap run even when every earlier step raised and no exit path leaves the group running; a step that raised makes the exit 125. The exit is decided once after the wait: a recorded signal gives 128 + its number, else a passed deadline gives 124 (also for a wait that returned late), else codex's status. Process groups are no containment boundary (round 14): the deadline stops codex's process group on both OSes and every descendant on Linux, where the supervisor is the child subreaper (`prctl(PR_SET_CHILD_SUBREAPER)` before the launch, a failure refuses) and KILLs and reaps every child it inherits until none is left, bounded by the grace; on macOS a descendant that starts its own session can outlive the run, confined by the Codex sandbox profile it inherited (no writes outside the scratch, no network, credential stores denied), and the lever prints a warning naming every process (pid, command) a `ps` snapshot taken just before the cleanup saw under the supervisor and that is still alive after it (detection only: a process that double-forked away before the snapshot is not seen; a failed `ps` is a failed stop step, exit 125); a failed launch, a `killpg` failure other than ESRCH, a failed reap and any other exception mark the reasons and exit 125, which the lever refuses. The supervisor stops codex by itself when the lever goes away (rounds 16 and 17): the lever passes its own pid; the supervisor launches nothing unless its parent is that pid, checked before the launch and on Linux again right after asking for SIGTERM on the parent's death (`prctl(PR_SET_PDEATHSIG)`, a failure refuses), and on both OSes treats a parent other than that pid in any wait slice as a SIGTERM, so a KILL to the lever still stops codex within the grace. The lever removes every exported `GIT_*`, `PERL*` and `PYTHON*` variable as its first statements, before any external command (round 17: the self-check's `shasum` fallback is a perl script). The lever runs as `/bin/bash -p` (its shebang), so no exported shell function (`BASH_FUNC_jobs%%`, `BASH_FUNC_command%%`) and no BASH_ENV, SHELLOPTS, BASHOPTS, CDPATH or GLOBIGNORE reaches it; a run through another shell is refused. The lever forwards INT, TERM and HUP to the supervisor, which it finds in its job table (a failed lookup is reported as such: the supervisor then stops itself when the lever exits), and exits 128 + the signal's number; its run directory's creation until the cleanup trap is set is a held window (a signal there is acted on when it closes). Measured on macOS with codex-cli 0.163.0 and this profile: `git log`, `python3 -c`, `bash -n`, shellcheck and `python3 -m unittest tests.unit.test_lint_retired_terms` run in the tree; a canary under a fake `CLAUDE_CONFIG_DIR`, `GH_CONFIG_DIR` or `XDG_CONFIG_HOME` (in `$TMPDIR` and in `/tmp`), `~`, `~/.config`, `~/.local/share`, the checkout's `.git` and the login are `Operation not permitted`; `/var/tmp` and the tree refuse writes; curl exits 6. Linux is not measured; there the probes are the guard.",
-    ): Exempt("documentation; names the tool without running it"),
-    (
-        "scripts/orchestrator/README.md",
-        "| `scripts/orchestrator/pr-audit.sh`                           | closed: `tests.unit.test_pr_audit.PrAuditTest`: exact `codex exec` argv without `-s`, scratch HOME/CODEX_HOME/TMPDIR, rules from `main` only, nothing written outside the run directory; refusals with no `codex exec` for a config without the `audit` default, `sandbox_mode`, a foreign deny key, a missing or non-regular login, a template read that fails midway, a probe that reads a denied path, a curl status other than 6 or 7, a `.gitattributes` filter driver (must not run), a moved head, a base other than `main`, no `## Contract`; `test_the_decision_rule_is_applied_from_the_findings` (U119: a `correct` with a P2 passes with `Blocking: 0`, a P1 is `incorrect` with `Blocking: 1`, a verdict its findings do not derive or a priority outside P0 to P3 is exit 1 naming the field, no `verdict.md`)                                                                                                      |",
-    ): Exempt("documentation; names the tool without running it"),
-    (
-        "scripts/orchestrator/README.md",
-        "Regime-cutover U104 (handoff R1) and U121 (standing order 37). `~/.local/bin/common/brief-check.py .orchestration/orchestrate/<program>/briefs/U<n>-<slug>.md`, run from the checkout, runs between a written brief and its TASK line (`hcom-orchestration` SKILL, step 1). A brief is a sequence of upper-case section headings, each a line that is exactly its name (`GOAL`, `SCOPE`, `CHANGE`, `CONTEXT`, `ACCEPTANCE`, `VERIFY`, `TIMEBOX`, `FORBIDDEN`, `CLOSURE`, `TRUST`, `REPORT`, `STANDING`, plus the `WORKER RULES (...)` line), each followed by its text; the script parses it into one `dict[str, str]`, so a term in SCOPE or FORBIDDEN fires nothing. Exit 0, printing nothing: the GOAL, CHANGE and CONTEXT sections hold none of the trigger terms in the script's one tuple (shell, tokeniz*, parse, parser, regex, hook, worktree, config, path, process, signal, supervisor, curl, wget, heredoc, quote, bound, refuse, fail closed, untrusted, sandbox, lint, rule, allowlist, denylist, walk, census; whole words, any case, a backticked term included), or the `CLOSURE` section is one line naming one of the four forms, `ast`, `parser-module`, `allowlist` or `remove`, optionally followed by a colon and free text, and the `TRUST` section is at least 40 characters and holds the word `trusted` or `trusts`. Exit 1, one reason per line on stdout: a term fired and there is no `CLOSURE`, or `CLOSURE` is empty, names two forms or holds any other line; a term fired and there is no `TRUST`, or it is too short, or it names nothing as trusted; `CLOSURE` names `allowlist` or `ast` while CHANGE holds `denylist`, `forbidden words` or `list of commands` (a denylist dressed as a form); or the brief has no GOAL, CHANGE or CONTEXT section. Exit 2 on usage, a file that cannot be read, or a heading that appears twice (named with both line numbers; merging the bodies would hide an empty second `CLOSURE`), never read as clean. U130 (plan P-41) adds one more exit-1 line, `SCOPE names <n> levers (<names>); split into sequenced units of at most two levers each (plan P-41: multi-lever briefs took 6.5 audits, single-surface ones 2)`, when the brief's SCOPE names more than two levers in backticked paths: the lever set is the `claude.levers.sha256` names of the manifest the self-check reads (a manifest without the block is exit 2, so the list is spelled once), a path counts by its basename or as `executable_<name>` under `home/dot_local/bin/common/` (the generated copy counts once with its source), and a path under `tests/` or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never counts; the count and the threshold are the whole rule, so a unit may still touch any number of files that are not levers. It is installed and pinned like the levers below (`claude.levers.sha256`; the same self-check, in Python with `hashlib`, exits 2 with nothing on stdout when the copy differs from its pin) and allowed by `orchestrator.yml` at its installed path, so a repository without `scripts/orchestrator/` runs the same checked copy. The thirteen treadmill rows behind the rule are in the program's `handoff/02-audit-treadmill-analysis.md` (U109 and U112 added the trust boundary); `tests/unit/test_brief_check.py` runs the checkout script as a subprocess under `python -I` and the installed copy under a scratch HOME as the SKILL spells it. The lever call that refuses a program PR whose brief fails this check is a follow-up after U120.",
-    ): Exempt(f"documentation; the brief-check.py trigger-term list {MENTION}"),
-    (
         "scripts/orchestrator/pr-audit.sh",
         "#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail",
     ): Exempt("comment; names the tool without running it"),
@@ -438,6 +429,30 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         f"trigger-term table row; {MENTION}"
     ),
 }
+# (file, the paragraph's opening phrase: its stripped text up to and including its first period) -> Exempt, for the
+# documentation paragraphs (U137). The phrase is matched as a prefix of the file's stripped lines and must match exactly
+# one: none is stale, two or more are ambiguous (test_no_exemption_is_stale), and in both cases no line is exempt. The
+# exemption covers mentions only, inside backticks or as a word of prose; a matched line that holds a bare command
+# outside backticks (BARE_COMMAND) is checked like any other line. The list is closed: an edit after the opening phrase
+# needs no change here, a new paragraph needs a new entry with its reason.
+OPENING_EXEMPT: dict[tuple[str, str], Exempt] = {
+    (
+        "scripts/orchestrator/README.md",
+        "Before the audit, `codex sandbox -- /bin/sh -c …` runs twice with the same scratch CODEX_HOME and the default profile.",
+    ): Exempt("documentation; names the tool without running it"),
+    (
+        "scripts/orchestrator/README.md",
+        "| `scripts/orchestrator/pr-audit.",
+    ): Exempt("documentation; names the tool without running it"),
+    (
+        "scripts/orchestrator/README.md",
+        "Regime-cutover U104 (handoff R1) and U121 (standing order 37).",
+    ): Exempt(f"documentation; the brief-check.py trigger-term list {MENTION}"),
+}
+BACKTICKS = re.compile(r"`[^`]*`")
+# A tool word outside backticks that starts a command rather than naming the tool in prose: followed by an option, a
+# substitution, a quoted argument or a URL. `no curl,`, `curl exits 6` and `a curl status` are prose.
+BARE_COMMAND = re.compile(r"\b(?:curl|wget)\s+(?:-|\$|[\"']|\w[\w+.-]*://)")
 SNAP_EXEMPT = {
     (
         "install/ubuntu/client/misc.sh",
@@ -480,11 +495,30 @@ def continuation_errors(lines: list[str], index: int, entry: Exempt) -> list[str
     return [f"the continuation carries {hits}"] if hits else []
 
 
-def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[str]:
+def openings(relative: str, lines: list[str], opening_exempt) -> tuple[dict[int, Exempt], list[str]]:
+    """The opening-phrase exemptions of one file, by the index (0-based) of the one stripped line each phrase opens,
+    and the phrases that open no line (stale) or more than one (ambiguous); those exempt nothing."""
+    found: dict[int, Exempt] = {}
+    refused = []
+    for (path, phrase), entry in opening_exempt.items():
+        if path != relative:
+            continue
+        matched = [index for index, line in enumerate(lines) if line.startswith(phrase)]
+        if len(matched) == 1:
+            found[matched[0]] = entry
+        else:
+            why = "stale: opens no line" if not matched else f"ambiguous: opens {len(matched)} lines"
+            refused.append(f"{relative}: {phrase} ({why})")
+    return found, refused
+
+
+def violations(relative: str, text: str, exempt=None, snap_exempt=None, opening_exempt=None) -> list[str]:
     """The lines of one file that break the rule, as `file:line: text`."""
     exempt = EXEMPT if exempt is None else exempt
     snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
+    opening_exempt = OPENING_EXEMPT if opening_exempt is None else opening_exempt
     lines = text.splitlines()
+    opened, _ = openings(relative, [raw.strip() for raw in lines], opening_exempt)
     bad = []
     for index, raw in enumerate(lines):
         line = raw.strip()
@@ -492,6 +526,11 @@ def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[
         tools = TOOL.findall(line)
         if tools:
             entry = exempt.get((relative, line))
+            if entry is None and index in opened:
+                if BARE_COMMAND.search(BACKTICKS.sub(" ", line)):
+                    where += " (a documentation exemption covers a mention, not a bare command outside backticks)"
+                else:
+                    entry = opened[index]
             if entry is None:
                 if line.endswith("\\"):
                     bad.append(f"{where} (continues onto the next line; put its options on this line or exempt it)")
@@ -506,12 +545,17 @@ def violations(relative: str, text: str, exempt=None, snap_exempt=None) -> list[
     return bad
 
 
-def stale(files: dict[str, str], exempt=None, snap_exempt=None) -> list[str]:
-    """The exemptions whose file no longer holds their whole line, exactly."""
+def stale(files: dict[str, str], exempt=None, snap_exempt=None, opening_exempt=None) -> list[str]:
+    """The exemptions whose file no longer holds their whole line, exactly, and the opening phrases that open no line
+    of their file or more than one."""
     exempt = EXEMPT if exempt is None else exempt
     snap_exempt = SNAP_EXEMPT if snap_exempt is None else snap_exempt
-    lines = {relative: {line.strip() for line in text.splitlines()} for relative, text in files.items()}
-    return [f"{r}: {t}" for r, t in [*exempt, *snap_exempt] if t not in lines.get(r, set())]
+    opening_exempt = OPENING_EXEMPT if opening_exempt is None else opening_exempt
+    lines = {relative: [line.strip() for line in text.splitlines()] for relative, text in files.items()}
+    bad = [f"{r}: {t}" for r, t in [*exempt, *snap_exempt] if t not in set(lines.get(r, []))]
+    for relative in dict.fromkeys(path for path, _ in opening_exempt):
+        bad += openings(relative, lines.get(relative, []), opening_exempt)[1]
+    return bad
 
 
 def tree() -> dict[str, str]:
@@ -618,8 +662,52 @@ class NetworkBoundTest(unittest.TestCase):
         )
         self.assertEqual(
             ["install/x.sh: curl lsb"],
-            stale({"install/x.sh": "curl  lsb\n"}, {("install/x.sh", "curl lsb"): Exempt("x")}, {}),
+            stale({"install/x.sh": "curl  lsb\n"}, {("install/x.sh", "curl lsb"): Exempt("x")}, {}, {}),
         )
+
+    def test_a_documentation_exemption_is_keyed_by_its_opening_phrase_and_covers_mentions_only(self) -> None:
+        readme = "scripts/x/README.md"
+        phrase = "Regime-cutover U104 (handoff R1) and U121 (standing order 37)."
+        paragraph = f"{phrase} The one tuple names curl, wget and `curl -m 0` as words; no curl runs, curl exits 6."
+        opening = {(readme, phrase): Exempt("documentation")}
+
+        def check(text: str) -> tuple[list[str], list[str]]:
+            files = {readme: f"# Title\n\n{text}\n"}
+            return violations(readme, files[readme], {}, {}, opening), stale(files, {}, {}, opening)
+
+        # An edit anywhere after the opening phrase keeps both tests green: the key is the phrase, not the prose.
+        self.assertEqual(([], []), check(paragraph))
+        self.assertEqual(([], []), check(paragraph + " One more sentence, added by a later unit."))
+        self.assertEqual(([], []), check(paragraph.replace("The one tuple", "The script's tuple")))
+        # The paragraph removed (or its opening phrase edited) makes the exemption stale.
+        gone = f"{readme}: {phrase} (stale: opens no line)"
+        self.assertEqual(([], [gone]), check("Another paragraph, which runs nothing."))
+        self.assertEqual(([], [gone]), check(f"{readme}:{phrase} A phrase that is not the line's opening."))
+        bad, refused = check(paragraph.replace("U121", "U122"))
+        self.assertEqual(([gone], 1), (refused, len(bad)))
+        # A bare command inserted into the paragraph is not a mention; the bound test fails on that line alone.
+        for command in ("curl https://x.invalid/a", "wget -q u", 'curl "${url}"', "curl $(cat u)", "wget --tries=0 u"):
+            with self.subTest(command=command):
+                bad, refused = check(f"{paragraph} Then {command} fetches it.")
+                self.assertEqual(1, len(bad), bad)
+                self.assertIn("not a bare command outside backticks", bad[0])
+                self.assertEqual([], refused)
+        # Two paragraphs with the same opening phrase are ambiguous: the stale test refuses, and neither is exempt.
+        bad, refused = check(f"{paragraph}\n\n{phrase} A second paragraph that mentions wget.")
+        self.assertEqual([f"{readme}: {phrase} (ambiguous: opens 2 lines)"], refused)
+        self.assertEqual(2, len(bad), bad)
+        # The phrase keys one file: the same paragraph in another file is not exempt.
+        self.assertEqual(1, len(violations("scripts/y/README.md", paragraph + "\n", {}, {}, opening)))
+
+    def test_the_documentation_paragraphs_are_keyed_by_their_opening_phrase_never_by_their_whole_text(self) -> None:
+        readme = "scripts/orchestrator/README.md"
+        self.assertEqual([], [line for path, line in EXEMPT if path == readme])
+        self.assertEqual(3, sum(1 for path, _ in OPENING_EXEMPT if path == readme))
+        for path, phrase in OPENING_EXEMPT:
+            with self.subTest(phrase=phrase):
+                # The opening phrase is the paragraph's text up to and including its first period.
+                self.assertEqual(len(phrase) - 1, phrase.find("."), phrase)
+                self.assertEqual(phrase, phrase.strip())
 
 
 # A bare Bats run in a workflow or the runner: `bats` as a command word, not run_bats, bats-core or a package list.

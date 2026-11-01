@@ -5448,12 +5448,13 @@
 
 <span class="s2">A brief whose SCOPE names more than two levers is refused too (regime-cutover U130; plan P-41 measured the four units</span>
 <span class="s2">whose one brief rewrote several levers at 6.5 audits each, the single-surface units of the same period at 2). The</span>
-<span class="s2">lever set is the manifest's `claude.levers.sha256` names, read from the same manifest as the pin and spelled nowhere</span>
-<span class="s2">else; a manifest without the block is exit 2. A backticked path in SCOPE is a lever when its basename is a pinned</span>
-<span class="s2">name, or `executable_&lt;name&gt;` under `home/dot_local/bin/common/` (the generated copy counts once with its source); a</span>
-<span class="s2">path under a `tests` directory or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never</span>
-<span class="s2">counts. More than two distinct levers is exit 1 with the one line `SCOPE names &lt;n&gt; levers (&lt;names&gt;); split into</span>
-<span class="s2">sequenced units of at most two levers each (plan P-41: ...)`; the count and the threshold are the whole rule.</span>
+<span class="s2">lever set is the manifest's `claude.levers.sha256` names, read from the same block as the pin (the self pin is that</span>
+<span class="s2">list's `brief-check.py` entry) and spelled nowhere else; a manifest without the block is exit 2. A backticked path in</span>
+<span class="s2">SCOPE is a lever when its basename is a pinned name, or `executable_&lt;name&gt;` under `home/dot_local/bin/common/` (the</span>
+<span class="s2">generated copy counts once with its source); a path under a `tests` directory or named `README.md`,</span>
+<span class="s2">`generated-agent-outputs.json` or `agent-config.yaml` never counts. More than two distinct levers is exit 1 with the</span>
+<span class="s2">one line `SCOPE names &lt;n&gt; levers (&lt;names&gt;); split into sequenced units of at most two levers each (plan P-41: ...)`;</span>
+<span class="s2">the count and the threshold are the whole rule.</span>
 
 <span class="s2">The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the</span>
 <span class="s2">same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as</span>
@@ -5479,13 +5480,16 @@ import<span class="w"> </span>re
 import<span class="w"> </span>sys
 
 <span class="nv">LEVER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"brief-check.py"</span>
-<span class="c1"># The pin line of this lever in the manifest, read as text: the manifest is never parsed as YAML here.</span>
-<span class="nv">PIN_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^      brief-check\.py: ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
-<span class="c1"># The levers block of the manifest, read as text too: the `levers:` line, its `sha256:` line, then one pin line per</span>
-<span class="c1"># lever, `&lt;name&gt;: &lt;sha256&gt;`, which names the lever by its file name under scripts/orchestrator/.</span>
-<span class="nv">LEVERS_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"  levers:"</span>
-<span class="nv">SHA256_LINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"    sha256:"</span>
-<span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^      (\S+): [0-9a-f]{64}</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="c1"># The levers block of the manifest, read as text by indentation alone, never parsed as YAML: the top-level `claude:`</span>
+<span class="c1"># mapping, its `levers:` key, its `sha256:` key, then one pin line per lever, `&lt;name&gt;: &lt;sha256&gt;`, which names the</span>
+<span class="c1"># lever by its file name under scripts/orchestrator/ (U136). A mapping key is a line that is a bare `&lt;key&gt;:`; a pin</span>
+<span class="c1"># is its indented `&lt;name&gt;: &lt;64 hex&gt;`, every pin at the one indentation the first fixes, and this lever's own pin is</span>
+<span class="c1"># the block's `brief-check.py` entry read by the same rule (round 2: a separate six-space read of it refused a</span>
+<span class="c1"># manifest whose pins all sat at eight spaces). Nothing else of YAML is read: no anchors, no flow style, no quoted</span>
+<span class="c1"># keys.</span>
+<span class="nv">MAPPING_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+):</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">LEVER_PIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(\S+): ([0-9a-f]{64})</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">LEVERS_KEYS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"levers"</span>,<span class="w"> </span><span class="s2">"sha256"</span><span class="o">)</span>
 
 
 def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)</span>:
@@ -5497,8 +5501,10 @@ def<span class="w"> </span>refuse<span class="o">(</span>reason<span class="o">)
 def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 <span class="w">    </span><span class="s2">"""Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31).</span>
 
-<span class="s2">    Returns the lever names pinned under the manifest's `levers: sha256:` block (U130), the one list of levers the</span>
-<span class="s2">    SCOPE count reads; a manifest without the block, or with an empty one, is refused like an unreadable one.</span>
+<span class="s2">    Returns the lever names pinned under the manifest's `claude.levers.sha256` block (U130, read by `manifest_levers`</span>
+<span class="s2">    since U136), the one list of levers the SCOPE count reads; a manifest without the block, or with an empty one,</span>
+<span class="s2">    is refused like an unreadable one, and before the pin is looked for. The pin is the block's `brief-check.py`</span>
+<span class="s2">    entry: one entry is the pin, none or two is a refusal.</span>
 
 <span class="s2">    The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the</span>
 <span class="s2">    directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two</span>
@@ -5524,7 +5530,8 @@ def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 <span class="w">            </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>.decode<span class="o">(</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="s2">"replace"</span><span class="o">)</span>.splitlines<span class="o">()</span>
 <span class="w">    </span>except<span class="w"> </span>OSError:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot read {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>match<span class="w"> </span><span class="k">in</span><span class="w"> </span>map<span class="o">(</span>PIN_LINE.match,<span class="w"> </span>lines<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="o">]</span>
+<span class="w">    </span><span class="nv">pinned</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>
+<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>digest<span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>digest<span class="w"> </span><span class="k">in</span><span class="w"> </span>pinned<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVER<span class="o">]</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>pins<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no single sha256 pin for {LEVER} in {manifest}"</span><span class="o">)</span>
 <span class="w">    </span>try:
@@ -5534,23 +5541,48 @@ def<span class="w"> </span>lever_self_check<span class="o">()</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"cannot hash {self_path}"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>digest<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>pins<span class="o">[</span><span class="m">0</span><span class="o">]</span>:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"sha256 {digest} of {self_path} differs from the pin in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>name<span class="w"> </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>_<span class="w"> </span><span class="k">in</span><span class="w"> </span>pinned<span class="o">)</span>
 
 
 def<span class="w"> </span>manifest_levers<span class="o">(</span>lines,<span class="w"> </span>manifest<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The lever names under the manifest's `levers:` / `sha256:` lines, in file order; none is a refusal."""</span>
-<span class="w">    </span><span class="nv">names</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>LEVERS_LINE<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines:
-<span class="w">        </span><span class="nv">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lines.index<span class="o">(</span>LEVERS_LINE<span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>start<span class="w"> </span>&lt;<span class="w"> </span>len<span class="o">(</span>lines<span class="o">)</span><span class="w"> </span>and<span class="w"> </span>lines<span class="o">[</span>start<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>SHA256_LINE:
-<span class="w">            </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines<span class="o">[</span>start<span class="w"> </span>+<span class="w"> </span><span class="m">1</span><span class="w"> </span>:<span class="o">]</span>:
-<span class="w">                </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>line<span class="o">)</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">                    </span><span class="k">break</span>
-<span class="w">                </span>names.append<span class="o">(</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">))</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>names:
+<span class="w">    </span><span class="s2">"""The `(name, sha256)` pins under the manifest's `claude.levers.sha256` mapping, in file order (U136).</span>
+
+<span class="s2">    The one reader walks the mapping keys by indentation: a bare `&lt;key&gt;:` line opens a mapping, and a line indented</span>
+<span class="s2">    no deeper than an open key closes it, so `levers:` counts only under the top-level `claude:` and `sha256:` only</span>
+<span class="s2">    under that `levers:`. Inside the block, blank lines and lines whose first non-space character is `#` are</span>
+<span class="s2">    skipped, the entries share the indentation of the first pin (any indentation deeper than the `sha256:` key),</span>
+<span class="s2">    and the list ends at the first line indented less than its entries. An entry that is not `&lt;name&gt;: &lt;64 hex&gt;` is</span>
+<span class="s2">    a refusal naming the line; no entry at all is the missing-block refusal, checked before the self pin, so a</span>
+<span class="s2">    manifest lacking both names the block.</span>
+<span class="s2">    """</span>
+<span class="w">    </span><span class="nv">pins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="nv">keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span><span class="w">  </span><span class="c1"># the open mapping keys as (indentation, key), outermost first</span>
+<span class="w">    </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the `sha256:` key once the path is open</span>
+<span class="w">    </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w">  </span><span class="c1"># the indentation of the pin lines, fixed by the first</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.lstrip<span class="o">(</span><span class="s2">" "</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>text<span class="w"> </span>or<span class="w"> </span>text.startswith<span class="o">(</span><span class="s2">"#"</span><span class="o">)</span>:
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>len<span class="o">(</span>line<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>len<span class="o">(</span>text<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>block<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>block<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="w"> </span>entries<span class="o">)</span>:
+<span class="w">                </span><span class="k">break</span>
+<span class="w">            </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>LEVER_PIN.match<span class="o">(</span>text<span class="o">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>entries<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>entries<span class="o">)</span>:
+<span class="w">                </span>refuse<span class="o">(</span>f<span class="s2">"line {number} of {manifest} is not a `&lt;name&gt;: &lt;sha256&gt;` pin under claude.levers.sha256"</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">entries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
+<span class="w">            </span>pins.append<span class="o">((</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)))</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span>keys<span class="w"> </span>and<span class="w"> </span>indent<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>keys<span class="o">[</span>-1<span class="o">][</span><span class="m">0</span><span class="o">]</span>:
+<span class="w">            </span>keys.pop<span class="o">()</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MAPPING_KEY.match<span class="o">(</span>text<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>and<span class="w"> </span><span class="o">(</span>keys<span class="w"> </span>or<span class="w"> </span><span class="nv">indent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">)</span>:
+<span class="w">            </span>keys.append<span class="o">((</span>indent,<span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)))</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>tuple<span class="o">(</span>key<span class="w"> </span><span class="k">for</span><span class="w"> </span>_,<span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span>keys<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>LEVERS_KEYS:
+<span class="w">                </span><span class="nv">block</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>indent
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>pins:
 <span class="w">        </span>refuse<span class="o">(</span>f<span class="s2">"no claude.levers.sha256 block in {manifest}"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>names<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>tuple<span class="o">(</span>pins<span class="o">)</span>
 
 
 <span class="nv">LEVERS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lever_self_check<span class="o">()</span>

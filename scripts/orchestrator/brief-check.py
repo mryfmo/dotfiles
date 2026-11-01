@@ -14,12 +14,13 @@ section heading that appears twice; a brief the check cannot read is never read 
 
 A brief whose SCOPE names more than two levers is refused too (regime-cutover U130; plan P-41 measured the four units
 whose one brief rewrote several levers at 6.5 audits each, the single-surface units of the same period at 2). The
-lever set is the manifest's `claude.levers.sha256` names, read from the same manifest as the pin and spelled nowhere
-else; a manifest without the block is exit 2. A backticked path in SCOPE is a lever when its basename is a pinned
-name, or `executable_<name>` under `home/dot_local/bin/common/` (the generated copy counts once with its source); a
-path under a `tests` directory or named `README.md`, `generated-agent-outputs.json` or `agent-config.yaml` never
-counts. More than two distinct levers is exit 1 with the one line `SCOPE names <n> levers (<names>); split into
-sequenced units of at most two levers each (plan P-41: ...)`; the count and the threshold are the whole rule.
+lever set is the manifest's `claude.levers.sha256` names, read from the same block as the pin (the self pin is that
+list's `brief-check.py` entry) and spelled nowhere else; a manifest without the block is exit 2. A backticked path in
+SCOPE is a lever when its basename is a pinned name, or `executable_<name>` under `home/dot_local/bin/common/` (the
+generated copy counts once with its source); a path under a `tests` directory or named `README.md`,
+`generated-agent-outputs.json` or `agent-config.yaml` never counts. More than two distinct levers is exit 1 with the
+one line `SCOPE names <n> levers (<names>); split into sequenced units of at most two levers each (plan P-41: ...)`;
+the count and the threshold are the whole rule.
 
 The script is a pinned lever (regime-cutover U31, round 3 of U104): `scripts/generate-agent-configs.py` writes the
 same bytes to `home/dot_local/bin/common/executable_brief-check.py`, which chezmoi installs as
@@ -45,14 +46,15 @@ import re
 import sys
 
 LEVER = "brief-check.py"
-# The pin line of this lever in the manifest, read as text: the manifest is never parsed as YAML here.
-PIN_LINE = re.compile(r"^      brief-check\.py: ([0-9a-f]{64})$")
-# The levers block of the manifest, read as text too, by indentation alone: the top-level `claude:` mapping, its
-# `levers:` key, its `sha256:` key, then one pin line per lever, `<name>: <sha256>`, which names the lever by its
-# file name under scripts/orchestrator/ (U136). A mapping key is a line that is a bare `<key>:`; a pin is its
-# indented `<name>: <64 hex>`. Nothing else of YAML is read: no anchors, no flow style, no quoted keys.
+# The levers block of the manifest, read as text by indentation alone, never parsed as YAML: the top-level `claude:`
+# mapping, its `levers:` key, its `sha256:` key, then one pin line per lever, `<name>: <sha256>`, which names the
+# lever by its file name under scripts/orchestrator/ (U136). A mapping key is a line that is a bare `<key>:`; a pin
+# is its indented `<name>: <64 hex>`, every pin at the one indentation the first fixes, and this lever's own pin is
+# the block's `brief-check.py` entry read by the same rule (round 2: a separate six-space read of it refused a
+# manifest whose pins all sat at eight spaces). Nothing else of YAML is read: no anchors, no flow style, no quoted
+# keys.
 MAPPING_KEY = re.compile(r"^(\S+):$")
-LEVER_PIN = re.compile(r"^(\S+): [0-9a-f]{64}$")
+LEVER_PIN = re.compile(r"^(\S+): ([0-9a-f]{64})$")
 LEVERS_KEYS = ("claude", "levers", "sha256")
 
 
@@ -67,7 +69,8 @@ def lever_self_check():
 
     Returns the lever names pinned under the manifest's `claude.levers.sha256` block (U130, read by `manifest_levers`
     since U136), the one list of levers the SCOPE count reads; a manifest without the block, or with an empty one,
-    is refused like an unreadable one, and before the pin is looked for.
+    is refused like an unreadable one, and before the pin is looked for. The pin is the block's `brief-check.py`
+    entry: one entry is the pin, none or two is a refusal.
 
     The physical directory of this file decides the manifest: the deployed `~/.agents/agent-config.yaml` when the
     directory is the physical `~/.local/bin/common`, else the checkout's `home/dot_agents/agent-config.yaml` two
@@ -93,8 +96,8 @@ def lever_self_check():
             lines = handle.read().decode("utf-8", "replace").splitlines()
     except OSError:
         refuse(f"cannot read {manifest}")
-    names = manifest_levers(lines, manifest)
-    pins = [match.group(1) for match in map(PIN_LINE.match, lines) if match]
+    pinned = manifest_levers(lines, manifest)
+    pins = [digest for name, digest in pinned if name == LEVER]
     if len(pins) != 1:
         refuse(f"no single sha256 pin for {LEVER} in {manifest}")
     try:
@@ -104,20 +107,21 @@ def lever_self_check():
         refuse(f"cannot hash {self_path}")
     if digest != pins[0]:
         refuse(f"sha256 {digest} of {self_path} differs from the pin in {manifest}")
-    return names
+    return tuple(name for name, _ in pinned)
 
 
 def manifest_levers(lines, manifest):
-    """The lever names under the manifest's `claude.levers.sha256` mapping, in file order; none is a refusal (U136).
+    """The `(name, sha256)` pins under the manifest's `claude.levers.sha256` mapping, in file order (U136).
 
     The one reader walks the mapping keys by indentation: a bare `<key>:` line opens a mapping, and a line indented
     no deeper than an open key closes it, so `levers:` counts only under the top-level `claude:` and `sha256:` only
     under that `levers:`. Inside the block, blank lines and lines whose first non-space character is `#` are
-    skipped, the entries share the indentation of the first pin, and the list ends at the first line indented less
-    than its entries. An entry that is not `<name>: <64 hex>` is a refusal naming the line. The missing-block
-    refusal is checked before the self pin, so a manifest lacking both names the block.
+    skipped, the entries share the indentation of the first pin (any indentation deeper than the `sha256:` key),
+    and the list ends at the first line indented less than its entries. An entry that is not `<name>: <64 hex>` is
+    a refusal naming the line; no entry at all is the missing-block refusal, checked before the self pin, so a
+    manifest lacking both names the block.
     """
-    names = []
+    pins = []
     keys = []  # the open mapping keys as (indentation, key), outermost first
     block = None  # the indentation of the `sha256:` key once the path is open
     entries = None  # the indentation of the pin lines, fixed by the first
@@ -129,10 +133,11 @@ def manifest_levers(lines, manifest):
         if block is not None:
             if indent <= block or (entries is not None and indent < entries):
                 break
-            if LEVER_PIN.match(text) is None or (entries is not None and indent != entries):
+            match = LEVER_PIN.match(text)
+            if match is None or (entries is not None and indent != entries):
                 refuse(f"line {number} of {manifest} is not a `<name>: <sha256>` pin under claude.levers.sha256")
             entries = indent
-            names.append(text.split(":", 1)[0])
+            pins.append((match.group(1), match.group(2)))
             continue
         while keys and indent <= keys[-1][0]:
             keys.pop()
@@ -141,9 +146,9 @@ def manifest_levers(lines, manifest):
             keys.append((indent, match.group(1)))
             if tuple(key for _, key in keys) == LEVERS_KEYS:
                 block = indent
-    if not names:
+    if not pins:
         refuse(f"no claude.levers.sha256 block in {manifest}")
-    return tuple(names)
+    return tuple(pins)
 
 
 LEVERS = lever_self_check()

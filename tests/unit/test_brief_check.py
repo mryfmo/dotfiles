@@ -561,6 +561,32 @@ class BriefCheckTest(unittest.TestCase):
         result, named = self.checkout_check(text.replace(pin + "\n", ""), brief(GOAL=CLEAN_GOAL))
         self.assert_refused_to_run(result, named, "no single sha256 pin for brief-check.py in")
 
+    def test_every_pin_at_another_consistent_indentation_passes_the_self_check_and_counts_every_lever(self):
+        # Round 2 (audit P2 :116): the block reader took every pin at eight spaces while a separate six-space read of
+        # the self pin refused the same manifest; the self pin is the block's `brief-check.py` entry, read by the
+        # one rule, so any indentation deeper than `sha256:` that every pin shares reads the list and the pin alike.
+        lines = MANIFEST.read_text().splitlines()
+        block = lines.index("    sha256:", lines.index("  levers:", lines.index("claude:"))) + 1
+        end = next(index for index in range(block, len(lines)) if not lines[index].startswith("      "))
+        self.assertGreaterEqual(end - block, 3, lines[block:end])
+        for width in (5, 8, 12):
+            with self.subTest(spaces=width):
+                pins = [" " * width + line.lstrip(" ") for line in lines[block:end]]
+                spaced = "\n".join(lines[:block] + pins + lines[end:]) + "\n"
+                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS)))
+                self.assert_refused_exactly(result, SPLIT_REASON)
+                result, _ = self.checkout_check(spaced, brief(GOAL=CLEAN_GOAL, SCOPE=scope(*THREE_LEVERS[:2])))
+                self.assert_passes(result)
+        # A pin of this lever outside the block is not the pin: at six spaces under another key, with the block's
+        # entry gone, the refusal is the absent pin, not a match on indentation.
+        text = "\n".join(lines) + "\n"
+        pin = next(line for line in lines if line.startswith("      brief-check.py: "))
+        elsewhere = text.replace(pin + "\n", "").replace(
+            "\nclaude:\n", f"\nother:\n  levers:\n    sha256:\n{pin}\nclaude:\n"
+        )
+        result, named = self.checkout_check(elsewhere, brief(GOAL=CLEAN_GOAL))
+        self.assert_refused_to_run(result, named, "no single sha256 pin for brief-check.py in")
+
 
 class InstalledBriefCheckTest(unittest.TestCase):
     """The installed copy, run as the hcom-orchestration SKILL step 1 spells it (U104 round 3).

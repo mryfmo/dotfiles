@@ -340,7 +340,7 @@
       "target": ".local/bin/common/brief-check.py",
       "kind": "file",
       "executable": true,
-      "sha256": "92935ef3839276a24d0666518e8c7e557f4133be15d6a528e7a8d86490d2fab4"
+      "sha256": "f6dd08068ef157f3c1f245f3c1ab2f6730418591fb9e020aa65b67a11795f3b1"
     },
     {
       "source": "home/dot_local/bin/common/executable_bus-history.sh",
@@ -354,7 +354,7 @@
       "target": ".local/bin/common/checkout-guard.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "ef3e6fe3d028220a625bc38f9425aea89d092a4261761ac00e090ecad7920673"
+      "sha256": "f87d279dbc65e7f3d0119d05f820222f9903d865087394f2663d86e1058e894c"
     },
     {
       "source": "home/dot_local/bin/common/executable_git-isolated.sh",

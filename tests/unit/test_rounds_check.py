@@ -1,8 +1,8 @@
 """Exercise scripts/orchestrator/rounds-check.py on fixture stores (regime-cutover U120, standing order 36): the round
-cap and the two-strike rule as exit codes and one-line reasons, counted per (unit, pull request) pair because one
-change is one pull request (U133), the rows before the rule's effective date that are read but not counted, the
-malformed-store refusals naming the file and line, `--all` over every pair, and the git form the `regime` check runs on
-a pull request's head."""
+cap and the two-strike rule as exit codes and one-line reasons, counted per unit since its latest merge row across
+every pull request because a merge ends a change and a new pull request does not (U133 round 2), the rows before the
+rule's effective date that are read but not counted, the malformed-store refusals naming the file and line, `--all`
+over every unit, and the git form the `regime` check runs on a pull request's head."""
 
 import os
 import shutil
@@ -22,8 +22,8 @@ LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
 DECISIONS_HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n"
 ROW_TO_WRITE = (
     'write decisions.tsv phase=mechanism-change decision="{unit} ..." result names one of '
-    "ast|parser-module|allowlist|remove|residual (rounds are counted per pull request because one change is one pull "
-    "request)"
+    "ast|parser-module|allowlist|remove|residual (a unit's rounds are counted since its last merge, because a merge ends "
+    "a change and a new pull request does not)"
 )
 GIT_ENV = quiet_git_env(
     {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -61,9 +61,14 @@ def ignored(count):
     return f"{count} earlier rows ignored (rule effective 2026-10-30)"
 
 
-def on(pr="7"):
-    """The counts' pull request: the counted rows are the unit's rows whose pr cell is this one (U133)."""
-    return f"on pull request {pr}"
+def merge(ts, unit, pr="7"):
+    """One ledger row: the row `pr-merge.sh` writes when `unit`'s pull request `pr` merges, the end of a change (U133)."""
+    return (ts, unit, pr, "a" * 40, "-", "pr-merge.sh", f"merged as {'b' * 40} (squash)")
+
+
+def since(merge_ts=None):
+    """The start of the counts: the unit's latest merge row, or the start when it has none (U133)."""
+    return "since the start" if merge_ts is None else f"since the merge of {merge_ts}"
 
 
 class RoundsCheckTest(unittest.TestCase):
@@ -98,7 +103,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
+            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
             run.stdout,
         )
 
@@ -107,7 +112,7 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(run.stdout.count("\n"), 1, "one line")
         self.assertIn(
-            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows",
+            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows",
             run.stdout,
         )
         self.assertIn("the fourth round needs a mechanism-change row: " + ROW_TO_WRITE.format(unit="U7"), run.stdout)
@@ -119,7 +124,7 @@ class RoundsCheckTest(unittest.TestCase):
                 run = self.check(self.store(three_incorrect(), decisions), "U7")
                 self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
                 self.assertIn(
-                    f"U7 allowed: 3 audit rows (3 incorrect) {on()}, 0 incorrect since the mechanism-change row of "
+                    f"U7 allowed: 3 audit rows (3 incorrect) {since()}, 0 incorrect since the mechanism-change row of "
                     "2026-10-30T04:00:00Z (parser-module) (classes: none), 1 mechanism rows",
                     run.stdout,
                 )
@@ -135,7 +140,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            f"U7 refused: 6 audit rows (5 incorrect) {on()}, 2 incorrect since the mechanism-change row of "
+            f"U7 refused: 6 audit rows (5 incorrect) {since()}, 2 incorrect since the mechanism-change row of "
             "2026-10-30T04:00:00Z (allowlist) (classes: status=2), 1 mechanism rows; 2 strikes of class status since "
             "that row need another: " + ROW_TO_WRITE.format(unit="U7"),
             run.stdout,
@@ -153,7 +158,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 allowed: 1 audit rows (1 incorrect) {on()}, 1 incorrect since the mechanism-change row "
+            f"rounds-check: U7 allowed: 1 audit rows (1 incorrect) {since()}, 1 incorrect since the mechanism-change row "
             "of 2026-10-30T04:00:00Z (remove) (classes: status=1), 1 mechanism rows\n",
             run.stdout,
         )
@@ -161,7 +166,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the mechanism-change row "
+            f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the mechanism-change row "
             "of 2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes of class status since "
             "that row need another: "
             f"{ROW_TO_WRITE.format(unit='U7')}\n",
@@ -169,7 +174,7 @@ class RoundsCheckTest(unittest.TestCase):
         )
         run = self.check("--all", self.store(rows, decisions))
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertIn(f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {on()}", run.stdout)
+        self.assertIn(f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {since()}", run.stdout)
 
     def test_two_incorrect_rows_of_different_classes_after_the_mechanism_row_are_one_strike_each(self):
         """Round 7 (the Codex P2 on c3a9bfdc): the two strikes are two `incorrect` rows of one class (the word of the
@@ -183,7 +188,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the mechanism-change row "
+            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the mechanism-change row "
             "of 2026-10-30T04:00:00Z (remove) (classes: gate-logic=1, unit-key=1), 1 mechanism rows\n",
             run.stdout,
         )
@@ -196,7 +201,9 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7", "--pr", "7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         run = self.check("--all", self.store(rows, decisions))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn("rounds-check: U7 allowed: 3 audit rows (3 incorrect)", run.stdout)
+        self.assertEqual("rounds-check: 1 units checked, 0 refused\n", run.stderr)
 
     def test_two_incorrect_rows_of_one_class_after_the_mechanism_row_refuse_naming_the_class(self):
         decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
@@ -209,7 +216,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows, decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 refused: 4 audit rows (3 incorrect) {on()}, 3 incorrect since the mechanism-change row "
+            f"rounds-check: U7 refused: 4 audit rows (3 incorrect) {since()}, 3 incorrect since the mechanism-change row "
             "of 2026-10-30T04:00:00Z (remove) (classes: gate-logic=1, unit-key=2), 1 mechanism rows; 2 strikes of "
             f"class unit-key since that row need another: {ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
@@ -239,7 +246,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start (classes: "
+            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: "
             "gate-logic=1, unit-key=1, status=1), 0 mechanism rows; the fourth round needs a mechanism-change row: "
             f"{ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
@@ -249,130 +256,266 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertIn(
-            f"3 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows; the fourth",
+            f"3 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows; the fourth",
             run.stdout,
         )
 
-    def test_three_correct_rows_on_three_pull_requests_are_three_first_rounds_and_not_the_cap(self):
-        """U133: rounds are counted per pull request because one change is one pull request. The records unit U20 is
-        one unit with a new pull request per sync, and on 05a48d78..dc4491ed three `correct` syncs read as three rounds
-        of one change (sync 16 at 2026-10-31T04:51Z and sync 20 at 10:25Z were refused with no `incorrect` row at all,
-        each costing a superseded pull request and a mechanism-change row that changed no mechanism)."""
-        rows = [
-            audit(f"2026-10-30T0{n}:00:00Z", "U20", "correct", "findings=0", pr=pr)
-            for n, pr in ((1, "607"), (2, "609"), (3, "610"))
-        ]
+    def test_three_correct_rows_each_followed_by_its_merge_row_allow_a_fourth(self):
+        """U133: a unit's rounds are counted since its last merge, because a merge ends a change and a new pull request
+        does not. The records unit U20 is one unit with a new pull request per sync, each merged on its `correct` row,
+        and on 05a48d78..dc4491ed three `correct` syncs read as three rounds of one change (sync 16 at
+        2026-10-31T04:51Z and sync 20 at 10:25Z were refused with no `incorrect` row at all, each costing a superseded
+        pull request and a mechanism-change row that changed no mechanism). Round 1 (5e067c2d) keyed the count on the
+        pull request instead; this case replaces its `three correct rows on three pull requests` case."""
+        rows = []
+        for n, pr in ((1, "607"), (2, "609"), (3, "610")):
+            rows.append(audit(f"2026-10-30T0{n}:00:00Z", "U20", "correct", "findings=0", pr=pr))
+            rows.append(merge(f"2026-10-30T0{n}:30:00Z", "U20", pr=pr))
+        allowed = (
+            f"rounds-check: U20 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T03:30:00Z')}, 0 incorrect "
+            f"{since('2026-10-30T03:30:00Z')} (classes: none), 0 mechanism rows\n"
+        )
         run = self.check(self.store(rows), "U20", "--pr", "616")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(
-            f"rounds-check: U20 allowed: 0 audit rows (0 incorrect) {on('616')}, 0 incorrect since the start "
-            "(classes: none), 0 mechanism rows\n",
-            run.stdout,
-        )
+        self.assertEqual(allowed, run.stdout)
         self.assertEqual("rounds-check: pull request 616 is gated on 1 units (U20), 0 refused\n", run.stderr)
-        # without --pr the unit is checked on every pull request its rows name, one line each, in first-seen order
+        # the bare unit is the same one line; --all the same line with its summary
         run = self.check(self.store(rows), "U20")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
-        self.assertEqual(
-            [
-                f"rounds-check: U20 allowed: 1 audit rows (0 incorrect) {on(pr)}, 0 incorrect since the start "
-                "(classes: none), 0 mechanism rows"
-                for pr in ("607", "609", "610")
-            ],
-            run.stdout.splitlines(),
-        )
+        self.assertEqual(allowed, run.stdout)
         run = self.check("--all", self.store(rows))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertEqual("rounds-check: 3 (unit, pull request) pairs checked, 0 refused\n", run.stderr)
-        # the same three rows on one pull request are the cap on that pull request, and on that one alone
-        rows = [audit(f"2026-10-30T0{n}:00:00Z", "U20", "correct", "findings=0", pr="607") for n in (1, 2, 3)]
-        run = self.check(self.store(rows), "U20", "--pr", "607")
-        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(
-            f"rounds-check: U20 refused: 3 audit rows (0 incorrect) {on('607')}, 0 incorrect since the start "
-            "(classes: none), 0 mechanism rows; the fourth round needs a mechanism-change row: "
-            f"{ROW_TO_WRITE.format(unit='U20')}\n",
-            run.stdout,
-        )
-        self.assertEqual("rounds-check: pull request 607 is gated on 1 units (U20), 1 refused\n", run.stderr)
-        run = self.check(self.store(rows), "U20", "--pr", "609")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
-        self.assertIn(f"rounds-check: U20 allowed: 0 audit rows (0 incorrect) {on('609')}", run.stdout)
-        run = self.check("--all", self.store(rows))
-        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual("rounds-check: 1 (unit, pull request) pairs checked, 1 refused\n", run.stderr)
-
-    def test_the_strikes_are_counted_on_one_pull_request_after_the_unit_s_mechanism_row(self):
-        """U133: the strikes count `incorrect` rows of one class on the pull request under judgement after the unit's
-        latest mechanism row; the mechanism rows stay the unit's, whatever pull request earned them."""
-        decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
-        rows = [audit("2026-10-30T05:00:00Z", "U7", "incorrect"), audit("2026-10-30T06:00:00Z", "U7", "incorrect")]
-        run = self.check(self.store(rows, decisions), "U7", "--pr", "7")
-        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertIn(
-            f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the mechanism-change row "
-            "of 2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes of class status since "
-            "that row need another",
-            run.stdout,
-        )
-        # the same two rows on two pull requests are one strike on each, and refuse neither
-        rows[1] = audit("2026-10-30T06:00:00Z", "U7", "incorrect", pr="8")
-        for pr in ("7", "8"):
-            with self.subTest(pr=pr):
-                run = self.check(self.store(rows, decisions), "U7", "--pr", pr)
-                self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(allowed, run.stdout)
+        self.assertEqual("rounds-check: 1 units checked, 0 refused\n", run.stderr)
+        # a fourth sync is one row since the third merge, and none since its own
+        rows.append(audit("2026-10-30T04:00:00Z", "U20", "correct", "findings=0", pr="616"))
+        run = self.check(self.store(rows), "U20", "--pr", "616")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn(f"U20 allowed: 1 audit rows (0 incorrect) {since('2026-10-30T03:30:00Z')}", run.stdout)
+        rows.append(merge("2026-10-30T04:30:00Z", "U20", pr="616"))
+        run = self.check(self.store(rows), "U20", "--pr", "617")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn(f"U20 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T04:30:00Z')}", run.stdout)
+        # without the merge rows the same three `correct` rows are three rounds of one change, on three pull requests
+        # as on one: the cap, wherever the rows are
+        for prs in (("607", "609", "610"), ("607", "607", "607")):
+            with self.subTest(prs=prs):
+                rows = [
+                    audit(f"2026-10-30T0{n}:00:00Z", "U20", "correct", "findings=0", pr=pr)
+                    for n, pr in zip((1, 2, 3), prs)
+                ]
+                run = self.check(self.store(rows), "U20", "--pr", "616")
+                self.assertEqual(1, run.returncode, run.stdout + run.stderr)
                 self.assertEqual(
-                    f"rounds-check: U7 allowed: 1 audit rows (1 incorrect) {on(pr)}, 1 incorrect since the "
-                    "mechanism-change row of 2026-10-30T04:00:00Z (remove) (classes: status=1), 1 mechanism rows\n",
+                    f"rounds-check: U20 refused: 3 audit rows (0 incorrect) {since()}, 0 incorrect since the start "
+                    "(classes: none), 0 mechanism rows; the fourth round needs a mechanism-change row: "
+                    f"{ROW_TO_WRITE.format(unit='U20')}\n",
                     run.stdout,
                 )
-                self.assertEqual(f"rounds-check: pull request {pr} is gated on 1 units (U7), 0 refused\n", run.stderr)
-        run = self.check("--all", self.store(rows, decisions))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertEqual("rounds-check: 2 (unit, pull request) pairs checked, 0 refused\n", run.stderr)
-        # the mechanism row counts on every pull request of the unit: a second row on pull request 8 before it is no
-        # strike, a second one after it is the second strike there, and pull request 7 is untouched
-        rows.append(audit("2026-10-30T03:00:00Z", "U7", "incorrect", pr="8"))
-        run = self.check("--all", self.store(rows, decisions))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        rows.append(audit("2026-10-30T07:00:00Z", "U7", "incorrect", pr="8"))
-        run = self.check("--all", self.store(rows, decisions))
+                self.assertEqual("rounds-check: pull request 616 is gated on 1 units (U20), 1 refused\n", run.stderr)
+
+    def test_two_rounds_on_one_pull_request_then_two_on_another_are_four_rounds_of_one_change(self):
+        """Round 2 (Codex thread 4437730129 on PR 623): round 1 keyed the count on (unit, pull request), so a unit that
+        moved an unmerged change to a new pull request started again at zero, and two rounds on pull request 1 followed
+        by two on pull request 2 allowed a fifth audit without the mechanism-change row standing order 36 requires. The
+        count is the unit's since its latest merge row, whatever pull request each row names: a merge ends a change, a
+        new pull request does not."""
+        rows = [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="1") for n in (1, 2)]
+        rows.append(audit("2026-10-30T03:00:00Z", "U7", "incorrect", pr="2"))
+        run = self.check(self.store(rows), "U7", "--pr", "2")
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
-        self.assertIn(
-            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on('8')}, 2 incorrect since the mechanism-change "
-            "row of 2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes",
+        self.assertEqual(
+            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: "
+            f"status=3), 0 mechanism rows; the fourth round needs a mechanism-change row: {ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
         )
-        run = self.check(self.store(rows, decisions), "U7", "--pr", "7")
+        self.assertEqual("rounds-check: pull request 2 is gated on 1 units (U7), 1 refused\n", run.stderr)
+        # the scenario itself, two and two: the fifth audit is refused on pull request 2, on a third, bare and under
+        # --all alike (on 5e067c2d `--pr 2` counted two rows and allowed it)
+        rows.append(audit("2026-10-30T04:00:00Z", "U7", "incorrect", pr="2"))
+        for args in (("--pr", "2"), ("--pr", "3"), ()):
+            with self.subTest(args=args):
+                run = self.check(self.store(rows), "U7", *args)
+                self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+                self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+                self.assertIn(f"rounds-check: U7 refused: 4 audit rows (4 incorrect) {since()}", run.stdout)
+        run = self.check("--all", self.store(rows))
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertEqual("rounds-check: 1 units checked, 1 refused\n", run.stderr)
+        # a mechanism-change row ends the cap, as before; a merge of pull request 1 between the two pairs ends that
+        # change, and the two rows on pull request 2 are the first two rounds of the next
+        decisions = [mechanism("2026-10-30T05:00:00Z", "U7", "remove")]
+        run = self.check(self.store(rows, decisions), "U7", "--pr", "2")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn(
+            f"U7 allowed: 4 audit rows (4 incorrect) {since()}, 0 incorrect since the mechanism-change row of "
+            "2026-10-30T05:00:00Z (remove) (classes: none), 1 mechanism rows",
+            run.stdout,
+        )
+        rows.insert(2, merge("2026-10-30T02:30:00Z", "U7", pr="1"))
+        run = self.check(self.store(rows), "U7", "--pr", "2")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(
+            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {since('2026-10-30T02:30:00Z')}, 2 incorrect "
+            f"{since('2026-10-30T02:30:00Z')} (classes: status=2), 0 mechanism rows\n",
+            run.stdout,
+        )
 
-    def test_a_row_whose_pr_cell_is_a_dash_counts_for_nothing(self):
-        """U133: a ledger row whose pr cell is `-` belongs to no pull request, so it is counted on none and makes no
-        pair for `--all`; a unit none of whose rows names a pull request is one allowed line on no pull request."""
-        rows = [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="-") for n in (1, 2, 3)]
-        rows.append(audit("2026-10-30T04:00:00Z", "U7", "correct", "findings=0", pr="-"))
+    def test_the_strikes_are_counted_across_pull_requests_after_the_mechanism_row_and_the_merge(self):
+        """U133 round 2: the strikes are `incorrect` rows of one class after the unit's latest mechanism row and after
+        its latest merge row, whatever pull request each names; the mechanism rows stay the unit's. Round 1 counted
+        them on one pull request (its `strikes on one pull request` case, replaced here), so two rows of one class on
+        two pull requests were one strike each."""
+        decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
+        rows = [
+            audit("2026-10-30T05:00:00Z", "U7", "incorrect"),
+            audit("2026-10-30T06:00:00Z", "U7", "incorrect", pr="8"),
+        ]
+        refused = (
+            f"rounds-check: U7 refused: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the mechanism-change "
+            "row of 2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes of class status "
+            "since that row need another"
+        )
+        for args in (("--pr", "7"), ("--pr", "8"), ()):
+            with self.subTest(args=args):
+                run = self.check(self.store(rows, decisions), "U7", *args)
+                self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+                self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
+                self.assertIn(refused, run.stdout)
+        run = self.check("--all", self.store(rows, decisions))
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn(refused, run.stdout)
+        self.assertEqual("rounds-check: 1 units checked, 1 refused\n", run.stderr)
+        # a merge of pull request 7 between the two rows ends that change: the row before it is no strike, the one
+        # after it the first strike of the next change, and the mechanism row earned before the merge still counts
+        rows.insert(1, merge("2026-10-30T05:30:00Z", "U7"))
+        run = self.check(self.store(rows, decisions), "U7", "--pr", "8")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(
+            f"rounds-check: U7 allowed: 1 audit rows (1 incorrect) {since('2026-10-30T05:30:00Z')}, 1 incorrect since "
+            "the mechanism-change row of 2026-10-30T04:00:00Z (remove) (classes: status=1), 1 mechanism rows\n",
+            run.stdout,
+        )
+        # a second row after the merge is the second strike, on whatever pull request
+        rows.append(audit("2026-10-30T07:00:00Z", "U7", "incorrect", pr="9"))
+        run = self.check(self.store(rows, decisions), "U7", "--pr", "8")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn(
+            f"U7 refused: 2 audit rows (2 incorrect) {since('2026-10-30T05:30:00Z')}, 2 incorrect since the "
+            "mechanism-change row of 2026-10-30T04:00:00Z (remove) (classes: status=2), 1 mechanism rows; 2 strikes",
+            run.stdout,
+        )
+        # a mechanism row after the merge is the latest one: the strikes are counted after it
+        decisions.append(mechanism("2026-10-30T06:30:00Z", "U7", "allowlist"))
+        run = self.check(self.store(rows, decisions), "U7", "--pr", "8")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn(
+            f"U7 allowed: 2 audit rows (2 incorrect) {since('2026-10-30T05:30:00Z')}, 1 incorrect since the "
+            "mechanism-change row of 2026-10-30T06:30:00Z (allowlist) (classes: status=1), 2 mechanism rows",
+            run.stdout,
+        )
+
+    def test_a_merge_row_resets_the_cap_and_the_strikes(self):
+        """U133 round 2: the unit's latest merge row (`verifier` exactly `pr-merge.sh`, the latest by ts) is the start
+        of its count; the rows at or before it are read for shape and counted for nothing, as the rows before the rule
+        date are. Another unit's merge row, a row of another verifier and a merge row before the rule date start
+        nothing."""
+        rows = three_incorrect()
+        rows.append(merge("2026-10-30T03:30:00Z", "U7"))
         run = self.check(self.store(rows), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 allowed: 0 audit rows (0 incorrect) on no pull request, 0 incorrect since the start "
-            "(classes: none), 0 mechanism rows\n",
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T03:30:00Z')}, 0 incorrect "
+            f"{since('2026-10-30T03:30:00Z')} (classes: none), 0 mechanism rows\n",
             run.stdout,
         )
-        run = self.check(self.store(rows), "U7", "--pr", "7")
+        # two rows after it allow, three are the cap again
+        rows += [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="8") for n in (4, 5)]
+        run = self.check(self.store(rows), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
-        self.assertIn(f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {on()}, 0 incorrect", run.stdout)
+        self.assertIn(f"U7 allowed: 2 audit rows (2 incorrect) {since('2026-10-30T03:30:00Z')}", run.stdout)
+        rows.append(audit("2026-10-30T06:00:00Z", "U7", "incorrect", pr="8"))
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertIn(
+            f"U7 refused: 3 audit rows (3 incorrect) {since('2026-10-30T03:30:00Z')}, 3 incorrect "
+            f"{since('2026-10-30T03:30:00Z')} (classes: status=3), 0 mechanism rows; the fourth round",
+            run.stdout,
+        )
+        # the latest merge row by ts, not by file position; a row at the merge row's own ts is not after it
+        rows.insert(0, merge("2026-10-30T05:00:00Z", "U7", pr="8"))
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertIn(f"U7 allowed: 1 audit rows (1 incorrect) {since('2026-10-30T05:00:00Z')}", run.stdout)
+        # the strikes reset alike: two strikes of one class after the mechanism row, then a merge, are none
+        decisions = [mechanism("2026-10-30T03:45:00Z", "U7", "remove")]
+        rows = three_incorrect() + [merge("2026-10-30T03:30:00Z", "U7")]
+        rows += [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="8") for n in (4, 5)]
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+        self.assertIn("2 strikes of class status since that row need another", run.stdout)
+        rows.append(merge("2026-10-30T05:30:00Z", "U7", pr="8"))
+        run = self.check(self.store(rows, decisions), "U7")
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T05:30:00Z')}, 0 incorrect since "
+            "the mechanism-change row of 2026-10-30T03:45:00Z (remove) (classes: none), 1 mechanism rows\n",
+            run.stdout,
+        )
+        # rows that start nothing: another unit's merge row, a verifier that is not exactly `pr-merge.sh`, a merge row
+        # before the rule date (read, counted for nothing, and not named as ignored: it is no round)
+        for row in (
+            merge("2026-10-30T03:30:00Z", "U8"),
+            ("2026-10-30T03:30:00Z", "U7", "7", "a" * 40, "-", "pr-merge.sh (U71 lever)", "merged"),
+            ("2026-10-30T03:30:00Z", "U7", "7", "a" * 40, "-", "pr-close.sh", "closed pr=7"),
+            merge("2026-10-29T23:00:00Z", "U7"),
+        ):
+            with self.subTest(row=row):
+                run = self.check(self.store(three_incorrect() + [row]), "U7")
+                self.assertEqual(1, run.returncode, run.stdout + run.stderr)
+                self.assertIn(
+                    f"U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: status=3), "
+                    "0 mechanism rows; the fourth round",
+                    run.stdout,
+                )
+
+    def test_a_row_whose_pr_cell_is_a_dash_and_a_merge_row_are_never_audit_rows(self):
+        """U133: a ledger row whose pr cell is `-` belongs to no pull request and a merge row ends a change; neither is
+        an audit row, whatever its verdict cell, so neither counts for the cap or the strikes. Round 1 counted a dash
+        row on no pull request (its `dash counts for nothing` case, replaced here)."""
+        rows = [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="-") for n in (1, 2, 3)]
+        rows.append(audit("2026-10-30T04:00:00Z", "U7", "correct", "findings=0", pr="-"))
+        allowed = (
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since()}, 0 incorrect since the start "
+            "(classes: none), 0 mechanism rows\n"
+        )
+        for args in ((), ("--pr", "7")):
+            with self.subTest(args=args):
+                run = self.check(self.store(rows), "U7", *args)
+                self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+                self.assertEqual(allowed, run.stdout)
+        # --all still prints the unit's one line: the ledger names it, its rows count for nothing
         run = self.check("--all", self.store(rows))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertEqual("rounds-check: 0 (unit, pull request) pairs checked, 0 refused\n", run.stderr)
-        # beside rows on a pull request, the dash rows still add nothing to that pull request's count
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(allowed, run.stdout)
+        self.assertEqual("rounds-check: 1 units checked, 0 refused\n", run.stderr)
+        # beside counted rows the dash rows still add nothing
         rows += three_incorrect()[:2]
-        run = self.check(self.store(rows), "U7", "--pr", "7")
+        run = self.check(self.store(rows), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
-        self.assertIn(f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {on()}, 2 incorrect", run.stdout)
-        run = self.check("--all", self.store(rows))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertEqual("rounds-check: 1 (unit, pull request) pairs checked, 0 refused\n", run.stderr)
+        self.assertIn(f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect", run.stdout)
+        # a merge row is a merge row whatever its verdict cell reads (the live rows carry `-`): it starts the count and
+        # is not in it
+        for verdict in ("-", "correct"):
+            with self.subTest(verdict=verdict):
+                row = ("2026-10-30T03:30:00Z", "U7", "7", "a" * 40, verdict, "pr-merge.sh", "merged as x")
+                run = self.check(self.store(three_incorrect() + [row]), "U7")
+                self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+                self.assertEqual(
+                    f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T03:30:00Z')}, 0 incorrect "
+                    f"{since('2026-10-30T03:30:00Z')} (classes: none), 0 mechanism rows\n",
+                    run.stdout,
+                )
 
     def test_the_pr_form_gates_on_every_unit_the_ledger_names_for_the_pull_request(self):
         """Round 6 (standing order 24): a fix or residual unit U7b writes `Program-Unit: .../U7` in its body and keeps
@@ -383,17 +526,16 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertEqual(run.stdout.count("\n"), 1, "one line per refused unit")
         self.assertIn(
-            f"rounds-check: U7b refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows; "
+            f"rounds-check: U7b refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows; "
             "the fourth round needs a mechanism-change row: " + ROW_TO_WRITE.format(unit="U7b"),
             run.stdout,
         )
         self.assertEqual("rounds-check: pull request 7 is gated on 2 units (U7, U7b), 1 refused\n", run.stderr)
-        # the body unit alone, for a caller without a pull request, is checked on the pull requests its own rows name:
-        # none here, so one allowed line on no pull request
+        # the body unit alone, for a caller without a pull request, is its one line: no rows of its own here
         run = self.check(self.store(three_incorrect("U7b")), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            "rounds-check: U7 allowed: 0 audit rows (0 incorrect) on no pull request, 0 incorrect since the start (classes: none), 0 mechanism rows\n",
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows\n",
             run.stdout,
         )
         # a pull request whose rows name only the body unit behaves as before: three rows refuse, two allow
@@ -401,17 +543,18 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertEqual(run.stdout.count("\n"), 1, "one line")
         self.assertIn(
-            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start", run.stdout
+            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start", run.stdout
         )
         self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 1 refused\n", run.stderr)
         run = self.check(self.store(three_incorrect()[:2]), "U7", "--pr", "7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertEqual(
-            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
+            f"rounds-check: U7 allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows\n",
             run.stdout,
         )
         self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
-        # a pr cell that is not the pull request's number is not counted, whatever it looks like
+        # a pr cell that is not the pull request's number names no unit for it, whatever it looks like (U7b's rows are
+        # U7b's count, and U7b is not in the set)
         for cell in ("70", "8", "#7", " 7", "07", "7 ", "-"):
             with self.subTest(cell=cell):
                 rows = [
@@ -421,7 +564,7 @@ class RoundsCheckTest(unittest.TestCase):
                 run = self.check(self.store(rows), "U7", "--pr", "7")
                 self.assertEqual(0, run.returncode, run.stdout + run.stderr)
                 self.assertEqual(
-                    f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows\n",
+                    f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows\n",
                     run.stdout,
                 )
                 self.assertEqual("rounds-check: pull request 7 is gated on 1 units (U7), 0 refused\n", run.stderr)
@@ -434,8 +577,8 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual((2, ""), (run.returncode, run.stdout), run.stderr)
         self.assertIn("ledger.tsv:2: column 3 (pr) is empty", run.stderr)
         # every unit of the set allowed: one allowed line each, the body's first; a unit's row of another pull request
-        # counts for nothing on this one (U133: on dc4491ed U7b's pull request 8 row made 2 audit rows here), and a
-        # unit named twice is checked once
+        # counts with the unit's (U133 round 2: the count is the unit's since its latest merge row, so U7b's pull
+        # request 8 row is its second audit row here), and a unit named twice is checked once
         rows = three_incorrect("U7b")[:1] + [audit("2026-10-30T02:00:00Z", "U7", "correct", "findings=0")]
         rows.append(("2026-10-30T03:00:00Z", "U7b", "8", "b" * 40, "incorrect", "pr-audit.sh", "class=status"))
         rows.append(("2026-10-30T04:00:00Z", "U7c", "7", "c" * 40, "blocked", "pr-audit.sh", "-"))
@@ -444,9 +587,9 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertEqual(
             [
-                f"rounds-check: U7 allowed: 1 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
-                f"rounds-check: U7b allowed: 1 audit rows (1 incorrect) {on()}, 1 incorrect since the start (classes: status=1), 0 mechanism rows",
-                f"rounds-check: U7c allowed: 1 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
+                f"rounds-check: U7 allowed: 1 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
+                f"rounds-check: U7b allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows",
+                f"rounds-check: U7c allowed: 1 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
             ],
             run.stdout.splitlines(),
         )
@@ -485,7 +628,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(four_earlier_incorrect()), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows, "
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows, "
             f"{ignored(4)}\n",
             run.stdout,
         )
@@ -495,14 +638,14 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(rows), "U7")
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            f"U7 allowed: 2 audit rows (2 incorrect) {on()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows, {ignored(4)}",
+            f"U7 allowed: 2 audit rows (2 incorrect) {since()}, 2 incorrect since the start (classes: status=2), 0 mechanism rows, {ignored(4)}",
             run.stdout,
         )
         rows = four_earlier_incorrect() + three_incorrect()
         run = self.check(self.store(rows), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(
-            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows, "
+            f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows, "
             f"{ignored(4)}; the fourth round needs a mechanism-change row: {ROW_TO_WRITE.format(unit='U7')}\n",
             run.stdout,
         )
@@ -513,7 +656,7 @@ class RoundsCheckTest(unittest.TestCase):
         run = self.check(self.store(three_incorrect(), decisions), "U7")
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
         self.assertIn(
-            f"U7 refused: 3 audit rows (3 incorrect) {on()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows, {ignored(1)}; "
+            f"U7 refused: 3 audit rows (3 incorrect) {since()}, 3 incorrect since the start (classes: status=3), 0 mechanism rows, {ignored(1)}; "
             "the fourth round needs a mechanism-change row",
             run.stdout,
         )
@@ -561,44 +704,62 @@ class RoundsCheckTest(unittest.TestCase):
         self.assertEqual(2, run.returncode, run.stdout + run.stderr)
         self.assertIn(f"{self.root}/absent/ledger.tsv: cannot read", run.stderr)
 
-    def test_all_checks_every_pair_and_prints_one_line_per_refused_pair(self):
-        """`--all` judges every (unit, pull request) pair the ledger holds (U133; on dc4491ed it judged every unit, so
-        U7's rows on two pull requests were one count) and refuses when any pair is refused."""
+    def test_all_prints_one_line_per_unit_and_refuses_when_any_is_refused(self):
+        """`--all` judges every unit the ledger names (U133 round 2; round 1 judged every (unit, pull request) pair and
+        printed the refused pairs alone, so a unit with three rows on one pull request and one on another showed only
+        the refused pair: the verdict's P3 on 3b863c87) and prints one line per unit, allowed or refused, in first-seen
+        order, with the summary on stderr; one refused unit is exit 1."""
         rows = three_incorrect()
         rows.append(audit("2026-10-30T01:00:00Z", "U8", "correct", "findings=0"))
         rows.append(("2026-10-30T02:00:00Z", "U9", "9", "b" * 40, "ci-red", "coordinator", "no audit"))
         run = self.check("--all", self.store(rows))
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
-        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}", run.stdout)
-        self.assertEqual("rounds-check: 3 (unit, pull request) pairs checked, 1 refused\n", run.stderr)
+        lines = run.stdout.splitlines()
+        self.assertEqual(["U7", "U8", "U9"], [line.split()[1] for line in lines])
+        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}", lines[0])
+        self.assertEqual(
+            f"rounds-check: U8 allowed: 1 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
+            lines[1],
+        )
+        self.assertEqual(
+            f"rounds-check: U9 allowed: 0 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows",
+            lines[2],
+        )
+        self.assertEqual("rounds-check: 3 units checked, 1 refused\n", run.stderr)
         decisions = [mechanism("2026-10-30T04:00:00Z", "U7", "remove")]
         run = self.check("--all", self.store(rows, decisions))
-        self.assertEqual((0, ""), (run.returncode, run.stdout), run.stderr)
-        self.assertEqual("rounds-check: 3 (unit, pull request) pairs checked, 0 refused\n", run.stderr)
-        # U7's two incorrect rows on pull request 8 are a fourth pair with two rows, allowed; a third refuses that pair
-        # and names it; a row whose pr cell is `-` makes no pair
-        rows += [audit(f"2026-10-30T0{n}:00:00Z", "U7", "incorrect", pr="8") for n in (5, 6)]
-        rows.append(audit("2026-10-30T07:00:00Z", "U8", "incorrect", pr="-"))
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(3, run.stdout.count("\n"), run.stdout)
+        self.assertEqual("rounds-check: 3 units checked, 0 refused\n", run.stderr)
+        # the P3 fixture: U7's three rows on pull request 7 and one on pull request 8 are one count of four rows, one
+        # line under --all and one line for the bare unit; U8 keeps its allowed line beside the refused one
+        rows.append(audit("2026-10-30T05:00:00Z", "U7", "incorrect", pr="8"))
         run = self.check("--all", self.store(rows))
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(run.stdout.count("\n"), 1, run.stdout)
-        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}", run.stdout)
-        self.assertNotIn(on("8"), run.stdout)
-        self.assertEqual("rounds-check: 4 (unit, pull request) pairs checked, 1 refused\n", run.stderr)
-        rows.append(audit("2026-10-30T07:00:00Z", "U7", "incorrect", pr="8"))
+        self.assertEqual(3, run.stdout.count("\n"), run.stdout)
+        self.assertIn(f"rounds-check: U7 refused: 4 audit rows (4 incorrect) {since()}", run.stdout)
+        self.assertIn("rounds-check: U8 allowed: 1 audit rows", run.stdout)
+        self.assertEqual("rounds-check: 3 units checked, 1 refused\n", run.stderr)
+        run = self.check(self.store(rows), "U7")
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(1, run.stdout.count("\n"), run.stdout)
+        self.assertIn(f"rounds-check: U7 refused: 4 audit rows (4 incorrect) {since()}", run.stdout)
+        # U7's merge row ends the change: U7 is allowed again and --all is exit 0 with its three lines
+        rows.append(merge("2026-10-30T06:00:00Z", "U7", pr="8"))
         run = self.check("--all", self.store(rows))
-        self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertEqual(run.stdout.count("\n"), 2, run.stdout)
-        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on('8')}", run.stdout)
-        self.assertEqual("rounds-check: 4 (unit, pull request) pairs checked, 2 refused\n", run.stderr)
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        self.assertEqual(3, run.stdout.count("\n"), run.stdout)
+        self.assertIn(
+            f"rounds-check: U7 allowed: 0 audit rows (0 incorrect) {since('2026-10-30T06:00:00Z')}", run.stdout
+        )
+        self.assertEqual("rounds-check: 3 units checked, 0 refused\n", run.stderr)
 
     def test_an_incorrect_row_without_class_is_malformed_only_from_the_rule_date(self):
         old = audit("2026-10-29T23:59:59Z", "U7", "incorrect", "findings=1 P2: the status is lost")
         run = self.check(self.store([old]), "U7")
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         self.assertIn(
-            f"0 audit rows (0 incorrect) {on()}, 0 incorrect since the start (classes: none), 0 mechanism rows, {ignored(1)}",
+            f"0 audit rows (0 incorrect) {since()}, 0 incorrect since the start (classes: none), 0 mechanism rows, {ignored(1)}",
             run.stdout,
         )
         for ts in ("2026-10-30T00:00:00Z", "2026-10-30T00:00:01Z"):
@@ -682,7 +843,7 @@ class RoundsCheckTest(unittest.TestCase):
         head = self.repository(rows, {f"{STORE}/ledger.tsv": tsv(LEDGER_HEADER, three_incorrect())})
         run = self.check_at(head)
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
-        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {on()}", run.stdout)
+        self.assertIn(f"rounds-check: U7 refused: 3 audit rows (3 incorrect) {since()}", run.stdout)
         # the head's rows decide: the base's own store (two rows) is allowed, and the checkout is never moved
         self.assertEqual("main", self.git("branch", "--show-current"))
         run = self.check_at("main")

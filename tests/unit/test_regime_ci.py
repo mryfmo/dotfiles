@@ -11,6 +11,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from scratch_git import git_init  # noqa: E402
+from workflow_lock import expected_uses  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 VERIFIER = "scripts/orchestrator/regime-ci.py"
@@ -188,10 +189,9 @@ class RegimeCiTest(unittest.TestCase):
             ("regime-pr-${{ github.event.pull_request.number }}", True), (group["group"], group["cancel-in-progress"])
         )
         steps = job["steps"]
-        pins = [
-            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-            "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e",
-        ]
+        # U134 round 2: the references come from actions.lock, so a Dependabot bump that moves a tag and regenerates
+        # its entry needs no edit here (the stall of #548 was a hand-edited pin constant).
+        pins = [expected_uses("actions/checkout"), expected_uses("astral-sh/setup-uv")]
         self.assertEqual(pins, [s["uses"] for s in steps if "uses" in s])
         base = "refs/heads/${{ github.base_ref }}"  # the tip at run time, never a stale base sha (ci:39185982423:1)
         self.assertEqual({"fetch-depth": 0, "ref": base, "persist-credentials": False}, steps[0]["with"])

@@ -91,12 +91,12 @@ jobs:
 
     steps:
       - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
-        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
@@ -158,7 +158,7 @@ jobs:
 
       - name: Store benchmark result
         if: ${{ env.HAS_BENCHMARK_TOKEN == 'true' }}
-        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
+        uses: benchmark-action/github-action-benchmark@v1.22.2
         with:
           # Each image keeps its own series, so runner hardware never mixes in one; the historic
           # "MacOS benchmark" series holds macos-14 data and ends with that image's retirement (U64b).
@@ -174,7 +174,7 @@ jobs:
           alert-comment-cc-users: "@mryfmo"
           benchmark-data-dir-path: "."
 
-      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - uses: jdx/mise-action@v5.2.2
         with:
           # The newest mise at least 72 hours old, as hosts get it (minimum_release_age).
           minimum_release_age: 72h

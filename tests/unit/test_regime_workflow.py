@@ -52,18 +52,28 @@ from pathlib import Path
 from typing import NamedTuple, NoReturn
 from unittest import mock
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from workflow_lock import expected_uses  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/regime.yml"
 # PATH's shfmt is the reader, and it must be the version home/dot_mise/config.toml pins ([tools."http:shfmt"], U97):
 # the guard the lint gates run first. Another version, or none, fails every run-script check instead of skipping it.
 PIN_GUARD = ROOT / "scripts/ci/pinned-tool-version.sh"
 MISE_CONFIG = ROOT / "home/dot_mise/config.toml"
-# The file's exact bytes and their sha256, written once from the file at this head and never read from the file: the
-# control for the parser layer. A duplicate key, a boolean spelling, an indentation, a line ending or a byte order mark
-# reads one way in PyYAML and another in GitHub, and none survives a byte comparison. A change to regime.yml updates
-# both constants in the same commit, once the property checks pass on the new text; a reviewer verifies the pin with
-# `shasum -a 256 .github/workflows/regime.yml` without reading the literal.
-WORKFLOW_SHA256 = "1741ade86ee0d7c6596a737a2f21bb13096c3b52c62c2b12ab012f67312227ec"
+# The two actions' `uses:` references, read from .github/workflows/actions.lock (U134 round 2): `gh actions-lock` and a
+# Dependabot bump regenerate the entry with the tag the workflow names, so a bump needs no edit of these two names or
+# of the fixture's two `uses:` lines below. The byte pin WORKFLOW_SHA256 stays a literal, so such a bump fails
+# BytePinTest until it is moved: the one hand edit left.
+CHECKOUT_ACTION = expected_uses("actions/checkout")
+SETUP_UV_ACTION = expected_uses("astral-sh/setup-uv")
+# The file's exact bytes and their sha256, written once from the file at this head and never read from the file (the
+# two `uses:` lines come from the lockfile, as above): the control for the parser layer. A duplicate key, a boolean
+# spelling, an indentation, a line ending or a byte order mark reads one way in PyYAML and another in GitHub, and none
+# survives a byte comparison. A change to regime.yml updates both constants in the same commit, once the property
+# checks pass on the new text; a reviewer verifies the pin with `shasum -a 256 .github/workflows/regime.yml` without
+# reading the literal.
+WORKFLOW_SHA256 = "ed0af24118daa9ab27662772d485a07bbf09adb7460e7ad4bba3fbad59f23f44"
 WORKFLOW_BYTES = """\
 name: regime
 
@@ -91,14 +101,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: <CHECKOUT_ACTION>
         with:
           fetch-depth: 0
           # The base branch's tip at run time: the event's recorded base sha can lag the branch (on PR #420 it was the
           # head's fork point, from before this verifier; ci:39185982423:1). The pull request cannot move this branch.
           ref: refs/heads/${{ github.base_ref }}
           persist-credentials: false
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: <SETUP_UV_ACTION>
         with:
           enable-cache: false
       - name: Fetch the pull request's head as data
@@ -131,7 +141,7 @@ jobs:
           set -euo pipefail
           base=$(git rev-parse HEAD) || exit 1
           uv run --no-config --no-project python -I scripts/orchestrator/rounds-check.py --all .orchestration/orchestrate/regime-cutover --base "${base}" --head "${HEAD_SHA}"
-"""
+""".replace("<CHECKOUT_ACTION>", CHECKOUT_ACTION).replace("<SETUP_UV_ACTION>", SETUP_UV_ACTION)
 BASE_BRANCH = "refs/heads/${{ github.base_ref }}"
 BODY_VARIABLE = "PR_BODY"
 # The body on its own: not a literal that names it, not an expression computed from it. The script reads this value.
@@ -152,8 +162,6 @@ UNSAFE_OPTION = "allow-unsafe-pr-checkout"
 READ_ONLY = {"contents": "read"}
 POSITION = {"Offset", "Line", "Col"}
 TITLE_EXPRESSION = "${{ github.event.pull_request.title }}"
-CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-SETUP_UV_ACTION = "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
 EVENT_TYPES = ["opened", "edited", "synchronize", "reopened", "ready_for_review"]
 MISSING = object()
 # The reader's booleans are YAML 1.2's: these six spellings and nothing else. PyYAML's own YAML 1.1 resolver also reads

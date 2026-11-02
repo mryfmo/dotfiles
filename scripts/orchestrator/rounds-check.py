@@ -1,37 +1,48 @@
 #!/usr/bin/env python3
 """Allow or refuse a unit's next audit round by the round cap and the two-strike rule (regime-cutover U120, order 36).
 
-`rounds-check.py <store> U<n>` reads `<store>/ledger.tsv` (through `ledger.py` beside this file, the one reader of the
-ledger since U122 round 6) and `<store>/decisions.tsv` as data and exits 0 when the unit's next audit is allowed, 1
-with a one-line reason when it is not, and 2 when the store cannot be read as data (a missing file, a header that is
-not the store's, a row with the wrong column count, a ts `strptime` does not read as `YYYY-MM-DDThh:mm:ssZ` (hour 25
-included), an empty required ledger cell, an `incorrect` row from 2026-10-30 on whose evidence does not start with
-`class=<word>`, standing order 39), naming the
-file and line. `rounds-check.py <store> U<n> --pr <pr>` is the lever's form (round 6): a pull request's audit is gated
-on a set of units, the body's unit and the `unit` of every ledger row whose `pr` cell is the pull request's number,
-because a fix or residual unit (`U<n>b`) writes its parent `U<n>` in the body and keeps `U<n>b` in its rows (standing
-order 24); every unit of the set is checked, one line per refused unit and a summary line on stderr, and one refused
-unit refuses. `rounds-check.py --all <store>` checks every unit of the ledger, prints one line per refused unit and
-exits 1 when any is refused. With `--all <path> --base <commit> --head <commit>` the two files are read from the head
-commit's tree (`git cat-file blob`), as the `regime` check reads a pull request whose head is never checked out, and a
-head whose two files are the blobs of its merge base with the base is nothing to check (exit 0): the check runs on the
-records pull requests by their content, never by a branch name.
+`rounds-check.py <store> U<n> --pr <pr>` reads `<store>/ledger.tsv` (through `ledger.py` beside this file, the one
+reader of the ledger since U122 round 6) and `<store>/decisions.tsv` as data and exits 0 when the pull request's next
+audit is allowed, 1 with a one-line reason when it is not, and 2 when the store cannot be read as data (a missing
+file, a header that is not the store's, a row with the wrong column count, a ts `strptime` does not read as
+`YYYY-MM-DDThh:mm:ssZ` (hour 25 included), an empty required ledger cell, an `incorrect` row from 2026-10-30 on whose
+evidence does not start with `class=<word>`, standing order 39), naming the file and line. A unit's rounds are counted
+since its last merge, because a merge ends a change and a new pull request does not (U133; round 2 after Codex thread
+4437730129 on PR 623: a count keyed on the pull request let a unit reset it by opening another): the counted audit
+rows of a unit are its ledger rows after its latest merge row (a row whose `verifier` is `pr-merge.sh`), whatever
+pull request each names; a merge row and a row whose `pr` cell is `-` are never audit rows; the mechanism rows stay
+the unit's; and the strikes are the `incorrect` rows of one class after the latest mechanism row and after the latest
+merge row. The rows at or before the merge row are read for shape and counted for nothing, as the rows before
+RULE_EFFECTIVE are. The one counting key, the unit, is spelled in `Store.verdict_for` alone, and no unit is exempt.
+The `--pr` form is the lever's form (round 6): a pull request's audit is gated on a set of units, the body's unit and
+the `unit` of every ledger row whose `pr` cell is the pull request's number, because a fix or residual unit (`U<n>b`)
+writes its parent `U<n>` in the body and keeps `U<n>b` in its rows (standing order 24); every unit of the set is
+checked, one line per refused unit and a summary line on stderr, and one refused unit refuses. `rounds-check.py
+<store> U<n>` without `--pr` prints the unit's one line. `rounds-check.py --all <store>` checks every unit the ledger
+names, prints one line per unit, allowed or refused, and a summary line on stderr, and exits 1 when any is refused.
+With `--all <path> --base <commit> --head <commit>` the two files are read from the head commit's tree (`git cat-file
+blob`), as the `regime` check reads a pull request whose head is never checked out, and a head whose two files are
+the blobs of its merge base with the base is nothing to check (exit 0): the check runs on the records pull requests
+by their content, never by a branch name.
 
-The rule (standing order 36). An audit row is a ledger row whose verdict is exactly `correct` or `incorrect`. A
+The rule (standing order 36). An audit row is a ledger row whose verdict is exactly `correct` or `incorrect`, whose
+`pr` cell is not `-` and whose `verifier` is not `pr-merge.sh`. A merge row for U<n> is a ledger row of unit U<n>
+whose `verifier` is `pr-merge.sh`; the latest one (by ts, the later line at an equal ts) is the start of the count. A
 mechanism row for U<n> is a decisions row of phase `mechanism-change` whose decision starts with `U<n> ` or `U<n>:` and
-whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit is refused when the
-unit has a mechanism row and two or more `incorrect` rows of one class (the word of the `class=` token) after its
-latest one, or has no mechanism row and three or more audit rows, each naming the row the coordinator must write; it
-is allowed otherwise. The strikes are counted per class and the cap per row (round 7): two `incorrect` rows of
-unrelated classes after the mechanism row are one strike each and refuse nothing, while three audit rows of three
-classes and no mechanism row are the cap. Neither test stands behind the other: a unit whose counted rows are one
-mechanism row and two `incorrect` rows of one class after it is refused although it has fewer than three audit rows
-(round 3). The rule is forward-looking: an audit
-row or a mechanism row whose ts is before RULE_EFFECTIVE (2026-10-30T00:00:00Z, the day standing orders 36 and 39 were
-written) is read and validated for shape but counted for neither the cap nor the strikes, the earlier rounds being
-P-41's measurement and not a gate; the allowed and refused lines name how many such rows were ignored. The same date is
-the one from which an `incorrect` row needs its `class=` token. The class judgement (the `class=` token) stays the
-coordinator's: this check compares the tokens' words for equality, judges none, and never reads a pull request.
+whose result names exactly one of ast, parser-module, allowlist, remove, residual. The next audit of a unit is refused
+when the unit has a mechanism row and two or more `incorrect` rows of one class (the word of the `class=` token)
+after its latest one and after its latest merge row, or has no mechanism row and three or more audit rows after its
+latest merge row, each naming the row the coordinator must write; it is allowed otherwise. The strikes are counted
+per class and the cap per row (round 7): two `incorrect` rows of unrelated classes after the mechanism row are one
+strike each and refuse nothing, while three audit rows of three classes and no mechanism row are the cap. Neither test
+stands behind the other: a unit whose counted rows are one mechanism row and two `incorrect` rows of one class after
+it is refused although it has fewer than three audit rows (round 3). The rule is forward-looking: an audit row, a
+merge row or a mechanism row whose ts is before RULE_EFFECTIVE (2026-10-30T00:00:00Z, the day standing orders 36 and
+39 were written) is read and validated for shape but counted for neither the cap nor the strikes, the earlier rounds
+being P-41's measurement and not a gate; the allowed and refused lines name the merge row they count from (`since
+the merge of <ts>`, or `since the start`) and how many such earlier rows were ignored. The same date is the one from
+which an `incorrect` row needs its `class=` token. The class judgement (the `class=` token) stays the coordinator's:
+this check compares the tokens' words for equality, judges none, and never reads a pull request.
 """
 
 from __future__ import annotations  # the `str | None` field annotation, read as text by every python3 the lever meets
@@ -72,31 +83,50 @@ DECISIONS_HEADER = ("ts", "phase", "decision", "why", "evidence", "result")
 AUDIT_VERDICTS = frozenset(("correct", "incorrect"))
 MECHANISM_PHASE = "mechanism-change"
 FORMS = ("ast", "parser-module", "allowlist", "remove", "residual")
-ROUND_CAP = 3  # audit rows a unit may have before its next round needs a mechanism row
-STRIKES = 2  # incorrect rows of one class after the latest mechanism row that need another one
+ROUND_CAP = 3  # audit rows a unit may have since its latest merge row before its next round needs a mechanism row
+STRIKES = 2  # incorrect rows of one class after the latest mechanism row (and the latest merge row) that need another
 RULE_EFFECTIVE = "2026-10-30T00:00:00Z"  # standing orders 36 and 39: rows before it are read and never counted
 RULE_EFFECTIVE_AT = ledger.timestamp(RULE_EFFECTIVE)  # the same instant as every row's ts is compared, a datetime
+MERGE_VERIFIER = "pr-merge.sh"  # the verifier cell of the row a merge writes; the unit's latest one starts its count
+NO_PULL_REQUEST = "-"  # the ledger's pr cell of a row that belongs to no pull request; such a row is never an audit row
 UNIT = re.compile(r"^U[0-9]+[a-z]?$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 UNIT_PREFIX = re.compile(r"^(U[0-9]+[a-z]?)[ :]")
 CLASS = re.compile(r"^class=(\S+)(?:\s|$)")
 # A form is a whole token of the result: `allowlisted` or `ast-free` names none.
 FORM_TOKENS = {form: re.compile(rf"(?<![A-Za-z0-9-]){re.escape(form)}(?![A-Za-z0-9-])") for form in FORMS}
-ROW_TO_WRITE = 'decisions.tsv phase=mechanism-change decision="{unit} ..." result names one of ' + "|".join(FORMS)
+ROW_TO_WRITE = (
+    'decisions.tsv phase=mechanism-change decision="{unit} ..." result names one of '
+    + "|".join(FORMS)
+    + " (a unit's rounds are counted since its last merge, because a merge ends a change and a new pull request does"
+    " not)"
+)
 OBJECT_ID = re.compile(r"^[0-9a-f]{40,64}$")
 
 
 @dataclass(frozen=True)
 class AuditRow:
-    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`; `ts` is the row's ts parsed
-    (the ledger reader's datetime, the order every count is made in); `klass` is the word of the evidence's `class=`
-    token, None for a row without one (allowed before RULE_EFFECTIVE, and for `correct` rows)."""
+    """One audit round of `unit`: a ledger row whose verdict is `correct` or `incorrect`, whose pr cell is not `-` and
+    which no merge wrote; `ts` is the row's ts parsed (the ledger reader's datetime, the order every count is made in);
+    `klass` is the word of the evidence's `class=` token, None for a row without one (allowed before RULE_EFFECTIVE,
+    and for `correct` rows)."""
 
     ts: datetime
     unit: str
     verdict: str
     line: int
     klass: str | None = None
+
+
+@dataclass(frozen=True)
+class MergeRow:
+    """A ledger row of `unit` whose verifier is `pr-merge.sh`: the end of a change; `ts` is parsed, `ts_text` the cell
+    as written, for the lines that name the row."""
+
+    ts: datetime
+    ts_text: str
+    unit: str
+    line: int
 
 
 @dataclass(frozen=True)
@@ -130,11 +160,12 @@ class Malformed(ledger.Malformed):
 
 @dataclass(frozen=True)
 class Store:
-    """The two files read once: every audit row, every mechanism row, the mechanism-change rows that count for no
-    unit (no unit prefix, or none or several forms) as (ts, unit or None, line, forms), every unit the ledger names
-    in first-seen order, and the (unit, pr) cells of every ledger row in file order."""
+    """The two files read once: every audit row, every merge row, every mechanism row, the mechanism-change rows that
+    count for no unit (no unit prefix, or none or several forms) as (ts, unit or None, line, forms), every unit the
+    ledger names in first-seen order, and the (unit, pr) cells of every ledger row in file order."""
 
     audits: tuple
+    merges: tuple
     mechanisms: tuple
     discounted: tuple
     units: tuple
@@ -147,9 +178,15 @@ class Store:
         return tuple(dict.fromkeys((body_unit, *(unit for unit, number in self.pull_requests if number == pr))))
 
     def verdict_for(self, unit):
-        """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on: the cap
-        counts audit rows, the strikes count the `incorrect` rows after the latest mechanism row per class."""
+        """Allowed or Refused for the unit's next audit, from the counts of its rows from RULE_EFFECTIVE on. The one
+        counting key (U133): the cap counts the unit's audit rows after its latest merge row, whatever pull request
+        each names, because a merge ends a change and a new pull request does not; the strikes count the `incorrect`
+        rows of those after the unit's latest mechanism row per class; the mechanism rows are the unit's whatever
+        pull request they were earned on."""
+        merges, _ = counted(row for row in self.merges if row.unit == unit)
+        merge = merges[-1] if merges else None
         audits, earlier_audits = counted(row for row in self.audits if row.unit == unit)
+        audits = [row for row in audits if merge is None or row.ts > merge.ts]
         mechanisms, earlier_mechanisms = counted(row for row in self.mechanisms if row.unit == unit)
         earlier = earlier_audits + earlier_mechanisms
         latest = mechanisms[-1] if mechanisms else None
@@ -160,11 +197,12 @@ class Store:
             per_class[row.klass] = per_class.get(row.klass, 0) + 1
         struck = [klass for klass, count in per_class.items() if count >= STRIKES]
         classes = ", ".join(f"{klass}={count}" for klass, count in per_class.items()) or "none"
-        since = "the start" if latest is None else f"the mechanism-change row of {latest.ts_text} ({latest.form})"
+        start = "the start" if merge is None else f"the merge of {merge.ts_text}"
+        since = start if latest is None else f"the mechanism-change row of {latest.ts_text} ({latest.form})"
         ignored = f", {earlier} earlier rows ignored (rule effective {RULE_EFFECTIVE[:10]})" if earlier else ""
         counts = (
-            f"{len(audits)} audit rows ({len(incorrect)} incorrect), {len(strikes)} incorrect since {since} "
-            f"(classes: {classes}), {len(mechanisms)} mechanism rows{ignored}"
+            f"{len(audits)} audit rows ({len(incorrect)} incorrect) since {start}, {len(strikes)} incorrect since "
+            f"{since} (classes: {classes}), {len(mechanisms)} mechanism rows{ignored}"
         )
         discounted = [
             f"decisions.tsv:{line} is a mechanism-change row for {unit} naming {len(forms) or 'no'} form(s)"
@@ -188,7 +226,8 @@ class Store:
 
 
 def counted(rows):
-    """The rows from RULE_EFFECTIVE on in ts order, and how many earlier rows were left out of the count."""
+    """The rows from RULE_EFFECTIVE on in ts order (the file's order at an equal ts), and how many earlier rows were
+    left out of the count."""
     rows = sorted(rows, key=lambda row: row.ts)
     kept = [row for row in rows if row.ts >= RULE_EFFECTIVE_AT]
     return kept, len(rows) - len(kept)
@@ -218,11 +257,11 @@ def parse_rows(name, text, header):
 
 
 def audit_rows(name, rows):
-    """Every audit row of the ledger reader's rows, with the word of its `class=` token; a post-date `incorrect` row
-    without one is Malformed."""
+    """Every audit row of the ledger reader's rows, with the word of its `class=` token; a merge row and a row whose
+    pr cell is `-` are none, whatever their verdict; a post-date `incorrect` row without a class is Malformed."""
     found = []
     for row in rows:
-        if row.verdict not in AUDIT_VERDICTS:
+        if row.verdict not in AUDIT_VERDICTS or row.pr == NO_PULL_REQUEST or row.verifier == MERGE_VERIFIER:
             continue
         klass = CLASS.match(row.evidence)
         if row.verdict == "incorrect" and row.ts >= RULE_EFFECTIVE_AT and klass is None:
@@ -232,6 +271,11 @@ def audit_rows(name, rows):
             )
         found.append(AuditRow(row.ts, row.unit, row.verdict, row.line, klass.group(1) if klass else None))
     return tuple(found)
+
+
+def merge_rows(rows):
+    """Every merge row of the ledger reader's rows: the rows `pr-merge.sh` wrote, by the verifier cell alone."""
+    return tuple(MergeRow(row.ts, row.ts_text, row.unit, row.line) for row in rows if row.verifier == MERGE_VERIFIER)
 
 
 def mechanism_rows(rows):
@@ -256,7 +300,7 @@ def load_store(read, ledger_name, decisions_name):
     mechanisms, discounted = mechanism_rows(decisions)
     units = tuple(dict.fromkeys(row.unit for row in rows))
     pull_requests = tuple((row.unit, row.pr) for row in rows)
-    return Store(audit_rows(ledger_name, rows), mechanisms, discounted, units, pull_requests)
+    return Store(audit_rows(ledger_name, rows), merge_rows(rows), mechanisms, discounted, units, pull_requests)
 
 
 def directory_reader(store):
@@ -317,8 +361,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("store", help="the program store directory, or its repository path with --base and --head")
     parser.add_argument("unit", nargs="?", help="the unit whose next audit is asked for, U<n>")
-    parser.add_argument("--pr", help="with a unit: the pull request whose ledger rows name the units it is gated on")
-    parser.add_argument("--all", action="store_true", help="check every unit of the ledger")
+    parser.add_argument("--pr", help="with a unit: the pull request whose ledger rows name the units to check")
+    parser.add_argument("--all", action="store_true", help="check every unit the ledger names, one line each")
     parser.add_argument("--base", help="with --all: the base commit; the head's files are read from git")
     parser.add_argument("--head", help="with --all: the head commit whose tree holds the store")
     args = parser.parse_args(argv)
@@ -358,9 +402,9 @@ def main(argv=None):
         summary = None
     verdicts = [loaded.verdict_for(unit) for unit in units]
     refused = [verdict for verdict in verdicts if isinstance(verdict, Refused)]
-    # one line per refused unit when any is refused; the allowed lines, one per unit, only when none is (--all, which
-    # may check a hundred units, prints no allowed line at all)
-    for verdict in refused or (() if args.all else verdicts):
+    # one line per unit; in the lever's `--pr` form the refused units' lines alone when any is refused, the lever
+    # quoting the whole output in its refusal (one line per refused unit, then the summary)
+    for verdict in refused if args.pr is not None and refused else verdicts:
         if isinstance(verdict, Refused):
             print(f"rounds-check: {verdict.unit} refused: {verdict.reason}")
         else:

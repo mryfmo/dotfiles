@@ -4,14 +4,14 @@ The design documents of the TechnoPro Harness Agent Kit (THAK): the plan to run 
 
 ## What the directory holds
 
-| Path            | Content                                                                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `PRD.md`        | The product requirements: problem, personas, goals, capabilities, the requirement table (`R-01` onwards), rollout, open questions. |
-| `adr/`          | One architecture decision record per one-way door, `ADR-001` to `ADR-007`. `ADR-003` is a stub until its research lands.           |
-| `bdd/`          | One Gherkin feature per capability. Each scenario carries a requirement tag (`@R-nn`) and `@holds-today` or `@target`.             |
-| `research/`     | The research notes, one per candidate repository, with sources. The input the ADRs cite.                                           |
-| `decisions.tsv` | The coordinator's decision trail, appended as the program ran. Append-only; never rewrite a row.                                   |
-| `check.py`      | The consistency check over the files above, and the runner for the scenarios that hold today.                                      |
+| Path            | Content                                                                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRD.md`        | The product requirements: problem, personas, goals, capabilities, the requirement table (`R-01` onwards), rollout, open questions.            |
+| `adr/`          | One architecture decision record per one-way door, `ADR-001` to `ADR-007`. `ADR-003` was written last, after the eighth research note landed. |
+| `bdd/`          | One Gherkin feature per capability. Each scenario carries a requirement tag (`@R-nn`) and `@holds-today` or `@target`.                        |
+| `research/`     | The research notes, one per candidate repository, with sources. The input the ADRs cite.                                                      |
+| `decisions.tsv` | The coordinator's decision trail, appended as the program ran. Append-only; never rewrite a row.                                              |
+| `check.py`      | The consistency check over the files above, and the runner for the scenarios that hold today.                                                 |
 
 ## How to read it
 

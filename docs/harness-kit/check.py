@@ -63,8 +63,10 @@ HOLDS_TODAY: dict[str, Check] = {
     "A seat starts only after its sandbox canary holds": has(
         SEAT, "canary", "sandbox-runtime", "no uncontained fallback"
     ),
-    "Seat approval is not containment": has(
-        f"{POLICIES}/orchestrator.yml {POLICIES}/worker.yml", "Approval is not containment"
+    "Seat approval is not containment": (
+        f"grep -q 'Approval is not containment' {POLICIES}/orchestrator.yml"
+        f" && grep -q 'Approval is not containment' {POLICIES}/worker.yml",
+        0,
     ),
     "The Codex audit runs under Codex's own permission profile, never under srt": (
         has(AUDIT, "permission profile `audit`", "scratch HOME")[0] + f" && ! grep -qw srt {AUDIT}",

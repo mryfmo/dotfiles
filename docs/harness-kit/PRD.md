@@ -4,7 +4,7 @@
 
 THAK turns the dotfiles repository mryfmo/dotfiles into a reproducible harness kit for AI coding agents. The kit composes Claude Code, Codex and the omp seats from one manifest, contains them with one sandbox engine, gates every merge behind a fresh read-only audit, keeps a records trail, and adds optional seats and tools only under written provenance rules. This document states the requirements. Seven architecture decision records (ADR-001 to ADR-007) hold the one-way doors, and seven Gherkin features under `bdd/` hold the scenarios that verify them. `check.py` keeps the three in step and runs the scenarios that already hold against the repository.
 
-The decisions came from a research pass over eight open-source repositories, recorded under `research/` and in `decisions.tsv`. Four are integrated or ported (sandbox-runtime, knowledge-work-plugins skills, graphify as a per-project tool, DeepSeek Harness as an optional seat). Three are deliberately not adopted (the cybersecurity skills pack, the Shiguredo fork, tester-army/e2e). One, the dsh-superagent prototype, is design reading. The audit ADR waits for the eighth research file.
+The decisions came from a research pass over eight open-source repositories, recorded under `research/` and in `decisions.tsv`. Four are integrated or ported (sandbox-runtime, knowledge-work-plugins skills, graphify as a per-project tool, DeepSeek Harness as an optional seat). Three are deliberately not adopted (the cybersecurity skills pack, the Shiguredo fork, tester-army/e2e). One, the dsh-superagent prototype, is design reading. The audit ADR keeps the Codex gate unchanged and admits the security audit skill only as a pinned sweep lens behind a flag.
 
 ## Problem
 
@@ -68,10 +68,10 @@ Anthropic's sandbox-runtime is the engine behind the Claude Bash sandbox and the
 
 ### Audit and merge gate
 
-Every unit's pull request merges only through `pr-merge.sh` at a head with a `correct` verdict row and green checks. Each audit is one fresh read-only Codex run per head under the `audit` permission profile with the trunk's `AGENTS.md` as rules, ending in one verdict line; a trust-boundary change carries a threat table; the fourth round needs a closing decision (`AGENTS.md`, "Audit"). ADR-003 will settle how a third-party security-audit skill, if adopted, sits beside this gate; until then it is a stub.
+Every unit's pull request merges only through `pr-merge.sh` at a head with a `correct` verdict row and green checks. Each audit is one fresh read-only Codex run per head under the `audit` permission profile with the trunk's `AGENTS.md` as rules, ending in one verdict line; a trust-boundary change carries a threat table; the fourth round needs a closing decision (`AGENTS.md`, "Audit"). ADR-003 keeps this gate unchanged and admits the security-audit skill only as a periodic sweep lens behind a flag, whose findings are advisory rows and never a verdict.
 
 - Today: `pr-audit.sh` and `pr-merge.sh` are the gate; the audit profile is Codex gpt-6-astra at xhigh, read-only; the rules are the trunk's `AGENTS.md`.
-- The kit adds: a decision on how an advisory security-audit skill sits beside the gate, once its research lands.
+- The kit adds: the security-audit skill as a pinned, flagged sweep lens beside the gate, with advisory findings and no verdict (ADR-003).
 - Decided in: ADR-003.
 
 ### Records and orchestration

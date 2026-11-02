@@ -27,6 +27,8 @@ Inventory taken 2026-10-23T21:58:15Z from `gh pr list --state open` and `git wor
 | #606 | `records/sync-16` | 2026-10-31 | 20 | chore(records): regime-cutover sync 16 | close: superseded by records sync 17: the regime check refused the store at U126 (three correct audit rows reached the round cap; the mechanism-change row of 2026-10-31T04:51:47Z fixes it) |
 | #607 | `records/sync-17` | 2026-10-31 | 21 | chore(records): regime-cutover sync 17 | close: superseded by records sync 18: the records lever's masker (U107) crossed two tabs in ledger row 207 so the copy had 5 columns and the regime check refused it; U107b bounds the masked value to its field |
 | #615 | `records/sync-20` | 2026-10-31 | 16 | chore(records): regime-cutover sync 20 | close: superseded by records sync 21: the regime check refused the store at U20 (three correct sync audits since the rule date reached the round cap of standing order 36 with no mechanism-change row; the row of 2026-10-31T10:25:42Z, residual, names the per-sync counting as the follow-up) |
+| #548 | `dependabot/github_actions/minor-and-patch-d7d93b8548` | 2026-10-25 | 6 | chore(deps): bump astral-sh/setup-uv from 10.2.0 to 10.3.2 in the minor-and-patch group | close: superseded by regime-cutover U131 (PR #619, merged as ac251770): the same pin at the six sites with the test constants that hard-coded the old sha (plan P-35, adopted as a unit) |
+| #549 | `dependabot/github_actions/jdx/mise-action-5.2.2` | 2026-10-25 | 5 | chore(deps): bump jdx/mise-action from 4.3.0 to 5.2.2 | close: superseded by regime-cutover U132 (PR #622): the same pin at the five sites with `auto_update: true` and the test that counts it (plan P-35, adopted as a unit) |
 
 ## Worktrees
 

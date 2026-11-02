@@ -2,9 +2,8 @@ Feature: Audit and merge gate
   A unit's pull request merges only at a head the program's ledger records as
   correct, with CI green, through pr-merge.sh. Each audit is one fresh,
   read-only Codex run per head, with the rules taken from the main branch's
-  AGENTS.md and the head treated as data. ADR-003 is a stub until the
-  security-audit-skill research lands; the scenarios below describe the gate
-  as it stands and the one target that the ADR will settle.
+  AGENTS.md and the head treated as data. ADR-003 keeps that gate and admits
+  the security audit skill only as a periodic sweep lens behind a flag.
 
   @R-11 @holds-today
   Scenario: The merge lever refuses without a correct verdict row
@@ -51,3 +50,10 @@ Feature: Audit and merge gate
     When it reviews a head
     Then its findings enter the review thread as input to the orchestrator
     And it writes no verdict row and changes no gate decision
+
+  @R-15 @target
+  Scenario: The security audit skill is pinned, never installed from main HEAD
+    Given the security-audit-skill asset entry in the manifest
+    When the asset is installed
+    Then it comes from a git commit pinned with the archive's sha256
+    And no installer runs npx skills add for it

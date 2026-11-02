@@ -72,7 +72,7 @@ Every unit's pull request merges only through `pr-merge.sh` at a head with a `co
 
 - Today: `pr-audit.sh` and `pr-merge.sh` are the gate; the audit profile is Codex gpt-6-astra at xhigh, read-only; the rules are the trunk's `AGENTS.md`.
 - The kit adds: a decision on how an advisory security-audit skill sits beside the gate, once its research lands.
-- Decided in: ADR-003 (proposed).
+- Decided in: ADR-003.
 
 ### Records and orchestration
 
@@ -140,12 +140,12 @@ Each phase is a set of units the regime can run as unit briefs, one pull request
 
 ### Phase 1: pins and records (no behaviour change for the agents)
 
-| Unit                         | ADR     | Files                                                              | Risk                                                                                         |
-| ---------------------------- | ------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| Pin the srt version in mise  | ADR-002 | `home/dot_mise/config.toml`, `scripts/orchestrator/README.md`      | A pinned beta lags upstream fixes; the bump review must re-read the `hcom-seat` assumptions. |
-| Record the sandbox residuals | ADR-002 | `decisions.tsv` of the program                                     | None; a record.                                                                              |
-| Hold the cybersecurity pack  | ADR-004 | `decisions.tsv` of the program                                     | None; a record with three reopening conditions.                                              |
-| Write ADR-003                | ADR-003 | `docs/harness-kit/adr/ADR-003-audit-stack.md`, `bdd/audit.feature` | Depends on the eighth research file.                                                         |
+| Unit                         | ADR     | Files                                                             | Risk                                                                                         |
+| ---------------------------- | ------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Pin the srt version in mise  | ADR-002 | `home/dot_mise/config.toml`, `scripts/orchestrator/README.md`     | A pinned beta lags upstream fixes; the bump review must re-read the `hcom-seat` assumptions. |
+| Record the sandbox residuals | ADR-002 | `decisions.tsv` of the program                                    | None; a record.                                                                              |
+| Hold the cybersecurity pack  | ADR-004 | `decisions.tsv` of the program                                    | None; a record with three reopening conditions.                                              |
+| Pin the security audit skill | ADR-003 | an `assets:` entry, a `skills.audience` line, a validator dry run | An unmaintained upstream snapshot; every fix is a local patch.                               |
 
 ### Phase 2: the skills port
 
@@ -180,7 +180,7 @@ Operator decisions, each by name:
 6. The Linux seat. When is the first Ubuntu seat run scheduled, and on which host (ADR-002)?
 7. The dsh routes. Which Ollama Cloud plan or on-prem server, and is the official DeepSeek API ever acceptable for a client engagement given the request metadata it carries (ADR-006)?
 8. The platform workflows. Should `ubuntu.yaml` and `macos.yaml` become required checks with a gate job, or stay optional (ADR-007)?
-9. ADR-003. The audit stack decision waits for `research/cloudflare-security-audit-skill.md`.
+9. The security audit skill sweep. Upstream has been unmaintained since 2026-09-14, so the pinned snapshot carries every fix locally; the operator decides whether one recorded sweep is worth the asset (ADR-003).
 
 Risks the research names and the kit accepts for now: same-user host processes read seat-writable files (gate G17); allowed domains are exfiltration paths because the proxy decides by hostname without TLS inspection; the trustd mach service is reachable by every seat (research/anthropics-sandbox-runtime.md, section 5.2). Facts the research could not verify are marked as such in each ADR: the DSH build on these hosts, the hook coverage of `dsh-hooks-claude-code`, the prototype's experiment numbers, the cybersecurity pack's branch protection and security advisories, and graphify's build time on this repository.
 
@@ -194,9 +194,9 @@ Research files, under `research/`:
 - `graphify-labs-graphify.md` (ADR-005)
 - `shiguredo-deepseek-harness.md` and `deepseek-ai-dsh-superagent-prototype.md` (ADR-006)
 - `tester-army-e2e.md` (ADR-007)
-- `cloudflare-security-audit-skill.md` (ADR-003; not yet landed)
+- `cloudflare-security-audit-skill.md` (ADR-003)
 
-Architecture decision records, under `adr/`: ADR-001 composition model, ADR-002 sandbox layering, ADR-003 audit stack (proposed), ADR-004 third-party skill provenance, ADR-005 knowledge graph, ADR-006 DeepSeek harness seat, ADR-007 end-to-end testing.
+Architecture decision records, under `adr/`: ADR-001 composition model, ADR-002 sandbox layering, ADR-003 audit stack, ADR-004 third-party skill provenance, ADR-005 knowledge graph, ADR-006 DeepSeek harness seat, ADR-007 end-to-end testing.
 
 Repository paths cited: `home/dot_agents/README.md`, `home/dot_agents/agent-config.yaml`, `scripts/validate-agent-assets.py`, `scripts/check-agent-runtime.py`, `scripts/orchestrator/README.md`, `docs/orchestrator-seat.md`, `docs/omp-skills.md`, `AGENTS.md`, `home/dot_local/bin/common/executable_pr-audit.sh`, `home/dot_local/bin/common/executable_pr-merge.sh`, `home/dot_local/bin/common/executable_hcom-seat`, `home/dot_mise/config.toml`, `.github/workflows/test.yaml`, `.github/workflows/ubuntu.yaml`, `Makefile`.
 

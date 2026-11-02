@@ -9,6 +9,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
+# The lockfile rule (regime-cutover U134, plan P-35). `.github/workflows/actions.lock` is written by `gh actions-lock`
+# and read by GitHub's runner. The Secure use reference, https://docs.github.com/en/actions/reference/security/secure-use
+# ("Using third-party actions"): a lockfile "records the exact commit for every action your workflows depend on,
+# including transitive dependencies, and verifies the identity of each source repository at run time", and it
+# "supersedes SHA pinning for repositories that adopt it". The concept page,
+# https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles: "For repositories that adopt a
+# lockfile, SHA pinning within workflow files is no longer necessary." The repository's own invariant is coverage: every
+# `uses:` reference has one entry whose commit is a 40-hex sha and whose ref is a full semver tag, and no entry is unused.
+LOCKFILE = WORKFLOWS / "actions.lock"
+FULL_SEMVER_TAG = re.compile(r"v\d+\.\d+\.\d+")
+LOCKED_COMMIT = re.compile(r"sha1-[0-9a-f]{40}")
 EXPECTED_PERMISSIONS = {
     "apply-check.yml": {"contents": "read"},
     "agent-assets.yml": {"contents": "read"},
@@ -102,12 +113,27 @@ def checkout_step_disables_credentials(block: str) -> bool:
     return values == ["false"]
 
 
-def load_workflow(name: str) -> dict:
-    """The workflow parsed by PyYAML, which uv provides as for regime.yml's tests."""
+def load_yaml(path: Path) -> dict:
+    """The file parsed by PyYAML, which uv provides as for regime.yml's tests."""
     read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
     uv = [shutil.which("uv") or "uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I"]
-    result = subprocess.run([*uv, "-c", read, str(WORKFLOWS / name)], capture_output=True, text=True, check=True)
+    result = subprocess.run([*uv, "-c", read, str(path)], capture_output=True, text=True, check=True)
     return json.loads(result.stdout)
+
+
+def load_workflow(name: str) -> dict:
+    return load_yaml(WORKFLOWS / name)
+
+
+def external_references(text: str) -> list[tuple[int, str]]:
+    """Each `uses:` reference of a workflow with its line number, less the local (`./`) and image (`docker://`) forms,
+    which the lockfile does not record."""
+    found = []
+    for number, line in enumerate(text.splitlines(), 1):
+        match = re.search(r"uses:\s+([^\s]+)", line)
+        if match and not match.group(1).startswith(("./", "docker://")):
+            found.append((number, match.group(1)))
+    return found
 
 
 class WorkflowSecurityTest(unittest.TestCase):
@@ -130,19 +156,45 @@ class WorkflowSecurityTest(unittest.TestCase):
         (upload,) = [step for step in steps if step.get("uses", "").startswith("codecov/codecov-action@")]
         self.assertRegex(upload["with"].get("version", "latest"), r"^\d+\.\d+\.\d+$")
 
-    def test_external_actions_use_full_commit_shas(self):
-        mutable = []
+    def test_every_external_action_has_one_lockfile_entry_and_no_entry_is_unused(self):
+        # The runner enforces actions.lock at run time; this check makes a workflow edit that names an unlocked action,
+        # or leaves a stale entry behind, fail before the workflow runs. Each entry must hold the commit as a 40-hex
+        # sha, a full semver tag (or the exact ref the workflow names) and the source repository's owner and repo ids,
+        # the identity the runner verifies.
+        self.assertTrue(LOCKFILE.is_file(), "no .github/workflows/actions.lock: `gh actions-lock` writes it")
+        lock = load_yaml(LOCKFILE)
+        dependencies, workflows = lock["dependencies"], lock["workflows"]
+        problems = []
+        used = set()
         for path in sorted(WORKFLOWS.glob("*.y*ml")):
-            for number, line in enumerate(path.read_text().splitlines(), 1):
-                match = re.search(r"uses:\s+([^\s]+)", line)
-                if not match:
+            references = external_references(path.read_text())
+            named = {reference for _, reference in references}
+            listed = workflows.get(f".github/workflows/{path.name}", [])
+            if len(listed) != len(set(listed)) or set(listed) != named:
+                problems.append(f"{path.name}: the lockfile lists {sorted(listed)}, the workflow names {sorted(named)}")
+            for number, reference in references:
+                used.add(reference)
+                entry = dependencies.get(reference)
+                if entry is None:
+                    problems.append(f"{path.name}:{number}: {reference} has no lockfile entry")
                     continue
-                reference = match.group(1)
-                if reference.startswith(("./", "docker://")):
-                    continue
-                if not re.fullmatch(r"[^@]+@[0-9a-f]{40}", reference):
-                    mutable.append(f"{path.name}:{number}: {reference}")
-        self.assertEqual([], mutable)
+                ref = str(entry.get("ref", ""))
+                if not FULL_SEMVER_TAG.fullmatch(ref) and ref != reference.rpartition("@")[2]:
+                    problems.append(f"{path.name}:{number}: {reference} is locked to {ref!r}, not a full semver tag")
+        locked = [dependencies[reference] for reference in used if reference in dependencies]
+        transitive = {dependency for entry in locked for dependency in entry.get("uses", [])}
+        for key, entry in dependencies.items():
+            if key not in used and key not in transitive:
+                problems.append(f"actions.lock: {key} is locked, and no workflow uses it")
+            if not LOCKED_COMMIT.fullmatch(str(entry.get("commit", ""))):
+                problems.append(f"actions.lock: {key} is locked to commit {entry.get('commit')!r}, not a 40-hex sha")
+            for field in ("owner_id", "repo_id"):
+                if not isinstance(entry.get(field), int):
+                    problems.append(f"actions.lock: {key} has no {field}")
+        for listed in workflows:
+            if Path(listed).parent != Path(".github/workflows") or not (ROOT / listed).is_file():
+                problems.append(f"actions.lock: {listed} is listed, and it is not a workflow of this repository")
+        self.assertEqual([], problems)
 
     def test_the_regime_workflow_takes_its_base_from_the_base_branch_tip_at_run_time(self):
         # ci:39185982423:1: the event's recorded base sha can lag the base branch (on PR #420 it was the head's fork

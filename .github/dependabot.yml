@@ -1,5 +1,7 @@
-# Version updates for the SHA-pinned actions in .github/workflows. The cooldown is the repository's release-age
-# window: mise's minimum_release_age, npm's min-release-age and scripts/lib/github-release.sh all wait 72 hours.
+# Version updates for the actions in .github/workflows, which .github/workflows/actions.lock locks (U134): a bump moves
+# the `uses:` tag, and Dependabot regenerates the lockfile entry in the same pull request. The cooldown is the
+# repository's release-age window: mise's minimum_release_age, npm's min-release-age and scripts/lib/github-release.sh
+# all wait 72 hours.
 version: 2
 updates:
   - package-ecosystem: github-actions

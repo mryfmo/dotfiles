@@ -193,7 +193,7 @@ The code renames the layers: the Router is the **main Session** (`orchestrator` 
 
 ## 8. Fit with this dotfiles repository
 
-Context from the repository itself: `home/dot_agents/agent-config.yaml` is the single source for Claude Code, Codex and omp seats, with `model_profiles` (express, standard, review, deep, security, audit), a `command_policy` deny list, permgate hooks, a strict Bash sandbox, and an hcom "regime" that runs an orchestrator seat, worker seats in their own worktrees under `~/.local/state/omp-seats/<slug>/`, and a read-only audit seat; the PR levers `pr-audit.sh`, `pr-merge.sh --match-head-commit`, `pr-thread-*.sh` live under `home/dot_local/bin/common/`. There is no DeepSeek, Ollama or local-model route in the kit, and no GitHub-event-driven agent: work enters the regime through `hcom-dispatch`, not through issue comments.
+Context from the repository itself: `home/dot_agents/agent-config.yaml` is the single source for Claude Code, Codex and omp seats, with `model_profiles` (express, standard, review, deep, security, audit), a `command_policy` deny list, permgate hooks, a strict Bash sandbox, and an hcom "regime" that runs an orchestrator seat, worker seats in their own worktrees under `~/.local/state/omp-seats/<slug>/`, and a read-only audit run; the PR levers `pr-audit.sh`, `pr-merge.sh --match-head-commit`, `pr-thread-*.sh` live under `home/dot_local/bin/common/`. There is no DeepSeek, Ollama or local-model route in the kit, and no GitHub-event-driven agent: work enters the regime through `hcom-dispatch`, not through issue comments.
 
 **What transfers as design, without running anything:**
 

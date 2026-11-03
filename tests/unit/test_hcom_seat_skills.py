@@ -56,7 +56,8 @@ GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap befo
 # step names exit 3, the round cap's refusal, beside exit 2 and exit 1.
 AUDIT_ROUTE = (
     "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n> --records .orchestration/orchestrate/<program>` run "
-    "from your checkout for that head"
+    "for that head from the operator's or the coordinator's terminal outside every seat, never from the seat's "
+    "checkout"
 )
 AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
 AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"

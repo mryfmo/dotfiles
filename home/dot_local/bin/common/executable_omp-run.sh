@@ -37,8 +37,9 @@
 #   `--mode text` passes omp's own print-mode text through and `--mode json` its
 #   event stream, one JSON object per line, unchanged. HOME is the caller's: seats
 #   run as the operator.
-#   `--role audit` is the audit path (`hcom-orchestration` SKILL, step 4) and treats
-#   `--cwd`, a worktree at the audited head, as data only. Its rules are the whole
+#   `--role audit` was the audit path until U119 round 3 retired it: the audit is now
+#   `~/.local/bin/common/pr-audit.sh <n> --records <store>` (`hcom-orchestration` SKILL, step 4). The role
+#   still treats `--cwd`, a worktree at the audited head, as data only. Its rules are the whole
 #   `AGENTS.md` of `refs/remotes/origin/main` in that repository (the full ref, so a
 #   tag or a local branch named `origin/main` cannot stand in for it), read with
 #   `git show` and put before the prompt, never the head's copy (Claude Code Review

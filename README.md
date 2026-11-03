@@ -476,17 +476,15 @@ acceptance. The worker uses the `standard` profile to implement one task at a
 time. Reviews of plans and task texts run on the `review` profile, the same
 Claude model and effort as `deep` in a fresh context (INV-7). The auditor runs
 one independent task-level audit of each final head as one fresh
-`~/.local/bin/common/omp-run.sh --role audit` per head (`hcom-orchestration`
-SKILL, step 4): omp on the omp model of the `audit` profile, through the
-`openai-siwc` extension, under omp's approval policy
-`home/dot_agents/omp/policies/audit.yml` (`always-ask`, the write tools
-denied). That policy gates tools; it is not an operating-system read-only
-sandbox, and the run's account stays the containment boundary. When that route
-cannot run, the `## Audit` section of `AGENTS.md` names the fallback review;
-its Codex route is `~/.local/bin/common/pr-audit.sh <pr>`, whose commands run
-under the Codex permission profile `audit` (an allowlist: the head's tree and
-the tools only, no network, credential stores denied, probed before every run;
-`scripts/orchestrator/README.md`).
+`~/.local/bin/common/pr-audit.sh <n> --records <store>` run per head
+(`hcom-orchestration` SKILL, step 4): Codex under the permission profile
+`audit` (an allowlist: the head's tree and the tools only, no network,
+credential stores denied, probed before every run;
+`scripts/orchestrator/README.md`). That profile gates commands; the run's
+account stays the containment boundary. The omp audit route (omp on the
+`audit` profile, through the `openai-siwc` extension, under
+`home/dot_agents/omp/policies/audit.yml`) was retired by U119 round 3; the
+`## Audit` section of `AGENTS.md` holds the auditor's rules.
 The responsibility boundaries live in
 `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/regime.md`, and the `## Audit` section of
@@ -768,7 +766,7 @@ domains, and protected paths.
 
 The coordinator is one omp seat, the orchestrator, and you talk to it in its
 herdr pane. It starts the worker seats itself, relaunches a seat that died, runs
-each audit as one fresh `omp-run.sh --role audit` run, and runs the program loop
+each audit as one fresh `~/.local/bin/common/pr-audit.sh <n> --records <store>` run, and runs the program loop
 (the `hcom-orchestration` skill). A Claude Code session is optional and not part
 of the loop.
 
@@ -1306,7 +1304,7 @@ The hcom regime runs in any git repository on this host, not only in this one. T
 1. On the host, once: `make update` in this repository. It installs the levers, the `~/.agents/regime/` templates, the omp policies, profiles and skills.
 2. In the other repository's checkout: `regime-init <program> --write-agents`. It creates `.orchestration/orchestrate/<program>/`, holding `preferences.md` (the standing orders) and empty `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md`. It writes `~/.local/state/hcom/<slug>/origin`, and it appends the audit section to `AGENTS.md` unless one is there. A second run changes nothing.
 3. Review the AGENTS.md audit section it wrote, and add the program's own rules below it. Commit the store and `AGENTS.md` like any other change.
-4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker seats get worktrees under `~/.local/state/omp-seats/<slug>/`. The orchestrator runs each audit as one fresh `omp-run.sh --role audit` run per head, outside the bus.
+4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker seats get worktrees under `~/.local/state/omp-seats/<slug>/`. The orchestrator runs each audit as one fresh `~/.local/bin/common/pr-audit.sh <n> --records <store>` run per head, outside the bus.
 5. Kick off the program: `hcom-dispatch <slug> operator orchestrator-<word> "TASK v1 task_id=O1 brief=<absolute path of the program brief>"`.
 
 A seat inherits `HCOM_DIR` and `HCOM_TEAM` from its launch, and an explicit value wins over the derivation, so from inside a seat (the orchestrator seat, say) run another repository's `regime-init`, `hcom-seat` and `hcom-dispatch` as `env -u HCOM_DIR -u HCOM_TEAM <command>`; otherwise its seats join the inheriting seat's store and team. What stays per host: the logins (the Claude Code login the bridge seat uses, `/login openai-siwc` in the audit-side omp profiles), the omp profiles and policies, and the levers themselves. A second checkout with the same basename is refused by `regime-init` and the levers; set `HCOM_DIR` and `HCOM_TEAM` explicitly for it.

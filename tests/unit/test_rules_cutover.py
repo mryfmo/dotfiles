@@ -38,9 +38,9 @@ class RulesCutoverTest(unittest.TestCase):
         for token in (
             "hcom-orchestration",
             "hcom-worker",
-            "omp-run.sh --role audit",
+            "pr-audit.sh <n> --records <store>",
             "AGENTS.md",
-            "--match-head-commit",
+            "pr-merge.sh <n> --records <store>",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)

@@ -1,4 +1,5 @@
-# omp policy for the audit role; `~/.local/bin/common/omp-run.sh --role audit` passes it as
+# omp policy for the audit role. The omp audit route was retired by U119 round 3 (the audit is
+# `~/.local/bin/common/pr-audit.sh <n> --records <store>`); `omp-run.sh` in that role still passes this file as
 # `--config ~/.agents/omp/policies/audit.yml`. Schema: `tools.approvalMode`
 # (src/tools/settings.ts:313-320), `tools.approval` (src/tools/settings.ts:295-305)
 # and `bash.patterns` (src/exec/settings.ts:137-148) of @oh-my-pi/pi-coding-agent

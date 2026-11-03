@@ -1,21 +1,30 @@
 """Exercise the sweep gate of scripts/orchestrator/pr-merge.sh (regime-cutover U147): a trust-boundary unit, whose brief
-in the checkout's own store carries a `TRUST` section (the heading grammar of brief-check.py), merges only with a
-`sweep` ledger row of the unit or a fix unit of it at the audited head, read through scripts/orchestrator/ledger.py;
-a unit whose brief has no such section merges as before. The fixture is PrLeverTestCase of test_pr_levers (the scratch
-checkout, the fake gh, `writes()`), the store built as PrMergeTest builds it plus the brief; no test class is imported,
-since unittest discovery would run an imported class a second time."""
+in the checkout's own store carries a `TRUST` section (as the checker's own `sections()` finds it: round 2 runs
+scripts/orchestrator/brief-check.py through one probe, never a loop of the lever's own), merges only with a `sweep`
+ledger row of the unit or a fix unit of it at the audited head, read through scripts/orchestrator/ledger.py and read by
+its shape; a unit whose brief has no such section merges as before. The fixture is PrLeverTestCase of test_pr_levers
+(the scratch checkout, the fake gh, `writes()`), the store built as PrMergeTest builds it plus the brief, the checker
+and its manifest (the checker's import runs its pin self-check); no test class is imported, since unittest discovery
+would run an imported class a second time."""
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
-from test_pr_levers import FOOTER, LEDGER_HEADER, LEVERS, SHA_A, SHA_B, PrLeverTestCase, ledger_row  # noqa: E402
+from test_pr_levers import FOOTER, LEDGER_HEADER, LEVERS, ROOT, SHA_A, SHA_B, PrLeverTestCase, ledger_row  # noqa: E402
 
+MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 DIGEST = "d" * 64
-TRUST_BRIEF = "GOAL\nfixture\n\nTRUST\nTRUST: the unit trusts the one ledger reader.\n"
+TRUST_SENTENCE = "TRUST: the unit trusts the one ledger reader and reads nothing else of the brief."
+TRUST_BRIEF = f"GOAL\nfixture\n\nTRUST\n{TRUST_SENTENCE}\n"
 PLAIN_BRIEF = "GOAL\nfixture\n"
+# Every line end the checker's `splitlines()` knows beyond LF and CRLF (round 2, finding 1: the lever's own loop split
+# on LF alone, so a heading after one of these was a section to the checker and no mark to the lever).
+DELIMITERS = (("form feed", "\x0c"), ("vertical tab", "\x0b"), ("bare CR", "\r"), ("NEL", "\x85"), ("U+2028", "\u2028"))
+NOT_A_BRIEF = "is not a brief: none of GOAL, CHANGE, CONTEXT is a section"
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -28,12 +37,28 @@ if "sweep" in sys.argv:
     sys.exit(3)
 runpy.run_path({real!r}, run_name="__main__")
 """
+# A reader whose exit-0 answer to the sweep question is a given text (round 2, finding 3).
+ANSWERING_SWEEP_READER = """import runpy
+import sys
+
+if "sweep" in sys.argv:
+    sys.stdout.write({answer!r})
+    sys.exit(0)
+runpy.run_path({real!r}, run_name="__main__")
+"""
 
 
 def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"):
     """The advisory row the AGENTS.md Audit sweep rule describes: verdict `sweep`, pr `-`, the swept sha, the skill and
     its pin as the verifier, the findings file under the store as the evidence."""
     return f"{ts}\t{unit}\t-\t{head}\t{verdict}\tsecurity-audit-skill c1c8a8c1\tsweeps/{unit}-{head[:8]}.json\n"
+
+
+def delimited_brief(delimiter, trust=True):
+    """A brief whose GOAL holds a trigger word (`shell`) and ends at `delimiter`, then the `TRUST` heading (or a plain
+    line), then `CLOSURE` naming `parser-module`: with the heading the checker exits 0, without it 1 (no TRUST section)."""
+    heading = f"TRUST\n{TRUST_SENTENCE}\n" if trust else "the body\n"
+    return f"GOAL\na shell reader{delimiter}{heading}CLOSURE\nparser-module\n"
 
 
 class PrMergeSweepGateTest(PrLeverTestCase):
@@ -46,7 +71,12 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
-        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        # The checker the lever's trust probe loads by path, and the checkout manifest its import checks its pin in.
+        self.checker = self.repo / "scripts/orchestrator/brief-check.py"
+        shutil.copy2(LEVERS / "brief-check.py", self.checker)
+        (self.repo / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(MANIFEST, self.repo / "home/dot_agents/agent-config.yaml")
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\nhome/\n")
         self.briefs = self.records / "briefs"
         self.briefs.mkdir()
         self.fixture_brief = self.brief(TRUST_BRIEF)
@@ -56,7 +86,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
 
     def brief(self, text, name="U71-fixture.md"):
         path = self.briefs / name
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8", newline="")
         return path
 
     def ledger(self, *rows):
@@ -92,6 +122,18 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.calls.unlink(missing_ok=True)
         self.github()
         return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
+
+    def check(self, brief):
+        """The checker of the clone over `brief`, as the orchestration skill runs it (`python3 -I`, `-S` as the lever)."""
+        return subprocess.run(
+            [sys.executable, "-I", "-S", str(self.checker), str(brief)],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
 
     def assert_merged(self, run, ts="2026-10-25T09:00:00Z"):
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -141,8 +183,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.assertNotIn("sweep", self.merge().stderr)
 
     def test_the_mark_is_the_brief_checker_s_heading_grammar(self):
-        """brief-check.py:264-268 (`heading()`): the line right-stripped is the section name. The lever reads the same:
-        `TRUST` with trailing blanks or a CR is the mark; `TRUST:` and `the TRUST section` inside a sentence are not."""
+        """brief-check.py:264-291 (`heading()`, `sections()`): the line right-stripped is the section name. The lever
+        reads the same: `TRUST` with trailing blanks or a CR is the mark; `TRUST:` and `the TRUST section` inside a
+        sentence are not."""
         for text in ("GOAL\nx\nTRUST   \nthe body\n", "GOAL\nx\nTRUST\r\nthe body\r\n", "GOAL\nx\nTRUST"):
             with self.subTest(text=text):
                 self.brief(text)
@@ -157,10 +200,51 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 self.brief(text)
                 self.assert_merged(self.merge())
 
+    def test_the_mark_is_read_by_the_checker_s_own_module_whatever_the_line_delimiter(self):
+        """Round 2, finding 1: the lever runs the checker's `sections()` through one probe, so a `TRUST` heading after a
+        form feed, a vertical tab, a bare CR, NEL or U+2028 is the mark to the lever exactly when it is a TRUST section
+        to `brief-check.py` run from the clone (exit 0 with CLOSURE and a trigger word; exit 1 naming the missing
+        section without the heading, and then the lever merges)."""
+        for name, delimiter in DELIMITERS:
+            with self.subTest(name):
+                marked = self.brief(delimited_brief(delimiter))
+                checked = self.check(marked)
+                self.assertEqual((0, "", ""), (checked.returncode, checked.stdout, checked.stderr))
+                self.assert_refused_before_ci(
+                    self.merge(), f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}"
+                )
+                unmarked = self.brief(delimited_brief(delimiter, trust=False))
+                checked = self.check(unmarked)
+                self.assertEqual(1, checked.returncode, checked.stdout + checked.stderr)
+                self.assertIn('GOAL holds "shell"; no TRUST section', checked.stdout)
+                self.assert_merged(self.merge())
+
+    def test_a_file_the_checker_cannot_read_as_a_brief_is_refused_naming_it(self):
+        """Round 2: the probe's exit 2 is a refusal carrying its line (never "no TRUST section", never the mark): a
+        file with none of GOAL, CHANGE or CONTEXT, even one with a `TRUST` heading or an empty one, a heading that
+        appears twice (the checker's BriefError) and bytes that are not UTF-8."""
+        self.ledger(ledger_row(SHA_A), sweep_row())  # the sweep row is there, so the refusal is the read's alone
+        for name, text in (
+            ("a TRUST heading and nothing judged", f"TRUST\n{TRUST_SENTENCE}\n"),
+            ("SCOPE alone", "SCOPE\n`scripts/orchestrator/pr-merge.sh`\n"),
+            ("an empty file", ""),
+        ):
+            with self.subTest(name):
+                self.brief(text)
+                self.assert_refused_before_ci(self.merge(), f"{self.fixture_brief} {NOT_A_BRIEF}")
+        self.brief("GOAL\nx\nGOAL\ny\nTRUST\n")
+        self.assert_refused_before_ci(
+            self.merge(), f"cannot read {self.fixture_brief}: GOAL appears twice (lines 1 and 3)"
+        )
+        self.fixture_brief.write_bytes("GOAL\nfixture caf\xe9\nTRUST\n".encode("latin-1"))
+        run = self.merge()
+        self.assert_refused_before_ci(run, f"cannot read {self.fixture_brief}: 'utf-8' codec can't decode byte 0xe9")
+        self.assertNotIn("Traceback", run.stderr)
+
     def test_the_brief_is_the_one_regular_file_of_the_unit_in_the_checkout_s_store(self):
-        """No brief, two briefs, a symlinked or unreadable or empty brief each refuse by name with no write (standing
-        order 21: a brief the gate cannot read is never a brief without a TRUST section); a brief of another unit
-        whose id shares a prefix with U71 is no match."""
+        """No brief, two briefs, a symlinked or unreadable brief each refuse by name with no write (standing order 21: a
+        brief the gate cannot read is never a brief without a TRUST section); a brief of another unit whose id shares a
+        prefix with U71 is no match."""
         self.ledger(ledger_row(SHA_A), sweep_row())
         glob = f"{self.briefs}/U71-*.md"
         self.fixture_brief.unlink()
@@ -185,14 +269,29 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.fixture_brief.mkdir()
         self.assert_refused_before_ci(self.merge(), f"{self.fixture_brief} is not a regular file of this user")
         self.fixture_brief.rmdir()
-        self.brief("")
-        self.assert_refused_before_ci(self.merge(), f"{self.fixture_brief} is empty")
         self.brief(TRUST_BRIEF)
         self.fixture_brief.chmod(0)
         self.addCleanup(self.fixture_brief.chmod, 0o644)
         if os.geteuid() == 0:
             self.skipTest("root reads a mode-0 file")
-        self.assert_refused_before_ci(self.merge(), f"cannot read {self.fixture_brief} (read_file exited 2)")
+        self.assert_refused_before_ci(self.merge(), f"cannot read {self.fixture_brief}: [Errno 13] Permission denied")
+
+    def test_a_symlinked_briefs_directory_is_refused_before_the_glob(self):
+        """Round 2, finding 2: `briefs/` is checked as `verdicts/` is, so a symlink to a directory outside the store
+        holding a plain brief never decides the class; a missing `briefs/` is the same refusal."""
+        self.ledger(ledger_row(SHA_A), sweep_row())
+        outside = self.root / "outside-briefs"
+        outside.mkdir()
+        (outside / "U71-x.md").write_text(PLAIN_BRIEF)
+        shutil.rmtree(self.briefs)
+        self.briefs.symlink_to(outside)
+        self.assert_refused_before_ci(
+            self.merge(), f"{self.briefs} is not a directory of this user (a symlink or missing)"
+        )
+        self.briefs.unlink()
+        self.assert_refused_before_ci(
+            self.merge(), f"{self.briefs} is not a directory of this user (a symlink or missing)"
+        )
 
     def test_a_sweep_row_with_a_short_head_is_a_malformed_store_not_a_missing_row(self):
         self.ledger(ledger_row(SHA_A), sweep_row(head=SHA_A[:7]))
@@ -206,6 +305,30 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.assertIn("exited 3 reading", run.stderr)
         self.assertIn("for the sweep row of U71", run.stderr)
         self.assertEqual(self.writes(), [])
+
+    def test_a_reader_answer_that_is_neither_none_nor_one_row_of_four_fields_is_refused(self):
+        """Round 2, finding 3: the exit-0 answer is read by its shape, as require_verdict_row reads a row. An empty
+        answer, two fields, `none` followed by text, a row with an empty ts and text beside the row each refuse naming
+        the reader and the answer, with no write; the reader's own four-field row merges."""
+        self.ledger(ledger_row(SHA_A), sweep_row())
+        row = sweep_row().rstrip("\n")
+        answer_row = "\t".join(row.split("\t")[i] for i in (0, 1, 5, 6))  # ts, unit, verifier, evidence
+        for name, answer in (
+            ("an empty answer", ""),
+            ("two fields", "2026-10-25T09:30:00Z\tU71\n"),
+            ("none followed by text on the line", "none (no row)\n"),
+            ("none followed by a second line", "none\nledger: a note\n"),
+            ("a row with an empty ts", "\tU71\tsecurity-audit-skill c1c8a8c1\tsweeps/x.json\n"),
+            ("text beside the row", f"ledger: a warning\n{answer_row}\n"),
+        ):
+            with self.subTest(name):
+                self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                run = self.merge()
+                self.assert_refused_before_ci(run, f"answered the sweep question for U71 at {SHA_A}")
+                self.assertIn(f"{self.reader}", run.stderr)
+                self.assertIn(answer.strip() or "nothing", run.stderr)
+        self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer_row + "\n", real=str(LEVERS / "ledger.py")))
+        self.assert_merged(self.merge())
 
     def test_a_carried_head_needs_the_sweep_row_at_the_earlier_head(self):
         """The audited head is the one require_verdict_row set: under a `carried` row it is the earlier head whose

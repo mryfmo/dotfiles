@@ -1101,7 +1101,11 @@ class PrMergeTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
-        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
+        # The checker the lever's trust probe loads by path (U147 round 2) and the manifest its import checks its pin in.
+        shutil.copy2(LEVERS / "brief-check.py", self.repo / "scripts/orchestrator/brief-check.py")
+        (self.repo / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(ROOT / "home/dot_agents/agent-config.yaml", self.repo / "home/dot_agents/agent-config.yaml")
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\nhome/\n")
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         (self.records / "briefs").mkdir()

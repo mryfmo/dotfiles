@@ -375,14 +375,14 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "c21451cbb0c4a4ff38ba2fc1837933c01e76d4facc205e71dd18685d18115abe"
+      "sha256": "e3001f42f81ac0f7e6fbbba3a183a6a1edb6ecae5b56e3bfa62160ae8fc99568"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
       "target": ".local/bin/common/omp-run.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c"
+      "sha256": "ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-audit.sh",

@@ -39,8 +39,9 @@ SELF_CHECK = (
     "- (d) migration: a migration changes the installed state through the real path, not only the generated baseline.",
     (
         "- (e) local runs: the unit's own tests, `make validate-agent-assets`, `make render-check` and the lints over "
-        "the changed files ran locally (omp seats have no sandbox) and their summary lines are pasted; the full suite "
-        "is CI's evidence, read from the CI job log (`preferences.md` standing order 23)."
+        "the changed files ran locally (the seat's srt sandbox, the `hcom-seat` canary of U85, bounds its local "
+        "runs) and their summary lines are pasted; the full suite is CI's evidence, read from the CI job log "
+        "(`preferences.md` standing order 23)."
     ),
 )
 SELF_CHECK_HELD = "the orchestrator holds a RESULT without the pasted self-check"

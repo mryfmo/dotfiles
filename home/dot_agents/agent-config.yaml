@@ -849,7 +849,7 @@ claude:
   # allowed by the orchestrator policy alone; it reads one brief and writes nothing.
   levers:
     sha256:
-      hcom-seat: c21451cbb0c4a4ff38ba2fc1837933c01e76d4facc205e71dd18685d18115abe
+      hcom-seat: e3001f42f81ac0f7e6fbbba3a183a6a1edb6ecae5b56e3bfa62160ae8fc99568
       hcom-dispatch: 1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -869,7 +869,7 @@ claude:
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: 234a8ce751b52b7f19f35a5c9d627069d2697fa05eef8483af790277b529cb8e
       pr-merge.sh: 705dbd64221feda5b983febe4ba5691bc9db994a3b0d4f71c1f8781c9fe2c545
-      omp-run.sh: 2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c
+      omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 07788a4ec344341dc1e00518cfed9d6fea924e883624197821adadc3468e40e3
       brief-check.py: f6dd08068ef157f3c1f245f3c1ab2f6730418591fb9e020aa65b67a11795f3b1
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28

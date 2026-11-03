@@ -89,6 +89,10 @@ skills:
     # The hcom seat skills drive one seat each through hcom-seat; no other session has the bus.
     hcom-orchestration: [omp-orchestrator]
     hcom-worker: [omp-worker]
+    # cloudflare/security-audit-skill, installed by scripts/update-agent-assets.sh#update_security_audit_skill
+    # from the pinned archive (assets.security-audit-skill): the worker seat runs the sweep the AGENTS.md
+    # Audit section names; no other agent lists it. The installer owns the tree, not home/dot_agents/skills.
+    security-audit: [omp-worker]
     # MEMORY.md, the PostToolUse reload hook and the project-map subagent are Claude Code's.
     project-map: [claude]
     # `crit install codex-plugin` writes these beside its Codex plugin; Codex lists the plugin's own copy
@@ -1285,6 +1289,29 @@ assets:
     reason: the monorepo publishes no per-plugin tag, release, checksum or signature; the commit and the archive hash are the only check.
     install_path: ~/.agents/pstack/skills/<skill> and ~/.agents/pstack/docs
     installer: home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
+  security-audit-skill:
+    source: git-commit
+    upstream: cloudflare/security-audit-skill
+    pin: c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
+    verify: sha256
+    sha256: 53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6
+    note: >-
+      sha256 is GitHub's source archive of the commit
+      (https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/<pin>), downloaded twice on
+      2026-11-03 with the same digest (91979 bytes). The archive holds LICENSE, README.md and
+      skills/security-audit (SKILL.md, fourteen Markdown companions, report-schema.json,
+      validate-findings.cjs, validate-coverage-ledger.cjs and their tests); the installer verifies the
+      digest before anything is unpacked, then places the skills/security-audit subtree alone at
+      install_path, replacing the previous tree atomically. Never installed from the branch head and
+      never through the npx skills installer: the audience line gives the skill to the omp worker seat only, the
+      seat the AGENTS.md Audit section's sweep rule names. Bump pin and sha256 together after reviewing
+      the upstream diff.
+    reason: the repository publishes no tag, release, checksum or signature and its maintenance has stopped; the commit and the archive hash are the only check.
+    install_path: ~/.agents/skills/security-audit
+    installer: scripts/update-agent-assets.sh#update_security_audit_skill
+    render:
+      file: scripts/update-agent-assets.sh
+      constants: {SECURITY_AUDIT_SKILL_COMMIT: pin, SECURITY_AUDIT_SKILL_SHA256: sha256}
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

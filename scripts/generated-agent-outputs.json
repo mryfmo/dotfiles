@@ -784,6 +784,9 @@
         "omp-orchestrator",
         "omp-worker"
       ],
+      "security-audit": [
+        "omp-worker"
+      ],
       "shdoc-shell-docs": [
         "claude",
         "codex",
@@ -869,7 +872,8 @@
       "crit-story",
       "hcom-orchestration",
       "hcom-worker",
-      "project-map"
+      "project-map",
+      "security-audit"
     ],
     "omp": {
       "omp": {
@@ -879,6 +883,7 @@
           "hcom-orchestration",
           "hcom-worker",
           "project-map",
+          "security-audit",
           "setup-pstack"
         ]
       },
@@ -888,6 +893,7 @@
         "ignored": [
           "hcom-worker",
           "project-map",
+          "security-audit",
           "setup-pstack"
         ]
       },

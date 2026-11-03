@@ -10,6 +10,7 @@ skills:
     - hcom-orchestration
     - hcom-worker
     - project-map
+    - security-audit
     - setup-pstack
 extensions:
   - ~/.local/lib/omp-extensions/pi-claude-bridge

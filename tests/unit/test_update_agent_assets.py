@@ -1,12 +1,14 @@
 """Exercise verified artifact updates using fake downloads and installers only."""
 
 import hashlib
+import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -456,6 +458,210 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             for shadow_version in ("pin", "0.0.0"):
                 with self.subTest(tool=tool, shadow_version=shadow_version):
                     self.exercise_update(tool, shadow_version=shadow_version)
+
+
+class SecurityAuditSkillTest(unittest.TestCase):
+    """update_security_audit_skill over an archive built here, never downloaded (U144): the pin, the digest check,
+    the atomic replace of the skills/security-audit subtree and the manifest record the doctor reads."""
+
+    # The rendered pin; a tree without the constant (the red proof against origin/main) gets a placeholder so the
+    # module still imports and the tests themselves fail on the absent step.
+    COMMIT_MATCH = re.search(r'^SECURITY_AUDIT_SKILL_COMMIT="([0-9a-f]{40})"$', UPDATER.read_text(), re.MULTILINE)
+    COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else "0" * 40
+    URL = f"https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/{COMMIT}"
+    SKILL = "---\nname: security-audit\ndescription: fixture of the upstream skill\n---\n"
+
+    MEMBERS = {
+        "LICENSE": "fixture licence\n",
+        "README.md": "fixture readme\n",
+        "skills/security-audit/SKILL.md": SKILL,
+        "skills/security-audit/validate-findings.cjs": "// fixture validator\n",
+    }
+
+    def archive(self, home: Path, members: dict[str, str] | None = None) -> tuple[Path, str]:
+        """A codeload-shaped tarball: <repository>-<commit>/{LICENSE,README.md,skills/security-audit/...}."""
+        if members is None:
+            members = self.MEMBERS
+        payload = home / "archive.tgz"
+        with tarfile.open(payload, "w:gz") as tar:
+            for name, text in members.items():
+                data = text.encode()
+                info = tarfile.TarInfo(f"security-audit-skill-{self.COMMIT}/{name}")
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+        return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
+
+    def run_step(self, home: Path, payload: Path, digest: str, *, curl: str | None = None, **env: str):
+        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; nothing is downloaded.
+        # A test may replace its body (a failed download) or hand the step an environment (TMPDIR, PATH).
+        download = curl or 'cp "$PAYLOAD" "${@: -1}"'
+        stubs = f"SECURITY_AUDIT_SKILL_SHA256={digest}; " + 'curl() { echo "curl $*" >> "$CALLS"; ' + download + "; }; "
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + stubs + "update_security_audit_skill", "bash", str(UPDATER)],
+            env=os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")} | env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def calls(self, home: Path) -> list[str]:
+        log = home / "calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def test_the_pinned_security_audit_archive_installs_the_skill_subtree_and_records_the_step(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            payload, digest = self.archive(home)
+            install = home / ".agents/skills/security-audit"
+            result = self.run_step(home, payload, digest)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            # The subtree alone: no LICENSE or README from the archive root, and no staging or previous tree beside it.
+            self.assertEqual(["SKILL.md", "validate-findings.cjs"], sorted(path.name for path in install.iterdir()))
+            self.assertEqual(["security-audit"], sorted(path.name for path in install.parent.iterdir()))
+            calls = self.calls(home)
+            self.assertEqual(1, len(calls), calls)
+            self.assertIn(f" {self.URL} -o ", calls[0])
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            step = manifest["steps"]["update_security_audit_skill"]
+            self.assertEqual("installer", step["kind"])
+            self.assertEqual(self.COMMIT, step["source_version"])
+            self.assertEqual([str(install), str(install / "SKILL.md")], step["paths"])
+            self.assertTrue(any("--strip-components=3" in command for command in step["commands"]), step["commands"])
+
+    def test_a_security_audit_digest_mismatch_installs_nothing_records_nothing_and_keeps_the_previous_tree(self):
+        for previous in (None, "the previous tree\n"):
+            with self.subTest(previous=previous), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                payload, _ = self.archive(home)
+                install = home / ".agents/skills/security-audit"
+                if previous is not None:
+                    install.mkdir(parents=True)
+                    (install / "SKILL.md").write_text(previous)
+                result = self.run_step(home, payload, "0" * 64)
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("security-audit skill checksum mismatch", result.stderr)
+                self.assertEqual(1, len(self.calls(home)))
+                self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                if previous is None:
+                    self.assertFalse(install.exists(), "no partial tree")
+                    self.assertEqual([], list(install.parent.iterdir()) if install.parent.exists() else [])
+                else:
+                    self.assertEqual(previous, (install / "SKILL.md").read_text())
+                    self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                    self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
+
+    def test_a_security_audit_tree_recorded_at_the_pin_is_skipped_and_any_other_state_is_reinstalled(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            payload, digest = self.archive(home)
+            install = home / ".agents/skills/security-audit"
+            manifest_path = home / ".agents/.installed-manifest.json"
+            first = self.run_step(home, payload, digest)
+            self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+            skipped = self.run_step(home, payload, digest)
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn(f"security-audit skill {self.COMMIT} is already installed", skipped.stdout)
+            self.assertEqual(1, len(self.calls(home)), "the skip downloads nothing")
+            # A record at another commit is no match: the tree is replaced and the record moves to the pin.
+            manifest = json.loads(manifest_path.read_text())
+            manifest["steps"]["update_security_audit_skill"]["source_version"] = "0" * 40
+            manifest_path.write_text(json.dumps(manifest))
+            (install / "SKILL.md").write_text("an older tree\n")
+            replaced = self.run_step(home, payload, digest)
+            self.assertEqual(0, replaced.returncode, replaced.stdout + replaced.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            self.assertEqual(2, len(self.calls(home)))
+            manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(self.COMMIT, manifest["steps"]["update_security_audit_skill"]["source_version"])
+            # A record at the pin whose tree is gone is no match either.
+            shutil.rmtree(install)
+            restored = self.run_step(home, payload, digest)
+            self.assertEqual(0, restored.returncode, restored.stdout + restored.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            self.assertEqual(3, len(self.calls(home)))
+
+    def test_a_failed_or_unavailable_security_audit_download_warns_installs_nothing_and_lets_the_run_continue(self):
+        # The update_terminal_code precedent: an offline host still converges. One WARN line names the step, nothing
+        # is installed or recorded, the download directory is gone, the step returns 0 so main goes on. The digest and
+        # archive-shape refusals below stay hard failures: a tampered archive is not a missing one.
+        cases = (
+            ("http failure", "return 22", None),
+            ("offline", "return 6", "the previous tree\n"),
+            ("no curl on PATH", None, "the previous tree\n"),
+        )
+        for name, body, previous in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                payload, digest = self.archive(home)
+                scratch = home / "tmp"
+                scratch.mkdir()
+                install = home / ".agents/skills/security-audit"
+                if previous is not None:
+                    install.mkdir(parents=True)
+                    (install / "SKILL.md").write_text(previous)
+                env = {"TMPDIR": str(scratch)}
+                if body is None:
+                    # The step runs on a PATH that holds what it needs before the download and no curl at all.
+                    bin_dir = home / "bin"
+                    bin_dir.mkdir()
+                    for tool in ("jq", "mktemp", "rm"):
+                        (bin_dir / tool).symlink_to(shutil.which(tool))
+                    body = f'unset -f curl; PATH={bin_dir}; command curl "$@"'
+                result = self.run_step(home, payload, digest, curl=body, **env)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                warnings = [line for line in result.stderr.splitlines() if line.startswith("WARN")]
+                self.assertEqual(1, len(warnings), result.stderr)
+                self.assertIn("update_security_audit_skill", warnings[0])
+                self.assertIn("nothing installed, nothing recorded", warnings[0])
+                self.assertNotIn("installed into", result.stdout)
+                self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                self.assertEqual([], list(scratch.iterdir()), "the download directory is removed")
+                if previous is None:
+                    self.assertFalse((home / ".agents").exists(), "nothing installed")
+                else:
+                    self.assertEqual(previous, (install / "SKILL.md").read_text())
+                    self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                    self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
+
+    def test_a_security_audit_archive_of_the_right_digest_without_the_skill_tree_is_refused_and_keeps_the_previous_tree(
+        self,
+    ):
+        # Failure injection for the atomic replace: the digest passes, the unpack or the shape check refuses, and the
+        # previous tree is byte-identical afterwards with no staging, previous or download directory left behind.
+        shapes = {
+            "no SKILL.md": {name: text for name, text in self.MEMBERS.items() if not name.endswith("SKILL.md")},
+            "no skills/security-audit subtree": {name: text for name, text in self.MEMBERS.items() if "/" not in name},
+        }
+        for shape, members in shapes.items():
+            for previous in (None, "the previous tree\n"):
+                with self.subTest(shape=shape, previous=previous), tempfile.TemporaryDirectory() as directory:
+                    home = Path(directory)
+                    payload, digest = self.archive(home, members)
+                    scratch = home / "tmp"
+                    scratch.mkdir()
+                    install = home / ".agents/skills/security-audit"
+                    if previous is not None:
+                        install.mkdir(parents=True)
+                        (install / "SKILL.md").write_text(previous)
+                    result = self.run_step(home, payload, digest, TMPDIR=str(scratch))
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertNotIn("checksum mismatch", result.stderr, "the digest passed")
+                    if shape == "no SKILL.md":
+                        self.assertIn("holds no skills/security-audit/SKILL.md; install refused", result.stderr)
+                    self.assertNotIn("installed into", result.stdout)
+                    self.assertEqual(1, len(self.calls(home)))
+                    self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                    self.assertEqual([], list(scratch.iterdir()), "the download directory is removed")
+                    if previous is None:
+                        self.assertFalse(install.exists(), "no partial tree")
+                        self.assertEqual([], list(install.parent.iterdir()), "no staging tree beside the target")
+                    else:
+                        self.assertEqual(previous, (install / "SKILL.md").read_text())
+                        self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                        self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
 
 
 class ProducerFailureTest(unittest.TestCase):

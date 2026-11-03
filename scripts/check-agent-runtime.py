@@ -44,6 +44,9 @@ UNDERSTAND_SKILL_ALLOWLIST = {
 # Codex-side Crit skills are installed by update-agent-assets.sh's
 # update_codex_crit, not rendered from the chezmoi source tree.
 CRIT_PLUGIN_SKILLS = {"crit", "crit-cli", "crit-story"}
+# The cloudflare/security-audit-skill tree is installed by update-agent-assets.sh's update_security_audit_skill from
+# the pinned archive (assets.security-audit-skill), not rendered from the chezmoi source tree (U144).
+SECURITY_AUDIT_SKILLS = {"security-audit"}
 ASSET_STEP_FUNCTIONS = {
     "ensure_crit_cli",
     "ensure_herdr_integrations",
@@ -58,6 +61,7 @@ ASSET_STEP_FUNCTIONS = {
     "update_codex_understand_anything",
     "update_compactiondb",
     "update_pi_claude_bridge",
+    "update_security_audit_skill",
     "update_terminal_browser",
     "update_terminal_code",
 }
@@ -542,6 +546,7 @@ def installer_owned_skill_names(home: Path | None = None) -> set[str]:
     return (
         UNDERSTAND_SKILL_ALLOWLIST
         | CRIT_PLUGIN_SKILLS
+        | SECURITY_AUDIT_SKILLS
         | receipt_skill_names
         # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
         | chezmoi_managed_child_names(skills_root)

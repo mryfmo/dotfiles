@@ -159,6 +159,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_omp() { :; }
                     update_hcom() { :; }
                     update_pi_claude_bridge() { :; }
+                    update_security_audit_skill() { :; }
                     update_compactiondb() { :; }
                     ensure_herdr_integrations() { :; }
                     ensure_gh_extensions() { printf 'gh-extensions-ensured\\n'; }
@@ -235,7 +236,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 # The subject is the order of the CLI repair steps; the pin verdicts (doctor_pin_check, the Ponytail
                 # ref gate) need a fully converged fixture host and are covered in test_update_agent_assets.
                 "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; "
-                "doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
+                "update_security_audit_skill() { :; }; doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
             ],
             cwd=repo,
             env={
@@ -335,7 +336,7 @@ EOF
                 # The subject is the order of the CLI repair steps; the pin verdicts (doctor_pin_check, the Ponytail
                 # ref gate) need a fully converged fixture host and are covered in test_update_agent_assets.
                 "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; "
-                "doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
+                "update_security_audit_skill() { :; }; doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
             ],
             cwd=repo,
             env={

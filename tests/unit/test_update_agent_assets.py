@@ -471,14 +471,17 @@ class SecurityAuditSkillTest(unittest.TestCase):
     URL = f"https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/{COMMIT}"
     SKILL = "---\nname: security-audit\ndescription: fixture of the upstream skill\n---\n"
 
-    def archive(self, home: Path) -> tuple[Path, str]:
+    MEMBERS = {
+        "LICENSE": "fixture licence\n",
+        "README.md": "fixture readme\n",
+        "skills/security-audit/SKILL.md": SKILL,
+        "skills/security-audit/validate-findings.cjs": "// fixture validator\n",
+    }
+
+    def archive(self, home: Path, members: dict[str, str] | None = None) -> tuple[Path, str]:
         """A codeload-shaped tarball: <repository>-<commit>/{LICENSE,README.md,skills/security-audit/...}."""
-        members = {
-            "LICENSE": "fixture licence\n",
-            "README.md": "fixture readme\n",
-            "skills/security-audit/SKILL.md": self.SKILL,
-            "skills/security-audit/validate-findings.cjs": "// fixture validator\n",
-        }
+        if members is None:
+            members = self.MEMBERS
         payload = home / "archive.tgz"
         with tarfile.open(payload, "w:gz") as tar:
             for name, text in members.items():
@@ -488,15 +491,14 @@ class SecurityAuditSkillTest(unittest.TestCase):
                 tar.addfile(info, io.BytesIO(data))
         return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
 
-    def run_step(self, home: Path, payload: Path, digest: str) -> subprocess.CompletedProcess:
+    def run_step(self, home: Path, payload: Path, digest: str, *, curl: str | None = None, **env: str):
         # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; nothing is downloaded.
-        stubs = (
-            f"SECURITY_AUDIT_SKILL_SHA256={digest}; "
-            'curl() { cp "$PAYLOAD" "${@: -1}"; echo "curl $*" >> "$CALLS"; }; '
-        )
+        # A test may replace its body (a failed download) or hand the step an environment (TMPDIR, PATH).
+        download = curl or 'cp "$PAYLOAD" "${@: -1}"'
+        stubs = f"SECURITY_AUDIT_SKILL_SHA256={digest}; " + 'curl() { echo "curl $*" >> "$CALLS"; ' + download + "; }; "
         return subprocess.run(
             ["bash", "-c", 'source "$1"; ' + stubs + "update_security_audit_skill", "bash", str(UPDATER)],
-            env=os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")},
+            env=os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")} | env,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -580,6 +582,86 @@ class SecurityAuditSkillTest(unittest.TestCase):
             self.assertEqual(0, restored.returncode, restored.stdout + restored.stderr)
             self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
             self.assertEqual(3, len(self.calls(home)))
+
+    def test_a_failed_or_unavailable_security_audit_download_warns_installs_nothing_and_lets_the_run_continue(self):
+        # The update_terminal_code precedent: an offline host still converges. One WARN line names the step, nothing
+        # is installed or recorded, the download directory is gone, the step returns 0 so main goes on. The digest and
+        # archive-shape refusals below stay hard failures: a tampered archive is not a missing one.
+        cases = (
+            ("http failure", "return 22", None),
+            ("offline", "return 6", "the previous tree\n"),
+            ("no curl on PATH", None, "the previous tree\n"),
+        )
+        for name, body, previous in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                payload, digest = self.archive(home)
+                scratch = home / "tmp"
+                scratch.mkdir()
+                install = home / ".agents/skills/security-audit"
+                if previous is not None:
+                    install.mkdir(parents=True)
+                    (install / "SKILL.md").write_text(previous)
+                env = {"TMPDIR": str(scratch)}
+                if body is None:
+                    # The step runs on a PATH that holds what it needs before the download and no curl at all.
+                    bin_dir = home / "bin"
+                    bin_dir.mkdir()
+                    for tool in ("jq", "mktemp", "rm"):
+                        (bin_dir / tool).symlink_to(shutil.which(tool))
+                    body = f'unset -f curl; PATH={bin_dir}; command curl "$@"'
+                result = self.run_step(home, payload, digest, curl=body, **env)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                warnings = [line for line in result.stderr.splitlines() if line.startswith("WARN")]
+                self.assertEqual(1, len(warnings), result.stderr)
+                self.assertIn("update_security_audit_skill", warnings[0])
+                self.assertIn("nothing installed, nothing recorded", warnings[0])
+                self.assertNotIn("installed into", result.stdout)
+                self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                self.assertEqual([], list(scratch.iterdir()), "the download directory is removed")
+                if previous is None:
+                    self.assertFalse((home / ".agents").exists(), "nothing installed")
+                else:
+                    self.assertEqual(previous, (install / "SKILL.md").read_text())
+                    self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                    self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
+
+    def test_a_security_audit_archive_of_the_right_digest_without_the_skill_tree_is_refused_and_keeps_the_previous_tree(
+        self,
+    ):
+        # Failure injection for the atomic replace: the digest passes, the unpack or the shape check refuses, and the
+        # previous tree is byte-identical afterwards with no staging, previous or download directory left behind.
+        shapes = {
+            "no SKILL.md": {name: text for name, text in self.MEMBERS.items() if not name.endswith("SKILL.md")},
+            "no skills/security-audit subtree": {name: text for name, text in self.MEMBERS.items() if "/" not in name},
+        }
+        for shape, members in shapes.items():
+            for previous in (None, "the previous tree\n"):
+                with self.subTest(shape=shape, previous=previous), tempfile.TemporaryDirectory() as directory:
+                    home = Path(directory)
+                    payload, digest = self.archive(home, members)
+                    scratch = home / "tmp"
+                    scratch.mkdir()
+                    install = home / ".agents/skills/security-audit"
+                    if previous is not None:
+                        install.mkdir(parents=True)
+                        (install / "SKILL.md").write_text(previous)
+                    result = self.run_step(home, payload, digest, TMPDIR=str(scratch))
+                    self.assertNotEqual(0, result.returncode, result.stdout)
+                    self.assertNotIn("checksum mismatch", result.stderr, "the digest passed")
+                    if shape == "no SKILL.md":
+                        self.assertIn("holds no skills/security-audit/SKILL.md; install refused", result.stderr)
+                    self.assertNotIn("installed into", result.stdout)
+                    self.assertEqual(1, len(self.calls(home)))
+                    self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                    self.assertEqual([], list(scratch.iterdir()), "the download directory is removed")
+                    if previous is None:
+                        self.assertFalse(install.exists(), "no partial tree")
+                        self.assertEqual([], list(install.parent.iterdir()), "no staging tree beside the target")
+                    else:
+                        self.assertEqual(previous, (install / "SKILL.md").read_text())
+                        self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                        self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
 
 
 class ProducerFailureTest(unittest.TestCase):

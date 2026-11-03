@@ -1817,10 +1817,15 @@ function update_pi_claude_bridge() (
 #   GitHub's source archive of the pinned commit (never the branch head, never the npx skills installer) is downloaded into a
 #   mktemp directory under TMPDIR and verified against its reviewed sha256 before anything is unpacked; the
 #   skills/security-audit subtree alone is unpacked beside the install path and replaces it with one rename, so a
-#   failed download, digest check or unpack leaves the previous tree as it was. A tree whose manifest record already
-#   names the pinned commit is skipped. The record names the install path: make doctor reads it, and the doctor's
-#   installer_owned_skill_names (scripts/check-agent-runtime.py) keeps the tree out of the unmanaged-skill WARN.
-# @exitcode 1 The download, the digest check, the unpack or the rename failed; the existing install is unchanged.
+#   failed download, digest check or unpack leaves the previous tree as it was. A download that fails or cannot run
+#   (offline, curl absent) degrades and continues like update_terminal_code: one WARN line naming the step, nothing
+#   installed, nothing recorded, and make update goes on (the next run retries). A digest mismatch or an archive
+#   without skills/security-audit/SKILL.md is a hard failure of the step: fail closed on a tampered archive. A tree
+#   whose manifest record already names the pinned commit is skipped. The record names the install path: make doctor
+#   reads it, and the doctor's installer_owned_skill_names (scripts/check-agent-runtime.py) keeps the tree out of the
+#   unmanaged-skill WARN.
+# @exitcode 0 Installed, already installed, or the download failed (a WARN; nothing installed or recorded).
+# @exitcode 1 The digest check, the unpack, the archive shape or the rename failed; the existing install is unchanged.
 #
 function update_security_audit_skill() (
     local install_dir="${HOME}/.agents/skills/security-audit"
@@ -1835,7 +1840,10 @@ function update_security_audit_skill() (
     download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
     tarball="${download_dir}/security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}.tar.gz"
-    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" -o "${tarball}" || return
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" -o "${tarball}" || {
+        printf 'WARN: update_security_audit_skill: the security-audit skill archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" >&2
+        return 0
+    }
     actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
     if [ "${actual}" != "${SECURITY_AUDIT_SKILL_SHA256}" ]; then
         printf 'security-audit skill checksum mismatch: expected %s, got %s.\n' "${SECURITY_AUDIT_SKILL_SHA256}" "${actual}" >&2

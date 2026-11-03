@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import plistlib
+import re
 import shutil
 import signal
 import subprocess
@@ -33,6 +34,11 @@ SERVICE = ROOT / "home/dot_config/systemd/user/regime-supervisor.service.tmpl"
 TIMER = ROOT / "home/dot_config/systemd/user/regime-supervisor.timer.tmpl"
 CHEZMOI = shutil.which("chezmoi")
 BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
+# hcom-seat reads `srt --version` before it launches and refuses a release of another line (U141); the srt stand-in
+# answers as the installed srt does, with the release home/dot_mise/config.toml pins (0.0.81 at U141).
+SRT_PIN = re.search(
+    r'^"npm:@anthropic-ai/sandbox-runtime" = "(\d+(?:\.\d+)+)"$', (ROOT / "home/dot_mise/config.toml").read_text(), re.M
+).group(1)
 # A process that takes the kernel lock on argv[1], says so, and keeps it until it is killed.
 HOLDER = "import fcntl, sys, time; h = open(sys.argv[1], 'a'); fcntl.flock(h, fcntl.LOCK_EX); print('held', flush=True); time.sleep(120)"
 # U100: an env built from scratch carries scratch_git's settings too, so no commit starts background maintenance.
@@ -73,8 +79,13 @@ class RegimeStartTest(unittest.TestCase):
         (bindir / "hcom").symlink_to(FAKE_HCOM)
         # hcom-seat requires herdr, omp and srt (and bwrap, socat and rg on Linux) before it launches (U85); the fake
         # hcom runs none of them, so copies of the system's `true` binary stand in (hcom-seat checks real executables).
-        for tool in ("herdr", "omp", "srt", "bwrap", "socat", "rg"):
+        for tool in ("herdr", "omp", "bwrap", "socat", "rg"):
             shutil.copy(BINARY_STAND_IN, bindir / tool)
+        # srt alone is run before the launch: hcom-seat reads its `--version` by the checked argv (`/bin/sh` and this
+        # file) and refuses unless it names the 0.0 line (U141), so the stand-in prints the pinned release; the fake
+        # hcom never runs it otherwise.
+        (bindir / "srt").write_text(f'#!/bin/sh\n[ "$1" != --version ] || echo {SRT_PIN}\nexit 0\n')
+        (bindir / "srt").chmod(0o755)
         self.state = self.temp / "hcom-state.json"
         self.store = self.temp / "store"
         self.store.mkdir()

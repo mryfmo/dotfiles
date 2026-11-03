@@ -431,6 +431,8 @@ main
         # U114: ccusage's platform packages publish minutes after its meta package; both statusline tools hold exact pins.
         held["npm:ccusage"] = '"npm:ccusage" = '
         held["npm:ccstatusline"] = '"npm:ccstatusline" = '
+        # U141: srt is the seat boundary and hcom-seat encodes 0.0.81's behaviours; a bump is a reviewed unit.
+        held["npm:@anthropic-ai/sandbox-runtime"] = '"npm:@anthropic-ai/sandbox-runtime" = '
         for name, request in config["tools"].items():
             version = request if isinstance(request, str) else request["version"]
             if name not in held:

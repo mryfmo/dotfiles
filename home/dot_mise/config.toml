@@ -20,8 +20,10 @@ yazi = "latest"
 
 "npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "latest"
-# sandbox-runtime: the `srt` that contains the omp seats (scripts/orchestrator/hcom-seat, regime-cutover U85).
-"npm:@anthropic-ai/sandbox-runtime" = "latest"
+# Held: sandbox-runtime is the `srt` that contains the omp seats, the whole-process boundary of every seat, and
+# scripts/orchestrator/hcom-seat encodes five measured behaviours of 0.0.81 (its SRT_LINE names them). A bump is a
+# reviewed unit that re-reads those five behaviours and moves this pin and SRT_LINE together (regime-cutover U85, U141).
+"npm:@anthropic-ai/sandbox-runtime" = "0.0.81"
 "npm:bash-language-server" = "latest"
 # Held with ccusage: the CI smoke installs both behind the same skew check; 2.2.32 declares no optionalDependencies.
 "npm:ccstatusline" = "2.2.32"

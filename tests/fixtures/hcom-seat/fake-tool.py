@@ -15,7 +15,8 @@ exits 0. `srt --settings <file> -- <command...>` (regime-cutover U85) plays the 
 shim's canary (`/bin/sh -c <script> canary <write> <read> <ssh>`) runs its script for real, under `$FAKE_SRT_SH`
 when set (`dash` in the POSIX-shell test) and with the three paths swapped for ones under a directory that does not
 exist, so the probes fail as the sandbox makes them fail; `$FAKE_SRT_CANARY`, when set, is printed instead. Any other
-command is executed. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
+command is executed. `srt --version` (regime-cutover U141) prints `$FAKE_SRT_VERSION`, `0.0.81` when unset, and exits
+1 printing nothing when it is `fail`. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
 """
 
 import json
@@ -63,6 +64,11 @@ if tool == "herdr" and argv[:2] == ["tab", "create"]:
     print("w1:p9")
 elif tool == "herdr" and argv[:2] == ["pane", "run"]:
     sys.exit(subprocess.run(argv[3:], check=False).returncode)
+elif tool == "srt" and argv == ["--version"]:
+    version = os.environ.get("FAKE_SRT_VERSION", "0.0.81")
+    if version == "fail":
+        sys.exit(1)
+    print(version)
 elif tool == "srt":
     command = argv[argv.index("--") + 1 :]
     if command[:2] == ["/bin/sh", "-c"]:

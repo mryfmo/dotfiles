@@ -237,6 +237,50 @@ function check_hcom() {
 }
 
 #
+# @description Report the installed srt (`@anthropic-ai/sandbox-runtime`, the omp seat boundary, regime-cutover U85)
+#   beside its mise pin (U141). srt is resolved as hcom-seat resolves it (`mise which srt`, else PATH). The pin is the
+#   exact version of the applied mise config (`~/.config/mise/config.toml`); when that file is absent or still tracks
+#   `latest` (the host has not run `make update` since the pin landed), the checkout's `home/dot_mise/config.toml`
+#   beside this script is read instead. A pin that cannot be read, a `--version` that fails or prints nothing, and a
+#   version whose first token differs from the pin are required failures (a failed read is never a pass); an absent
+#   srt is an optional warning.
+#
+function check_srt() {
+    local target pin='' config output first_line version
+    if ! target="$(mise which srt 2> /dev/null)" || [ -z "${target}" ]; then
+        target="$(command -v srt 2> /dev/null || true)"
+    fi
+    if [ -z "${target}" ] || [ ! -x "${target}" ]; then
+        warn_optional "srt not installed; run make update"
+        return 0
+    fi
+    for config in "${HOME%/}/.config/mise/config.toml" "${BASH_SOURCE[0]%/*}/../home/dot_mise/config.toml"; do
+        [ -r "${config}" ] || continue
+        pin="$(awk -F'"' '/^"npm:@anthropic-ai\/sandbox-runtime" = "/ { print $4; exit }' "${config}")" || pin=''
+        if [[ ${pin} =~ ^[0-9]+(\.[0-9]+)+$ ]]; then break; fi
+        pin=''
+    done
+    if [ -z "${pin}" ]; then
+        printf 'required failed: srt -> %s; no exact sandbox-runtime pin in ~/.config/mise/config.toml or the checkout\n' "${target}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    printf 'found:   srt -> %s (pin %s)\n' "${target}" "${pin}"
+    if ! output="$("${target}" --version 2> /dev/null)" || [ -z "${output}" ]; then
+        printf 'required failed: srt --version printed no version (pin %s); run make update\n' "${pin}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    IFS= read -r first_line <<< "${output}"
+    printf '%s\n' "${first_line}"
+    version="${first_line%% *}"
+    if [ "${version}" != "${pin}" ]; then
+        printf 'required failed: srt %s differs from the pin %s; run make update\n' "${version}" "${pin}" >&2
+        ((required_failures += 1))
+    fi
+}
+
+#
 # @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
 #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
 #
@@ -402,6 +446,7 @@ function main() {
     section "Agent tools"
     check_omp
     check_hcom
+    check_srt
 
     section "Seat logins"
     check_seat_logins

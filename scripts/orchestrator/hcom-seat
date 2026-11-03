@@ -215,6 +215,13 @@ for marker in HCOM_LAUNCHED HCOM_PROCESS_ID HCOM_SEAT_SANDBOX; do
     [[ -z ${!marker:-} ]] || refuse "refused inside a seat (${marker} is set): launch seats from a terminal outside every seat"
 done
 
+# The srt release line this script encodes (regime-cutover U141): srt 0.0.81's Seatbelt regex and glob rendering of a
+# settings path (clean_path below), its writable own TMPDIR (srt_tmp_roots_for), its own-write paths (seat_write_roots),
+# its deeper deny under an allow and its `*:*` bind grant (seat_sandbox_write) are what the seat boundary rests on. An
+# installed srt of another major.minor is refused before anything is made (the check after pin_exec srt); a bump is a
+# reviewed edit of this constant and the mise pin (home/dot_mise/config.toml) together, re-reading the five.
+readonly SRT_LINE=0.0
+
 # @description Succeed when `$1` is a clean absolute path that srt cannot read as a pattern: `/` followed by
 #   components of `[A-Za-z0-9._@+-]` only (no glob metacharacter `*?[]{}`, no whitespace, no quote or backslash), none
 #   of them empty, `.` or `..`, and no trailing `/`. srt 0.0.81 turns a settings path into a Seatbelt regex or a glob,
@@ -1590,6 +1597,16 @@ omp_cmd=("${pinned[@]}")
 srt_path=$(find_on_path srt) || refuse 'srt (@anthropic-ai/sandbox-runtime) not found in the private tool directory'
 pin_exec srt "${srt_path}"
 srt_cmd=("${pinned[@]}")
+# The installed srt is of the line this script encodes (SRT_LINE): its `--version` is read by the checked argv, status
+# first, so a failed or empty read is a refusal, never a pass; no seats root, store or process exists yet.
+srt_version=$("${srt_cmd[@]}" --version 2> /dev/null) ||
+    refuse "cannot read the srt version (${srt_cmd[*]} --version failed); hcom-seat encodes the srt ${SRT_LINE} line"
+srt_version=${srt_version%%$'\n'*}
+srt_version=${srt_version%% *}
+[[ ${srt_version} =~ ^([0-9]+\.[0-9]+)(\.[0-9A-Za-z.+-]+)?$ ]] ||
+    refuse "cannot read the srt version from '${srt_version}' (${srt_cmd[*]} --version); hcom-seat encodes the srt ${SRT_LINE} line"
+[[ ${BASH_REMATCH[1]} == "${SRT_LINE}" ]] ||
+    refuse "srt ${srt_version} is not of the ${SRT_LINE} line hcom-seat encodes; home/dot_mise/config.toml pins the release, and a bump is a reviewed edit of the pin and SRT_LINE together"
 # hcom and the herdr it drives run outside every sandbox: the launch execs hcom by its physical argv, and hcom finds
 # `hcom` and `herdr` through the shim directory first on PATH, as wrappers around their physical argv.
 hcom_path=$(find_on_path hcom) || refuse 'hcom not found on PATH'

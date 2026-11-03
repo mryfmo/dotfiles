@@ -2,12 +2,15 @@
 in the checkout's own store carries a `TRUST` section (as the checker's own `sections()` finds it: round 2 runs
 scripts/orchestrator/brief-check.py through one probe, never a loop of the lever's own), merges only with a `sweep`
 ledger row of the unit or a fix unit of it at the audited head, read through scripts/orchestrator/ledger.py and read by
-its shape; a unit whose brief has no such section merges as before. The fixture is PrLeverTestCase of test_pr_levers
+its shape; a unit whose brief has no such section merges as before. The probe answers no mark with exit 3, never 1
+(round 3: 1 is the interpreter's status for an uncaught exception, and a checker that did not compile had read as "no
+mark"), and a checker it cannot load or run is a refusal naming it. The fixture is PrLeverTestCase of test_pr_levers
 (the scratch checkout, the fake gh, `writes()`), the store built as PrMergeTest builds it plus the brief, the checker
 and its manifest (the checker's import runs its pin self-check); no test class is imported, since unittest discovery
 would run an imported class a second time."""
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -46,6 +49,29 @@ if "sweep" in sys.argv:
     sys.exit(0)
 runpy.run_path({real!r}, run_name="__main__")
 """
+# A checker the probe cannot load or run (round 3), with the text the refusal names: a syntax error and conflict markers
+# never compile, an empty file and `x = 1` have no `sections` (the except tuple's `module.BriefError` is the first
+# attribute asked), and an exit at import is the import's own status; none reaches the checker's pin self-check, a
+# statement of its module body, so the round-2 probe died with the interpreter's exit 1 and the lever read "no mark".
+BROKEN_CHECKERS = (
+    ("a syntax error", "def (\n", "SyntaxError"),
+    ("conflict markers before the real text", "<<<<<<< HEAD\n{real}", "SyntaxError"),
+    ("an empty file", "", "AttributeError"),
+    ("a module holding only x = 1", "x = 1\n", "AttributeError"),
+    ("an exit 0 at import", "import sys\nsys.exit(0)\n", "exited 0 at import"),
+    ("an exit 1 at import", "import sys\nsys.exit(1)\n", "exited 1 at import"),
+)
+# A python3 first on PATH that exits 1 for the probe's `-c` form and runs the real interpreter for the reader (round 3:
+# the lever's exit-1 path, shown without a checker that could produce it).
+FAILING_PROBE_PYTHON = """#!{real}
+import os
+import sys
+
+if sys.argv[1:4] == ["-I", "-S", "-c"]:
+    sys.exit(1)
+os.execv({real!r}, [{real!r}, *sys.argv[1:]])
+"""
+PROBE_CONSTANT = re.compile(r"^trust_probe='(.*?)'$", re.DOTALL | re.MULTILINE)
 
 
 def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"):
@@ -348,3 +374,77 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.assert_refused_before_ci(self.merge(), f"at the audited head {SHA_B}")
         self.ledger(earlier, carried, sweep_row(head=SHA_B))
         self.assert_merged(self.merge(), ts="2026-10-25T10:00:00Z")
+
+    def test_a_checker_the_probe_cannot_load_or_run_is_a_refusal_never_no_mark(self):
+        """Round 3 (the audit of da0c2df4, P2 f1 s7): the probe's whole body runs under one try, so a checker that does
+        not compile, an empty one, one without `sections` and one that exits at import are each exit 2 with one line
+        naming the checker and the exception class or the import exit code, a refusal with no write; the round-2 probe
+        died with the interpreter's exit 1, which the lever read as "no mark", and the TRUST brief merged with no sweep
+        row. The checker's own pin self-check (its exit 2 and line) passes through as before, and the real checker
+        over a plain brief still merges."""
+        real = (LEVERS / "brief-check.py").read_text()
+        for name, text, reason in BROKEN_CHECKERS:
+            with self.subTest(name):
+                self.checker.write_text(text.format(real=real))
+                run = self.merge()
+                self.assert_refused_before_ci(run, f"cannot load {self.checker}: {reason}")
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+        self.checker.write_text(real + "# one more line\n")
+        run = self.merge()
+        self.assert_refused_before_ci(run, f"of {self.checker} differs from the pin in")
+        self.assertNotIn("cannot load", run.stderr)
+        shutil.copy2(LEVERS / "brief-check.py", self.checker)
+        self.brief(PLAIN_BRIEF)
+        self.assert_merged(self.merge())
+
+    def test_a_probe_that_exits_1_is_a_failure_with_no_write(self):
+        """Round 3: exit 1 is the interpreter's own status for an uncaught exception, so the lever never reads it as
+        "no mark" (the round-2 lever did, and merged); a python3 first on PATH that exits 1 for the probe's `-c` form
+        makes the lever fail (exit 1) naming the probe, the brief, the checker and the status, with no write."""
+        real = shutil.which("python3", path=self.env["PATH"])
+        self.assertIsNotNone(real, "the lever needs a python3 on PATH")
+        fake_bin = self.root / "fake-python"
+        fake_bin.mkdir()
+        fake = fake_bin / "python3"
+        fake.write_text(FAILING_PROBE_PYTHON.format(real=real))
+        fake.chmod(0o755)
+        self.env["PATH"] = f"{fake_bin}:{self.env['PATH']}"
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn(f"the trust probe over {self.fixture_brief} ({self.checker}) exited 1", run.stderr)
+        self.assertNotIn("refused:", run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertEqual(self.writes(), [])
+
+    def test_the_probe_s_statuses_are_0_3_and_2_never_1(self):
+        """The lever's one `trust_probe` constant, run as the lever runs it: 0 for the mark, 3 for a brief without it,
+        2 and one stderr line (no traceback) for a checker it cannot load or run; 1 is never its own answer."""
+        probes = PROBE_CONSTANT.findall((LEVERS / "pr-merge.sh").read_text())
+        self.assertEqual(len(probes), 1, "one single-quoted constant")
+        probe = probes[0]
+
+        def ask(brief):
+            run = subprocess.run(
+                [sys.executable, "-I", "-S", "-c", probe, str(brief), str(self.checker)],
+                cwd=self.repo,
+                env=self.env,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            return run.returncode, run.stdout, run.stderr
+
+        self.assertEqual((0, "", ""), ask(self.fixture_brief))
+        self.assertEqual((3, "", ""), ask(self.brief(PLAIN_BRIEF, "U72-plain.md")))
+        real = (LEVERS / "brief-check.py").read_text()
+        for name, text, reason in BROKEN_CHECKERS:
+            with self.subTest(name):
+                self.checker.write_text(text.format(real=real))
+                status, out, err = ask(self.fixture_brief)
+                self.assertEqual((2, ""), (status, out), err)
+                self.assertTrue(err.startswith(f"brief-check: cannot load {self.checker}: "), err)
+                self.assertIn(reason, err)
+                self.assertEqual(err.count("\n"), 1, "one line")
+                self.assertNotIn("Traceback", err)

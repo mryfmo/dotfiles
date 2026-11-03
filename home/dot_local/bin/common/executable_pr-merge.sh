@@ -81,9 +81,13 @@
 #   `python3 -I -S -c`) loads that module by path and runs its `sections()` over the text read as its `main()` reads
 #   it, so the lever has no line grammar of its own (round 1 split the text on LF alone, while the checker's
 #   `splitlines()` also ends a line at a form feed, a vertical tab, a bare CR, NEL or U+2028). The probe exits 0 for
-#   the mark, 1 for a brief without it, and 2 (one stderr line naming the file) for a file that is not a brief (none
-#   of `GOAL`, `CHANGE`, `CONTEXT`), a heading that appears twice, bytes that are not UTF-8 or a failed read, which
-#   the lever maps as it maps the reader's statuses: 2 is a refusal carrying the line, any other exit is a failure.
+#   the mark, 3 for a brief without it, and 2 (one stderr line naming the file) for a file that is not a brief (none
+#   of `GOAL`, `CHANGE`, `CONTEXT`), a heading that appears twice, bytes that are not UTF-8, a failed read, or a
+#   checker that cannot be loaded or run (a syntax error, an empty or foreign file, an exit at import; round 3). The
+#   lever maps the statuses as it maps the reader's: 2 is a refusal carrying the line, any other exit, 1 included, is
+#   a failure. "No mark" is 3 and never 1 because 1 is also what the interpreter exits with on an uncaught exception
+#   (round 3: a checker that did not compile read as "no mark" and a `TRUST` brief merged with no sweep row), so the
+#   two answers are statuses the interpreter never produces on its own.
 #   With the mark the unit is of the trust-boundary class and
 #   must have its `security-audit` sweep before it merges: the checkout's `ledger.py sweep <unit> <audited head>`
 #   prints the newest row of the unit or a fix unit of it at the audited head whose verdict starts with the word
@@ -102,7 +106,7 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read, or the merge, failed.
+# @exitcode 1 A `gh` or `git` read, the trust probe (any status but 0, 2 or 3), or the merge, failed.
 # @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, no `sweep` row for
 #   a trust-boundary unit (its brief carries the `TRUST` section) at the audited head, a brief of the body's unit
 #   that is missing, ambiguous (two files match), a symlink, not this user's regular file, or one the brief checker's
@@ -230,29 +234,52 @@ findings_grammar="the leading '## Findings' section is one '- none' line, or one
 # The trust-boundary mark is read by the brief checker's own module (U147 round 2): this probe, run as `python3 -I -S
 # -c` with the brief and the checker's path as its two arguments, loads `scripts/orchestrator/brief-check.py` by path
 # (its import runs the checker's own pin self-check, so a rewritten checker reads no brief), reads the brief as the
-# checker's `main()` does and asks its `sections()`: exit 0 is the mark, 1 a brief without it, 2 (one stderr line
+# checker's `main()` does and asks its `sections()`: exit 0 is the mark, 3 a brief without it, 2 (one stderr line
 # naming the file) a file that is not a brief (none of the checker's JUDGED sections), a heading that appears twice
-# (its BriefError), bytes that are not UTF-8 or a failed read. Nothing else of the brief is read, and no grammar of
-# the lever's own touches the text. Single-quoted, so the Python holds no single quote.
+# (its BriefError), bytes that are not UTF-8 or a failed read. The whole body runs under one try (round 3): a checker
+# that cannot be loaded or run (a syntax error, conflict markers, an empty file or one without `sections`, a file
+# that is not Python, an exit at import other than the self-check's own exit 2, which passes through with its line)
+# is exit 2 with one line naming the checker, never the interpreter's exit 1 for an uncaught exception. "No mark" is
+# 3 and not 1 for the same reason: 1 is the interpreter's own status for a traceback, so the lever treats it as a
+# failure, and the two answers it acts on are statuses the interpreter never produces by itself. Nothing else of
+# the brief is read, and no grammar of the lever's own touches the text. The probe writes no bytecode cache: a
+# `__pycache__` entry of the checker with the source's size and mtime would be run in its place by the loader, so a
+# file changed within the second would answer with the old code. Single-quoted, so the Python holds no single quote.
 trust_probe='import importlib.util
 import sys
 
+sys.dont_write_bytecode = True
+
 brief, checker = sys.argv[1], sys.argv[2]
-spec = importlib.util.spec_from_file_location("brief_check", checker)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
 try:
-    with open(brief, encoding="utf-8") as handle:
-        text = handle.read()
-    found = module.sections(text)
-except (OSError, UnicodeDecodeError, module.BriefError) as error:
-    print(f"brief-check: cannot read {brief}: {error}", file=sys.stderr)
+    spec = importlib.util.spec_from_file_location("brief_check", checker)
+    if spec is None or spec.loader is None:
+        raise ImportError("not a Python file")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        with open(brief, encoding="utf-8") as handle:
+            text = handle.read()
+        found = module.sections(text)
+    except (OSError, UnicodeDecodeError, module.BriefError) as error:
+        print(f"brief-check: cannot read {brief}: {error}", file=sys.stderr)
+        sys.exit(2)
+    if not any(name in found for name in module.JUDGED):
+        names = ", ".join(module.JUDGED)
+        print(f"brief-check: {brief} is not a brief: none of {names} is a section", file=sys.stderr)
+        sys.exit(2)
+    marked = "TRUST" in found
+except SystemExit as error:
+    if error.code == 2:
+        raise
+    print(f"brief-check: cannot load {checker}: exited {error.code} at import", file=sys.stderr)
     sys.exit(2)
-if not any(name in found for name in module.JUDGED):
-    names = ", ".join(module.JUDGED)
-    print(f"brief-check: {brief} is not a brief: none of {names} is a section", file=sys.stderr)
+except BaseException as error:
+    print(f"brief-check: cannot load {checker}: {type(error).__name__}: {error}", file=sys.stderr)
     sys.exit(2)
-sys.exit(0 if "TRUST" in found else 1)'
+if marked:
+    sys.exit(0)
+sys.exit(3)'
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -554,9 +581,11 @@ require_dispositions() {
 #   there, standing order 24, so the parent's brief, which carries the class, is read): no match, two or more matches,
 #   a match that is a symlink or not a regular file of this user, and a file the checker's probe cannot read as a
 #   brief are each a refusal naming the path, never "no TRUST section" (standing order 21). The one thing read from
-#   the text is whether the checker's own `sections()` finds `TRUST` (trust_probe: exit 0 the mark, 1 no mark, 2 a
-#   refusal carrying the probe's line, any other exit a failure); the sweep row is then asked of the checkout's
-#   ledger.py (`sweep <unit> <head>`, the one reader, its status read as ledger_verdict reads it and its exit-0 answer
+#   the text is whether the checker's own `sections()` finds `TRUST` (trust_probe: exit 0 the mark, 3 no mark, 2 a
+#   refusal carrying the probe's line, any other exit, 1 included, a failure; round 3: 1 is the interpreter's own
+#   status for an uncaught exception, so a checker that did not compile had read as "no mark"); the sweep row is
+#   then asked of the checkout's ledger.py (`sweep <unit> <head>`, the one reader, its status read as ledger_verdict
+#   reads it and its exit-0 answer
 #   read by its shape, `none` or one row of four tab-separated fields with a ts, as require_verdict_row reads a row;
 #   round 2) at `audited_head`: the head itself, or for a `carried` row the earlier head whose verdict file the merge
 #   reads, so a head moved under a carried row needs no second sweep. Without the mark nothing changes. The lever
@@ -591,11 +620,13 @@ require_sweep_row() {
     # to the checker and no mark to the lever (round 2, finding 1); the lever defines no grammar and reads no line.
     status=0
     row=$("${python}" -I -S -c "${trust_probe}" "${brief}" "${brief_checker}" 2>&1) || status=$?
+    # 3, not 1, is "no mark" (round 3): 1 is also the interpreter's status for an uncaught exception, and a checker
+    # that did not compile had merged a TRUST brief with no sweep row; the probe never exits 1 by its own code.
     case ${status} in
     0) ;;
-    1) return 0 ;;
+    3) return 0 ;;
     2) refuse "${row#brief-check: }; a brief the gate cannot read as a brief is never a brief without a TRUST section" ;;
-    *) fail "the trust probe over ${brief} (${brief_checker}) exited ${status}: ${row:-no output}" ;;
+    *) fail "the trust probe over ${brief} (${brief_checker}) exited ${status}, neither the mark (0), no mark (3) nor a refusal (2): ${row:-no output}" ;;
     esac
     status=0
     row=$("${python}" -I -S "${ledger_reader}" "${store}" sweep "${unit}" "${audited_head}" 2>&1) || status=$?

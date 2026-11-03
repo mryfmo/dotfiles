@@ -528,9 +528,9 @@ command_policy:
     not_examples: [gh alias list]
 
 # Model IDs and efforts live only in this map. Profiles render into Claude
-# settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
-# ~/.agents/model-profiles.env for launchers. Keep main-session models fixed
-# within a session; switching models mid-session invalidates the prompt cache.
+# settings and per-profile Codex config files (~/.codex/<name>.config.toml).
+# Keep main-session models fixed within a session; switching models
+# mid-session invalidates the prompt cache.
 # omp.effort is the seat's thinking level, rendered as defaultThinkingLevel into each role overlay
 # (~/.agents/omp/profiles/<role>.yml); it follows the effort of the vendor the omp model routes to.
 model_profiles:

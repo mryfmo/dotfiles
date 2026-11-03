@@ -744,12 +744,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             result.stdout,
         )
         self.assertNotIn("{{", result.stdout)
-        env = outputs[self.temp_dir / "home/dot_agents/model-profiles.env"]
-        self.assertIn(
-            'MODEL_PROFILE_SECURITY_CLAUDE_ARGS="--model claude-fable-5 --effort high"',
-            env,
-        )
-        self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
 
     def test_claude_sandbox_renders_optional_socket_and_extra_write_keys(self) -> None:
         manifest = {
@@ -1153,8 +1147,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'sandbox_mode = "workspace-write"',
             outputs[self.temp_dir / manifest["codex"]["config_path"]],
         )
-        env = outputs[self.temp_dir / "home/dot_agents/model-profiles.env"]
-        self.assertIn('MODEL_PROFILE_AUDIT_CODEX_ARGS="--profile audit"', env)
 
     def test_model_profiles_reject_invalid_sandbox_mode(self) -> None:
         manifest = sample_manifest()
@@ -1231,14 +1223,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, current)
-
-        env_path = self.temp_dir / "home/dot_agents/model-profiles.env"
-        self.assertIn('MODEL_PROFILE_INTERACTIVE="standard"', outputs[env_path])
-        self.assertIn('MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"', outputs[env_path])
-        self.assertIn(
-            'MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"',
-            outputs[env_path],
-        )
 
         agent_path = self.temp_dir / "home/dot_claude/agents/express-explorer.md"
         self.assertIn("model: haiku", outputs[agent_path])
@@ -1865,28 +1849,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             path.index("{{ .chezmoi.homeDir }}/.local/bin/common"),
         )
 
-    def test_model_profiles_env_selects_no_github_store(self) -> None:
-        # One GitHub login per machine, in gh's default directory: the launch fragment names no store.
-        env = self.module.render_model_profiles_env(sample_manifest())
-        self.assertNotIn("_CONFIG_DIR=", env)
-        self.assertNotIn("GH_", env)
-
     def test_the_herdr_agents_worker_era_keys_are_gone(self) -> None:
         # U40: nothing reads worker_kind, orchestrator_kind, worker_profile, worker_worktree or worker_cap since
-        # U26 removed herdr-agents' worker modes, so the manifest drops them and the launch fragment names none.
+        # U26 removed herdr-agents' worker modes, so the manifest drops them; U142 retired the launch fragment
+        # (model-profiles.env) that once carried them, so the generator renders no HERDR_AGENTS_ line anywhere.
         keys = ("worker_kind", "orchestrator_kind", "worker_profile", "worker_worktree", "worker_cap")
         # The keys were top-level; read as text, as make unit-test has no PyYAML.
         text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         for key in keys:
             with self.subTest(key=key):
                 self.assertIsNone(re.search(rf"^{re.escape(key)}:", text, re.MULTILINE))
+        self.assertFalse((ROOT / "home/dot_agents/model-profiles.env").exists())
         stale = sample_manifest() | {key: "x" for key in keys}
-        for env in (
-            self.module.render_model_profiles_env(sample_manifest()),
-            self.module.render_model_profiles_env(stale),
-            (ROOT / "home/dot_agents/model-profiles.env").read_text(),
-        ):
-            self.assertNotIn("HERDR_AGENTS_", env)
+        for manifest in (sample_manifest(), stale):
+            outputs = self.module.expected_outputs(manifest)
+            self.assertNotIn(self.temp_dir / "home/dot_agents/model-profiles.env", outputs)
+            for path, rendered in outputs.items():
+                with self.subTest(path=str(path)):
+                    self.assertNotIn("HERDR_AGENTS_", rendered)
 
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()
@@ -1894,19 +1874,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             self.module.interactive_profile(manifest)
-
-    def test_model_profiles_env_renders_claude_advisor_only_when_set(self) -> None:
-        manifest = sample_manifest()
-        manifest["model_profiles"]["standard"]["claude"]["advisor"] = "fable"
-
-        env = self.module.render_model_profiles_env(manifest)
-
-        self.assertIn(
-            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high --advisor fable"',
-            env,
-        )
-        self.assertIn('MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"', env)
-        self.assertEqual(env.count("--advisor"), 1)
 
     def test_model_profiles_reject_unsafe_advisor(self) -> None:
         manifest = sample_manifest()

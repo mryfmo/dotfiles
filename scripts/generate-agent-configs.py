@@ -1893,25 +1893,6 @@ sys.stdout.write(merge_config(sys.stdin.read()))
 '''.replace("__HOOK_TRUST_BLOCK__\n", render_hook_trust_block(manifest))
 
 
-def render_model_profiles_env(manifest: dict[str, Any]) -> str:
-    profiles = model_profiles(manifest)
-    interactive_profile(manifest)
-    lines = [
-        "# Shell fragment of the model profiles for agent launchers.",
-        f"# {GENERATED_HEADER}",
-        f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
-    ]
-    for name, profile in sorted(profiles.items()):
-        var = str(name).upper()
-        claude = profile["claude"]
-        claude_args = f"--model {claude['model']} --effort {claude['effort']}"
-        if "advisor" in claude:
-            claude_args += f" --advisor {claude['advisor']}"
-        lines.append(f'MODEL_PROFILE_{var}_CLAUDE_ARGS="{claude_args}"')
-        lines.append(f'MODEL_PROFILE_{var}_CODEX_ARGS="--profile {name}"')
-    return "\n".join(lines) + "\n"
-
-
 SKILLS_DIRECTORY_RE = re.compile(r"^(?:~/|/)[A-Za-z0-9._/-]+$")
 
 
@@ -2368,7 +2349,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         )
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
     outputs[ROOT / AUDIT_CODEX_CONFIG] = render_codex_audit_config(manifest)
-    outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     for role in omp_roles(manifest):
         outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)

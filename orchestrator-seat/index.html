@@ -5713,7 +5713,7 @@
 </tr>
 <tr>
 <td>the team (<code>--hcom-team</code>, <code>HCOM_TEAM</code>)</td>
-<td>closed: the launcher passes exactly the team it was given and the gate never derives one from the cwd, so an explicit team cannot be swapped for the checkout's slug; a value outside the team grammar leaves the gate inert, visibly; <code>test_the_team_crosses_the_launch_boundary_as_a_flag_and_the_gate_blocks_on_it</code>, the flag tests in <code>tests/stop-gate.test.ts</code>. residual: the gate half of that regression needs bun, which the CI unit job does not install, so it runs on hosts with bun only; owner: the CI workflow</td>
+<td>closed: the launcher passes exactly the team it was given and the gate never derives one from the cwd, so an explicit team cannot be swapped for the checkout's slug; a value outside the team grammar leaves the gate inert, visibly; <code>test_the_team_crosses_the_launch_boundary_as_a_flag_and_the_gate_blocks_on_it</code>, the flag tests in <code>tests/stop-gate.test.ts</code>. closed (regime-cutover U145): the gate half of that regression runs in CI too, in the step <code>Run the omp TypeScript tests</code> of the <code>test</code> job on every test cell, which puts bun on the job's search list before <code>Run Python unit tests</code></td>
 </tr>
 <tr>
 <td>the environment (<code>HCOM_NAME</code>, the override)</td>

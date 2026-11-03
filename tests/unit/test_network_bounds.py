@@ -392,6 +392,12 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),
     (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_security_audit_skill" installer "${SECURITY_AUDIT_SKILL_COMMIT}" "${install_dir}" "${install_dir}/SKILL.md" -- "curl -fsSL ${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=3 security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}/skills/security-audit" "mv <staging> ${install_dir}"',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
         "scripts/orchestrator/pr-audit.sh",
         "#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail",
     ): Exempt("comment; names the tool without running it"),

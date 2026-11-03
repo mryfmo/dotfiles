@@ -1818,12 +1818,12 @@ function update_pi_claude_bridge() (
 #   mktemp directory under TMPDIR and verified against its reviewed sha256 before anything is unpacked; the
 #   skills/security-audit subtree alone is unpacked beside the install path and replaces it with one rename, so a
 #   failed download, digest check or unpack leaves the previous tree as it was. A download that fails or cannot run
-#   (offline, curl absent) degrades and continues like update_terminal_code: one WARN line naming the step, nothing
-#   installed, nothing recorded, and make update goes on (the next run retries). A digest mismatch or an archive
-#   without skills/security-audit/SKILL.md is a hard failure of the step: fail closed on a tampered archive. A tree
-#   whose manifest record already names the pinned commit is skipped. The record names the install path: make doctor
-#   reads it, and the doctor's installer_owned_skill_names (scripts/check-agent-runtime.py) keeps the tree out of the
-#   unmanaged-skill WARN.
+#   (offline, no download tool on PATH) degrades and continues like update_terminal_code: one WARN line naming the
+#   step, nothing installed, nothing recorded, and make update goes on (the next run retries). A digest mismatch or an
+#   archive without skills/security-audit/SKILL.md is a hard failure of the step: fail closed on a tampered archive. A
+#   tree whose manifest record already names the pinned commit is skipped. The record names the install path: make
+#   doctor reads it, and the doctor's installer_owned_skill_names (scripts/check-agent-runtime.py) keeps the tree out
+#   of the unmanaged-skill WARN.
 # @exitcode 0 Installed, already installed, or the download failed (a WARN; nothing installed or recorded).
 # @exitcode 1 The digest check, the unpack, the archive shape or the rename failed; the existing install is unchanged.
 #

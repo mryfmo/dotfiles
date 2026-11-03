@@ -2,8 +2,9 @@
 # @file regime-start
 # @brief Start a program's orchestrator seat, or, as the supervisor's pass, relaunch every registered one that died.
 # @description
-#   Regime-cutover U36: the operator starts one omp seat and talks to it; that seat starts the others (the
-#   hcom-orchestration skill's step 0). Run `regime-start [<program>]` in the repository checkout. The store and
+#   Regime-cutover U36: the operator starts the orchestrator seat and talks to it; an operator or coordinator command
+#   from a terminal outside every seat starts and relaunches the worker seats (the hcom-orchestration skill's step 0);
+#   only the orchestrator is supervised. Run `regime-start [<program>]` in the repository checkout. The store and
 #   team are an explicit HCOM_DIR and HCOM_TEAM when set; else, for the dotfiles program before its one-time store
 #   move (slug `dotfiles`, no `~/.local/state/hcom/dotfiles/origin`, and `~/.local/state/hcom-regime/hcom.db`
 #   present), the pre-move pair `~/.local/state/hcom-regime` and `regime`, because a seat's environment carries

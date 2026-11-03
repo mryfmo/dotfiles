@@ -467,7 +467,7 @@
       "target": ".local/bin/common/regime-start",
       "kind": "file",
       "executable": true,
-      "sha256": "531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142"
+      "sha256": "c7b630d2353020e57c57a01af94fac5f7ed7f503071de9d1a15172eeb057bc6b"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-stop",

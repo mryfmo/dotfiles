@@ -463,8 +463,8 @@ Model selection is governed by `model_profiles` in
 `home/dot_agents/agent-config.yaml`, the single place where model IDs and
 efforts live. The generator renders the interactive profile into the managed
 Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
-profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
-launchers, and the low-cost `express-explorer` Claude subagent.
+profile for `codex --profile <name>`, and the low-cost `express-explorer`
+Claude subagent.
 `make render-check` runs `uv run --with pyyaml scripts/generate-agent-configs.py
 --check` to confirm every rendered file matches the manifest; tasks and docs
 name that one command, since a bare `python3` run fails without PyYAML.

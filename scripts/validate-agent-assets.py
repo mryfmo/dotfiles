@@ -1810,24 +1810,12 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
 
     validate_codex_profile_modify_scripts(manifest)
 
-    env_path = ROOT / "home/dot_agents/model-profiles.env"
-    if not env_path.exists():
-        fail(f"{env_path} is missing")
-    env_text = env_path.read_text()
-    for token in (
-        "MODEL_PROFILE_INTERACTIVE",
-        "MODEL_PROFILE_STANDARD_CODEX_ARGS",
-        "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS",
-    ):
-        if token not in env_text:
-            fail(f"{env_path} must define {token}")
-
     express_agent = ROOT / "home/dot_claude/agents/express-explorer.md"
     if not express_agent.exists() or "model:" not in express_agent.read_text():
         fail(f"{express_agent} must define the low-cost explorer subagent")
 
     codex_agents = standing_rule_text(manifest, "codex")
-    for token in ("model_profiles", "--profile standard", "model-profiles.env"):
+    for token in ("model_profiles", "--profile standard"):
         if token not in codex_agents:
             fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document model profile token {token!r}")
 

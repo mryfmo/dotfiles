@@ -429,7 +429,6 @@ cache-check chezmoi" ]
     grep -q '.codex/ccgate.jsonnet' home/.chezmoiremove
     grep -q 'model_profiles' home/dot_agents/agent-config.yaml
     grep -q 'model = ' home/dot_codex/modify_private_standard.config.toml
-    grep -q 'MODEL_PROFILE_INTERACTIVE' home/dot_agents/model-profiles.env
     grep -q 'model:' home/dot_claude/agents/express-explorer.md
     grep -q 'model_profiles' home/dot_config/claude/rules/model-selection.md
     grep -q 'dot_config/claude/rules/model-selection.md' home/dot_codex/AGENTS.md.tmpl

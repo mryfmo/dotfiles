@@ -765,7 +765,9 @@ domains, and protected paths.
 ### Start here: the omp seats
 
 The coordinator is one omp seat, the orchestrator, and you talk to it in its
-herdr pane. It starts the worker seats itself, relaunches a seat that died, runs
+herdr pane. The operator starts it; worker seats are started and
+relaunched by an operator or coordinator command from a terminal outside every
+seat (the skill's step 0), and only the orchestrator is supervised. It runs
 each audit as one fresh `~/.local/bin/common/pr-audit.sh <n> --records <store>` run, and runs the program loop
 (the `hcom-orchestration` skill). A Claude Code session is optional and not part
 of the loop.

@@ -336,13 +336,15 @@ jobs:
           printf 'CLAUDE_DOCTOR_BIN=%s\n' "${claude_bin}" >> "${GITHUB_ENV}"
 
       - name: Run the omp TypeScript tests
-        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && matrix.system == 'client' }}
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
           set -euo pipefail
           # The stop gate and the openai-siwc extension are TypeScript that omp loads; until this step their bun
-          # tests ran only on worker seats (U39 addendum 2). bun is the version mise resolves from the copied config
-          # and its minimum_release_age, as hosts get it (no literal here). One run per directory: bun exits 1 when
-          # a filter matches no test file, so a moved or emptied directory fails the step instead of passing it.
+          # tests ran only on worker seats (U39 addendum 2). The suites run on every test cell since regime-cutover
+          # U145 (the ubuntu-24.04 client cell alone from U39b until then). bun is the version mise resolves from the
+          # copied config and its minimum_release_age, as hosts get it (no literal here). One run per directory: bun
+          # exits 1 when a filter matches no test file, so a moved or emptied directory fails the step instead of
+          # passing it.
           mise -C "${RUNNER_TEMP}/statusline-mise" install bun
           bun_bin="$(mise -C "${RUNNER_TEMP}/statusline-mise" which bun)"
           "${bun_bin}" --version
@@ -364,7 +366,7 @@ jobs:
           # The suites and whatever they spawn run on this one bun: a test that starts a bare `bun` would otherwise
           # resolve mise's bun shim, which this job's global config does not resolve ("bun is not a valid shim",
           # exit 1; ADDENDUM 3). The Python tests that run stop-gate.ts under bun where bun is found
-          # (test_hcom_seat.py, U33c) get the real binary first on PATH too, so in this cell they run that half.
+          # (test_hcom_seat.py, U33c) get the real binary first on PATH too, so they run the gate half in every test cell.
           for tests in home/dot_agents/omp/hooks/tests home/dot_agents/omp/extensions/openai-siwc/tests; do
             PATH="${bun_bin_dir}:${PATH}" "${bun_bin}" test "./${tests}"
           done

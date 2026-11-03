@@ -18,18 +18,23 @@ row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an
 and read as "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every choice of a newest row is
 made in) and as written (`ts_text`, for the lines that name the row), its seven cells and its line number.
 
-The three questions, each the newest row by `(ts, line)` (the later line at an equal ts, the file position deciding
+The four questions, each the newest row by `(ts, line)` (the later line at an equal ts, the file position deciding
 nothing else; round 5): `newest_for_head(pr, head)` is the newest row of the pull request at the full sha, whatever
 its verdict (`pr-merge.sh`'s row for the head and for a carried row's source); `newest_audit_at_another_head(unit,
 head, pr)` is the newest audit row of the unit or a fix unit of it (`U<n>[a-z]`, standing order 24) at any other
-head, an audit row being one whose verdict starts with the word `correct` or `incorrect` (a `carried`, `blocked` or
-`-` row is no audit); `already_audited(unit, head, pr)` is the newest audit row of the same units at the head
-itself. An audit row whose `head_sha` is not 40 hex is Malformed.
+head, an audit row being one whose verdict starts with the word `correct` or `incorrect` (a `carried`, `blocked`,
+`sweep` or `-` row is no audit); `already_audited(unit, head, pr)` is the newest audit row of the same units at the
+head itself; `newest_sweep(unit, head)` is the newest sweep row of the same units at the head, a sweep row being one
+whose verdict starts with the word `sweep` (the advisory row of the `security-audit` skill the AGENTS.md Audit sweep
+rule describes: pr `-`, head the swept sha, verifier the skill and its pin, evidence the findings file; U144, U147),
+which no audit question sees. An audit or sweep row whose `head_sha` is not 40 hex is Malformed.
 
 `ledger.py <store> verdict <pr> <head>` prints `<ts>\\t<unit>\\t<verdict>\\t<evidence>` of the newest row for the head,
 or `none`; `ledger.py <store> carry-source <unit> <head> [--pr <pr>]` prints `<head_sha>\\t<verdict>\\t<unit>` of the
 newest audit row at another head (its unit the row's own, a `U<n>b` fix unit's row under `U<n>b`, which names its
-verdict file and disposition rows; U125 for the U122 round 6 residual), or `none`. Both exit 2 with one stderr line
+verdict file and disposition rows; U125 for the U122 round 6 residual), or `none`; `ledger.py <store> sweep <unit>
+<head>` prints `<ts>\\t<unit>\\t<verifier>\\t<evidence>` of the newest sweep row of the unit or a fix unit of it at the
+head (`pr-merge.sh`'s sweep gate for a trust-boundary unit, U147), or `none`. Each exits 2 with one stderr line
 naming the file and line when the store cannot
 be read as data (standing order 21: a failed read is never "no row").
 """
@@ -49,6 +54,9 @@ TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # the one timestamp form of the store, read by
 TS_FORM = "YYYY-MM-DDThh:mm:ssZ"  # the same form as the refusals spell it
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
+# A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep
+# rule; U147): the same word boundary as AUDIT_VERDICT, so `sweep (advisory)` and `sweep;` are sweep rows too.
+SWEEP_VERDICT = re.compile(r"^sweep(?:$|[\s(;,])")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -88,6 +96,11 @@ class Row:
         match = AUDIT_VERDICT.match(self.verdict)
         return match.group(1) if match else None
 
+    @property
+    def sweep(self):
+        """True when the verdict starts with the word `sweep` (a sweep row, never an audit row)."""
+        return SWEEP_VERDICT.match(self.verdict) is not None
+
 
 def newest(rows):
     """The row with the latest ts, the later line at an equal ts, or None."""
@@ -125,6 +138,21 @@ class Ledger:
         """The newest audit row of the unit or a fix unit of it at `head` itself, or None (round 5 P1: a head the
         ledger judged is never carried)."""
         return newest(row for row in self.audits(unit, pr) if row.head_sha == head)
+
+    def newest_sweep(self, unit, head):
+        """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
+        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex is Malformed,
+        as an audit row is, so a short sha is never read as "no sweep" (standing order 21)."""
+        own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
+        found = []
+        for row in self.rows:
+            if not row.sweep or not own.match(row.unit):
+                continue
+            if not SHA.match(row.head_sha):
+                raise Malformed(f"{self.name}:{row.line}: the head_sha of a sweep row is not 40 hex: {row.head_sha!r}")
+            if row.head_sha == head:
+                found.append(row)
+        return newest(found)
 
 
 def parse_ledger(name, text):
@@ -183,22 +211,29 @@ def main(argv=None):
     source.add_argument(
         "--pr", help="the pull request's decimal number; without it, the unit's rows of every pull request"
     )
+    sweep = forms.add_parser(
+        "sweep", help="the newest sweep row of the unit at the head: <ts>\\t<unit>\\t<verifier>\\t<evidence>, or none"
+    )
+    sweep.add_argument("unit", help="the body's unit, U<n>; its fix units U<n>[a-z] count with it")
+    sweep.add_argument("head", help="the audited head, 40 hex")
     args = parser.parse_args(argv)
     if not SHA.match(args.head):
         parser.error(f"the head {args.head!r} is not 40 hex")
     if args.form == "verdict" and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
-    if args.form == "carry-source":
-        if not UNIT.match(args.unit):
-            parser.error(f"the unit {args.unit!r} is not U<n>")
-        if args.pr is not None and not PULL_REQUEST.match(args.pr):
-            parser.error(f"the pull request {args.pr!r} is not a decimal number")
+    if args.form in ("carry-source", "sweep") and not UNIT.match(args.unit):
+        parser.error(f"the unit {args.unit!r} is not U<n>")
+    if args.form == "carry-source" and args.pr is not None and not PULL_REQUEST.match(args.pr):
+        parser.error(f"the pull request {args.pr!r} is not a decimal number")
     store = args.store.rstrip("/") or args.store
     try:
         ledger = read_ledger(os.path.join(store, "ledger.tsv"))
         if args.form == "verdict":
             row = ledger.newest_for_head(args.pr, args.head)
             print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verdict, row.evidence)))
+        elif args.form == "sweep":
+            row = ledger.newest_sweep(args.unit, args.head)
+            print(NONE if row is None else "\t".join((row.ts_text, row.unit, row.verifier, row.evidence)))
         else:
             row = ledger.newest_audit_at_another_head(args.unit, args.head, args.pr)
             print(NONE if row is None else "\t".join((row.head_sha, row.verdict, row.unit)))

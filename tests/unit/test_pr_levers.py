@@ -1104,6 +1104,8 @@ class PrMergeTest(PrLeverTestCase):
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         self.ledger(ledger_row(SHA_A))
         self.verdict()
+        (self.records / "briefs").mkdir()
+        (self.records / "briefs/U71-fixture.md").write_text("GOAL\nfixture\n")  # no TRUST heading (U147)
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
 
     def ledger(self, *rows):

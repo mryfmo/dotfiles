@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when its brief carries the `TRUST` section, and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -73,6 +73,20 @@
 #   else made after the pinned one failed) is a failure with no receipt that names both shas. The
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
+#   Since regime-cutover U147 the lever also reads the unit's brief, the one file `<store>/briefs/<unit>-*.md` of the
+#   same store (`<unit>` the body's; a fix unit writes its parent's id there, standing order 24, so the parent's
+#   brief, which carries the class, is read), for the trust-boundary mark: a line that, right-stripped, is `TRUST`
+#   (the one heading grammar, `heading()` of `scripts/orchestrator/brief-check.py`, which requires that section once
+#   a trigger term fires; the AGENTS.md Audit sweep rule). With the mark the unit is of the trust-boundary class and
+#   must have its `security-audit` sweep before it merges: the checkout's `ledger.py sweep <unit> <audited head>`
+#   prints the newest row of the unit or a fix unit of it at the audited head whose verdict starts with the word
+#   `sweep` (pr `-`, verifier the skill and its pin, evidence the findings file under the store), or `none`, which is
+#   a refusal naming the unit, the head and the brief, before the checks read and the one write. The audited head is
+#   the one `require_verdict_row` set, so a head moved under a `carried` row needs no second sweep. No brief, two
+#   briefs, a brief that is a symlink or not this user's regular file, and a brief that cannot be read or is empty
+#   are each a refusal naming the path, never "no TRUST section" (standing order 21); the lever reads nothing else of
+#   the brief, never the findings file a sweep row names, and judges no sweep's content. A unit whose brief has no
+#   `TRUST` section merges as before.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the checkout's own store, above; a directory outside the checkout is refused).
@@ -80,14 +94,15 @@
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
 # @exitcode 1 A `gh` or `git` read, or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a ledger the
-#   checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the calendar, a wrong
-#   header or column count, an empty required cell), no python3 or no `scripts/orchestrator/ledger.py` in the
-#   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>`
-#   for this head or whose earlier head has no `correct`
-#   row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more without its `residual`
-#   disposition row, a
-#   malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, no `sweep` row for
+#   a trust-boundary unit (its brief carries the `TRUST` section) at the audited head, a brief of the body's unit
+#   that is missing, ambiguous (two files match), a symlink, not this user's regular file, unreadable or empty, a
+#   ledger the checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the
+#   calendar, a wrong header or column count, an empty required cell, a sweep or audit row whose head is not 40 hex:
+#   the reader's exit 2), no python3 or no `scripts/orchestrator/ledger.py` in the checkout, a `carried` row whose
+#   evidence names no `carried <earlier> <head> <sha256>` for this head or whose earlier head has no `correct` row,
+#   no verdict file for the audited head, a P2 or P3 finding of weight 10 or more without its `residual` disposition
+#   row, a malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path that is a symlink or outside the
 #   checkout, or CI that is not green on the head.
 # @example
 #   ~/.local/bin/common/pr-merge.sh 480 --records .orchestration/orchestrate/regime-cutover
@@ -492,6 +507,64 @@ require_dispositions() {
     done
 }
 
+# @description Refuse unless the ledger holds the unit's sweep row at `audited_head` when the unit is of the
+#   trust-boundary class (regime-cutover U147; the AGENTS.md Audit sweep rule: every unit whose brief carries a `TRUST`
+#   section gets one sweep of the `security-audit` skill before its pull request merges). The brief is the one file
+#   `<store>/briefs/<unit>-*.md` of the checkout's own store, `<unit>` the body's unit (a fix unit writes its parent's
+#   id there, standing order 24, so the parent's brief, which carries the class, is read): no match, two or more
+#   matches, a match that is a symlink or not a regular file of this user, and a brief read_file cannot read or finds
+#   empty are each a refusal naming the path, never "no TRUST section" (standing order 21). The one thing read from
+#   the text is whether a line, right-stripped, is `TRUST`; the sweep row is then asked of the checkout's ledger.py
+#   (`sweep <unit> <head>`, the one reader, its status read as ledger_verdict reads it) at `audited_head`: the head
+#   itself, or for a `carried` row the earlier head whose verdict file the merge reads, so a head moved under a
+#   carried row needs no second sweep. Without the mark nothing changes. The lever reads neither the findings file
+#   the row names nor the sweep's content.
+require_sweep_row() {
+    local brief text line listed status=0 marked='' row
+    local briefs=()
+    shopt -s nullglob
+    briefs=("${store}/briefs/${unit}-"*.md)
+    shopt -u nullglob
+    # The match count is read as a word: no arithmetic on an operand the lever did not assign a decimal to.
+    case ${#briefs[@]} in
+    0) refuse "the brief of ${unit} is not one file: nothing matches ${store}/briefs/${unit}-*.md; the merge gate reads the brief for the TRUST section (the trust-boundary mark), so a unit without its brief in the store never merges" ;;
+    1) ;;
+    *)
+        listed=''
+        for brief in "${briefs[@]}"; do
+            listed+="${listed:+, }${brief}"
+        done
+        refuse "the brief of ${unit} is not one file: ${listed} all match ${store}/briefs/${unit}-*.md"
+        ;;
+    esac
+    brief=${briefs[0]}
+    [[ ! -L ${brief} && -f ${brief} && -O ${brief} ]] ||
+        refuse "${brief} is not a regular file of this user (a symlink or missing); the brief is read from the checkout's own store"
+    read_file "${brief}" text || status=$?
+    case ${status} in
+    0) ;;
+    1) refuse "${brief} is empty; a brief without its sections cannot say whether ${unit} is of the trust-boundary class" ;;
+    *) refuse "cannot read ${brief} (read_file exited ${status}); a brief the gate cannot read is never a brief without a TRUST section" ;;
+    esac
+    # The one heading grammar is brief-check.py:264-268 (`heading()`: the line right-stripped is the section name), so
+    # `TRUST   ` is the mark and `TRUST:` or `the TRUST section` inside a sentence is not; the lever defines no grammar.
+    while IFS= read -r line; do
+        line=${line%$'\r'}
+        line=${line%"${line##*[![:space:]]}"}
+        [[ ${line} != TRUST ]] || marked=1
+    done <<< "${text}"
+    [[ -n ${marked} ]] || return 0
+    status=0
+    row=$("${python}" -I -S "${ledger_reader}" "${store}" sweep "${unit}" "${audited_head}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${row#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger} for the sweep row of ${unit}: ${row:-no output}" ;;
+    esac
+    [[ ${row} != none ]] ||
+        refuse "${ledger} has no sweep row for ${unit} (or a fix unit of it) at the audited head ${audited_head}; the brief ${brief} carries the TRUST section, so the unit is of the trust-boundary class, and the AGENTS.md Audit rule says every unit of that class gets one sweep of the security-audit skill before its pull request merges (a row with verdict sweep, pr -, head ${audited_head}); run the sweep and write its row, or wait for it"
+}
+
 # @description Set `ledger`, `store`, `units_file` and `unit` to the one store the merge may read (U71, bot P1
 #   4370212009: a caller-chosen ledger.tsv could hold a fabricated row): `<toplevel>/.orchestration/orchestrate/
 #   <program>/ledger.tsv` of this main checkout, `<program>` and `U<n>` taken from the pull request body's one
@@ -569,6 +642,7 @@ resolve_store
 
 require_verdict_row "${head}"
 require_dispositions "${audited_head}" "${audited_unit}"
+require_sweep_row
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

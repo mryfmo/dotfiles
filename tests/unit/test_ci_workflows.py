@@ -320,7 +320,8 @@ class MakeUnitTestTest(unittest.TestCase):
 
 
 class TypeScriptTestsStepTest(unittest.TestCase):
-    # U39 addendum 2: the bun tests of the stop gate and the openai-siwc extension run in CI.
+    # U39 addendum 2: the bun tests of the stop gate and the openai-siwc extension run in CI; since regime-cutover
+    # U145 on every test cell, because the macOS cell is the one closest to the hosts the seats run on.
     DIRECTORIES = ("home/dot_agents/omp/hooks/tests", "home/dot_agents/omp/extensions/openai-siwc/tests")
 
     def step(self) -> str:
@@ -328,10 +329,15 @@ class TypeScriptTestsStepTest(unittest.TestCase):
             TEST.read_text().split("      - name: Run the omp TypeScript tests\n", 1)[1].split("\n      - name: ", 1)[0]
         )
 
-    def test_the_ubuntu_client_cell_runs_bun_over_each_directory(self) -> None:
+    def test_every_test_cell_runs_bun_over_each_directory(self) -> None:
         step = self.step()
-        gate = "steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && matrix.system == 'client'"
+        gate = "steps.decide.outputs.should_test == 'true'"
         self.assertIn(f"if: ${{{{ {gate} }}}}\n", step)
+        # A later edit that narrows the step to one cell (an os or system term in the condition) fails here by name.
+        condition = next(line for line in step.splitlines() if line.strip().startswith("if: "))
+        for cell_term in ("matrix.os", "matrix.system", "runner.os"):
+            with self.subTest(cell_term=cell_term):
+                self.assertNotIn(cell_term, condition)
         self.assertIn("set -euo pipefail\n", step)
         self.assertIn('mise -C "${RUNNER_TEMP}/statusline-mise" install bun\n', step)
         self.assertIn(f"for tests in {' '.join(self.DIRECTORIES)}; do\n", step)

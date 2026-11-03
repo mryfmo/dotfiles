@@ -50,6 +50,47 @@ function setup() {
     [[ "${output}" == *"optional warning: hcom not installed"* ]]
 }
 
+# check_srt (U141) resolves srt as hcom-seat does (`mise which srt`, else PATH), so each case gives it a `mise` that
+# finds nothing and a PATH of its own; the pin is read from the checkout's home/dot_mise/config.toml, the fallback
+# when the scratch HOME holds no applied mise config.
+@test "[common] check_srt reports the installed srt beside its mise pin" {
+    local bin="${BATS_TEST_TMPDIR}/bin" pin
+    pin="$(awk -F'"' '/^"npm:@anthropic-ai\/sandbox-runtime" = "/ { print $4; exit }' home/dot_mise/config.toml)"
+    [[ "${pin}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+    mkdir -p "${bin}"
+    printf '#!/usr/bin/env bash\nprintf "%s\\n"\n' "${pin}" > "${bin}/srt"
+    chmod +x "${bin}/srt"
+    run env HOME="${BATS_TEST_TMPDIR}" PATH="${bin}:${PATH}" bash -c "source '${SCRIPT_PATH}'; mise() { return 1; }; check_srt; echo \"req=\${required_failures}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   srt -> ${bin}/srt (pin ${pin})"* ]]
+    [[ "${output}" == *"${pin}"*"req=0"* ]]
+    [[ "${output}" != *"required failed"* ]]
+}
+
+@test "[common] check_srt counts a required failure naming both when the installed version differs from the pin" {
+    local bin="${BATS_TEST_TMPDIR}/bin" pin
+    pin="$(awk -F'"' '/^"npm:@anthropic-ai\/sandbox-runtime" = "/ { print $4; exit }' home/dot_mise/config.toml)"
+    mkdir -p "${bin}"
+    printf '#!/usr/bin/env bash\nprintf "9.9.9\\n"\n' > "${bin}/srt"
+    chmod +x "${bin}/srt"
+    run env HOME="${BATS_TEST_TMPDIR}" PATH="${bin}:${PATH}" bash -c "source '${SCRIPT_PATH}'; mise() { return 1; }; check_srt; echo \"req=\${required_failures}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   srt -> ${bin}/srt (pin ${pin})"* ]]
+    [[ "${output}" == *"required failed: srt 9.9.9 differs from the pin ${pin}; run make update"*"req=1"* ]]
+
+    # A --version that fails or prints nothing is the same failure, never a pass.
+    printf '#!/usr/bin/env bash\nexit 1\n' > "${bin}/srt"
+    run env HOME="${BATS_TEST_TMPDIR}" PATH="${bin}:${PATH}" bash -c "source '${SCRIPT_PATH}'; mise() { return 1; }; check_srt; echo \"req=\${required_failures}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: srt --version printed no version (pin ${pin})"*"req=1"* ]]
+}
+
+@test "[common] check_srt warns without failing when srt is absent" {
+    run env HOME="${BATS_TEST_TMPDIR}/empty" PATH="/usr/bin:/bin" bash -c "source '${SCRIPT_PATH}'; mise() { return 1; }; check_srt; echo \"req=\${required_failures}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: srt not installed; run make update"*"req=0"* ]]
+}
+
 @test "[common] check_zed is not applicable outside an Ubuntu client" {
     run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; uname() { printf 'Darwin\\n'; }; chezmoi() { printf client; }; check_zed"
     [ "${status}" -eq 0 ]

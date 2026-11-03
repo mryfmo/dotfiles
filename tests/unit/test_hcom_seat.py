@@ -558,7 +558,9 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         shim = Path(self.seats, ".sandbox/worker/bin/omp")
         settings = Path(self.seats, ".sandbox/worker/srt-settings.json")
-        canary, launch = self.calls_of("srt")
+        # The version read (U141) comes first, before the seat's shim directory exists.
+        version, canary, launch = self.calls_of("srt")
+        self.assertEqual(version["argv"], ["--version"])
         self.assertEqual(canary["argv"][:5], ["--settings", str(settings), "--", "/bin/sh", "-c"])
         self.assertEqual(
             canary["argv"][-3:], [str(shim.parent.parent / "canary"), str(settings), str(self.home / ".ssh")]
@@ -686,6 +688,29 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(f"srt {real} is or lies under the seat write root {real}", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
 
+    def test_an_srt_of_another_line_is_refused_before_anything_starts(self):
+        """U141: hcom-seat encodes srt 0.0.81's behaviours (SRT_LINE); an installed srt whose major.minor differs, or
+        whose `--version` fails or prints nothing, is refused (exit 2) naming the line before any seats root, store
+        or process exists. A patch release of the encoded line launches."""
+        for version in ("0.1.0", "1.0.81", "fail", ""):
+            with self.subTest(version=version or "empty"):
+                run = self.seat("worker", "--seats-root", self.seats, FAKE_SRT_VERSION=version)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("hcom-seat: ", run.stderr)
+                self.assertIn("0.0 line", run.stderr)
+                if version in ("0.1.0", "1.0.81"):
+                    self.assertIn(f"srt {version} is not of the 0.0 line hcom-seat encodes", run.stderr)
+                else:
+                    self.assertIn("cannot read the srt version", run.stderr)
+                self.assertFalse(Path(self.seats).exists())
+                self.assertEqual(self.calls_of("omp"), [])
+                self.assertEqual(self.calls_of("hcom"), [])
+                self.assertEqual([call["argv"] for call in self.calls_of("srt")], [["--version"]])
+                (self.calls / "srt").unlink()
+        run = self.seat("worker", "--seats-root", self.seats, FAKE_SRT_VERSION="0.0.99")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(len(self.calls_of("omp")), 1)
+
     def test_hcom_and_herdr_run_by_the_physical_argv_that_was_checked(self):
         """U85 round 3: the launch execs hcom's checked physical file, and hcom's own lookups reach wrappers of it."""
         real = Path(self.temp.name).resolve() / "real-bin"
@@ -754,7 +779,8 @@ class HcomSeatTest(unittest.TestCase):
         (hcom,) = self.calls_of("hcom")
         self.assertEqual(hcom["path"], f"{sandbox_bin}:{fixed}")
         for call in self.calls_of("srt"):
-            self.assertEqual(call["path"], f"{sandbox_bin}:{fixed}")
+            # The version read (U141) runs before the seat's shim directory exists, on the private tool directory alone.
+            self.assertEqual(call["path"], fixed if call["argv"] == ["--version"] else f"{sandbox_bin}:{fixed}")
         self.assertEqual(Path(self.seats, ".sandbox/worker/bin/omp").read_text().count(f"outer_path={sandbox_bin}:"), 1)
 
     def test_a_case_alias_or_a_hardlink_of_a_writable_file_is_refused(self):

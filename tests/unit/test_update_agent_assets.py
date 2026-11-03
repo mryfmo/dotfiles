@@ -1,12 +1,14 @@
 """Exercise verified artifact updates using fake downloads and installers only."""
 
 import hashlib
+import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -456,6 +458,128 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             for shadow_version in ("pin", "0.0.0"):
                 with self.subTest(tool=tool, shadow_version=shadow_version):
                     self.exercise_update(tool, shadow_version=shadow_version)
+
+
+class SecurityAuditSkillTest(unittest.TestCase):
+    """update_security_audit_skill over an archive built here, never downloaded (U144): the pin, the digest check,
+    the atomic replace of the skills/security-audit subtree and the manifest record the doctor reads."""
+
+    # The rendered pin; a tree without the constant (the red proof against origin/main) gets a placeholder so the
+    # module still imports and the tests themselves fail on the absent step.
+    COMMIT_MATCH = re.search(r'^SECURITY_AUDIT_SKILL_COMMIT="([0-9a-f]{40})"$', UPDATER.read_text(), re.MULTILINE)
+    COMMIT = COMMIT_MATCH[1] if COMMIT_MATCH else "0" * 40
+    URL = f"https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/{COMMIT}"
+    SKILL = "---\nname: security-audit\ndescription: fixture of the upstream skill\n---\n"
+
+    def archive(self, home: Path) -> tuple[Path, str]:
+        """A codeload-shaped tarball: <repository>-<commit>/{LICENSE,README.md,skills/security-audit/...}."""
+        members = {
+            "LICENSE": "fixture licence\n",
+            "README.md": "fixture readme\n",
+            "skills/security-audit/SKILL.md": self.SKILL,
+            "skills/security-audit/validate-findings.cjs": "// fixture validator\n",
+        }
+        payload = home / "archive.tgz"
+        with tarfile.open(payload, "w:gz") as tar:
+            for name, text in members.items():
+                data = text.encode()
+                info = tarfile.TarInfo(f"security-audit-skill-{self.COMMIT}/{name}")
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+        return payload, hashlib.sha256(payload.read_bytes()).hexdigest()
+
+    def run_step(self, home: Path, payload: Path, digest: str) -> subprocess.CompletedProcess:
+        # curl is a shell function that writes $PAYLOAD to its -o path and logs its arguments; nothing is downloaded.
+        stubs = (
+            f"SECURITY_AUDIT_SKILL_SHA256={digest}; "
+            'curl() { cp "$PAYLOAD" "${@: -1}"; echo "curl $*" >> "$CALLS"; }; '
+        )
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + stubs + "update_security_audit_skill", "bash", str(UPDATER)],
+            env=os.environ | {"HOME": str(home), "PAYLOAD": str(payload), "CALLS": str(home / "calls")},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    def calls(self, home: Path) -> list[str]:
+        log = home / "calls"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def test_the_pinned_security_audit_archive_installs_the_skill_subtree_and_records_the_step(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            payload, digest = self.archive(home)
+            install = home / ".agents/skills/security-audit"
+            result = self.run_step(home, payload, digest)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            # The subtree alone: no LICENSE or README from the archive root, and no staging or previous tree beside it.
+            self.assertEqual(["SKILL.md", "validate-findings.cjs"], sorted(path.name for path in install.iterdir()))
+            self.assertEqual(["security-audit"], sorted(path.name for path in install.parent.iterdir()))
+            calls = self.calls(home)
+            self.assertEqual(1, len(calls), calls)
+            self.assertIn(f" {self.URL} -o ", calls[0])
+            manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+            step = manifest["steps"]["update_security_audit_skill"]
+            self.assertEqual("installer", step["kind"])
+            self.assertEqual(self.COMMIT, step["source_version"])
+            self.assertEqual([str(install), str(install / "SKILL.md")], step["paths"])
+            self.assertTrue(any("--strip-components=3" in command for command in step["commands"]), step["commands"])
+
+    def test_a_security_audit_digest_mismatch_installs_nothing_records_nothing_and_keeps_the_previous_tree(self):
+        for previous in (None, "the previous tree\n"):
+            with self.subTest(previous=previous), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                payload, _ = self.archive(home)
+                install = home / ".agents/skills/security-audit"
+                if previous is not None:
+                    install.mkdir(parents=True)
+                    (install / "SKILL.md").write_text(previous)
+                result = self.run_step(home, payload, "0" * 64)
+                self.assertNotEqual(0, result.returncode, result.stdout)
+                self.assertIn("security-audit skill checksum mismatch", result.stderr)
+                self.assertEqual(1, len(self.calls(home)))
+                self.assertFalse((home / ".agents/.installed-manifest.json").exists(), "nothing recorded")
+                if previous is None:
+                    self.assertFalse(install.exists(), "no partial tree")
+                    self.assertEqual([], list(install.parent.iterdir()) if install.parent.exists() else [])
+                else:
+                    self.assertEqual(previous, (install / "SKILL.md").read_text())
+                    self.assertEqual(["SKILL.md"], [path.name for path in install.iterdir()])
+                    self.assertEqual(["security-audit"], [path.name for path in install.parent.iterdir()])
+
+    def test_a_security_audit_tree_recorded_at_the_pin_is_skipped_and_any_other_state_is_reinstalled(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            payload, digest = self.archive(home)
+            install = home / ".agents/skills/security-audit"
+            manifest_path = home / ".agents/.installed-manifest.json"
+            first = self.run_step(home, payload, digest)
+            self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+            skipped = self.run_step(home, payload, digest)
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn(f"security-audit skill {self.COMMIT} is already installed", skipped.stdout)
+            self.assertEqual(1, len(self.calls(home)), "the skip downloads nothing")
+            # A record at another commit is no match: the tree is replaced and the record moves to the pin.
+            manifest = json.loads(manifest_path.read_text())
+            manifest["steps"]["update_security_audit_skill"]["source_version"] = "0" * 40
+            manifest_path.write_text(json.dumps(manifest))
+            (install / "SKILL.md").write_text("an older tree\n")
+            replaced = self.run_step(home, payload, digest)
+            self.assertEqual(0, replaced.returncode, replaced.stdout + replaced.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            self.assertEqual(2, len(self.calls(home)))
+            manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(self.COMMIT, manifest["steps"]["update_security_audit_skill"]["source_version"])
+            # A record at the pin whose tree is gone is no match either.
+            shutil.rmtree(install)
+            restored = self.run_step(home, payload, digest)
+            self.assertEqual(0, restored.returncode, restored.stdout + restored.stderr)
+            self.assertEqual(self.SKILL, (install / "SKILL.md").read_text())
+            self.assertEqual(3, len(self.calls(home)))
 
 
 class ProducerFailureTest(unittest.TestCase):

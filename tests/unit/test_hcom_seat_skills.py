@@ -76,6 +76,15 @@ FILED_FINDINGS = (
     "findings whose weight (frequency times severity) is under 10, which need no disposition for the merge, and "
     "`scripts/orchestrator/filed-findings.py <store>` lists every filed finding of the store for the operator."
 )
+# U144: the security sweep of the AGENTS.md Audit section is a TASK to a worker seat, never an audit route or a verdict,
+# and its validated findings are the advisory `sweep` rows written before the merge.
+SWEEP_TASK = (
+    "the sweep is a TASK to a worker seat naming the `security-audit` skill with an output directory under the seat's "
+    "scratch root, never an audit and never a verdict, and its findings, validated with the skill's "
+    "`validate-findings.cjs`, are written as the advisory `ledger.tsv` rows that rule names (verdict `sweep`, pr `-`, "
+    "the swept head, verifier `security-audit-skill c1c8a8c1`, evidence the findings file under the store) before the "
+    "unit's merge."
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -212,6 +221,14 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn("Until U119 round 3 this step ran `omp-run.sh --role audit`", verify)
         self.assertNotIn("omp-run.sh --role audit", step(text, "The loop", 6))
         self.assertIn("a file without a `## Findings` section is refused by name", step(text, "The loop", 6))
+
+    def test_step_four_names_the_sweep_as_a_worker_task_whose_findings_are_advisory_rows(self):
+        verify = step(ORCHESTRATION.read_text(), "The loop", 4)
+        self.assertIn(SWEEP_TASK, verify)
+        self.assertIn("A unit of the trust-boundary class (its brief carries a `TRUST` section)", verify)
+        # the sweep is one sentence of step 4, after the audit route it never replaces
+        self.assertLess(verify.index(AUDIT_ROUTE), verify.index(SWEEP_TASK))
+        self.assertEqual(verify.count("security-audit-skill c1c8a8c1"), 1)
 
     def test_step_one_creates_the_worker_worktree_with_the_lever_whose_worktree_cannot_push(self):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)

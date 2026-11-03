@@ -87,6 +87,11 @@ readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.
 PI_CLAUDE_BRIDGE_PIN_VERSION="0.9.3"
 PI_CLAUDE_BRIDGE_TARBALL_SHA256="8d582b2fee1615b64a59890e3ac0af03c1e11bd06ba1997accdb767969556d67"
 PI_CLAUDE_BRIDGE_ASSET_DIR="${DOTFILES_REPO_SOURCE_DIR}/home/dot_agents/assets/pi-claude-bridge"
+# Rendered from assets.security-audit-skill in home/dot_agents/agent-config.yaml; change the commit and sha256 there
+# together after reviewing the upstream diff. The archive is GitHub's source archive of that commit, never a branch head.
+SECURITY_AUDIT_SKILL_COMMIT="c1c8a8c1471069fb0e188eeaff69b8e8db6564a8"
+SECURITY_AUDIT_SKILL_SHA256="53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6"
+readonly SECURITY_AUDIT_SKILL_ARCHIVE_URL="https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/${SECURITY_AUDIT_SKILL_COMMIT}"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/05/92/12d18a45357ef2a9765342203d5031b08dcd67bc988814428c10b46f6a3d/hcom-0.7.31-py3-none-macosx_11_0_arm64.whl"
@@ -1805,6 +1810,61 @@ function update_pi_claude_bridge() (
 )
 
 #
+# @description Install the pinned cloudflare/security-audit-skill tree as the shared skill
+#   ~/.agents/skills/security-audit (assets.security-audit-skill), the sweep the AGENTS.md "Audit" section names for
+#   the omp worker seat (skills.audience gives it to omp-worker alone).
+# @description
+#   GitHub's source archive of the pinned commit (never the branch head, never the npx skills installer) is downloaded into a
+#   mktemp directory under TMPDIR and verified against its reviewed sha256 before anything is unpacked; the
+#   skills/security-audit subtree alone is unpacked beside the install path and replaces it with one rename, so a
+#   failed download, digest check or unpack leaves the previous tree as it was. A tree whose manifest record already
+#   names the pinned commit is skipped. The record names the install path: make doctor reads it, and the doctor's
+#   installer_owned_skill_names (scripts/check-agent-runtime.py) keeps the tree out of the unmanaged-skill WARN.
+# @exitcode 1 The download, the digest check, the unpack or the rename failed; the existing install is unchanged.
+#
+function update_security_audit_skill() (
+    local install_dir="${HOME}/.agents/skills/security-audit"
+    local recorded download_dir tarball actual staging="" previous
+    section "security-audit skill"
+    # A record that cannot be read is no record: the verified install runs again and writes it.
+    recorded="$(jq -r '.steps["update_security_audit_skill"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || recorded=""
+    if [ "${recorded}" = "${SECURITY_AUDIT_SKILL_COMMIT}" ] && [ -f "${install_dir}/SKILL.md" ]; then
+        printf 'security-audit skill %s is already installed.\n' "${SECURITY_AUDIT_SKILL_COMMIT}"
+        return 0
+    fi
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+    trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
+    tarball="${download_dir}/security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}.tar.gz"
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" -o "${tarball}" || return
+    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
+    if [ "${actual}" != "${SECURITY_AUDIT_SKILL_SHA256}" ]; then
+        printf 'security-audit skill checksum mismatch: expected %s, got %s.\n' "${SECURITY_AUDIT_SKILL_SHA256}" "${actual}" >&2
+        return 1
+    fi
+    # Staged beside the target so the final rename stays on one filesystem; the three leading components
+    # (<repository>-<commit>/skills/security-audit) are stripped so the skill tree lands at the install path itself.
+    mkdir -p "${install_dir%/*}" && staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
+    tar xzf "${tarball}" -C "${staging}" --strip-components=3 "security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}/skills/security-audit" || return
+    [ -f "${staging}/SKILL.md" ] || {
+        printf 'security-audit skill archive holds no skills/security-audit/SKILL.md; install refused.\n' >&2
+        return 1
+    }
+    previous="${install_dir}.previous"
+    rm -rf "${previous}"
+    if [ -e "${install_dir}" ]; then
+        mv "${install_dir}" "${previous}" || return
+    fi
+    mv "${staging}" "${install_dir}" || {
+        [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
+        return 1
+    }
+    staging=""
+    rm -rf "${previous}"
+    printf 'security-audit skill %s installed into %s.\n' "${SECURITY_AUDIT_SKILL_COMMIT}" "${install_dir}"
+    manifest_record "update_security_audit_skill" installer "${SECURITY_AUDIT_SKILL_COMMIT}" "${install_dir}" "${install_dir}/SKILL.md" -- "curl -fsSL ${SECURITY_AUDIT_SKILL_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=3 security-audit-skill-${SECURITY_AUDIT_SKILL_COMMIT}/skills/security-audit" "mv <staging> ${install_dir}"
+)
+
+#
 # @description Load the installed pi-claude-bridge in one omp session and fail on a load error.
 # @description
 #   `omp models` never evaluates extension modules, so the check is the session path: a one-prompt run under
@@ -2221,18 +2281,18 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, update_security_audit_skill, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
+        1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | update_security_audit_skill | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -2259,6 +2319,7 @@ function main() {
     update_terminal_browser
     update_omp
     update_pi_claude_bridge
+    update_security_audit_skill
     update_hcom
     update_compactiondb
     ensure_herdr_integrations

@@ -837,6 +837,28 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([f"WARN: unmanaged skill dir: {stray}"], unmanaged)
         self.assertEqual([f"WARN: orphaned agent asset: {stray}; manual review required"], orphans)
 
+    def test_the_security_audit_skill_tree_is_installer_owned(self) -> None:
+        """U144: ~/.agents/skills/security-audit is update_security_audit_skill's tree (assets.security-audit-skill), so
+        the doctor raises neither the unmanaged-skill WARN nor an orphan finding for it, while a stray tree gets both."""
+        self.write_source("dot_agents/skills/managed/SKILL.md")
+        self.write_target(".agents/skills/managed/SKILL.md")
+        self.write_target(".agents/skills/security-audit/SKILL.md")
+        self.write_target(".agents/skills/security-audit/validate-findings.cjs")
+        stray = self.write_target(".agents/skills/stray/SKILL.md").parent
+        with mock.patch.multiple(
+            self.module,
+            SOURCE_ROOT=self.source_root,
+            HOME=self.target_root,
+            chezmoi_managed_child_names=lambda root: set(),
+        ):
+            unmanaged = self.module.compare_shared_skills()
+            orphans = self.module.orphaned_asset_warnings()
+
+        self.assertEqual([f"WARN: unmanaged skill dir: {stray}"], unmanaged)
+        self.assertEqual([f"WARN: orphaned agent asset: {stray}; manual review required"], orphans)
+        # The doctor's repair action re-runs the one-step form of the updater for a record whose paths went missing.
+        self.assertIn("update_security_audit_skill", self.module.ASSET_STEP_FUNCTIONS)
+
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"
         different = self.write_target("different.json", "runtime\n")

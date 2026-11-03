@@ -68,6 +68,10 @@ enabled = false
 path = "{{ .chezmoi.homeDir }}/.agents/skills/project-map/SKILL.md"
 enabled = false
 
+[[skills.config]]
+path = "{{ .chezmoi.homeDir }}/.agents/skills/security-audit/SKILL.md"
+enabled = false
+
 [[hooks.PermissionRequest]]
 matcher = "*"
 

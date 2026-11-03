@@ -36,7 +36,7 @@ Before the RESULT, run the pre-RESULT self-check and paste it into the report th
 - (b) fail closed: every safety decision reads its producer's exit status and has a failure-injection test (`preferences.md` standing order 21).
 - (c) destructive scope: every destructive step is scoped to exactly what the brief authorizes and refuses the rest.
 - (d) migration: a migration changes the installed state through the real path, not only the generated baseline.
-- (e) local runs: the unit's own tests, `make validate-agent-assets`, `make render-check` and the lints over the changed files ran locally (omp seats have no sandbox) and their summary lines are pasted; the full suite is CI's evidence, read from the CI job log (`preferences.md` standing order 23).
+- (e) local runs: the unit's own tests, `make validate-agent-assets`, `make render-check` and the lints over the changed files ran locally (the seat's srt sandbox, the `hcom-seat` canary of U85, bounds its local runs) and their summary lines are pasted; the full suite is CI's evidence, read from the CI job log (`preferences.md` standing order 23).
 
 When the pull request is open and CI is green, send one RESULT line on the team thread, with no target. The orchestrator that tasked you is an external sender on the bus (`hcom-dispatch` sends with `--from`), so it has no `@name` and `@<from>` would fail with hcom's "No active agent"; the thread the TASK seeded is the route back (README "Routes", seat to the orchestrator):
 

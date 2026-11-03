@@ -26,7 +26,7 @@ The gate reads the thread's rows since the seat started, `~/.local/bin/common/bu
 | `VERDICT`, `MERGED` or `HOLD` from the seat                                                                                                                                                 | closed                                             |
 | anything else (PING, every PONG, `status=question` included, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat, …) | no effect; the previous moving row keeps the state |
 
-The line kinds are the first word of a bus line: `TASK`, `RESULT`, `VERDICT`, `PONG`, `MERGED` and `HOLD` (plus `PING`, which moves nothing). Any other first word, such as the retired `AGMSG-TASK`, is not a kind and moves nothing. There is no audit seat on the bus: every audit is one fresh `omp-run.sh --role audit` run that the orchestrator starts and reads (the `hcom-orchestration` skill, step 4), so its verdict reaches the bus only as the orchestrator's own VERDICT line, and another seat's VERDICT closes nothing, on an `-audit` id or any other (U58).
+The line kinds are the first word of a bus line: `TASK`, `RESULT`, `VERDICT`, `PONG`, `MERGED` and `HOLD` (plus `PING`, which moves nothing). Any other first word, such as the retired `AGMSG-TASK`, is not a kind and moves nothing. There is no audit seat on the bus: every audit is one fresh `~/.local/bin/common/pr-audit.sh <n> --records <store>` run that the orchestrator starts and reads (the `hcom-orchestration` skill, step 4; the omp audit route before it was retired by U119 round 3), so its verdict reaches the bus only as the orchestrator's own VERDICT line, and another seat's VERDICT closes nothing, on an `-audit` id or any other (U58).
 
 Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.
 
@@ -116,7 +116,7 @@ says `no stop record` because the first parser read the wrong form of `hcom list
 
 ## The skill
 
-`home/dot_agents/skills/hcom-orchestration/SKILL.md`, reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7). The audit has no seat and no skill: each audit is one fresh `omp-run.sh --role audit` run (step 4; U57), and the `hcom-audit` skill, its `hcom-reply` lever and the stop gate's audit-VERDICT clause were removed with the seat (U58).
+`home/dot_agents/skills/hcom-orchestration/SKILL.md`, reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `~/.local/bin/common/pr-merge.sh <n> --records <store>`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7). The audit has no seat and no skill: each audit is one fresh `~/.local/bin/common/pr-audit.sh <n> --records <store>` run (step 4; U57, the lever route since U119 round 3), and the `hcom-audit` skill, its `hcom-reply` lever and the stop gate's audit-VERDICT clause were removed with the seat (U58).
 
 ## Doctor wiring
 
@@ -124,4 +124,4 @@ says `no stop record` because the first parser read the wrong form of `hcom list
 
 ## AGENTS.md
 
-The Agent Review Evidence section and the Audit intro now point at the program store, the `hcom-orchestration` skill and `omp-run.sh --role audit`. The test that pinned the old task vocabulary there and its fixtures were retired with the rules (U32).
+The Agent Review Evidence section and the Audit intro now point at the program store, the `hcom-orchestration` skill and `~/.local/bin/common/pr-audit.sh <n> --records <store>` (the audit route since U119 round 3). The test that pinned the old task vocabulary there and its fixtures were retired with the rules (U32).

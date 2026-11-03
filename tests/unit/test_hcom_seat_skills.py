@@ -39,8 +39,9 @@ SELF_CHECK = (
     "- (d) migration: a migration changes the installed state through the real path, not only the generated baseline.",
     (
         "- (e) local runs: the unit's own tests, `make validate-agent-assets`, `make render-check` and the lints over "
-        "the changed files ran locally (omp seats have no sandbox) and their summary lines are pasted; the full suite "
-        "is CI's evidence, read from the CI job log (`preferences.md` standing order 23)."
+        "the changed files ran locally (the seat's srt sandbox, the `hcom-seat` canary of U85, bounds its local "
+        "runs) and their summary lines are pasted; the full suite is CI's evidence, read from the CI job log "
+        "(`preferences.md` standing order 23)."
     ),
 )
 SELF_CHECK_HELD = "the orchestrator holds a RESULT without the pasted self-check"
@@ -56,8 +57,16 @@ GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap befo
 # step names exit 3, the round cap's refusal, beside exit 2 and exit 1.
 AUDIT_ROUTE = (
     "Every audit is one fresh `~/.local/bin/common/pr-audit.sh <n> --records .orchestration/orchestrate/<program>` run "
-    "from your checkout for that head"
+    "for that head from the operator's or the coordinator's terminal outside every seat, never from the seat's "
+    "checkout"
 )
+# U139 round 2 (PR 630 review 4451944031, P1): the lever prints the verdict path and writes no ledger row, so the step
+# says the run hands the path back and the orchestrator seat copies the file and writes the row; the old clause had the
+# seat read a ledger row the run never produces.
+AUDIT_HANDOFF = (
+    "the run hands back its verdict path, and the orchestrator seat copies the file and writes the ledger row"
+)
+AUDIT_HANDOFF_FALSE = "the ledger row the run produces"
 AUDIT_COPY = "Copy that file to `.orchestration/orchestrate/<program>/verdicts/U<n>-<head8>.md`"
 AUDIT_SHAPE = "whose `## Findings` list holds the reader's lines"
 # U125 round d: the reader writes the two scores into every finding line and counts the filed findings, which the
@@ -186,6 +195,8 @@ class HcomSeatSkillsTest(unittest.TestCase):
         text = ORCHESTRATION.read_text()
         verify = step(text, "The loop", 4)
         self.assertIn(AUDIT_ROUTE, verify)
+        self.assertIn(AUDIT_HANDOFF, verify)
+        self.assertNotIn(AUDIT_HANDOFF_FALSE, verify, "pr-audit.sh writes no ledger row; the seat writes it")
         self.assertNotIn("pr-audit.sh <n>` run", verify, "the documented line carries --records")
         self.assertIn(AUDIT_COPY, verify)
         self.assertIn(AUDIT_SHAPE, verify)

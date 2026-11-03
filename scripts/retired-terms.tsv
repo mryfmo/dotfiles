@@ -49,6 +49,8 @@ term	resolve-threads.sh	deleted in U26
 term	sandbox-scan	deleted in U26
 term	task-consistency-check	deleted in U26
 term	three-repeat	deleted in U26
+term	omp-run.sh --role audit	the omp audit route, retired by U119 round 3; the audit is `~/.local/bin/common/pr-audit.sh <n> --records <store>`
+term	gh pr merge	the raw merge command; the merge path is `~/.local/bin/common/pr-merge.sh <n> --records <store>` alone (U71)
 gone	home/dot_local/bin/common/executable_agmsg-dispatch	deleted source path
 gone	home/dot_local/bin/common/executable_codex-orchestrate	deleted source path
 gone	home/dot_local/bin/common/executable_herdr-agents	deleted source path
@@ -108,6 +110,9 @@ removed	.agents/omp/profiles/security.yml	the omp security role, which no launch
 skip	.orchestration/	the program records: history written by the coordinator, read as data, never as current rules
 skip	.ua/	the Understand-Anything graph snapshot: generated, refreshed only by a full rebuild on operator request; agents read it only when .ua/meta.json matches HEAD
 allow	.claude/contextdb/contextdb/normalize.py	MultiEdit	CompactionDB reads past transcripts, which name the legacy tool
+allow	AGENTS.md	gh pr merge	the lever's command text: what pr-merge.sh runs after its own checks
+allow	AGENTS.md	omp-run.sh --role audit	history: the Audit intro names the route pr-audit.sh replaced in U119 round 3
+allow	README.md	gh pr merge	the deny: the command text the seat policies and the Codex rules refuse
 allow	docs/operator-handout-g16.md	audit seat	the G16 handout removes the retired seat's leftover worktrees
 allow	docs/orchestrator-seat.md	agmsg	states that the retired kinds, seat, skill and lever are refused or gone
 allow	docs/orchestrator-seat.md	audit seat	states that the retired kinds, seat, skill and lever are refused or gone
@@ -119,13 +124,28 @@ allow	home/.chezmoiremove	crit-review	the removal entries for the retired deploy
 allow	home/.chezmoiremove	hcom-audit	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	hcom-reply	the removal entries for the retired deployed copies
 allow	home/.chezmoiremove	herdr-agents	the removal entries for the retired deployed copies
+allow	home/.chezmoitemplates/claude-settings-managed.json	gh pr merge	the deny: the rendered Claude Code permission rule
+allow	home/.chezmoitemplates/omp-config-managed.yml	gh pr merge	the deny: the rendered common deny rows of a plain omp launch
+allow	home/dot_agents/agent-config.yaml	gh pr merge	the deny: the command_policy entry's own examples
 allow	home/dot_agents/omp/hooks/stop-gate.ts	agmsg	documents that a retired prefixed kind moves nothing
 allow	home/dot_agents/omp/hooks/tests/stop-gate.test.ts	agmsg	proves a retired prefixed kind moves nothing
 allow	home/dot_agents/omp/policies/README.md	agmsg	the measured O1 incident and the audit policy rows that deny the retired lever
 allow	home/dot_agents/omp/policies/README.md	audit seat	the measured O1 incident and the audit policy rows that deny the retired lever
 allow	home/dot_agents/omp/policies/README.md	hcom-reply	the measured O1 incident and the audit policy rows that deny the retired lever
+allow	home/dot_agents/omp/policies/README.md	gh pr merge	the deny: the orchestrator row says no raw merge is allowed (U71)
+allow	home/dot_agents/omp/policies/audit.yml	gh pr merge	the deny: the common deny rows
+allow	home/dot_agents/omp/policies/orchestrator.yml	gh pr merge	the deny: the common deny rows and the U71 comment beside the lever allow
+allow	home/dot_agents/omp/policies/worker.yml	gh pr merge	the deny: the common deny rows
+allow	home/dot_agents/regime/AGENTS-audit-section.md	omp-run.sh --role audit	history: the Audit intro names the route pr-audit.sh replaced in U119 round 3
+allow	home/dot_agents/regime/preferences.md	gh pr merge	the lever's command text: standing order 2 says what pr-merge.sh runs
+allow	home/dot_agents/skills/hcom-orchestration/SKILL.md	gh pr merge	the lever's command text: step 6 says what pr-merge.sh runs
+allow	home/dot_agents/skills/hcom-orchestration/SKILL.md	omp-run.sh --role audit	history: step 4's one clause on the route it ran until U119 round 3
 allow	home/dot_claude/modify_private_settings.json	herdr-agents	the merge removes a stale hook of the deleted tool from installed settings
+allow	home/dot_codex/rules/command-policy.rules	gh pr merge	the deny: the rendered Codex command-policy rule
+allow	home/dot_config/claude/rules/codex.md	gh pr merge	the deny: the Codex rule says the command is forbidden
 allow	home/dot_local/bin/common/executable_hcom-dispatch	agmsg	documents that the retired dispatch form is refused
+allow	home/dot_local/bin/common/executable_omp-run.sh	omp-run.sh --role audit	the lever's own command text: its @example; the header says the route was retired by U119 round 3
+allow	home/dot_local/bin/common/executable_pr-merge.sh	gh pr merge	the lever's own command text: the one write pr-merge.sh makes
 allow	plans/001-contain-starship-cleanup.md	acceptance record	a DONE plan of 2026-07 (plans/README.md: historical record)
 allow	plans/002-make-review-evidence-non-vacuous.md	crit comments --all --json	a DONE plan of 2026-07 (plans/README.md: historical record)
 allow	plans/002-make-review-evidence-non-vacuous.md	crit-review	a DONE plan of 2026-07 (plans/README.md: historical record)
@@ -133,10 +153,15 @@ allow	plans/002-make-review-evidence-non-vacuous.md	resolved record	a DONE plan 
 allow	plans/002-make-review-evidence-non-vacuous.md	review_surface	a DONE plan of 2026-07 (plans/README.md: historical record)
 allow	plans/005-make-runtime-health-and-verification-truthful.md	agmsg	a DONE plan of 2026-07 (plans/README.md: historical record)
 allow	plans/005-make-runtime-health-and-verification-truthful.md	herdr-agents	a DONE plan of 2026-07 (plans/README.md: historical record)
+allow	scripts/ci/producer-status-check.sh	gh pr merge	the lever's command text: the producer-status baseline row of pr-merge.sh
 allow	scripts/orchestrator/README.md	agmsg	documents that the retired dispatch form, kinds and seat are refused or gone
 allow	scripts/orchestrator/README.md	audit seat	documents that the retired dispatch form, kinds and seat are refused or gone
 allow	scripts/orchestrator/README.md	hcom-reply	documents that the retired dispatch form, kinds and seat are refused or gone
+allow	scripts/orchestrator/README.md	gh pr merge	the deny and the lever's command text: the policy table and the pr-merge.sh row
+allow	scripts/orchestrator/README.md	omp-run.sh --role audit	history: the audit section says the route was retired by U119 round 3
 allow	scripts/orchestrator/hcom-dispatch	agmsg	documents that the retired dispatch form is refused
+allow	scripts/orchestrator/omp-run.sh	omp-run.sh --role audit	the lever's own command text: its @example; the header says the route was retired by U119 round 3
+allow	scripts/orchestrator/pr-merge.sh	gh pr merge	the lever's own command text: the one write pr-merge.sh makes
 allow	scripts/update-agent-assets.sh	agmsg	the retire step removes the retired skill's leftover launcher shim from hosts
 allow	tests/fixtures/hcom/events-u5team.jsonl	agmsg	recorded bus rows of 2026-10-23, read as opaque kinds
 allow	tests/install/common/lifecycle.bats	crit comments --all --json	proves the Codex rule carries no Crit receipt flow
@@ -146,23 +171,30 @@ allow	tests/unit/test_asset_manifest.py	agmsg	proves the updater prunes the reti
 allow	tests/unit/test_audit_seat_removed.py	audit seat	proves the retired seat's sources and deployed copies are gone
 allow	tests/unit/test_audit_seat_removed.py	hcom-audit	proves the retired seat's sources and deployed copies are gone
 allow	tests/unit/test_audit_seat_removed.py	hcom-reply	proves the retired seat's sources and deployed copies are gone
+allow	tests/unit/test_audit_seat_removed.py	omp-run.sh --role audit	history: the U58 removal's docstring names the route of its day
 allow	tests/unit/test_check_agent_runtime.py	agmsg	proves doctor reports the retired tree's leftovers
 allow	tests/unit/test_claude_settings_merge.py	MultiEdit	installed entries with the legacy matcher and the deleted tool's hook converge
 allow	tests/unit/test_claude_settings_merge.py	agmsg	installed entries with the legacy matcher and the deleted tool's hook converge
 allow	tests/unit/test_claude_settings_merge.py	herdr-agents	installed entries with the legacy matcher and the deleted tool's hook converge
 allow	tests/unit/test_drift_watch.py	agmsg	a fake lint's output line, proving the drift watch turns each hit into a finding
 allow	tests/unit/test_generate_agent_configs.py	herdr-agents	legacy allow rules and launch keys the generator drops
+allow	tests/unit/test_generate_agent_configs.py	gh pr merge	a test of the deny: the rendered Claude Code rule
 allow	tests/unit/test_hcom_dispatch.py	agmsg	proves the retired dispatch form and prefixed kinds are refused or opaque
 allow	tests/unit/test_hcom_seat_skills.py	agmsg	proves the skills name no retired seat or prefix
 allow	tests/unit/test_hcom_seat_skills.py	audit seat	proves the skills name no retired seat or prefix
+allow	tests/unit/test_hcom_seat_skills.py	omp-run.sh --role audit	a test of the history clause: the skill names the retired route once, as history
 allow	tests/unit/test_omp_seat_policy.py	audit seat	policy rows that deny the retired lever and sample command strings
 allow	tests/unit/test_omp_seat_policy.py	chain-integrate	policy rows that deny the retired lever and sample command strings
 allow	tests/unit/test_omp_seat_policy.py	hcom-reply	policy rows that deny the retired lever and sample command strings
 allow	tests/unit/test_omp_seat_policy.py	pr-feedback	policy rows that deny the retired lever and sample command strings
+allow	tests/unit/test_omp_seat_policy.py	gh pr merge	a test of the deny: sample command strings every seat refuses
+allow	tests/unit/test_omp_seat_policy.py	omp-run.sh --role audit	a test of the audit overlay: a sample command string under audit.yml
 allow	tests/unit/test_pr_levers.py	agmsg	a recorded close-comment of the G8 clean-up table
+allow	tests/unit/test_pr_levers.py	gh pr merge	a test of the lever: the comment on pr-merge.sh's retarget window
 allow	tests/unit/test_rules_cutover.py	agmsg	proves the retired Claude rules and their deployed copies are gone
 allow	tests/unit/test_rules_cutover.py	crit-review	proves the retired Claude rules and their deployed copies are gone
 allow	tests/unit/test_supply_chain_policy.py	agmsg	proves the retire step is gone from make update
 allow	tests/unit/test_supply_chain_policy.py	herdr-agents	proves the retire step is gone from make update
 allow	tests/unit/test_validate_agent_assets.py	pr-feedback	fixture names of past validation files
+allow	tests/unit/test_validate_agent_assets.py	gh pr merge	a test of the deny: the validator refuses a raw merge allow row
 allow	vendor/compactiondb/.claude/contextdb/contextdb/normalize.py	MultiEdit	vendored CompactionDB source, pinned upstream

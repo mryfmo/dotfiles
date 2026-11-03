@@ -35,7 +35,7 @@
 ### モデル profile
 
 - 通常の実装・デバッグは `codex --profile standard`、読み取り・検索・抽出だけの作業は `--profile express`、独立レビューは `--profile review`、`/security-review`、permgate policy、redaction/secret handling、trust-boundary code の監査は `--profile security`、監査以外の横断設計・未知の障害だけ `--profile deep` を使ってください。難所が終わったら standard へ戻してください。
-- profile は `~/.codex/<profile>.config.toml` と `~/.agents/model-profiles.env` に生成されます。セッション途中でモデルを切り替えず、profile はセッション起動時に選んでください。
+- profile は `~/.codex/<profile>.config.toml` に生成されます。セッション途中でモデルを切り替えず、profile はセッション起動時に選んでください。
 
 ### CompactionDB の記録
 

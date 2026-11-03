@@ -24,12 +24,6 @@
       "executable": false
     },
     {
-      "source": "home/dot_agents/model-profiles.env",
-      "target": ".agents/model-profiles.env",
-      "kind": "file",
-      "executable": false
-    },
-    {
       "source": "home/dot_agents/omp/policies/audit.yml",
       "target": ".agents/omp/policies/audit.yml",
       "kind": "file",
@@ -375,14 +369,14 @@
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "4f2e395852acd6ba898793e1b3d92b1153982f24033fed8d35aa487224c397a4"
+      "sha256": "8d50e89d7f3e43e99473fe607701f171a8b0c8b1db20e74f87bac01c6a8fe234"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
       "target": ".local/bin/common/omp-run.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "2c9ef4e73d804aec98e9efa3acd7b9d2d139c0aa9ad65d8175e57d17874d385c"
+      "sha256": "ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-audit.sh",

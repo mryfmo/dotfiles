@@ -51,6 +51,12 @@ def install_pinned_claude_plugins(home: Path) -> None:
 
 # The fake claude's answer to `plugin marketplace list --json` (install_pinned_claude_plugins writes it).
 FAKE_MARKETPLACE_LIST = '[ "$1 $2 $3" != "plugin marketplace list" ] || cat "$HOME/.fixture-marketplaces.json"'
+# The release home/dot_mise/config.toml pins srt (`@anthropic-ai/sandbox-runtime`) at. The doctor's check_srt reports
+# the installed srt beside that pin (U141), so the doctor fixture's srt answers `--version` with it, as the installed
+# tool does.
+SRT_PIN = re.search(
+    r'^"npm:@anthropic-ai/sandbox-runtime" = "(\d+(?:\.\d+)+)"$', (ROOT / "home/dot_mise/config.toml").read_text(), re.M
+).group(1)
 
 
 class RuntimeHealthTest(unittest.TestCase):
@@ -856,15 +862,22 @@ EOF
         for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
                 continue
+            # `mise which <tool>` answers with the tool's path on this PATH, as the real mise answers for a tool it
+            # installed (check_srt resolves srt through it first, U141); every other call is healthy.
             self.executable(
                 bin_dir / command,
                 """
                 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_LOG"
                 if [[ "$(basename "$0"):$*" == "$FAIL_COMMAND" ]]; then exit 9; fi
+                if [[ "$(basename "$0"):$1" == mise:which ]]; then command -v "$2"; exit $?; fi
                 printf '%s healthy\\n' "$(basename "$0")"
                 """,
             )
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
+        # srt at the pin: check_srt reads the pin from the checkout's home/dot_mise/config.toml (the fixture HOME has no
+        # applied mise config) and compares the first token of `srt --version` with it; the two agree, so the row is a
+        # found line and no warning or failure (U141).
+        self.executable(bin_dir / "srt", f"[[ $1 != --version ]] || printf '{SRT_PIN}\\n'\nexit 0\n")
         home = self.temp_dir / "doctor-home"
         (home / ".local/share/chezmoi-private").mkdir(parents=True, exist_ok=True)
         private_config = home / ".config/chezmoi-private/chezmoi.yaml"
@@ -947,6 +960,9 @@ EOF
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
         shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
+        # The doctor reads the srt pin from the checkout beside it when the home has no applied mise config (U141).
+        (repo / "home/dot_mise").mkdir()
+        shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'runtime drift\\n' >&2\nexit 7\n",
@@ -987,6 +1003,8 @@ EOF
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
         shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
+        (repo / "home/dot_mise").mkdir()
+        shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'missing runtime root\\n' >&2\nexit 7\n",
@@ -1012,6 +1030,8 @@ EOF
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
         shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
+        (repo / "home/dot_mise").mkdir()
+        shutil.copy(ROOT / "home/dot_mise/config.toml", repo / "home/dot_mise/config.toml")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'repair=%s\\n' \"${REPAIR:-unset}\"\n",

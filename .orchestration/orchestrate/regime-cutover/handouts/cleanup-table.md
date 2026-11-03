@@ -29,8 +29,9 @@ Inventory taken 2026-10-23T21:58:15Z from `gh pr list --state open` and `git wor
 | #615 | `records/sync-20` | 2026-10-31 | 16 | chore(records): regime-cutover sync 20 | close: superseded by records sync 21: the regime check refused the store at U20 (three correct sync audits since the rule date reached the round cap of standing order 36 with no mechanism-change row; the row of 2026-10-31T10:25:42Z, residual, names the per-sync counting as the follow-up) |
 | #548 | `dependabot/github_actions/minor-and-patch-d7d93b8548` | 2026-10-25 | 6 | chore(deps): bump astral-sh/setup-uv from 10.2.0 to 10.3.2 in the minor-and-patch group | close: superseded by regime-cutover U131 (PR #619, merged as ac251770): the same pin at the six sites with the test constants that hard-coded the old sha (plan P-35, adopted as a unit) |
 | #549 | `dependabot/github_actions/jdx/mise-action-5.2.2` | 2026-10-25 | 5 | chore(deps): bump jdx/mise-action from 4.3.0 to 5.2.2 | close: superseded by regime-cutover U132 (PR #622): the same pin at the five sites with `auto_update: true` and the test that counts it (plan P-35, adopted as a unit) |
-| #629 | (branch deleted) | 2026-11-02 | 26 | withdrawn | close: withdrawn by the operator; nothing from this branch is needed |
 | #635 | `records/sync-26` | 2026-11-03 | 18 | chore(records): regime-cutover sync 26 | close: superseded by records sync 27: the regime check refused the store at U141 (three correct audit rows reached the round cap of standing order 36 with no mechanism-change row; the row of 2026-11-03T09:59:35Z, allowlist, fixes it) and the U141 round-3 verdict file reached the store after the sync commit |
+
+Closed outside the table: #629 (2026-11-02, 26 files, branch deleted) was withdrawn by the operator; nothing from that branch is needed. The row sits here because the lever's table parser wants a branch name and the branch is gone.
 
 ## Worktrees
 

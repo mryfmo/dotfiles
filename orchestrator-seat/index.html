@@ -5752,7 +5752,8 @@ keys exactly once (<code>toplevel</code>, <code>hcom_dir</code>, <code>hcom_team
 <code>orchestrator-&lt;base&gt;</code>, its file name must be the one its own toplevel derives, and a store with an <code>origin</code> file must
 name that toplevel; one that breaks any of these is skipped and logged and never launched, rewritten or stopped from.
 A registration that does not parse, an hcom read that fails, or a stop record it cannot read
-launches nothing. Only the orchestrator is supervised: it relaunches the other seats itself (the skill's step 0).</p>
+launches nothing. Only the orchestrator is supervised; worker seats are started and
+relaunched by an operator or coordinator command from a terminal outside every seat (the skill's step 0).</p>
 <p>Measured on this host on 2026-10-24 with the levers of this branch, in a scratch repository <code>u36-pilot</code> with a scratch
 store and team <code>u36pilot</code>: <code>regime-start</code> launched <code>orchestrator-nori</code>; its omp process was killed with <code>kill &lt;pid&gt;</code>,
 and one pass relaunched it; a second run used <code>hcom kill</code>, and the pass ended the supervision; a third crash and

@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -40,6 +43,33 @@ VERIFY_COMMAND = "shasum -a 256"
 # The digest is read into a variable and the command's status checked before the comparison, so a shasum that
 # prints a digest and exits non-zero never reaches the install.
 STATUS_READ = "|| exit 1"
+# What the curl stub writes in place of the wheel: these bytes from tests/unit/test_graphify_asset.py, never the
+# reviewed wheel and never a network read, so the committed digest comparison must refuse them and only a command
+# carrying their own sha256 may reach uv.
+STUB_WHEEL = b"stub bytes from tests/unit/test_graphify_asset.py, not graphifyy-0.9.99-py3-none-any.whl\n"
+CURL_WRITES_STUB = """#!/bin/bash
+out=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = -o ]; then out="$2"; shift; fi
+  shift
+done
+[ -n "$out" ] || exit 2
+cat {stub} > "$out"
+"""
+CURL_FAILS = "#!/bin/bash\nexit 22\n"
+UV_LOGS_ARGV = """#!/bin/bash
+printf '%s\\n' "$*" >> {log}
+"""
+# Prints the line a matching wheel would print, then fails: the installer must trust the status, not the text.
+SHASUM_PRINTS_THE_PIN_AND_FAILS = f"""#!/bin/bash
+printf '%s  %s\\n' {WHEEL_SHA256} "${{@: -1}}"
+exit 1
+"""
+# Apple's mktemp puts `mktemp -d` under _CS_DARWIN_USER_TEMP_DIR and reads TMPDIR only as a fallback, so the real
+# mktemp gets an explicit template under the scratch TMPDIR; the directory the installer makes stays inside it.
+MKTEMP_UNDER_TMPDIR = """#!/bin/bash
+exec {mktemp} "$@" "$TMPDIR/tmp.XXXXXXXXXX"
+"""
 
 
 def wheel_name(pin: str) -> str:
@@ -67,6 +97,40 @@ def manifest_wheel_pin(repo_root: Path, tool: str) -> str:
     if result.returncode != 0:
         raise AssertionError(result.stderr)
     return result.stdout.strip()
+
+
+def run_installer(command: str, *, curl: str = CURL_WRITES_STUB, shasum: str | None = None) -> tuple[int, list | None]:
+    """Run the installer's shell line with curl and uv stubbed; return its status and the uv log lines (None: no uv run).
+
+    A scratch directory holds the stubs, the stub bytes, the uv log and the TMPDIR the command's mktemp writes under, so
+    the run reads no network and leaves nothing outside it; shasum is the real one unless the case passes a stub.
+    """
+    with tempfile.TemporaryDirectory(prefix="graphify-installer-") as scratch:
+        root = Path(scratch)
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        (root / "tmp").mkdir()
+        (root / "stub-wheel.bin").write_bytes(STUB_WHEEL)
+        log = root / "uv.log"
+        stubs = {
+            "curl": curl.format(stub=shlex.quote(str(root / "stub-wheel.bin"))),
+            "uv": UV_LOGS_ARGV.format(log=shlex.quote(str(log))),
+            "mktemp": MKTEMP_UNDER_TMPDIR.format(mktemp=shlex.quote(shutil.which("mktemp") or "/usr/bin/mktemp")),
+        }
+        if shasum is not None:
+            stubs["shasum"] = shasum
+        for name, body in stubs.items():
+            (bin_dir / name).write_text(body)
+            (bin_dir / name).chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-c", command],
+            env={"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "TMPDIR": str(root / "tmp"), "HOME": scratch},
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        return result.returncode, log.read_text().splitlines() if log.exists() else None
 
 
 class GraphifyAssetTest(unittest.TestCase):
@@ -126,6 +190,30 @@ class GraphifyAssetTest(unittest.TestCase):
         self.assertEqual(PIN, manifest_wheel_pin(ROOT, TOOL))
         # The upstream name is not the installed tool's; under it the upgrader would find no pin and upgrade the tool.
         self.assertEqual("", manifest_wheel_pin(ROOT, "graphify"))
+
+    def test_the_installers_checksum_gate_installs_only_the_wheel_whose_digest_matches(self) -> None:
+        command = install_command(self.entry()["installer"])
+        with self.subTest(case="the stub bytes differ from the pinned digest"):
+            status, uv_log = run_installer(command)
+            self.assertNotEqual(0, status)
+            self.assertIsNone(uv_log)
+        with self.subTest(case="the digest in the command is the stub bytes' sha256"):
+            matching = command.replace(WHEEL_SHA256, hashlib.sha256(STUB_WHEEL).hexdigest())
+            status, uv_log = run_installer(matching)
+            self.assertEqual(0, status)
+            self.assertIsNotNone(uv_log)
+            self.assertEqual(1, len(uv_log))
+            words = uv_log[0].split()
+            self.assertEqual(["tool", "install", "--force"], words[:3])
+            self.assertTrue(words[-1].endswith(wheel_name(PIN)), uv_log[0])
+        with self.subTest(case="shasum prints the pinned digest and exits 1"):
+            status, uv_log = run_installer(command, shasum=SHASUM_PRINTS_THE_PIN_AND_FAILS)
+            self.assertNotEqual(0, status)
+            self.assertIsNone(uv_log)
+        with self.subTest(case="curl exits 22 and writes nothing"):
+            status, uv_log = run_installer(command, curl=CURL_FAILS)
+            self.assertNotEqual(0, status)
+            self.assertIsNone(uv_log)
 
     def test_the_reason_names_the_cadence_and_the_hosted_routes_refusal(self) -> None:
         reason = self.entry()["reason"]

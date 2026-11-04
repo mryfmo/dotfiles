@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""assets.graphify is a pinned manifest asset that no update step installs; its reason refuses the hosted route."""
+"""assets.graphifyy is a pinned manifest asset that no update step installs; its reason refuses the hosted route."""
 
 from __future__ import annotations
 
 import re
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,14 +14,19 @@ from tests.unit.test_generate_agent_configs import load_manifest_fixture
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
-# Everything `make update` and the bootstrap run: the updater, the Makefile, setup.sh and the install/ scripts.
+UPGRADER = ROOT / "scripts/upgrade-tools.sh"
+# Everything `make update` and the bootstrap run: the updater, the tool upgrader, the Makefile, setup.sh and install/.
 INSTALL_STEP_FILES = (
     UPDATER,
+    UPGRADER,
     ROOT / "Makefile",
     ROOT / "setup.sh",
     *sorted(p for p in (ROOT / "install").rglob("*") if p.is_file()),
 )
-ENTRY_KEYS = {"source", "upstream", "pin", "verify", "sha256", "note", "reason", "install_path", "installer"}
+# The asset is keyed by the uv tool name: `make update` runs upgrade_uv_tools, which upgrades every installed uv
+# tool except the ones manifest_wheel_pin finds under that name with a `.whl` files entry.
+TOOL = "graphifyy"
+ENTRY_KEYS = {"source", "upstream", "pin", "verify", "sha256", "files", "note", "reason", "install_path", "installer"}
 INSTALL_PATH = "~/.local/share/uv/tools/graphifyy"
 # The reason's two sentences: the pre-1.0 cadence that keeps the pin, and the hosted route's refusal.
 REASON_PHRASES = ("pre-1.0", "api.graphify.com", "credentials, scope and network review", "decisions row")
@@ -31,6 +37,9 @@ WHEEL_SHA256 = "be8e68ca7e8d2115599167cff82d4a3afc8c5f312c45f707fa5d1a35cc9fb7a7
 # The hcom asset's install form (scripts/update-agent-assets.sh, update_hcom): download the one wheel, compare its
 # sha256 with the pin, install the local file. A version resolve from PyPI would bind no digest at install time.
 VERIFY_COMMAND = "shasum -a 256"
+# The digest is read into a variable and the command's status checked before the comparison, so a shasum that
+# prints a digest and exits non-zero never reaches the install.
+STATUS_READ = "|| exit 1"
 
 
 def wheel_name(pin: str) -> str:
@@ -40,6 +49,24 @@ def wheel_name(pin: str) -> str:
 def install_command(installer: str) -> str:
     # The installer is the shell line, then a parenthetical note on who runs it (CHANGE 1 of the brief).
     return installer.split(" (", 1)[0]
+
+
+def manifest_wheel_pin(repo_root: Path, tool: str) -> str:
+    """What upgrade_uv_tools asks before `uv tool upgrade TOOL`: the real function over REPO_ROOT's manifest."""
+    lines = UPGRADER.read_text().splitlines()
+    start = lines.index("function manifest_wheel_pin() {")
+    end = next(index for index in range(start, len(lines)) if lines[index] == "}")
+    result = subprocess.run(
+        ["bash", "-c", 'repo_root="$1"; eval "$2"; manifest_wheel_pin "$3"', "bash", str(repo_root)]
+        + ["\n".join(lines[start : end + 1]), tool],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(result.stderr)
+    return result.stdout.strip()
 
 
 class GraphifyAssetTest(unittest.TestCase):
@@ -54,8 +81,8 @@ class GraphifyAssetTest(unittest.TestCase):
         shutil.rmtree(cls.temp_dir)
 
     def entry(self) -> dict:
-        self.assertIn("graphify", self.manifest["assets"])
-        return self.manifest["assets"]["graphify"]
+        self.assertIn(TOOL, self.manifest["assets"])
+        return self.manifest["assets"][TOOL]
 
     def test_the_entry_has_the_validators_shape_for_a_pinned_wheel(self) -> None:
         entry = self.entry()
@@ -89,6 +116,16 @@ class GraphifyAssetTest(unittest.TestCase):
         command = install_command(entry["installer"])
         self.assertIn(wheel_name(PIN), command)
         self.assertIn(WHEEL_SHA256, command)
+        self.assertEqual({"any"}, set(entry["files"]))
+        self.assertTrue(entry["files"]["any"].endswith("/" + wheel_name(PIN)), entry["files"]["any"])
+        verify = rf'h="\$\({re.escape(VERIFY_COMMAND)} "\$\S*{re.escape(wheel_name(PIN))}"\)" \|\| exit 1 &&'
+        self.assertRegex(command, verify)
+        self.assertNotIn("|", command.replace(STATUS_READ, ""))
+
+    def test_make_update_skips_the_pinned_tool(self) -> None:
+        self.assertEqual(PIN, manifest_wheel_pin(ROOT, TOOL))
+        # The upstream name is not the installed tool's; under it the upgrader would find no pin and upgrade the tool.
+        self.assertEqual("", manifest_wheel_pin(ROOT, "graphify"))
 
     def test_the_reason_names_the_cadence_and_the_hosted_routes_refusal(self) -> None:
         reason = self.entry()["reason"]

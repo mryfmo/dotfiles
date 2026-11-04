@@ -111,6 +111,16 @@ skills:
     understand-knowledge: [codex, omp, omp-orchestrator, omp-worker]
     understand-onboard: [codex, omp, omp-orchestrator, omp-worker]
     terminal-browser: [claude, codex, omp, omp-orchestrator, omp-worker]
+    # The knowledge-work subset of the skill provenance decision of 2026-11-02: nine anthropics/knowledge-work-plugins skills copied at commit 2574e29377c7173d0cecffef29a6ecbd7f8ccb5d; tests/unit/test_kwp_skills_drift.py diffs each copy against its fixture, so a change to one is reviewed there, never silent.
+    kwp-architecture: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-change-request: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-deploy-checklist: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-incident-response: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-risk-assessment: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-runbook: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-status-report: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-tech-debt: [claude, codex, omp, omp-orchestrator, omp-worker]
+    kwp-testing-strategy: [claude, codex, omp, omp-orchestrator, omp-worker]
   # The pstack skills (assets.pstack) land in their own root, ~/.agents/pstack/skills, which no agent scans
   # by default: only the omp consumers named here get it as a skills.customDirectories entry. Their names
   # come from the pinned archive at chezmoi apply time, never from a list kept here. Claude Code has the

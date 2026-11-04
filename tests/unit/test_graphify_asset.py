@@ -24,6 +24,10 @@ ENTRY_KEYS = {"source", "upstream", "pin", "verify", "sha256", "note", "reason",
 INSTALL_PATH = "~/.local/share/uv/tools/graphifyy"
 # The reason's two sentences: the pre-1.0 cadence that keeps the pin, and the hosted route's refusal.
 REASON_PHRASES = ("pre-1.0", "api.graphify.com", "credentials, scope and network review", "decisions row")
+# The reviewed values, from the PyPI release JSON of graphifyy read on 2026-11-04: the newest wheel at least
+# 72 hours old at that read. The shape test's regexes accept any well-formed value; these pin the exact one.
+PIN = "0.9.99"
+WHEEL_SHA256 = "be8e68ca7e8d2115599167cff82d4a3afc8c5f312c45f707fa5d1a35cc9fb7a7"
 
 
 class GraphifyAssetTest(unittest.TestCase):
@@ -58,6 +62,13 @@ class GraphifyAssetTest(unittest.TestCase):
             entry["installer"].startswith(f"uv tool install graphifyy=={entry['pin']}"),
             entry["installer"],
         )
+
+    def test_the_pin_and_digest_are_the_reviewed_values(self) -> None:
+        entry = self.entry()
+        self.assertEqual(PIN, entry["pin"])
+        self.assertEqual(WHEEL_SHA256, entry["sha256"])
+        # The installer is the pinned command, then a parenthetical note on who runs it (CHANGE 1 of the brief).
+        self.assertEqual(f"uv tool install graphifyy=={PIN}", entry["installer"].split(" (", 1)[0])
 
     def test_the_reason_names_the_cadence_and_the_hosted_routes_refusal(self) -> None:
         reason = self.entry()["reason"]

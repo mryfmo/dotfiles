@@ -26,8 +26,14 @@ head, an audit row being one whose verdict starts with the word `correct` or `in
 `sweep` or `-` row is no audit); `already_audited(unit, head, pr)` is the newest audit row of the same units at the
 head itself; `newest_sweep(unit, head)` is the newest sweep row of the same units at the head, a sweep row being one
 whose verdict starts with the word `sweep` (the advisory row of the `security-audit` skill the AGENTS.md Audit sweep
-rule describes: pr `-`, head the swept sha, verifier the skill and its pin, evidence the findings file; U144, U147),
-which no audit question sees. An audit or sweep row whose `head_sha` is not 40 hex is Malformed.
+rule describes; U144, U147), which no audit question sees. A sweep row must be the exact row that rule defines (U147
+round 4, Codex thread 4457544811: a row written by hand with verifier `coordinator` admitted the merge without
+showing that the pinned skill ran): its `pr` is `-`, its `verifier` begins with the two words `security-audit-skill
+<pin>`, `<pin>` 8 or more lowercase hex characters (the lever compares that word with the manifest's pin), and the
+first `;`-separated field of its `evidence`, stripped of whitespace, is a relative path under `sweeps/` ending in
+`.json` with no `..` or empty component (the findings file under the store). An audit or sweep row whose `head_sha`
+is not 40 hex, and a sweep row of the unit that fails any of the three, is Malformed naming the line and the field
+(standing order 21: never silently "no sweep row").
 
 `ledger.py <store> verdict <pr> <head>` prints `<ts>\\t<unit>\\t<verdict>\\t<evidence>` of the newest row for the head,
 or `none`; `ledger.py <store> carry-source <unit> <head> [--pr <pr>]` prints `<head_sha>\\t<verdict>\\t<unit>` of the
@@ -57,6 +63,13 @@ AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
 # A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep
 # rule; U147): the same word boundary as AUDIT_VERDICT, so `sweep (advisory)` and `sweep;` are sweep rows too.
 SWEEP_VERDICT = re.compile(r"^sweep(?:$|[\s(;,])")
+# The verifier of a sweep row (U147 round 4): the skill's name, then its pin word (8 or more lowercase hex; the
+# manifest's `assets.security-audit-skill.pin` is a 40-hex commit, and the row may hold its prefix), then the end or a
+# note after whitespace. The pin word is the group the lever compares with the manifest.
+SWEEP_VERIFIER = re.compile(r"^security-audit-skill ([0-9a-f]{8,})(?:$|\s)")
+SWEEP_PR = "-"
+SWEEP_EVIDENCE_DIR = "sweeps"
+SWEEP_EVIDENCE_SUFFIX = ".json"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -101,6 +114,41 @@ class Row:
         """True when the verdict starts with the word `sweep` (a sweep row, never an audit row)."""
         return SWEEP_VERDICT.match(self.verdict) is not None
 
+    @property
+    def sweep_pin(self):
+        """The pin word of a sweep row's verifier (`security-audit-skill <pin>`), or None when the verifier is not of
+        that form."""
+        match = SWEEP_VERIFIER.match(self.verifier)
+        return match.group(1) if match else None
+
+    @property
+    def sweep_evidence_path(self):
+        """The findings file a sweep row names: the first `;`-separated field of the evidence, stripped."""
+        return self.evidence.split(";", 1)[0].strip()
+
+    def sweep_fault(self):
+        """Why this sweep row is not the row the AGENTS.md Audit sweep rule defines, naming the field, or None (U147
+        round 4). The head is judged by the caller, as an audit row's is."""
+        if self.pr != SWEEP_PR:
+            return f"the pr of a sweep row is not {SWEEP_PR!r}: {self.pr!r}"
+        if self.sweep_pin is None:
+            return (
+                "the verifier of a sweep row does not begin with 'security-audit-skill <pin>' "
+                f"(the pin 8 or more lowercase hex): {self.verifier!r}"
+            )
+        parts = self.sweep_evidence_path.split("/")
+        if (
+            parts[0] != SWEEP_EVIDENCE_DIR  # lint-comparisons: allow the row's store-relative path is judged as text
+            or len(parts) < 2
+            or not parts[-1].endswith(SWEEP_EVIDENCE_SUFFIX)
+            or any(part in ("", "..") for part in parts[1:])
+        ):
+            return (
+                f"the evidence of a sweep row does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
+                f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {self.evidence!r}"
+            )
+        return None
+
 
 def newest(rows):
     """The row with the latest ts, the later line at an equal ts, or None."""
@@ -141,8 +189,10 @@ class Ledger:
 
     def newest_sweep(self, unit, head):
         """The newest sweep row of `unit` or a fix unit of it (`U<n>[a-z]`) at `head`, or None (U147: the merge gate's
-        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex is Malformed,
-        as an audit row is, so a short sha is never read as "no sweep" (standing order 21)."""
+        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex, or that is not
+        the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier `security-audit-skill <pin>`, evidence
+        a findings file under `sweeps/`; round 4), is Malformed naming the line and the field, as an audit row is, so
+        neither a short sha nor a hand-written row is ever read as "no sweep" (standing order 21)."""
         own = re.compile(rf"^{re.escape(unit)}[a-z]?$")
         found = []
         for row in self.rows:
@@ -150,6 +200,9 @@ class Ledger:
                 continue
             if not SHA.match(row.head_sha):
                 raise Malformed(f"{self.name}:{row.line}: the head_sha of a sweep row is not 40 hex: {row.head_sha!r}")
+            fault = row.sweep_fault()
+            if fault is not None:
+                raise Malformed(f"{self.name}:{row.line}: {fault}")
             if row.head_sha == head:
                 found.append(row)
         return newest(found)

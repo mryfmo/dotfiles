@@ -2,7 +2,10 @@
 the newest row by `(ts, line)` of the unit or a fix unit of it at the head whose verdict starts with the word `sweep`
 (the advisory row of the AGENTS.md Audit sweep rule: pr `-`, head the swept sha), a sweep row is no audit row to the
 three audit questions, a sweep row with a short head is a malformed store naming the line, and the CLI form
-`ledger.py <store> sweep <unit> <head>` prints `<ts>\\t<unit>\\t<verifier>\\t<evidence>` or `none`."""
+`ledger.py <store> sweep <unit> <head>` prints `<ts>\\t<unit>\\t<verifier>\\t<evidence>` or `none`. Since round 4
+(Codex thread 4457544811) only the exact row of the rule answers: pr `-`, verifier `security-audit-skill <pin>` (the pin
+8 or more lowercase hex), evidence whose first `;`-field is a relative `sweeps/<path>.json` without `..`; any other
+`sweep` row of the unit is a malformed store naming the line and the field, never "no sweep row"."""
 
 import importlib.util
 import subprocess
@@ -116,6 +119,106 @@ class LedgerSweepTest(unittest.TestCase):
         )
         self.assertEqual(read.newest_for_head("7", A).line, 2)
 
+    def test_a_sweep_row_that_is_not_the_exact_row_of_the_rule_is_malformed_naming_the_field(self):
+        """Round 4 (Codex thread 4457544811: a row written by hand with verifier `coordinator` admitted the merge): a
+        `sweep` row of the unit whose pr is not `-`, whose verifier does not begin with `security-audit-skill <pin>`
+        or whose evidence's first `;`-field is not a relative `sweeps/<path>.json` free of `..` is Malformed naming
+        the line and the field, at the asked head or another (as the short-head rule); the exact row answers, with a
+        note after the pin word or after a `;` in the evidence too, and the audit questions still ignore every one."""
+        ts = "2026-10-30T03:00:00Z"
+        pr_text = "the pr of a sweep row is not '-': '7'"
+        verifier_text = (
+            "the verifier of a sweep row does not begin with 'security-audit-skill <pin>' "
+            "(the pin 8 or more lowercase hex): {!r}"
+        )
+        evidence_text = (
+            "the evidence of a sweep row does not name a findings file sweeps/<path>.json under the store "
+            "(no '..' or empty component): {!r}"
+        )
+        for name, bad, field in (
+            ("pr 7", row(ts, "U7", "7", A, "sweep", SKILL, "sweeps/U7-x.json"), pr_text),
+            (
+                "verifier coordinator",
+                row(ts, "U7", "-", A, "sweep", "coordinator", "sweeps/U7-x.json"),
+                verifier_text.format("coordinator"),
+            ),
+            (
+                "the skill alone",
+                row(ts, "U7", "-", A, "sweep", "security-audit-skill", "sweeps/U7-x.json"),
+                verifier_text.format("security-audit-skill"),
+            ),
+            (
+                "a short pin",
+                row(ts, "U7", "-", A, "sweep", "security-audit-skill c1c8a8", "sweeps/U7-x.json"),
+                verifier_text.format("security-audit-skill c1c8a8"),
+            ),
+            (
+                "an upper-case pin",
+                row(ts, "U7", "-", A, "sweep", "security-audit-skill C1C8A8C1", "sweeps/U7-x.json"),
+                verifier_text.format("security-audit-skill C1C8A8C1"),
+            ),
+            (
+                "evidence under verdicts/",
+                row(ts, "U7", "-", A, "sweep", SKILL, "verdicts/x.md"),
+                evidence_text.format("verdicts/x.md"),
+            ),
+            (
+                "evidence ../x.json",
+                row(ts, "U7", "-", A, "sweep", SKILL, "../x.json"),
+                evidence_text.format("../x.json"),
+            ),
+            (
+                "evidence sweeps/../x.json",
+                row(ts, "U7", "-", A, "sweep", SKILL, "sweeps/../x.json"),
+                evidence_text.format("sweeps/../x.json"),
+            ),
+            (
+                "an absolute path",
+                row(ts, "U7", "-", A, "sweep", SKILL, "/sweeps/x.json"),
+                evidence_text.format("/sweeps/x.json"),
+            ),
+            ("sweeps alone", row(ts, "U7", "-", A, "sweep", SKILL, "sweeps"), evidence_text.format("sweeps")),
+            (
+                "a .md under sweeps",
+                row(ts, "U7", "-", A, "sweep", SKILL, "sweeps/x.md"),
+                evidence_text.format("sweeps/x.md"),
+            ),
+            (
+                "an empty component",
+                row(ts, "U7", "-", A, "sweep", SKILL, "sweeps//x.json"),
+                evidence_text.format("sweeps//x.json"),
+            ),
+            (
+                "the bad row at another head",
+                row(ts, "U7", "-", B, "sweep", "coordinator", "sweeps/U7-x.json"),
+                verifier_text.format("coordinator"),
+            ),
+        ):
+            with self.subTest(name):
+                read = self.ledger(row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"), bad)  # line 3
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    read.newest_sweep("U7", A)
+                self.assertEqual(str(caught.exception), f"{self.ledger_file}:3: {field}")
+                self.assertEqual([r.line for r in read.audits("U7")], [2], "no audit question reads the row")
+                self.assertIsNone(read.newest_sweep("U8", A), "another unit's question never sees U7's row")
+        full = "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8"
+        read = self.ledger(
+            row(
+                ts,
+                "U7",
+                "-",
+                A,
+                "sweep",
+                f"security-audit-skill {full} (installed 2026-11-03)",
+                " sweeps/U7-aaaaaaaa.json ; 2 findings",
+            ),
+            sweep("2026-10-30T02:00:00Z", A),
+        )
+        found = read.newest_sweep("U7", A)
+        self.assertEqual((found.line, found.sweep_pin, found.sweep_evidence_path), (2, full, "sweeps/U7-aaaaaaaa.json"))
+        self.assertEqual(read.rows[1].sweep_pin, "c1c8a8c1")
+        self.assertIsNone(read.rows[0].sweep_fault())
+
     def test_the_cli_prints_the_four_columns_or_none_and_exits_2_on_a_malformed_store(self):
         self.ledger(
             row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)"),
@@ -141,6 +244,19 @@ class LedgerSweepTest(unittest.TestCase):
         self.assertEqual(
             run.stderr, f"ledger: {self.ledger_file}:3: the head_sha of a sweep row is not 40 hex: {A[:7]!r}\n"
         )
+        # round 4: a hand-written row is a malformed store naming the field, and an audit row by the coordinator is no
+        # sweep row at all, so a store holding only that is `none`
+        self.ledger(row("2026-10-30T03:00:00Z", "U7", "-", A, "sweep", "coordinator", "sweeps/U7-x.json"))
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(
+            run.stderr,
+            f"ledger: {self.ledger_file}:2: the verifier of a sweep row does not begin with "
+            "'security-audit-skill <pin>' (the pin 8 or more lowercase hex): 'coordinator'\n",
+        )
+        self.ledger(row("2026-10-30T01:00:00Z", "U7", "7", A, "correct (findings=0)", verifier="coordinator"))
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
         self.ledger_file.write_text("ts\tunit\n")
         run = self.cli("sweep", "U7", A)
         self.assertEqual(run.returncode, 2)

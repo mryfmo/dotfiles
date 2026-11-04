@@ -4,7 +4,11 @@ scripts/orchestrator/brief-check.py through one probe, never a loop of the lever
 ledger row of the unit or a fix unit of it at the audited head, read through scripts/orchestrator/ledger.py and read by
 its shape; a unit whose brief has no such section merges as before. The probe answers no mark with exit 3, never 1
 (round 3: 1 is the interpreter's status for an uncaught exception, and a checker that did not compile had read as "no
-mark"), and a checker it cannot load or run is a refusal naming it. The fixture is PrLeverTestCase of test_pr_levers
+mark"), and a checker it cannot load or run is a refusal naming it. Round 4 admits the exact row of the AGENTS.md Audit
+sweep rule alone (pr `-`, verifier `security-audit-skill <pin>` with the pin word a prefix of the manifest's
+`assets.security-audit-skill.pin`, evidence a findings file `sweeps/<path>.json` that is a regular file of this user
+under the store), and the probe compiles the checker from its source text, so no stale `__pycache__` entry answers for
+it. The fixture is PrLeverTestCase of test_pr_levers
 (the scratch checkout, the fake gh, `writes()`), the store built as PrMergeTest builds it plus the brief, the checker
 and its manifest (the checker's import runs its pin self-check); no test class is imported, since unittest discovery
 would run an imported class a second time."""
@@ -12,6 +16,7 @@ would run an imported class a second time."""
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from test_pr_levers import FOOTER, LEDGER_HEADER, LEVERS, ROOT, SHA_A, SHA_B, PrLeverTestCase, ledger_row  # noqa: E402
 
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
+# The pin the manifest declares for the skill (`assets.security-audit-skill.pin`), the one the lever compares a sweep
+# row's pin word with; the fixture rows carry its first 8 characters, as the AGENTS.md sweep bullet's example does.
+MANIFEST_PIN = re.search(
+    r"^  security-audit-skill:\n(?:    .*\n)*?    pin: ([0-9a-f]{40})$", MANIFEST.read_text(), re.MULTILINE
+).group(1)
+PIN8 = MANIFEST_PIN[:8]
 DIGEST = "d" * 64
 TRUST_SENTENCE = "TRUST: the unit trusts the one ledger reader and reads nothing else of the brief."
 TRUST_BRIEF = f"GOAL\nfixture\n\nTRUST\n{TRUST_SENTENCE}\n"
@@ -60,7 +71,29 @@ BROKEN_CHECKERS = (
     ("a module holding only x = 1", "x = 1\n", "AttributeError"),
     ("an exit 0 at import", "import sys\nsys.exit(0)\n", "exited 0 at import"),
     ("an exit 1 at import", "import sys\nsys.exit(1)\n", "exited 1 at import"),
+    # round 4: an exit 2 that wrote nothing is not the self-check's refusal (which writes its line first), so the
+    # probe names the checker instead of leaving an empty refusal
+    ("an exit 2 at import with no message", "import sys\nsys.exit(2)\n", "exited 2 at import with no message"),
 )
+# A checker whose `sections()` drops TRUST, the code a stale `__pycache__` entry held (round 4, the audit of 77b01342).
+BLIND_CHECKER_TAIL = """
+
+_sections = sections
+
+
+def sections(text):
+    return {name: body for name, body in _sections(text).items() if name != "TRUST"}
+"""
+# importlib's file loader over the checker: what the round-3 probe ran, and what a valid cache answers for.
+LOADER_PROBE = """import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location("brief_check", sys.argv[2])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print("TRUST" in module.sections(handle.read()))
+"""
 # A python3 first on PATH that exits 1 for the probe's `-c` form and runs the real interpreter for the reader (round 3:
 # the lever's exit-1 path, shown without a checker that could produce it).
 FAILING_PROBE_PYTHON = """#!{real}
@@ -74,10 +107,12 @@ os.execv({real!r}, [{real!r}, *sys.argv[1:]])
 PROBE_CONSTANT = re.compile(r"^trust_probe='(.*?)'$", re.DOTALL | re.MULTILINE)
 
 
-def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"):
+def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep", pr="-", verifier=None, evidence=None):
     """The advisory row the AGENTS.md Audit sweep rule describes: verdict `sweep`, pr `-`, the swept sha, the skill and
     its pin as the verifier, the findings file under the store as the evidence."""
-    return f"{ts}\t{unit}\t-\t{head}\t{verdict}\tsecurity-audit-skill c1c8a8c1\tsweeps/{unit}-{head[:8]}.json\n"
+    verifier = verifier or f"security-audit-skill {PIN8}"
+    evidence = evidence or f"sweeps/{unit}-{head[:8]}.json"
+    return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\t{verifier}\t{evidence}\n"
 
 
 def delimited_brief(delimiter, trust=True):
@@ -106,6 +141,11 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.briefs = self.records / "briefs"
         self.briefs.mkdir()
         self.fixture_brief = self.brief(TRUST_BRIEF)
+        # The findings files the fixture sweep rows name: since round 4 the gate requires each under `<store>/sweeps/`.
+        self.sweeps = self.records / "sweeps"
+        self.sweeps.mkdir()
+        for unit, head in (("U71", SHA_A), ("U71b", SHA_A), ("U71", SHA_B)):
+            self.findings(unit, head)
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
@@ -114,6 +154,28 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         path = self.briefs / name
         path.write_text(text, encoding="utf-8", newline="")
         return path
+
+    def findings(self, unit="U71", head=SHA_A):
+        path = self.sweeps / f"{unit}-{head[:8]}.json"
+        path.write_text("{}\n")
+        return path
+
+    def python3(self):
+        """The interpreter the lever runs (`python3` first on PATH), whose cache tag a `__pycache__` entry must carry."""
+        real = shutil.which("python3", path=self.env["PATH"])
+        self.assertIsNotNone(real, "the lever needs a python3 on PATH")
+        return real
+
+    def run_python(self, *args):
+        return subprocess.run(
+            [self.python3(), "-I", "-S", *args],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
 
     def ledger(self, *rows):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
@@ -374,6 +436,210 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.assert_refused_before_ci(self.merge(), f"at the audited head {SHA_B}")
         self.ledger(earlier, carried, sweep_row(head=SHA_B))
         self.assert_merged(self.merge(), ts="2026-10-25T10:00:00Z")
+
+    def test_only_the_exact_sweep_row_of_the_rule_admits_the_merge(self):
+        """Round 4 (Codex thread 4457544811): the row the AGENTS.md Audit sweep rule defines merges, with the full 40-hex
+        pin or a note after the pin word and after a `;` in the evidence too; a row written by hand (pr `7`, verifier
+        `coordinator`, the skill without its pin, evidence under `verdicts/` or with `..`) is a malformed store to the
+        reader, exit 2 naming the line and the field with no write, never a sweep and never "no sweep row"; and a pin
+        word that is no prefix of the manifest's `assets.security-audit-skill.pin` (`deadbeef`, or the pin with one
+        more character) refuses naming both pins."""
+        for name, row in (
+            ("the first 8 characters of the pin", sweep_row()),
+            ("the full pin", sweep_row(verifier=f"security-audit-skill {MANIFEST_PIN}")),
+            ("twelve characters of the pin", sweep_row(verifier=f"security-audit-skill {MANIFEST_PIN[:12]}")),
+            (
+                "notes after the pin word and the evidence",
+                sweep_row(
+                    verifier=f"security-audit-skill {PIN8} (installed 2026-11-03)",
+                    evidence=f"sweeps/U71-{SHA_A[:8]}.json; 2 findings, both filed",
+                ),
+            ),
+        ):
+            with self.subTest(name):
+                self.ledger(ledger_row(SHA_A), row)
+                self.assert_merged(self.merge())
+        for name, row, field in (
+            # dated before the correct row, so the verdict question (newest row for pr 7) still names that row
+            ("pr 7", sweep_row(pr="7", ts="2026-10-25T08:00:00Z"), "the pr of a sweep row is not '-': '7'"),
+            (
+                "verifier coordinator",
+                sweep_row(verifier="coordinator"),
+                "the verifier of a sweep row does not begin with 'security-audit-skill <pin>' (the pin 8 or more lowercase hex): 'coordinator'",
+            ),
+            (
+                "the skill alone",
+                sweep_row(verifier="security-audit-skill"),
+                "the verifier of a sweep row does not begin with 'security-audit-skill <pin>'",
+            ),
+            (
+                "evidence under verdicts/",
+                sweep_row(evidence=f"verdicts/U71-{SHA_A[:8]}.md"),
+                "the evidence of a sweep row does not name a findings file sweeps/<path>.json under the store",
+            ),
+            (
+                "evidence with ..",
+                sweep_row(evidence=f"sweeps/../sweeps/U71-{SHA_A[:8]}.json"),
+                "the evidence of a sweep row does not name a findings file sweeps/<path>.json under the store",
+            ),
+        ):
+            with self.subTest(name):
+                self.ledger(ledger_row(SHA_A), row)
+                run = self.merge()
+                self.assert_refused_before_ci(run, f"ledger.tsv:3: {field}")
+                self.assertNotIn("has no sweep row", run.stderr)
+        for name, pin in (("deadbeef", "deadbeef"), ("the pin with one more character", MANIFEST_PIN + "0")):
+            with self.subTest(name):
+                self.ledger(ledger_row(SHA_A), sweep_row(verifier=f"security-audit-skill {pin}"))
+                run = self.merge()
+                self.assert_refused_before_ci(
+                    run,
+                    f"the sweep row of U71 at {SHA_A} names pin {pin}, which is not a prefix of the manifest's "
+                    f"assets.security-audit-skill.pin {MANIFEST_PIN}",
+                )
+                self.assertIn("agent-config.yaml", run.stderr)
+
+    def test_the_lever_reads_the_row_s_verifier_and_evidence_by_their_shape_whatever_the_reader_answered(self):
+        """Round 4: the reader refuses a hand-written row, and the lever reads the exit-0 answer by its shape all the
+        same (round 2), so a reader whose answer names another verifier, a short pin, an evidence path outside
+        `sweeps/`, one with `..` or an empty component is a refusal naming the field, with no write."""
+        self.ledger(ledger_row(SHA_A), sweep_row())
+        ts = "2026-10-25T09:30:00Z"
+        for name, verifier, evidence, message in (
+            (
+                "verifier coordinator",
+                "coordinator",
+                f"sweeps/U71-{SHA_A[:8]}.json",
+                "names 'coordinator' as its verifier, not the pinned skill",
+            ),
+            (
+                "the skill alone",
+                "security-audit-skill",
+                f"sweeps/U71-{SHA_A[:8]}.json",
+                "names 'security-audit-skill' as its verifier",
+            ),
+            (
+                "a short pin",
+                "security-audit-skill c1c8",
+                f"sweeps/U71-{SHA_A[:8]}.json",
+                "names 'c1c8' as the skill's pin, not 8 or more lowercase hex",
+            ),
+            (
+                "evidence under verdicts/",
+                f"security-audit-skill {PIN8}",
+                "verdicts/x.md",
+                "names 'verdicts/x.md' as its evidence, not a findings file sweeps/<path>.json",
+            ),
+            (
+                "evidence with ..",
+                f"security-audit-skill {PIN8}",
+                "sweeps/../x.json",
+                "the findings file sweeps/../x.json of the sweep row of U71",
+            ),
+            (
+                "an empty component",
+                f"security-audit-skill {PIN8}",
+                "sweeps//x.json",
+                "the findings file sweeps//x.json of the sweep row of U71",
+            ),
+            (
+                "a . component",
+                f"security-audit-skill {PIN8}",
+                "sweeps/./x.json",
+                "the findings file sweeps/./x.json of the sweep row of U71",
+            ),
+        ):
+            with self.subTest(name):
+                answer = f"{ts}\tU71\t{verifier}\t{evidence}\n"
+                self.reader.write_text(ANSWERING_SWEEP_READER.format(answer=answer, real=str(LEVERS / "ledger.py")))
+                run = self.merge()
+                self.assert_refused_before_ci(run, message)
+                self.assertEqual(run.stdout, "", "no receipt")
+
+    def test_the_findings_file_a_sweep_row_names_must_be_a_regular_file_of_this_user_under_the_store(self):
+        """Round 4: the evidence path is a file the gate stats under `<store>/sweeps/` (never opened): a missing file,
+        a symlink to a file outside the store, a directory, another user's file and a `sweeps/` that is a symlink each
+        refuse naming the path with no write; the file restored, the merge goes through."""
+        self.ledger(ledger_row(SHA_A), sweep_row())
+        path = self.sweeps / f"U71-{SHA_A[:8]}.json"
+        named = f"{path}, the findings file the sweep row of U71 at {SHA_A} names, is not a regular file of this user"
+        path.unlink()
+        self.assert_refused_before_ci(self.merge(), named)
+        outside = self.root / "outside.json"
+        outside.write_text("{}\n")
+        path.symlink_to(outside)
+        self.assert_refused_before_ci(self.merge(), named)
+        path.unlink()
+        path.mkdir()
+        self.assert_refused_before_ci(self.merge(), named)
+        path.rmdir()
+        # another user's file: a hard link keeps the target's owner; a kernel that forbids the link (Linux
+        # protected_hardlinks), another filesystem or a root run cannot show this case and skips it
+        try:
+            os.link("/etc/hosts", path)
+        except OSError:
+            other = None
+        else:
+            other = path.stat().st_uid != os.geteuid()
+        if other:
+            self.assert_refused_before_ci(self.merge(), named)
+        if path.exists():
+            path.unlink()
+        self.findings()
+        elsewhere = self.root / "elsewhere-sweeps"
+        shutil.move(self.sweeps, elsewhere)
+        self.sweeps.symlink_to(elsewhere)
+        self.assert_refused_before_ci(
+            self.merge(), f"{self.sweeps} is not a directory of this user (a symlink or missing)"
+        )
+        self.sweeps.unlink()
+        shutil.move(elsewhere, self.sweeps)
+        self.assert_merged(self.merge())
+
+    def test_a_stale_bytecode_cache_of_the_checker_never_answers_for_its_source(self):
+        """Round 4 (the audit of 77b01342, P2 f1 s7): importlib's file loader runs a `__pycache__` entry whose recorded
+        source mtime and size match the source in the source's place, and `dont_write_bytecode` stops writes alone, so
+        a cache compiled from a checker whose `sections()` drops TRUST answered "no mark" for the pinned source and the
+        round-3 lever merged a TRUST brief with no sweep row. The cache is built with py_compile from that checker and
+        its header patched to the real source's mtime and size (PEP 552: magic, flags, mtime, size), the loader shown
+        to run it; the probe compiles the source text itself, so the brief is the mark, the lever refuses for the
+        missing sweep row, and the cache is neither replaced nor joined by another."""
+        python3 = self.python3()
+        real = (LEVERS / "brief-check.py").read_bytes()
+        self.checker.write_bytes(real + BLIND_CHECKER_TAIL.encode())
+        compiled = self.run_python(
+            "-c",
+            "import py_compile, sys\n"
+            "print(py_compile.compile(sys.argv[1], doraise=True, invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP))",
+            str(self.checker),
+        )
+        self.assertEqual(compiled.returncode, 0, compiled.stderr)
+        cache = Path(compiled.stdout.strip())
+        self.assertEqual(cache.parent.name, "__pycache__")
+        shutil.copy2(LEVERS / "brief-check.py", self.checker)
+        stat = self.checker.stat()
+        header = cache.read_bytes()
+        stale = (
+            header[:8] + struct.pack("<II", int(stat.st_mtime) & 0xFFFFFFFF, stat.st_size & 0xFFFFFFFF) + header[16:]
+        )
+        cache.write_bytes(stale)
+        entries = sorted(cache.parent.iterdir())
+        loaded = self.run_python("-c", LOADER_PROBE, str(self.fixture_brief), str(self.checker))
+        self.assertEqual(
+            (loaded.returncode, loaded.stdout), (0, "False\n"), loaded.stderr
+        )  # the premise: the cache is live
+        probe = PROBE_CONSTANT.findall((LEVERS / "pr-merge.sh").read_text())[0]
+        asked = self.run_python("-c", probe, str(self.fixture_brief), str(self.checker))
+        self.assertEqual((asked.returncode, asked.stdout, asked.stderr), (0, "", ""))
+        run = self.merge()
+        self.assert_refused_before_ci(
+            run, f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}"
+        )
+        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertEqual(cache.read_bytes(), stale, "the cache is not rewritten")
+        self.assertEqual(sorted(cache.parent.iterdir()), entries, "no other cache entry is written")
+        self.ledger(ledger_row(SHA_A), sweep_row())
+        self.assert_merged(self.merge())
 
     def test_a_checker_the_probe_cannot_load_or_run_is_a_refusal_never_no_mark(self):
         """Round 3 (the audit of da0c2df4, P2 f1 s7): the probe's whole body runs under one try, so a checker that does

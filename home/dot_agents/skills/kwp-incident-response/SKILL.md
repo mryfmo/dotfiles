@@ -8,7 +8,7 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /incident-response
+# kwp-incident-response
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
@@ -17,15 +17,15 @@ Manage an incident from detection through postmortem.
 ## Usage
 
 ```
-incident-response <incident description or alert>
+kwp-incident-response <incident description or alert>
 ```
 
 ## Modes
 
 ```
-/incident-response new [description]     # Start a new incident
-/incident-response update [status]       # Post a status update
-/incident-response postmortem            # Generate postmortem from incident data
+kwp-incident-response new [description]     # Start a new incident
+kwp-incident-response update [status]       # Post a status update
+kwp-incident-response postmortem            # Generate postmortem from incident data
 ```
 
 If no mode is specified, ask what phase the incident is in.

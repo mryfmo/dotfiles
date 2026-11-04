@@ -8,7 +8,7 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /runbook
+# kwp-runbook
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
@@ -17,7 +17,7 @@ Create a step-by-step operational runbook for a recurring task or procedure.
 ## Usage
 
 ```
-runbook <process or task name>
+kwp-runbook <process or task name>
 ```
 
 ## Output

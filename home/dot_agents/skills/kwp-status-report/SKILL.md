@@ -8,16 +8,16 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /status-report
+# kwp-status-report
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
-Generate a polished status report for leadership or stakeholders. See the **risk-assessment** skill for risk matrix frameworks and severity definitions.
+Generate a polished status report for leadership or stakeholders. See the **kwp-risk-assessment** skill for risk matrix frameworks and severity definitions.
 
 ## Usage
 
 ```
-status-report [weekly | monthly | quarterly] [project or team]
+kwp-status-report [weekly | monthly | quarterly] [project or team]
 ```
 
 ## Output

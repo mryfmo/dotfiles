@@ -8,7 +8,7 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /change-request
+# kwp-change-request
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
@@ -17,7 +17,7 @@ Create a structured change request with impact analysis, risk assessment, and ro
 ## Usage
 
 ```
-change-request <change description>
+kwp-change-request <change description>
 ```
 
 ## Change Management Framework

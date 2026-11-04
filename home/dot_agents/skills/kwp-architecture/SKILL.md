@@ -8,7 +8,7 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /architecture
+# kwp-architecture
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
@@ -17,7 +17,7 @@ Create an Architecture Decision Record (ADR) or evaluate a system design.
 ## Usage
 
 ```
-architecture <decision or system to design>
+kwp-architecture <decision or system to design>
 ```
 
 ## Modes
@@ -26,7 +26,7 @@ architecture <decision or system to design>
 **Evaluate a design**: "Review this microservices proposal"
 **System design**: "Design the notification system for our app"
 
-See the **system-design** skill for detailed frameworks on requirements gathering, scalability analysis, and trade-off evaluation.
+The upstream **system-design** skill, which is not part of this set, holds detailed frameworks on requirements gathering, scalability analysis, and trade-off evaluation.
 
 ## Output — ADR Format
 

@@ -2,21 +2,27 @@
 
 Each `home/dot_agents/skills/kwp-<name>/SKILL.md` is the anthropics/knowledge-work-plugins file at one recorded commit
 with an exact list of line edits: the name carries the `kwp-` prefix, the Claude Code `argument-hint` field becomes the
-usage line of the body, the license and the provenance land in the frontmatter, and the connector placeholders Codex and
-omp never expand become plain prose. The fixtures under `tests/fixtures/kwp-upstream` are the upstream bytes, pinned by
-their sha256; a copy that differs from the fixture by any other byte fails under the skill's own test name with a
-unified diff, and a fixture that drifts fails by path. The manifest gives the nine to every skill consumer, and one
-skills root serves them. The unit run has no PyYAML of its own, so the one-root test loads the manifest through a
-`uv run --offline --with pyyaml` subprocess when the import is missing; a failed load is a failure, never a pass.
+usage line of the body, the license and the provenance land in the frontmatter, the connector placeholders Codex and
+omp never expand become plain prose, and every reference to a skill by its upstream name (the title, the usage line,
+the mode examples, a cross-skill pointer) names the installed `kwp-<name>` or says the skill is not part of this set.
+The fixtures under `tests/fixtures/kwp-upstream` are the upstream bytes, pinned by their sha256; the copies are read as
+bytes with no newline translation, so a copy that differs from the fixture by any other byte, a line ending included,
+fails under the skill's own test name with a unified diff, and a fixture that drifts fails by path. The manifest gives
+the nine to every skill consumer, and one skills root serves them. The unit run has no PyYAML of its own, so the
+one-root test loads the manifest through a `uv run --offline --with pyyaml` subprocess when the import is missing; a
+failed load is a failure, never a pass, and a producer that exits non-zero is refused whatever it prints.
 """
 
 import difflib
 import hashlib
 import json
+import os
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 COPIES = ROOT / "home/dot_agents/skills"
@@ -71,8 +77,9 @@ SKILLS = (
 )
 NAMES = tuple(row[1] for row in SKILLS)
 
-# The body edits, as whole lines. The connectors pair is literal; the usage pair comes from the row; the placeholder
-# pairs come from each `~~<kind>` line the fixture holds. Anything else in a copy that differs from upstream is drift.
+# The body edits, as whole lines. The title and usage pairs come from the row; the connectors pair is literal; the
+# placeholder pairs come from each `~~<kind>` line the fixture holds; the installed-name pairs below are per skill.
+# Anything else in a copy that differs from upstream is drift.
 CONNECTORS_LINE = (
     "> If you see unfamiliar placeholders or need to check which tools are connected, "
     "see [CONNECTORS.md](../../CONNECTORS.md)."
@@ -83,6 +90,49 @@ CONNECTORS_REPLACEMENT = (
 PLACEHOLDER_LINE = re.compile(r"^If \*\*~~(?P<kind>.+)\*\* is connected:$")
 PLACEHOLDER_REPLACEMENT = "If {kind} tools are available in this session:"
 FORBIDDEN_MARKS = ("argument-hint", "~~", "$ARGUMENTS", "@$1", "CONNECTORS.md")
+
+# Round 2 (U148b): the cross-skill references and the mode examples name the installed skill, not the upstream one; a
+# pointer to an upstream skill outside the nine says so in the sentence's own voice. Whole lines, before and after.
+INSTALLED_NAME_EDITS = {
+    "architecture": (
+        (
+            (
+                "See the **system-design** skill for detailed frameworks on requirements gathering, scalability "
+                "analysis, and trade-off evaluation."
+            ),
+            (
+                "The upstream **system-design** skill, which is not part of this set, holds detailed frameworks on "
+                "requirements gathering, scalability analysis, and trade-off evaluation."
+            ),
+        ),
+    ),
+    "incident-response": (
+        (
+            "/incident-response new [description]     # Start a new incident",
+            "kwp-incident-response new [description]     # Start a new incident",
+        ),
+        (
+            "/incident-response update [status]       # Post a status update",
+            "kwp-incident-response update [status]       # Post a status update",
+        ),
+        (
+            "/incident-response postmortem            # Generate postmortem from incident data",
+            "kwp-incident-response postmortem            # Generate postmortem from incident data",
+        ),
+    ),
+    "status-report": (
+        (
+            (
+                "Generate a polished status report for leadership or stakeholders. See the **risk-assessment** skill "
+                "for risk matrix frameworks and severity definitions."
+            ),
+            (
+                "Generate a polished status report for leadership or stakeholders. See the **kwp-risk-assessment** "
+                "skill for risk matrix frameworks and severity definitions."
+            ),
+        ),
+    ),
+}
 
 PYYAML_LOADER = """
 import json, sys, yaml
@@ -103,13 +153,35 @@ def copy_path(name: str) -> Path:
     return COPIES / f"kwp-{name}" / "SKILL.md"
 
 
-def body_edits(name: str, hint: str, fixture_lines: list[str]) -> list[tuple[str, str]]:
-    pairs = [(CONNECTORS_LINE, CONNECTORS_REPLACEMENT), (f"/{name} $ARGUMENTS", f"{name} {hint}")]
-    for line in fixture_lines:
-        match = PLACEHOLDER_LINE.match(line)
-        if match:
-            pairs.append((line, PLACEHOLDER_REPLACEMENT.format(kind=match.group("kind"))))
+def body_edits(name: str, hint, fixture_lines: list[str]) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    if hint is not None:
+        pairs += [
+            (f"# /{name}", f"# kwp-{name}"),
+            (CONNECTORS_LINE, CONNECTORS_REPLACEMENT),
+            (f"/{name} $ARGUMENTS", f"kwp-{name} {hint}"),
+        ]
+        for line in fixture_lines:
+            match = PLACEHOLDER_LINE.match(line)
+            if match:
+                pairs.append((line, PLACEHOLDER_REPLACEMENT.format(kind=match.group("kind"))))
+    pairs += INSTALLED_NAME_EDITS.get(name, ())
     return pairs
+
+
+def load_manifest_facts_through_uv() -> dict:
+    """The manifest facts from one `uv run --offline --with pyyaml` subprocess; a non-zero exit raises, whatever it printed."""
+    completed = subprocess.run(
+        ["uv", "run", "--offline", "--with", "pyyaml", "python", "-c", PYYAML_LOADER, str(MANIFEST)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"manifest loader exited {completed.returncode}: {completed.stderr.strip()}")
+    return json.loads(completed.stdout)
 
 
 def load_manifest_facts() -> tuple[dict, str]:
@@ -126,17 +198,7 @@ def load_manifest_facts() -> tuple[dict, str]:
             "install_paths": {k: v.get("install_path") for k, v in assets.items() if isinstance(v, dict)},
         }
         return facts, "yaml import"
-    completed = subprocess.run(
-        ["uv", "run", "--offline", "--with", "pyyaml", "python", "-c", PYYAML_LOADER, str(MANIFEST)],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(f"manifest loader exited {completed.returncode}: {completed.stderr.strip()}")
-    return json.loads(completed.stdout), "uv run --offline --with pyyaml"
+    return load_manifest_facts_through_uv(), "uv run --offline --with pyyaml"
 
 
 class KnowledgeWorkSkillsDrift(unittest.TestCase):
@@ -166,24 +228,24 @@ class KnowledgeWorkSkillsDrift(unittest.TestCase):
         if hint is None:
             for mark in ("$ARGUMENTS", "~~", "CONNECTORS.md"):
                 self.assertFalse([line for line in body if mark in line], f"{name}: upstream holds {mark} but no hint")
-        else:
-            for old, new in body_edits(name, hint, body):
-                self.assertEqual(body.count(old), 1, f"{name}: the edit {old!r} must fire exactly once")
-                body[body.index(old)] = new
+        for old, new in body_edits(name, hint, body):
+            self.assertEqual(body.count(old), 1, f"{name}: the edit {old!r} must fire exactly once")
+            body[body.index(old)] = new
         return "\n".join(["---", *front, "---", *body])
 
-    def assert_copy_matches_upstream(self, plugin: str, name: str, hint, sha256: str) -> None:
+    def assert_copy_matches_upstream(self, plugin: str, name: str, hint, sha256: str, copy: Path | None = None) -> None:
         fixture = fixture_path(plugin, name)
         upstream = fixture.read_bytes()
         self.assertEqual(hashlib.sha256(upstream).hexdigest(), sha256, f"{fixture.relative_to(ROOT)} is not upstream")
         expected = self.expected_copy(plugin, name, hint, upstream.decode("utf-8"))
-        actual = copy_path(name).read_text(encoding="utf-8")
+        copy = copy_path(name) if copy is None else copy
+        actual = copy.read_bytes().decode("utf-8")
         if actual != expected:
             diff = difflib.unified_diff(
                 expected.splitlines(keepends=True),
                 actual.splitlines(keepends=True),
                 fromfile=f"expected kwp-{name} (upstream at {COMMIT[:8]} with the recorded edits)",
-                tofile=str(copy_path(name).relative_to(ROOT)),
+                tofile=str(copy.relative_to(ROOT)) if copy.is_relative_to(ROOT) else str(copy),
             )
             self.fail(f"kwp-{name} drifted from upstream:\n{''.join(diff)}")
 
@@ -229,13 +291,43 @@ class KnowledgeWorkSkillsDrift(unittest.TestCase):
 
     def test_no_copy_holds_a_claude_code_substitution_or_a_connector_placeholder(self):
         for plugin, name, _hint, _sha256 in SKILLS:
-            text = copy_path(name).read_text(encoding="utf-8")
+            text = copy_path(name).read_bytes().decode("utf-8")
             with self.subTest(skill=f"kwp-{name}"):
                 for mark in FORBIDDEN_MARKS:
                     self.assertNotIn(mark, text)
                 self.assertIn("\nlicense: Apache-2.0\n", text)
                 self.assertIn(f"\n  upstream: {plugin}/skills/{name}/SKILL.md\n", text)
                 self.assertIn(f"\n  commit: {COMMIT}\n", text)
+
+    def test_a_copy_with_changed_line_endings_fails_the_drift_test(self):
+        """The guarantee is byte-exact: a CRLF or bare-CR rewrite of a copy is drift, not another view of the text."""
+        plugin, name, hint, sha256 = SKILLS[7]
+        expected = self.expected_copy(plugin, name, hint, fixture_path(plugin, name).read_bytes().decode("utf-8"))
+        with tempfile.TemporaryDirectory() as scratch:
+            for label, newline in (("CRLF", "\r\n"), ("bare CR", "\r")):
+                with self.subTest(line_ending=label):
+                    scratch_copy = Path(scratch) / f"{label.replace(' ', '-')}-SKILL.md"
+                    scratch_copy.write_bytes(expected.replace("\n", newline).encode("utf-8"))
+                    with self.assertRaises(AssertionError) as caught:
+                        self.assert_copy_matches_upstream(plugin, name, hint, sha256, copy=scratch_copy)
+                    self.assertIn(f"kwp-{name} drifted from upstream", str(caught.exception))
+            control = Path(scratch) / "LF-SKILL.md"
+            control.write_bytes(expected.encode("utf-8"))
+            self.assert_copy_matches_upstream(plugin, name, hint, sha256, copy=control)
+
+    def test_the_manifest_loader_refuses_a_failed_producer_that_prints_valid_json(self):
+        """A producer's status is read: a `uv` that prints the right JSON and exits non-zero is a failure, not the facts."""
+        with tempfile.TemporaryDirectory() as scratch:
+            fake_uv = Path(scratch) / "uv"
+            fake_uv.write_text(
+                '#!/bin/sh\nprintf \'{"skills_directories": ["~/.agents/skills"], "install_paths": {}}\\n\'\nexit 23\n',
+                encoding="utf-8",
+            )
+            fake_uv.chmod(0o755)
+            fake_first = {"PATH": f"{scratch}{os.pathsep}{os.environ.get('PATH', '')}"}
+            with mock.patch.dict(os.environ, fake_first), self.assertRaises(RuntimeError) as caught:
+                load_manifest_facts_through_uv()
+        self.assertIn("manifest loader exited 23", str(caught.exception))
 
     def test_every_kwp_skill_has_the_five_consumer_audience_line(self):
         manifest_lines = MANIFEST.read_text(encoding="utf-8").split("\n")

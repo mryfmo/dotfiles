@@ -8,7 +8,7 @@ metadata:
   repository: https://github.com/anthropics/knowledge-work-plugins
 ---
 
-# /deploy-checklist
+# kwp-deploy-checklist
 
 > The "If Connectors Available" section below names kinds of tools; use the ones available in this session.
 
@@ -17,7 +17,7 @@ Generate a pre-deployment checklist to verify readiness before shipping.
 ## Usage
 
 ```
-deploy-checklist [service or release name]
+kwp-deploy-checklist [service or release name]
 ```
 
 ## Output

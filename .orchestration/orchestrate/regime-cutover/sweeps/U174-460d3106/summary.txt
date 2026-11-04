@@ -1,0 +1,15 @@
+security-audit sweep 460d3106cefdbc2b80fbc750cbdd20aaf5f8ea54: 5 findings, advisory
+needs_validation	claude-sandbox:allow-write-covers-seat-launch-inputs	home/.chezmoitemplates/claude-settings-managed.json:575	Claude Code sandbox write roots expose hcom launch inputs and seat sandbox files that later run unsandboxed
+needs_validation	hcom-seat:srt-write-roots-share-operator-claude-config	scripts/orchestrator/hcom-seat:1369	Seat srt sandbox can write the operator's Claude Code config (~/.claude.json, ~/.claude/rules) that unsandboxed Claude Code sessions load
+needs_validation	hcom-seat:srt-deny-write-misses-claude-hook-package	scripts/orchestrator/hcom-seat:1682	Orchestrator seat can rewrite the Python package that the checkout's Claude Code project hooks import
+needs_validation	disk-gc:worktree-porcelain-path-field-split	home/dot_local/bin/common/executable_disk-gc:184	disk-gc splits worktree paths on whitespace and can rm -rf a different directory
+needs_validation	hcom-bus:sender-identity-caller-asserted	scripts/orchestrator/hcom-dispatch:136	Bus sender identity is caller-asserted while the seats treat a row's from as identity
+
+locations: the root-cause line of each record (each is a trace or evidence entry in findings.json)
+origin: all 5 are carried (run-1 via run-17; run-19's five carried records are the same claims) with unchanged fingerprints and re-verified at 460d3106. The U174 change adds no lead: the rescan loop of WorkerRoot._holders (tests/unit/trusted_exec_contract.py:279-286) repeats the unchanged pass, opens no FIFO and adds at most 0.2 s; the round-1 hardening note stands (:272-273, raised at :366). assets.graphify:installer-skips-pinned-sha256 stays a rejected record (not counted above). Run-19's two U172 records (dsh-installer:profile-plugins-resolve-outside-the-digest, dsh-profile:thak-runs-without-command-sandbox) are not carried: U172 (PR 652) is another branch, and none of its files is in this head.
+counts by severity: critical 0, high 0, medium 0, low 0, informational 0 (no confirmed record); needs_validation 5 (no severity by schema); rejected 1 (not a finding)
+note: report-schema.json forbids severity on needs_validation records; the severity column carries the verdict instead. Each record's description ends with the smallest fix if validated.
+coverage: partial; 44 ledger units: covered 25, candidate 6 (one of them links the rejected record), deferred 8, not_applicable 5; final critic not clean
+independence: no delegation tool on this seat (task and eval blocked); one agent ran every role in sequence
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt; agents/<id>/{scratch,artifacts} per role (critic results, the change diff, the cite list and the parent build tools under agents/*/scratch; artifacts empty)
+wall time: 150 s (2.5 min), start epoch 1793772891, end epoch 1793773041

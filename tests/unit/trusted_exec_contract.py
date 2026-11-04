@@ -157,6 +157,7 @@ class WorkerRoot:
     """
 
     POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
+    PROC_ROOT = "/proc"  # an instance attribute points a test's scan at a scratch tree of the same shape
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
@@ -223,33 +224,40 @@ class WorkerRoot:
         whose descriptor table this user can read and that has a descriptor on the sentinel, other than WRITER (the
         probe's own write descriptor, open during the scan); otherwise why none is named. os.stat on a
         /proc/<pid>/fd/<n> link follows it to the open file without opening it, so the scan itself never opens the
-        sentinel (a scan that did would record its own read)."""
-        if not os.path.isdir("/proc"):
-            return "reader not identified (no /proc)"
+        sentinel (a scan that did would record its own read). Every read of the tree tolerates OSError as a class,
+        because a pid that exits between its fd listing and its field reads answers ESRCH from /proc and a scan that
+        let that escape would abort the attempt and lose the read it had already detected; a holder whose fields are
+        gone is still named by its pid."""
+        root = self.PROC_ROOT
         me = str(os.getpid())
 
         def field(pid, name):
+            """One /proc field, `?` when it cannot be read: gone, unreadable, or ESRCH from a pid now exiting."""
             try:
-                return Path("/proc", pid, name).read_bytes().decode(errors="replace")
-            except (FileNotFoundError, PermissionError):
+                return Path(root, pid, name).read_bytes().decode(errors="replace")
+            except OSError:
                 return "?"
 
+        try:
+            entries = os.listdir(root)
+        except OSError:
+            return f"reader not identified (no {root})"
         holders, unreadable = [], 0
-        for pid in os.listdir("/proc"):
+        for pid in entries:
             if not pid.isdigit():
                 continue
             try:
-                descriptors = os.listdir(f"/proc/{pid}/fd")
+                descriptors = os.listdir(os.path.join(root, pid, "fd"))
             except PermissionError:  # another user's process (or one not dumpable)
                 unreadable += 1
                 continue
-            except FileNotFoundError:  # exited mid-scan
+            except OSError:  # exited mid-scan, or an entry that is no descriptor table
                 continue
             for n in descriptors:
                 if pid == me and n == str(writer):
                     continue
                 try:
-                    st = os.stat(f"/proc/{pid}/fd/{n}")
+                    st = os.stat(os.path.join(root, pid, "fd", n))
                 except OSError:  # closed mid-scan, or a descriptor whose target no stat describes
                     continue
                 if (st.st_dev, st.st_ino) != self._dev_ino:

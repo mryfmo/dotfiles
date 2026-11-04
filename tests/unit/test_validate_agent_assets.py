@@ -588,6 +588,38 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.generator().model_profiles(manifest)
 
+    def test_agent_manifest_refuses_a_dsh_model_outside_model_profiles(self) -> None:
+        """U172: a dsh model id stands in model_profiles.<profile>.dsh alone, like the other model settings."""
+        entry = {"model": "deepseek-v4-pro:0813", "route": "ollama-cloud"}
+        for place in ("top level", "claude", "codex", "omp"):
+            with self.subTest(place=place):
+                manifest = self.write_valid_agent_manifest()
+                (manifest if place == "top level" else manifest[place])["dsh"] = dict(entry)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("must keep model settings in model_profiles only", stderr.getvalue())
+
+    def test_agent_manifest_refuses_a_dsh_route_outside_the_route_table(self) -> None:
+        """U172: the generator's rule admits one route tuple and the Ollama id form, and names the profile and key."""
+        refused = (
+            ({"model": "deepseek-v4-pro:0813", "route": "deepseek-official"}, "deep.dsh.route"),
+            ({"model": "deepseek v4 pro", "route": "ollama-cloud"}, "deep.dsh.model"),
+            ({"model": "deepseek-v4-pro:0813", "route": "ollama-cloud", "baseURL": "x"}, "deep.dsh"),
+        )
+        for entry, key in refused:
+            with self.subTest(entry=entry):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["deep"]["dsh"] = entry
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(f"model profile {key}", stderr.getvalue())
+        manifest = self.write_valid_agent_manifest()
+        for profile in manifest["model_profiles"].values():
+            profile["dsh"] = {"model": "deepseek-v4-pro:0813", "route": "ollama-cloud"}
+        self.module.validate_agent_manifest()
+
     def test_agent_manifest_requires_the_extension_that_registers_the_interactive_omp_provider(self) -> None:
         bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"
         siwc = "~/.agents/omp/extensions/openai-siwc"

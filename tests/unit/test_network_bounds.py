@@ -398,6 +398,12 @@ EXEMPT: dict[tuple[str, str], Exempt] = {
         "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
     ),
     (
+        "scripts/update-agent-assets.sh",
+        'manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/${DSH_PIN_TAG}" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "mv <staging> ${DSH_HOME}/dsh/${DSH_PIN_TAG}" "pnpm install in ${DSH_HOME}/profiles/thak"',
+    ): Exempt(
+        "manifest_record stores the asset's source as data in ~/.agents/.installed-manifest.json; it runs nothing"
+    ),
+    (
         "scripts/orchestrator/pr-audit.sh",
         "#   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail",
     ): Exempt("comment; names the tool without running it"),

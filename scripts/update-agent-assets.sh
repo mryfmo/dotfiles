@@ -92,6 +92,9 @@ PI_CLAUDE_BRIDGE_ASSET_DIR="${DOTFILES_REPO_SOURCE_DIR}/home/dot_agents/assets/p
 SECURITY_AUDIT_SKILL_COMMIT="c1c8a8c1471069fb0e188eeaff69b8e8db6564a8"
 SECURITY_AUDIT_SKILL_SHA256="53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6"
 readonly SECURITY_AUDIT_SKILL_ARCHIVE_URL="https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/${SECURITY_AUDIT_SKILL_COMMIT}"
+# Rendered from assets.deepseek-harness in home/dot_agents/agent-config.yaml through scripts/lib/installer-pins.sh
+# (DSH_PIN_TAG, DSH_ARCHIVE_SHA256); the archive is GitHub's tag archive, never a branch head.
+readonly DSH_ARCHIVE_URL="https://github.com/deepseek-ai/deepseek-harness/archive/refs/tags/${DSH_PIN_TAG}.tar.gz"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/05/92/12d18a45357ef2a9765342203d5031b08dcd67bc988814428c10b46f6a3d/hcom-0.7.31-py3-none-macosx_11_0_arm64.whl"
@@ -1873,6 +1876,86 @@ function update_security_audit_skill() (
 )
 
 #
+# @description Install the pinned DeepSeek harness (assets.deepseek-harness) under DSH_HOME on a host whose operator
+#   opted in, with a wrapper at $DSH_HOME/bin/dsh and the thak profile's plugins; nothing starts it.
+# @description
+#   The opt-in is DSH_HOME exported and naming an existing directory: chezmoi deploys the rendered thak profile to
+#   ~/.dsh/profiles/thak on every host, so a directory alone cannot be the opt-in, and a DSH_HOME other than ~/.dsh
+#   is skipped with a WARN because the profile and the install would live apart. GitHub's tag archive (never a branch
+#   head) is downloaded into a mktemp directory and verified against its reviewed sha256 before anything is unpacked;
+#   the archive's own package.json version must equal the pin; the build runs inside a staging tree under
+#   $DSH_HOME/dsh, so a failed build leaves a previous install untouched, and the finished tree replaces
+#   $DSH_HOME/dsh/<tag> with one rename. A download that fails degrades like update_security_audit_skill: one WARN
+#   line, nothing installed, nothing recorded, and make update goes on. A digest, version, build or rename failure
+#   is a hard failure of the step.
+# @exitcode 0 Installed, already installed, no opt-in (a skip line), DSH_HOME elsewhere than ~/.dsh (a WARN), or the
+#   download failed (a WARN; nothing installed or recorded).
+# @exitcode 1 The digest check, the unpack, the archive version, the build, the rename or the profile install failed;
+#   the existing install is unchanged.
+#
+function update_deepseek_harness() (
+    local recorded download_dir tarball actual staging="" version install_dir previous physical expected
+    section "DeepSeek harness"
+    if [ -z "${DSH_HOME:-}" ] || [ ! -d "${DSH_HOME}" ]; then
+        printf 'Skipping DeepSeek harness: DSH_HOME is unset or names no directory (export it and create it to opt in).\n'
+        return 0
+    fi
+    physical="$(cd "${DSH_HOME}" && pwd -P)" || return 1
+    expected="$(cd "${HOME}/.dsh" 2> /dev/null && pwd -P)" || expected=""
+    if [ "${physical}" != "${expected}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
+        printf 'WARN: update_deepseek_harness: DSH_HOME is %s, not %s, where the kit renders the thak profile; nothing installed.\n' "${DSH_HOME}" "${HOME}/.dsh" >&2
+        return 0
+    fi
+    install_dir="${DSH_HOME}/dsh/${DSH_PIN_TAG}"
+    # A record that cannot be read is no record: the verified install runs again and writes it.
+    recorded="$(jq -r '.steps["update_deepseek_harness"].source_version // empty' "${HOME}/.agents/.installed-manifest.json" 2> /dev/null)" || recorded=""
+    if [ "${recorded}" = "${DSH_PIN_TAG}" ] && [ -f "${DSH_HOME}/dsh/current/package.json" ]; then
+        printf 'DeepSeek harness %s is already installed.\n' "${DSH_PIN_TAG}"
+        return 0
+    fi
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+    trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
+    tarball="${download_dir}/deepseek-harness-${DSH_PIN_TAG}.tar.gz"
+    curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "${DSH_ARCHIVE_URL}" -o "${tarball}" || {
+        printf 'WARN: update_deepseek_harness: the DeepSeek harness archive could not be downloaded (%s); nothing installed, nothing recorded; the existing install is unchanged and the next make update retries.\n' "${DSH_ARCHIVE_URL}" >&2
+        return 0
+    }
+    actual="$(shasum -a 256 "${tarball}")" || return 1
+    if [ "${actual%% *}" != "${DSH_ARCHIVE_SHA256}" ]; then
+        printf 'DeepSeek harness checksum mismatch: expected %s, got %s.\n' "${DSH_ARCHIVE_SHA256}" "${actual%% *}" >&2
+        return 1
+    fi
+    # Staged beside the target so the final rename stays on one filesystem; the one leading component
+    # (<repository>-<tag>) is stripped so the package tree lands at the install path itself.
+    mkdir -p "${DSH_HOME}/dsh" "${DSH_HOME}/bin" && staging="$(mktemp -d "${DSH_HOME}/dsh/.staging.XXXXXX")" || return
+    tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
+    version="$(jq -r '.version // empty' "${staging}/package.json")" || return 1
+    if [ "${version}" != "${DSH_PIN_TAG#dsh-v}" ]; then
+        printf 'DeepSeek harness archive version %s is not the pin %s; install refused.\n' "${version}" "${DSH_PIN_TAG#dsh-v}" >&2
+        return 1
+    fi
+    (cd "${staging}" && mise exec -- pnpm install --frozen-lockfile && mise exec -- pnpm run build) || return 1
+    previous="${install_dir}.previous"
+    rm -rf "${previous}"
+    if [ -e "${install_dir}" ]; then
+        mv "${install_dir}" "${previous}" || return
+    fi
+    mv "${staging}" "${install_dir}" || {
+        [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
+        return 1
+    }
+    staging=""
+    rm -rf "${previous}"
+    ln -sfn "${install_dir}" "${DSH_HOME}/dsh/current" || return 1
+    # The wrapper carries the home expanded at write time: the harness runs under mise's node, nothing of it on PATH.
+    printf '#!/bin/bash\nexec mise exec -- node "%s/dsh/current/apps/cli/lib/bin.js" "$@"\n' "${DSH_HOME}" > "${DSH_HOME}/bin/dsh" || return 1
+    chmod +x "${DSH_HOME}/bin/dsh" || return 1
+    (cd "${DSH_HOME}/profiles/thak" && mise exec -- pnpm install) || return 1
+    printf 'DeepSeek harness %s installed into %s.\n' "${DSH_PIN_TAG}" "${install_dir}"
+    manifest_record "update_deepseek_harness" installer "${DSH_PIN_TAG}" "${DSH_HOME}/dsh/${DSH_PIN_TAG}" "${DSH_HOME}/bin/dsh" -- "curl -fsSL ${DSH_ARCHIVE_URL}" "shasum -a 256 <archive>" "tar xzf <archive> -C <staging> --strip-components=1" "pnpm install --frozen-lockfile" "pnpm run build" "mv <staging> ${DSH_HOME}/dsh/${DSH_PIN_TAG}" "pnpm install in ${DSH_HOME}/profiles/thak"
+)
+
+#
 # @description Load the installed pi-claude-bridge in one omp session and fail on a load error.
 # @description
 #   `omp models` never evaluates extension modules, so the check is the session path: a one-prompt run under
@@ -2294,13 +2377,13 @@ function update_compactiondb() {
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
+        1:update_pi_claude_bridge | 1:update_security_audit_skill | 1:update_deepseek_harness | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows | 1:retire_agmsg_shim)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | update_security_audit_skill | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | update_security_audit_skill | update_deepseek_harness | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n' >&2
         exit 2
     fi
 
@@ -2328,6 +2411,7 @@ function main() {
     update_omp
     update_pi_claude_bridge
     update_security_audit_skill
+    update_deepseek_harness
     update_hcom
     update_compactiondb
     ensure_herdr_integrations

@@ -1,0 +1,16 @@
+{
+  "name": "thak",
+  "private": true,
+  "dsh": {
+    "manifestVersion": 1,
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-hooks-claude-code": "0.2.1-rc.5"
+  }
+}

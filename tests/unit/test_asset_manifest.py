@@ -273,12 +273,13 @@ class AssetManifestTest(unittest.TestCase):
             "update_hcom",
             "update_pi_claude_bridge",
             "update_security_audit_skill",
+            "update_deepseek_harness",
             "update_compactiondb",
         )
 
         # The four Claude plugin steps record through record_claude_plugin_step (one manifest_record "${step}").
         claude = {step for step in steps if step.startswith("update_claude_")}
-        self.assertEqual(15, updater.count('manifest_record "'))
+        self.assertEqual(16, updater.count('manifest_record "'))
         self.assertEqual(1, updater.count('manifest_record "${step}" plugin "${plugin_version}"'))
         self.assertEqual(
             1,

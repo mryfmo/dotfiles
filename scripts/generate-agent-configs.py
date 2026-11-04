@@ -159,6 +159,17 @@ OMP_THINKING_LEVELS = ("minimal", "low", "medium", "high", "xhigh", "max")
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
 # The same routes as a set, for omp.disabled_providers; a test keeps it equal to OMP_MODEL_RE's alternation.
 OMP_MODEL_ROUTES = ("openai-siwc", "anthropic", "claude-bridge")
+# The DeepSeek harness routes a profile may name (the DeepSeek harness research note's route decision: Ollama Cloud or
+# an on-prem server by default, the official API opt-in per engagement, so no official route stands here).
+DSH_ROUTES = ("ollama-cloud",)
+# An Ollama library id: a name with an optional `:tag` (ollama.com/library, deepseek-v4-pro:0813), which
+# PROFILE_VALUE_RE's launcher-safe form does not admit.
+DSH_MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*(:[a-z0-9._-]+)?$")
+# The DeepSeek harness plan's names: the kit's one profile and the Claude Code settings file whose hooks it mounts.
+DSH_PROFILE = "thak"
+DSH_HOOKS_SETTINGS = "~/.claude/settings.json"
+# The plan's base profile: the shipped bundle whose patch already turns the HMR, credentials and account rows off.
+DSH_BASE_PROFILE = "headless"
 OMP_RETIRED_ROUTES = ("openai-codex",)
 # The routes omp itself provides; every other model route exists only while the extension that registers it is loaded,
 # so omp.extension_providers must name exactly the remaining routes.
@@ -210,6 +221,17 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                         )
                 elif not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")
+        # The dsh entry is optional; when present it is the one place a dsh model id may stand (U172).
+        dsh = profile.get("dsh")
+        if dsh is not None:
+            if not isinstance(dsh, dict) or set(dsh) != {"model", "route"}:
+                fail(f"model profile {name}.dsh must be a mapping of exactly model and route: {dsh!r}")
+            if not isinstance(dsh["model"], str) or not DSH_MODEL_RE.fullmatch(dsh["model"]):
+                fail(
+                    f"model profile {name}.dsh.model must be an Ollama id (name with an optional :tag): {dsh['model']!r}"
+                )
+            if dsh["route"] not in DSH_ROUTES:
+                fail(f"model profile {name}.dsh.route must be one of {', '.join(DSH_ROUTES)}: {dsh['route']!r}")
         sandbox_mode = profile["codex"].get("sandbox_mode")
         if sandbox_mode is not None and sandbox_mode not in CODEX_SANDBOX_MODES:
             fail(
@@ -2157,6 +2179,74 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     return overlay + "setupVersion: 2\n" + omp_startup_yaml(manifest, "setupWizard: false")
 
 
+def render_dsh_profile_patch(manifest: dict[str, Any]) -> dict[Path, str]:
+    """The kit's DeepSeek harness profile (U172): its package.json and the cordis patch over the base bundles.
+
+    The rows are addressed by the ids the base bundle mounts them under: the session-log upload off, the official API
+    adapters and the harness's own command sandbox disabled (the seat boundary stays outside the harness), one provider
+    per route of DSH_ROUTES with the distinct dsh models of the profiles that name it, and the Claude hooks plugin
+    inserted with an absolute configPath (the harness resolves a relative one from its launch directory). A manifest
+    whose profiles name no dsh model (the generator's fixtures) renders no profile; one that does needs the pinned
+    asset, whose version the hooks plugin dependency follows.
+    """
+    dsh = {name: profile["dsh"] for name, profile in model_profiles(manifest).items() if "dsh" in profile}
+    if not dsh:
+        return {}
+    asset = manifest.get("assets", {}).get("deepseek-harness")
+    if not isinstance(asset, dict) or not isinstance(asset.get("pin"), str):
+        fail("model_profiles name dsh models, so assets.deepseek-harness must carry the pin their profile follows")
+    pin = asset["pin"].removeprefix("dsh-v")
+    package = {
+        "name": DSH_PROFILE,
+        "private": True,
+        "dsh": {
+            "manifestVersion": 1,
+            "profile": {"bundles": ["@deepseek-ai/dsh-base", f"@deepseek-ai/dsh-{DSH_BASE_PROFILE}"]},
+        },
+        "dependencies": {"@deepseek-ai/dsh-hooks-claude-code": pin},
+    }
+    lines = [
+        f"# {GENERATED_HEADER}",
+        "- id: session-log-deepseek",
+        "  config:",
+        "    enabled: false",
+        "- id: llm-deepseek",
+        "  disabled: true",
+        "- id: llm-deepseek-account",
+        "  disabled: true",
+        "- id: bash-sandbox",
+        "  disabled: true",
+        "- id: llm-pi-ai",
+        "  config:",
+        "    providers:",
+    ]
+    for route in DSH_ROUTES:
+        models = sorted({entry["model"] for entry in dsh.values() if entry["route"] == route})
+        lines += [
+            f"      {route}:",
+            "        displayName: Ollama Cloud",
+            "        api: openai-responses",
+            "        baseURL: https://ollama.com/v1",
+            "        apiKeyEnv: OLLAMA_API_KEY",
+            "        models:",
+            *(f"          - id: {model}" for model in models),
+        ]
+    # The `!!js` expression is the form the shipped headless patch uses for environment values.
+    config_path = f"!!js process.env.HOME + '{DSH_HOOKS_SETTINGS.removeprefix('~')}'"
+    lines += [
+        "- insert:",
+        "    - id: hooks-claude-code",
+        "      name: '@deepseek-ai/dsh-hooks-claude-code'",
+        "      config:",
+        f"        configPath: {config_path}",
+    ]
+    profile_dir = ROOT / "home/dot_dsh/profiles" / DSH_PROFILE
+    return {
+        profile_dir / "package.json": json.dumps(package, indent=2) + "\n",
+        profile_dir / "cordis.patch.yml": "\n".join(lines) + "\n",
+    }
+
+
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:
     express = model_profiles(manifest)["express"]["claude"]
     return (
@@ -2361,6 +2451,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[ROOT / PLUGIN_PINS_PATH] = render_plugin_pins(manifest)
     outputs.update(render_lever_installs(manifest))
     outputs.update(render_standing_rule_outputs(manifest, outputs))
+    outputs.update(render_dsh_profile_patch(manifest))
     remove_path = ROOT / CHEZMOIREMOVE
     current = outputs.get(remove_path)
     if current is None:
@@ -2498,6 +2589,7 @@ GENERATED_SCOPES = (
     ("home/dot_claude/agents", "*"),
     ("home/dot_claude/skills", "**/*"),
     ("home/dot_codex", "*.config.toml"),
+    ("home/dot_dsh/profiles", "**/*"),
 )
 # chezmoi source-state attributes, in the order chezmoi reads them (chezmoi.io reference/source-state-attributes);
 # a generated output uses no other attribute, and chezmoi_target refuses one it does not know.

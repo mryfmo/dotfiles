@@ -858,6 +858,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([f"WARN: orphaned agent asset: {stray}; manual review required"], orphans)
         # The doctor's repair action re-runs the one-step form of the updater for a record whose paths went missing.
         self.assertIn("update_security_audit_skill", self.module.ASSET_STEP_FUNCTIONS)
+        self.assertIn("update_deepseek_harness", self.module.ASSET_STEP_FUNCTIONS)
 
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"

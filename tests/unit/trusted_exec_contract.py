@@ -139,8 +139,13 @@ class WorkerRoot:
     probe outside consume(), and stat() opens nothing, so metadata checks never count.
 
     The input's access time is not used: another process that reads a fresh regular file sets it too (the macOS
-    host's Spotlight importer or endpoint scanner reads new temporary files within a second); none opens a FIFO.
-    The output stays a regular file the consumer must not write, checked by inode, mode, mtime and content.
+    host's Spotlight importer or endpoint scanner reads new temporary files within a second); none of those opened
+    a FIFO on macOS, and on 2026-11-04 something on a Linux runner did. The output stays a regular file the consumer
+    must not write, checked by inode, mode, mtime and content.
+
+    A recorded read names the processes that hold the sentinel open at the scan, read from /proc on Linux (pid,
+    comm, parent pid, command line) before the probe closes its writer, because two 2026-11-04 runs on the
+    ubuntu-24.04 server cell saw a reader outside the consumer step and the record could not say which.
 
     Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
     the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
@@ -162,6 +167,8 @@ class WorkerRoot:
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
+        st = os.lstat(self.input)
+        self._dev_ino = (st.st_dev, st.st_ino)  # what os.stat of a /proc descriptor link reports for a holder
         self._self_test()
 
     def _open_writer(self):
@@ -211,6 +218,51 @@ class WorkerRoot:
         self.replaced.append(f"{self.input} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
         return True
 
+    def _holders(self, writer):
+        """Who holds the input open now, from /proc on Linux: `by pid P (comm, ppid Q: cmdline)` for each process
+        whose descriptor table this user can read and that has a descriptor on the sentinel, other than WRITER (the
+        probe's own write descriptor, open during the scan); otherwise why none is named. os.stat on a
+        /proc/<pid>/fd/<n> link follows it to the open file without opening it, so the scan itself never opens the
+        sentinel (a scan that did would record its own read)."""
+        if not os.path.isdir("/proc"):
+            return "reader not identified (no /proc)"
+        me = str(os.getpid())
+
+        def field(pid, name):
+            try:
+                return Path("/proc", pid, name).read_bytes().decode(errors="replace")
+            except (FileNotFoundError, PermissionError):
+                return "?"
+
+        holders, unreadable = [], 0
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit():
+                continue
+            try:
+                descriptors = os.listdir(f"/proc/{pid}/fd")
+            except PermissionError:  # another user's process (or one not dumpable)
+                unreadable += 1
+                continue
+            except FileNotFoundError:  # exited mid-scan
+                continue
+            for n in descriptors:
+                if pid == me and n == str(writer):
+                    continue
+                try:
+                    st = os.stat(f"/proc/{pid}/fd/{n}")
+                except OSError:  # closed mid-scan, or a descriptor whose target no stat describes
+                    continue
+                if (st.st_dev, st.st_ino) != self._dev_ino:
+                    continue
+                status = (line for line in field(pid, "status").splitlines() if line.startswith("PPid:"))
+                ppid = next((line.split(":", 1)[1].strip() for line in status), "?")
+                cmdline = field(pid, "cmdline").replace("\0", " ")[:200]
+                holders.append(f"by pid {pid} ({field(pid, 'comm').strip()}, ppid {ppid}: {cmdline})")
+                break
+        if holders:
+            return ", ".join(holders)
+        return f"by no process whose descriptors this user can read ({unreadable} unreadable)"
+
     def _attempt(self):
         """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
         self.attempts += 1
@@ -225,7 +277,7 @@ class WorkerRoot:
         if fd is not None:
             try:
                 if not self._not_sentinel(fd=fd):
-                    self.reads.append(f"{self.input} opened for reading")
+                    self.reads.append(f"{self.input} opened for reading {self._holders(fd)}")
             finally:
                 os.close(fd)  # the reader now sees EOF
         try:

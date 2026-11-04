@@ -470,6 +470,29 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     self.assert_eof(result)
 
+    def test_a_recorded_read_names_its_holder(self):
+        # U166: two 2026-11-04 runs on the ubuntu-24.04 server cell recorded a read no step of the test made, and the
+        # record could not say who. It now names the holders /proc shows at the scan: a subprocess reader by its own
+        # pid, an in-process thread by ours; a host without /proc says so. The host's form is asserted, nothing skipped.
+        import re
+
+        probe = self.worker_root_probe()
+        self.assert_eof(probe.consume(lambda: run(["/bin/cat", str(probe.input)], ALLOWED_ENV)))
+        with self.assertRaises(AssertionError) as by_cat:
+            probe.assert_untouched()
+        probe = self.worker_root_probe()
+        self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        with self.assertRaises(AssertionError) as by_thread:
+            probe.assert_untouched()
+        if os.path.isdir("/proc"):
+            cat = re.search(r"opened for reading by pid (\d+) \(cat, ppid \d+: /bin/cat ", str(by_cat.exception))
+            self.assertIsNotNone(cat, str(by_cat.exception))
+            self.assertNotEqual(os.getpid(), int(cat.group(1)))
+            self.assertRegex(str(by_thread.exception), rf"opened for reading by pid {os.getpid()} \(")
+        else:
+            self.assertRegex(str(by_cat.exception), r"opened for reading reader not identified \(no /proc\)$")
+            self.assertRegex(str(by_thread.exception), r"opened for reading reader not identified \(no /proc\)$")
+
     def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
         # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
         # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is

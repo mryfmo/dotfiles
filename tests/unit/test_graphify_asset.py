@@ -28,6 +28,18 @@ REASON_PHRASES = ("pre-1.0", "api.graphify.com", "credentials, scope and network
 # 72 hours old at that read. The shape test's regexes accept any well-formed value; these pin the exact one.
 PIN = "0.9.99"
 WHEEL_SHA256 = "be8e68ca7e8d2115599167cff82d4a3afc8c5f312c45f707fa5d1a35cc9fb7a7"
+# The hcom asset's install form (scripts/update-agent-assets.sh, update_hcom): download the one wheel, compare its
+# sha256 with the pin, install the local file. A version resolve from PyPI would bind no digest at install time.
+VERIFY_COMMAND = "shasum -a 256"
+
+
+def wheel_name(pin: str) -> str:
+    return f"graphifyy-{pin}-py3-none-any.whl"
+
+
+def install_command(installer: str) -> str:
+    # The installer is the shell line, then a parenthetical note on who runs it (CHANGE 1 of the brief).
+    return installer.split(" (", 1)[0]
 
 
 class GraphifyAssetTest(unittest.TestCase):
@@ -58,17 +70,25 @@ class GraphifyAssetTest(unittest.TestCase):
 
     def test_the_installer_is_the_explicit_uv_step_at_the_pin(self) -> None:
         entry = self.entry()
-        self.assertTrue(
-            entry["installer"].startswith(f"uv tool install graphifyy=={entry['pin']}"),
-            entry["installer"],
-        )
+        installer = entry["installer"]
+        wheel = wheel_name(entry["pin"])
+        self.assertNotIn("graphifyy==", installer)
+        self.assertIn(wheel, installer)
+        self.assertIn(VERIFY_COMMAND, installer)
+        steps = [step.strip() for step in install_command(installer).split("&&")]
+        self.assertRegex(steps[-1], rf'^uv tool install( --\S+)* "\$\S*{re.escape(wheel)}"$')
+        download = next(index for index, step in enumerate(steps) if step.startswith("curl ") and wheel in step)
+        verify = next(index for index, step in enumerate(steps) if VERIFY_COMMAND in step and wheel in step)
+        self.assertLess(download, verify)
+        self.assertLess(verify, len(steps) - 1)
 
     def test_the_pin_and_digest_are_the_reviewed_values(self) -> None:
         entry = self.entry()
         self.assertEqual(PIN, entry["pin"])
         self.assertEqual(WHEEL_SHA256, entry["sha256"])
-        # The installer is the pinned command, then a parenthetical note on who runs it (CHANGE 1 of the brief).
-        self.assertEqual(f"uv tool install graphifyy=={PIN}", entry["installer"].split(" (", 1)[0])
+        command = install_command(entry["installer"])
+        self.assertIn(wheel_name(PIN), command)
+        self.assertIn(WHEEL_SHA256, command)
 
     def test_the_reason_names_the_cadence_and_the_hosted_routes_refusal(self) -> None:
         reason = self.entry()["reason"]

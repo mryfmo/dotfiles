@@ -98,7 +98,11 @@ class DshProfileTest(unittest.TestCase):
         self.assertIn("      name: '@deepseek-ai/dsh-hooks-claude-code'\n", inserted)
         config_path = re.search(r"^\s*configPath: (.*)$", inserted, re.MULTILINE)
         self.assertIsNotNone(config_path)
-        self.assertTrue(config_path[1].endswith("/.claude/settings.json'"), config_path[1])
+        # An absolute path: HOME, then a single-quoted literal that starts at `/` (a suffix test alone passed a
+        # relative literal).
+        home, _, literal = config_path[1].rpartition(" + ")
+        self.assertEqual("!!js process.env.HOME", home, config_path[1])
+        self.assertTrue(literal.startswith("'/") and literal.endswith("/.claude/settings.json'"), literal)
         pin = self.manifest["assets"]["deepseek-harness"]["pin"]
         self.assertTrue(pin.startswith("dsh-v"), pin)
         self.assertEqual("thak", self.package["name"])

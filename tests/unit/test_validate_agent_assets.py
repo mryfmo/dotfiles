@@ -600,6 +600,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("must keep model settings in model_profiles only", stderr.getvalue())
 
+    def test_agent_manifest_refuses_a_dsh_key_under_a_profiles_agent_as_at_the_top_level(self) -> None:
+        """U172 round 3: the placement check walks model_profiles.<profile>.<agent> too, where a dsh key passed."""
+        entry = {"model": "deepseek-v4-pro:0813", "route": "ollama-cloud"}
+        for place in ("top level", "deep.claude", "deep.codex", "deep.omp"):
+            with self.subTest(place=place):
+                manifest = self.write_valid_agent_manifest()
+                holder = manifest if place == "top level" else manifest["model_profiles"]["deep"][place.split(".")[1]]
+                holder["dsh"] = dict(entry)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("must keep model settings in model_profiles only", stderr.getvalue())
+        self.write_valid_agent_manifest()
+        self.module.validate_agent_manifest()
+
     def test_agent_manifest_refuses_a_dsh_route_outside_the_route_table(self) -> None:
         """U172: the generator's rule admits one route tuple and the Ollama id form, and names the profile and key."""
         refused = (

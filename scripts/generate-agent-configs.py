@@ -221,9 +221,10 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                         )
                 elif not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")
-        # The dsh entry is optional; when present it is the one place a dsh model id may stand (U172).
-        dsh = profile.get("dsh")
-        if dsh is not None:
+        # The dsh entry is optional; when present it is the one place a dsh model id may stand (U172). A present
+        # `null` is a malformed entry, not an absent one: the renderer would raise on it.
+        if "dsh" in profile:
+            dsh = profile["dsh"]
             if not isinstance(dsh, dict) or set(dsh) != {"model", "route"}:
                 fail(f"model profile {name}.dsh must be a mapping of exactly model and route: {dsh!r}")
             if not isinstance(dsh["model"], str) or not DSH_MODEL_RE.fullmatch(dsh["model"]):

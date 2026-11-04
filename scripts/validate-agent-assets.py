@@ -1507,13 +1507,17 @@ def validate_agent_manifest() -> dict[str, Any]:
         if profiles["review"]["claude"].get(key) != profiles["deep"]["claude"].get(key):
             fail(f"{manifest_path} review profile claude.{key} must equal deep's (INV-7)")
     validate_omp_interactive_provider(manifest_path, manifest)
-    # A dsh model id stands in model_profiles.<profile>.dsh alone (U172), never at the top level or under an agent.
+    # A dsh model id stands in model_profiles.<profile>.dsh alone (U172), never at the top level, under an agent, or
+    # under a profile's agent mapping.
     if (
         claude.get("model")
         or claude.get("effortLevel")
         or manifest.get("codex", {}).get("model")
         or "dsh" in manifest
         or any("dsh" in manifest.get(agent, {}) for agent in ("claude", "codex", "omp"))
+        or any(
+            "dsh" in (profile.get(agent) or {}) for profile in profiles.values() for agent in ("claude", "codex", "omp")
+        )
     ):
         fail(f"{manifest_path} must keep model settings in model_profiles only")
     for name, server in manifest.get("mcp_servers", {}).items():

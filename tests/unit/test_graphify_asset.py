@@ -9,11 +9,24 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from tests.unit.test_generate_agent_configs import load_manifest_fixture
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"

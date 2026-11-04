@@ -2589,7 +2589,10 @@ GENERATED_SCOPES = (
     ("home/dot_claude/agents", "*"),
     ("home/dot_claude/skills", "**/*"),
     ("home/dot_codex", "*.config.toml"),
-    ("home/dot_dsh/profiles", "**/*"),
+    # Two explicit globs, not **/*: update_deepseek_harness runs pnpm install in the deployed profile directory, which
+    # writes node_modules/ and a lockfile there, and the doctor would report each of those files as an orphan.
+    ("home/dot_dsh/profiles", "*/package.json"),
+    ("home/dot_dsh/profiles", "*/cordis.patch.yml"),
 )
 # chezmoi source-state attributes, in the order chezmoi reads them (chezmoi.io reference/source-state-attributes);
 # a generated output uses no other attribute, and chezmoi_target refuses one it does not know.

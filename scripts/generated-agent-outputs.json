@@ -634,7 +634,12 @@
     {
       "source": "home/dot_dsh/profiles",
       "target": ".dsh/profiles",
-      "glob": "**/*"
+      "glob": "*/package.json"
+    },
+    {
+      "source": "home/dot_dsh/profiles",
+      "target": ".dsh/profiles",
+      "glob": "*/cordis.patch.yml"
     },
     {
       "source": "home/dot_local/bin/common",

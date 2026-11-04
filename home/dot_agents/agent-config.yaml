@@ -1348,8 +1348,9 @@ assets:
       says version 0.2.1-rc.5, engines.node ^22.19.0 or 24.0.0 and newer, packageManager pnpm 11.28.5; installed by
       update_deepseek_harness only on a host whose operator exported DSH_HOME and created it, under $DSH_HOME/dsh/<tag>
       with a wrapper at $DSH_HOME/bin/dsh, and the thak profile's plugins through pnpm from mise; no lever starts it
-      and its own command sandbox is off in the kit profile, since the seat boundary is srt or nothing
-    install_path: ~/.dsh ($DSH_HOME; the opt-in)
+      and its own command sandbox is off in the kit profile, since the seat boundary is srt or nothing; the install
+      path ~/.dsh is $DSH_HOME, the opt-in
+    install_path: ~/.dsh
     installer: scripts/update-agent-assets.sh#update_deepseek_harness
     render:
       file: scripts/lib/installer-pins.sh

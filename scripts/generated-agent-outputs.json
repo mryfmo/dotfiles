@@ -228,6 +228,60 @@
       "executable": false
     },
     {
+      "source": "home/dot_claude/skills/kwp-architecture/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-architecture/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-change-request/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-change-request/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-deploy-checklist/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-deploy-checklist/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-incident-response/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-incident-response/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-risk-assessment/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-risk-assessment/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-runbook/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-runbook/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-status-report/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-status-report/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-tech-debt/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-tech-debt/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/kwp-testing-strategy/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/kwp-testing-strategy/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
       "source": "home/dot_claude/skills/project-map/agents/symlink_openai.yaml.tmpl",
       "target": ".claude/skills/project-map/agents/openai.yaml",
       "kind": "symlink",
@@ -768,6 +822,69 @@
         "omp-worker"
       ],
       "humanizer-ja": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-architecture": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-change-request": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-deploy-checklist": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-incident-response": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-risk-assessment": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-runbook": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-status-report": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-tech-debt": [
+        "claude",
+        "codex",
+        "omp",
+        "omp-orchestrator",
+        "omp-worker"
+      ],
+      "kwp-testing-strategy": [
         "claude",
         "codex",
         "omp",

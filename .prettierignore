@@ -15,3 +15,7 @@ CLAUDE.md
 # Reviewed upstream plugin trees (U91): byte-exact copies whose content hash is the
 # pin in scripts/plugin-pins.json, so formatting them would break the pin.
 tests/fixtures/claude-plugins/
+# The knowledge-work skills (U148): byte-exact copies of upstream text at a recorded commit, which
+# tests/unit/test_kwp_skills_drift.py pins, so formatting them would break the pin.
+home/dot_agents/skills/kwp-*/
+tests/fixtures/kwp-upstream/

@@ -2506,7 +2506,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         The rule: the line is scanned and masked at 2,000, 8,000 and 32,000 padding characters in this process (the
         least of three runs each), the 8,000-to-32,000 step may grow the time by less than 8x, and one loose absolute
-        cap of 2 s on any single run still fails a hang. Round 8 bounded every run at 0.5 s, which measured the
+        cap of 20 s on any single run still fails a hang. The cap was 2 s until U165, when the 2 s cap of the report
+        test below failed a linear scan on a healthy runner (run 41759432402, 32,000 findings in 2.318 s), so it is a
+        hang detector only. Round 8 bounded every run at 0.5 s, which measured the
         runner's speed, not the scanner's complexity: CI on 1bd17d87 (run 40826819351, the ubuntu-26.04 client row)
         took 0.648 and 0.676 s for 32,000 low-entropy characters, a linear scan on a slow shared runner. Round 9 also
         bounded the 2,000-to-8,000 step, where the 2 to 3 ms fixed cost of a run dominates the 2,000 run: CI on
@@ -2525,7 +2527,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         # locally), so the judged step stays at 32,000 and the bound carries that jitter. Least of five, not three.
         growth_bound = 12
         judged_step = (8_000, 32_000)
-        hang_bound = 2.0
+        hang_bound = 20.0
 
         def least_of_three(scan) -> float:
             times = []
@@ -2640,20 +2642,27 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         The rule, in the shape of the padded-line test: a file of 8,000 and then 32,000 planted provider tokens, one
         per line, is scanned by the tree scan in this process (secret_findings, the line placement and the allowlist
-        of every finding, the least of three runs each); the 8,000-to-32,000 step may grow the time by less than 8x
-        (linear is about 4x; the count grew 14.7x on cd56bd93 on this host, 0.513 to 7.524 s, against 0.029 to
-        0.120 s on this head) and one loose cap of 2 s on any run still fails a hang. Every finding is reported on
-        its own line, the first on line 1 and the last on line N."""
+        of every finding, the least of five runs each); the 8,000-to-32,000 step may grow the time by less than 12x
+        and one loose cap of 20 s on any run still fails a hang. Linear is about 4x; the quadratic count grew 14.7x
+        per step on cd56bd93 on this host (0.513 to 7.524 s, against 0.029 to 0.120 s on this head), so the bound 12,
+        three times linear as the padded-line test's, still catches it. Round 10's least of three, 8x and 2 s
+        measured the runner, not the scan, as that test's rounds 8 and 9 had: on 2026-11-04, with the code unchanged,
+        the linear scan failed run 41759432402 (test (macos-15, client): 32,000 findings reported in 2.318 s, the
+        cap) and run 41761193225 (test (ubuntu-26.04, client): 0.1051 s at 8,000 findings to 0.9372 s at 32,000,
+        8.9x per 4x step, the growth bound); run 41762642788 (test (ubuntu-24.04, server)) is the third run of that
+        day's record and passed both tests. The cap is a hang detector, not a speed measure: the quadratic scan took
+        7.5 s at 32,000 findings and 28.7 s at 128,000. Every finding is reported on its own line, the first on
+        line 1 and the last on line N."""
         module = self.module
         planted = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
         counts = (8_000, 32_000)
-        growth_bound = 8
-        hang_bound = 2.0
+        growth_bound = 12
+        hang_bound = 20.0
         path = self.write_text_file("fixtures/planted.md", "")
 
-        def least_of_three(scan) -> float:
+        def least_of_five(scan) -> float:
             times = []
-            for _ in range(3):
+            for _ in range(5):
                 started = time.perf_counter()
                 scan()
                 times.append(time.perf_counter() - started)
@@ -2672,7 +2681,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     module.validate_no_obvious_secrets()
 
             with self.subTest(count=count):
-                elapsed = least_of_three(scan)
+                elapsed = least_of_five(scan)
                 # Recorded before any assertion, so the step below is judged even when a run fails the cap.
                 times.append(elapsed)
                 self.assertLess(elapsed, hang_bound, f"{count:,} findings reported in {elapsed:.3f} s")

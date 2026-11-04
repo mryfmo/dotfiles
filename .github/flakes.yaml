@@ -10,3 +10,7 @@
   job: '^public-bootstrap \(ubuntu-'
   log_regex: 'cannot fetch assertion: got unexpected HTTP status code (408|5[0-9][0-9]) via GET to "https://api\.snapcraft\.io/'
   note: snap install timed out fetching an assertion from the Snap Store (run 39046848147 attempt 1, 2026-10-17); the rerun passed.
+- id: linearity-runner-clock
+  job: '^test \('
+  log_regex: 'FAIL: test_(a_generic_rule_scans_a_padded_line_in_linear_time|the_report_of_many_findings_in_one_file_is_linear_in_the_findings) \('
+  note: the two wall-time linearity tests of tests/unit/test_validate_agent_assets.py failed healthy runners on runner jitter alone, code unchanged (2026-11-04, run 41759432402 test (macos-15, client), 32,000 findings reported in 2.318 s against the 2.0 s cap; run 41761193225 test (ubuntu-26.04, client), 0.1051 s at 8,000 findings to 0.9372 s at 32,000, 8.9x per 4x step against the growth bound of 8; run 41762642788 test (ubuntu-24.04, server) is the third run of that day's record, and its log shows both tests passing); U165 widened the report test to the least of five runs, a growth bound of 12 and a 20 s hang cap, and the padded-line test's cap to 20 s.

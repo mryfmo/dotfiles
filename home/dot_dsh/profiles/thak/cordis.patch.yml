@@ -1,0 +1,26 @@
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+- id: session-log-deepseek
+  config:
+    enabled: false
+- id: llm-deepseek
+  disabled: true
+- id: llm-deepseek-account
+  disabled: true
+- id: bash-sandbox
+  disabled: true
+- id: llm-pi-ai
+  config:
+    providers:
+      ollama-cloud:
+        displayName: Ollama Cloud
+        api: openai-responses
+        baseURL: https://ollama.com/v1
+        apiKeyEnv: OLLAMA_API_KEY
+        models:
+          - id: deepseek-v4-pro:0813
+          - id: deepseek-v4.1-flash:1017
+- insert:
+    - id: hooks-claude-code
+      name: '@deepseek-ai/dsh-hooks-claude-code'
+      config:
+        configPath: !!js process.env.HOME + '/.claude/settings.json'

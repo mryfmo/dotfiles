@@ -384,6 +384,18 @@
       "executable": false
     },
     {
+      "source": "home/dot_dsh/profiles/thak/cordis.patch.yml",
+      "target": ".dsh/profiles/thak/cordis.patch.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_dsh/profiles/thak/package.json",
+      "target": ".dsh/profiles/thak/package.json",
+      "kind": "file",
+      "executable": false
+    },
+    {
       "source": "home/dot_local/bin/common/executable_brief-check.py",
       "target": ".local/bin/common/brief-check.py",
       "kind": "file",
@@ -618,6 +630,16 @@
       "source": "home/dot_codex",
       "target": ".codex",
       "glob": "*.config.toml"
+    },
+    {
+      "source": "home/dot_dsh/profiles",
+      "target": ".dsh/profiles",
+      "glob": "*/package.json"
+    },
+    {
+      "source": "home/dot_dsh/profiles",
+      "target": ".dsh/profiles",
+      "glob": "*/cordis.patch.yml"
     },
     {
       "source": "home/dot_local/bin/common",

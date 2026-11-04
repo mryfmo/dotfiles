@@ -160,6 +160,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_hcom() { :; }
                     update_pi_claude_bridge() { :; }
                     update_security_audit_skill() { :; }
+                    update_deepseek_harness() { :; }
                     update_compactiondb() { :; }
                     ensure_herdr_integrations() { :; }
                     ensure_gh_extensions() { printf 'gh-extensions-ensured\\n'; }

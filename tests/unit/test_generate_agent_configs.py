@@ -1157,6 +1157,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.model_profiles(manifest)
         self.assertIn("standard.codex.sandbox_mode must be one of", stderr.getvalue())
 
+    def test_model_profiles_reject_a_null_dsh_entry(self) -> None:
+        # U172 round 3: a present `dsh: null` is a malformed entry, not an absent one (the renderer raised on it).
+        manifest = sample_manifest()
+        manifest["model_profiles"]["standard"]["dsh"] = None
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.model_profiles(manifest)
+        self.assertIn("standard.dsh must be a mapping of exactly model and route", stderr.getvalue())
+
     def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(
         self,
     ) -> None:

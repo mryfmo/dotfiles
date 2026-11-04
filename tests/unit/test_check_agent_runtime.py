@@ -437,6 +437,52 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.module.generated_target_findings(index, "/tree"),
             )
 
+    def test_a_pnpm_install_under_the_deployed_dsh_profile_is_no_orphan(self) -> None:
+        """The profile scopes name the two rendered files, so node_modules/ and the lockfile pnpm writes pass the doctor."""
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        assert spec and spec.loader
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        globs = [pattern for directory, pattern in generator.GENERATED_SCOPES if directory == "home/dot_dsh/profiles"]
+        self.assertEqual(["*/package.json", "*/cordis.patch.yml"], globs)
+        profile = self.target_root / ".dsh/profiles/thak"
+        rendered = {
+            self.write_target(".dsh/profiles/thak/package.json", '{"name": "thak"}\n'),
+            self.write_target(".dsh/profiles/thak/cordis.patch.yml", "- id: bash-sandbox\n  disabled: true\n"),
+        }
+        self.write_target(".dsh/profiles/thak/node_modules/x/package.json", '{"name": "x"}\n')
+        self.write_target(".dsh/profiles/thak/pnpm-lock.yaml", "lockfileVersion: '9.0'\n")
+        matched = set().union(*(self.module.scope_files(profile.parent, pattern) for pattern in globs))
+        self.assertEqual(rendered, matched)
+        self.write_source("dot_dsh/profiles/thak/package.json", '{"name": "thak"}\n')
+        self.write_source("dot_dsh/profiles/thak/cordis.patch.yml", "- id: bash-sandbox\n  disabled: true\n")
+        index = {
+            "outputs": [
+                {
+                    "source": f"source/dot_dsh/profiles/thak/{name}",
+                    "target": f".dsh/profiles/thak/{name}",
+                    "kind": "file",
+                    "executable": False,
+                }
+                for name in ("package.json", "cordis.patch.yml")
+            ],
+            "scopes": [
+                {"source": "home/dot_dsh/profiles", "target": ".dsh/profiles", "glob": pattern} for pattern in globs
+            ],
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+            stray = self.write_target(".dsh/profiles/thak/cordis.patch.yml.bak", "- id: bash-sandbox\n")
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+            stray.unlink()
+            leftover = self.write_target(".dsh/profiles/other/package.json", '{"name": "other"}\n')
+            self.assertEqual(
+                [f"generated directory holds a file no manifest entry renders: {leftover}; remove it"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+
     def test_a_skill_an_agent_lists_outside_its_audience_is_an_error(self) -> None:
         """skills.audience: what each agent can list on the host is read from the deployed roots and the index."""
         home = self.target_root
@@ -858,6 +904,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([f"WARN: orphaned agent asset: {stray}; manual review required"], orphans)
         # The doctor's repair action re-runs the one-step form of the updater for a record whose paths went missing.
         self.assertIn("update_security_audit_skill", self.module.ASSET_STEP_FUNCTIONS)
+        self.assertIn("update_deepseek_harness", self.module.ASSET_STEP_FUNCTIONS)
 
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"

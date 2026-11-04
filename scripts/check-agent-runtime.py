@@ -60,6 +60,7 @@ ASSET_STEP_FUNCTIONS = {
     "update_codex_superpowers",
     "update_codex_understand_anything",
     "update_compactiondb",
+    "update_deepseek_harness",
     "update_pi_claude_bridge",
     "update_security_audit_skill",
     "update_terminal_browser",

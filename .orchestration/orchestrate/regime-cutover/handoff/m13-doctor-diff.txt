@@ -1,0 +1,25 @@
+# M-13 doctor before/after diff (read whole, standing order 25)
+
+Command: `diff m13-doctor-before.txt m13-doctor-after.txt` ran 2026-11-04T00:21:44Z; `diff exit=1`, one changed line.
+
+```text
+357c357
+< drwxr-xr-x 42 <user> staff 1344 Nov  4 09:17 ..
+---
+> drwxr-xr-x 42 <user> staff 1344 Nov  4 09:21 ..
+```
+
+What the line is: line 357 of both files is the `..` entry of the `ls -la ~/.claude/skills` listing, that is the `~/.claude` directory itself (42 entries, 1344 bytes), whose modification time moved from 09:17 to 09:21 JST. `~/.claude` is written continuously by the Claude Code session that ran this trial (history, debug and project state files); `ls -ld --time-style=full-iso ~/.claude` read 09:23:50 two minutes later, after every graphify command had finished. It is not one of the four watched paths.
+
+The four watched paths, compared line by line:
+
+| path | before | after | result |
+| --- | --- | --- | --- |
+| `~/.claude/skills` (entries, `ls -la`) | lines 354-368 | lines 354-368 | identical except the `..` mtime above; the directory's own mtime Oct 26 11:15 unchanged; same 11 entries |
+| `~/.agents/skills` (entries, `ls -la`) | lines 326-353 | lines 326-353 | identical; directory mtime Nov 4 07:32 unchanged; same 25 entries |
+| `~/.claude/settings.json` (sha256) | d6ab2404433033a38cc0bb870bfc8d1ef77ad2ce2cc1af4a45a0901797abe5ce | same | unchanged |
+| `~/.codex/config.toml` (sha256) | fea44851026083524947f7fa1ec196e511a6ff56d8488627d9c98976e16c27b7 | same | unchanged |
+
+The doctor's own output (lines 1-325) is byte-identical in both files: exit 2 both times, with the three parked G-26 items (ERROR generated config managed keys differ for ~/.codex/config.toml; WARN ai-coe-daily-ops plugin without a pin; WARN GitHub login in the OS keyring; WARN chezmoi drift on .codex/config.toml and .codex/rules/default.rules) present before and after, as the recipe expects for a pre-existing WARN or ERROR.
+
+Reading: no graphify step (uv tool install, project-scoped install in the scratch clone, code-only build, ten queries) changed any of the four watched paths. The literal acceptance of task 08 (`diff exit 0, no diff lines`) is not met because the listing form `ls -la` prints the parent directory's mtime; a future recipe can list with `ls -lA` (no `.`/`..` entries) to make the check exact. Decision on the record wording is the coordinator's.

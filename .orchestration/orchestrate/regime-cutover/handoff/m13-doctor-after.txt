@@ -1,0 +1,368 @@
+
+==> Core commands
+found:   git -> /opt/homebrew/bin/git
+git version 2.56.0
+found:   chezmoi -> ~/.local/share/mise/installs/chezmoi/latest/chezmoi
+chezmoi version v2.73.3, commit 63093ac0e26e803817ced0e2184cb57c4f273388, built at 2026-10-20T15:09:45Z, built by goreleaser
+found:   mise -> ~/.local/bin/mise
+2026.10.25 macos-arm64 (2026-10-31)
+found:   uv -> ~/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv
+uv 0.13.6 (329bf9448 2026-10-26 aarch64-apple-darwin)
+found:   gh -> ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh
+gh version 2.103.3 (2026-10-26)
+
+==> Chezmoi
+RESULT    CHECK                       MESSAGE
+ok        version                     v2.73.3, commit 63093ac0e26e803817ced0e2184cb57c4f273388, built at 2026-10-20T15:09:45Z, built by goreleaser
+warning   latest-version              v2.74.0
+ok        os-arch                     darwin/arm64
+info      build-info                  CGO_ENABLED=0, GOARM64=v8.0
+ok        uname                       Darwin <laptop-host> 27.2.0 Darwin Kernel Version 27.2.0: Wed Oct 14 23:47:58 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T6050 arm64
+ok        go-version                  go1.27.3 (gc)
+ok        executable                  ~/.local/share/mise/installs/chezmoi/latest/chezmoi
+ok        upgrade-method              replace-executable
+ok        config-file                 found ~/.config/chezmoi/chezmoi.yaml, last modified 2026-10-25T08:44:33+09:00
+ok        source-dir                  ~/.local/share/chezmoi is a git working tree (clean)
+ok        suspicious-entries          no suspicious entries
+ok        working-tree                ~/.local/share/chezmoi is a git working tree (clean)
+ok        dest-dir                    ~ is a directory
+ok        hardlink                    created hardlink from ~/.local/share/chezmoi to /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/
+ok        symlink                     created symlink from .new-name to .old-name
+ok        umask                       022
+ok        cd-command                  found /bin/zsh
+ok        cd-args                     /bin/zsh
+info      diff-command                not set
+ok        edit-command                found /usr/bin/true
+ok        edit-args                   /usr/bin/true
+ok        git-command                 found /opt/homebrew/bin/git, version 2.56.0
+ok        merge-command               found /opt/homebrew/bin/vimdiff
+ok        shell-command               found /bin/zsh
+ok        shell-args                  /bin/zsh
+ok        age-command                 found ~/.local/share/mise/installs/age/latest/age/age, version 1.3.2
+ok        gpg-command                 found /opt/homebrew/bin/gpg, version 2.5.24
+info      pinentry-command            not set
+info      1password-command           op not found in $PATH
+info      bitwarden-command           bw not found in $PATH
+info      bitwarden-secrets-command   bws not found in $PATH
+info      dashlane-command            dcli not found in $PATH
+info      doppler-command             doppler not found in $PATH
+info      gopass-command              gopass not found in $PATH
+info      keepassxc-command           keepassxc-cli not found in $PATH
+info      keepassxc-db                not set
+info      keeper-command              keeper not found in $PATH
+info      lastpass-command            lpass not found in $PATH
+info      pass-command                pass not found in $PATH
+info      passhole-command            ph not found in $PATH
+info      protonpass-command          pass-cli not found in $PATH
+info      rbw-command                 rbw not found in $PATH
+info      vault-command               vault not found in $PATH
+info      secret-command              not set
+found:   private source -> ~/.local/share/chezmoi-private
+optional warning: private config is missing: ~/.config/chezmoi-private/chezmoi.yaml
+
+==> Mise
+version: 2026.10.25 macos-arm64 (2026-10-31)
+activated: yes
+shims_on_path: yes
+self_update_available: yes
+
+build_info:
+  Target: aarch64-apple-darwin
+  Features: openssl, rustls-native-roots, self_update
+  Built: Sat, 31 Oct 2026 09:27:38 +0000
+  Rust Version: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+  Profile: release
+
+shell:
+  zsh
+  zsh 5.9.2 (aarch64-apple-darwin25.4.0)
+
+aqua:
+  baked in registry: aquaproj/aqua-registry@51f40fb4aff9c8c4ec2c8c02fd8be99a717d2356
+  baked in registry tools: 2341
+
+dirs:
+  cache: ~/Library/Caches/mise
+  config: ~/.config/mise
+  data: ~/.local/share/mise
+  shims: ~/.local/share/mise/shims
+  system_shims: /usr/local/share/mise/shims
+  state: ~/.local/state/mise
+
+config_files:
+  ~/.config/mise/config.toml
+  ~/Workspace/dotfiles/mise.toml
+
+env_files:
+  (none)
+
+ignored_config_files: (none)
+
+backends:
+  aqua
+  asdf
+  cargo
+  conda
+  core
+  dotnet
+  forgejo
+  gem
+  github
+  gitlab
+  go
+  npm
+  packslip
+  pypi
+  spinel
+  spm
+  http
+  s3
+  ubi
+  vfox
+
+plugins:
+
+toolset:
+  aqua:FiloSottile/age@1.3.2
+  aqua:astral-sh/uv@0.13.6
+  aqua:dotenvx/dotenvx@2.38.2
+  aqua:gohugoio/hugo/hugo-extended@0.169.0
+  aqua:jqlang/jq@1.8.2
+  aqua:micro-editor/micro@2.0.15
+  aqua:mikefarah/yq@4.54.1
+  aqua:sharkdp/fd@10.5.0
+  aqua:sxyazi/yazi@26.9.1
+  aqua:twpayne/chezmoi@2.73.3
+  aqua:watchexec/watchexec@2.8.0
+  cargo:eza@0.23.5
+  cargo:pueue@4.0.4
+  core:bun@1.4.4
+  core:node@26.13.0
+  core:python@3.15.2
+  core:rust@1.99.1
+  github:cli/cli@2.103.3
+  github:d-kuro/gwq@0.1.2
+  github:ogulcancelik/herdr@0.9.5
+  github:x-motemen/ghq@1.11.2
+  http:bats@1.14.0
+  http:gcloud@590.0.0
+  http:ruff@0.17.2
+  http:shellcheck@0.11.0
+  http:shfmt@3.14.1
+  npm:@anthropic-ai/claude-code@2.1.316
+  npm:@anthropic-ai/sandbox-runtime@0.0.81
+  npm:@openai/codex@0.166.0
+  npm:bash-language-server@5.8.1
+  npm:ccstatusline@2.2.32
+  npm:ccusage@20.0.37
+  npm:fast-cli@6.0.0
+  npm:pnpm@12.8.1
+  npm:prettier@3.9.10
+  npm:pyright@1.1.414
+
+path:
+  ~/.local/share/sheldon/repos/github.com/paulirish/git-open
+  ~/.local/share/mise/installs/node/latest/bin
+  ~/.cargo/bin
+  ~/.local/share/mise/installs/python/latest/bin
+  ~/.local/share/mise/installs/age/latest/age
+  ~/.local/share/mise/installs/bun/latest/bin
+  ~/.local/share/mise/installs/chezmoi/latest
+  ~/.local/share/mise/installs/dotenvx/latest
+  ~/.local/share/mise/installs/cargo-eza/latest/bin
+  ~/.local/share/mise/installs/fd/latest/fd-v10.5.0-aarch64-apple-darwin
+  ~/.local/share/mise/installs/jq/latest
+  ~/.local/share/mise/installs/hugo-extended/latest/Payload
+  ~/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin
+  ~/.local/share/mise/installs/yazi/latest/yazi-aarch64-apple-darwin
+  ~/.local/share/mise/installs/aqua-micro-editor-micro/latest/micro-2.0.15
+  ~/.local/share/mise/installs/aqua-mikefarah-yq/latest
+  ~/.local/share/mise/installs/aqua-watchexec-watchexec/latest/watchexec-2.8.0-aarch64-apple-darwin
+  ~/.local/share/mise/installs/npm-anthropic-ai-claude-code/latest/bin
+  ~/.local/share/mise/installs/npm-openai-codex/latest/bin
+  ~/.local/share/mise/installs/npm-anthropic-ai-sandbox-runtime/0.0.81/bin
+  ~/.local/share/mise/installs/npm-bash-language-server/latest/bin
+  ~/.local/share/mise/installs/npm-ccstatusline/2.2.32/bin
+  ~/.local/share/mise/installs/npm-ccusage/20.0.37/bin
+  ~/.local/share/mise/installs/npm-pyright/latest/bin
+  ~/.local/share/mise/installs/npm-fast-cli/latest/bin
+  ~/.local/share/mise/installs/npm-prettier/3.9.10/bin
+  ~/.local/share/mise/installs/npm-pnpm/12.8.1/bin
+  ~/.local/share/mise/installs/github-x-motemen-ghq/latest
+  ~/.local/share/mise/installs/github-d-kuro-gwq/latest
+  ~/.local/share/mise/installs/github-cli-cli/latest/bin
+  ~/.local/share/mise/installs/github-ogulcancelik-herdr/latest
+  ~/.local/share/mise/installs/cargo-pueue/latest/bin
+  ~/.local/share/mise/installs/http-bats/1.14.0/bin
+  ~/.local/share/mise/installs/http-gcloud/590.0.0/google-cloud-sdk/bin
+  ~/.local/share/mise/installs/http-shellcheck/0.11.0
+  ~/.local/share/mise/installs/http-shfmt/3.14.1
+  ~/.local/share/mise/installs/http-ruff/0.17.2
+  ~/.local/share/mise/shims
+  /opt/homebrew/bin
+  /opt/homebrew/sbin
+  /usr/local/bin
+  /System/Cryptexes/App/usr/bin
+  /usr/bin
+  /bin
+  /usr/sbin
+  /sbin
+  /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin
+  /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin
+  /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin
+  /pkg/env/global/bin
+  ~/.local/bin
+  ~/.local/bin/common
+  /Applications/Ghostty.app/Contents/MacOS
+  ~/.local/share/sheldon/repos/github.com/junegunn/fzf/bin
+  ~/.bun/bin
+
+env_vars:
+  MISE_SHELL=zsh
+
+settings:
+  idiomatic_version_file_enable_tools  ["python"] ~/.config/mise/config.toml
+  minimum_release_age                  "72h"      ~/.config/mise/config.toml
+  cargo.binstall                       false      ~/.config/mise/config.toml
+  npm.package_manager                  "npm"      ~/.config/mise/config.toml
+  self_update.minimum_release_age      "72h"      ~/.config/mise/config.toml
+
+1 warning found:
+
+1. mise tool paths are not first in PATH. These paths take precedence:
+     ~/.local/share/sheldon/repos/github.com/paulirish/git-open
+   This may cause system-installed tools to be used instead of mise-managed versions.
+   Ensure `mise activate` runs after other PATH modifications in your shell rc file.
+
+No problems found
+age                                1.3.2             ~/.config/mise/config.toml  latest
+aqua:micro-editor/micro            2.0.15            ~/.config/mise/config.toml  latest
+aqua:mikefarah/yq                  4.54.1            ~/.config/mise/config.toml  latest
+aqua:watchexec/watchexec           2.8.0             ~/.config/mise/config.toml  latest
+bun                                1.4.4             ~/.config/mise/config.toml  latest
+cargo:eza                          0.23.5            ~/.config/mise/config.toml  latest
+cargo:pueue                        4.0.4             ~/.config/mise/config.toml  latest
+chezmoi                            2.73.3            ~/.config/mise/config.toml  latest
+dotenvx                            2.38.2            ~/.config/mise/config.toml  latest
+fd                                 10.5.0            ~/.config/mise/config.toml  latest
+github:cli/cli                     2.103.3           ~/.config/mise/config.toml  latest
+github:d-kuro/gwq                  0.1.2             ~/.config/mise/config.toml  latest
+github:ogulcancelik/herdr          0.9.5             ~/.config/mise/config.toml  latest
+github:x-motemen/ghq               1.11.2            ~/.config/mise/config.toml  latest
+http:bats                          1.14.0            ~/.config/mise/config.toml  1.14.0
+http:gcloud                        590.0.0           ~/.config/mise/config.toml  590.0.0
+http:ruff                          0.17.2            ~/.config/mise/config.toml  0.17.2
+http:shellcheck                    0.11.0            ~/.config/mise/config.toml  0.11.0
+http:shfmt                         3.14.1            ~/.config/mise/config.toml  3.14.1
+hugo-extended                      0.169.0           ~/.config/mise/config.toml  latest
+jq                                 1.8.2             ~/.config/mise/config.toml  latest
+node                               26.13.0           ~/.config/mise/config.toml  latest
+npm:@anthropic-ai/claude-code      2.1.316           ~/.config/mise/config.toml  latest
+npm:@anthropic-ai/sandbox-runtime  0.0.81            ~/.config/mise/config.toml  0.0.81
+npm:@openai/codex                  0.166.0           ~/.config/mise/config.toml  latest
+npm:bash-language-server           5.8.1             ~/.config/mise/config.toml  latest
+npm:ccstatusline                   2.2.32            ~/.config/mise/config.toml  2.2.32
+npm:ccusage                        20.0.37           ~/.config/mise/config.toml  20.0.37
+npm:fast-cli                       6.0.0             ~/.config/mise/config.toml  latest
+npm:pnpm                           12.8.1            ~/.config/mise/config.toml  12.8.1
+npm:prettier                       3.9.10            ~/.config/mise/config.toml  3.9.10
+npm:pyright                        1.1.414           ~/.config/mise/config.toml  latest
+python                             3.15.2            ~/.config/mise/config.toml  latest
+rust                               1.99.1 (symlink)  ~/.config/mise/config.toml  latest
+uv                                 0.13.6            ~/.config/mise/config.toml  latest
+yazi                               26.9.1            ~/.config/mise/config.toml  latest
+
+==> Homebrew
+found:   brew -> /opt/homebrew/bin/brew
+Homebrew 7.0.12
+
+==> Crit CLI
+found:   crit -> ~/.local/bin/crit (pinned release)
+crit v0.22.0 (2026-10-07, 9694e99)
+Inline code review for AI agent workflows
+
+==> Agent tools
+found:   omp -> ~/.local/bin/omp (pin 18.12.6)
+omp/18.12.6
+found:   hcom -> ~/.local/bin/hcom (pin 0.7.31)
+hcom 0.7.31
+found:   srt -> ~/.local/share/mise/installs/npm-anthropic-ai-sandbox-runtime/0.0.81/bin/srt (pin 0.0.81)
+0.0.81
+
+==> Seat logins
+found:   seat login audit openai-siwc: registered (host urn:uuid:d660c82d-96c3-41d7-af79-e7fa758ac870, client oaiapp_KeTgDP7jC9tEN6JZm5p4xjsbg), agent.db mtime 2026-10-25T05:25:53Z
+found:   seat login orchestrator claude-bridge: login present (Keychain item)
+found:   seat login worker claude-bridge: login present (Keychain item)
+
+==> Zed
+not applicable: Zed (installed on Ubuntu clients only)
+
+==> SSH
+optional warning: commit signing is off (no signing key when the git config was applied); run provision-machine-key, register the key, then chezmoi apply
+
+==> AppArmor
+not applicable: AppArmor userns restriction (not enabled)
+
+==> Claude Code sandbox
+not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)
+
+==> GitHub CLI extensions
+gh poi	seachicken/gh-poi	v0.18.5
+
+Tool check summary: required failures: 0; optional warnings: 2
+sleep check: SleepDisabled is 1
+Working...
+PONG
+pi-claude-bridge loaded in omp/18.12.6.
+pstack skills reach omp/18.12.6: 75 skills listed, poteto-mode among them.
+ERROR: generated config managed keys differ or profile is missing: ~/.codex/config.toml
+WARN: Claude Code plugin ai-coe-daily-ops@ai-coe is enabled but has no pin in assets.claude-plugins; record its reviewed version there or disable it
+WARN: GitHub login is stored in the OS keyring, which the Claude sandbox cannot reach; run make gh-auth to store it in gh's file
+WARN: chezmoi drift MM .codex/config.toml: two-sided drift
+WARN: chezmoi drift MM .codex/rules/default.rules: two-sided drift
+
+Doctor summary: tools=passed; runtime=failed
+make: *** [doctor] Error 1
+~/.agents/skills:
+total 0
+drwxr-xr-x 25 <user> staff 800 Nov  4 07:32 .
+drwxr-xr-x 14 <user> staff 448 Nov  4 07:32 ..
+drwxr-xr-x  4 <user> staff 128 Oct 26 11:15 convert-to-transformers
+drwx------  3 <user> staff  96 Nov  4 07:32 crit
+drwx------  3 <user> staff  96 Nov  4 07:32 crit-cli
+drwx------  3 <user> staff  96 Nov  4 07:32 crit-story
+drwxr-xr-x  5 <user> staff 160 Oct 26 11:15 gh-comment-attach-files
+drwxr-xr-x  5 <user> staff 160 Oct 26 11:15 gh-first-workflow
+drwxr-xr-x  3 <user> staff  96 Nov  4 07:25 hcom-orchestration
+drwxr-xr-x  3 <user> staff  96 Nov  4 07:25 hcom-worker
+drwxr-xr-x  5 <user> staff 160 Sep 30 13:40 humanizer-ja
+drwxr-xr-x  4 <user> staff 128 Oct 26 11:15 project-map
+drwxr-xr-x  5 <user> staff 160 Sep 30 13:40 python-uv-workflow
+drwx------ 22 <user> staff 704 Nov  4 07:26 security-audit
+drwxr-xr-x  5 <user> staff 160 Oct 26 11:15 shdoc-shell-docs
+lrwxr-xr-x  1 <user> staff  81 Oct  3 00:35 terminal-browser -> ~/.local/share/terminal-browser/app/skills/default/terminal-browser
+lrwxr-xr-x  1 <user> staff  86 Nov  4 07:32 understand -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand
+lrwxr-xr-x  1 <user> staff  91 Nov  4 07:32 understand-chat -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-chat
+lrwxr-xr-x  1 <user> staff  96 Nov  4 07:32 understand-dashboard -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard
+lrwxr-xr-x  1 <user> staff  91 Nov  4 07:32 understand-diff -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-diff
+lrwxr-xr-x  1 <user> staff  93 Nov  4 07:32 understand-domain -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-domain
+lrwxr-xr-x  1 <user> staff  94 Nov  4 07:32 understand-explain -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-explain
+lrwxr-xr-x  1 <user> staff  92 Nov  4 07:32 understand-figma -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-figma
+lrwxr-xr-x  1 <user> staff  96 Nov  4 07:32 understand-knowledge -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge
+lrwxr-xr-x  1 <user> staff  94 Nov  4 07:32 understand-onboard -> ~/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard
+
+~/.claude/skills:
+total 0
+drwxr-xr-x 11 <user> staff  352 Oct 26 11:15 .
+drwxr-xr-x 42 <user> staff 1344 Nov  4 09:21 ..
+drwxr-xr-x  4 <user> staff  128 Sep 30 13:42 convert-to-transformers
+drwxr-xr-x  5 <user> staff  160 Sep 30 13:42 gh-comment-attach-files
+drwxr-xr-x  5 <user> staff  160 Sep 30 13:42 gh-first-workflow
+drwxr-xr-x  5 <user> staff  160 Sep 30 13:42 humanizer-ja
+drwxr-xr-x  4 <user> staff  128 Oct  9 13:35 project-map
+drwxr-xr-x  5 <user> staff  160 Sep 30 13:42 python-uv-workflow
+drwxr-xr-x  5 <user> staff  160 Sep 30 13:42 shdoc-shell-docs
+drwxr-xr-x  4 <user> staff  128 Oct  2 11:35 synced
+lrwxr-xr-x  1 <user> staff   81 Oct  3 00:35 terminal-browser -> ~/.local/share/terminal-browser/app/skills/default/terminal-browser
+d6ab2404433033a38cc0bb870bfc8d1ef77ad2ce2cc1af4a45a0901797abe5ce  ~/.claude/settings.json
+fea44851026083524947f7fa1ec196e511a6ff56d8488627d9c98976e16c27b7  ~/.codex/config.toml

@@ -1,0 +1,16 @@
+security-audit sweep a2b96f8b2a35ee18345372a9360d52009ae41540: 6 findings, advisory
+needs_validation	claude-sandbox:allow-write-covers-seat-launch-inputs	home/.chezmoitemplates/claude-settings-managed.json:575	Claude Code sandbox write roots expose hcom launch inputs and seat sandbox files that later run unsandboxed
+needs_validation	hcom-seat:srt-write-roots-share-operator-claude-config	scripts/orchestrator/hcom-seat:1369	Seat srt sandbox can write the operator's Claude Code config (~/.claude.json, ~/.claude/rules) that unsandboxed Claude Code sessions load
+needs_validation	hcom-seat:srt-deny-write-misses-claude-hook-package	scripts/orchestrator/hcom-seat:1682	Orchestrator seat can rewrite the Python package that the checkout's Claude Code project hooks import
+needs_validation	disk-gc:worktree-porcelain-path-field-split	home/dot_local/bin/common/executable_disk-gc:184	disk-gc splits worktree paths on whitespace and can rm -rf a different directory
+needs_validation	hcom-bus:sender-identity-caller-asserted	scripts/orchestrator/hcom-dispatch:136	Bus sender identity is caller-asserted while the seats treat a row's from as identity
+needs_validation	assets.graphify:installer-skips-pinned-sha256	home/dot_agents/agent-config.yaml:1336	graphify's recorded installer resolves by version and never checks the pinned wheel sha256
+
+locations: the root-cause line of each record (each is a trace or evidence entry in findings.json)
+origin: 1 new from the U150 change (assets.graphify:installer-skips-pinned-sha256: the recorded installer resolves graphifyy==0.9.99 by version with no hash, so the entry's verify: sha256 binds nothing; the hcom asset's download-verify-install is the fix); 5 carried from run-1 (main c92078d0) with unchanged fingerprints and re-verified at a2b96f8b. One hardening note: the host's uv exclude-newer = 7 days is longer than the 72-hour rule the pin was chosen by, so the installer fails to resolve until 2026-11-06.
+counts by severity: critical 0, high 0, medium 0, low 0, informational 0 (no confirmed record); needs_validation 6 (no severity by schema); rejected 0
+note: report-schema.json forbids severity on needs_validation records; the severity column carries the verdict instead. Each record's description ends with the smallest fix if validated.
+coverage: partial; 37 ledger units: covered 18 (1 new for U150), candidate 6 (1 new for U150), deferred 8, not_applicable 5; final critic not clean
+independence: no delegation tool on this seat (task and eval blocked); one agent ran every role in sequence
+files written: run-metadata.json architecture.md coverage-ledger.json findings.json REPORT.md FINDINGS-DETAIL.md NEEDS-VALIDATION.md preflight.txt validation.txt summary.txt; agents/<id>/{scratch,artifacts} per role (critic results, the changed-path list and the parent build tools under agents/*/scratch; artifacts empty)
+wall time: 264 s (4.4 min), start epoch 1793752786, end epoch 1793753050

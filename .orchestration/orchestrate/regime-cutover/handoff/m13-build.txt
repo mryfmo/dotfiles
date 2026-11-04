@@ -1,0 +1,32 @@
+# T-M-13-07 code-only build, corpus 182fbaa2, 2026-11-04T00:20:33Z
+
+command: /usr/bin/time -p env -u ANTHROPIC_API_KEY -u OPENAI_API_KEY -u GEMINI_API_KEY -u MOONSHOT_API_KEY -u DEEPSEEK_API_KEY GRAPHIFY_BACKEND=none graphify extract . --code-only
+exit=0
+
+  warning: 1 .yml file(s) contributed nothing to the graph because a dependency is missing: mapping values are not allowed here
+  in "<unicode string>", line 23, column 21:
+        echo "omp config: uv is not installed; left ~/.o ... 
+                        ^. (#1745)
+  warning: 10 code file(s) yielded no symbols (0.01 MB) — a data file, or source this extractor models no symbols for: .claude/hooks/contextdb_cli.py, .claude/hooks/contextdb_hook.py, .claude/hooks/contextdb_recover.py, home/dot_agents/omp/extensions/openai-siwc/tests/seed.test.ts, home/dot_agents/omp/extensions/openai-siwc/tests/store.test.ts (+5 more)
+real 8.96
+user 15.76
+sys 2.60
+
+[graphify extract] scanning /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/m13-trial/corpus
+[graphify extract] --code-only: skipping 541 non-code file(s) (536 docs, 1 papers, 4 images) — no LLM extraction
+[graphify extract] found 410 code, 0 docs, 0 papers, 0 images
+[graphify extract] 232 file(s) not classified (no supported extension or shebang), skipped: .chezmoi.yaml.tmpl, .chezmoiexternal.yaml.tmpl, .chezmoiignore, .chezmoiremove, .chezmoiroot, .editorconfig (+226 more)
+[graphify extract] 1 file(s) skipped as potentially sensitive (rename or move if wrongly flagged): decrypt_private_key.bats
+[graphify extract] AST extraction on 410 code files...
+  AST cache: 0/410 files served from cache (0%); 410 to extract
+  AST extraction: 100/410 uncached files (24%) [18 workers]
+  AST extraction: 200/410 uncached files (48%) [18 workers]
+  AST extraction: 300/410 uncached files (73%) [18 workers]
+  AST extraction: 400/410 uncached files (97%) [18 workers]
+  AST extraction: 410/410 uncached files (100%) [18 workers]
+[graphify] Deduplicated 1 node(s) (1 fuzzy).
+[graphify extract] wrote /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/m13-trial/corpus/graphify-out/graph.json: 9022 nodes, 19898 edges, 517 communities
+[graphify extract] wrote /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/m13-trial/corpus/graphify-out/.graphify_analysis.json
+[graphify extract] next: run `graphify cluster-only /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/m13-trial/corpus` to generate GRAPH_REPORT.md and name communities
+
+graph.json: 9600488 bytes (du -k 9376); nodes 9022; edges 19898; built_at_commit 182fbaa2d34048f56abfc2935d272c2522ed34b1
